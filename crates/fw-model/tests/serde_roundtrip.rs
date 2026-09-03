@@ -273,6 +273,7 @@ fn populated_font_round_trips_semantically() {
         format: "OpenType".into(),
         sha256: "abc123".into(),
         table_tags: vec![Tag::from_str("CFF ").unwrap()],
+        glyph_order: vec![".notdef".into(), "A".into(), "acute".into()],
         original_bytes: Some(Arc::new(vec![1, 2, 3])),
     });
     font.extra.lib.insert("opaque".into(), json!([1, 2, 3]));
@@ -288,6 +289,18 @@ fn populated_font_round_trips_semantically() {
     expected.extra.source.as_mut().unwrap().original_bytes = None;
     let decoded: Font = serde_json::from_value(serialized).unwrap();
     assert_eq!(decoded, expected);
+}
+
+#[test]
+fn legacy_provenance_defaults_missing_glyph_order() {
+    let source: SourceProvenance = serde_json::from_value(json!({
+        "path": "legacy.ttf",
+        "format": "ttf",
+        "sha256": "abc123"
+    }))
+    .unwrap();
+
+    assert!(source.glyph_order.is_empty());
 }
 
 #[test]
