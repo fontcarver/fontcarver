@@ -1,0 +1,15 @@
+.workspace {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  background: var(--color-canvas);
+  color: var(--color-text);
+}
+
+.wordmark {
+  margin: 0;
+  font-family: var(--font-interface);
+  font-size: clamp(2.5rem, 8vw, 6rem);
+  font-weight: 540;
+  letter-spacing: -0.055em;
+}

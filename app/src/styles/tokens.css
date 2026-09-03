@@ -1,0 +1,11 @@
+:root {
+  color-scheme: light dark;
+  --color-canvas: #f2efe7;
+  --color-text: #171716;
+  --font-interface: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+:root[data-theme='dark'] {
+  --color-canvas: #171716;
+  --color-text: #f2efe7;
+}
