@@ -124,6 +124,11 @@ impl UndoStack {
         self.entries.is_empty()
     }
 
+    pub(crate) fn set_memory_budget(&mut self, bytes: usize) {
+        self.memory_budget = bytes;
+        self.enforce_budget();
+    }
+
     /// Returns the label of the next entry that undo would restore.
     pub fn undo_label(&self) -> Option<&str> {
         self.cursor

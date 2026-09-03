@@ -1,9 +1,13 @@
 use std::fs;
 
-use fw_model::{PointKind, Tag, TtIndex};
+use fw_model::{NamePlatform, PointKind, Tag, TtIndex};
 use fw_sfnt::{read_bytes, read_path, ReadOptions};
 use read_fonts::{FontRef, TableProvider};
-use write_fonts::FontBuilder;
+use write_fonts::{
+    tables::name::{Name, NameRecord},
+    types::NameId,
+    FontBuilder,
+};
 
 #[test]
 fn reads_dejavu_into_the_document_model() {
@@ -18,6 +22,10 @@ fn reads_dejavu_into_the_document_model() {
     let font = &outcome.fonts[0];
     assert_eq!(font.glyphs.len(), usize::from(maxp.num_glyphs()));
     assert_eq!(font.info.family_name, "DejaVu Sans");
+    assert_eq!(
+        font.info.open_type_head_created.as_deref(),
+        Some("2023/08/10 17:39:05")
+    );
 
     let glyph_a = font.glyph("A").expect("A glyph");
     assert!(glyph_a.unicodes.contains(&0x41));
@@ -109,6 +117,40 @@ fn reads_or_derives_x_height_and_cap_height() {
 }
 
 #[test]
+fn infers_smooth_points_from_quadratic_tangents() {
+    let outcome = read_path(
+        &fw_fixtures::path("DejaVuSans.ttf"),
+        &ReadOptions::default(),
+    )
+    .expect("read DejaVu Sans");
+    let font = &outcome.fonts[0];
+
+    let o_points: Vec<_> = font
+        .glyph("o")
+        .expect("o glyph")
+        .layers
+        .iter()
+        .flat_map(|layer| &layer.contours)
+        .flat_map(|contour| &contour.points)
+        .filter(|point| point.kind != PointKind::OffCurve)
+        .collect();
+    assert!(!o_points.is_empty());
+    assert!(o_points.iter().all(|point| point.smooth));
+
+    let h_points: Vec<_> = font
+        .glyph("H")
+        .expect("H glyph")
+        .layers
+        .iter()
+        .flat_map(|layer| &layer.contours)
+        .flat_map(|contour| &contour.points)
+        .filter(|point| point.kind != PointKind::OffCurve)
+        .collect();
+    assert!(!h_points.is_empty());
+    assert!(h_points.iter().all(|point| !point.smooth));
+}
+
+#[test]
 fn can_drop_original_bytes_without_losing_provenance() {
     let path = fw_fixtures::path("NotoSans-Regular.ttf");
     let outcome = read_path(
@@ -146,4 +188,34 @@ fn drops_dsig_while_preserving_other_raw_tables() {
     let raw_tables = &outcome.fonts[0].extra.raw_tables;
     assert!(!raw_tables.contains_key(&Tag(*b"DSIG")));
     assert!(raw_tables.contains_key(&Tag(*b"GSUB")));
+}
+
+#[test]
+fn keeps_iso_and_custom_platform_name_records() {
+    let bytes = fs::read(fw_fixtures::path("DejaVuSans.ttf")).expect("read fixture");
+    let source = FontRef::new(&bytes).expect("parse fixture directly");
+    let table = Name::new(vec![
+        NameRecord::new(0, 1, 0, NameId::new(250), "ISO name".to_owned().into()),
+        NameRecord::new(0, 1, 0, NameId::new(251), "Custom name".to_owned().into()),
+    ]);
+    let mut name_bytes = write_fonts::dump_table(&table).expect("build synthetic name table");
+    name_bytes[6..8].copy_from_slice(&2_u16.to_be_bytes());
+    name_bytes[18..20].copy_from_slice(&4_u16.to_be_bytes());
+    let mut builder = FontBuilder::new();
+    builder
+        .add_raw(write_fonts::types::Tag::new(b"name"), name_bytes)
+        .copy_missing_tables(source);
+
+    let outcome = read_bytes(&builder.build(), &ReadOptions::default()).expect("import font");
+    let names = &outcome.fonts[0].info.names;
+    assert!(names.iter().any(|record| {
+        record.name_id == 250
+            && record.platform == NamePlatform::Other(2)
+            && record.text == "ISO name"
+    }));
+    assert!(names.iter().any(|record| {
+        record.name_id == 251
+            && record.platform == NamePlatform::Other(4)
+            && record.text == "Custom name"
+    }));
 }

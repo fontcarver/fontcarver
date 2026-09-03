@@ -1,6 +1,10 @@
 //! Single-entry API dispatch.
 
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    sync::{Arc, OnceLock},
+};
 
 use fw_doc::{DocId, DocumentEvent, Session};
 use serde::{de::DeserializeOwned, Serialize};
@@ -42,6 +46,7 @@ pub struct Api {
     pub(crate) sidebar_cache: std::sync::Mutex<HashMap<DocId, (u64, SidebarCounts)>>,
     pub(crate) warnings: std::sync::Mutex<HashMap<DocId, Vec<DocWarning>>>,
     pub(crate) config_lock: std::sync::Mutex<()>,
+    config_dir: OnceLock<PathBuf>,
 }
 
 impl Api {
@@ -52,7 +57,33 @@ impl Api {
             sidebar_cache: std::sync::Mutex::new(HashMap::new()),
             warnings: std::sync::Mutex::new(HashMap::new()),
             config_lock: std::sync::Mutex::new(()),
+            config_dir: OnceLock::new(),
         }
+    }
+
+    /// Creates an API facade with a fresh session and an explicit configuration directory.
+    pub fn with_config_dir(dir: impl Into<PathBuf>) -> Self {
+        let api = Self::new(Arc::new(Session::new()));
+        let _ = api.config_dir.set(dir.into());
+        api
+    }
+
+    /// Configures the directory used for preferences and recent files.
+    ///
+    /// This is idempotent for the same path and must be called before serving
+    /// requests. An API facade cannot be redirected after a path is installed.
+    pub fn configure_config_dir(&self, dir: impl Into<PathBuf>) -> Result<(), ApiError> {
+        let dir = dir.into();
+        if self.config_dir.get().is_some_and(|current| current == &dir) {
+            return Ok(());
+        }
+        self.config_dir
+            .set(dir)
+            .map_err(|_| ApiError::internal("API configuration directory is already set"))
+    }
+
+    pub(crate) fn config_dir(&self) -> Option<&Path> {
+        self.config_dir.get().map(PathBuf::as_path)
     }
 
     /// Subscribes to document change events from the underlying session.

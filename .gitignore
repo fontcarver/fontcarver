@@ -2,7 +2,6 @@
 /fontforge/
 
 # Rust
-/target/
 **/target/
 /crates/fw-api/bindings/
 # Node
@@ -16,7 +15,6 @@ dist-ssr/
 # Tauri
 src-tauri/target/
 src-tauri/gen/
-src-tauri/gen/schemas/
 # Editors / OS
 .DS_Store
 .idea/

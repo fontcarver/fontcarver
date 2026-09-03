@@ -7,6 +7,7 @@ use read_fonts::{
 
 use crate::Error;
 
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) struct GlyphData {
     pub(crate) unicodes: Vec<Vec<u32>>,
     pub(crate) variation_selectors: Vec<Vec<(u32, u32)>>,
@@ -35,10 +36,23 @@ pub(crate) fn glyph_data(face: &FontRef<'_>, glyph_count: u16) -> Result<GlyphDa
             continue;
         }
         let is_symbol = record.platform_id() == PlatformId::Windows && record.encoding_id() == 0;
-        for (codepoint, gid) in pairs(&subtable, glyph_count)? {
-            add_mapping(&mut owners, codepoint, gid, glyph_count);
-            if is_symbol && (0xF000..=0xF0FF).contains(&codepoint) {
-                add_mapping(&mut owners, codepoint - 0xF000, gid, glyph_count);
+        if matches!(
+            &subtable,
+            CmapSubtable::Format4(_) | CmapSubtable::Format12(_) | CmapSubtable::Format13(_)
+        ) {
+            for (codepoint, gid) in
+                subtable.iter_with_limits(read_fonts::tables::cmap::CmapIterLimits {
+                    max_char: 0x10_FFFF,
+                    glyph_count: u32::from(glyph_count),
+                })
+            {
+                if let Ok(gid) = u16::try_from(gid.to_u32()) {
+                    add_record_mapping(&mut owners, codepoint, gid, glyph_count, is_symbol);
+                }
+            }
+        } else {
+            for (codepoint, gid) in pairs(&subtable, glyph_count)? {
+                add_record_mapping(&mut owners, codepoint, gid, glyph_count, is_symbol);
             }
         }
     }
@@ -50,6 +64,19 @@ pub(crate) fn glyph_data(face: &FontRef<'_>, glyph_count: u16) -> Result<GlyphDa
     }
     apply_variation_sequences(&cmap, glyph_count, &owners, &mut data.variation_selectors)?;
     Ok(data)
+}
+
+fn add_record_mapping(
+    owners: &mut HashMap<u32, u16>,
+    codepoint: u32,
+    gid: u16,
+    glyph_count: u16,
+    is_symbol: bool,
+) {
+    add_mapping(owners, codepoint, gid, glyph_count);
+    if is_symbol && (0xF000..=0xF0FF).contains(&codepoint) {
+        add_mapping(owners, codepoint - 0xF000, gid, glyph_count);
+    }
 }
 
 fn record_rank(record: &EncodingRecord) -> (u8, u16, u16) {
@@ -234,4 +261,58 @@ fn apply_variation_sequences(
         sequences.dedup();
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use read_fonts::{FontRef, TableProvider};
+
+    use super::{add_record_mapping, apply_variation_sequences, pairs, record_rank, GlyphData};
+    use crate::Error;
+
+    #[test]
+    fn streaming_common_formats_match_eager_mapping() {
+        for fixture in ["DejaVuSans.ttf", "NotoSans-Regular.ttf"] {
+            let bytes = fs::read(fw_fixtures::path(fixture)).expect("read fixture");
+            let face = FontRef::new(&bytes).expect("parse fixture");
+            let glyph_count = face.maxp().expect("maxp table").num_glyphs();
+
+            assert_eq!(
+                super::glyph_data(&face, glyph_count).expect("streaming cmap"),
+                eager_glyph_data(&face, glyph_count).expect("eager cmap"),
+                "{fixture} cmap changed"
+            );
+        }
+    }
+
+    fn eager_glyph_data(face: &FontRef<'_>, glyph_count: u16) -> Result<GlyphData, Error> {
+        let cmap = face.cmap().map_err(|error| Error::parse("cmap", error))?;
+        let mut records = cmap.encoding_records().to_vec();
+        records.sort_by_key(record_rank);
+        let mut owners = std::collections::HashMap::new();
+        for record in records {
+            let subtable = record
+                .subtable(cmap.offset_data())
+                .map_err(|error| Error::parse("cmap", error))?;
+            let is_symbol = record.platform_id() == read_fonts::tables::cmap::PlatformId::Windows
+                && record.encoding_id() == 0;
+            for (codepoint, gid) in pairs(&subtable, glyph_count)? {
+                add_record_mapping(&mut owners, codepoint, gid, glyph_count, is_symbol);
+            }
+        }
+        let mut data = GlyphData {
+            unicodes: vec![Vec::new(); usize::from(glyph_count)],
+            variation_selectors: vec![Vec::new(); usize::from(glyph_count)],
+        };
+        for (codepoint, gid) in &owners {
+            data.unicodes[usize::from(*gid)].push(*codepoint);
+        }
+        for values in &mut data.unicodes {
+            values.sort_unstable();
+        }
+        apply_variation_sequences(&cmap, glyph_count, &owners, &mut data.variation_selectors)?;
+        Ok(data)
+    }
 }

@@ -77,6 +77,22 @@ pub fn face_count(bytes: &[u8]) -> Result<u32, Error> {
     container::decoded_face_count(&decoded)
 }
 
+/// Returns the warning shown when a collection defaults to its first face.
+///
+/// Invalid or non-collection bytes return `None`; normal import reports their
+/// decoding errors separately.
+#[must_use]
+pub fn collection_warning(bytes: &[u8]) -> Option<Warning> {
+    if sniff(bytes) != Some(Container::Ttc) {
+        return None;
+    }
+    let count = face_count(bytes).ok()?;
+    (count > 1).then(|| Warning {
+        code: "collection-face-opened",
+        message: format!("collection has {count} faces; opened face 0"),
+    })
+}
+
 /// Returns the best full name for every face in an sfnt or web-font container.
 pub fn face_names(bytes: &[u8]) -> Result<Vec<String>, Error> {
     let (_, decoded) = container::decode(bytes)?;
@@ -162,7 +178,7 @@ fn read_face(face: &FontRef<'_>, warnings: &mut Vec<Warning>) -> Result<Font, Er
     variations::apply(face, &mut font)?;
 
     let glyph_data = cmap::glyph_data(face, glyph_count)?;
-    let glyph_names = names::glyph_names(face, glyph_count, warnings)?;
+    let glyph_names = names::glyph_names(face, glyph_count, &glyph_data.unicodes, warnings)?;
     let mut master = metrics::master(face, &font.info)?;
     master.name = font.info.style_name.clone();
     master.location = variations::default_location(&font.axes);
@@ -195,6 +211,7 @@ fn read_face(face: &FontRef<'_>, warnings: &mut Vec<Warning>) -> Result<Font, Er
         } else if let Some(source) = &cff_source {
             source.apply(gid, &mut layer)?;
         }
+        infer_smooth_points(&mut layer.contours);
         glyph.layers.push(layer);
         font.glyphs.insert(glyph.name.clone(), glyph);
     }
@@ -214,4 +231,52 @@ fn read_face(face: &FontRef<'_>, warnings: &mut Vec<Warning>) -> Result<Font, Er
         font.features.source_of_truth = FeaturesSource::ImportedTables;
     }
     Ok(font)
+}
+
+fn infer_smooth_points(contours: &mut [fw_model::Contour]) {
+    const SIN_ONE_DEGREE_SQUARED: f64 = 0.000_304_586_490_452_134_93;
+
+    for contour in contours {
+        let len = contour.points.len();
+        let smooth: Vec<_> = (0..len)
+            .map(|index| {
+                let point = &contour.points[index];
+                if point.kind == fw_model::PointKind::OffCurve {
+                    return false;
+                }
+                let previous = index
+                    .checked_sub(1)
+                    .or_else(|| contour.closed.then(|| len.saturating_sub(1)));
+                let next = (index + 1 < len)
+                    .then_some(index + 1)
+                    .or_else(|| contour.closed.then_some(0));
+                let (Some(previous), Some(next)) = (previous, next) else {
+                    return false;
+                };
+                let previous = &contour.points[previous];
+                let next = &contour.points[next];
+                if previous.kind != fw_model::PointKind::OffCurve
+                    || next.kind != fw_model::PointKind::OffCurve
+                {
+                    return false;
+                }
+
+                let incoming = (previous.x - point.x, previous.y - point.y);
+                let outgoing = (next.x - point.x, next.y - point.y);
+                let incoming_len_squared = incoming.0 * incoming.0 + incoming.1 * incoming.1;
+                let outgoing_len_squared = outgoing.0 * outgoing.0 + outgoing.1 * outgoing.1;
+                if incoming_len_squared <= f64::EPSILON || outgoing_len_squared <= f64::EPSILON {
+                    return false;
+                }
+                let dot = incoming.0 * outgoing.0 + incoming.1 * outgoing.1;
+                let cross = incoming.0 * outgoing.1 - incoming.1 * outgoing.0;
+                dot < 0.0
+                    && cross * cross
+                        <= SIN_ONE_DEGREE_SQUARED * incoming_len_squared * outgoing_len_squared
+            })
+            .collect();
+        for (point, smooth) in contour.points.iter_mut().zip(smooth) {
+            point.smooth = smooth;
+        }
+    }
 }

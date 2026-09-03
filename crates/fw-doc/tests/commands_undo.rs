@@ -66,6 +66,93 @@ fn interactive_edit_coalesces_into_one_undo_entry() {
 }
 
 #[test]
+fn beginning_an_edit_finalizes_the_previous_gesture() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let layer = doc.font.glyph("base").unwrap().layers[0].id.clone();
+            let first = doc.begin_edit("First drag");
+            doc.apply_in_edit(
+                &first,
+                Command::SetWidth {
+                    glyph: "base".into(),
+                    layer: layer.clone(),
+                    width: 510.0,
+                },
+            )
+            .unwrap();
+
+            let second = doc.begin_edit("Second drag");
+            assert!(doc
+                .apply_in_edit(
+                    &first,
+                    Command::SetWidth {
+                        glyph: "base".into(),
+                        layer: layer.clone(),
+                        width: 520.0,
+                    },
+                )
+                .is_err());
+            doc.apply_in_edit(
+                &second,
+                Command::SetWidth {
+                    glyph: "base".into(),
+                    layer,
+                    width: 530.0,
+                },
+            )
+            .unwrap();
+
+            assert_eq!(doc.undo_len(), 2);
+            assert_eq!(doc.undo_label(), Some("Second drag"));
+            doc.undo().unwrap();
+            assert_eq!(doc.font.glyph("base").unwrap().layers[0].width, 510.0);
+            assert_eq!(doc.undo_label(), Some("First drag"));
+            doc.undo().unwrap();
+            assert_eq!(doc.font.glyph("base").unwrap().layers[0].width, 500.0);
+        })
+        .unwrap();
+}
+
+#[test]
+fn reducing_undo_budget_evicts_oldest_entries_and_keeps_cursor_consistent() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            for (value, label) in [(65, "First"), (66, "Second"), (67, "Third")] {
+                doc.apply(
+                    Command::SetUnicodes {
+                        glyph: "base".into(),
+                        unicodes: vec![value],
+                    },
+                    label,
+                )
+                .unwrap();
+            }
+            assert_eq!(doc.undo_len(), 3);
+
+            doc.set_undo_budget(1);
+            assert_eq!(doc.undo_len(), 1);
+            assert_eq!(doc.undo_label(), Some("Third"));
+            assert_eq!(doc.redo_label(), None);
+
+            doc.undo().unwrap();
+            assert_eq!(doc.font.glyph("base").unwrap().unicodes, vec![66]);
+            assert_eq!(doc.undo_label(), None);
+            assert_eq!(doc.redo_label(), Some("Third"));
+            assert_eq!(doc.undo().unwrap(), None);
+
+            doc.redo().unwrap();
+            assert_eq!(doc.font.glyph("base").unwrap().unicodes, vec![67]);
+            assert_eq!(doc.undo_label(), Some("Third"));
+            assert_eq!(doc.redo_label(), None);
+        })
+        .unwrap();
+}
+
+#[test]
 fn rename_undo_restores_stable_id_and_component_references() {
     let session = Session::new();
     let id = session.open_font(test_font(), None);
@@ -92,6 +179,53 @@ fn rename_undo_restores_stable_id_and_component_references() {
                 doc.font.glyph("composite").unwrap().layers[0].components[0].base,
                 GlyphName::from("base")
             );
+        })
+        .unwrap();
+}
+
+#[test]
+fn failing_rename_mid_batch_restores_references_order_and_handles() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let original_order: Vec<_> = doc.font.glyph_order().cloned().collect();
+            let base_id = doc.glyph_id("base").unwrap();
+            let composite_id = doc.glyph_id("composite").unwrap();
+
+            let result = doc.apply(
+                Command::Batch(vec![
+                    Command::RenameGlyph {
+                        from: "base".into(),
+                        to: "renamed".into(),
+                    },
+                    Command::RenameGlyph {
+                        from: "composite".into(),
+                        to: "renamed".into(),
+                    },
+                ]),
+                "Rename batch",
+            );
+
+            assert!(result.is_err());
+            assert_eq!(
+                doc.font.glyph_order().cloned().collect::<Vec<_>>(),
+                original_order
+            );
+            assert_eq!(
+                doc.font.glyph("composite").unwrap().layers[0].components[0].base,
+                GlyphName::from("base")
+            );
+            assert_eq!(doc.glyph_id("base"), Some(base_id));
+            assert_eq!(doc.glyph_id("composite"), Some(composite_id));
+            assert_eq!(doc.glyph_id("renamed"), None);
+            assert_eq!(doc.glyph_name(base_id), Some(&GlyphName::from("base")));
+            assert_eq!(
+                doc.glyph_name(composite_id),
+                Some(&GlyphName::from("composite"))
+            );
+            assert_eq!(doc.undo_len(), 0);
+            assert!(!doc.dirty);
         })
         .unwrap();
 }

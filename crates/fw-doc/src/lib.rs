@@ -6,6 +6,7 @@ pub mod autosave;
 mod cache;
 pub mod command;
 pub mod document;
+pub mod double_option;
 pub mod error;
 pub mod fwf;
 pub mod session;

@@ -1,5 +1,7 @@
 //! Paths to FontWorkshop's committed and optional external test fonts.
 
+#![warn(missing_docs)]
+
 use std::path::{Path, PathBuf};
 
 pub mod error;

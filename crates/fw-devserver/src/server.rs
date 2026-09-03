@@ -1,6 +1,6 @@
 //! Axum routes for the browser-development transport.
 
-use std::{ffi::OsString, path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 
 use axum::{
     extract::{
@@ -38,30 +38,6 @@ pub struct ServeOptions {
     pub config_dir: Option<PathBuf>,
 }
 
-struct ConfigDirOverride {
-    previous: Option<OsString>,
-}
-
-impl ConfigDirOverride {
-    fn install(config_dir: Option<PathBuf>) -> Option<Self> {
-        config_dir.map(|config_dir| {
-            let previous = std::env::var_os("FW_CONFIG_DIR");
-            std::env::set_var("FW_CONFIG_DIR", config_dir);
-            Self { previous }
-        })
-    }
-}
-
-impl Drop for ConfigDirOverride {
-    fn drop(&mut self) {
-        if let Some(previous) = &self.previous {
-            std::env::set_var("FW_CONFIG_DIR", previous);
-        } else {
-            std::env::remove_var("FW_CONFIG_DIR");
-        }
-    }
-}
-
 /// Builds the HTTP and WebSocket router backed by `api`.
 pub fn router(api: Arc<Api>) -> Router {
     let cors = CorsLayer::new()
@@ -90,7 +66,9 @@ pub async fn serve(
     api: Arc<Api>,
     options: ServeOptions,
 ) -> Result<(), Error> {
-    let _config_dir_override = ConfigDirOverride::install(options.config_dir);
+    if let Some(config_dir) = options.config_dir {
+        api.configure_config_dir(config_dir)?;
+    }
     axum::serve(listener, router(api))
         .await
         .map_err(Error::from)

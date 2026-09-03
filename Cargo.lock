@@ -1386,7 +1386,6 @@ name = "fw-glyphdata"
 version = "0.1.0"
 dependencies = [
  "icu_properties",
- "thiserror 2.0.20",
 ]
 
 [[package]]

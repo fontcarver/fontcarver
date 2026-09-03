@@ -1,5 +1,4 @@
 use std::{
-    fs,
     path::Path,
     sync::{Arc, Mutex},
 };
@@ -51,13 +50,24 @@ impl FontOpener for CliFontOpener {
             },
         )
         .map_err(|error| fw_doc::Error::Sfnt(error.to_string()))?;
+        let collection_warning = face_index
+            .is_none()
+            .then(|| {
+                outcome
+                    .fonts
+                    .first()
+                    .and_then(|font| font.extra.source.as_ref())
+                    .and_then(|source| source.original_bytes.as_deref())
+                    .and_then(|bytes| fw_sfnt::collection_warning(bytes.as_slice()))
+            })
+            .flatten();
         let mut warnings = self
             .warnings
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        *warnings = outcome
-            .warnings
+        *warnings = collection_warning
             .into_iter()
+            .chain(outcome.warnings)
             .map(|warning| DocWarning {
                 code: warning.code.to_owned(),
                 message: warning.message,
@@ -68,7 +78,6 @@ impl FontOpener for CliFontOpener {
 }
 
 pub(crate) fn open_document(path: &Path, face_index: Option<u32>) -> Result<OpenedDocument, Error> {
-    let collection_warning = collection_warning(path, face_index)?;
     let opener = Arc::new(CliFontOpener::default());
     let session = Arc::new(Session::with_opener(opener.clone()));
     let doc = session
@@ -78,8 +87,7 @@ pub(crate) fn open_document(path: &Path, face_index: Option<u32>) -> Result<Open
             source,
         })?;
     let api = Api::new(Arc::clone(&session));
-    let mut warnings = opener.take_warnings();
-    warnings.extend(collection_warning);
+    let warnings = opener.take_warnings();
     Ok(OpenedDocument {
         session,
         api,
@@ -96,29 +104,4 @@ where
     let params = serde_json::to_value(params)?;
     let result = api.call(method, params)?;
     serde_json::from_value(result).map_err(Error::from)
-}
-
-fn collection_warning(path: &Path, face_index: Option<u32>) -> Result<Option<DocWarning>, Error> {
-    if face_index.is_some() || !is_collection_path(path) {
-        return Ok(None);
-    }
-    let bytes = fs::read(path).map_err(|source| Error::Read {
-        path: path.to_path_buf(),
-        source,
-    })?;
-    let faces = fw_sfnt::face_names(&bytes).map_err(|source| Error::Faces {
-        path: path.to_path_buf(),
-        source,
-    })?;
-    Ok((faces.len() > 1).then(|| DocWarning {
-        code: "collection-face-opened".to_owned(),
-        message: format!("collection has {} faces; opened face 0", faces.len()),
-    }))
-}
-
-fn is_collection_path(path: &Path) -> bool {
-    path.extension()
-        .and_then(|extension| extension.to_str())
-        .map(str::to_ascii_lowercase)
-        .is_some_and(|extension| matches!(extension.as_str(), "ttc" | "otc"))
 }

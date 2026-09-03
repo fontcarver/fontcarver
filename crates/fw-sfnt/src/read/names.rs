@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use fw_model::{FontInfo, GlyphName, NamePlatform, NameRecord};
 use read_fonts::{
     tables::{head::Head, name::Name},
-    FontRef, TableProvider,
+    FontRef, Offset, TableProvider,
 };
 use skrifa::GlyphNameSource;
 
@@ -13,7 +13,7 @@ use crate::Error;
 pub(crate) fn font_info(face: &FontRef<'_>, head: &Head<'_>) -> Result<FontInfo, Error> {
     let mut info = FontInfo {
         units_per_em: head.units_per_em(),
-        open_type_head_created: Some(head.created().as_secs().to_string()),
+        open_type_head_created: Some(ufo_date(head.created().as_secs())),
         open_type_head_flags: set_bits(u32::from(head.flags().bits())),
         open_type_head_lowest_rec_ppem: Some(head.lowest_rec_ppem()),
         ..FontInfo::default()
@@ -50,6 +50,34 @@ pub(crate) fn font_info(face: &FontRef<'_>, head: &Head<'_>) -> Result<FontInfo,
     Ok(info)
 }
 
+fn ufo_date(seconds_since_1904: i64) -> String {
+    const SECONDS_PER_DAY: i64 = 86_400;
+    const DAYS_1904_TO_1970: i64 = 24_107;
+
+    let days_since_unix_epoch = seconds_since_1904.div_euclid(SECONDS_PER_DAY) - DAYS_1904_TO_1970;
+    let seconds_in_day = seconds_since_1904.rem_euclid(SECONDS_PER_DAY);
+    let (year, month, day) = civil_from_days(days_since_unix_epoch);
+    let hour = seconds_in_day / 3_600;
+    let minute = (seconds_in_day % 3_600) / 60;
+    let second = seconds_in_day % 60;
+    format!("{year:04}/{month:02}/{day:02} {hour:02}:{minute:02}:{second:02}")
+}
+
+fn civil_from_days(days_since_unix_epoch: i64) -> (i64, i64, i64) {
+    let days = days_since_unix_epoch + 719_468;
+    let era = days.div_euclid(146_097);
+    let day_of_era = days - era * 146_097;
+    let year_of_era =
+        (day_of_era - day_of_era / 1_460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+    let mut year = year_of_era + era * 400;
+    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+    let month_prime = (5 * day_of_year + 2) / 153;
+    let day = day_of_year - (153 * month_prime + 2) / 5 + 1;
+    let month = month_prime + if month_prime < 10 { 3 } else { -9 };
+    year += i64::from(month <= 2);
+    (year, month, day)
+}
+
 pub(crate) fn best_name(face: &FontRef<'_>, name_id: u16) -> Option<String> {
     let name = face.name().ok()?;
     all_name_records(&name)
@@ -64,6 +92,7 @@ pub(crate) fn name_by_id(face: &FontRef<'_>, name_id: u16) -> Option<String> {
 pub(crate) fn glyph_names(
     face: &FontRef<'_>,
     glyph_count: u16,
+    unicodes: &[Vec<u32>],
     warnings: &mut Vec<Warning>,
 ) -> Result<Vec<GlyphName>, Error> {
     if let Some(cids) = super::cff::cid_values(face)? {
@@ -76,9 +105,17 @@ pub(crate) fn glyph_names(
                 ),
             });
         }
-        return Ok(cids
-            .into_iter()
-            .map(|cid| GlyphName::from(format!("cid{cid:05}")))
+        let mut used = HashSet::with_capacity(usize::from(glyph_count));
+        return Ok((0..glyph_count)
+            .zip(cids)
+            .map(|(gid, cid)| {
+                let candidate = unicodes
+                    .get(usize::from(gid))
+                    .and_then(|values| first_naming_codepoint(values))
+                    .map_or_else(|| format!("cid{cid:05}"), unicode_glyph_name);
+                unique_glyph_name(candidate, gid, &mut used)
+            })
+            .map(GlyphName::from)
             .collect());
     }
 
@@ -98,12 +135,7 @@ pub(crate) fn glyph_names(
         } else {
             format!("glyph{gid:05}")
         };
-        if !used.insert(value.clone()) {
-            value = format!("{value}.gid{gid}");
-            while !used.insert(value.clone()) {
-                value.push('_');
-            }
-        }
+        value = unique_glyph_name(value, gid, &mut used);
         result.push(GlyphName::from(value));
     }
     if synthesized {
@@ -115,6 +147,42 @@ pub(crate) fn glyph_names(
         });
     }
     Ok(result)
+}
+
+fn first_naming_codepoint(codepoints: &[u32]) -> Option<u32> {
+    codepoints
+        .iter()
+        .copied()
+        .find(|codepoint| {
+            matches!(
+                codepoint,
+                0x3400..=0x4DBF
+                    | 0x4E00..=0x9FFF
+                    | 0x20000..=0x2A6DF
+                    | 0x2A700..=0x2EE5F
+                    | 0x30000..=0x323AF
+            )
+        })
+        .or_else(|| codepoints.first().copied())
+}
+
+fn unicode_glyph_name(codepoint: u32) -> String {
+    if codepoint <= 0xFFFF {
+        format!("uni{codepoint:04X}")
+    } else {
+        format!("u{codepoint:05X}")
+    }
+}
+
+fn unique_glyph_name(mut candidate: String, gid: u16, used: &mut HashSet<String>) -> String {
+    if used.insert(candidate.clone()) {
+        return candidate;
+    }
+    candidate = format!("{candidate}.gid{gid}");
+    while !used.insert(candidate.clone()) {
+        candidate.push('_');
+    }
+    candidate
 }
 
 fn optional_name<'a>(face: &FontRef<'a>) -> Result<Option<Name<'a>>, Error> {
@@ -132,17 +200,21 @@ fn optional_name<'a>(face: &FontRef<'a>) -> Result<Option<Name<'a>>, Error> {
 fn all_name_records(name: &Name<'_>) -> Result<Vec<NameRecord>, Error> {
     name.name_record()
         .iter()
-        .filter(|record| matches!(record.platform_id(), 0 | 1 | 3))
         .map(|record| {
             let platform = match record.platform_id() {
                 1 => NamePlatform::Mac,
                 3 => NamePlatform::Windows,
-                _ => NamePlatform::Unicode,
+                0 => NamePlatform::Unicode,
+                other => NamePlatform::Other(other),
             };
-            let text = record
-                .string(name.string_data())
-                .map_err(|error| Error::parse("name", error))?
-                .to_string();
+            let text = if matches!(platform, NamePlatform::Other(_)) {
+                decode_other_name(name, record)?
+            } else {
+                record
+                    .string(name.string_data())
+                    .map_err(|error| Error::parse("name", error))?
+                    .to_string()
+            };
             Ok(NameRecord {
                 name_id: record.name_id().to_u16(),
                 language: language(name, record.platform_id(), record.language_id()),
@@ -151,6 +223,37 @@ fn all_name_records(name: &Name<'_>) -> Result<Vec<NameRecord>, Error> {
             })
         })
         .collect()
+}
+
+fn decode_other_name(
+    name: &Name<'_>,
+    record: &read_fonts::tables::name::NameRecord,
+) -> Result<String, Error> {
+    let start = record.string_offset().non_null().unwrap_or(0);
+    let end = start
+        .checked_add(usize::from(record.length()))
+        .ok_or_else(|| Error::Parse {
+            table: "name",
+            reason: "name string range overflow".to_owned(),
+        })?;
+    let data = name.string_data();
+    let bytes = data
+        .as_bytes()
+        .get(start..end)
+        .ok_or_else(|| Error::Parse {
+            table: "name",
+            reason: "name string range is out of bounds".to_owned(),
+        })?;
+    let utf16 = (record.platform_id() == 2 && record.encoding_id() == 1)
+        || (record.platform_id() == 4 && bytes.len() % 2 == 0);
+    if utf16 {
+        let units: Vec<_> = bytes
+            .chunks_exact(2)
+            .map(|pair| u16::from_be_bytes([pair[0], pair[1]]))
+            .collect();
+        return Ok(String::from_utf16_lossy(&units));
+    }
+    Ok(bytes.iter().map(|byte| char::from(*byte)).collect())
 }
 
 fn select(records: &[NameRecord], name_id: u16) -> Option<String> {
@@ -169,6 +272,7 @@ fn preference(record: &NameRecord) -> u8 {
         NamePlatform::Mac if record.language.starts_with("en") => 2,
         NamePlatform::Mac => 3,
         NamePlatform::Windows => 4,
+        NamePlatform::Other(_) => 5,
     }
 }
 

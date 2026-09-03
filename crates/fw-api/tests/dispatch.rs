@@ -53,6 +53,93 @@ fn font_info_includes_named_instances() {
 }
 
 #[test]
+fn explicit_config_directory_is_used_without_an_environment_override() {
+    let config_dir = test_config_dir("explicit-config");
+    let api = Api::with_config_dir(&config_dir);
+
+    api.call(
+        "prefs.set",
+        json!({
+            "prefs": {
+                "theme": "dark",
+                "language": "en",
+                "recent_limit": 5,
+                "autosave_seconds": 30
+            }
+        }),
+    )
+    .expect("write preferences to explicit config directory");
+
+    assert!(config_dir.join("prefs.json").is_file());
+    fs::remove_dir_all(config_dir).ok();
+}
+
+#[test]
+fn explicit_null_clears_glyph_color_label_through_json_dispatch() {
+    let mut font = Font::new_empty("Test Family", 1_000);
+    let mut glyph = Glyph::new("A");
+    glyph.color_label = Some(3);
+    font.insert_glyph(glyph).expect("insert test glyph");
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(font, None);
+    let api = Api::new(Arc::clone(&session));
+
+    api.call(
+        "doc.apply",
+        json!({
+            "doc": doc,
+            "command": {
+                "SetGlyphMeta": {
+                    "glyph": "A",
+                    "color_label": null
+                }
+            },
+            "label": "Clear color label"
+        }),
+    )
+    .expect("clear color label through raw JSON");
+    assert_eq!(
+        session
+            .with_doc(doc, |document| document
+                .font
+                .glyph("A")
+                .unwrap()
+                .color_label)
+            .unwrap(),
+        None
+    );
+
+    api.call(
+        "doc.apply",
+        json!({
+            "doc": doc,
+            "command": { "SetGlyphMeta": { "glyph": "A", "color_label": 7 } },
+            "label": "Set color label"
+        }),
+    )
+    .expect("set color label through raw JSON");
+    api.call(
+        "doc.apply",
+        json!({
+            "doc": doc,
+            "command": { "SetGlyphMeta": { "glyph": "A", "export": false } },
+            "label": "Disable export"
+        }),
+    )
+    .expect("leave omitted color label unchanged");
+    assert_eq!(
+        session
+            .with_doc(doc, |document| document
+                .font
+                .glyph("A")
+                .unwrap()
+                .color_label)
+            .unwrap(),
+        Some(7)
+    );
+}
+
+#[test]
 fn dispatches_session_open_and_reports_boundary_errors() {
     let _env_guard = config_env_guard();
     let config_dir = test_config_dir("dispatch");

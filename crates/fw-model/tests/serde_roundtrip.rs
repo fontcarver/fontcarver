@@ -407,3 +407,16 @@ fn kerning_and_sides_have_the_document_json_shape() {
         }])
     );
 }
+
+#[test]
+fn other_name_platform_round_trips_without_changing_existing_variants() {
+    let other = NamePlatform::Other(4);
+    assert_eq!(
+        serde_json::from_value::<NamePlatform>(serde_json::to_value(other).unwrap()).unwrap(),
+        other
+    );
+    assert_eq!(
+        serde_json::from_value::<NamePlatform>(json!("Unicode")).unwrap(),
+        NamePlatform::Unicode
+    );
+}
