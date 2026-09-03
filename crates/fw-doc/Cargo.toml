@@ -11,6 +11,7 @@ sfnt = ["dep:fw-sfnt"]
 
 [dependencies]
 flate2.workspace = true
+fw-geom = { path = "../fw-geom" }
 fw-model = { path = "../fw-model" }
 fw-sfnt = { path = "../fw-sfnt", optional = true }
 kurbo.workspace = true

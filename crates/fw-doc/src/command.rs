@@ -1,14 +1,261 @@
 //! Mutation commands and their application to the persistent model.
 
-use std::collections::{BTreeSet, HashSet};
+use std::collections::BTreeSet;
 
 use fw_model::{
-    Anchor, Component, Contour, Font, FontInfo, Glyph, GlyphName, LayerId, MasterId, MasterMetrics,
+    Anchor, Component, Contour, FontInfo, Glyph, GlyphName, Guide, Layer, LayerId, LayerKind,
+    Master, MasterId, MasterMetrics, MetricsKeys,
 };
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::{document::rename_references, undo, Error, Snapshot};
+mod apply;
+mod glyphs;
+mod layers;
+mod metrics;
+mod outline;
+mod structure;
+
+pub(crate) use apply::{apply_to_font, impact, Impact};
+
+/// An index into a layer's stored contour and point arrays.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+pub struct PointRef {
+    /// Index in `Layer::contours`.
+    pub contour: usize,
+    /// Index in `Contour::points`, including off-curve points.
+    pub point: usize,
+}
+
+/// Whether a node move also carries its unselected adjacent handles.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+pub enum HandleMode {
+    /// Move selected on-curves and their adjacent, unselected handles.
+    #[default]
+    WithHandles,
+    /// Move exactly the listed stored points.
+    PointsOnly,
+}
+
+/// Shape-preservation policy for point deletion.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+pub enum DeleteMode {
+    /// Re-fit the two neighboring segments into one segment.
+    #[default]
+    KeepShape,
+    /// Remove both adjacent segments and leave open contour pieces.
+    BreakContour,
+}
+
+/// Segment representation requested by a conversion command.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+pub enum SegmentKind {
+    /// A straight line.
+    Line,
+    /// A cubic curve.
+    Curve,
+}
+
+/// Curve representation requested from a whole-path operation.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, TS)]
+pub enum CurveKind {
+    /// Cubic Bézier contours.
+    Cubic,
+    /// Quadratic contours fitted within `max_err` font units.
+    Quadratic {
+        /// Maximum cubic-to-quadratic approximation error.
+        max_err: f64,
+    },
+}
+
+impl CurveKind {
+    pub(crate) fn geometry(self) -> fw_geom::CurveKind {
+        match self {
+            Self::Cubic => fw_geom::CurveKind::Cubic,
+            Self::Quadratic { max_err } => fw_geom::CurveKind::Quadratic { max_err },
+        }
+    }
+}
+
+/// Serializable simplification settings used by [`PathOp::Simplify`].
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, TS)]
+pub struct SimplifyOptions {
+    /// Maximum permitted geometric error.
+    pub error: f64,
+    /// Permit refitting without preserving endpoint slopes.
+    pub ignore_slopes: bool,
+    /// Permit removal of explicit extrema.
+    pub ignore_extrema: bool,
+    /// Mark refitted curve endpoints smooth.
+    pub smooth_curves: bool,
+    /// Convert curves close to their chord into lines.
+    pub force_lines: bool,
+    /// Snap nearly horizontal or vertical line endpoints.
+    pub nearly_hv_lines: bool,
+    /// Rotate closed contours to begin at an extremum.
+    pub start_at_extrema: bool,
+}
+
+impl Default for SimplifyOptions {
+    fn default() -> Self {
+        let options = fw_geom::SimplifyOptions::default();
+        Self {
+            error: options.error,
+            ignore_slopes: options.ignore_slopes,
+            ignore_extrema: options.ignore_extrema,
+            smooth_curves: options.smooth_curves,
+            force_lines: options.force_lines,
+            nearly_hv_lines: options.nearly_hv_lines,
+            start_at_extrema: options.start_at_extrema,
+        }
+    }
+}
+
+impl SimplifyOptions {
+    pub(crate) fn geometry(self) -> fw_geom::SimplifyOptions {
+        fw_geom::SimplifyOptions {
+            error: self.error,
+            ignore_slopes: self.ignore_slopes,
+            ignore_extrema: self.ignore_extrema,
+            smooth_curves: self.smooth_curves,
+            force_lines: self.force_lines,
+            nearly_hv_lines: self.nearly_hv_lines,
+            start_at_extrema: self.start_at_extrema,
+        }
+    }
+}
+
+/// Serializable stroke nib shape.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, TS)]
+pub enum Nib {
+    /// Circular pen.
+    Round,
+    /// Rotated rectangular calligraphic pen.
+    Calligraphic {
+        /// Pen width.
+        width: f64,
+        /// Pen height.
+        height: f64,
+        /// Counter-clockwise rotation in radians.
+        angle: f64,
+    },
+    /// Axis-aligned square pen.
+    Rect,
+}
+
+/// Serializable stroke cap style.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+pub enum StrokeCap {
+    /// Flat cap at the endpoint.
+    Butt,
+    /// Square cap extending beyond the endpoint.
+    Square,
+    /// Semicircular cap.
+    Round,
+}
+
+/// Serializable stroke join style.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+pub enum StrokeJoin {
+    /// Beveled corner.
+    Bevel,
+    /// Mitered corner.
+    Miter,
+    /// Rounded corner.
+    Round,
+}
+
+/// Serializable stroke expansion settings.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, TS)]
+pub struct StrokeOptions {
+    /// Round/rectangular nib width.
+    pub width: f64,
+    /// Pen shape.
+    pub nib: Nib,
+    /// Open-contour cap style.
+    pub cap: StrokeCap,
+    /// Segment join style.
+    pub join: StrokeJoin,
+    /// Miter length limit as a multiple of stroke width.
+    pub miter_limit: f64,
+    /// Remove the inner ring of a closed stroke.
+    pub remove_internal: bool,
+    /// Remove the outer or only ring.
+    pub remove_external: bool,
+}
+
+impl Default for StrokeOptions {
+    fn default() -> Self {
+        Self {
+            width: 1.0,
+            nib: Nib::Round,
+            cap: StrokeCap::Round,
+            join: StrokeJoin::Round,
+            miter_limit: 4.0,
+            remove_internal: false,
+            remove_external: false,
+        }
+    }
+}
+
+impl StrokeOptions {
+    pub(crate) fn geometry(self) -> fw_geom::StrokeOptions {
+        fw_geom::StrokeOptions {
+            width: self.width,
+            nib: match self.nib {
+                Nib::Round => fw_geom::Nib::Round,
+                Nib::Calligraphic {
+                    width,
+                    height,
+                    angle,
+                } => fw_geom::Nib::Calligraphic {
+                    width,
+                    height,
+                    angle,
+                },
+                Nib::Rect => fw_geom::Nib::Rect,
+            },
+            cap: match self.cap {
+                StrokeCap::Butt => fw_geom::Cap::Butt,
+                StrokeCap::Square => fw_geom::Cap::Square,
+                StrokeCap::Round => fw_geom::Cap::Round,
+            },
+            join: match self.join {
+                StrokeJoin::Bevel => fw_geom::Join::Bevel,
+                StrokeJoin::Miter => fw_geom::Join::Miter,
+                StrokeJoin::Round => fw_geom::Join::Round,
+            },
+            miter_limit: self.miter_limit,
+            remove_internal: self.remove_internal,
+            remove_external: self.remove_external,
+        }
+    }
+}
+
+/// A whole-layer outline operation delegated to `fw-geom`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+pub enum PathOp {
+    /// Remove overlapping filled regions.
+    RemoveOverlap,
+    /// Normalize contour winding.
+    CorrectDirection,
+    /// Insert missing horizontal and vertical extrema.
+    AddExtrema,
+    /// Insert cubic inflection points.
+    AddInflections,
+    /// Simplify and re-fit outlines.
+    Simplify(SimplifyOptions),
+    /// Round coordinates to a grid of the given size.
+    RoundToGrid(f64),
+    /// Canonicalize closed-contour start points.
+    CanonicalStart,
+    /// Canonicalize contour starts and ordering.
+    CanonicalOrder,
+    /// Expand centerlines into stroked outlines.
+    ExpandStroke(StrokeOptions),
+    /// Convert all curves to the requested representation.
+    ConvertCurves(CurveKind),
+}
 
 /// One atomic, undoable document mutation.
 #[allow(clippy::large_enum_variant)]
@@ -20,42 +267,42 @@ pub enum Command {
         #[ts(type = "Glyph")]
         glyph: Glyph,
     },
-    /// Remove one or more glyphs while preserving the order of the rest.
+    /// Remove glyphs while preserving the order of the rest.
     RemoveGlyphs {
         /// Glyph names to remove.
         #[ts(type = "Array<string>")]
         names: Vec<GlyphName>,
     },
-    /// Rename a glyph and all model references to it.
+    /// Rename a glyph and all model references.
     RenameGlyph {
-        /// Existing glyph name.
+        /// Existing name.
         #[ts(type = "string")]
         from: GlyphName,
-        /// Replacement glyph name.
+        /// Replacement name.
         #[ts(type = "string")]
         to: GlyphName,
     },
-    /// Replace a glyph's Unicode assignments.
+    /// Replace Unicode assignments.
     SetUnicodes {
         /// Glyph to update.
         #[ts(type = "string")]
         glyph: GlyphName,
-        /// New Unicode scalar values.
+        /// New scalar values.
         unicodes: Vec<u32>,
     },
-    /// Update selected glyph metadata fields.
+    /// Update selected glyph metadata.
     SetGlyphMeta {
         /// Glyph to update.
         #[ts(type = "string")]
         glyph: GlyphName,
-        /// Optional export flag update.
+        /// Export flag update.
         export: Option<bool>,
-        /// Optional color-label update; the inner option clears the label.
+        /// Color-label update; inner `None` clears it.
         color_label: Option<Option<u8>>,
-        /// Optional complete replacement tag set.
+        /// Complete tag replacement.
         #[ts(type = "Array<string> | null")]
         tags: Option<BTreeSet<String>>,
-        /// Optional note update.
+        /// Note update.
         note: Option<String>,
     },
     /// Set a layer's horizontal advance width.
@@ -66,7 +313,7 @@ pub enum Command {
         /// Layer to update.
         #[ts(type = "string")]
         layer: LayerId,
-        /// New width in font units.
+        /// New width.
         width: f64,
     },
     /// Replace all editable outline content in a layer.
@@ -77,7 +324,7 @@ pub enum Command {
         /// Layer to update.
         #[ts(type = "string")]
         layer: LayerId,
-        /// New point-list contours.
+        /// New contours.
         #[ts(type = "Array<Contour>")]
         contours: Vec<Contour>,
         /// New components.
@@ -87,37 +334,449 @@ pub enum Command {
         #[ts(type = "Array<Anchor>")]
         anchors: Vec<Anchor>,
     },
-    /// Replace all font-wide metadata.
+    /// Replace font-wide metadata.
     SetFontInfo {
-        /// New font information.
+        /// New information.
         #[ts(type = "FontInfo")]
         info: Box<FontInfo>,
     },
-    /// Replace the metrics of one master.
+    /// Replace one master's metrics.
     SetMasterMetrics {
         /// Master to update.
         #[ts(type = "string")]
         master: MasterId,
-        /// New metrics.
+        /// Replacement metrics.
         #[ts(type = "MasterMetrics")]
         metrics: MasterMetrics,
     },
-    /// Apply several commands as one atomic undo entry.
+    /// Move stored outline points.
+    MovePoints {
+        /// Glyph containing the points.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer containing the points.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Explicit stored indexes.
+        points: Vec<PointRef>,
+        /// Translation.
+        delta: (f64, f64),
+        /// Handle movement policy.
+        handles: HandleMode,
+    },
+    /// Set one point's absolute position.
+    SetPointPosition {
+        /// Glyph containing the point.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer containing it.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Stored point index.
+        point: PointRef,
+        /// Horizontal coordinate.
+        x: f64,
+        /// Vertical coordinate.
+        y: f64,
+    },
+    /// Set node smoothness and optionally level handles.
+    SetSmooth {
+        /// Glyph containing nodes.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer containing nodes.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Stored node indexes.
+        points: Vec<PointRef>,
+        /// New flag.
+        smooth: bool,
+        /// Level two adjacent handles.
+        level_handles: bool,
+    },
+    /// Split a geometric segment.
+    InsertPointOnSegment {
+        /// Glyph containing it.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer containing it.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Contour index.
+        contour: usize,
+        /// Geometric segment index.
+        segment: usize,
+        /// Parametric position.
+        t: f64,
+    },
+    /// Delete stored points.
+    DeletePoints {
+        /// Glyph containing them.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer containing them.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Stored indexes.
+        points: Vec<PointRef>,
+        /// Deletion policy.
+        mode: DeleteMode,
+    },
+    /// Convert one segment between line and cubic.
+    ConvertSegment {
+        /// Glyph containing it.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer containing it.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Contour index.
+        contour: usize,
+        /// Geometric segment index.
+        segment: usize,
+        /// Requested representation.
+        to: SegmentKind,
+    },
+    /// Append a contour.
+    AddContour {
+        /// Glyph containing the layer.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to mutate.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Contour to append.
+        #[ts(type = "Contour")]
+        contour: Contour,
+    },
+    /// Delete contours.
+    DeleteContours {
+        /// Glyph containing the layer.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to mutate.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Contour indexes.
+        contours: Vec<usize>,
+    },
+    /// Reverse contours.
+    ReverseContours {
+        /// Glyph containing the layer.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to mutate.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Contour indexes.
+        contours: Vec<usize>,
+    },
+    /// Rotate a closed contour to begin at an on-curve point.
+    SetStartPoint {
+        /// Glyph containing it.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer containing it.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// New start point.
+        point: PointRef,
+    },
+    /// Join two open contours.
+    JoinContours {
+        /// Glyph containing them.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer containing them.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// First contour end.
+        a: PointRef,
+        /// Second contour start or end.
+        b: PointRef,
+    },
+    /// Open or split a contour.
+    SplitContour {
+        /// Glyph containing it.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer containing it.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Split node.
+        point: PointRef,
+    },
+    /// Transform explicit selections, or the whole layer if all are empty.
+    TransformSelection {
+        /// Glyph containing the selection.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer containing it.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Stored point indexes.
+        points: Vec<PointRef>,
+        /// Component indexes.
+        components: Vec<usize>,
+        /// Anchor indexes.
+        anchors: Vec<usize>,
+        /// Kurbo affine coefficients.
+        affine: [f64; 6],
+    },
+    /// Apply a whole-layer path operation.
+    PathOp {
+        /// Glyph containing the layer.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to mutate.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Geometry operation.
+        op: PathOp,
+    },
+    /// Append a component.
+    AddComponent {
+        /// Glyph containing the layer.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to mutate.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Component to append.
+        #[ts(type = "Component")]
+        component: Component,
+    },
+    /// Replace a component.
+    SetComponent {
+        /// Glyph containing the layer.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to mutate.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Component index.
+        index: usize,
+        /// Replacement.
+        #[ts(type = "Component")]
+        component: Component,
+    },
+    /// Remove components.
+    RemoveComponents {
+        /// Glyph containing the layer.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to mutate.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Component indexes.
+        indices: Vec<usize>,
+    },
+    /// Decompose components into contours.
+    DecomposeComponents {
+        /// Glyph containing the layer.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to mutate.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Component indexes.
+        indices: Vec<usize>,
+    },
+    /// Append an anchor.
+    AddAnchor {
+        /// Glyph containing the layer.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to mutate.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Anchor to append.
+        #[ts(type = "Anchor")]
+        anchor: Anchor,
+    },
+    /// Replace an anchor.
+    SetAnchor {
+        /// Glyph containing the layer.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to mutate.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Anchor index.
+        index: usize,
+        /// Replacement.
+        #[ts(type = "Anchor")]
+        anchor: Anchor,
+    },
+    /// Remove anchors.
+    RemoveAnchors {
+        /// Glyph containing the layer.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to mutate.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Anchor indexes.
+        indices: Vec<usize>,
+    },
+    /// Append a guide at glyph-layer, master, or font scope.
+    AddGuide {
+        /// Glyph scope, paired with `layer`.
+        #[ts(type = "string | null")]
+        glyph: Option<GlyphName>,
+        /// Layer scope.
+        #[ts(type = "string | null")]
+        layer: Option<LayerId>,
+        /// Master scope.
+        #[ts(type = "string | null")]
+        master: Option<MasterId>,
+        /// Guide.
+        #[ts(type = "Guide")]
+        guide: Guide,
+    },
+    /// Replace a guide at glyph-layer, master, or font scope.
+    SetGuide {
+        /// Glyph scope.
+        #[ts(type = "string | null")]
+        glyph: Option<GlyphName>,
+        /// Layer scope.
+        #[ts(type = "string | null")]
+        layer: Option<LayerId>,
+        /// Master scope.
+        #[ts(type = "string | null")]
+        master: Option<MasterId>,
+        /// Guide index.
+        index: usize,
+        /// Replacement.
+        #[ts(type = "Guide")]
+        guide: Guide,
+    },
+    /// Remove a guide at glyph-layer, master, or font scope.
+    RemoveGuide {
+        /// Glyph scope.
+        #[ts(type = "string | null")]
+        glyph: Option<GlyphName>,
+        /// Layer scope.
+        #[ts(type = "string | null")]
+        layer: Option<LayerId>,
+        /// Master scope.
+        #[ts(type = "string | null")]
+        master: Option<MasterId>,
+        /// Guide index.
+        index: usize,
+    },
+    /// Set width and sidebearings in that order.
+    SetMetrics {
+        /// Glyph containing the layer.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to mutate.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Optional width.
+        width: Option<f64>,
+        /// Optional LSB.
+        lsb: Option<f64>,
+        /// Optional RSB.
+        rsb: Option<f64>,
+    },
+    /// Replace metrics formulas.
+    SetMetricsKeys {
+        /// Glyph to mutate.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Replacement formulas.
+        #[ts(type = "MetricsKeys")]
+        keys: MetricsKeys,
+    },
+    /// Add a non-master layer.
+    AddLayer {
+        /// Glyph receiving it.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to append.
+        #[ts(type = "Layer")]
+        layer: Layer,
+    },
+    /// Remove a non-master layer.
+    RemoveLayer {
+        /// Glyph containing it.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer identifier.
+        #[ts(type = "string")]
+        layer: LayerId,
+    },
+    /// Copy a layer to a background or backup role.
+    CopyLayer {
+        /// Glyph containing the layers.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Source layer.
+        #[ts(type = "string")]
+        from: LayerId,
+        /// Destination role.
+        #[ts(type = "LayerKind")]
+        to: LayerKind,
+    },
+    /// Swap master and background drawing content.
+    SwapWithBackground {
+        /// Glyph containing the layers.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Master identifying both roles.
+        #[ts(type = "string")]
+        master: MasterId,
+    },
+    /// Clone a glyph with Unicode assignments cleared.
+    DuplicateGlyph {
+        /// Source glyph.
+        #[ts(type = "string")]
+        source: GlyphName,
+        /// New glyph name.
+        #[ts(type = "string")]
+        name: GlyphName,
+    },
+    /// Replace persistent glyph order.
+    SetGlyphOrder {
+        /// Every current name exactly once.
+        #[ts(type = "Array<string>")]
+        order: Vec<GlyphName>,
+    },
+    /// Replace an existing master with the same identifier.
+    SetMaster {
+        /// Replacement master.
+        #[ts(type = "Master")]
+        master: Master,
+    },
+    /// Replace all font-global guides.
+    SetFontGuides {
+        /// Replacement guide list.
+        #[ts(type = "Array<Guide>")]
+        guides: Vec<Guide>,
+    },
+    /// Apply commands as one atomic undo entry.
     Batch(Vec<Command>),
 }
 
 /// Precise invalidation information produced by a command.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 pub struct Change {
-    /// Stable handles for changed or transitively invalidated glyphs.
+    /// Changed or transitively invalidated glyph handles.
     #[ts(type = "Array<number>")]
     pub glyphs: Vec<fw_model::GlyphId>,
     /// Whether font-wide metadata changed.
     pub font_info: bool,
     /// Whether master data changed.
     pub masters: bool,
-    /// Whether glyph order or glyph names changed.
+    /// Whether glyph order or names changed.
     pub glyph_order: bool,
+    /// Whether advance or sidebearing data changed.
+    pub metrics: bool,
+    /// Whether the layer list or roles changed.
+    pub layers: bool,
+    /// Whether glyph, master, or font guides changed.
+    pub guides: bool,
 }
 
 impl Change {
@@ -131,297 +790,8 @@ impl Change {
         self.font_info |= other.font_info;
         self.masters |= other.masters;
         self.glyph_order |= other.glyph_order;
-    }
-}
-
-#[derive(Default)]
-pub(crate) struct Impact {
-    pub(crate) glyphs: Vec<GlyphName>,
-    pub(crate) font_info: bool,
-    pub(crate) masters: Vec<MasterId>,
-    pub(crate) glyph_order: bool,
-    pub(crate) renames: Vec<(GlyphName, GlyphName)>,
-    pub(crate) affects_dependents: bool,
-    pub(crate) component_graph_changed: bool,
-}
-
-impl Impact {
-    pub(crate) fn glyph(&mut self, name: &GlyphName) {
-        if !self.glyphs.contains(name) {
-            self.glyphs.push(name.clone());
-        }
-    }
-
-    fn master(&mut self, id: &MasterId) {
-        if !self.masters.contains(id) {
-            self.masters.push(id.clone());
-        }
-    }
-}
-
-pub(crate) fn impact(font: &Font, command: &Command) -> Impact {
-    let mut impact = Impact::default();
-    collect_impact(font, command, &mut impact);
-    impact
-}
-
-fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
-    match command {
-        Command::AddGlyph { glyph } => {
-            impact.glyph(&glyph.name);
-            impact.glyph_order = true;
-            impact.affects_dependents = true;
-            impact.component_graph_changed = true;
-        }
-        Command::RemoveGlyphs { names } => {
-            for name in names {
-                impact.glyph(name);
-            }
-            impact.glyph_order = true;
-            impact.affects_dependents = true;
-            impact.component_graph_changed = true;
-        }
-        Command::RenameGlyph { from, to } => {
-            impact.glyph(from);
-            impact.glyph(to);
-            if from != to {
-                impact.renames.push((from.clone(), to.clone()));
-            }
-            impact.glyph_order = true;
-            impact.affects_dependents = true;
-            impact.component_graph_changed |= from != to;
-        }
-        Command::SetUnicodes { glyph, .. }
-        | Command::SetGlyphMeta { glyph, .. }
-        | Command::SetWidth { glyph, .. } => impact.glyph(glyph),
-        Command::ReplaceLayerOutline {
-            glyph,
-            layer,
-            components,
-            ..
-        } => {
-            impact.glyph(glyph);
-            impact.affects_dependents = true;
-            impact.component_graph_changed |= font
-                .glyph(glyph)
-                .and_then(|glyph| glyph.layers.iter().find(|candidate| candidate.id == *layer))
-                .is_none_or(|current| current.components != *components);
-        }
-        Command::SetFontInfo { .. } => impact.font_info = true,
-        Command::SetMasterMetrics { master, .. } => impact.master(master),
-        Command::Batch(commands) => {
-            for command in commands {
-                collect_impact(font, command, impact);
-            }
-        }
-    }
-}
-
-pub(crate) fn apply_to_font(
-    font: &mut Font,
-    command: &Command,
-    rollback: &[Snapshot],
-) -> Result<(), Error> {
-    match command {
-        Command::Batch(commands) => {
-            let mut applied_renames = Vec::new();
-            if let Err(error) = apply_batch(font, commands, &mut applied_renames) {
-                for (from, to) in applied_renames.iter().rev() {
-                    rename_references(font, to, from);
-                }
-                undo::restore(font, rollback);
-                return Err(error);
-            }
-            Ok(())
-        }
-        command => apply_inner(font, command),
-    }
-}
-
-fn apply_batch(
-    font: &mut Font,
-    commands: &[Command],
-    applied_renames: &mut Vec<(GlyphName, GlyphName)>,
-) -> Result<(), Error> {
-    for command in commands {
-        match command {
-            Command::Batch(nested) => apply_batch(font, nested, applied_renames)?,
-            Command::RenameGlyph { from, to } => {
-                apply_inner(font, command)?;
-                if from != to {
-                    applied_renames.push((from.clone(), to.clone()));
-                }
-            }
-            command => apply_inner(font, command)?,
-        }
-    }
-    Ok(())
-}
-
-fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
-    match command {
-        Command::AddGlyph { glyph } => {
-            validate_glyph_outlines(glyph)?;
-            font.insert_glyph(glyph.clone()).map_err(Error::from)
-        }
-        Command::RemoveGlyphs { names } => remove_glyphs(font, names),
-        Command::RenameGlyph { from, to } => font.rename_glyph(from, to).map_err(Error::from),
-        Command::SetUnicodes { glyph, unicodes } => {
-            glyph_mut(font, glyph)?.unicodes.clone_from(unicodes);
-            Ok(())
-        }
-        Command::SetGlyphMeta {
-            glyph,
-            export,
-            color_label,
-            tags,
-            note,
-        } => {
-            let glyph = glyph_mut(font, glyph)?;
-            if let Some(export) = export {
-                glyph.export = *export;
-            }
-            if let Some(color_label) = color_label {
-                glyph.color_label = *color_label;
-            }
-            if let Some(tags) = tags {
-                glyph.tags.clone_from(tags);
-            }
-            if let Some(note) = note {
-                glyph.note.clone_from(note);
-            }
-            Ok(())
-        }
-        Command::SetWidth {
-            glyph,
-            layer,
-            width,
-        } => {
-            let glyph_data = glyph_mut(font, glyph)?;
-            let Some(layer_data) = glyph_data
-                .layers
-                .iter_mut()
-                .find(|candidate| candidate.id == *layer)
-            else {
-                return Err(Error::MissingLayer {
-                    glyph: glyph.clone(),
-                    layer: layer.clone(),
-                });
-            };
-            layer_data.width = *width;
-            Ok(())
-        }
-        Command::ReplaceLayerOutline {
-            glyph,
-            layer,
-            contours,
-            components,
-            anchors,
-        } => replace_layer_outline(font, glyph, layer, contours, components, anchors),
-        Command::SetFontInfo { info } => {
-            font.info = (**info).clone();
-            Ok(())
-        }
-        Command::SetMasterMetrics { master, metrics } => {
-            let Some(master_data) = font
-                .masters
-                .iter_mut()
-                .find(|candidate| candidate.id == *master)
-            else {
-                return Err(Error::MissingMaster(master.clone()));
-            };
-            master_data.metrics = metrics.clone();
-            Ok(())
-        }
-        Command::Batch(commands) => {
-            for command in commands {
-                apply_inner(font, command)?;
-            }
-            Ok(())
-        }
-    }
-}
-
-fn glyph_mut<'a>(font: &'a mut Font, name: &GlyphName) -> Result<&'a mut Glyph, Error> {
-    font.glyph_mut(name)
-        .ok_or_else(|| Error::MissingGlyph(name.clone()))
-}
-
-fn remove_glyphs(font: &mut Font, names: &[GlyphName]) -> Result<(), Error> {
-    let mut seen = HashSet::new();
-    for name in names {
-        if seen.insert(name) && font.glyph(name).is_none() {
-            return Err(Error::MissingGlyph(name.clone()));
-        }
-    }
-    for name in names {
-        font.remove_glyph(name);
-    }
-    Ok(())
-}
-
-fn replace_layer_outline(
-    font: &mut Font,
-    glyph_name: &GlyphName,
-    layer_id: &LayerId,
-    contours: &[Contour],
-    components: &[Component],
-    anchors: &[Anchor],
-) -> Result<(), Error> {
-    for contour in contours {
-        contour.try_to_bezpath()?;
-    }
-    let Some(position) = font.glyphs.get_index_of(glyph_name) else {
-        return Err(Error::MissingGlyph(glyph_name.clone()));
-    };
-    let Some(original) = font.glyph(glyph_name).cloned() else {
-        return Err(Error::MissingGlyph(glyph_name.clone()));
-    };
-    let mut replacement = original.clone();
-    let Some(layer) = replacement
-        .layers
-        .iter_mut()
-        .find(|candidate| candidate.id == *layer_id)
-    else {
-        return Err(Error::MissingLayer {
-            glyph: glyph_name.clone(),
-            layer: layer_id.clone(),
-        });
-    };
-    layer.contours = contours.to_vec();
-    layer.components = components.to_vec();
-    layer.anchors = anchors.to_vec();
-
-    font.remove_glyph(glyph_name);
-    if let Err(error) = font.insert_glyph(replacement) {
-        // The original came from a valid document and therefore always restores.
-        if let Err(restore_error) = font.insert_glyph(original) {
-            return Err(Error::Internal(format!(
-                "failed to restore glyph after `{error}`: {restore_error}"
-            )));
-        }
-        move_glyph_to(font, glyph_name, position);
-        return Err(error.into());
-    }
-    move_glyph_to(font, glyph_name, position);
-    Ok(())
-}
-
-fn validate_glyph_outlines(glyph: &Glyph) -> Result<(), Error> {
-    for contour in glyph.layers.iter().flat_map(|layer| &layer.contours).chain(
-        glyph
-            .layers
-            .iter()
-            .flat_map(|layer| layer.color_layers.iter().flatten())
-            .flat_map(|color_layer| &color_layer.contours),
-    ) {
-        contour.try_to_bezpath()?;
-    }
-    Ok(())
-}
-
-fn move_glyph_to(font: &mut Font, glyph: &GlyphName, position: usize) {
-    if let Some(current) = font.glyphs.get_index_of(glyph) {
-        font.glyphs.move_index(current, position);
+        self.metrics |= other.metrics;
+        self.layers |= other.layers;
+        self.guides |= other.guides;
     }
 }
