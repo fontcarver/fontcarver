@@ -109,6 +109,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     })()
 
     return onDocumentEvent((event) => {
+      useDocumentStore.getState().noteGeneration(event.doc, event.generation)
       set((state) => ({
         docs: state.docs.map((doc) =>
           doc.doc === event.doc
@@ -274,7 +275,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 /** Selector factory: the summary of one document. */
 export function selectSummary(doc: DocId | null) {
   return (state: SessionState): DocSummary | null =>
-    doc === null ? null : (state.docs.find((entry) => entry.doc === doc) ?? null)
+    doc === null
+      ? null
+      : (state.docs.find((entry) => entry.doc === doc) ?? null)
 }
 
 /** The summary of the active document outside React. */

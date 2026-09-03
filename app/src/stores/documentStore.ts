@@ -25,6 +25,22 @@ export const CELL_SIZE_STEPS = [
   24, 32, 40, 48, 64, 80, 96, 128, 160, 192, 224, 256,
 ] as const
 
+/** Whether any condition of a filter narrows the glyph list. */
+export function isFiltered(filter: GlyphFilter): boolean {
+  return (
+    filter.query !== null ||
+    filter.categories.length > 0 ||
+    filter.scripts.length > 0 ||
+    filter.blocks.length > 0 ||
+    filter.color_labels.length > 0 ||
+    filter.tags.length > 0 ||
+    filter.unicode_ranges.length > 0 ||
+    filter.unencoded_only ||
+    filter.changed_only ||
+    filter.has_components !== null
+  )
+}
+
 /** A filter that matches every glyph. */
 export function emptyFilter(): GlyphFilter {
   return {
@@ -44,7 +60,15 @@ export function emptyFilter(): GlyphFilter {
 /** Per-document font-view state. */
 export interface DocView {
   sidebar: SidebarCounts | null
+  /** Document generation the sidebar counts were computed for. */
+  sidebarGeneration: number | null
+  /** Latest document generation reported by a kernel event. */
+  generation: number
+  /** Glyphs matching the current filter, or `null` until the grid knows. */
+  matchCount: number | null
   selection: ReadonlySet<GlyphId>
+  /** Cell the grid's keyboard focus is on; what `glyph.open` acts upon. */
+  focus: GlyphId | null
   filter: GlyphFilter
   sort: GlyphSort
   master: MasterId | null
@@ -56,7 +80,11 @@ export interface DocView {
 export function newDocView(): DocView {
   return {
     sidebar: null,
+    sidebarGeneration: null,
+    generation: 0,
+    matchCount: null,
     selection: new Set(),
+    focus: null,
     filter: emptyFilter(),
     sort: 'Order',
     master: null,
@@ -74,6 +102,23 @@ export const EMPTY_DOC_VIEW: DocView = Object.freeze({
   selection: Object.freeze(new Set<GlyphId>()) as ReadonlySet<GlyphId>,
 })
 
+/** Called with the document id when a document's view state is discarded. */
+export type ForgetListener = (doc: DocId) => void
+
+const forgetListeners = new Set<ForgetListener>()
+
+/**
+ * Subscribes to document teardown. Per-document caches outside this store
+ * (glyph names, master metrics) register here so closing a document releases
+ * them without the store having to know what they are.
+ */
+export function onDocumentForgotten(listener: ForgetListener): () => void {
+  forgetListeners.add(listener)
+  return () => {
+    forgetListeners.delete(listener)
+  }
+}
+
 function clampCellSize(size: number): number {
   return Math.min(CELL_SIZE_MAX, Math.max(CELL_SIZE_MIN, Math.round(size)))
 }
@@ -88,6 +133,9 @@ export interface DocumentState {
   setSort: (doc: DocId, sort: GlyphSort) => void
   setMaster: (doc: DocId, master: MasterId | null) => void
   setCellSize: (doc: DocId, size: number) => void
+  setMatchCount: (doc: DocId, matchCount: number | null) => void
+  setFocus: (doc: DocId, focus: GlyphId | null) => void
+  noteGeneration: (doc: DocId, generation: number) => void
   stepCellSize: (doc: DocId, direction: 1 | -1) => void
   setLabelMode: (doc: DocId, mode: LabelMode) => void
   setSelection: (doc: DocId, selection: Iterable<GlyphId>) => void
@@ -117,7 +165,9 @@ export const useDocumentStore = create<DocumentState>((set, get) => {
   const patchExisting = (doc: DocId, update: Partial<DocView>): boolean => {
     const current = get().byDoc[doc]
     if (!current) return false
-    set((state) => ({ byDoc: { ...state.byDoc, [doc]: { ...current, ...update } } }))
+    set((state) => ({
+      byDoc: { ...state.byDoc, [doc]: { ...current, ...update } },
+    }))
     return true
   }
 
@@ -128,18 +178,24 @@ export const useDocumentStore = create<DocumentState>((set, get) => {
       if (!get().byDoc[doc]) patch(doc, {})
     },
 
-    forget: (doc) =>
+    forget: (doc) => {
+      for (const listener of [...forgetListeners]) listener(doc)
       set((state) => {
         if (!(doc in state.byDoc)) return state
         const byDoc = { ...state.byDoc }
         delete byDoc[doc]
         return { byDoc }
-      }),
+      })
+    },
 
     loadSidebar: async (doc) => {
       get().ensure(doc)
+      // Stamp the request with the generation it was issued for, so a later
+      // edit is seen as making the counts stale again.
+      const generation = get().byDoc[doc]?.generation ?? 0
       try {
-        patchExisting(doc, { sidebar: await call('doc.sidebar', { doc }) })
+        const sidebar = await call('doc.sidebar', { doc })
+        patchExisting(doc, { sidebar, sidebarGeneration: generation })
       } catch (error) {
         // A document closed mid-request fails by design; stay quiet then.
         if (!get().byDoc[doc]) return
@@ -152,7 +208,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => {
 
     setFilter: (doc, update) => {
       const current = get().byDoc[doc]?.filter ?? emptyFilter()
-      patch(doc, { filter: { ...current, ...update } })
+      patch(doc, { filter: { ...current, ...update }, matchCount: null })
     },
 
     setSort: (doc, sort) => patch(doc, { sort }),
@@ -160,6 +216,27 @@ export const useDocumentStore = create<DocumentState>((set, get) => {
     setMaster: (doc, master) => patch(doc, { master }),
 
     setCellSize: (doc, size) => patch(doc, { cellSize: clampCellSize(size) }),
+
+    setMatchCount: (doc, matchCount) => {
+      if (get().byDoc[doc]?.matchCount === matchCount) return
+      patch(doc, { matchCount })
+    },
+
+    setFocus: (doc, focus) => {
+      if (get().byDoc[doc]?.focus === focus) return
+      patch(doc, { focus })
+    },
+
+    /**
+     * Records the document generation a kernel event reported. Only documents
+     * that already have view state are updated: an event for a document nobody
+     * is looking at must not create one.
+     */
+    noteGeneration: (doc, generation) => {
+      const current = get().byDoc[doc]
+      if (!current || current.generation >= generation) return
+      patchExisting(doc, { generation })
+    },
 
     stepCellSize: (doc, direction) => {
       const current = get().byDoc[doc]?.cellSize ?? CELL_SIZE_DEFAULT

@@ -1,8 +1,14 @@
-import { call, getTransport, type DocId } from '../api'
+import { call, getTransport, type DocId, type GlyphId } from '../api'
 import { i18n } from '../i18n'
 import { useDocumentStore } from '../stores/documentStore'
 import { activeSummary, useSessionStore } from '../stores/sessionStore'
-import { activeDocId, useUiStore, type ThemePreference } from '../stores/uiStore'
+import {
+  activeDocId,
+  useUiStore,
+  type ThemePreference,
+} from '../stores/uiStore'
+
+import { registerFontViewCommands } from '../views/font/fontCommands'
 
 import { registerCommands, type Command } from './commands'
 import { closeTab, openFontInfoTab, openGlyphTab } from './tabActions'
@@ -15,6 +21,20 @@ function activeDoc(): DocId | null {
 
 function hasDocument(): boolean {
   return activeDoc() !== null
+}
+
+/**
+ * The glyph a glyph-scoped command acts on: the grid's focus cell, which the
+ * pointer, the keyboard and the context menu all move, falling back to the
+ * first member of the selection.
+ */
+function targetGlyph(): GlyphId | undefined {
+  const doc = activeDoc()
+  if (doc === null) return undefined
+  const view = useDocumentStore.getState().byDoc[doc]
+  if (!view) return undefined
+  if (view.focus !== null) return view.focus
+  return [...view.selection][0]
 }
 
 function themeCommand(theme: ThemePreference): Command {
@@ -38,6 +58,7 @@ async function runHistory(method: 'doc.undo' | 'doc.redo'): Promise<void> {
 
 /** Registers every built-in command. Safe to call more than once. */
 export function registerBuiltinCommands(): void {
+  registerFontViewCommands()
   registerCommands([
     {
       id: 'file.new',
@@ -45,7 +66,11 @@ export function registerBuiltinCommands(): void {
       menu: 'file',
       group: 'open',
       shortcut: 'Mod+N',
-      run: () => useSessionStore.getState().createDocument().then(() => undefined),
+      run: () =>
+        useSessionStore
+          .getState()
+          .createDocument()
+          .then(() => undefined),
     },
     {
       id: 'file.open',
@@ -152,18 +177,12 @@ export function registerBuiltinCommands(): void {
       title: 'cmd.glyph.open',
       menu: 'glyph',
       group: 'glyph',
-      when: () => {
-        const doc = activeDoc()
-        if (doc === null) return false
-        return (useDocumentStore.getState().byDoc[doc]?.selection.size ?? 0) > 0
-      },
+      when: () => targetGlyph() !== undefined,
       disabledReason: 'cmd.reason.noSelection',
       run: () => {
         const doc = activeDoc()
-        if (doc === null) return
-        const selection = useDocumentStore.getState().byDoc[doc]?.selection
-        const first = selection ? [...selection][0] : undefined
-        if (first !== undefined) openGlyphTab(doc, first)
+        const gid = targetGlyph()
+        if (doc !== null && gid !== undefined) openGlyphTab(doc, gid)
       },
     },
     {

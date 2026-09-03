@@ -19,23 +19,35 @@ export function StatusBar() {
   const view = useDocumentStore(selectDocView(doc))
 
   return (
-    <div className={styles.statusbar}>
+    <div
+      className={styles.statusbar}
+      role="contentinfo"
+      aria-label={t('a11y.statusBar')}
+    >
       {summary ? (
         <>
           <span className={styles.statusName}>{documentLabel(summary)}</span>
           <span className={styles.statusNumeric}>
-            {t('status.glyphs', { count: summary.glyph_count })}
+            {t('status.glyphs', {
+              count: view.matchCount ?? summary.glyph_count,
+            })}
           </span>
-          {view.selection.size > 0 ? (
+          {view.matchCount !== null &&
+          view.matchCount !== summary.glyph_count ? (
             <span className={styles.statusNumeric}>
-              {t('status.selected', { count: view.selection.size })}
+              {t('status.ofTotal', { total: summary.glyph_count })}
             </span>
           ) : null}
+          <span className={styles.statusNumeric}>
+            {t('status.selected', { count: view.selection.size })}
+          </span>
           <span className={summary.dirty ? styles.statusDirty : undefined}>
             {summary.dirty ? t('status.dirty') : t('status.clean')}
           </span>
           {summary.warnings.length > 0 ? (
-            <span>{t('status.warnings', { count: summary.warnings.length })}</span>
+            <span>
+              {t('status.warnings', { count: summary.warnings.length })}
+            </span>
           ) : null}
           <span className={styles.statusSpacer} />
           <span className={styles.statusNumeric}>

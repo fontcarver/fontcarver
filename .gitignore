@@ -25,6 +25,8 @@ src-tauri/gen/schemas/
 *.swp
 # Test output
 /test-output/
+app/test-results/
+app/playwright-report/
 /.scratch/
 /.superpowers/
 /.worktrees/

@@ -64,7 +64,9 @@ describe('App shell', () => {
 
     await user.click(within(menubar).getByRole('menuitem', { name: 'Path' }))
 
-    const item = screen.getByRole('menuitem', { name: 'Arrives in a later phase' })
+    const item = screen.getByRole('menuitem', {
+      name: 'Arrives in a later phase',
+    })
     expect(item).toBeDisabled()
   })
 
@@ -80,7 +82,9 @@ describe('App shell', () => {
     const saveAs = within(menu).getByRole('menuitem', { name: /Save As/ })
     expect(saveAs).toBeDisabled()
     expect(saveAs).toHaveAttribute('title', 'No font is open')
-    expect(within(menu).getAllByText('No font is open').length).toBeGreaterThan(0)
+    expect(within(menu).getAllByText('No font is open').length).toBeGreaterThan(
+      0,
+    )
   })
 
   it('follows a system theme change while the preference is system', async () => {
@@ -173,6 +177,7 @@ describe('App shell', () => {
           total: 6253,
           color_labels: [],
         }),
+        'glyphs.list': () => ({ total: 6253, items: [] }),
       }),
     )
     render(<App />)
@@ -180,11 +185,13 @@ describe('App shell', () => {
     expect(
       await screen.findByRole('tab', { name: 'DejaVuSans.ttf' }),
     ).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: 'Font view' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('listbox', { name: 'Glyphs' })).toBeInTheDocument()
     expect(await screen.findByText('Letter')).toBeInTheDocument()
-    expect(screen.getByText('6,253 glyphs')).toBeInTheDocument()
+    expect(screen.getAllByText('6,253 glyphs').length).toBeGreaterThan(0)
+    // Both counts are always on the status bar, selection included.
+    expect(
+      within(screen.getByRole('contentinfo')).getByText('0 selected'),
+    ).toBeInTheDocument()
   })
 
   it('makes the sidebar and inspector follow the active tab kind', async () => {
@@ -201,18 +208,19 @@ describe('App shell', () => {
           total: 6253,
           color_labels: [],
         }),
+        'glyphs.list': () => ({ total: 6253, items: [] }),
       }),
     )
     render(<App />)
     await screen.findByRole('tab', { name: 'DejaVuSans.ttf' })
     expect(await screen.findByText('Letter')).toBeInTheDocument()
-    expect(screen.getByLabelText('Cell size')).toBeInTheDocument()
+    expect(screen.getAllByLabelText('Cell size')).toHaveLength(2)
 
     await user.keyboard('{Control>}i{/Control}')
     await screen.findByRole('tab', { name: 'Font Info' })
 
     expect(screen.queryByText('Letter')).toBeNull()
-    expect(screen.queryByLabelText('Cell size')).toBeNull()
+    expect(screen.queryAllByLabelText('Cell size')).toHaveLength(0)
     expect(
       screen.getByText('Font Info sections arrive with the Font Info panel.'),
     ).toBeInTheDocument()
@@ -232,6 +240,7 @@ describe('App shell', () => {
           total: 1,
           color_labels: [],
         }),
+        'glyphs.list': () => ({ total: 1, items: [] }),
       }),
     )
     render(<App />)
