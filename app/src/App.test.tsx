@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setTransport } from './api'
 import { App } from './App'
@@ -32,15 +32,80 @@ afterEach(() => {
 })
 
 describe('App shell', () => {
-  it('renders the menu bar built from the command registry', async () => {
+  it('renders every specified menu from the command registry', async () => {
     setTransport(emptySession())
     render(<App />)
 
     const menubar = await screen.findByRole('menubar')
-    for (const label of ['File', 'Edit', 'Glyph', 'View', 'Window', 'Help'])
+    const menus = [
+      'File',
+      'Edit',
+      'Glyph',
+      'Path',
+      'Layer',
+      'Font',
+      'Features',
+      'Bitmap',
+      'View',
+      'Window',
+      'Help',
+    ]
+    for (const label of menus)
       expect(
         within(menubar).getByRole('menuitem', { name: label }),
       ).toBeInTheDocument()
+  })
+
+  it('shows a placeholder inside menus that have no commands yet', async () => {
+    const user = userEvent.setup()
+    setTransport(emptySession())
+    render(<App />)
+    const menubar = await screen.findByRole('menubar')
+
+    await user.click(within(menubar).getByRole('menuitem', { name: 'Path' }))
+
+    const item = screen.getByRole('menuitem', { name: 'Arrives in a later phase' })
+    expect(item).toBeDisabled()
+  })
+
+  it('keeps unavailable commands listed in the menu with a reason', async () => {
+    const user = userEvent.setup()
+    setTransport(emptySession())
+    render(<App />)
+    const menubar = await screen.findByRole('menubar')
+
+    await user.click(within(menubar).getByRole('menuitem', { name: 'File' }))
+
+    const menu = screen.getByRole('menu', { name: 'File' })
+    const saveAs = within(menu).getByRole('menuitem', { name: /Save As/ })
+    expect(saveAs).toBeDisabled()
+    expect(saveAs).toHaveAttribute('title', 'No font is open')
+    expect(within(menu).getAllByText('No font is open').length).toBeGreaterThan(0)
+  })
+
+  it('follows a system theme change while the preference is system', async () => {
+    const listeners = new Set<() => void>()
+    const query = {
+      matches: false,
+      addEventListener: (_type: string, listener: () => void) =>
+        listeners.add(listener),
+      removeEventListener: (_type: string, listener: () => void) =>
+        listeners.delete(listener),
+    }
+    vi.stubGlobal('matchMedia', () => query)
+    setTransport(emptySession())
+    useUiStore.setState({ theme: 'system' })
+    render(<App />)
+    await screen.findByRole('menubar')
+    expect(document.documentElement.dataset.theme).toBe('light')
+
+    query.matches = true
+    for (const listener of [...listeners]) listener()
+
+    await waitFor(() =>
+      expect(document.documentElement.dataset.theme).toBe('dark'),
+    )
+    vi.unstubAllGlobals()
   })
 
   it('shows the empty state with recent files while no document is open', async () => {
@@ -120,6 +185,37 @@ describe('App shell', () => {
     ).toBeInTheDocument()
     expect(await screen.findByText('Letter')).toBeInTheDocument()
     expect(screen.getByText('6,253 glyphs')).toBeInTheDocument()
+  })
+
+  it('makes the sidebar and inspector follow the active tab kind', async () => {
+    const user = userEvent.setup()
+    setTransport(
+      createMockTransport({
+        'session.list': () => [makeSummary()],
+        'session.recent': () => [],
+        'doc.sidebar': () => ({
+          categories: [['Letter', 5000] as [string, number]],
+          scripts: [],
+          blocks: [],
+          unencoded: 0,
+          total: 6253,
+          color_labels: [],
+        }),
+      }),
+    )
+    render(<App />)
+    await screen.findByRole('tab', { name: 'DejaVuSans.ttf' })
+    expect(await screen.findByText('Letter')).toBeInTheDocument()
+    expect(screen.getByLabelText('Cell size')).toBeInTheDocument()
+
+    await user.keyboard('{Control>}i{/Control}')
+    await screen.findByRole('tab', { name: 'Font Info' })
+
+    expect(screen.queryByText('Letter')).toBeNull()
+    expect(screen.queryByLabelText('Cell size')).toBeNull()
+    expect(
+      screen.getByText('Font Info sections arrive with the Font Info panel.'),
+    ).toBeInTheDocument()
   })
 
   it('toggles the inspector from the tab bar', async () => {

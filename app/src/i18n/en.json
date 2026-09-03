@@ -15,7 +15,13 @@
     "glyph": "Glyph",
     "view": "View",
     "window": "Window",
-    "help": "Help"
+    "help": "Help",
+    "path": "Path",
+    "layer": "Layer",
+    "font": "Font",
+    "features": "Features",
+    "bitmap": "Bitmap",
+    "empty": "Arrives in a later phase"
   },
   "cmd": {
     "file": {
@@ -58,6 +64,16 @@
     "help": {
       "shortcuts": "Keyboard Shortcuts",
       "about": "About FontWorkshop"
+    },
+    "reason": {
+      "noDocument": "No font is open",
+      "noRecent": "No recent files",
+      "noSelection": "No glyphs are selected",
+      "nothingToUndo": "Nothing to undo",
+      "nothingToRedo": "Nothing to redo",
+      "oneTab": "Only one tab is open",
+      "noTab": "No tab is open",
+      "themeActive": "Already the current theme"
     }
   },
   "palette": {
@@ -86,9 +102,15 @@
       "label": "Document path",
       "placeholder": "/path/to/font.fwf",
       "hint": "FontWorkshop documents are saved as .fwf or .fwf.gz.",
-      "confirm": "Save"
+      "confirm": "Save",
+      "filter": "FontWorkshop document"
     },
-    "closeDirty": "“{{name}}” has unsaved changes. Close it anyway?"
+    "closeDirty": {
+      "title": "Unsaved changes",
+      "message": "“{{name}}” has unsaved changes.",
+      "save": "Save",
+      "discard": "Don’t Save"
+    }
   },
   "document": {
     "newFamily": "New Font",
@@ -112,7 +134,9 @@
     "empty": "Open a font to see its glyph filters.",
     "note": "Filtering becomes interactive with the font view.",
     "collapse": "Collapse {{section}}",
-    "expand": "Expand {{section}}"
+    "expand": "Expand {{section}}",
+    "glyphNote": "Layers and the glyph list arrive with the glyph view.",
+    "fontInfoNote": "Font Info has no filters; switch to the Font tab to filter glyphs."
   },
   "inspector": {
     "title": "Inspector",
@@ -142,7 +166,8 @@
       "Unicode": "Unicode",
       "Name": "Name",
       "Width": "Width"
-    }
+    },
+    "fontInfoNote": "Font Info sections arrive with the Font Info panel."
   },
   "view": {
     "font": {

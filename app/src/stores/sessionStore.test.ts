@@ -3,13 +3,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setTransport } from '../api'
 import { createMockTransport, makeSummary } from '../test/mockTransport'
 
+import {
+  initialDocumentState,
+  useDocumentStore,
+} from './documentStore'
 import { initialSessionState, useSessionStore } from './sessionStore'
-import { initialUiState, tabId, useUiStore } from './uiStore'
+import { initialUiState, selectActiveDoc, tabId, useUiStore } from './uiStore'
 
 beforeEach(() => {
   localStorage.clear()
   useSessionStore.setState(initialSessionState())
   useUiStore.setState(initialUiState())
+  useDocumentStore.setState(initialDocumentState())
 })
 
 afterEach(() => {
@@ -26,9 +31,7 @@ describe('sessionStore.open', () => {
     })
     setTransport(transport)
 
-    const result = await useSessionStore
-      .getState()
-      .open('/fonts/DejaVuSans.ttf')
+    const result = await useSessionStore.getState().open('/fonts/DejaVuSans.ttf')
 
     expect(result).toEqual(summary)
     expect(transport.calls[0]).toEqual({
@@ -36,10 +39,10 @@ describe('sessionStore.open', () => {
       params: { path: '/fonts/DejaVuSans.ttf', face_index: null },
     })
     expect(useSessionStore.getState().docs).toEqual([summary])
-    expect(useSessionStore.getState().activeDoc).toBe(1)
     expect(useUiStore.getState().tabs).toEqual([
       { id: tabId('font', 1), kind: 'font', doc: 1 },
     ])
+    expect(selectActiveDoc(useUiStore.getState())).toBe(1)
   })
 
   it('surfaces kernel failures as a toast and keeps the session empty', async () => {
@@ -82,12 +85,17 @@ describe('sessionStore.save', () => {
   it('prompts for a path when the document is not a native .fwf', async () => {
     const transport = createMockTransport({})
     setTransport(transport)
-    useSessionStore.setState({ docs: [makeSummary()], activeDoc: 1 })
+    useSessionStore.setState({ docs: [makeSummary()] })
 
-    await useSessionStore.getState().save(1)
+    const saved = await useSessionStore.getState().save(1)
 
+    expect(saved).toBe(false)
     expect(transport.calls).toHaveLength(0)
-    expect(useUiStore.getState().pathPrompt).toEqual({ mode: 'saveAs', doc: 1 })
+    expect(useUiStore.getState().pathPrompt).toEqual({
+      mode: 'saveAs',
+      doc: 1,
+      closeAfterSave: false,
+    })
   })
 
   it('saves straight away once the document has a .fwf path', async () => {
@@ -99,47 +107,123 @@ describe('sessionStore.save', () => {
     setTransport(transport)
     useSessionStore.setState({
       docs: [makeSummary({ path: '/docs/dejavu.fwf', dirty: true })],
-      activeDoc: 1,
     })
 
-    await useSessionStore.getState().save(1)
-
+    expect(await useSessionStore.getState().save(1)).toBe(true)
     expect(transport.calls[0]).toEqual({
       method: 'session.save',
       params: { doc: 1, path: null },
     })
     expect(useSessionStore.getState().docs[0]?.dirty).toBe(false)
   })
+
+  it('reports a failed save and resolves false', async () => {
+    setTransport(
+      createMockTransport({
+        'session.save': () => {
+          throw new Error('disk full')
+        },
+      }),
+    )
+    useSessionStore.setState({ docs: [makeSummary({ path: '/docs/a.fwf' })] })
+
+    expect(await useSessionStore.getState().save(1)).toBe(false)
+    expect(useUiStore.getState().toasts[0]).toMatchObject({ message: 'disk full' })
+  })
 })
 
 describe('sessionStore.close', () => {
-  it('removes the document and every tab that belonged to it', async () => {
+  it('removes the document, its tabs and its view state', async () => {
     setTransport(createMockTransport({ 'session.close': () => null }))
-    useSessionStore.setState({ docs: [makeSummary()], activeDoc: 1 })
+    useSessionStore.setState({ docs: [makeSummary()] })
     useUiStore.getState().openTab({ kind: 'font', doc: 1 })
     useUiStore.getState().openTab({ kind: 'glyph', doc: 1, gid: 3 })
+    useDocumentStore.getState().setCellSize(1, 96)
 
     await useSessionStore.getState().close(1)
 
     expect(useSessionStore.getState().docs).toEqual([])
-    expect(useSessionStore.getState().activeDoc).toBeNull()
     expect(useUiStore.getState().tabs).toEqual([])
+    expect(selectActiveDoc(useUiStore.getState())).toBeNull()
+    expect(useDocumentStore.getState().byDoc[1]).toBeUndefined()
   })
 
-  it('asks before closing a dirty document and keeps it when declined', async () => {
+  it('closes a clean document without asking', async () => {
     const transport = createMockTransport({ 'session.close': () => null })
     setTransport(transport)
-    useSessionStore.setState({
-      docs: [makeSummary({ dirty: true })],
-      activeDoc: 1,
-    })
-    const confirm = vi.spyOn(globalThis, 'confirm').mockReturnValue(false)
+    useSessionStore.setState({ docs: [makeSummary({ dirty: false })] })
 
     await useSessionStore.getState().requestClose(1)
 
-    expect(confirm).toHaveBeenCalledOnce()
+    expect(useUiStore.getState().closePrompt).toBeNull()
+    expect(useSessionStore.getState().docs).toEqual([])
+  })
+})
+
+describe('sessionStore dirty close', () => {
+  it('asks before closing a dirty document instead of discarding it', async () => {
+    const transport = createMockTransport({ 'session.close': () => null })
+    setTransport(transport)
+    useSessionStore.setState({ docs: [makeSummary({ dirty: true })] })
+
+    await useSessionStore.getState().requestClose(1)
+
+    expect(useUiStore.getState().closePrompt).toEqual({ doc: 1 })
     expect(transport.calls).toHaveLength(0)
     expect(useSessionStore.getState().docs).toHaveLength(1)
+  })
+
+  it('saves and then closes when the document already has a .fwf path', async () => {
+    const transport = createMockTransport({
+      'session.save': () => makeSummary({ path: '/docs/a.fwf', dirty: false }),
+      'session.close': () => null,
+      'session.recent': () => [],
+    })
+    setTransport(transport)
+    useSessionStore.setState({
+      docs: [makeSummary({ path: '/docs/a.fwf', dirty: true })],
+    })
+
+    await useSessionStore.getState().saveAndClose(1)
+
+    const methods = transport.calls.map((call) => call.method)
+    expect(methods).toContain('session.save')
+    expect(methods.indexOf('session.close')).toBeGreaterThan(
+      methods.indexOf('session.save'),
+    )
+    expect(useSessionStore.getState().docs).toEqual([])
+  })
+
+  it('keeps the document open when the save fails', async () => {
+    const transport = createMockTransport({
+      'session.save': () => {
+        throw new Error('read-only volume')
+      },
+    })
+    setTransport(transport)
+    useSessionStore.setState({
+      docs: [makeSummary({ path: '/docs/a.fwf', dirty: true })],
+    })
+
+    await useSessionStore.getState().saveAndClose(1)
+
+    expect(transport.calls.map((call) => call.method)).toEqual(['session.save'])
+    expect(useSessionStore.getState().docs).toHaveLength(1)
+  })
+
+  it('asks for a path first when the dirty document has no native path', async () => {
+    const transport = createMockTransport({})
+    setTransport(transport)
+    useSessionStore.setState({ docs: [makeSummary({ dirty: true })] })
+
+    await useSessionStore.getState().saveAndClose(1)
+
+    expect(transport.calls).toHaveLength(0)
+    expect(useUiStore.getState().pathPrompt).toEqual({
+      mode: 'saveAs',
+      doc: 1,
+      closeAfterSave: true,
+    })
   })
 })
 
@@ -152,9 +236,7 @@ describe('sessionStore events', () => {
     setTransport(transport)
 
     const stop = useSessionStore.getState().start()
-    await vi.waitFor(() =>
-      expect(useSessionStore.getState().docs).toHaveLength(1),
-    )
+    await vi.waitFor(() => expect(useSessionStore.getState().docs).toHaveLength(1))
     expect(useUiStore.getState().activeTab).toBe(tabId('font', 1))
 
     transport.emit({

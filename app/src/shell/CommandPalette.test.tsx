@@ -9,14 +9,14 @@ import { registerCommand, resetCommands } from './commands'
 
 const openFont = vi.fn()
 const saveAs = vi.fn()
-const hidden = vi.fn()
+const gated = vi.fn()
 
 beforeEach(() => {
   localStorage.clear()
   resetCommands()
   openFont.mockReset()
   saveAs.mockReset()
-  hidden.mockReset()
+  gated.mockReset()
   registerCommand({
     id: 'file.open',
     title: 'cmd.file.open',
@@ -35,7 +35,8 @@ beforeEach(() => {
     title: 'cmd.file.close',
     menu: 'file',
     when: () => false,
-    run: hidden,
+    disabledReason: 'cmd.reason.noDocument',
+    run: gated,
   })
   useUiStore.setState({ ...initialUiState(), paletteOpen: true })
 })
@@ -45,14 +46,25 @@ afterEach(() => {
 })
 
 describe('CommandPalette', () => {
-  it('lists enabled commands with their shortcut hints', () => {
+  it('lists commands with their shortcut hints', () => {
     render(<CommandPalette />)
 
-    expect(
-      screen.getByRole('option', { name: /Open Font/ }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Open Font/ })).toBeInTheDocument()
     expect(screen.getByText('Ctrl+O')).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: /Close Font/ })).toBeNull()
+  })
+
+  it('keeps unavailable commands listed, disabled and explained', async () => {
+    const user = userEvent.setup()
+    render(<CommandPalette />)
+
+    const option = screen.getByRole('option', { name: /Close Font/ })
+    expect(option).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText('No font is open')).toBeInTheDocument()
+
+    await user.click(option)
+
+    expect(gated).not.toHaveBeenCalled()
+    expect(useUiStore.getState().paletteOpen).toBe(true)
   })
 
   it('filters by title and runs the highlighted command on Enter', async () => {

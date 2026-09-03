@@ -36,6 +36,13 @@ export type PanelId = 'sidebar' | 'inspector'
 export interface PathPrompt {
   readonly mode: 'open' | 'saveAs'
   readonly doc?: DocId
+  /** Close the document once the save succeeds (the dirty-close flow). */
+  readonly closeAfterSave?: boolean
+}
+
+/** Pending "save before closing?" question for one dirty document. */
+export interface ClosePrompt {
+  readonly doc: DocId
 }
 
 /** Inclusive pixel bounds of the resizable panels. */
@@ -138,6 +145,7 @@ export interface UiState extends PersistedUi {
   activeTab: string | null
   paletteOpen: boolean
   pathPrompt: PathPrompt | null
+  closePrompt: ClosePrompt | null
   toasts: Toast[]
   setTheme: (theme: ThemePreference) => void
   setLanguage: (language: Language) => void
@@ -151,6 +159,7 @@ export interface UiState extends PersistedUi {
   cycleTab: (delta: number) => void
   setPaletteOpen: (open: boolean) => void
   setPathPrompt: (prompt: PathPrompt | null) => void
+  setClosePrompt: (prompt: ClosePrompt | null) => void
   pushToast: (toast: Omit<Toast, 'id'>) => string
   dismissToast: (id: string) => void
 }
@@ -179,6 +188,7 @@ export function initialUiState(): Omit<
   | 'cycleTab'
   | 'setPaletteOpen'
   | 'setPathPrompt'
+  | 'setClosePrompt'
   | 'pushToast'
   | 'dismissToast'
 > {
@@ -188,6 +198,7 @@ export function initialUiState(): Omit<
     activeTab: null,
     paletteOpen: false,
     pathPrompt: null,
+    closePrompt: null,
     toasts: [],
   }
 }
@@ -278,6 +289,8 @@ export const useUiStore = create<UiState>((set, get) => ({
 
   setPathPrompt: (pathPrompt) => set({ pathPrompt }),
 
+  setClosePrompt: (closePrompt) => set({ closePrompt }),
+
   pushToast: (toast) => {
     const id = `toast-${++toastCounter}`
     set((state) => ({ toasts: [...state.toasts, { ...toast, id }] }))
@@ -293,4 +306,17 @@ export const useUiStore = create<UiState>((set, get) => ({
 /** Selector: the currently active tab, if any. */
 export function selectActiveTab(state: UiState): Tab | null {
   return state.tabs.find((tab) => tab.id === state.activeTab) ?? null
+}
+
+/**
+ * Selector: the document the active tab belongs to. The active document is
+ * always derived from the active tab so no copy of it can go stale.
+ */
+export function selectActiveDoc(state: UiState): DocId | null {
+  return selectActiveTab(state)?.doc ?? null
+}
+
+/** The active document id outside React. */
+export function activeDocId(): DocId | null {
+  return selectActiveDoc(useUiStore.getState())
 }

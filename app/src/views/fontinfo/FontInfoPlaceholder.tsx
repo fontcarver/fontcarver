@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { DocSummary } from '../../api'
 import { Field } from '../../components/Field'
-import styles from '../../shell/shell.module.css'
+import styles from '../placeholder.module.css'
 
 export interface FontInfoPlaceholderProps {
   summary: DocSummary

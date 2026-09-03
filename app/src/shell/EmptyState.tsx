@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '../components/Button'
 import { useSessionStore } from '../stores/sessionStore'
 
-import styles from './shell.module.css'
+import styles from './EmptyState.module.css'
 
 /** Shown in the content area while no document is open. */
 export function EmptyState() {
@@ -29,7 +29,7 @@ export function EmptyState() {
         <div className={styles.emptyRecent}>
           <h2 className={styles.emptyRecentTitle}>{t('empty.recent')}</h2>
           {recent.length === 0 ? (
-            <p className={styles.hintBlock}>{t('empty.noRecent')}</p>
+            <p className={styles.noRecent}>{t('empty.noRecent')}</p>
           ) : (
             <ul className={styles.recentList}>
               {recent.map((path) => (

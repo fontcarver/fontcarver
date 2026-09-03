@@ -4,17 +4,19 @@ import { getTransport } from '../api'
 import { selectDocView, useDocumentStore } from '../stores/documentStore'
 import {
   documentLabel,
-  selectActiveSummary,
+  selectSummary,
   useSessionStore,
 } from '../stores/sessionStore'
+import { selectActiveDoc, useUiStore } from '../stores/uiStore'
 
-import styles from './shell.module.css'
+import styles from './StatusBar.module.css'
 
 /** Bottom status bar: document, counts, dirty state and transport. */
 export function StatusBar() {
   const { t } = useTranslation()
-  const summary = useSessionStore(selectActiveSummary)
-  const view = useDocumentStore(selectDocView(summary?.doc ?? null))
+  const doc = useUiStore(selectActiveDoc)
+  const summary = useSessionStore(selectSummary(doc))
+  const view = useDocumentStore(selectDocView(doc))
 
   return (
     <div className={styles.statusbar}>
@@ -33,9 +35,7 @@ export function StatusBar() {
             {summary.dirty ? t('status.dirty') : t('status.clean')}
           </span>
           {summary.warnings.length > 0 ? (
-            <span>
-              {t('status.warnings', { count: summary.warnings.length })}
-            </span>
+            <span>{t('status.warnings', { count: summary.warnings.length })}</span>
           ) : null}
           <span className={styles.statusSpacer} />
           <span className={styles.statusNumeric}>

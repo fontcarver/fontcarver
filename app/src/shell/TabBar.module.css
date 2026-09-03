@@ -1,0 +1,77 @@
+/* Tab strip above the workspace. */
+
+.tabbar {
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-app);
+  scrollbar-width: none;
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  min-width: 96px;
+  max-width: 240px;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border: 0;
+  border-right: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+  cursor: default;
+}
+
+.tab:hover {
+  background: var(--color-hover);
+}
+
+.tabActive {
+  background: var(--color-canvas);
+  color: var(--color-text);
+}
+
+.tabActive::after {
+  position: absolute;
+  content: '';
+  background: var(--color-accent);
+  inset: 0 0 auto;
+  height: 2px;
+}
+
+.tabLabel {
+  overflow: hidden;
+  height: 100%;
+  flex: 1;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.tabDirty {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-faint);
+}
+
+.tabSpacer {
+  flex: 1;
+}
+
+.tabActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+}

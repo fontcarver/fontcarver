@@ -5,7 +5,7 @@ import { Button } from '../components/Button'
 import { useSessionStore } from '../stores/sessionStore'
 import { useUiStore, type PathPrompt } from '../stores/uiStore'
 
-import styles from './shell.module.css'
+import styles from './dialog.module.css'
 
 export interface PathPromptFormProps {
   prompt: PathPrompt
@@ -18,6 +18,7 @@ export function PathPromptForm({ prompt }: PathPromptFormProps) {
   const recent = useSessionStore((state) => state.recent)
   const open = useSessionStore((state) => state.open)
   const save = useSessionStore((state) => state.save)
+  const closeDocument = useSessionStore((state) => state.close)
   const [path, setPath] = useState('')
 
   const isOpen = prompt.mode === 'open'
@@ -28,8 +29,17 @@ export function PathPromptForm({ prompt }: PathPromptFormProps) {
     const trimmed = value.trim()
     if (!trimmed) return
     close()
-    if (isOpen) void open(trimmed)
-    else if (prompt.doc !== undefined) void save(prompt.doc, trimmed)
+    if (isOpen) {
+      void open(trimmed)
+      return
+    }
+    const doc = prompt.doc
+    if (doc === undefined) return
+    void save(doc, trimmed).then((saved) => {
+      // The dirty-close flow only closes once the save actually succeeded.
+      if (saved && prompt.closeAfterSave) return closeDocument(doc)
+      return undefined
+    })
   }
 
   return (

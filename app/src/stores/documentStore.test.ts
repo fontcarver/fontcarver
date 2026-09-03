@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { setTransport } from '../api'
+import { setTransport, type SidebarCounts } from '../api'
 import { createMockTransport } from '../test/mockTransport'
+
+import { initialUiState, useUiStore } from './uiStore'
 
 import {
   CELL_SIZE_MAX,
@@ -12,7 +14,9 @@ import {
 } from './documentStore'
 
 beforeEach(() => {
+  localStorage.clear()
   useDocumentStore.setState(initialDocumentState())
+  useUiStore.setState(initialUiState())
   setTransport(undefined)
 })
 
@@ -91,5 +95,53 @@ describe('documentStore', () => {
     useDocumentStore.getState().forget(1)
 
     expect(useDocumentStore.getState().byDoc[1]).toBeUndefined()
+  })
+
+  it('drops a sidebar response that arrives after the document was closed', async () => {
+    let resolveSidebar: (counts: SidebarCounts) => void = () => undefined
+    setTransport(
+      createMockTransport({
+        'doc.sidebar': () =>
+          new Promise<SidebarCounts>((resolve) => {
+            resolveSidebar = resolve
+          }),
+      }),
+    )
+
+    const pending = useDocumentStore.getState().loadSidebar(3)
+    expect(useDocumentStore.getState().byDoc[3]).toBeDefined()
+
+    useDocumentStore.getState().forget(3)
+    resolveSidebar({
+      categories: [],
+      scripts: [],
+      blocks: [],
+      unencoded: 0,
+      total: 1,
+      color_labels: [],
+    })
+    await pending
+
+    expect(useDocumentStore.getState().byDoc[3]).toBeUndefined()
+  })
+
+  it('stays quiet when a request fails because the document was closed', async () => {
+    let rejectSidebar: (error: Error) => void = () => undefined
+    setTransport(
+      createMockTransport({
+        'doc.sidebar': () =>
+          new Promise<SidebarCounts>((_resolve, reject) => {
+            rejectSidebar = reject
+          }),
+      }),
+    )
+
+    const pending = useDocumentStore.getState().loadSidebar(4)
+    useDocumentStore.getState().forget(4)
+    rejectSidebar(new Error('unknown document'))
+    await pending
+
+    expect(useUiStore.getState().toasts).toEqual([])
+    expect(useDocumentStore.getState().byDoc[4]).toBeUndefined()
   })
 })

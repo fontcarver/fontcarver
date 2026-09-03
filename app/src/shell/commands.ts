@@ -4,14 +4,34 @@
  * shortcut without any of those three knowing about the others.
  */
 
-/** Top-level menus of the in-app menu bar. */
-export type MenuId = 'file' | 'edit' | 'glyph' | 'view' | 'window' | 'help'
+/**
+ * Top-level menus of the in-app menu bar. The full set from the design spec is
+ * declared here from the start; menus with no commands yet render a single
+ * disabled placeholder so the surface is stable and discoverable.
+ */
+export type MenuId =
+  | 'file'
+  | 'edit'
+  | 'glyph'
+  | 'path'
+  | 'layer'
+  | 'font'
+  | 'features'
+  | 'bitmap'
+  | 'view'
+  | 'window'
+  | 'help'
 
 /** Ordered list of menus rendered by the menu bar. */
 export const MENU_ORDER: readonly MenuId[] = [
   'file',
   'edit',
   'glyph',
+  'path',
+  'layer',
+  'font',
+  'features',
+  'bitmap',
   'view',
   'window',
   'help',
@@ -35,6 +55,12 @@ export interface Command {
   readonly detail?: () => string | undefined
   /** Enablement predicate; a command with `when() === false` cannot run. */
   readonly when?: () => boolean
+  /**
+   * i18n key explaining why the command is currently unavailable. Disabled
+   * commands stay listed in menus and the palette, so every gated command
+   * should say why.
+   */
+  readonly disabledReason?: string
   /** The action itself. */
   readonly run: () => void | Promise<void>
 }

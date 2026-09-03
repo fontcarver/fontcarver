@@ -12,26 +12,29 @@ import {
   useDocumentStore,
   type LabelMode,
 } from '../stores/documentStore'
-import { selectActiveSummary, useSessionStore } from '../stores/sessionStore'
+import { selectSummary, useSessionStore } from '../stores/sessionStore'
 import { selectActiveTab, useUiStore } from '../stores/uiStore'
 
-import styles from './shell.module.css'
+import styles from './panels.module.css'
 
 const SORTS: readonly GlyphSort[] = ['Order', 'Unicode', 'Name', 'Width']
 const LABEL_MODES: readonly LabelMode[] = ['name', 'unicode', 'index']
 
-/** Right inspector: document facts plus the font view's display settings. */
+/**
+ * Right pane: facts about the active document plus, on the Font tab only, the
+ * glyph-grid display settings.
+ */
 export function Inspector() {
   const { t } = useTranslation()
-  const summary = useSessionStore(selectActiveSummary)
-  const activeTab = useUiStore(selectActiveTab)
-  const view = useDocumentStore(selectDocView(summary?.doc ?? null))
+  const tab = useUiStore(selectActiveTab)
+  const summary = useSessionStore(selectSummary(tab?.doc ?? null))
+  const view = useDocumentStore(selectDocView(tab?.doc ?? null))
   const setMaster = useDocumentStore((state) => state.setMaster)
   const setSort = useDocumentStore((state) => state.setSort)
   const setLabelMode = useDocumentStore((state) => state.setLabelMode)
   const setCellSize = useDocumentStore((state) => state.setCellSize)
 
-  if (!summary) {
+  if (!summary || !tab) {
     return (
       <>
         <div className={styles.panelTitle}>{t('inspector.title')}</div>
@@ -75,9 +78,13 @@ export function Inspector() {
           </Field>
         </Panel>
 
-        {activeTab?.kind === 'glyph' ? (
+        {tab.kind === 'glyph' ? (
           <p className={styles.hintBlock}>{t('inspector.glyphNote')}</p>
-        ) : (
+        ) : null}
+        {tab.kind === 'fontinfo' ? (
+          <p className={styles.hintBlock}>{t('inspector.fontInfoNote')}</p>
+        ) : null}
+        {tab.kind === 'font' ? (
           <Panel title={t('inspector.view')}>
             <Field label={t('inspector.master')}>
               <Select
@@ -123,7 +130,7 @@ export function Inspector() {
               />
             </Field>
           </Panel>
-        )}
+        ) : null}
       </div>
     </>
   )

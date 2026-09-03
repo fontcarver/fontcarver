@@ -22,7 +22,7 @@ describe('tabActions', () => {
   it('closes the document when its Font tab is closed', async () => {
     const transport = createMockTransport({ 'session.close': () => null })
     setTransport(transport)
-    useSessionStore.setState({ docs: [makeSummary()], activeDoc: 1 })
+    useSessionStore.setState({ docs: [makeSummary()] })
     useUiStore.getState().openTab({ kind: 'font', doc: 1 })
     openGlyphTab(1, 9)
 
@@ -36,7 +36,7 @@ describe('tabActions', () => {
   it('closes a Glyph tab without touching the document', () => {
     const transport = createMockTransport({})
     setTransport(transport)
-    useSessionStore.setState({ docs: [makeSummary()], activeDoc: 1 })
+    useSessionStore.setState({ docs: [makeSummary()] })
     useUiStore.getState().openTab({ kind: 'font', doc: 1 })
     const glyph = openGlyphTab(1, 9)
 

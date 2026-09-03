@@ -10,7 +10,8 @@ import {
 import { i18n } from '../i18n'
 import { ApiCallError } from '../transport'
 
-import { tabId, useUiStore } from './uiStore'
+import { useDocumentStore } from './documentStore'
+import { activeDocId, tabId, useUiStore } from './uiStore'
 
 /** File extensions the kernel accepts as native document save targets. */
 const NATIVE_EXTENSIONS = ['.fwf', '.fwf.gz']
@@ -38,7 +39,6 @@ export function documentLabel(summary: DocSummary | undefined): string {
 /** Open documents and the kernel session lifecycle. */
 export interface SessionState {
   docs: DocSummary[]
-  activeDoc: DocId | null
   recent: string[]
   busy: boolean
   start: () => () => void
@@ -50,11 +50,15 @@ export interface SessionState {
     family?: string,
     unitsPerEm?: number,
   ) => Promise<DocSummary | null>
-  save: (doc: DocId, asPath?: string) => Promise<void>
-  requestSaveAs: (doc: DocId) => void
+  /** Saves the document; resolves to whether it was written. */
+  save: (doc: DocId, asPath?: string) => Promise<boolean>
+  /** Asks for a save path (native dialog under Tauri, in-app prompt otherwise). */
+  requestSaveAs: (doc: DocId, closeAfterSave?: boolean) => Promise<void>
+  /** Saves and, only when the save succeeds, closes the document. */
+  saveAndClose: (doc: DocId) => Promise<void>
   close: (doc: DocId) => Promise<void>
+  /** Closes, asking Save / Don't Save / Cancel first when the document is dirty. */
   requestClose: (doc: DocId) => Promise<void>
-  setActiveDoc: (doc: DocId | null) => void
 }
 
 function reportError(error: unknown): void {
@@ -79,9 +83,9 @@ function announceWarnings(summary: DocSummary): void {
 /** Creates the initial, action-free part of the session state. */
 export function initialSessionState(): Pick<
   SessionState,
-  'docs' | 'activeDoc' | 'recent' | 'busy'
+  'docs' | 'recent' | 'busy'
 > {
-  return { docs: [], activeDoc: null, recent: [], busy: false }
+  return { docs: [], recent: [], busy: false }
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({
@@ -94,8 +98,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         const docs = await call('session.list', {})
         set({ docs })
         const first = docs[0]
-        if (first && get().activeDoc === null) {
-          set({ activeDoc: first.doc })
+        if (first && activeDocId() === null) {
           for (const doc of docs)
             useUiStore.getState().openTab({ kind: 'font', doc: doc.doc })
           useUiStore.getState().setActiveTab(tabId('font', first.doc))
@@ -134,6 +137,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   refreshSummary: async (doc) => {
     try {
       const summary = await call('doc.summary', { doc })
+      if (!get().docs.some((entry) => entry.doc === doc)) return
       set((state) => ({ docs: upsert(state.docs, summary) }))
     } catch (error) {
       reportError(error)
@@ -147,10 +151,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         path,
         face_index: faceIndex ?? null,
       })
-      set((state) => ({
-        docs: upsert(state.docs, summary),
-        activeDoc: summary.doc,
-      }))
+      set((state) => ({ docs: upsert(state.docs, summary) }))
       useUiStore.getState().openTab({ kind: 'font', doc: summary.doc })
       announceWarnings(summary)
       void get().refreshRecent()
@@ -183,10 +184,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         family: family ?? i18n.t('document.newFamily'),
         units_per_em: unitsPerEm ?? 1000,
       })
-      set((state) => ({
-        docs: upsert(state.docs, summary),
-        activeDoc: summary.doc,
-      }))
+      set((state) => ({ docs: upsert(state.docs, summary) }))
       useUiStore.getState().openTab({ kind: 'font', doc: summary.doc })
       return summary
     } catch (error) {
@@ -198,8 +196,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   save: async (doc, asPath) => {
     const summary = get().docs.find((entry) => entry.doc === doc)
     if (asPath === undefined && !isNativeDocumentPath(summary?.path ?? null)) {
-      get().requestSaveAs(doc)
-      return
+      await get().requestSaveAs(doc)
+      return false
     }
     try {
       const saved = await call('session.save', { doc, path: asPath ?? null })
@@ -209,13 +207,43 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         message: i18n.t('toast.saved', { name: documentLabel(saved) }),
       })
       void get().refreshRecent()
+      return true
     } catch (error) {
       reportError(error)
+      return false
     }
   },
 
-  requestSaveAs: (doc) => {
-    useUiStore.getState().setPathPrompt({ mode: 'saveAs', doc })
+  requestSaveAs: async (doc, closeAfterSave = false) => {
+    if (getTransport().kind === 'tauri') {
+      try {
+        const { save: saveDialog } = await import('@tauri-apps/plugin-dialog')
+        const chosen = await saveDialog({
+          filters: [
+            {
+              name: i18n.t('dialog.saveAs.filter'),
+              extensions: ['fwf', 'fwf.gz'],
+            },
+          ],
+        })
+        if (typeof chosen !== 'string') return
+        const saved = await get().save(doc, chosen)
+        if (saved && closeAfterSave) await get().close(doc)
+      } catch (error) {
+        reportError(error)
+      }
+      return
+    }
+    useUiStore.getState().setPathPrompt({ mode: 'saveAs', doc, closeAfterSave })
+  },
+
+  saveAndClose: async (doc) => {
+    const summary = get().docs.find((entry) => entry.doc === doc)
+    if (!isNativeDocumentPath(summary?.path ?? null)) {
+      await get().requestSaveAs(doc, true)
+      return
+    }
+    if (await get().save(doc)) await get().close(doc)
   },
 
   close: async (doc) => {
@@ -225,34 +253,31 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       reportError(error)
       return
     }
-    useUiStore.getState().closeTabsForDoc(doc)
-    set((state) => {
-      const docs = state.docs.filter((entry) => entry.doc !== doc)
-      return {
-        docs,
-        activeDoc:
-          state.activeDoc === doc
-            ? (docs[docs.length - 1]?.doc ?? null)
-            : state.activeDoc,
-      }
-    })
+    const ui = useUiStore.getState()
+    ui.closeTabsForDoc(doc)
+    if (ui.closePrompt?.doc === doc) ui.setClosePrompt(null)
+    if (ui.pathPrompt?.doc === doc) ui.setPathPrompt(null)
+    useDocumentStore.getState().forget(doc)
+    set((state) => ({ docs: state.docs.filter((entry) => entry.doc !== doc) }))
   },
 
   requestClose: async (doc) => {
     const summary = get().docs.find((entry) => entry.doc === doc)
     if (summary?.dirty) {
-      const confirmed = globalThis.confirm?.(
-        i18n.t('dialog.closeDirty', { name: documentLabel(summary) }),
-      )
-      if (!confirmed) return
+      useUiStore.getState().setClosePrompt({ doc })
+      return
     }
     await get().close(doc)
   },
-
-  setActiveDoc: (activeDoc) => set({ activeDoc }),
 }))
 
-/** Selector: the summary of the active document, if one is open. */
-export function selectActiveSummary(state: SessionState): DocSummary | null {
-  return state.docs.find((doc) => doc.doc === state.activeDoc) ?? null
+/** Selector factory: the summary of one document. */
+export function selectSummary(doc: DocId | null) {
+  return (state: SessionState): DocSummary | null =>
+    doc === null ? null : (state.docs.find((entry) => entry.doc === doc) ?? null)
+}
+
+/** The summary of the active document outside React. */
+export function activeSummary(): DocSummary | null {
+  return selectSummary(activeDocId())(useSessionStore.getState())
 }

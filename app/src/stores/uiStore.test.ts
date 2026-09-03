@@ -1,17 +1,46 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   PANEL_BOUNDS,
+  applyTheme,
   initialUiState,
+  resolveTheme,
+  selectActiveDoc,
   selectActiveTab,
+  systemTheme,
   tabId,
   useUiStore,
 } from './uiStore'
+
+interface FakeMediaQuery {
+  matches: boolean
+  addEventListener: (type: string, listener: () => void) => void
+  removeEventListener: (type: string, listener: () => void) => void
+  fire: () => void
+}
+
+function stubMatchMedia(matches: boolean): FakeMediaQuery {
+  const listeners = new Set<() => void>()
+  const query: FakeMediaQuery = {
+    matches,
+    addEventListener: (_type, listener) => listeners.add(listener),
+    removeEventListener: (_type, listener) => listeners.delete(listener),
+    fire: () => {
+      for (const listener of [...listeners]) listener()
+    },
+  }
+  vi.stubGlobal('matchMedia', () => query)
+  return query
+}
 
 beforeEach(() => {
   localStorage.clear()
   document.documentElement.removeAttribute('data-theme')
   useUiStore.setState(initialUiState())
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 describe('uiStore theme', () => {
@@ -28,6 +57,33 @@ describe('uiStore theme', () => {
     useUiStore.setState(initialUiState())
 
     expect(useUiStore.getState().theme).toBe('dark')
+  })
+
+  it('resolves the system preference from prefers-color-scheme', () => {
+    stubMatchMedia(true)
+    expect(systemTheme()).toBe('dark')
+    expect(resolveTheme('system')).toBe('dark')
+    expect(resolveTheme('light')).toBe('light')
+
+    useUiStore.getState().setTheme('system')
+    expect(document.documentElement.dataset.theme).toBe('dark')
+  })
+
+  it('follows a system theme change while the preference is system', () => {
+    const query = stubMatchMedia(false)
+    useUiStore.getState().setTheme('system')
+    expect(document.documentElement.dataset.theme).toBe('light')
+
+    query.matches = true
+    applyTheme('system')
+
+    expect(document.documentElement.dataset.theme).toBe('dark')
+  })
+
+  it('falls back to light when the platform has no matchMedia', () => {
+    vi.stubGlobal('matchMedia', undefined)
+
+    expect(systemTheme()).toBe('light')
   })
 })
 
@@ -81,6 +137,19 @@ describe('uiStore tabs', () => {
 
     expect(useUiStore.getState().tabs.map((tab) => tab.doc)).toEqual([2])
     expect(useUiStore.getState().activeTab).toBe(tabId('font', 2))
+  })
+
+  it('derives the active document from the active tab', () => {
+    expect(selectActiveDoc(useUiStore.getState())).toBeNull()
+
+    useUiStore.getState().openTab({ kind: 'font', doc: 7 })
+    expect(selectActiveDoc(useUiStore.getState())).toBe(7)
+
+    const other = useUiStore.getState().openTab({ kind: 'font', doc: 8 })
+    expect(selectActiveDoc(useUiStore.getState())).toBe(8)
+
+    useUiStore.getState().closeTab(other)
+    expect(selectActiveDoc(useUiStore.getState())).toBe(7)
   })
 
   it('cycles through tabs in both directions', () => {

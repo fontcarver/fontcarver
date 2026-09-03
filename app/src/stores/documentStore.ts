@@ -110,6 +110,17 @@ export const useDocumentStore = create<DocumentState>((set, get) => {
     }))
   }
 
+  /**
+   * Applies an update only while the document is still open. Responses that
+   * arrive after the document was closed must not resurrect its view state.
+   */
+  const patchExisting = (doc: DocId, update: Partial<DocView>): boolean => {
+    const current = get().byDoc[doc]
+    if (!current) return false
+    set((state) => ({ byDoc: { ...state.byDoc, [doc]: { ...current, ...update } } }))
+    return true
+  }
+
   return {
     ...initialDocumentState(),
 
@@ -126,9 +137,12 @@ export const useDocumentStore = create<DocumentState>((set, get) => {
       }),
 
     loadSidebar: async (doc) => {
+      get().ensure(doc)
       try {
-        patch(doc, { sidebar: await call('doc.sidebar', { doc }) })
+        patchExisting(doc, { sidebar: await call('doc.sidebar', { doc }) })
       } catch (error) {
+        // A document closed mid-request fails by design; stay quiet then.
+        if (!get().byDoc[doc]) return
         useUiStore.getState().pushToast({
           kind: 'error',
           message: error instanceof Error ? error.message : String(error),

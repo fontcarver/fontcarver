@@ -5,7 +5,7 @@ import { IconButton } from '../components/IconButton'
 import { documentLabel, useSessionStore } from '../stores/sessionStore'
 import { useUiStore, type Tab } from '../stores/uiStore'
 
-import styles from './shell.module.css'
+import styles from './TabBar.module.css'
 import { closeTab } from './tabActions'
 
 /** The tab strip: one Font tab per document plus Glyph and Font Info tabs. */

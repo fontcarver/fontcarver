@@ -40,7 +40,12 @@ export function SplitPane({
   const onPointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (event.button !== 0) return
-      event.currentTarget.setPointerCapture(event.pointerId)
+      // Pointer capture is unavailable in jsdom and can throw for a stale id.
+      try {
+        event.currentTarget.setPointerCapture?.(event.pointerId)
+      } catch {
+        /* Dragging still works through the element's own pointer events. */
+      }
       dragRef.current = { startX: event.clientX, startSize: size }
     },
     [size],
@@ -59,8 +64,12 @@ export function SplitPane({
   const endDrag = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (dragRef.current === null) return
     dragRef.current = null
-    if (event.currentTarget.hasPointerCapture(event.pointerId))
-      event.currentTarget.releasePointerCapture(event.pointerId)
+    try {
+      if (event.currentTarget.hasPointerCapture?.(event.pointerId))
+        event.currentTarget.releasePointerCapture(event.pointerId)
+    } catch {
+      /* Nothing to release. */
+    }
   }, [])
 
   const onKeyDown = useCallback(

@@ -1,8 +1,8 @@
 import { call, getTransport, type DocId } from '../api'
 import { i18n } from '../i18n'
 import { useDocumentStore } from '../stores/documentStore'
-import { selectActiveSummary, useSessionStore } from '../stores/sessionStore'
-import { useUiStore, type ThemePreference } from '../stores/uiStore'
+import { activeSummary, useSessionStore } from '../stores/sessionStore'
+import { activeDocId, useUiStore, type ThemePreference } from '../stores/uiStore'
 
 import { registerCommands, type Command } from './commands'
 import { closeTab, openFontInfoTab, openGlyphTab } from './tabActions'
@@ -10,15 +10,11 @@ import { closeTab, openFontInfoTab, openGlyphTab } from './tabActions'
 const APP_VERSION = '0.1.0'
 
 function activeDoc(): DocId | null {
-  return useSessionStore.getState().activeDoc
+  return activeDocId()
 }
 
 function hasDocument(): boolean {
   return activeDoc() !== null
-}
-
-function activeSummary() {
-  return selectActiveSummary(useSessionStore.getState())
 }
 
 function themeCommand(theme: ThemePreference): Command {
@@ -28,6 +24,7 @@ function themeCommand(theme: ThemePreference): Command {
     menu: 'view',
     group: 'theme',
     when: () => useUiStore.getState().theme !== theme,
+    disabledReason: 'cmd.reason.themeActive',
     run: () => useUiStore.getState().setTheme(theme),
   }
 }
@@ -48,7 +45,7 @@ export function registerBuiltinCommands(): void {
       menu: 'file',
       group: 'open',
       shortcut: 'Mod+N',
-      run: () => void useSessionStore.getState().createDocument(),
+      run: () => useSessionStore.getState().createDocument().then(() => undefined),
     },
     {
       id: 'file.open',
@@ -56,7 +53,7 @@ export function registerBuiltinCommands(): void {
       menu: 'file',
       group: 'open',
       shortcut: 'Mod+O',
-      run: () => void useSessionStore.getState().openDialog(),
+      run: () => useSessionStore.getState().openDialog(),
     },
     {
       id: 'file.openRecent',
@@ -64,6 +61,7 @@ export function registerBuiltinCommands(): void {
       menu: 'file',
       group: 'open',
       when: () => useSessionStore.getState().recent.length > 0,
+      disabledReason: 'cmd.reason.noRecent',
       run: () => useUiStore.getState().setPathPrompt({ mode: 'open' }),
     },
     {
@@ -73,9 +71,15 @@ export function registerBuiltinCommands(): void {
       group: 'save',
       shortcut: 'Mod+S',
       when: hasDocument,
+      disabledReason: 'cmd.reason.noDocument',
       run: () => {
         const doc = activeDoc()
-        if (doc !== null) void useSessionStore.getState().save(doc)
+        return doc === null
+          ? undefined
+          : useSessionStore
+              .getState()
+              .save(doc)
+              .then(() => undefined)
       },
     },
     {
@@ -85,9 +89,12 @@ export function registerBuiltinCommands(): void {
       group: 'save',
       shortcut: 'Mod+Shift+S',
       when: hasDocument,
+      disabledReason: 'cmd.reason.noDocument',
       run: () => {
         const doc = activeDoc()
-        if (doc !== null) useSessionStore.getState().requestSaveAs(doc)
+        return doc === null
+          ? undefined
+          : useSessionStore.getState().requestSaveAs(doc)
       },
     },
     {
@@ -97,6 +104,7 @@ export function registerBuiltinCommands(): void {
       group: 'info',
       shortcut: 'Mod+I',
       when: hasDocument,
+      disabledReason: 'cmd.reason.noDocument',
       run: () => {
         const doc = activeDoc()
         if (doc !== null) openFontInfoTab(doc)
@@ -109,9 +117,12 @@ export function registerBuiltinCommands(): void {
       group: 'close',
       shortcut: 'Mod+W',
       when: hasDocument,
+      disabledReason: 'cmd.reason.noDocument',
       run: () => {
         const doc = activeDoc()
-        if (doc !== null) void useSessionStore.getState().requestClose(doc)
+        return doc === null
+          ? undefined
+          : useSessionStore.getState().requestClose(doc)
       },
     },
     {
@@ -122,7 +133,8 @@ export function registerBuiltinCommands(): void {
       shortcut: 'Mod+Z',
       detail: () => activeSummary()?.undo_label ?? undefined,
       when: () => activeSummary()?.undo_label != null,
-      run: () => void runHistory('doc.undo'),
+      disabledReason: 'cmd.reason.nothingToUndo',
+      run: () => runHistory('doc.undo'),
     },
     {
       id: 'edit.redo',
@@ -132,7 +144,8 @@ export function registerBuiltinCommands(): void {
       shortcut: 'Mod+Shift+Z',
       detail: () => activeSummary()?.redo_label ?? undefined,
       when: () => activeSummary()?.redo_label != null,
-      run: () => void runHistory('doc.redo'),
+      disabledReason: 'cmd.reason.nothingToRedo',
+      run: () => runHistory('doc.redo'),
     },
     {
       id: 'glyph.open',
@@ -144,6 +157,7 @@ export function registerBuiltinCommands(): void {
         if (doc === null) return false
         return (useDocumentStore.getState().byDoc[doc]?.selection.size ?? 0) > 0
       },
+      disabledReason: 'cmd.reason.noSelection',
       run: () => {
         const doc = activeDoc()
         if (doc === null) return
@@ -175,6 +189,7 @@ export function registerBuiltinCommands(): void {
       group: 'zoom',
       shortcut: 'Mod+=',
       when: hasDocument,
+      disabledReason: 'cmd.reason.noDocument',
       run: () => {
         const doc = activeDoc()
         if (doc !== null) useDocumentStore.getState().stepCellSize(doc, 1)
@@ -187,6 +202,7 @@ export function registerBuiltinCommands(): void {
       group: 'zoom',
       shortcut: 'Mod+-',
       when: hasDocument,
+      disabledReason: 'cmd.reason.noDocument',
       run: () => {
         const doc = activeDoc()
         if (doc !== null) useDocumentStore.getState().stepCellSize(doc, -1)
@@ -211,6 +227,7 @@ export function registerBuiltinCommands(): void {
       group: 'tabs',
       shortcut: 'Mod+Alt+ArrowRight',
       when: () => useUiStore.getState().tabs.length > 1,
+      disabledReason: 'cmd.reason.oneTab',
       run: () => useUiStore.getState().cycleTab(1),
     },
     {
@@ -220,6 +237,7 @@ export function registerBuiltinCommands(): void {
       group: 'tabs',
       shortcut: 'Mod+Alt+ArrowLeft',
       when: () => useUiStore.getState().tabs.length > 1,
+      disabledReason: 'cmd.reason.oneTab',
       run: () => useUiStore.getState().cycleTab(-1),
     },
     {
@@ -229,6 +247,7 @@ export function registerBuiltinCommands(): void {
       group: 'tabs',
       shortcut: 'Mod+Shift+W',
       when: () => useUiStore.getState().activeTab !== null,
+      disabledReason: 'cmd.reason.noTab',
       run: () => {
         const active = useUiStore.getState().activeTab
         if (active) closeTab(active)
@@ -247,8 +266,7 @@ export function registerBuiltinCommands(): void {
       menu: 'help',
       group: 'help',
       run: () => {
-        const { pushToast } = useUiStore.getState()
-        pushToast({
+        useUiStore.getState().pushToast({
           kind: 'info',
           message: i18n.t('toast.about', {
             version: APP_VERSION,

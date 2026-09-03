@@ -4,14 +4,18 @@ import { useTranslation } from 'react-i18next'
 import { SplitPane } from '../components/SplitPane'
 import { ToastStack } from '../components/ToastStack'
 import { i18n } from '../i18n'
-import { useSessionStore } from '../stores/sessionStore'
+import { selectSummary, useSessionStore } from '../stores/sessionStore'
 import {
   PANEL_BOUNDS,
   applyTheme,
+  selectActiveDoc,
   selectActiveTab,
   useUiStore,
 } from '../stores/uiStore'
+
+import styles from './AppShell.module.css'
 import { registerBuiltinCommands } from './builtinCommands'
+import { CloseDocumentDialog } from './CloseDocumentDialog'
 import { CommandPalette } from './CommandPalette'
 import { setCommandErrorReporter } from './commands'
 import { EmptyState } from './EmptyState'
@@ -19,7 +23,6 @@ import { Inspector } from './Inspector'
 import { MenuBar } from './MenuBar'
 import { PathPromptDialog } from './PathPromptDialog'
 import { Sidebar } from './Sidebar'
-import styles from './shell.module.css'
 import { installShortcuts } from './shortcuts'
 import { StatusBar } from './StatusBar'
 import { TabBar } from './TabBar'
@@ -34,8 +37,8 @@ export function AppShell() {
   const sizes = useUiStore((state) => state.sizes)
   const setPanelSize = useUiStore((state) => state.setPanelSize)
   const activeTab = useUiStore(selectActiveTab)
-  const docs = useSessionStore((state) => state.docs)
-  const setActiveDoc = useSessionStore((state) => state.setActiveDoc)
+  const activeDoc = useUiStore(selectActiveDoc)
+  const summary = useSessionStore(selectSummary(activeDoc))
 
   useEffect(() => {
     registerBuiltinCommands()
@@ -66,14 +69,6 @@ export function AppShell() {
   useEffect(() => {
     if (i18n.language !== language) void i18n.changeLanguage(language)
   }, [language])
-
-  useEffect(() => {
-    if (activeTab) setActiveDoc(activeTab.doc)
-  }, [activeTab, setActiveDoc])
-
-  const summary = activeTab
-    ? docs.find((doc) => doc.doc === activeTab.doc)
-    : undefined
 
   return (
     <div className={styles.shell}>
@@ -115,6 +110,7 @@ export function AppShell() {
       <StatusBar />
       <CommandPalette />
       <PathPromptDialog />
+      <CloseDocumentDialog />
       <ToastStack />
     </div>
   )

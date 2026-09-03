@@ -1,0 +1,92 @@
+/* The command palette list inside the shared dialog chrome. */
+
+.palette {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+
+.paletteInput {
+  width: 100%;
+  height: 40px;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 var(--space-4);
+  background: transparent;
+  font-size: var(--text-size-lg);
+  outline: none;
+}
+
+.paletteList {
+  max-height: min(52vh, 420px);
+  margin: 0;
+  padding: var(--space-1);
+  overflow-y: auto;
+  list-style: none;
+}
+
+.paletteItem {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--space-4);
+  height: 26px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--text-size);
+  text-align: left;
+  cursor: default;
+}
+
+.paletteItemActive {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.paletteItemActive .hint,
+.paletteItemActive .paletteMenu,
+.paletteItemActive .paletteReason {
+  color: inherit;
+}
+
+.paletteItemDisabled {
+  color: var(--color-text-faint);
+}
+
+.paletteLabel {
+  overflow: hidden;
+  flex: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paletteMenu,
+.paletteReason {
+  flex: none;
+  color: var(--color-text-faint);
+  font-size: var(--text-size-xs);
+}
+
+.hint {
+  flex: none;
+  color: var(--color-text-faint);
+  font-size: var(--text-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.paletteEmpty {
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text-faint);
+  font-size: var(--text-size-sm);
+}
+
+.paletteFooter {
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--color-border-subtle);
+  color: var(--color-text-faint);
+  font-size: var(--text-size-xs);
+}

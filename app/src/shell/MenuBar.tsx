@@ -1,20 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import {
-  MENU_ORDER,
-  commandsForMenu,
-  runCommand,
-  type MenuId,
-} from './commands'
+import { MENU_ORDER, commandsForMenu, runCommand, type MenuId } from './commands'
+import styles from './MenuBar.module.css'
 import { MenuItem } from './MenuItem'
-import styles from './shell.module.css'
 import { useCommandRegistry } from './useCommandRegistry'
 
 /**
  * The in-app menu bar. Every entry comes from the command registry, so a
- * command only has to declare its menu to appear here. Native menus replace
- * this bar in a later phase; the registry stays the single source of truth.
+ * command only has to declare its menu to appear here. All menus from the
+ * design spec are always present; those without commands yet show a single
+ * disabled placeholder rather than disappearing.
  */
 export function MenuBar() {
   const { t } = useTranslation()
@@ -24,8 +20,6 @@ export function MenuBar() {
   const barRef = useRef<HTMLDivElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
 
-  const menus = MENU_ORDER.filter((menu) => commandsForMenu(menu).length > 0)
-
   const focusTitle = useCallback((menu: MenuId) => {
     barRef.current
       ?.querySelector<HTMLButtonElement>(`[data-menu="${menu}"]`)
@@ -34,13 +28,13 @@ export function MenuBar() {
 
   const moveMenu = useCallback(
     (current: MenuId, delta: number, keepOpen: boolean) => {
-      const index = menus.indexOf(current)
-      const next = menus[(index + delta + menus.length) % menus.length]
+      const index = MENU_ORDER.indexOf(current)
+      const next = MENU_ORDER[(index + delta + MENU_ORDER.length) % MENU_ORDER.length]
       if (!next) return
       if (keepOpen) setOpen(next)
       focusTitle(next)
     },
-    [focusTitle, menus],
+    [focusTitle],
   )
 
   useEffect(() => {
@@ -100,13 +94,18 @@ export function MenuBar() {
 
   const renderItems = (menu: MenuId) => {
     const commands = commandsForMenu(menu)
+    if (commands.length === 0)
+      return (
+        <button type="button" role="menuitem" disabled className={styles.menuItem}>
+          <span className={styles.menuItemLabel}>{t('menu.empty')}</span>
+        </button>
+      )
+
     const nodes: React.ReactNode[] = []
     let previousGroup: string | undefined
     for (const command of commands) {
       if (previousGroup !== undefined && command.group !== previousGroup)
-        nodes.push(
-          <div key={`sep-${command.id}`} className={styles.menuSeparator} />,
-        )
+        nodes.push(<div key={`sep-${command.id}`} className={styles.menuSeparator} />)
       previousGroup = command.group
       nodes.push(
         <MenuItem
@@ -126,12 +125,8 @@ export function MenuBar() {
   return (
     <div ref={barRef} className={styles.menubar}>
       <span className={styles.wordmark}>{t('app.name')}</span>
-      <div
-        role="menubar"
-        aria-label={t('a11y.menubar')}
-        className={styles.menuList}
-      >
-        {menus.map((menu) => (
+      <div role="menubar" aria-label={t('a11y.menubar')} className={styles.menuList}>
+        {MENU_ORDER.map((menu) => (
           <div key={menu} role="none" className={styles.menuRoot}>
             <button
               type="button"

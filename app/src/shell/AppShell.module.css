@@ -1,0 +1,26 @@
+/* The application frame: rows of chrome around a three-column workspace. */
+
+.shell {
+  display: grid;
+  height: 100vh;
+  background: var(--color-app);
+  color: var(--color-text);
+  grid-template-rows:
+    var(--menubar-height) var(--tabbar-height) minmax(0, 1fr)
+    var(--statusbar-height);
+}
+
+.workspace {
+  display: flex;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.content {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-canvas);
+}
