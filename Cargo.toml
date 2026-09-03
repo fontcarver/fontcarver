@@ -2,6 +2,7 @@
 members = [
     "crates/fw-api",
     "crates/fw-cli",
+    "crates/fw-compile",
     "crates/fw-devserver",
     "crates/fw-doc",
     "crates/fw-fixtures",
