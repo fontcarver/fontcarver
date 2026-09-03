@@ -33,10 +33,11 @@ pub fn external(key: &str) -> Option<PathBuf> {
 #[macro_export]
 macro_rules! skip_unless_external {
     ($key:expr) => {{
-        match $crate::external($key) {
+        let key = $key;
+        match $crate::external(key) {
             Some(path) => path,
             None => {
-                eprintln!("skipping test: external fixture {:?} is unavailable", $key);
+                eprintln!("skipping test: external fixture {key:?} is unavailable");
                 return;
             }
         }
@@ -60,5 +61,16 @@ mod tests {
     #[test]
     fn committed_dejavu_fixture_exists() {
         assert!(path("DejaVuSans.ttf").is_file());
+    }
+
+    #[test]
+    fn missing_external_fixture_skips_without_reevaluating_key() {
+        let mut evaluations = 0;
+        crate::skip_unless_external!({
+            evaluations += 1;
+            assert_eq!(evaluations, 1);
+            "missing-test-fixture"
+        });
+        panic!("the macro did not return early");
     }
 }

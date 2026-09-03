@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+cd "$(dirname "$0")/.."
 
 cargo run -p fw-devserver -- --port 8787 &
 devserver_pid=$!

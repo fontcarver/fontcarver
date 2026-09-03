@@ -8,6 +8,12 @@ describe('App', () => {
   it('renders the application name', () => {
     render(<App />)
 
-    expect(screen.getByRole('heading', { name: 'FontWorkshop' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'FontWorkshop' })).toBeInTheDocument()
+  })
+
+  it('cleans up the previous component after each test', () => {
+    render(<App />)
+
+    expect(screen.getAllByText('FontWorkshop')).toHaveLength(1)
   })
 })
