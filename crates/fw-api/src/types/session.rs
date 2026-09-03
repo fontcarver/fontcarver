@@ -53,9 +53,22 @@ pub struct SaveParams {
 }
 
 /// An empty JSON object used by parameterless API methods.
-#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, TS)]
 #[ts(export)]
 pub struct EmptyParams {}
+
+#[derive(Deserialize)]
+struct EmptyParamsObject {}
+
+impl<'de> Deserialize<'de> for EmptyParams {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let _ = Option::<EmptyParamsObject>::deserialize(deserializer)?;
+        Ok(Self {})
+    }
+}
 
 /// Compact information about one interpolation master.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]

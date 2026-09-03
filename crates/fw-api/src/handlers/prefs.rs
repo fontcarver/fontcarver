@@ -1,10 +1,16 @@
 //! Preference and recent-file persistence.
 
-use std::{collections::HashSet, fs, path::PathBuf};
+use std::{
+    collections::HashSet,
+    fs,
+    path::PathBuf,
+    sync::atomic::{AtomicU64, Ordering},
+};
 
 use crate::{Api, ApiError, EmptyParams, Prefs, SetPrefsParams};
 
 const MAX_RECENT_FILES: usize = 20;
+static NEXT_TEMP_FILE: AtomicU64 = AtomicU64::new(0);
 
 pub(crate) fn get(api: &Api, _params: EmptyParams) -> Result<Prefs, ApiError> {
     let _guard = api
@@ -39,8 +45,7 @@ pub(crate) fn record_recent(api: &Api, path: String) -> Result<(), ApiError> {
     let mut recent = read_recent_raw()?;
     recent.retain(|candidate| candidate != &path);
     recent.insert(0, path);
-    let limit = recent_limit()?;
-    recent.truncate(limit);
+    recent.truncate(MAX_RECENT_FILES);
     write_json("recent.json", &recent)
 }
 
@@ -55,7 +60,14 @@ fn recent_limit() -> Result<usize, ApiError> {
 }
 
 fn read_prefs() -> Result<Prefs, ApiError> {
-    read_json("prefs.json")?.map_or_else(|| Ok(Prefs::default()), Ok)
+    match read_json("prefs.json") {
+        Ok(Some(prefs)) => Ok(prefs),
+        Ok(None) => Ok(Prefs::default()),
+        Err(error) => {
+            tracing::warn!(%error, "failed to load preferences; using defaults");
+            Ok(Prefs::default())
+        }
+    }
 }
 
 fn read_recent_raw() -> Result<Vec<String>, ApiError> {
@@ -93,8 +105,22 @@ fn write_json(name: &str, value: &impl serde::Serialize) -> Result<(), ApiError>
     let bytes = serde_json::to_vec_pretty(value).map_err(|error| {
         ApiError::internal(format!("failed to serialize `{}`: {error}", path.display()))
     })?;
-    fs::write(&path, bytes)
-        .map_err(|error| ApiError::io(format!("failed to write `{}`: {error}", path.display())))
+    let sequence = NEXT_TEMP_FILE.fetch_add(1, Ordering::Relaxed);
+    let temp_path = dir.join(format!(".{name}.{}.{}.tmp", std::process::id(), sequence));
+    fs::write(&temp_path, bytes).map_err(|error| {
+        ApiError::io(format!(
+            "failed to write temporary config `{}`: {error}",
+            temp_path.display()
+        ))
+    })?;
+    if let Err(error) = fs::rename(&temp_path, &path) {
+        let _ = fs::remove_file(&temp_path);
+        return Err(ApiError::io(format!(
+            "failed to replace `{}`: {error}",
+            path.display()
+        )));
+    }
+    Ok(())
 }
 
 fn config_dir() -> Result<PathBuf, ApiError> {

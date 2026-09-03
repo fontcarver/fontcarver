@@ -3,6 +3,7 @@ use std::{fs, sync::Arc};
 use fw_api::{Api, GlyphListResult};
 use fw_doc::Session;
 use fw_glyphdata::{category, Category};
+use fw_model::{Font, Glyph};
 use serde_json::json;
 
 #[test]
@@ -79,7 +80,74 @@ fn lists_filters_sorts_pages_paths_and_searches_glyphs() {
         .expect("search glyphs");
     assert_eq!(search[0]["name"], "A");
 
+    for query in ["uni", "uni01"] {
+        let search = api
+            .call(
+                "glyphs.search",
+                json!({ "doc": doc, "query": query, "limit": 10 }),
+            )
+            .expect("search name-like Unicode prefix");
+        assert!(search.as_array().is_some_and(|items| !items.is_empty()));
+    }
+    let uni_a = api
+        .call(
+            "glyphs.search",
+            json!({ "doc": doc, "query": "uni0041", "limit": 10 }),
+        )
+        .expect("search uni codepoint");
+    assert_eq!(uni_a[0]["name"], "A");
+
+    let alpha = api
+        .call(
+            "glyphs.search",
+            json!({ "doc": doc, "query": "Alpha", "limit": 1 }),
+        )
+        .expect("rank exact glyph name first");
+    assert_eq!(alpha[0]["name"], "Alpha");
+
+    let clamped = api
+        .call(
+            "glyphs.search",
+            json!({ "doc": doc, "query": "", "limit": 10_000 }),
+        )
+        .expect("clamp oversized search page");
+    assert_eq!(clamped.as_array().map(Vec::len), Some(2_000));
+
     fs::remove_dir_all(config_dir).ok();
+}
+
+#[test]
+fn listing_uses_an_empty_cell_for_a_missing_master_layer() {
+    let mut font = Font::new_empty("Malformed", 1_000);
+    let mut glyph = Glyph::new("broken");
+    glyph.unicodes.push(0x42);
+    font.insert_glyph(glyph).expect("insert glyph");
+    font.glyph_mut("broken")
+        .expect("inserted glyph")
+        .layers
+        .clear();
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(font, None);
+    let api = Api::new(session);
+
+    let result = list(
+        &api,
+        json!({
+            "doc": doc,
+            "master": null,
+            "filter": {},
+            "sort": "Order",
+            "offset": 0,
+            "limit": 10,
+            "include_paths": true
+        }),
+    );
+
+    assert_eq!(result.total, 1);
+    assert_eq!(result.items[0].name, "broken");
+    assert_eq!(result.items[0].width, 0.0);
+    assert_eq!(result.items[0].path.as_deref(), Some(""));
+    assert!(result.items[0].is_empty);
 }
 
 fn list(api: &Api, params: serde_json::Value) -> GlyphListResult {

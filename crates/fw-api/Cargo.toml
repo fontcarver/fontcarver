@@ -16,7 +16,9 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tokio = { version = "1", features = ["sync"], default-features = false }
+tracing.workspace = true
 ts-rs.workspace = true
 
 [dev-dependencies]
 fw-fixtures = { path = "../fw-fixtures" }
+sha2.workspace = true

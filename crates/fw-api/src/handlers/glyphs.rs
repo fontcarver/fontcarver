@@ -20,6 +20,7 @@ struct Candidate {
     name: String,
     first_unicode: Option<u32>,
     width: f64,
+    search_rank: u8,
 }
 
 pub(crate) fn list(api: &Api, params: GlyphListParams) -> Result<GlyphListResult, ApiError> {
@@ -29,7 +30,7 @@ pub(crate) fn list(api: &Api, params: GlyphListParams) -> Result<GlyphListResult
             params.limit
         )));
     }
-    list_impl(api, params)
+    list_impl(api, params, None)
 }
 
 pub(crate) fn cell(api: &Api, params: GlyphCellParams) -> Result<GlyphCell, ApiError> {
@@ -47,25 +48,31 @@ pub(crate) fn detail(api: &Api, params: GlyphDetailParams) -> Result<GlyphDetail
 }
 
 pub(crate) fn search(api: &Api, params: GlyphSearchParams) -> Result<Vec<GlyphCell>, ApiError> {
+    let query = params.query;
     let result = list_impl(
         api,
         GlyphListParams {
             doc: params.doc,
             master: None,
             filter: GlyphFilter {
-                query: Some(params.query),
+                query: Some(query.clone()),
                 ..GlyphFilter::default()
             },
             sort: GlyphSort::Order,
             offset: 0,
-            limit: params.limit,
+            limit: params.limit.min(MAX_GLYPH_PAGE),
             include_paths: false,
         },
+        Some(&query),
     )?;
     Ok(result.items)
 }
 
-fn list_impl(api: &Api, params: GlyphListParams) -> Result<GlyphListResult, ApiError> {
+fn list_impl(
+    api: &Api,
+    params: GlyphListParams,
+    search_query: Option<&str>,
+) -> Result<GlyphListResult, ApiError> {
     api.session
         .with_doc(params.doc, |document| {
             let master = selected_master(document, params.master.as_ref())?;
@@ -74,11 +81,7 @@ fn list_impl(api: &Api, params: GlyphListParams) -> Result<GlyphListResult, ApiE
                 let glyph = document.font.glyph(name).ok_or_else(|| {
                     ApiError::internal(format!("glyph order references missing glyph `{name}`"))
                 })?;
-                let layer = glyph.master_layer(&master).ok_or_else(|| {
-                    ApiError::not_found(format!(
-                        "master layer `{master}` does not exist in glyph `{name}`"
-                    ))
-                })?;
+                let layer = glyph.master_layer(&master);
                 let gid = document.glyph_id(name).ok_or_else(|| {
                     ApiError::internal(format!("glyph `{name}` has no session handle"))
                 })?;
@@ -88,11 +91,22 @@ fn list_impl(api: &Api, params: GlyphListParams) -> Result<GlyphListResult, ApiE
                         gid,
                         name: name.to_string(),
                         first_unicode: glyph.unicodes.first().copied(),
-                        width: layer.width,
+                        width: layer.map_or(0.0, |layer| layer.width),
+                        search_rank: search_query
+                            .and_then(|query| query_rank(glyph, query))
+                            .unwrap_or_default(),
                     });
                 }
             }
-            sort_candidates(&mut matches, params.sort);
+            if search_query.is_some() {
+                matches.sort_by(|left, right| {
+                    left.search_rank
+                        .cmp(&right.search_rank)
+                        .then_with(|| left.order.cmp(&right.order))
+                });
+            } else {
+                sort_candidates(&mut matches, params.sort);
+            }
             let total = u32::try_from(matches.len()).unwrap_or(u32::MAX);
             let offset = params.offset as usize;
             let limit = params.limit as usize;
@@ -121,7 +135,12 @@ fn selected_master(
         .ok_or_else(|| ApiError::not_found(format!("master `{master}` does not exist")))
 }
 
-fn matches_filter(glyph: &Glyph, layer: &Layer, generation: u64, filter: &GlyphFilter) -> bool {
+fn matches_filter(
+    glyph: &Glyph,
+    layer: Option<&Layer>,
+    generation: u64,
+    filter: &GlyphFilter,
+) -> bool {
     if filter
         .query
         .as_deref()
@@ -183,7 +202,7 @@ fn matches_filter(glyph: &Glyph, layer: &Layer, generation: u64, filter: &GlyphF
     }
     if filter
         .has_components
-        .is_some_and(|expected| expected == layer.components.is_empty())
+        .is_some_and(|expected| expected == layer.is_none_or(|layer| layer.components.is_empty()))
     {
         return false;
     }
@@ -202,23 +221,41 @@ fn category_matches(first_unicode: Option<u32>, allowed: &[String]) -> bool {
 }
 
 fn query_matches(glyph: &Glyph, query: &str) -> bool {
+    query_rank(glyph, query).is_some()
+}
+
+fn query_rank(glyph: &Glyph, query: &str) -> Option<u8> {
     let query = query.trim();
-    if query.is_empty() {
-        return true;
-    }
     let lower = query.to_lowercase();
     if let Some(digits) = lower.strip_prefix("u+") {
-        return parse_scalar(digits).is_some_and(|unicode| glyph.unicodes.contains(&unicode));
+        if let Some(unicode) = parse_scalar(digits) {
+            return glyph.unicodes.contains(&unicode).then_some(4);
+        }
     }
     if lower.starts_with("uni") {
-        return fw_glyphdata::unicode_for_name(&lower)
-            .is_some_and(|unicode| glyph.unicodes.contains(&unicode));
+        if let Some(unicode) = fw_glyphdata::unicode_for_name(&lower) {
+            return glyph.unicodes.contains(&unicode).then_some(4);
+        }
+    }
+    let name = glyph.name.as_ref();
+    if name == query {
+        return Some(0);
+    }
+    let lower_name = name.to_lowercase();
+    if lower_name == lower {
+        return Some(1);
+    }
+    if lower_name.starts_with(&lower) {
+        return Some(2);
+    }
+    if lower_name.contains(&lower) {
+        return Some(3);
     }
     let mut characters = query.chars();
     if let (Some(character), None) = (characters.next(), characters.next()) {
-        return glyph.unicodes.contains(&u32::from(character));
+        return glyph.unicodes.contains(&u32::from(character)).then_some(4);
     }
-    glyph.name.to_lowercase().contains(&lower)
+    None
 }
 
 fn parse_scalar(digits: &str) -> Option<u32> {
@@ -270,11 +307,21 @@ fn build_cell(
         .font
         .glyph(name)
         .ok_or_else(|| ApiError::not_found(format!("glyph `{name}` does not exist")))?;
-    let layer = glyph.master_layer(master).ok_or_else(|| {
-        ApiError::not_found(format!(
-            "master layer `{master}` does not exist in glyph `{name}`"
-        ))
-    })?;
+    let Some(layer) = glyph.master_layer(master) else {
+        return Ok(GlyphCell {
+            gid,
+            name: name.to_string(),
+            unicodes: glyph.unicodes.clone(),
+            width: 0.0,
+            bbox: None,
+            path: Some(String::new()),
+            color_label: glyph.color_label,
+            export: glyph.export,
+            has_components: false,
+            is_empty: true,
+            generation: document.glyph_generation(gid),
+        });
+    };
     let flattened = document.flattened_path(gid, master)?;
     let bbox = (!flattened.elements().is_empty()).then(|| {
         let bounds = flattened.bounding_box();

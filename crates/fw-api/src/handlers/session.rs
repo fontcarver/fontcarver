@@ -11,27 +11,19 @@ use crate::{
 
 pub(crate) fn open(api: &Api, params: OpenParams) -> Result<DocSummary, ApiError> {
     let path = Path::new(&params.path);
-    let warnings = if params.face_index.is_none() && is_collection_path(path) {
-        let face_count = face_names(path)?.len();
-        if face_count > 1 {
-            vec![format!("collection has {face_count} faces; opened face 0")]
-        } else {
-            Vec::new()
-        }
+    let (doc, warnings) = if is_fwf_path(path) {
+        (api.session.open_path(path, params.face_index)?, Vec::new())
+    } else if is_binary_font_path(path) {
+        open_binary(api, path, params.face_index)?
     } else {
-        Vec::new()
+        (api.session.open_path(path, params.face_index)?, Vec::new())
     };
-    let doc = api.session.open_path(path, params.face_index)?;
     api.warnings
         .lock()
         .map_err(|_| ApiError::internal("API warning cache lock is poisoned"))?
         .insert(doc, warnings);
     if let Err(error) = prefs::record_recent(api, params.path) {
-        let _ = api.session.close(doc);
-        if let Ok(mut warnings) = api.warnings.lock() {
-            warnings.remove(&doc);
-        }
-        return Err(error);
+        tracing::warn!(%error, doc = doc.0, "failed to record recently opened font");
     }
     summary_for(api, doc)
 }
@@ -75,10 +67,19 @@ pub(crate) fn save(api: &Api, params: SaveParams) -> Result<DocSummary, ApiError
             let current = api
                 .session
                 .with_doc(params.doc, |document| document.path.clone())?;
-            current
-                .ok_or_else(|| ApiError::invalid_params("an unsaved document requires a path"))?
-                .to_string_lossy()
-                .into_owned()
+            match current {
+                Some(path) if is_fwf_path(&path) => path.to_string_lossy().into_owned(),
+                Some(_) => {
+                    return Err(ApiError::invalid_params(
+                        "imported fonts need an explicit .fwf path",
+                    ))
+                }
+                None => {
+                    return Err(ApiError::invalid_params(
+                        "an unsaved document requires a path",
+                    ))
+                }
+            }
         }
     };
     api.session
@@ -165,6 +166,49 @@ fn face_names(path: &Path) -> Result<Vec<String>, ApiError> {
     fw_sfnt::face_names(&bytes).map_err(ApiError::from)
 }
 
+fn open_binary(
+    api: &Api,
+    path: &Path,
+    face_index: Option<u32>,
+) -> Result<(DocId, Vec<String>), ApiError> {
+    let bytes = fs::read(path)
+        .map_err(|error| ApiError::io(format!("failed to read `{}`: {error}", path.display())))?;
+    let warnings =
+        if face_index.is_none() && fw_sfnt::sniff(&bytes) == Some(fw_sfnt::Container::Ttc) {
+            let count = fw_sfnt::face_count(&bytes)?;
+            if count > 1 {
+                vec![format!("collection has {count} faces; opened face 0")]
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
+        };
+    let options = fw_sfnt::ReadOptions {
+        font_index: face_index,
+        keep_original_bytes: true,
+        decode_bitmaps: true,
+    };
+    let mut outcome = fw_sfnt::read_bytes(&bytes, &options)?;
+    if !outcome.warnings.is_empty() {
+        tracing::warn!(
+            warning_count = outcome.warnings.len(),
+            path = %path.display(),
+            "warnings while opening binary font"
+        );
+    }
+    let mut font = outcome
+        .fonts
+        .drain(..)
+        .next()
+        .ok_or_else(|| ApiError::internal("font reader returned no faces"))?;
+    if let Some(source) = &mut font.extra.source {
+        source.path = Some(path.to_string_lossy().into_owned());
+    }
+    let doc = api.session.open_font(font, Some(path.to_path_buf()));
+    Ok((doc, warnings))
+}
+
 fn is_fwf_path(path: &Path) -> bool {
     let name = path
         .file_name()
@@ -174,9 +218,14 @@ fn is_fwf_path(path: &Path) -> bool {
     name.ends_with(".fwf") || name.ends_with(".fwf.gz")
 }
 
-fn is_collection_path(path: &Path) -> bool {
+fn is_binary_font_path(path: &Path) -> bool {
     path.extension()
         .and_then(|extension| extension.to_str())
         .map(str::to_ascii_lowercase)
-        .is_some_and(|extension| matches!(extension.as_str(), "ttc" | "otc"))
+        .is_some_and(|extension| {
+            matches!(
+                extension.as_str(),
+                "ttf" | "otf" | "ttc" | "otc" | "woff" | "woff2"
+            )
+        })
 }

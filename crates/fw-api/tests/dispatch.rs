@@ -1,4 +1,8 @@
-use std::{fs, sync::Arc};
+use std::{
+    fs,
+    path::Path,
+    sync::{Arc, Mutex, MutexGuard},
+};
 
 use fw_api::{
     Api, ApplyParams, DocParams, EditApplyParams, EditBeginParams, EditEndParams, EditTokenId,
@@ -7,9 +11,13 @@ use fw_api::{
 use fw_doc::Session;
 use fw_model::{Font, Glyph, Layer};
 use serde_json::json;
+use sha2::{Digest, Sha256};
+
+static CONFIG_ENV_LOCK: Mutex<()> = Mutex::new(());
 
 #[test]
 fn dispatches_session_open_and_reports_boundary_errors() {
+    let _env_guard = config_env_guard();
     let config_dir = test_config_dir("dispatch");
     std::env::set_var("FW_CONFIG_DIR", &config_dir);
     let api = Api::new(Arc::new(Session::new()));
@@ -62,7 +70,7 @@ fn dispatches_session_open_and_reports_boundary_errors() {
     let recent = api.call("session.recent", json!({})).expect("recent paths");
     assert_eq!(recent, json!([fixture]));
     assert_eq!(
-        api.call("session.list", json!({}))
+        api.call("session.list", serde_json::Value::Null)
             .expect("list documents")
             .as_array()
             .map(Vec::len),
@@ -81,6 +89,146 @@ fn dispatches_session_open_and_reports_boundary_errors() {
     fs::remove_dir_all(config_dir).ok();
 }
 
+#[test]
+fn save_without_path_never_overwrites_an_imported_font() {
+    let _env_guard = config_env_guard();
+    let config_dir = test_config_dir("safe-save");
+    std::env::set_var("FW_CONFIG_DIR", &config_dir);
+    fs::create_dir_all(&config_dir).expect("create test directory");
+    let imported_path = config_dir.join("imported.ttf");
+    fs::copy(fw_fixtures::path("DejaVuSans.ttf"), &imported_path)
+        .expect("copy imported font fixture");
+    let before = sha256(&imported_path);
+    let api = Api::new(Arc::new(Session::new()));
+    let opened = api
+        .call(
+            "session.open",
+            json!({ "path": imported_path, "face_index": null }),
+        )
+        .expect("open temporary font copy");
+
+    let error = api
+        .call(
+            "session.save",
+            json!({ "doc": opened["doc"], "path": null }),
+        )
+        .expect_err("imported font needs an explicit FWF path");
+
+    assert_eq!(error.code, "invalid_params");
+    assert_eq!(error.message, "imported fonts need an explicit .fwf path");
+    assert_eq!(sha256(&imported_path), before);
+    fs::remove_dir_all(config_dir).ok();
+}
+
+#[test]
+fn damaged_preferences_fall_back_and_do_not_block_opening() {
+    let _env_guard = config_env_guard();
+    let config_dir = test_config_dir("damaged-prefs");
+    std::env::set_var("FW_CONFIG_DIR", &config_dir);
+    fs::create_dir_all(&config_dir).expect("create config directory");
+    fs::write(config_dir.join("prefs.json"), br#"{"theme":"dark""#)
+        .expect("write truncated preferences");
+    let api = Api::new(Arc::new(Session::new()));
+
+    assert_eq!(
+        api.call("prefs.get", serde_json::Value::Null)
+            .expect("damaged preferences use defaults"),
+        json!({
+            "theme": "system",
+            "language": "en",
+            "recent_limit": 20,
+            "autosave_seconds": 60
+        })
+    );
+    let opened = api
+        .call(
+            "session.open",
+            json!({
+                "path": fw_fixtures::path("DejaVuSans.ttf"),
+                "face_index": null
+            }),
+        )
+        .expect("damaged preferences do not block opening");
+    assert_eq!(opened["family_name"], "DejaVu Sans");
+    fs::remove_dir_all(config_dir).ok();
+}
+
+#[test]
+fn recent_limit_only_limits_returned_history() {
+    let _env_guard = config_env_guard();
+    let config_dir = test_config_dir("recent-limit");
+    std::env::set_var("FW_CONFIG_DIR", &config_dir);
+    let api = Api::new(Arc::new(Session::new()));
+    api.call(
+        "prefs.set",
+        json!({
+            "prefs": {
+                "theme": "system",
+                "language": "en",
+                "recent_limit": 2,
+                "autosave_seconds": 60
+            }
+        }),
+    )
+    .expect("set short recent display limit");
+    for name in ["one.ttf", "two.ttf", "three.ttf"] {
+        let path = config_dir.join(name);
+        fs::create_dir_all(&config_dir).expect("create config directory");
+        fs::copy(fw_fixtures::path("DejaVuSans.ttf"), &path).expect("copy font fixture");
+        api.call("session.open", json!({ "path": path, "face_index": null }))
+            .expect("open recent font");
+    }
+    assert_eq!(
+        api.call("session.recent", serde_json::Value::Null)
+            .expect("limited recent list")
+            .as_array()
+            .map(Vec::len),
+        Some(2)
+    );
+    api.call(
+        "prefs.set",
+        json!({
+            "prefs": {
+                "theme": "system",
+                "language": "en",
+                "recent_limit": 20,
+                "autosave_seconds": 60
+            }
+        }),
+    )
+    .expect("raise recent display limit");
+    assert_eq!(
+        api.call("session.recent", serde_json::Value::Null)
+            .expect("full recent list")
+            .as_array()
+            .map(Vec::len),
+        Some(3)
+    );
+    fs::remove_dir_all(config_dir).ok();
+}
+
+#[test]
+fn collection_warning_uses_file_contents_not_extension() {
+    let _env_guard = config_env_guard();
+    let config_dir = test_config_dir("collection-sniff");
+    std::env::set_var("FW_CONFIG_DIR", &config_dir);
+    fs::create_dir_all(&config_dir).expect("create test directory");
+    let path = config_dir.join("collection-disguised-as-font.ttf");
+    fs::write(&path, two_face_ttc(&fw_fixtures::path("DejaVuSans.ttf")))
+        .expect("write temporary collection");
+    let api = Api::new(Arc::new(Session::new()));
+
+    let opened = api
+        .call("session.open", json!({ "path": path, "face_index": null }))
+        .expect("open collection with ttf extension");
+
+    assert_eq!(
+        opened["warnings"],
+        json!(["collection has 2 faces; opened face 0"])
+    );
+    fs::remove_dir_all(config_dir).ok();
+}
+
 fn test_config_dir(label: &str) -> std::path::PathBuf {
     let dir = std::env::temp_dir().join(format!(
         "fontworkshop-fw-api-{label}-{}",
@@ -88,6 +236,40 @@ fn test_config_dir(label: &str) -> std::path::PathBuf {
     ));
     fs::remove_dir_all(&dir).ok();
     dir
+}
+
+fn config_env_guard() -> MutexGuard<'static, ()> {
+    CONFIG_ENV_LOCK
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+}
+
+fn sha256(path: &Path) -> Vec<u8> {
+    Sha256::digest(fs::read(path).expect("read file for SHA-256")).to_vec()
+}
+
+fn two_face_ttc(sfnt_path: &Path) -> Vec<u8> {
+    let mut sfnt = fs::read(sfnt_path).expect("read sfnt fixture");
+    let font_offset = 20_u32;
+    let table_count = u16::from_be_bytes([sfnt[4], sfnt[5]]) as usize;
+    for index in 0..table_count {
+        let offset_position = 12 + index * 16 + 8;
+        let old_offset = u32::from_be_bytes(
+            sfnt[offset_position..offset_position + 4]
+                .try_into()
+                .expect("table offset bytes"),
+        );
+        sfnt[offset_position..offset_position + 4]
+            .copy_from_slice(&(old_offset + font_offset).to_be_bytes());
+    }
+    let mut ttc = Vec::with_capacity(font_offset as usize + sfnt.len());
+    ttc.extend_from_slice(b"ttcf");
+    ttc.extend_from_slice(&0x0001_0000_u32.to_be_bytes());
+    ttc.extend_from_slice(&2_u32.to_be_bytes());
+    ttc.extend_from_slice(&font_offset.to_be_bytes());
+    ttc.extend_from_slice(&font_offset.to_be_bytes());
+    ttc.extend_from_slice(&sfnt);
+    ttc
 }
 
 #[test]
