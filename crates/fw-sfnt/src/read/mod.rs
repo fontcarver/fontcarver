@@ -129,11 +129,13 @@ fn read_impl(bytes: &[u8], path: Option<&Path>, opts: &ReadOptions) -> Result<Re
             .map_err(|error| Error::parse("sfnt", error))?;
         let mut font = read_face(&face, &mut warnings)?;
         let format = source_format(container, &face);
+        let glyph_order = font.glyph_order().cloned().collect();
         font.extra.source = Some(SourceProvenance {
             path: path.map(|path| path.to_string_lossy().into_owned()),
             format: format.to_owned(),
             sha256: hash.clone(),
             table_tags: raw::table_tags(&face),
+            glyph_order,
             original_bytes: opts.keep_original_bytes.then(|| Arc::clone(&source_bytes)),
         });
         fonts.push(font);

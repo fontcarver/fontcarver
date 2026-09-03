@@ -12,7 +12,8 @@ const CONSUMED: &[[u8; 4]] = &[
 const RAW_ONLY: &[[u8; 4]] = &[
     *b"GSUB", *b"GPOS", *b"GDEF", *b"BASE", *b"MATH", *b"JSTF", *b"STAT", *b"COLR", *b"CPAL",
     *b"SVG ", *b"EBDT", *b"EBLC", *b"CBDT", *b"CBLC", *b"sbix", *b"EBSC", *b"hdmx", *b"VDMX",
-    *b"LTSH", *b"PCLT", *b"meta", *b"kern", *b"VORG", *b"gvar", *b"HVAR", *b"MVAR", *b"cvar",
+    *b"LTSH", *b"PCLT", *b"meta", *b"kern", *b"VORG", *b"gasp", *b"gvar", *b"HVAR", *b"MVAR",
+    *b"cvar",
 ];
 
 pub(crate) fn table_tags(face: &FontRef<'_>) -> Vec<Tag> {

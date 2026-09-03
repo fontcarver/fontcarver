@@ -88,7 +88,20 @@ fn reads_dejavu_into_the_document_model() {
         .map(|record| Tag(record.tag().to_be_bytes()))
         .collect();
     assert_eq!(provenance.table_tags, expected_tags);
+    assert_eq!(
+        provenance.glyph_order,
+        font.glyph_order().cloned().collect::<Vec<_>>()
+    );
     assert_eq!(provenance.original_bytes.as_deref(), Some(&bytes));
+
+    for bogus in [0x0000, 0x0008, 0x0080] {
+        assert!(
+            font.glyphs
+                .values()
+                .all(|glyph| !glyph.unicodes.contains(&bogus)),
+            "Mac Roman byte U+{bogus:04X} leaked into Unicode mappings"
+        );
+    }
 }
 
 #[test]
@@ -168,6 +181,10 @@ fn can_drop_original_bytes_without_losing_provenance() {
         .expect("source provenance");
     assert!(provenance.original_bytes.is_none());
     assert_eq!(provenance.sha256.len(), 64);
+    assert_eq!(
+        provenance.glyph_order,
+        outcome.fonts[0].glyph_order().cloned().collect::<Vec<_>>()
+    );
 }
 
 #[test]

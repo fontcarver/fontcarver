@@ -4,7 +4,7 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
-use crate::Tag;
+use crate::{GlyphName, Tag};
 
 /// Provenance of the last imported source font.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -23,6 +23,9 @@ pub struct SourceProvenance {
     /// Tags present in the source font.
     #[serde(default)]
     pub table_tags: Vec<Tag>,
+    /// Glyph names in source glyph-ID order.
+    #[serde(default)]
+    pub glyph_order: Vec<GlyphName>,
     /// In-memory source bytes for preservation merges; never persisted.
     #[serde(skip)]
     #[cfg_attr(feature = "ts", ts(skip))]

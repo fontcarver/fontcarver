@@ -109,10 +109,14 @@ pub(crate) fn glyph_names(
         return Ok((0..glyph_count)
             .zip(cids)
             .map(|(gid, cid)| {
-                let candidate = unicodes
-                    .get(usize::from(gid))
-                    .and_then(|values| first_naming_codepoint(values))
-                    .map_or_else(|| format!("cid{cid:05}"), unicode_glyph_name);
+                let candidate = if gid == 0 {
+                    ".notdef".to_owned()
+                } else {
+                    unicodes
+                        .get(usize::from(gid))
+                        .and_then(|values| first_naming_codepoint(values))
+                        .map_or_else(|| format!("cid{cid:05}"), unicode_glyph_name)
+                };
                 unique_glyph_name(candidate, gid, &mut used)
             })
             .map(GlyphName::from)
