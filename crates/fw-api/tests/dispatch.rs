@@ -53,6 +53,28 @@ fn font_info_includes_named_instances() {
 }
 
 #[test]
+fn explicit_config_directory_is_used_without_an_environment_override() {
+    let config_dir = test_config_dir("explicit-config");
+    let api = Api::with_config_dir(&config_dir);
+
+    api.call(
+        "prefs.set",
+        json!({
+            "prefs": {
+                "theme": "dark",
+                "language": "en",
+                "recent_limit": 5,
+                "autosave_seconds": 30
+            }
+        }),
+    )
+    .expect("write preferences to explicit config directory");
+
+    assert!(config_dir.join("prefs.json").is_file());
+    fs::remove_dir_all(config_dir).ok();
+}
+
+#[test]
 fn dispatches_session_open_and_reports_boundary_errors() {
     let _env_guard = config_env_guard();
     let config_dir = test_config_dir("dispatch");

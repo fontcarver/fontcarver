@@ -17,7 +17,7 @@ pub(crate) fn get(api: &Api, _params: EmptyParams) -> Result<Prefs, ApiError> {
         .config_lock
         .lock()
         .map_err(|_| ApiError::internal("API config lock is poisoned"))?;
-    read_prefs()
+    read_prefs(api)
 }
 
 pub(crate) fn set(api: &Api, params: SetPrefsParams) -> Result<Prefs, ApiError> {
@@ -25,7 +25,7 @@ pub(crate) fn set(api: &Api, params: SetPrefsParams) -> Result<Prefs, ApiError> 
         .config_lock
         .lock()
         .map_err(|_| ApiError::internal("API config lock is poisoned"))?;
-    write_json("prefs.json", &params.prefs)?;
+    write_json(api, "prefs.json", &params.prefs)?;
     Ok(params.prefs)
 }
 
@@ -34,7 +34,7 @@ pub(crate) fn recent(api: &Api) -> Result<Vec<String>, ApiError> {
         .config_lock
         .lock()
         .map_err(|_| ApiError::internal("API config lock is poisoned"))?;
-    read_recent_limited()
+    read_recent_limited(api)
 }
 
 pub(crate) fn record_recent(api: &Api, path: String) -> Result<(), ApiError> {
@@ -42,25 +42,25 @@ pub(crate) fn record_recent(api: &Api, path: String) -> Result<(), ApiError> {
         .config_lock
         .lock()
         .map_err(|_| ApiError::internal("API config lock is poisoned"))?;
-    let mut recent = read_recent_raw()?;
+    let mut recent = read_recent_raw(api)?;
     recent.retain(|candidate| candidate != &path);
     recent.insert(0, path);
     recent.truncate(MAX_RECENT_FILES);
-    write_json("recent.json", &recent)
+    write_json(api, "recent.json", &recent)
 }
 
-fn read_recent_limited() -> Result<Vec<String>, ApiError> {
-    let mut recent = read_recent_raw()?;
-    recent.truncate(recent_limit()?);
+fn read_recent_limited(api: &Api) -> Result<Vec<String>, ApiError> {
+    let mut recent = read_recent_raw(api)?;
+    recent.truncate(recent_limit(api)?);
     Ok(recent)
 }
 
-fn recent_limit() -> Result<usize, ApiError> {
-    Ok((read_prefs()?.recent_limit as usize).min(MAX_RECENT_FILES))
+fn recent_limit(api: &Api) -> Result<usize, ApiError> {
+    Ok((read_prefs(api)?.recent_limit as usize).min(MAX_RECENT_FILES))
 }
 
-fn read_prefs() -> Result<Prefs, ApiError> {
-    match read_json("prefs.json") {
+fn read_prefs(api: &Api) -> Result<Prefs, ApiError> {
+    match read_json(api, "prefs.json") {
         Ok(Some(prefs)) => Ok(prefs),
         Ok(None) => Ok(Prefs::default()),
         Err(error) => {
@@ -70,8 +70,8 @@ fn read_prefs() -> Result<Prefs, ApiError> {
     }
 }
 
-fn read_recent_raw() -> Result<Vec<String>, ApiError> {
-    let recent: Vec<String> = read_json("recent.json")?.unwrap_or_default();
+fn read_recent_raw(api: &Api) -> Result<Vec<String>, ApiError> {
+    let recent: Vec<String> = read_json(api, "recent.json")?.unwrap_or_default();
     let mut seen = HashSet::new();
     Ok(recent
         .into_iter()
@@ -80,8 +80,8 @@ fn read_recent_raw() -> Result<Vec<String>, ApiError> {
         .collect())
 }
 
-fn read_json<T: serde::de::DeserializeOwned>(name: &str) -> Result<Option<T>, ApiError> {
-    let path = config_dir()?.join(name);
+fn read_json<T: serde::de::DeserializeOwned>(api: &Api, name: &str) -> Result<Option<T>, ApiError> {
+    let path = config_dir(api)?.join(name);
     let bytes = match fs::read(&path) {
         Ok(bytes) => bytes,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
@@ -97,8 +97,8 @@ fn read_json<T: serde::de::DeserializeOwned>(name: &str) -> Result<Option<T>, Ap
         .map_err(|error| ApiError::parse(format!("failed to parse `{}`: {error}", path.display())))
 }
 
-fn write_json(name: &str, value: &impl serde::Serialize) -> Result<(), ApiError> {
-    let dir = config_dir()?;
+fn write_json(api: &Api, name: &str, value: &impl serde::Serialize) -> Result<(), ApiError> {
+    let dir = config_dir(api)?;
     fs::create_dir_all(&dir)
         .map_err(|error| ApiError::io(format!("failed to create `{}`: {error}", dir.display())))?;
     let path = dir.join(name);
@@ -123,7 +123,10 @@ fn write_json(name: &str, value: &impl serde::Serialize) -> Result<(), ApiError>
     Ok(())
 }
 
-fn config_dir() -> Result<PathBuf, ApiError> {
+fn config_dir(api: &Api) -> Result<PathBuf, ApiError> {
+    if let Some(path) = api.config_dir() {
+        return Ok(path.to_owned());
+    }
     if let Some(path) = std::env::var_os("FW_CONFIG_DIR") {
         return Ok(PathBuf::from(path));
     }

@@ -13,7 +13,7 @@ use tokio_tungstenite::connect_async;
 struct TestServer {
     address: SocketAddr,
     task: JoinHandle<()>,
-    _config_dir: TempDir,
+    config_dir: TempDir,
 }
 
 impl Drop for TestServer {
@@ -40,7 +40,7 @@ async fn spawn_server() -> TestServer {
     TestServer {
         address,
         task,
-        _config_dir: config_dir,
+        config_dir,
     }
 }
 
@@ -133,6 +133,7 @@ async fn serves_http_errors_and_document_events() {
     assert_eq!(event["doc"], doc);
     assert_eq!(event["generation"], 1);
     assert_eq!(event["dirty"], true);
+    assert!(server.config_dir.path().join("recent.json").is_file());
 }
 
 #[tokio::test]
