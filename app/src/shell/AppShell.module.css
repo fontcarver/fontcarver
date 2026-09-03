@@ -1,0 +1,31 @@
+/* The application frame: rows of chrome around a three-column workspace. */
+
+.shell {
+  display: grid;
+  height: 100vh;
+  background: var(--color-app);
+  color: var(--color-text);
+  /* An explicit single column: without it the implicit column is sized to the
+     widest row's max-content, and a wide view would push the page sideways. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows:
+    var(--menubar-height) var(--tabbar-height) minmax(0, 1fr)
+    var(--statusbar-height);
+}
+
+.workspace {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.content {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-canvas);
+}

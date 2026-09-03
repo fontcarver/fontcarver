@@ -1,0 +1,510 @@
+{
+  "app": {
+    "name": "FontWorkshop",
+    "tagline": "A workshop for outline, bitmap and variable fonts."
+  },
+  "common": {
+    "cancel": "Cancel",
+    "close": "Close",
+    "open": "Open",
+    "save": "Save",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "menu": {
+    "file": "File",
+    "edit": "Edit",
+    "glyph": "Glyph",
+    "view": "View",
+    "window": "Window",
+    "help": "Help",
+    "path": "Path",
+    "layer": "Layer",
+    "font": "Font",
+    "features": "Features",
+    "bitmap": "Bitmap",
+    "empty": "Arrives in a later phase"
+  },
+  "cmd": {
+    "file": {
+      "new": "New Font…",
+      "open": "Open Font…",
+      "openRecent": "Open Recent…",
+      "save": "Save",
+      "saveAs": "Save As…",
+      "close": "Close Font",
+      "fontInfo": "Font Info"
+    },
+    "edit": {
+      "undo": "Undo",
+      "undoLabelled": "Undo {{label}}",
+      "redo": "Redo",
+      "redoLabelled": "Redo {{label}}",
+      "selectAll": "Select All Glyphs",
+      "selectNone": "Deselect All",
+      "copyGlyphNames": "Copy Glyph Names"
+    },
+    "glyph": {
+      "open": "Open Glyph in New Tab",
+      "previous": "Previous Glyph",
+      "next": "Next Glyph"
+    },
+    "view": {
+      "toggleSidebar": "Toggle Sidebar",
+      "toggleInspector": "Toggle Inspector",
+      "zoomIn": "Larger Cells",
+      "zoomOut": "Smaller Cells",
+      "theme": {
+        "light": "Light Theme",
+        "dark": "Dark Theme",
+        "system": "Match System Theme"
+      },
+      "zoomFit": "Fit Glyph in Window",
+      "glyph": {
+        "filled": "Fill Preview",
+        "points": "Show Nodes",
+        "metrics": "Show Metrics",
+        "anchors": "Show Anchors",
+        "guides": "Show Guides",
+        "rulers": "Show Rulers"
+      }
+    },
+    "window": {
+      "nextTab": "Next Tab",
+      "previousTab": "Previous Tab",
+      "closeTab": "Close Tab"
+    },
+    "palette": {
+      "open": "Command Palette…"
+    },
+    "help": {
+      "shortcuts": "Keyboard Shortcuts",
+      "about": "About FontWorkshop"
+    },
+    "reason": {
+      "noDocument": "No font is open",
+      "noRecent": "No recent files",
+      "noSelection": "No glyphs are selected",
+      "nothingToUndo": "Nothing to undo",
+      "nothingToRedo": "Nothing to redo",
+      "oneTab": "Only one tab is open",
+      "noTab": "No tab is open",
+      "themeActive": "Already the current theme",
+      "noFontTab": "The active tab is not a Font tab",
+      "noGlyphTab": "The active tab is not a Glyph tab"
+    }
+  },
+  "palette": {
+    "title": "Commands",
+    "placeholder": "Type a command…",
+    "empty": "No matching commands",
+    "hint": "↑↓ to navigate · Enter to run · Esc to close"
+  },
+  "empty": {
+    "tagline": "Open a font to begin.",
+    "open": "Open Font…",
+    "new": "New Font…",
+    "recent": "Recent files",
+    "noRecent": "No recent files yet."
+  },
+  "dialog": {
+    "open": {
+      "title": "Open Font",
+      "label": "File path",
+      "placeholder": "/path/to/font.ttf",
+      "hint": "Browser mode has no native file dialog: type a path the kernel can read.",
+      "confirm": "Open"
+    },
+    "saveAs": {
+      "title": "Save As",
+      "label": "Document path",
+      "placeholder": "/path/to/font.fwf",
+      "hint": "FontWorkshop documents are saved as .fwf or .fwf.gz.",
+      "confirm": "Save",
+      "filter": "FontWorkshop document"
+    },
+    "closeDirty": {
+      "title": "Unsaved changes",
+      "message": "“{{name}}” has unsaved changes.",
+      "save": "Save",
+      "discard": "Don’t Save"
+    }
+  },
+  "document": {
+    "newFamily": "New Font",
+    "untitled": "Untitled"
+  },
+  "tab": {
+    "font": "Font",
+    "glyph": "Glyph",
+    "fontinfo": "Font Info",
+    "close": "Close {{title}}"
+  },
+  "sidebar": {
+    "title": "Filters",
+    "categories": "Categories",
+    "scripts": "Scripts",
+    "blocks": "Unicode blocks",
+    "colors": "Colour labels",
+    "unencoded": "Unencoded",
+    "all": "All glyphs",
+    "overview": "Overview",
+    "empty": "Open a font to see its glyph filters.",
+    "collapse": "Collapse {{section}}",
+    "expand": "Expand {{section}}",
+    "glyphNote": "Glyph filters apply to the Font tab; switch to it to change the glyph list.",
+    "fontInfoNote": "Font Info has no filters; switch to the Font tab to filter glyphs."
+  },
+  "inspector": {
+    "title": "Inspector",
+    "document": "Document",
+    "view": "View",
+    "family": "Family",
+    "style": "Style",
+    "format": "Format",
+    "unitsPerEm": "Units per em",
+    "glyphs": "Glyphs",
+    "masters": "Masters",
+    "axes": "Axes",
+    "path": "Path",
+    "master": "Master",
+    "cellSize": "Cell size",
+    "labels": "Labels",
+    "sort": "Sort",
+    "empty": "No document open.",
+    "labelMode": {
+      "name": "Glyph name",
+      "unicode": "Unicode",
+      "index": "Index"
+    },
+    "sortMode": {
+      "Order": "Font order",
+      "Unicode": "Unicode",
+      "Name": "Name",
+      "Width": "Width"
+    },
+    "fontInfoNote": "Font Info is read-only in this release; editing arrives with the next phase."
+  },
+  "view": {
+    "glyphLabel": "Glyph {{gid}}"
+  },
+  "status": {
+    "noDocument": "No document open",
+    "glyphs_one": "{{count, number}} glyph",
+    "glyphs_other": "{{count, number}} glyphs",
+    "selected_one": "{{count, number}} selected",
+    "selected_other": "{{count, number}} selected",
+    "dirty": "Unsaved changes",
+    "clean": "Saved",
+    "cellSize": "{{size}} px cells",
+    "transport": "Kernel: {{kind}}",
+    "warnings_one": "{{count}} warning",
+    "warnings_other": "{{count}} warnings",
+    "ofTotal": "of {{total, number}}",
+    "coordinates": "{{x, number}}, {{y, number}}",
+    "noCoordinates": "—, —",
+    "zoom": "{{size}} px/em"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "zh-CN": "简体中文"
+  },
+  "toast": {
+    "dismiss": "Dismiss notification",
+    "saved": "Saved {{name}}",
+    "opened": "Opened {{name}}",
+    "closed": "Closed {{name}}",
+    "about": "FontWorkshop {{version}} — kernel transport: {{kind}}",
+    "copiedNames_one": "Copied {{count, number}} glyph name",
+    "copiedNames_other": "Copied {{count, number}} glyph names",
+    "copyFailed": "Could not write to the clipboard"
+  },
+  "warning": {
+    "cffHintsNotImported": "CFF outlines were imported without per-glyph stem and hint-mask data",
+    "glyphNamesSynthesized": "Glyph names were synthesized because the font had no usable glyph names.",
+    "collectionFaceOpened": "{{message}}"
+  },
+  "a11y": {
+    "menubar": "Application menu",
+    "tabs": "Open tabs",
+    "sidebarResize": "Resize sidebar",
+    "inspectorResize": "Resize inspector",
+    "notifications": "Notifications",
+    "toggleSidebar": "Toggle sidebar",
+    "toggleInspector": "Toggle inspector",
+    "statusBar": "Status"
+  },
+  "fontView": {
+    "toolbar": "Glyph grid controls",
+    "gridLabel": "Glyphs",
+    "search": "Search glyphs",
+    "searchPlaceholder": "Name, U+0041, uni0041…",
+    "noMatches": "No glyphs match the current filter.",
+    "encodedOnly": "Encoded only",
+    "clearFilters": "Clear filters",
+    "removeFilter": "Remove filter {{name}}",
+    "contextMenu": "Glyph actions",
+    "chip": {
+      "query": "Search: {{query}}"
+    },
+    "color": {
+      "red": "Red",
+      "orange": "Orange",
+      "brown": "Brown",
+      "yellow": "Yellow",
+      "lightGreen": "Light Green",
+      "darkGreen": "Dark Green",
+      "cyan": "Cyan",
+      "blue": "Blue",
+      "purple": "Purple",
+      "pink": "Pink",
+      "lightGray": "Light Gray",
+      "darkGray": "Dark Gray",
+      "unknown": "Other colour"
+    }
+  },
+  "glyphView": {
+    "toolbar": "Glyph view controls",
+    "overlays": "Overlays",
+    "canvasLabel": "Glyph {{name}}, {{unicode}}",
+    "noGlyph": "No glyph selected.",
+    "loading": "Loading glyph…",
+    "pixelsPerEm": "{{size}} px/em",
+    "overlay": {
+      "filled": "Fill",
+      "points": "Nodes",
+      "metrics": "Metrics",
+      "anchors": "Anchors",
+      "guides": "Guides",
+      "rulers": "Rulers"
+    },
+    "metric": {
+      "baseline": "baseline",
+      "xHeight": "x-height",
+      "capHeight": "cap height",
+      "ascender": "ascender",
+      "descender": "descender",
+      "origin": "origin",
+      "advance": "advance",
+      "lsb": "LSB",
+      "rsb": "RSB",
+      "verticalOrigin": "vert. origin",
+      "verticalAdvance": "vert. advance"
+    },
+    "hud": {
+      "label": "Glyph readout",
+      "unicode": "Unicode",
+      "width": "Width",
+      "lsb": "LSB",
+      "rsb": "RSB",
+      "points": "Points"
+    }
+  },
+  "glyphInspector": {
+    "glyph": "Glyph",
+    "metrics": "Metrics",
+    "components": "Components",
+    "anchors": "Anchors",
+    "layers": "Layers",
+    "name": "Name",
+    "unicodes": "Unicode",
+    "production": "Production name",
+    "category": "Category",
+    "subCategory": "Sub-category",
+    "script": "Script",
+    "export": "Exports",
+    "color": "Colour label",
+    "tags": "Tags",
+    "kernGroups": "Kerning groups",
+    "note": "Note",
+    "layer": "Layer",
+    "bbox": "Bounds",
+    "points": "Points",
+    "noComponents": "No components.",
+    "noAnchors": "No anchors.",
+    "noLayers": "No layers.",
+    "layerKind": {
+      "master": "Master",
+      "brace": "Brace",
+      "bracket": "Bracket",
+      "background": "Background",
+      "backup": "Backup",
+      "custom": "Custom"
+    }
+  },
+  "fontInfo": {
+    "toolbar": "Font info sections",
+    "sections": "Font info sections",
+    "search": "Search fields",
+    "searchPlaceholder": "Search every section…",
+    "loading": "Loading font info…",
+    "unavailable": "Font info is unavailable.",
+    "noMatches": "No fields match the search.",
+    "noNames": "This font has no name records.",
+    "noMasters": "This font has no masters.",
+    "noAxes": "This font has no variation axes.",
+    "noInstances": "This font has no instances.",
+    "noTables": "This document has no imported table inventory.",
+    "tablesLabel": "OpenType tables",
+    "preserved": "Preserved",
+    "bytes": "{{count, number}} bytes",
+    "section": {
+      "font": "Font",
+      "names": "Names",
+      "masters": "Masters",
+      "axes": "Axes / Instances",
+      "tables": "Tables",
+      "other": "Other"
+    },
+    "group": {
+      "identification": "Identification",
+      "version": "Version",
+      "authorship": "Designer and manufacturer",
+      "legal": "Legal",
+      "note": "Note",
+      "warnings": "Import warnings",
+      "axes": "Axes",
+      "masterLocations": "Master locations",
+      "instances": "Instances",
+      "os2": "OS/2",
+      "head": "head and gasp",
+      "caret": "Caret slope",
+      "postscript": "PostScript",
+      "macintosh": "Macintosh"
+    },
+    "column": {
+      "nameId": "ID",
+      "nameLabel": "Name",
+      "platform": "Platform",
+      "language": "Language",
+      "text": "Text",
+      "metric": "Metric",
+      "master": "Master",
+      "tag": "Tag",
+      "byteLength": "Byte length",
+      "preservation": "Preservation",
+      "axisName": "Name",
+      "min": "Minimum",
+      "default": "Default",
+      "max": "Maximum",
+      "hidden": "Hidden",
+      "instanceName": "Name",
+      "styleName": "Style name",
+      "familyOverride": "Family override",
+      "active": "Active",
+      "variableInstance": "Variable named instance"
+    },
+    "field": {
+      "familyName": "Family name",
+      "styleName": "Style name",
+      "preferredFamily": "Preferred family",
+      "preferredSubfamily": "Preferred subfamily",
+      "wwsFamily": "WWS family",
+      "wwsSubfamily": "WWS subfamily",
+      "compatibleFull": "Compatible full name",
+      "postscriptName": "PostScript name",
+      "postscriptFullName": "PostScript full name",
+      "uniqueId": "Unique identifier",
+      "description": "Description",
+      "sampleText": "Sample text",
+      "version": "Version",
+      "versionString": "Version string",
+      "created": "Created",
+      "unitsPerEm": "Units per em",
+      "format": "Source format",
+      "glyphCount": "Glyphs",
+      "path": "Path",
+      "designer": "Designer",
+      "designerUrl": "Designer URL",
+      "manufacturer": "Manufacturer",
+      "manufacturerUrl": "Manufacturer URL",
+      "vendorId": "Vendor ID",
+      "copyright": "Copyright",
+      "trademark": "Trademark",
+      "license": "License",
+      "licenseUrl": "License URL",
+      "note": "Note",
+      "weightClass": "Weight class",
+      "widthClass": "Width class",
+      "selection": "fsSelection bits",
+      "embedding": "Embedding bits",
+      "familyClass": "Family class",
+      "panose": "PANOSE",
+      "unicodeRanges": "Unicode range bits",
+      "codePageRanges": "Code page bits",
+      "subscript": "Subscript",
+      "superscript": "Superscript",
+      "strikeout": "Strikeout",
+      "headFlags": "head flags",
+      "lowestRecPpem": "Lowest recommended ppem",
+      "gasp": "gasp ranges",
+      "hheaCaret": "hhea caret",
+      "vheaCaret": "vhea caret",
+      "isFixedPitch": "Fixed pitch",
+      "defaultWidthX": "defaultWidthX",
+      "nominalWidthX": "nominalWidthX",
+      "underline": "Underline",
+      "psUniqueId": "PostScript unique ID",
+      "fondName": "FOND name",
+      "fondFamilyId": "FOND family ID"
+    },
+    "metric": {
+      "location": "Design location",
+      "ascender": "Ascender",
+      "descender": "Descender",
+      "xHeight": "x-height",
+      "capHeight": "Cap height",
+      "italicAngle": "Italic angle",
+      "hheaAscender": "hhea ascender",
+      "hheaDescender": "hhea descender",
+      "hheaLineGap": "hhea line gap",
+      "typoAscender": "Typo ascender",
+      "typoDescender": "Typo descender",
+      "typoLineGap": "Typo line gap",
+      "winAscent": "Win ascent",
+      "winDescent": "Win descent",
+      "vheaAscender": "vhea ascender",
+      "vheaDescender": "vhea descender",
+      "vheaLineGap": "vhea line gap",
+      "verticalOrigin": "Vertical origin",
+      "verticalAdvance": "Vertical advance",
+      "zones": "Alignment zones",
+      "stems": "Stems",
+      "guides": "Guides"
+    },
+    "nameId": {
+      "copyright": "Copyright",
+      "family": "Family",
+      "subfamily": "Subfamily",
+      "uniqueId": "Unique ID",
+      "fullName": "Full name",
+      "version": "Version",
+      "postscriptName": "PostScript name",
+      "trademark": "Trademark",
+      "manufacturer": "Manufacturer",
+      "designer": "Designer",
+      "description": "Description",
+      "vendorUrl": "Vendor URL",
+      "designerUrl": "Designer URL",
+      "license": "License",
+      "licenseUrl": "License URL",
+      "typographicFamily": "Typographic family",
+      "typographicSubfamily": "Typographic subfamily",
+      "compatibleFull": "Compatible full name",
+      "sampleText": "Sample text",
+      "postscriptCid": "PostScript CID name",
+      "wwsFamily": "WWS family",
+      "wwsSubfamily": "WWS subfamily",
+      "lightBackground": "Light background palette",
+      "darkBackground": "Dark background palette",
+      "variationsPrefix": "Variations PostScript prefix"
+    }
+  }
+}

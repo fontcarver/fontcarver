@@ -20,7 +20,7 @@ FontWorkshop is a cross-platform (Linux, macOS, Windows) desktop font editor bui
 Non-negotiables:
 
 1. **Vector and bitmap fonts are both first-class.** Outline editing (cubic and quadratic) and bitmap-strike editing live in one document.
-2. **Latin and CJK are both first-class from day one.** Glyph grid, search, batch operations and file I/O are designed for 65,535-glyph fonts. Components, vertical metrics and vertical features are core, not add-ons.
+2. **Latin and CJK are both first-class from day one.** Glyph grid, search, batch operations and file I/O are designed for 65,535-glyph fonts. Components, vertical metrics and vertical features are core, not add-ons. A complete vertical-layout pipeline (`vhea`/`vmtx`/`VORG`, `vert`/`vrt2`/`vkrn`/`vpal`, vertical kerning and a vertical text preview) is a deliberate v1 differentiator: the competitor research found that neither Glyphs nor FontLab documents one.
 3. **Widest practical format support**: TTF, OTF (CFF/CFF2), TTC/OTC, WOFF, WOFF2, variable fonts, UFO 2/3 + designspace, Glyphs 2/3, SFD, Type 1 (PFA/PFB), SVG fonts/glyphs, BDF, PCF, Windows FNT/FON, Linux PSF, EBDT/CBDT/sbix bitmap tables, OTB, FEA, AFM/PFM, TTX (read). Full OpenType layout: GSUB/GPOS/GDEF/BASE/MATH/STAT/COLR/CPAL and every FEA construct fea-rs supports.
 4. **User experience is the top priority.** Every editing flow must be as fast and discoverable as Glyphs: single window, tabs, inspector, live preview, command palette, sensible shortcuts, undo everywhere.
 5. **Lossless where the user did not touch anything.** Opening a binary font and exporting it must preserve tables we do not model (raw copy), hinting of untouched glyphs, and layout behaviour (shaping identical).
@@ -153,14 +153,14 @@ Identity: glyphs are addressed by `GlyphName` externally and by a stable `GlyphI
 - `Session` holds open `Document`s. A `Document` wraps a `Font`, its file provenance (path, format, original bytes for preservation), a `generation: u64`, per-glyph generations, and derived caches.
 - All mutation goes through `Command`s (`enum Command { Glyph(GlyphCommand), Font(FontCommand), Kerning(...), Features(...), Bitmap(...), Batch(Vec<Command>) }`). `Document::apply(cmd) -> Result<Change>` returns what changed so the UI can invalidate precisely.
 - **Undo** is a document-level timeline of `UndoEntry { label, before: Snapshot, after: Snapshot, glyphs_touched }`. Snapshots are `Arc<Glyph>`/`Arc<Layer>` clones with structural sharing (a glyph command clones only that glyph). Interactive drags coalesce: the UI sends `begin_edit / update_edit / end_edit`; one undo entry results. Undo depth is unlimited by default, bounded by a memory budget.
-- Autosave every N seconds to a sidecar (`<file>.fwf.autosave`), restored on next launch after a crash.
+- Autosave every N seconds to `<datadir>/<sha1>.autosave.fwf`, where `sha1` hashes the source document path; unsaved documents use their session `DocId` as the filename stem. Restore the snapshot on the next launch after a crash.
 - Change notifications: `DocumentEvent { doc, generation, glyphs: Vec<GlyphId>, scope: bitflags }` are broadcast to the UI.
 
 ---
 
 ## 5. Native file format `.fwf`
 
-Single UTF-8 JSON file, deterministic key order and glyph order, 2-space indent, one glyph object per line group. This keeps `git diff` readable and avoids a directory package. Schema versioned (`"format": "fontworkshop", "version": 1`). Binary payloads (bitmaps, raw tables, images) are base64. Files above ~50 MB may optionally be written as `.fwf.gz` (transparent on read). A directory-package variant is deferred until measured need.
+Single UTF-8 JSON file with deterministic key and glyph order. The envelope and font-level objects use 2-space indentation; each direct entry in `font.glyphs` stores its complete glyph as compact JSON on one physical line. This keeps `git diff` focused per glyph without the size and I/O cost of expanding every contour point across separate lines, and avoids a directory package. Schema versioned (`"format": "fontworkshop", "version": 1`). Binary payloads (bitmaps, raw tables, images) are base64. Files above ~50 MB may optionally be written as `.fwf.gz` (transparent on read). A directory-package variant is deferred until measured need.
 
 Every other format is import/export. UFO/designspace and Glyphs exports are "lossless for what those formats can express" and use `lib`/`userData` for FontWorkshop extras.
 
@@ -330,7 +330,7 @@ Each phase ends in a usable application. Detailed task plans are written per pha
 
 | Phase | Scope | Exit criteria |
 |---|---|---|
-| **P0 Foundation** | workspace + conventions; `fw-model`, `fw-doc`, `fw-api`, `fw-sfnt` read (TTF/OTF/TTC/WOFF/WOFF2, variable metadata, bitmaps raw), `.fwf` save/load, `fw-devserver`, `fw-cli inspect/convert`; app shell with Font view (virtual grid, sidebar filters, search), read-only Glyph view, Font Info (read), i18n scaffold, theming | Source Han Sans OTF opens < 3 s, grid scrolls smoothly, save/reopen `.fwf` round-trips, CLI converts TTF → fwf → TTF (glyph-identical) |
+| **P0 Foundation** | workspace + conventions; `fw-model`, `fw-doc`, `fw-api`, `fw-sfnt` read (TTF/OTF/TTC/WOFF/WOFF2, variable metadata, bitmaps raw), `.fwf` save/load, `fw-devserver`, `fw-cli inspect/convert`; app shell with Font view (virtual grid, sidebar filters, search), read-only Glyph view, Font Info (read), i18n scaffold, theming | Source Han Sans OTF opens < 3 s, grid scrolls smoothly, save/reopen `.fwf` round-trips, CLI converts TTF → FWF → inspect with equal glyph count; binary TTF export moves to P1 `fw-compile` |
 | **P1 Outline editing & export** | glyph editor with full tool set, undo, snapping, guides, components, anchors, layers, metrics editing, transform/path ops (`fw-geom`), fontc-based export (TTF static) with table preservation, UFO/designspace import/export, text-tab with harfrust preview, command palette, preferences | "Open commercial TTF, edit 3 glyphs, export" yields a font whose untouched tables/hinting are preserved; "draw a new Latin font from scratch and export" works end to end |
 | **P2 Spacing, kerning, features, CFF** | kerning groups/panel/text-tab kerning, metrics keys, FEA editor with diagnostics, layout decompiler, automatic features, OTF/CFF export (our CFF writer), Glyphs import/export, SFD import/export, Type 1 read/write, Find problems v1 | professional Latin workflow complete; Glyphs/UFO/SFD round trips pass corpus tests |
 | **P3 Bitmap fonts** | strikes model + editor, BDF/PCF/FNT/FON/PSF/OTB/EBDT/CBDT/sbix read/write, rasterise/trace, waterfall | replaces bitmap-font-viewer; CJK BDF workflow complete |

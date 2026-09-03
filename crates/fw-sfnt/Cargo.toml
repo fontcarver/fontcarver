@@ -1,0 +1,28 @@
+[package]
+name = "fw-sfnt"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+bench = false
+
+[dependencies]
+fw-model = { path = "../fw-model" }
+kurbo.workspace = true
+read-fonts.workspace = true
+sha2.workspace = true
+skrifa.workspace = true
+thiserror.workspace = true
+wuff.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+fw-fixtures = { path = "../fw-fixtures" }
+read-fonts.workspace = true
+write-fonts.workspace = true
+
+[[bench]]
+name = "open"
+harness = false

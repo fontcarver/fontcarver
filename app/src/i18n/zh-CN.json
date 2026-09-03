@@ -1,0 +1,510 @@
+{
+  "app": {
+    "name": "FontWorkshop",
+    "tagline": "面向轮廓、点阵与可变字体的工坊。"
+  },
+  "common": {
+    "cancel": "取消",
+    "close": "关闭",
+    "open": "打开",
+    "save": "保存",
+    "yes": "是",
+    "no": "否"
+  },
+  "menu": {
+    "file": "文件",
+    "edit": "编辑",
+    "glyph": "字形",
+    "view": "视图",
+    "window": "窗口",
+    "help": "帮助",
+    "path": "路径",
+    "layer": "图层",
+    "font": "字体",
+    "features": "特性",
+    "bitmap": "点阵",
+    "empty": "将在后续阶段推出"
+  },
+  "cmd": {
+    "file": {
+      "new": "新建字体…",
+      "open": "打开字体…",
+      "openRecent": "打开最近打开的文件…",
+      "save": "保存",
+      "saveAs": "另存为…",
+      "close": "关闭字体",
+      "fontInfo": "字体信息"
+    },
+    "edit": {
+      "undo": "撤销",
+      "undoLabelled": "撤销{{label}}",
+      "redo": "重做",
+      "redoLabelled": "重做{{label}}",
+      "selectAll": "选择所有字形",
+      "selectNone": "取消全选",
+      "copyGlyphNames": "复制字形名称"
+    },
+    "glyph": {
+      "open": "在新标签页中打开字形",
+      "previous": "上一个字形",
+      "next": "下一个字形"
+    },
+    "view": {
+      "toggleSidebar": "切换侧边栏",
+      "toggleInspector": "切换检查器",
+      "zoomIn": "放大单元格",
+      "zoomOut": "缩小单元格",
+      "theme": {
+        "light": "浅色主题",
+        "dark": "深色主题",
+        "system": "跟随系统主题"
+      },
+      "zoomFit": "使字形适应窗口",
+      "glyph": {
+        "filled": "填充预览",
+        "points": "显示节点",
+        "metrics": "显示度量线",
+        "anchors": "显示锚点",
+        "guides": "显示参考线",
+        "rulers": "显示标尺"
+      }
+    },
+    "window": {
+      "nextTab": "下一个标签页",
+      "previousTab": "上一个标签页",
+      "closeTab": "关闭标签页"
+    },
+    "palette": {
+      "open": "命令面板…"
+    },
+    "help": {
+      "shortcuts": "键盘快捷键",
+      "about": "关于 FontWorkshop"
+    },
+    "reason": {
+      "noDocument": "没有打开的字体",
+      "noRecent": "没有最近打开的文件",
+      "noSelection": "未选择任何字形",
+      "nothingToUndo": "没有可撤销的操作",
+      "nothingToRedo": "没有可重做的操作",
+      "oneTab": "只打开了一个标签页",
+      "noTab": "没有打开的标签页",
+      "themeActive": "已是当前主题",
+      "noFontTab": "当前标签页不是字体标签页",
+      "noGlyphTab": "当前标签页不是字形标签页"
+    }
+  },
+  "palette": {
+    "title": "命令",
+    "placeholder": "输入命令…",
+    "empty": "没有匹配的命令",
+    "hint": "↑↓ 导航 · Enter 运行 · Esc 关闭"
+  },
+  "empty": {
+    "tagline": "打开字体即可开始。",
+    "open": "打开字体…",
+    "new": "新建字体…",
+    "recent": "最近打开的文件",
+    "noRecent": "暂无最近打开的文件。"
+  },
+  "dialog": {
+    "open": {
+      "title": "打开字体",
+      "label": "文件路径",
+      "placeholder": "/path/to/font.ttf",
+      "hint": "浏览器模式没有原生文件对话框：请输入内核可读取的路径。",
+      "confirm": "打开"
+    },
+    "saveAs": {
+      "title": "另存为",
+      "label": "文档路径",
+      "placeholder": "/path/to/font.fwf",
+      "hint": "FontWorkshop 文档以 .fwf 或 .fwf.gz 格式保存。",
+      "confirm": "保存",
+      "filter": "FontWorkshop 文档"
+    },
+    "closeDirty": {
+      "title": "未保存的更改",
+      "message": "“{{name}}”有未保存的更改。",
+      "save": "保存",
+      "discard": "不保存"
+    }
+  },
+  "document": {
+    "newFamily": "新建字体",
+    "untitled": "未命名"
+  },
+  "tab": {
+    "font": "字体",
+    "glyph": "字形",
+    "fontinfo": "字体信息",
+    "close": "关闭{{title}}"
+  },
+  "sidebar": {
+    "title": "筛选器",
+    "categories": "类别",
+    "scripts": "文字系统",
+    "blocks": "Unicode 区块",
+    "colors": "颜色标签",
+    "unencoded": "未编码",
+    "all": "所有字形",
+    "overview": "概览",
+    "empty": "打开字体即可查看字形筛选器。",
+    "collapse": "折叠{{section}}",
+    "expand": "展开{{section}}",
+    "glyphNote": "字形筛选器作用于字体标签页；请切换到该标签页以更改字形列表。",
+    "fontInfoNote": "字体信息没有筛选器；请切换到字体标签页以筛选字形。"
+  },
+  "inspector": {
+    "title": "检查器",
+    "document": "文档",
+    "view": "视图",
+    "family": "字族",
+    "style": "样式",
+    "format": "格式",
+    "unitsPerEm": "每 em 单位数",
+    "glyphs": "字形",
+    "masters": "母版",
+    "axes": "轴",
+    "path": "路径",
+    "master": "母版",
+    "cellSize": "单元格大小",
+    "labels": "标签",
+    "sort": "排序",
+    "empty": "没有打开的文档。",
+    "labelMode": {
+      "name": "字形名称",
+      "unicode": "Unicode",
+      "index": "索引"
+    },
+    "sortMode": {
+      "Order": "字体顺序",
+      "Unicode": "Unicode",
+      "Name": "名称",
+      "Width": "字宽"
+    },
+    "fontInfoNote": "此版本中字体信息为只读；编辑功能将在下一阶段推出。"
+  },
+  "view": {
+    "glyphLabel": "字形 {{gid}}"
+  },
+  "status": {
+    "noDocument": "没有打开的文档",
+    "glyphs_one": "{{count, number}} 个字形",
+    "glyphs_other": "{{count, number}} 个字形",
+    "selected_one": "已选择 {{count, number}} 个",
+    "selected_other": "已选择 {{count, number}} 个",
+    "dirty": "未保存的更改",
+    "clean": "已保存",
+    "cellSize": "{{size}} px 单元格",
+    "transport": "内核：{{kind}}",
+    "warnings_one": "{{count}} 个警告",
+    "warnings_other": "{{count}} 个警告",
+    "ofTotal": "共 {{total, number}} 个",
+    "coordinates": "{{x, number}}, {{y, number}}",
+    "noCoordinates": "—, —",
+    "zoom": "{{size}} px/em"
+  },
+  "theme": {
+    "label": "主题",
+    "light": "浅色",
+    "dark": "深色",
+    "system": "跟随系统"
+  },
+  "language": {
+    "label": "语言",
+    "en": "English",
+    "zh-CN": "简体中文"
+  },
+  "toast": {
+    "dismiss": "关闭通知",
+    "saved": "已保存 {{name}}",
+    "opened": "已打开 {{name}}",
+    "closed": "已关闭 {{name}}",
+    "about": "FontWorkshop {{version}}——内核传输：{{kind}}",
+    "copiedNames_one": "已复制 {{count, number}} 个字形名称",
+    "copiedNames_other": "已复制 {{count, number}} 个字形名称",
+    "copyFailed": "无法写入剪贴板"
+  },
+  "warning": {
+    "cffHintsNotImported": "CFF outlines were imported without per-glyph stem and hint-mask data",
+    "glyphNamesSynthesized": "Glyph names were synthesized because the font had no usable glyph names.",
+    "collectionFaceOpened": "{{message}}"
+  },
+  "a11y": {
+    "menubar": "应用程序菜单",
+    "tabs": "打开的标签页",
+    "sidebarResize": "调整侧边栏大小",
+    "inspectorResize": "调整检查器大小",
+    "notifications": "通知",
+    "toggleSidebar": "切换侧边栏",
+    "toggleInspector": "切换检查器",
+    "statusBar": "状态栏"
+  },
+  "fontView": {
+    "toolbar": "字形网格控件",
+    "gridLabel": "字形",
+    "search": "搜索字形",
+    "searchPlaceholder": "名称、U+0041、uni0041…",
+    "noMatches": "没有与当前筛选条件匹配的字形。",
+    "encodedOnly": "仅显示已编码",
+    "clearFilters": "清除筛选器",
+    "removeFilter": "移除筛选器 {{name}}",
+    "contextMenu": "字形操作",
+    "chip": {
+      "query": "搜索：{{query}}"
+    },
+    "color": {
+      "red": "红色",
+      "orange": "橙色",
+      "brown": "棕色",
+      "yellow": "黄色",
+      "lightGreen": "浅绿色",
+      "darkGreen": "深绿色",
+      "cyan": "青色",
+      "blue": "蓝色",
+      "purple": "紫色",
+      "pink": "粉色",
+      "lightGray": "浅灰色",
+      "darkGray": "深灰色",
+      "unknown": "其他颜色"
+    }
+  },
+  "glyphView": {
+    "toolbar": "字形视图控件",
+    "overlays": "叠加层",
+    "canvasLabel": "字形 {{name}}，{{unicode}}",
+    "noGlyph": "未选择字形。",
+    "loading": "正在加载字形…",
+    "pixelsPerEm": "{{size}} px/em",
+    "overlay": {
+      "filled": "填充",
+      "points": "节点",
+      "metrics": "度量线",
+      "anchors": "锚点",
+      "guides": "参考线",
+      "rulers": "标尺"
+    },
+    "metric": {
+      "baseline": "基线",
+      "xHeight": "x 高度",
+      "capHeight": "大写高度",
+      "ascender": "上升部",
+      "descender": "下降部",
+      "origin": "原点",
+      "advance": "字宽",
+      "lsb": "左侧边距",
+      "rsb": "右侧边距",
+      "verticalOrigin": "垂直原点",
+      "verticalAdvance": "垂直字宽"
+    },
+    "hud": {
+      "label": "字形信息",
+      "unicode": "Unicode",
+      "width": "字宽",
+      "lsb": "左侧边距",
+      "rsb": "右侧边距",
+      "points": "节点"
+    }
+  },
+  "glyphInspector": {
+    "glyph": "字形",
+    "metrics": "度量",
+    "components": "组件",
+    "anchors": "锚点",
+    "layers": "图层",
+    "name": "名称",
+    "unicodes": "Unicode",
+    "production": "生产名称",
+    "category": "类别",
+    "subCategory": "子类别",
+    "script": "文字系统",
+    "export": "导出",
+    "color": "颜色标签",
+    "tags": "标签",
+    "kernGroups": "字距组",
+    "note": "备注",
+    "layer": "图层",
+    "bbox": "边界框",
+    "points": "节点",
+    "noComponents": "没有组件。",
+    "noAnchors": "没有锚点。",
+    "noLayers": "没有图层。",
+    "layerKind": {
+      "master": "母版",
+      "brace": "大括号",
+      "bracket": "方括号",
+      "background": "背景",
+      "backup": "备份",
+      "custom": "自定义"
+    }
+  },
+  "fontInfo": {
+    "toolbar": "字体信息分区",
+    "sections": "字体信息分区",
+    "search": "搜索字段",
+    "searchPlaceholder": "搜索所有分区…",
+    "loading": "正在加载字体信息…",
+    "unavailable": "字体信息不可用。",
+    "noMatches": "没有匹配的字段。",
+    "noNames": "此字体没有名称记录。",
+    "noMasters": "此字体没有母版。",
+    "noAxes": "此字体没有可变轴。",
+    "noInstances": "此字体没有实例。",
+    "section": {
+      "font": "字体",
+      "names": "名称",
+      "masters": "母版",
+      "axes": "轴 / 实例",
+      "other": "其他",
+      "tables": "表"
+    },
+    "group": {
+      "identification": "标识信息",
+      "version": "版本",
+      "authorship": "设计者与制造商",
+      "legal": "法律信息",
+      "note": "备注",
+      "warnings": "导入警告",
+      "axes": "轴",
+      "masterLocations": "母版位置",
+      "instances": "实例",
+      "os2": "OS/2",
+      "head": "head 与 gasp",
+      "caret": "插入符斜率",
+      "postscript": "PostScript",
+      "macintosh": "Macintosh"
+    },
+    "column": {
+      "nameId": "ID",
+      "nameLabel": "名称",
+      "platform": "平台",
+      "language": "语言",
+      "text": "文本",
+      "metric": "度量",
+      "master": "母版",
+      "tag": "标签",
+      "axisName": "名称",
+      "min": "最小值",
+      "default": "默认值",
+      "max": "最大值",
+      "hidden": "隐藏",
+      "instanceName": "名称",
+      "styleName": "样式名称",
+      "familyOverride": "覆盖字族名称",
+      "active": "启用",
+      "variableInstance": "可变字体命名实例",
+      "byteLength": "字节数",
+      "preservation": "保留状态"
+    },
+    "field": {
+      "familyName": "字族名称",
+      "styleName": "样式名称",
+      "preferredFamily": "首选字族",
+      "preferredSubfamily": "首选子字族",
+      "wwsFamily": "WWS 字族",
+      "wwsSubfamily": "WWS 子字族",
+      "compatibleFull": "兼容完整名称",
+      "postscriptName": "PostScript 名称",
+      "postscriptFullName": "PostScript 完整名称",
+      "uniqueId": "唯一标识符",
+      "description": "描述",
+      "sampleText": "示例文本",
+      "version": "版本",
+      "versionString": "版本字符串",
+      "created": "创建时间",
+      "unitsPerEm": "每 em 单位数",
+      "format": "源格式",
+      "glyphCount": "字形数",
+      "path": "路径",
+      "designer": "设计者",
+      "designerUrl": "设计者网址",
+      "manufacturer": "制造商",
+      "manufacturerUrl": "制造商网址",
+      "vendorId": "供应商 ID",
+      "copyright": "版权",
+      "trademark": "商标",
+      "license": "许可证",
+      "licenseUrl": "许可证网址",
+      "note": "备注",
+      "weightClass": "字重等级",
+      "widthClass": "宽度等级",
+      "selection": "fsSelection 位",
+      "embedding": "嵌入位",
+      "familyClass": "字族分类",
+      "panose": "PANOSE",
+      "unicodeRanges": "Unicode 范围位",
+      "codePageRanges": "代码页位",
+      "subscript": "下标",
+      "superscript": "上标",
+      "strikeout": "删除线",
+      "headFlags": "head 标志位",
+      "lowestRecPpem": "最低建议 ppem",
+      "gasp": "gasp 范围",
+      "hheaCaret": "hhea 插入符",
+      "vheaCaret": "vhea 插入符",
+      "isFixedPitch": "等宽",
+      "defaultWidthX": "defaultWidthX",
+      "nominalWidthX": "nominalWidthX",
+      "underline": "下划线",
+      "psUniqueId": "PostScript 唯一 ID",
+      "fondName": "FOND 名称",
+      "fondFamilyId": "FOND 字族 ID"
+    },
+    "metric": {
+      "location": "设计位置",
+      "ascender": "上升部",
+      "descender": "下降部",
+      "xHeight": "x 高度",
+      "capHeight": "大写高度",
+      "italicAngle": "斜体角度",
+      "hheaAscender": "hhea 上升部",
+      "hheaDescender": "hhea 下降部",
+      "hheaLineGap": "hhea 行距",
+      "typoAscender": "Typo 上升部",
+      "typoDescender": "Typo 下降部",
+      "typoLineGap": "Typo 行距",
+      "winAscent": "Win 上升值",
+      "winDescent": "Win 下降值",
+      "vheaAscender": "vhea 上升部",
+      "vheaDescender": "vhea 下降部",
+      "vheaLineGap": "vhea 行距",
+      "verticalOrigin": "垂直原点",
+      "verticalAdvance": "垂直字宽",
+      "zones": "对齐区域",
+      "stems": "主干",
+      "guides": "参考线"
+    },
+    "nameId": {
+      "copyright": "版权",
+      "family": "字族",
+      "subfamily": "子字族",
+      "uniqueId": "唯一 ID",
+      "fullName": "完整名称",
+      "version": "版本",
+      "postscriptName": "PostScript 名称",
+      "trademark": "商标",
+      "manufacturer": "制造商",
+      "designer": "设计者",
+      "description": "描述",
+      "vendorUrl": "供应商网址",
+      "designerUrl": "设计者网址",
+      "license": "许可证",
+      "licenseUrl": "许可证网址",
+      "typographicFamily": "排印字族",
+      "typographicSubfamily": "排印子字族",
+      "compatibleFull": "兼容完整名称",
+      "sampleText": "示例文本",
+      "postscriptCid": "PostScript CID 名称",
+      "wwsFamily": "WWS 字族",
+      "wwsSubfamily": "WWS 子字族",
+      "lightBackground": "浅色背景调色板",
+      "darkBackground": "深色背景调色板",
+      "variationsPrefix": "可变字体 PostScript 前缀"
+    },
+    "noTables": "此文档没有导入的 OpenType 表清单。",
+    "tablesLabel": "OpenType 表",
+    "preserved": "原样保留",
+    "bytes": "{{count, number}} 字节"
+  }
+}

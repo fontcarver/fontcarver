@@ -1,0 +1,85 @@
+/* Centred panel shown while no document is open. */
+
+.empty {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  overflow: auto;
+}
+
+.emptyCard {
+  width: min(520px, 100%);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 22px;
+  font-weight: var(--text-weight-strong);
+  letter-spacing: -0.01em;
+}
+
+.emptyTagline {
+  margin: var(--space-1) 0 var(--space-4);
+  color: var(--color-text-muted);
+}
+
+.emptyActions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.emptyRecent {
+  margin-top: var(--space-5);
+  border-top: 1px solid var(--color-border-subtle);
+  padding-top: var(--space-3);
+}
+
+.emptyRecentTitle {
+  margin: 0 0 var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+  font-weight: var(--text-weight-strong);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.recentList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recentItem {
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  height: var(--row-height);
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--text-size-sm);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.recentItem:hover {
+  background: var(--color-hover);
+}
+
+.noRecent {
+  margin: 0;
+  padding: var(--space-2) 0;
+  color: var(--color-text-faint);
+  font-size: var(--text-size-sm);
+}

@@ -1,0 +1,101 @@
+/* Modal overlay chrome shared by the path prompt, close prompt and palette. */
+
+.overlay {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+  background: var(--color-overlay);
+  inset: 0;
+}
+
+.dialog {
+  width: min(560px, calc(100vw - var(--space-5)));
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+}
+
+.dialogHeader {
+  padding: var(--space-3) var(--space-4) 0;
+}
+
+.dialogTitle {
+  margin: 0;
+  font-size: var(--text-size-lg);
+  font-weight: var(--text-weight-strong);
+}
+
+.dialogBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+
+.dialogMessage {
+  margin: 0;
+}
+
+.dialogHint {
+  margin: 0;
+  color: var(--color-text-faint);
+  font-size: var(--text-size-sm);
+}
+
+.dialogFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-4);
+}
+
+.dialogFooterSpread {
+  justify-content: space-between;
+}
+
+.textInput {
+  width: 100%;
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+}
+
+.textInput:focus {
+  border-color: var(--color-accent);
+}
+
+.dialogRecent {
+  max-height: 168px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.recentItem {
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  height: var(--row-height);
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--text-size-sm);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.recentItem:hover {
+  background: var(--color-hover);
+}
