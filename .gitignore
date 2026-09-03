@@ -1,0 +1,22 @@
+# FontForge reference source (research only, not part of this project)
+/fontforge/
+
+# Rust
+/target/
+**/target/
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+# Tauri
+src-tauri/gen/schemas/
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+# Test output
+/test-output/
+/.scratch/
