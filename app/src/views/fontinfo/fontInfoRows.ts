@@ -8,6 +8,7 @@
  */
 
 import type { DocSummary, FontInfo } from '../../api'
+import { warningMessage, type WarningTranslator } from '../../i18n/warnings'
 
 /** One labelled, read-only value. */
 export interface InfoRow {
@@ -23,7 +24,7 @@ export interface InfoGroup {
 }
 
 /** The translator the builders use; tests pass the identity function. */
-export type Translate = (key: string) => string
+export type Translate = WarningTranslator
 
 const DASH = '—'
 
@@ -148,7 +149,7 @@ export function fontGroups(
       title: t('fontInfo.group.warnings'),
       rows: summary.warnings.map((warning, index) => ({
         label: `${index + 1}`,
-        value: warning,
+        value: warningMessage(warning, t),
       })),
     })
 

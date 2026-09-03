@@ -43,6 +43,7 @@ fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
     EmptyParams::export_all(config)?;
     MasterSummary::export_all(config)?;
     AxisSummary::export_all(config)?;
+    DocWarning::export_all(config)?;
     DocSummary::export_all(config)?;
     Prefs::export_all(config)?;
     SetPrefsParams::export_all(config)?;

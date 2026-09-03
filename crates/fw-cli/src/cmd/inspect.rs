@@ -69,7 +69,16 @@ fn print_text(output: &Output) {
     if output.summary.warnings.is_empty() {
         println!("warnings: none");
     } else {
-        println!("warnings: {}", output.summary.warnings.join(" | "));
+        println!(
+            "warnings: {}",
+            output
+                .summary
+                .warnings
+                .iter()
+                .map(|warning| format!("{}: {}", warning.code, warning.message))
+                .collect::<Vec<_>>()
+                .join(" | ")
+        );
     }
     println!("tables:");
     for table in &output.tables {

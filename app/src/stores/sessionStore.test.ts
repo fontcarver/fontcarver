@@ -63,10 +63,19 @@ describe('sessionStore.open', () => {
     })
   })
 
-  it('reports open warnings as informational toasts', async () => {
+  it('renders known warning codes through i18n and falls back to raw messages', async () => {
     setTransport(
       createMockTransport({
-        'session.open': () => makeSummary({ warnings: ['dropped 2 tables'] }),
+        'session.open': () =>
+          makeSummary({
+            warnings: [
+              {
+                code: 'cff-hints-not-imported',
+                message: 'raw CFF warning',
+              },
+              { code: 'future-warning', message: 'dropped 2 tables' },
+            ],
+          }),
         'session.recent': () => [],
       }),
     )
@@ -74,6 +83,11 @@ describe('sessionStore.open', () => {
     await useSessionStore.getState().open('/fonts/DejaVuSans.ttf')
 
     expect(useUiStore.getState().toasts[0]).toMatchObject({
+      kind: 'info',
+      message:
+        'CFF outlines were imported without per-glyph stem and hint-mask data',
+    })
+    expect(useUiStore.getState().toasts[1]).toMatchObject({
       kind: 'info',
       message: 'dropped 2 tables',
     })

@@ -7,7 +7,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 use tokio::sync::broadcast;
 
-use crate::{error::ApiError, handlers, SidebarCounts};
+use crate::{error::ApiError, handlers, DocWarning, SidebarCounts};
 
 /// Method name, parameter TypeScript type, and result TypeScript type.
 pub const METHODS: &[(&str, &str, &str)] = &[
@@ -40,7 +40,7 @@ pub const METHODS: &[(&str, &str, &str)] = &[
 pub struct Api {
     pub(crate) session: Arc<Session>,
     pub(crate) sidebar_cache: std::sync::Mutex<HashMap<DocId, (u64, SidebarCounts)>>,
-    pub(crate) warnings: std::sync::Mutex<HashMap<DocId, Vec<String>>>,
+    pub(crate) warnings: std::sync::Mutex<HashMap<DocId, Vec<DocWarning>>>,
     pub(crate) config_lock: std::sync::Mutex<()>,
 }
 

@@ -226,6 +226,11 @@
     "copiedNames_other": "已复制 {{count, number}} 个字形名称",
     "copyFailed": "无法写入剪贴板"
   },
+  "warning": {
+    "cffHintsNotImported": "CFF outlines were imported without per-glyph stem and hint-mask data",
+    "glyphNamesSynthesized": "Glyph names were synthesized because the font had no usable glyph names.",
+    "collectionFaceOpened": "{{message}}"
+  },
   "a11y": {
     "menubar": "应用程序菜单",
     "tabs": "打开的标签页",

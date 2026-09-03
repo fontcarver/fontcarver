@@ -57,7 +57,11 @@ describe('fontGroups', () => {
   it('appends the import warnings when the document has any', () => {
     const withWarnings = fontGroups(
       makeFontInfo(),
-      makeSummary({ warnings: ['post table version 3'] }),
+      makeSummary({
+        warnings: [
+          { code: 'post-table-version', message: 'post table version 3' },
+        ],
+      }),
       t,
     )
     const warnings = withWarnings.at(-1)

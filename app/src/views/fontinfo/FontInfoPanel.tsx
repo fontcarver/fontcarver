@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { DocSummary } from '../../api'
 import { Toolbar } from '../../components/Toolbar'
+import type { WarningTranslationOptions } from '../../i18n/warnings'
 import { useFontInfo } from '../../stores/fontInfoCache'
 
 import { AxesTable } from './AxesTable'
@@ -45,16 +46,16 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
 
   const searching = query.trim() !== ''
 
-  const groups = useMemo(
-    () =>
-      info === null
-        ? { font: [], other: [] }
-        : {
-            font: fontGroups(info.info, summary, t),
-            other: otherGroups(info.info, t),
-          },
-    [info, summary, t],
-  )
+  const groups = useMemo(() => {
+    const translate = (key: string, options?: WarningTranslationOptions) =>
+      options ? t(key, options) : t(key)
+    return info === null
+      ? { font: [], other: [] }
+      : {
+          font: fontGroups(info.info, summary, translate),
+          other: otherGroups(info.info, translate),
+        }
+  }, [info, summary, t])
 
   if (error) return <p className={styles.empty}>{error}</p>
   if (!info)

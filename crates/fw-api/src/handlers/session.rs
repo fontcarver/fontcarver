@@ -5,8 +5,8 @@ use std::{fs, path::Path};
 use fw_doc::{DocId, Document};
 
 use crate::{
-    handlers::prefs, Api, ApiError, AxisSummary, CloseParams, DocSummary, EmptyParams, FacesParams,
-    MasterSummary, NewParams, OpenParams, SaveParams,
+    handlers::prefs, Api, ApiError, AxisSummary, CloseParams, DocSummary, DocWarning, EmptyParams,
+    FacesParams, MasterSummary, NewParams, OpenParams, SaveParams,
 };
 
 pub(crate) fn open(api: &Api, params: OpenParams) -> Result<DocSummary, ApiError> {
@@ -110,7 +110,7 @@ pub(crate) fn summary_for(api: &Api, doc: DocId) -> Result<DocSummary, ApiError>
         .map_err(ApiError::from)
 }
 
-fn build_summary(doc: DocId, document: &Document, warnings: Vec<String>) -> DocSummary {
+fn build_summary(doc: DocId, document: &Document, warnings: Vec<DocWarning>) -> DocSummary {
     DocSummary {
         doc,
         path: document
@@ -175,14 +175,17 @@ fn open_binary(
     api: &Api,
     path: &Path,
     face_index: Option<u32>,
-) -> Result<(DocId, Vec<String>), ApiError> {
+) -> Result<(DocId, Vec<DocWarning>), ApiError> {
     let bytes = fs::read(path)
         .map_err(|error| ApiError::io(format!("failed to read `{}`: {error}", path.display())))?;
-    let warnings =
+    let mut warnings =
         if face_index.is_none() && fw_sfnt::sniff(&bytes) == Some(fw_sfnt::Container::Ttc) {
             let count = fw_sfnt::face_count(&bytes)?;
             if count > 1 {
-                vec![format!("collection has {count} faces; opened face 0")]
+                vec![DocWarning {
+                    code: "collection-face-opened".to_owned(),
+                    message: format!("collection has {count} faces; opened face 0"),
+                }]
             } else {
                 Vec::new()
             }
@@ -202,6 +205,10 @@ fn open_binary(
             "warnings while opening binary font"
         );
     }
+    warnings.extend(outcome.warnings.drain(..).map(|warning| DocWarning {
+        code: warning.code.to_owned(),
+        message: warning.message,
+    }));
     let mut font = outcome
         .fonts
         .drain(..)

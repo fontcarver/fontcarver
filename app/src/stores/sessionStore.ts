@@ -8,6 +8,7 @@ import {
   type DocSummary,
 } from '../api'
 import { i18n } from '../i18n'
+import { warningMessage } from '../i18n/warnings'
 import { ApiCallError } from '../transport'
 
 import { useDocumentStore } from './documentStore'
@@ -77,7 +78,13 @@ function upsert(docs: DocSummary[], summary: DocSummary): DocSummary[] {
 
 function announceWarnings(summary: DocSummary): void {
   for (const warning of summary.warnings)
-    useUiStore.getState().pushToast({ kind: 'info', message: warning })
+    useUiStore.getState().pushToast({
+      kind: 'info',
+      message: warningMessage(warning, (key, options) => {
+        if (!options) return i18n.t(key)
+        return i18n.t(key, options)
+      }),
+    })
 }
 
 /** Creates the initial, action-free part of the session state. */

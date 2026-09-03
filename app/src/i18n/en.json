@@ -226,6 +226,11 @@
     "copiedNames_other": "Copied {{count, number}} glyph names",
     "copyFailed": "Could not write to the clipboard"
   },
+  "warning": {
+    "cffHintsNotImported": "CFF outlines were imported without per-glyph stem and hint-mask data",
+    "glyphNamesSynthesized": "Glyph names were synthesized because the font had no usable glyph names.",
+    "collectionFaceOpened": "{{message}}"
+  },
   "a11y": {
     "menubar": "Application menu",
     "tabs": "Open tabs",

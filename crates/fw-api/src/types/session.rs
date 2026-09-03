@@ -127,7 +127,17 @@ pub struct DocSummary {
     /// Current source or native document format.
     pub format: String,
     /// Non-fatal diagnostics associated with opening the document.
-    pub warnings: Vec<String>,
+    pub warnings: Vec<DocWarning>,
+}
+
+/// A non-fatal diagnostic associated with opening a document.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
+pub struct DocWarning {
+    /// Stable machine-readable warning identifier.
+    pub code: String,
+    /// Human-readable warning detail used when no translation is available.
+    pub message: String,
 }
 
 /// Persisted application preferences.

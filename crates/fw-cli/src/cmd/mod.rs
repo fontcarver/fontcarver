@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use fw_api::Api;
+use fw_api::{Api, DocWarning};
 use fw_doc::{DocId, FontOpener, Session};
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -18,16 +18,16 @@ pub(crate) struct OpenedDocument {
     pub(crate) session: Arc<Session>,
     pub(crate) api: Api,
     pub(crate) doc: DocId,
-    pub(crate) warnings: Vec<String>,
+    pub(crate) warnings: Vec<DocWarning>,
 }
 
 #[derive(Default)]
 struct CliFontOpener {
-    warnings: Mutex<Vec<String>>,
+    warnings: Mutex<Vec<DocWarning>>,
 }
 
 impl CliFontOpener {
-    fn take_warnings(&self) -> Vec<String> {
+    fn take_warnings(&self) -> Vec<DocWarning> {
         let mut warnings = self
             .warnings
             .lock()
@@ -58,7 +58,10 @@ impl FontOpener for CliFontOpener {
         *warnings = outcome
             .warnings
             .into_iter()
-            .map(|warning| format!("{}: {}", warning.code, warning.message))
+            .map(|warning| DocWarning {
+                code: warning.code.to_owned(),
+                message: warning.message,
+            })
             .collect();
         Ok(outcome.fonts)
     }
@@ -95,7 +98,7 @@ where
     serde_json::from_value(result).map_err(Error::from)
 }
 
-fn collection_warning(path: &Path, face_index: Option<u32>) -> Result<Option<String>, Error> {
+fn collection_warning(path: &Path, face_index: Option<u32>) -> Result<Option<DocWarning>, Error> {
     if face_index.is_some() || !is_collection_path(path) {
         return Ok(None);
     }
@@ -107,7 +110,10 @@ fn collection_warning(path: &Path, face_index: Option<u32>) -> Result<Option<Str
         path: path.to_path_buf(),
         source,
     })?;
-    Ok((faces.len() > 1).then(|| format!("collection has {} faces; opened face 0", faces.len())))
+    Ok((faces.len() > 1).then(|| DocWarning {
+        code: "collection-face-opened".to_owned(),
+        message: format!("collection has {} faces; opened face 0", faces.len()),
+    }))
 }
 
 fn is_collection_path(path: &Path) -> bool {

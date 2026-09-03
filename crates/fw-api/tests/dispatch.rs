@@ -287,8 +287,36 @@ fn collection_warning_uses_file_contents_not_extension() {
 
     assert_eq!(
         opened["warnings"],
-        json!(["collection has 2 faces; opened face 0"])
+        json!([{
+            "code": "collection-face-opened",
+            "message": "collection has 2 faces; opened face 0"
+        }])
     );
+    fs::remove_dir_all(config_dir).ok();
+}
+
+#[test]
+fn cff_import_warning_reaches_document_summary() {
+    let _env_guard = config_env_guard();
+    let config_dir = test_config_dir("cff-warning");
+    std::env::set_var("FW_CONFIG_DIR", &config_dir);
+    let api = Api::new(Arc::new(Session::new()));
+
+    let opened = api
+        .call(
+            "session.open",
+            json!({
+                "path": fw_fixtures::path("test1012.otf"),
+                "face_index": null
+            }),
+        )
+        .expect("open CFF fixture");
+
+    assert!(opened["warnings"]
+        .as_array()
+        .expect("warning array")
+        .iter()
+        .any(|warning| warning["code"] == "cff-hints-not-imported"));
     fs::remove_dir_all(config_dir).ok();
 }
 
