@@ -10,5 +10,12 @@ default = []
 ts = ["dep:ts-rs"]
 
 [dependencies]
+base64.workspace = true
+indexmap.workspace = true
+kurbo.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+smol_str.workspace = true
 thiserror.workspace = true
 ts-rs = { workspace = true, optional = true }
+uuid.workspace = true
