@@ -14,6 +14,8 @@ pub enum NamePlatform {
     /// Platform-independent Unicode encoding.
     #[default]
     Unicode,
+    /// Another OpenType platform identifier retained for round-trip fidelity.
+    Other(u16),
 }
 
 /// A platform-normalized OpenType name table record.

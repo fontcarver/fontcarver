@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use fw_model::{FontInfo, GlyphName, NamePlatform, NameRecord};
 use read_fonts::{
     tables::{head::Head, name::Name},
-    FontRef, TableProvider,
+    FontRef, Offset, TableProvider,
 };
 use skrifa::GlyphNameSource;
 
@@ -200,17 +200,21 @@ fn optional_name<'a>(face: &FontRef<'a>) -> Result<Option<Name<'a>>, Error> {
 fn all_name_records(name: &Name<'_>) -> Result<Vec<NameRecord>, Error> {
     name.name_record()
         .iter()
-        .filter(|record| matches!(record.platform_id(), 0 | 1 | 3))
         .map(|record| {
             let platform = match record.platform_id() {
                 1 => NamePlatform::Mac,
                 3 => NamePlatform::Windows,
-                _ => NamePlatform::Unicode,
+                0 => NamePlatform::Unicode,
+                other => NamePlatform::Other(other),
             };
-            let text = record
-                .string(name.string_data())
-                .map_err(|error| Error::parse("name", error))?
-                .to_string();
+            let text = if matches!(platform, NamePlatform::Other(_)) {
+                decode_other_name(name, record)?
+            } else {
+                record
+                    .string(name.string_data())
+                    .map_err(|error| Error::parse("name", error))?
+                    .to_string()
+            };
             Ok(NameRecord {
                 name_id: record.name_id().to_u16(),
                 language: language(name, record.platform_id(), record.language_id()),
@@ -219,6 +223,37 @@ fn all_name_records(name: &Name<'_>) -> Result<Vec<NameRecord>, Error> {
             })
         })
         .collect()
+}
+
+fn decode_other_name(
+    name: &Name<'_>,
+    record: &read_fonts::tables::name::NameRecord,
+) -> Result<String, Error> {
+    let start = record.string_offset().non_null().unwrap_or(0);
+    let end = start
+        .checked_add(usize::from(record.length()))
+        .ok_or_else(|| Error::Parse {
+            table: "name",
+            reason: "name string range overflow".to_owned(),
+        })?;
+    let data = name.string_data();
+    let bytes = data
+        .as_bytes()
+        .get(start..end)
+        .ok_or_else(|| Error::Parse {
+            table: "name",
+            reason: "name string range is out of bounds".to_owned(),
+        })?;
+    let utf16 = (record.platform_id() == 2 && record.encoding_id() == 1)
+        || (record.platform_id() == 4 && bytes.len() % 2 == 0);
+    if utf16 {
+        let units: Vec<_> = bytes
+            .chunks_exact(2)
+            .map(|pair| u16::from_be_bytes([pair[0], pair[1]]))
+            .collect();
+        return Ok(String::from_utf16_lossy(&units));
+    }
+    Ok(bytes.iter().map(|byte| char::from(*byte)).collect())
 }
 
 fn select(records: &[NameRecord], name_id: u16) -> Option<String> {
@@ -237,6 +272,7 @@ fn preference(record: &NameRecord) -> u8 {
         NamePlatform::Mac if record.language.starts_with("en") => 2,
         NamePlatform::Mac => 3,
         NamePlatform::Windows => 4,
+        NamePlatform::Other(_) => 5,
     }
 }
 

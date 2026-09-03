@@ -1,9 +1,13 @@
 use std::fs;
 
-use fw_model::{PointKind, Tag, TtIndex};
+use fw_model::{NamePlatform, PointKind, Tag, TtIndex};
 use fw_sfnt::{read_bytes, read_path, ReadOptions};
 use read_fonts::{FontRef, TableProvider};
-use write_fonts::FontBuilder;
+use write_fonts::{
+    tables::name::{Name, NameRecord},
+    types::NameId,
+    FontBuilder,
+};
 
 #[test]
 fn reads_dejavu_into_the_document_model() {
@@ -184,4 +188,34 @@ fn drops_dsig_while_preserving_other_raw_tables() {
     let raw_tables = &outcome.fonts[0].extra.raw_tables;
     assert!(!raw_tables.contains_key(&Tag(*b"DSIG")));
     assert!(raw_tables.contains_key(&Tag(*b"GSUB")));
+}
+
+#[test]
+fn keeps_iso_and_custom_platform_name_records() {
+    let bytes = fs::read(fw_fixtures::path("DejaVuSans.ttf")).expect("read fixture");
+    let source = FontRef::new(&bytes).expect("parse fixture directly");
+    let table = Name::new(vec![
+        NameRecord::new(0, 1, 0, NameId::new(250), "ISO name".to_owned().into()),
+        NameRecord::new(0, 1, 0, NameId::new(251), "Custom name".to_owned().into()),
+    ]);
+    let mut name_bytes = write_fonts::dump_table(&table).expect("build synthetic name table");
+    name_bytes[6..8].copy_from_slice(&2_u16.to_be_bytes());
+    name_bytes[18..20].copy_from_slice(&4_u16.to_be_bytes());
+    let mut builder = FontBuilder::new();
+    builder
+        .add_raw(write_fonts::types::Tag::new(b"name"), name_bytes)
+        .copy_missing_tables(source);
+
+    let outcome = read_bytes(&builder.build(), &ReadOptions::default()).expect("import font");
+    let names = &outcome.fonts[0].info.names;
+    assert!(names.iter().any(|record| {
+        record.name_id == 250
+            && record.platform == NamePlatform::Other(2)
+            && record.text == "ISO name"
+    }));
+    assert!(names.iter().any(|record| {
+        record.name_id == 251
+            && record.platform == NamePlatform::Other(4)
+            && record.text == "Custom name"
+    }));
 }
