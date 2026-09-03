@@ -213,6 +213,47 @@ describe('FontInfoPanel', () => {
     expect(within(display).getByText('Yes')).toBeInTheDocument()
   })
 
+  it('shows the table inventory sorted by tag and marks preserved tables', async () => {
+    const user = userEvent.setup()
+    setTransport(
+      transportFor(
+        makeFontInfoView({
+          tables: [
+            { tag: 'name', len: 15_623, preserved: false },
+            { tag: 'GSUB', len: 5_598, preserved: true },
+            { tag: 'cmap', len: 7_056, preserved: false },
+          ],
+        }),
+      ),
+    )
+    render(<FontInfoPanel summary={makeSummary()} />)
+    await screen.findByText('DejaVu Sans')
+
+    await user.click(screen.getByRole('tab', { name: 'Tables' }))
+
+    const table = screen.getByRole('table', { name: 'OpenType tables' })
+    const rows = within(table).getAllByRole('row').slice(1)
+    expect(
+      rows.map((row) => within(row).getAllByRole('cell')[0]?.textContent),
+    ).toEqual(['cmap', 'GSUB', 'name'])
+    expect(within(rows[0]!).getByText('7,056 bytes')).toBeInTheDocument()
+    expect(within(rows[1]!).getByText('Preserved')).toBeInTheDocument()
+    expect(within(rows[2]!).queryByText('Preserved')).toBeNull()
+  })
+
+  it('shows an empty state when no imported table inventory is available', async () => {
+    const user = userEvent.setup()
+    setTransport(transportFor(makeFontInfoView({ tables: [] })))
+    render(<FontInfoPanel summary={makeSummary()} />)
+    await screen.findByText('DejaVu Sans')
+
+    await user.click(screen.getByRole('tab', { name: 'Tables' }))
+
+    expect(
+      screen.getByText('This document has no imported table inventory.'),
+    ).toBeInTheDocument()
+  })
+
   it('surfaces a transport failure instead of an empty panel', async () => {
     setTransport(
       createMockTransport({

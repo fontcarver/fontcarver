@@ -5,14 +5,14 @@
  * font view shows, but the kernel indexes glyphs by position and the UI holds
  * handles, so the mapping has to be learned. Every page the grid loads records
  * its positions here, which makes the common case — stepping away from a glyph
- * that was opened from the grid — a single one-cell request. A glyph whose
- * position was never seen falls back to a paged scan, cached the same way.
+ * that was opened from the grid — a single one-cell request. The kernel's
+ * `glyphs.index_of` lookup resolves any position the grid has not seen.
  */
 
 import { call, type DocId, type GlyphCell, type GlyphId } from '../../api'
 import { onDocumentForgotten } from '../../stores/documentStore'
 
-import { MAX_LIST_LIMIT, type GlyphQuery } from './glyphSelection'
+import type { GlyphQuery } from './glyphSelection'
 
 /** How many query orders are remembered before the oldest is dropped. */
 const MAX_ORDERS = 8
@@ -109,7 +109,7 @@ async function fetchPage(
   return result.items
 }
 
-/** Finds a glyph's position, scanning the list in pages when it is unknown. */
+/** Finds a glyph's position, asking the kernel once when it is not cached. */
 export async function indexOf(
   query: GlyphQuery,
   gid: GlyphId,
@@ -117,17 +117,10 @@ export async function indexOf(
   const cached = knownIndex(query, gid)
   if (cached !== undefined) return cached
 
-  let offset = 0
-  for (;;) {
-    const items = await fetchPage(query, offset, MAX_LIST_LIMIT)
-    const found = items.findIndex((cell) => cell.gid === gid)
-    if (found >= 0) return offset + found
-    if (items.length < MAX_LIST_LIMIT) return undefined
-    offset += items.length
-    const total = orders.get(orderKey(query))?.total
-    if (total !== null && total !== undefined && offset >= total)
-      return undefined
-  }
+  const result = await call('glyphs.index_of', { ...query, gid })
+  if (result === null) return undefined
+  entryFor(query).positions.set(gid, result)
+  return result
 }
 
 /**

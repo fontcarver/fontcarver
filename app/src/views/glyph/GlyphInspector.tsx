@@ -67,13 +67,13 @@ export function GlyphInspector() {
           {glyph.production_name ?? '—'}
         </Field>
         <Field label={t('glyphInspector.category')} readOnly>
-          {glyph.category ?? '—'}
+          {glyph.category}
         </Field>
         <Field label={t('glyphInspector.subCategory')} readOnly>
-          {glyph.sub_category ?? '—'}
+          {glyph.sub_category}
         </Field>
         <Field label={t('glyphInspector.script')} readOnly>
-          {glyph.script ?? '—'}
+          {glyph.script}
         </Field>
         <Field label={t('glyphInspector.export')} readOnly>
           {glyph.export ? t('common.yes') : t('common.no')}

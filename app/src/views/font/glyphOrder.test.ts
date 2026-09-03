@@ -24,6 +24,10 @@ const query: GlyphQuery = {
 /** A list whose gid at position `n` is `n + 100`. */
 function transportFor(total: number) {
   return createMockTransport({
+    'glyphs.index_of': ({ gid }) => {
+      const index = gid - 100
+      return index >= 0 && index < total ? index : null
+    },
     'glyphs.list': (params: GlyphListParams) => ({
       total,
       items: Array.from(
@@ -87,19 +91,32 @@ describe('glyph order', () => {
     await expect(neighbourGid(query, 599, 1)).resolves.toBeNull()
   })
 
-  it('scans in pages for a glyph whose position was never seen', async () => {
-    const transport = transportFor(2_500)
+  it('asks for one index instead of scanning pages for an unseen glyph', async () => {
+    const transport = createMockTransport({
+      'glyphs.index_of': () => 2_100,
+      'glyphs.list': (params: GlyphListParams) => ({
+        total: 2_500,
+        items:
+          params.offset === 2_101
+            ? [makeCell({ gid: 2_201, name: 'g2101' })]
+            : [],
+      }),
+    })
     setTransport(transport)
 
-    await expect(indexOf(query, 2_200)).resolves.toBe(2_100)
+    await expect(neighbourGid(query, 2_200, 1)).resolves.toBe(2_201)
 
+    const indexes = transport.calls.filter(
+      (entry) => entry.method === 'glyphs.index_of',
+    )
     const lists = transport.calls.filter(
       (entry) => entry.method === 'glyphs.list',
     )
-    expect(lists).toHaveLength(2)
-    expect(lists[0]?.params).toMatchObject({ offset: 0, limit: 2_000 })
-    expect(lists[1]?.params).toMatchObject({ offset: 2_000, limit: 2_000 })
-    // The scan also fills the cache, so the next lookup costs nothing.
+    expect(indexes).toHaveLength(1)
+    expect(indexes[0]?.params).toEqual({ ...query, gid: 2_200 })
+    expect(lists).toHaveLength(1)
+    expect(lists[0]?.params).toMatchObject({ offset: 2_101, limit: 1 })
+    // The lookup also fills the cache, so the next lookup costs nothing.
     expect(knownIndex(query, 2_200)).toBe(2_100)
   })
 

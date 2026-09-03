@@ -11,9 +11,17 @@ import { fontGroups, otherGroups } from './fontInfoRows'
 import { InfoGroups } from './InfoGroups'
 import { MetricsTable } from './MetricsTable'
 import { NamesTable } from './NamesTable'
+import { TablesTable } from './TablesTable'
 
 /** The sections of the Font Info tab, in order. */
-export const SECTIONS = ['font', 'names', 'masters', 'axes', 'other'] as const
+export const SECTIONS = [
+  'font',
+  'names',
+  'masters',
+  'axes',
+  'tables',
+  'other',
+] as const
 
 /** One Font Info section. */
 export type SectionId = (typeof SECTIONS)[number]
@@ -93,6 +101,10 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
             instances={info.instances}
             query={query}
           />
+        )
+      case 'tables':
+        return (
+          <TablesTable heading={heading} tables={info.tables} query={query} />
         )
       case 'other':
         return (

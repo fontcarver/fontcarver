@@ -346,11 +346,16 @@
     "noMasters": "This font has no masters.",
     "noAxes": "This font has no variation axes.",
     "noInstances": "This font has no instances.",
+    "noTables": "This document has no imported table inventory.",
+    "tablesLabel": "OpenType tables",
+    "preserved": "Preserved",
+    "bytes": "{{count, number}} bytes",
     "section": {
       "font": "Font",
       "names": "Names",
       "masters": "Masters",
       "axes": "Axes / Instances",
+      "tables": "Tables",
       "other": "Other"
     },
     "group": {
@@ -378,6 +383,8 @@
       "metric": "Metric",
       "master": "Master",
       "tag": "Tag",
+      "byteLength": "Byte length",
+      "preservation": "Preservation",
       "axisName": "Name",
       "min": "Minimum",
       "default": "Default",
