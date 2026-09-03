@@ -31,8 +31,11 @@ test.describe('CJK font view', () => {
     ).toBeVisible({ timeout: 20_000 })
 
     await grid.evaluate((element) => {
-      element.scrollTop = element.scrollHeight
-      element.dispatchEvent(new Event('scroll'))
+      const scroller = element as unknown as {
+        scrollTop: number
+        readonly scrollHeight: number
+      }
+      scroller.scrollTop = scroller.scrollHeight
     })
 
     const lastCell = grid.locator('[role="option"][aria-posinset="65535"]')
