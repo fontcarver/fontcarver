@@ -19,6 +19,10 @@ magic regardless of the file extension.
 The `font` value uses the serde shapes defined by the public types in
 [`fw-model`](../../../fw-model/src/lib.rs). `IndexMap` preserves glyph order,
 and binary model fields use the base64 encodings defined by `fw-model`.
+Glyph `metrics_keys` (`left`, `right`, `width`, `vertical_origin`, and
+`vertical_width`) are existing version-1 model fields and remain persisted
+unchanged; resolved metrics and edit-session state are derived and are not
+written to the document.
 
 Writers use two-space indentation for the envelope and font-level objects. The
 `font.glyphs` map keeps its deterministic `IndexMap` order, but each map entry's

@@ -30,6 +30,15 @@ pub enum Error {
     /// An edit token does not identify the active coalesced edit.
     #[error("edit token is not active")]
     InvalidEditToken,
+    /// A command contains an invalid index, scope, or parameter.
+    #[error("invalid command: {0}")]
+    InvalidCommand(String),
+    /// An outline operation failed in the geometry engine.
+    #[error("geometry operation failed: {0}")]
+    Geometry(String),
+    /// Metrics keys contain a reference cycle.
+    #[error("metrics key cycle")]
+    MetricsKeyCycle,
     /// The path is not a supported document format.
     #[error("unsupported document format: `{0}`")]
     UnsupportedFormat(PathBuf),
