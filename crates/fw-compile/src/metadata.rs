@@ -216,10 +216,44 @@ fn nonempty<'a>(value: &'a str, fallback: &'a str) -> &'a str {
     }
 }
 
+/// Windows US-English language identifier used for default name records.
+const ENGLISH_LANGUAGE: u16 = 0x0409;
+
+/// Name identifiers every font needs in Windows US-English to be usable.
+const ENGLISH_REQUIRED_NAMES: [NameId; 4] = [
+    NameId::FAMILY_NAME,
+    NameId::SUBFAMILY_NAME,
+    NameId::FULL_NAME,
+    NameId::POSTSCRIPT_NAME,
+];
+
 fn insert_default_name(names: &mut HashMap<NameKey, String>, id: NameId, value: String) {
-    if names.keys().all(|key| key.name_id != id) {
-        names.insert(NameKey::new_with_lang(id, &value, 0x0409), value);
+    if ENGLISH_REQUIRED_NAMES.contains(&id) {
+        insert_english_default(names, id, value);
+        return;
     }
+    if names.keys().all(|key| key.name_id != id) {
+        names.insert(NameKey::new_with_lang(id, &value, ENGLISH_LANGUAGE), value);
+    }
+}
+
+/// Ensures one English record exists for `id`, reusing another language's text.
+///
+/// A font whose source only carries, for example, German names would otherwise
+/// ship without the English records every consumer falls back to.
+fn insert_english_default(names: &mut HashMap<NameKey, String>, id: NameId, value: String) {
+    if names
+        .keys()
+        .any(|key| key.name_id == id && key.lang_id == ENGLISH_LANGUAGE)
+    {
+        return;
+    }
+    let text = names
+        .iter()
+        .filter(|(key, _)| key.name_id == id)
+        .min_by_key(|(key, _)| key.lang_id)
+        .map_or(value, |(_, text)| text.clone());
+    names.insert(NameKey::new_with_lang(id, &text, ENGLISH_LANGUAGE), text);
 }
 
 fn fallback_postscript_name(family: &str, style: &str) -> String {

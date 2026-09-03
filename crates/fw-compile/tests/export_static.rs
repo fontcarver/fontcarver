@@ -156,6 +156,36 @@ fn localized_windows_names_survive_and_mac_records_are_reported_once() {
 }
 
 #[test]
+fn german_only_names_still_get_english_defaults() {
+    let mut font = common::scratch_font();
+    font.info.family_name = "Kompilierprobe".to_owned();
+    font.info.style_name = "Fett".to_owned();
+    font.info.names = [1_u16, 2, 4, 6]
+        .into_iter()
+        .map(|name_id| NameRecord {
+            name_id,
+            language: "de".into(),
+            text: format!("Deutscher Name {name_id}"),
+            platform: NamePlatform::Windows,
+        })
+        .collect();
+
+    let report = export(&font, &|_| 0, &ExportOptions::default()).expect("export names");
+    let records = decoded_names(&report.bytes);
+
+    for name_id in [1_u16, 2, 4, 6] {
+        assert!(
+            records.contains(&(name_id, 0x0409, format!("Deutscher Name {name_id}"))),
+            "name {name_id} has no English default in {records:?}"
+        );
+        assert!(
+            records.contains(&(name_id, 0x0407, format!("Deutscher Name {name_id}"))),
+            "name {name_id} lost its German record in {records:?}"
+        );
+    }
+}
+
+#[test]
 fn dejavu_keeps_every_windows_name_record() {
     let original = std::fs::read(fw_fixtures::path("DejaVuSans.ttf")).expect("read fixture");
     let font = fw_sfnt::read_bytes(&original, &fw_sfnt::ReadOptions::default())
