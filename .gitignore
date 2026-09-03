@@ -4,9 +4,12 @@
 # Rust
 /target/
 **/target/
+/crates/fw-api/bindings/
 # Node
 node_modules/
 app/node_modules/
+/app/src/api/generated/*
+!/app/src/api/generated/.gitkeep
 dist/
 dist-ssr/
 *.local

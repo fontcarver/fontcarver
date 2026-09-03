@@ -979,7 +979,18 @@ dependencies = [
 name = "fw-api"
 version = "0.1.0"
 dependencies = [
+ "dirs",
+ "fw-doc",
+ "fw-fixtures",
+ "fw-glyphdata",
+ "fw-model",
+ "fw-sfnt",
+ "kurbo",
+ "serde",
+ "serde_json",
  "thiserror 2.0.20",
+ "tokio",
+ "ts-rs",
 ]
 
 [[package]]
