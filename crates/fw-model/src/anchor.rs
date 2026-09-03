@@ -46,6 +46,9 @@ pub struct Anchor {
 
 impl Anchor {
     /// Infers the attachment role from the anchor name.
+    ///
+    /// Mark syntax takes precedence over numbered ligature syntax, so `_top_2` is
+    /// `Mark("top_2")`, not a ligature mark.
     pub fn kind(&self) -> AnchorKind {
         if self.name == "entry" {
             return AnchorKind::CursiveEntry;

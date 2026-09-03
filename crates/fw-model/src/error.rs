@@ -44,7 +44,7 @@ pub enum Error {
     /// A contour has a malformed point sequence.
     #[error("malformed contour")]
     MalformedContour,
-    /// An OpenType tag is not exactly four bytes long.
+    /// An OpenType tag is not exactly four Latin-1 characters long.
     #[error("invalid four-byte OpenType tag `{tag}`")]
     InvalidTag {
         /// The invalid textual representation.

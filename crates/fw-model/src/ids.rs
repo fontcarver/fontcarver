@@ -138,10 +138,27 @@ impl FromStr for Tag {
     type Err = Error;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        let bytes = value.as_bytes();
-        let tag = <[u8; 4]>::try_from(bytes).map_err(|_| Error::InvalidTag {
-            tag: value.to_owned(),
-        })?;
+        let mut characters = value.chars();
+        let mut tag = [0; 4];
+        for byte in &mut tag {
+            let Some(character) = characters.next() else {
+                return Err(Error::InvalidTag {
+                    tag: value.to_owned(),
+                });
+            };
+            let codepoint = u32::from(character);
+            if codepoint > u32::from(u8::MAX) {
+                return Err(Error::InvalidTag {
+                    tag: value.to_owned(),
+                });
+            }
+            *byte = codepoint as u8;
+        }
+        if characters.next().is_some() {
+            return Err(Error::InvalidTag {
+                tag: value.to_owned(),
+            });
+        }
         Ok(Self(tag))
     }
 }

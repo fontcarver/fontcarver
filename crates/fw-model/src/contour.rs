@@ -292,8 +292,18 @@ fn finish_contour(contours: &mut Vec<Contour>, points: &mut Vec<Point>, closed: 
         return;
     }
     if closed {
+        let duplicate_start = points.len() > 1
+            && points.last().is_some_and(|last| {
+                last.kind != PointKind::OffCurve
+                    && points
+                        .first()
+                        .is_some_and(|first| last.x == first.x && last.y == first.y)
+            });
+        let closing_kind = duplicate_start
+            .then(|| points.pop().map(|point| point.kind))
+            .flatten();
         if let Some(first) = points.first_mut() {
-            first.kind = PointKind::Line;
+            first.kind = closing_kind.unwrap_or(PointKind::Line);
         }
     }
     contours.push(Contour {

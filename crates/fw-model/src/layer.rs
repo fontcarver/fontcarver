@@ -47,7 +47,7 @@ pub enum LayerKind {
 
 impl Default for LayerKind {
     fn default() -> Self {
-        Self::Master(MasterId::new())
+        Self::Custom("default".to_owned())
     }
 }
 
@@ -190,11 +190,10 @@ pub struct ColorLayer {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub struct Layer {
-    /// Persistent layer identifier.
+    /// Persistent layer identifier; deserialization mints a fresh ID when omitted.
     #[serde(default)]
     pub id: LayerId,
     /// Semantic layer role.
-    #[serde(default)]
     pub kind: LayerKind,
     /// Display name.
     #[serde(default)]

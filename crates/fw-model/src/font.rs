@@ -1,6 +1,9 @@
 //! Top-level font document and mutation invariants.
 
-use std::collections::{BTreeMap, HashSet};
+use std::{
+    collections::{BTreeMap, HashSet},
+    sync::LazyLock,
+};
 
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -125,7 +128,7 @@ pub struct CidInfo {
 }
 
 /// A complete editable font document.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub struct Font {
@@ -136,7 +139,7 @@ pub struct Font {
     #[serde(default)]
     pub axes: Vec<Axis>,
     /// Interpolation masters.
-    #[serde(default)]
+    #[serde(default = "default_masters", deserialize_with = "deserialize_masters")]
     pub masters: Vec<Master>,
     /// Named export instances.
     #[serde(default)]
@@ -169,6 +172,50 @@ pub struct Font {
     pub user_data: serde_json::Value,
 }
 
+impl Default for Font {
+    fn default() -> Self {
+        Self {
+            info: FontInfo::default(),
+            axes: Vec::new(),
+            masters: default_masters(),
+            instances: Vec::new(),
+            glyphs: IndexMap::new(),
+            kerning_groups: KerningGroups::default(),
+            features: Features::default(),
+            bitmap_strikes: Vec::new(),
+            cid: None,
+            guides: Vec::new(),
+            extra: Extra::default(),
+            user_data: serde_json::Value::Null,
+        }
+    }
+}
+
+fn regular_master() -> Master {
+    Master {
+        name: "Regular".to_owned(),
+        ..Master::default()
+    }
+}
+
+fn default_masters() -> Vec<Master> {
+    vec![regular_master()]
+}
+
+fn deserialize_masters<'de, D>(deserializer: D) -> Result<Vec<Master>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let masters = Vec::<Master>::deserialize(deserializer)?;
+    if masters.is_empty() {
+        Ok(default_masters())
+    } else {
+        Ok(masters)
+    }
+}
+
+static FALLBACK_MASTER: LazyLock<Master> = LazyLock::new(regular_master);
+
 impl Font {
     /// Creates a static empty font with one `Regular` master.
     pub fn new_empty(family: &str, units_per_em: u16) -> Font {
@@ -183,17 +230,13 @@ impl Font {
         }
         Font {
             info,
-            masters: vec![Master {
-                name: "Regular".to_owned(),
-                ..Master::default()
-            }],
             ..Font::default()
         }
     }
 
     /// Returns the first master, which is guaranteed by document invariants.
     pub fn default_master(&self) -> &Master {
-        &self.masters[0]
+        self.masters.first().unwrap_or(&FALLBACK_MASTER)
     }
 
     /// Finds a master by persistent identifier.
@@ -222,11 +265,24 @@ impl Font {
                 glyph.layers.push(Layer::new_master(master.id.clone()));
             }
         }
+        let has_components = glyph
+            .layers
+            .iter()
+            .any(|layer| component_bases(layer).next().is_some());
         let previous = self.glyphs.insert(name.clone(), glyph);
         debug_assert!(previous.is_none());
-        if let Some(cycle) = component_cycle(self) {
-            self.glyphs.shift_remove(name.as_ref());
-            return Err(Error::ComponentCycle { glyph: cycle });
+        if has_components {
+            match component_cycle_from(self, &name) {
+                Ok(Some(cycle)) => {
+                    self.glyphs.shift_remove(name.as_ref());
+                    return Err(Error::ComponentCycle { glyph: cycle });
+                }
+                Err(error) => {
+                    self.glyphs.shift_remove(name.as_ref());
+                    return Err(error);
+                }
+                Ok(None) => {}
+            }
         }
         Ok(())
     }
@@ -300,7 +356,9 @@ impl Font {
             return;
         }
         for glyph in self.glyphs.values_mut() {
-            glyph.layers.push(Layer::new_master(master.id.clone()));
+            if glyph.master_layer(&master.id).is_none() {
+                glyph.layers.push(Layer::new_master(master.id.clone()));
+            }
         }
         self.masters.push(master);
     }
@@ -351,41 +409,44 @@ fn rename_group_members(
     }
 }
 
-fn component_cycle(font: &Font) -> Option<GlyphName> {
+const MAX_COMPONENT_DEPTH: usize = 64;
+
+fn component_cycle_from(font: &Font, name: &GlyphName) -> Result<Option<GlyphName>, Error> {
     let mut visiting = HashSet::new();
     let mut finished = HashSet::new();
-    for name in font.glyphs.keys() {
-        if let Some(cycle) = cycle_from(font, name, &mut visiting, &mut finished) {
-            return Some(cycle);
-        }
-    }
-    None
+    cycle_from(font, name, 0, &mut visiting, &mut finished)
 }
 
 fn cycle_from(
     font: &Font,
     name: &GlyphName,
+    depth: usize,
     visiting: &mut HashSet<GlyphName>,
     finished: &mut HashSet<GlyphName>,
-) -> Option<GlyphName> {
+) -> Result<Option<GlyphName>, Error> {
+    if depth > MAX_COMPONENT_DEPTH {
+        return Err(Error::ComponentDepthLimit {
+            glyph: name.clone(),
+        });
+    }
     if finished.contains(name) {
-        return None;
+        return Ok(None);
     }
     if !visiting.insert(name.clone()) {
-        return Some(name.clone());
+        return Ok(Some(name.clone()));
     }
     if let Some(glyph) = font.glyph(name) {
         for base in glyph.layers.iter().flat_map(component_bases) {
             if font.glyph(base).is_some() {
-                if let Some(cycle) = cycle_from(font, base, visiting, finished) {
-                    return Some(cycle);
+                if let Some(cycle) = cycle_from(font, base, depth + 1, visiting, finished)? {
+                    return Ok(Some(cycle));
                 }
             }
         }
     }
     visiting.remove(name);
     finished.insert(name.clone());
-    None
+    Ok(None)
 }
 
 fn component_bases(layer: &Layer) -> impl Iterator<Item = &GlyphName> {

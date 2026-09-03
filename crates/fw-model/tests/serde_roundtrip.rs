@@ -290,6 +290,27 @@ fn populated_font_round_trips_semantically() {
     assert_eq!(decoded, expected);
 }
 
+#[test]
+fn latin1_tag_round_trips_as_text_and_as_a_raw_table_key() {
+    let tag = Tag([0x80, b'A', b'B', b'C']);
+
+    assert_eq!(tag.to_string().parse::<Tag>().unwrap(), tag);
+
+    let extra = Extra {
+        raw_tables: BTreeMap::from([(tag, vec![1, 2, 3])]),
+        ..Extra::default()
+    };
+    let json = serde_json::to_string(&extra).unwrap();
+    let decoded: Extra = serde_json::from_str(&json).unwrap();
+    assert_eq!(decoded, extra);
+}
+
+#[test]
+fn tags_reject_non_latin1_or_non_four_character_text() {
+    assert!("ABCDx".parse::<Tag>().is_err());
+    assert!("ABCĀ".parse::<Tag>().is_err());
+}
+
 fn populated_font_info() -> FontInfo {
     FontInfo {
         family_name: "Round Trip".into(),

@@ -6,7 +6,7 @@ mod anchor;
 mod bitmap;
 mod component;
 mod contour;
-mod error;
+pub mod error;
 mod extra;
 mod features;
 mod font;

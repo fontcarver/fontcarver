@@ -188,7 +188,7 @@ pub struct TtMasterData {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub struct Master {
-    /// Persistent master identifier.
+    /// Persistent master identifier; deserialization mints a fresh ID when omitted.
     #[serde(default)]
     pub id: MasterId,
     /// Display name.
