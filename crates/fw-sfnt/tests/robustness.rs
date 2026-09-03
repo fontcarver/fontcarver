@@ -8,6 +8,7 @@ const FIXTURES: &[&str] = &[
     "NotoSans-Regular.ttf",
     "NotoSerifTibetan-Regular.ttf",
     "test1012.otf",
+    "NimbusRoman-Regular-o.otf",
     "CantarellMin.woff2",
 ];
 

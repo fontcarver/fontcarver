@@ -111,10 +111,10 @@ pub(crate) fn apply_height_fallbacks(font: &mut fw_model::Font) {
     };
     let master_id = master.id.clone();
     let x_height = (master.metrics.x_height == 0.0)
-        .then(|| glyph_top(font, "x", &master_id))
+        .then(|| glyph_top_for_unicode(font, 0x0078, &master_id))
         .flatten();
     let cap_height = (master.metrics.cap_height == 0.0)
-        .then(|| glyph_top(font, "H", &master_id))
+        .then(|| glyph_top_for_unicode(font, 0x0048, &master_id))
         .flatten();
     if let Some(metrics) = font.masters.first_mut().map(|master| &mut master.metrics) {
         if let Some(x_height) = x_height {
@@ -126,9 +126,16 @@ pub(crate) fn apply_height_fallbacks(font: &mut fw_model::Font) {
     }
 }
 
-fn glyph_top(font: &fw_model::Font, glyph: &str, master: &fw_model::MasterId) -> Option<f64> {
-    font.glyph(glyph)?;
-    fw_model::layer_bbox(font, glyph, master)
+fn glyph_top_for_unicode(
+    font: &fw_model::Font,
+    codepoint: u32,
+    master: &fw_model::MasterId,
+) -> Option<f64> {
+    let glyph = font
+        .glyphs
+        .values()
+        .find(|glyph| glyph.unicodes.contains(&codepoint))?;
+    fw_model::layer_bbox(font, &glyph.name, master)
         .ok()
         .flatten()
         .map(|bounds| bounds.y1)
@@ -139,4 +146,51 @@ fn set_bits(bits: u32) -> Vec<u8> {
         .filter(|bit| bits & (1 << bit) != 0)
         .map(|bit| bit as u8)
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use fw_model::{Contour, Font, Glyph, Layer, Point, PointKind};
+
+    use super::apply_height_fallbacks;
+
+    #[test]
+    fn height_fallbacks_follow_unicode_when_glyphs_are_renamed() {
+        let mut font = Font::new_empty("Renamed Metrics", 1_000);
+        add_box(&mut font, "latin-small-letter-x.alt", 0x0078, 432.0);
+        add_box(&mut font, "latin-capital-letter-h.alt", 0x0048, 711.0);
+
+        apply_height_fallbacks(&mut font);
+
+        assert_eq!(font.masters[0].metrics.x_height, 432.0);
+        assert_eq!(font.masters[0].metrics.cap_height, 711.0);
+    }
+
+    fn add_box(font: &mut Font, name: &str, unicode: u32, top: f64) {
+        let master = font.default_master().id.clone();
+        let mut glyph = Glyph::new(name);
+        glyph.unicodes.push(unicode);
+        let mut layer = Layer::new_master(master);
+        layer.contours.push(Contour {
+            closed: true,
+            points: vec![
+                point(0.0, 0.0),
+                point(100.0, 0.0),
+                point(100.0, top),
+                point(0.0, top),
+            ],
+            ..Contour::default()
+        });
+        glyph.layers.push(layer);
+        font.insert_glyph(glyph).expect("test glyph is valid");
+    }
+
+    fn point(x: f64, y: f64) -> Point {
+        Point {
+            x,
+            y,
+            kind: PointKind::Line,
+            ..Point::default()
+        }
+    }
 }

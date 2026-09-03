@@ -195,7 +195,7 @@ fn open_binary(
     let options = fw_sfnt::ReadOptions {
         font_index: face_index,
         keep_original_bytes: true,
-        decode_bitmaps: true,
+        decode_bitmaps: false,
     };
     let mut outcome = fw_sfnt::read_bytes(&bytes, &options)?;
     if !outcome.warnings.is_empty() {

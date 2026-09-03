@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type { DocSummary } from '../../api'
+import { onDocumentEvent, type DocSummary } from '../../api'
 import { Toolbar } from '../../components/Toolbar'
 import type { WarningTranslationOptions } from '../../i18n/warnings'
 import { useFontInfo } from '../../stores/fontInfoCache'
@@ -42,7 +42,17 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
   const { t } = useTranslation()
   const [section, setSection] = useState<SectionId>('font')
   const [query, setQuery] = useState('')
-  const { info, error, loading } = useFontInfo(summary.doc)
+  const [reloadToken, setReloadToken] = useState(0)
+  const { info, error, loading } = useFontInfo(summary.doc, reloadToken)
+
+  useEffect(
+    () =>
+      onDocumentEvent((event) => {
+        if (event.doc === summary.doc && event.change.font_info)
+          setReloadToken((value) => value + 1)
+      }),
+    [summary.doc],
+  )
 
   const searching = query.trim() !== ''
 

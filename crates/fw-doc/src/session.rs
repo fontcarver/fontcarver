@@ -41,7 +41,7 @@ impl FontOpener for DefaultFontOpener {
         let options = fw_sfnt::ReadOptions {
             font_index: face_index,
             keep_original_bytes: true,
-            decode_bitmaps: true,
+            decode_bitmaps: false,
         };
         let outcome =
             fw_sfnt::read_path(path, &options).map_err(|error| Error::Sfnt(error.to_string()))?;

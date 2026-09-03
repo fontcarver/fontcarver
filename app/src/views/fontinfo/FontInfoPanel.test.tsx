@@ -63,6 +63,38 @@ describe('FontInfoPanel', () => {
     expect(screen.getByText('2.037')).toBeInTheDocument()
   })
 
+  it('reloads when a document event reports changed font info', async () => {
+    let view = makeFontInfoView({
+      info: makeFontInfo({ family_name: 'Before Edit' }),
+    })
+    const transport = createMockTransport({ 'doc.font_info': () => view })
+    setTransport(transport)
+    render(<FontInfoPanel summary={makeSummary()} />)
+    expect(await screen.findByText('Before Edit')).toBeInTheDocument()
+
+    view = makeFontInfoView({
+      info: makeFontInfo({ family_name: 'After Edit' }),
+    })
+    transport.emit({
+      doc: 1,
+      generation: 2,
+      change: {
+        glyphs: [],
+        font_info: true,
+        masters: false,
+        glyph_order: false,
+      },
+      undo_label: 'Edit font info',
+      redo_label: null,
+      dirty: true,
+    })
+
+    expect(await screen.findByText('After Edit')).toBeInTheDocument()
+    expect(
+      transport.calls.filter((call) => call.method === 'doc.font_info'),
+    ).toHaveLength(2)
+  })
+
   it('renders every name record, including non-default languages', async () => {
     const user = userEvent.setup()
     setTransport(transportFor())

@@ -28,7 +28,7 @@ pub struct ReadOptions {
     pub font_index: Option<u32>,
     /// Keep decoded source bytes for preservation-based export.
     pub keep_original_bytes: bool,
-    /// Decode embedded bitmap strikes. P0 leaves them as raw tables.
+    /// Reserved for P3 embedded-bitmap decoding; currently ignored and must be false.
     pub decode_bitmaps: bool,
 }
 

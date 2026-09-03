@@ -47,7 +47,7 @@ impl FontOpener for CliFontOpener {
             &fw_sfnt::ReadOptions {
                 font_index: face_index,
                 keep_original_bytes: true,
-                decode_bitmaps: true,
+                decode_bitmaps: false,
             },
         )
         .map_err(|error| fw_doc::Error::Sfnt(error.to_string()))?;
