@@ -34,6 +34,29 @@ fn fwf_plain_and_gzip_round_trip_semantically() {
 }
 
 #[test]
+fn writer_keeps_each_glyph_on_one_compact_line() {
+    let dir = temp_dir("glyph-lines");
+    let path = dir.join("font.fwf");
+    let font = test_font();
+
+    fwf::write(&path, &font).unwrap();
+
+    let contents = fs::read_to_string(&path).unwrap();
+    let glyph_lines = contents
+        .lines()
+        .filter(|line| line.contains("\"contours\""))
+        .collect::<Vec<_>>();
+    assert_eq!(glyph_lines.len(), 2);
+    assert!(glyph_lines[0].contains("\"base\": {"));
+    assert!(glyph_lines[1].contains("\"composite\": {"));
+    assert!(glyph_lines.iter().all(|line| {
+        let line = line.trim();
+        line.starts_with('"') && (line.ends_with('}') || line.ends_with(','))
+    }));
+    assert_eq!(fwf::read(&path).unwrap(), font);
+}
+
+#[test]
 fn reader_accepts_unknown_fields_and_rejects_newer_versions() {
     let dir = temp_dir("versions");
     let compatible = dir.join("compatible.fwf");
