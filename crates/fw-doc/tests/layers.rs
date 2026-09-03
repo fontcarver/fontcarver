@@ -110,6 +110,27 @@ fn add_layer_duplicate_glyph_order_master_and_font_guides_undo() {
             )
             .unwrap();
             assert!(doc.font.glyph("base.copy").unwrap().unicodes.is_empty());
+            let source_ids: Vec<_> = doc
+                .font
+                .glyph("base")
+                .unwrap()
+                .layers
+                .iter()
+                .map(|layer| layer.id.clone())
+                .collect();
+            let copy_ids: Vec<_> = doc
+                .font
+                .glyph("base.copy")
+                .unwrap()
+                .layers
+                .iter()
+                .map(|layer| layer.id.clone())
+                .collect();
+            assert_eq!(source_ids.len(), copy_ids.len());
+            assert!(
+                copy_ids.iter().all(|id| !source_ids.contains(id)),
+                "the duplicate allocates fresh layer identifiers"
+            );
             doc.apply(
                 Command::SetGlyphOrder {
                     order: vec!["composite".into(), "base".into(), "base.copy".into()],
