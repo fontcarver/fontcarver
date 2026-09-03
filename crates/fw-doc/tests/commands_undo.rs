@@ -66,6 +66,56 @@ fn interactive_edit_coalesces_into_one_undo_entry() {
 }
 
 #[test]
+fn beginning_an_edit_finalizes_the_previous_gesture() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let layer = doc.font.glyph("base").unwrap().layers[0].id.clone();
+            let first = doc.begin_edit("First drag");
+            doc.apply_in_edit(
+                &first,
+                Command::SetWidth {
+                    glyph: "base".into(),
+                    layer: layer.clone(),
+                    width: 510.0,
+                },
+            )
+            .unwrap();
+
+            let second = doc.begin_edit("Second drag");
+            assert!(doc
+                .apply_in_edit(
+                    &first,
+                    Command::SetWidth {
+                        glyph: "base".into(),
+                        layer: layer.clone(),
+                        width: 520.0,
+                    },
+                )
+                .is_err());
+            doc.apply_in_edit(
+                &second,
+                Command::SetWidth {
+                    glyph: "base".into(),
+                    layer,
+                    width: 530.0,
+                },
+            )
+            .unwrap();
+
+            assert_eq!(doc.undo_len(), 2);
+            assert_eq!(doc.undo_label(), Some("Second drag"));
+            doc.undo().unwrap();
+            assert_eq!(doc.font.glyph("base").unwrap().layers[0].width, 510.0);
+            assert_eq!(doc.undo_label(), Some("First drag"));
+            doc.undo().unwrap();
+            assert_eq!(doc.font.glyph("base").unwrap().layers[0].width, 500.0);
+        })
+        .unwrap();
+}
+
+#[test]
 fn rename_undo_restores_stable_id_and_component_references() {
     let session = Session::new();
     let id = session.open_font(test_font(), None);

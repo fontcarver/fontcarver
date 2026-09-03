@@ -138,13 +138,17 @@ impl Document {
     ///
     /// A live coalesced edit is finalized before this command is applied.
     pub fn apply(&mut self, command: Command, label: impl Into<String>) -> Result<Change, Error> {
-        self.active_edit = None;
+        self.finalize_active_edit();
         self.apply_command(command, label.into(), false)
     }
 
     /// Starts a coalesced editing gesture.
+    ///
+    /// Starting a gesture while another is live finalizes the previous gesture:
+    /// its changes remain in history as one undo entry and its token becomes
+    /// invalid.
     pub fn begin_edit(&mut self, label: impl Into<String>) -> EditToken {
-        self.active_edit = None;
+        self.finalize_active_edit();
         let token = EditToken(self.next_edit_token);
         self.next_edit_token = self.next_edit_token.saturating_add(1);
         self.active_edit = Some(ActiveEdit {
@@ -187,7 +191,7 @@ impl Document {
 
     /// Restores the preceding undo state, if one is available.
     pub fn undo(&mut self) -> Result<Option<Change>, Error> {
-        self.active_edit = None;
+        self.finalize_active_edit();
         let Some(entry) = self.undo.take_undo() else {
             return Ok(None);
         };
@@ -200,7 +204,7 @@ impl Document {
 
     /// Reapplies the next redo state, if one is available.
     pub fn redo(&mut self) -> Result<Option<Change>, Error> {
-        self.active_edit = None;
+        self.finalize_active_edit();
         let Some(entry) = self.undo.take_redo() else {
             return Ok(None);
         };
@@ -255,13 +259,17 @@ impl Document {
 
     /// Saves the document as a `.fwf` or `.fwf.gz` file and marks it clean.
     pub fn save(&mut self, path: &Path) -> Result<(), Error> {
-        self.active_edit = None;
+        self.finalize_active_edit();
         fwf::write(path, &self.font)?;
         self.path = Some(path.to_path_buf());
         self.saved_state = self.current_state;
         self.dirty = false;
         self.emit(Change::default());
         Ok(())
+    }
+
+    fn finalize_active_edit(&mut self) {
+        self.active_edit.take();
     }
 
     fn apply_command(
