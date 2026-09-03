@@ -12,23 +12,19 @@ import {
 import { useTranslation } from 'react-i18next'
 
 import { call, onDocumentEvent, type DocSummary, type GlyphId } from '../../api'
-import { pathCache } from '../../canvas/pathCache'
 import { openGlyphTab } from '../../shell/tabActions'
-import {
-  isFiltered,
-  selectDocView,
-  useDocumentStore,
-} from '../../stores/documentStore'
+import { selectDocView, useDocumentStore } from '../../stores/documentStore'
 import { useUiStore } from '../../stores/uiStore'
 
 import { GlyphCell } from './GlyphCell'
 import { GlyphContextMenu } from './GlyphContextMenu'
 import styles from './fontView.module.css'
 import { startFrameMeter } from './frameMeter'
-import { forgetGlyphNames, rememberGlyphNames } from './glyphNames'
-import { forgetOrder, rememberOrder } from './glyphOrder'
-import { GlyphPager, requiresFullReload } from './glyphPager'
+import { rememberGlyphNames } from './glyphNames'
+import { rememberOrder } from './glyphOrder'
+import { GlyphPager } from './glyphPager'
 import type { GlyphQuery } from './glyphSelection'
+import { invalidateFor } from './invalidation'
 import { useGlyphSelection } from './useGlyphSelection'
 import { uiFontFamily, useCellTheme } from './useCellTheme'
 import { useFontMetrics } from './useFontMetrics'
@@ -172,27 +168,9 @@ export function GlyphGrid({ summary, query }: GlyphGridProps) {
     () =>
       onDocumentEvent((event) => {
         if (event.doc !== doc) return
-        // Answers computed before this edit are stale wherever they are.
-        pager.setGeneration(event.generation)
-        if (event.change.glyph_order) {
-          forgetGlyphNames(doc)
-          forgetOrder(doc)
-          pathCache.clearDoc(doc)
-        }
-        pathCache.drop(doc, event.change.glyphs)
-
-        if (
-          requiresFullReload(event.change, query.sort, isFiltered(query.filter))
-        ) {
-          // Order or membership can have moved anywhere, and the total with
-          // them, so the only truthful answer is to load the list again.
-          pager.reset()
-          pager.setRange(0, 0)
-          return
-        }
-        pager.invalidate(event.change.glyphs)
+        invalidateFor(event.change, query, event.generation, pager)
       }),
-    [doc, pager, query.filter, query.sort],
+    [doc, pager, query],
   )
 
   // Keeps the store's focus glyph in step with the focus cell, so glyph-scoped
