@@ -5,6 +5,7 @@ members = [
     "crates/fw-devserver",
     "crates/fw-doc",
     "crates/fw-fixtures",
+    "crates/fw-formats",
     "crates/fw-glyphdata",
     "crates/fw-model",
     "crates/fw-sfnt",
@@ -50,6 +51,9 @@ sha2 = "0.10"
 criterion = "0.5"
 assert_cmd = "2"
 predicates = "3"
+norad = { version = "0.18", features = ["kurbo", "rayon"] }
+plist = "1"
+walkdir = "2"
 icu_properties = "=2.1.1"
 tauri = "2"
 tauri-build = "2"
