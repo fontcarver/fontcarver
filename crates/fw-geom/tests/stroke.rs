@@ -2,6 +2,7 @@ mod fixtures;
 
 use fw_geom::{bbox, expand_stroke, Cap, CurveKind, Join, Nib, StrokeOptions};
 use fw_model::{Contour, PointKind};
+use kurbo::Shape;
 
 fn options(nib: Nib) -> StrokeOptions {
     StrokeOptions {
@@ -107,6 +108,151 @@ fn round_nib_strokes_closed_cornered_contours() {
         fixtures::rect(200.0, 0.0, 300.0, 100.0),
     ];
     assert!(expand_stroke(&squares, &closed_options(Nib::Round), CurveKind::Cubic).is_ok());
+}
+
+#[test]
+fn closed_round_square_preserves_curve_segments_and_compact_rings() {
+    let result = expand_stroke(
+        &[fixtures::rect(0.0, 0.0, 200.0, 200.0)],
+        &closed_options(Nib::Round),
+        CurveKind::Cubic,
+    )
+    .expect("closed square stroke");
+    assert_eq!(result.len(), 2);
+    let (outer, inner) =
+        if result[0].to_bezpath().area().abs() > result[1].to_bezpath().area().abs() {
+            (&result[0], &result[1])
+        } else {
+            (&result[1], &result[0])
+        };
+    let outer_lines = outer
+        .points
+        .iter()
+        .filter(|point| point.kind == PointKind::Line)
+        .count();
+    let outer_curves = outer
+        .points
+        .iter()
+        .filter(|point| point.kind == PointKind::Curve)
+        .count();
+    let outer_on_curve = outer
+        .points
+        .iter()
+        .filter(|point| point.kind != PointKind::OffCurve)
+        .count();
+    let inner_on_curve = inner
+        .points
+        .iter()
+        .filter(|point| point.kind != PointKind::OffCurve)
+        .count();
+    assert_eq!(outer_lines, 4, "outer ring: {:?}", outer.points);
+    assert_eq!(outer_curves, 4, "outer ring: {:?}", outer.points);
+    assert!(outer_on_curve <= 12, "outer on-curve={outer_on_curve}");
+    assert_eq!(inner_on_curve, 4, "inner ring: {:?}", inner.points);
+}
+
+#[test]
+fn closed_dejavu_b_round_stroke_stays_curved_and_compact() {
+    let path = fw_fixtures::path("DejaVuSans.ttf");
+    if !path.is_file() {
+        eprintln!("skipping test: DejaVuSans.ttf is unavailable");
+        return;
+    }
+    let outcome =
+        fw_sfnt::read_path(&path, &fw_sfnt::ReadOptions::default()).expect("read DejaVu Sans");
+    let font = &outcome.fonts[0];
+    let layer = font
+        .glyph("B")
+        .and_then(|glyph| glyph.master_layer(&font.default_master().id))
+        .expect("B master layer");
+    let source_on_curve = layer
+        .contours
+        .iter()
+        .flat_map(|contour| &contour.points)
+        .filter(|point| point.kind != PointKind::OffCurve)
+        .count();
+    let result = expand_stroke(
+        &layer.contours,
+        &closed_options(Nib::Round),
+        CurveKind::Cubic,
+    )
+    .expect("round stroke B");
+    let output_on_curve = result
+        .iter()
+        .flat_map(|contour| &contour.points)
+        .filter(|point| point.kind != PointKind::OffCurve)
+        .count();
+    let output_off_curve = result
+        .iter()
+        .flat_map(|contour| &contour.points)
+        .filter(|point| point.kind == PointKind::OffCurve)
+        .count();
+    assert!(
+        output_on_curve <= source_on_curve * 3,
+        "source on-curve={source_on_curve}, output on-curve={output_on_curve}"
+    );
+    assert!(output_off_curve > 0);
+}
+
+#[test]
+fn rectangular_nib_closed_circle_keeps_curved_rings() {
+    let result = expand_stroke(
+        &[fixtures::circle(100.0)],
+        &closed_options(Nib::Rect),
+        CurveKind::Cubic,
+    )
+    .expect("rectangular nib circle");
+    assert_eq!(result.len(), 2);
+    assert!(result
+        .iter()
+        .flat_map(|contour| &contour.points)
+        .any(|point| point.kind == PointKind::OffCurve));
+}
+
+#[test]
+#[cfg(not(debug_assertions))]
+fn dejavu_round_stroke_corpus_is_at_least_ninety_percent_curved() {
+    let path = fw_fixtures::path("DejaVuSans.ttf");
+    if !path.is_file() {
+        eprintln!("skipping test: DejaVuSans.ttf is unavailable");
+        return;
+    }
+    let outcome =
+        fw_sfnt::read_path(&path, &fw_sfnt::ReadOptions::default()).expect("read DejaVu Sans");
+    let font = &outcome.fonts[0];
+    let mut total = 0_usize;
+    let mut successful = 0_usize;
+    let mut curved = 0_usize;
+    for glyph in font.glyphs.values() {
+        let Some(layer) = glyph.master_layer(&font.default_master().id) else {
+            continue;
+        };
+        if !layer.contours.iter().any(|contour| contour.closed) {
+            continue;
+        }
+        total += 1;
+        let Ok(result) = expand_stroke(
+            &layer.contours,
+            &closed_options(Nib::Round),
+            CurveKind::Cubic,
+        ) else {
+            continue;
+        };
+        successful += 1;
+        if result
+            .iter()
+            .flat_map(|contour| &contour.points)
+            .any(|point| point.kind == PointKind::OffCurve)
+        {
+            curved += 1;
+        }
+    }
+    eprintln!(
+        "DejaVu round strokes: total={total}, successful={successful}, failed={}, curved={curved}",
+        total - successful
+    );
+    assert!(successful > 0);
+    assert!(curved * 10 >= successful * 9);
 }
 
 #[test]

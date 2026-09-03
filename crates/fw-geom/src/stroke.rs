@@ -2,8 +2,8 @@ use std::ops::Range;
 
 use fw_model::Contour;
 use kurbo::{
-    fit_to_bezpath, stroke, BezPath, CurveFitSample, ParamCurve, ParamCurveDeriv, ParamCurveFit,
-    PathEl, PathSeg, Point, Shape, Stroke, StrokeOpts, Vec2,
+    fit_to_bezpath, fit_to_cubic, stroke, BezPath, CurveFitSample, ParamCurve, ParamCurveDeriv,
+    ParamCurveFit, PathEl, PathSeg, Point, Shape, Stroke, StrokeOpts, Vec2,
 };
 
 use crate::{
@@ -149,9 +149,122 @@ fn round_stroke(
             &[stroked],
             CurveKind::Cubic,
         ))?;
+        let rings = if source.closed {
+            // Kurbo can split one smooth offset span at several implied
+            // quadratic endpoints. Re-fit only tangent-continuous cubic runs,
+            // with an error small relative to the nib diameter.
+            compact_round_rings(&rings, opts.width * 0.025)
+        } else {
+            rings
+        };
         expanded.extend(filter_stroke_rings(source, rings, opts));
     }
     remove_overlap(&expanded, kind, DEFAULT_BOOLEAN_TOLERANCE)
+}
+
+fn compact_round_rings(rings: &[Contour], accuracy: f64) -> Vec<Contour> {
+    let paths: Vec<_> = rings
+        .iter()
+        .map(|ring| compact_cubic_runs(&ring.to_bezpath(), accuracy))
+        .collect();
+    from_bezpaths(&paths, CurveKind::Cubic)
+}
+
+fn compact_cubic_runs(path: &BezPath, accuracy: f64) -> BezPath {
+    let segments: Vec<_> = path.segments().collect();
+    let Some(first) = segments.first() else {
+        return path.clone();
+    };
+    let mut compacted = Vec::new();
+    let mut start = 0;
+    while start < segments.len() {
+        if !matches!(segments[start], PathSeg::Cubic(_)) {
+            compacted.push(segments[start]);
+            start += 1;
+            continue;
+        }
+        let mut end = start + 1;
+        while end < segments.len()
+            && matches!(segments[end], PathSeg::Cubic(_))
+            && smoothly_connected(segments[end - 1], segments[end])
+        {
+            end += 1;
+        }
+        compacted.extend(compact_cubic_run(&segments[start..end], accuracy));
+        start = end;
+    }
+    let mut result = BezPath::new();
+    result.move_to(first.start());
+    for segment in compacted {
+        result.push(segment.as_path_el());
+    }
+    if path
+        .elements()
+        .iter()
+        .any(|element| matches!(element, PathEl::ClosePath))
+    {
+        result.close_path();
+    }
+    result
+}
+
+fn smoothly_connected(left: PathSeg, right: PathSeg) -> bool {
+    let left_tangent = left.to_cubic().deriv().eval(1.0).to_vec2();
+    let right_tangent = right.to_cubic().deriv().eval(0.0).to_vec2();
+    left_tangent.dot(right_tangent) > 0.0
+        && left_tangent.cross(right_tangent).abs()
+            <= left_tangent.hypot() * right_tangent.hypot() * 0.01
+}
+
+fn compact_cubic_run(run: &[PathSeg], accuracy: f64) -> Vec<PathSeg> {
+    let mut result = Vec::new();
+    let mut start = 0;
+    while start < run.len() {
+        let mut fitted = None;
+        for end in ((start + 2)..=run.len()).rev() {
+            let source = CubicRunFit(&run[start..end]);
+            if let Some((curve, _)) = fit_to_cubic(&source, 0.0..1.0, accuracy) {
+                fitted = Some((end, PathSeg::Cubic(curve)));
+                break;
+            }
+        }
+        if let Some((end, curve)) = fitted {
+            result.push(curve);
+            start = end;
+        } else {
+            result.push(run[start]);
+            start += 1;
+        }
+    }
+    result
+}
+
+struct CubicRunFit<'a>(&'a [PathSeg]);
+
+impl ParamCurveFit for CubicRunFit<'_> {
+    fn sample_pt_tangent(&self, t: f64, _: f64) -> CurveFitSample {
+        let (p, tangent) = self.sample_pt_deriv(t);
+        CurveFitSample { p, tangent }
+    }
+
+    fn sample_pt_deriv(&self, t: f64) -> (Point, Vec2) {
+        let scaled = t.clamp(0.0, 1.0) * self.0.len() as f64;
+        let index = (scaled.floor() as usize).min(self.0.len() - 1);
+        let local = if index + 1 == self.0.len() && t >= 1.0 {
+            1.0
+        } else {
+            scaled - index as f64
+        };
+        let curve = self.0[index].to_cubic();
+        (
+            curve.eval(local),
+            curve.deriv().eval(local).to_vec2() * self.0.len() as f64,
+        )
+    }
+
+    fn break_cusp(&self, _: Range<f64>) -> Option<f64> {
+        None
+    }
 }
 
 fn convex_nib_stroke(

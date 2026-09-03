@@ -1,9 +1,13 @@
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::{
+    collections::HashMap,
+    panic::{catch_unwind, AssertUnwindSafe},
+};
 
 use flo_curves::{
     bezier::path::{
         path_add, path_intersect, path_remove_interior_points, path_sub, SimpleBezierPath,
     },
+    bezier::{find_self_intersection_point, path::path_intersects_path, BezierCurveFactory, Curve},
     geo::Coord2,
 };
 use fw_model::{Contour, PointKind};
@@ -11,7 +15,10 @@ use i_overlay::{
     core::{fill_rule::FillRule, overlay_rule::OverlayRule},
     float::single::SingleFloatOverlay,
 };
-use kurbo::{flatten, BezPath, ParamCurve, PathEl, PathSeg, Point, Shape};
+use kurbo::{
+    fit_to_bezpath, flatten, BezPath, CurveFitSample, Line, ParamCurve, ParamCurveFit, PathEl,
+    PathSeg, Point, Shape, Vec2,
+};
 
 use crate::{correct_direction, from_bezpaths, to_bezpaths, CurveKind, Error, Tolerance};
 
@@ -31,6 +38,11 @@ pub enum BooleanOp {
 /// Removes overlapping interior edges from a set of contours.
 ///
 /// Open contours are not part of the filled boolean and are returned unchanged.
+/// If no filled boundaries cross or overlap and their windings already match
+/// [`correct_direction`], the complete input is returned byte-for-byte and in
+/// the same order. Otherwise open contours keep their relative input slots,
+/// boolean-generated closed contours occupy the closed slots in result order,
+/// and any additional closed contours are appended.
 pub fn remove_overlap(
     contours: &[Contour],
     kind: CurveKind,
@@ -51,14 +63,7 @@ pub fn remove_overlap(
         .filter(|path| path.segments().next().is_some())
         .collect();
     let original_paths = to_bezpaths(&closed);
-    if clean_paths.len() == original_paths.len()
-        && clean_paths
-            .iter()
-            .zip(&original_paths)
-            .all(|(left, right)| same_path_segments(left, right))
-        && !has_boundary_intersections(&clean_paths)
-        && nonzero_boundaries_are_normalized(&clean_paths)
-    {
+    if !has_crossing_or_overlap(&original_paths) && windings_are_normalized(&closed) {
         if contours_match_kind(&closed, kind) {
             return Ok(contours.to_vec());
         }
@@ -84,14 +89,60 @@ pub fn remove_overlap(
         .map(|path| clean_path(&path, tol))
         .collect();
     corrupt_flo_result_for_test(&mut result_paths);
-    validate_area(&clean_paths, &result_paths)?;
-
     let mut output = postprocess(&result_paths, kind, tol);
     if let Some(outer_clockwise) = dominant_orientation(&closed) {
         output = correct_direction(&output, outer_clockwise);
     }
+    validate_area(&clean_paths, &to_bezpaths(&output))?;
     restore_unchanged_contours(&mut output, &closed);
     Ok(interleave_open_contours(contours, output))
+}
+
+/// Whether [`remove_overlap_with_fallback`] used polygonal fallback geometry.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FallbackKind {
+    /// The strict curve-preserving operation succeeded.
+    None,
+    /// The outline was flattened, unioned, and re-fitted to Bézier curves.
+    Flattened,
+}
+
+/// Result of overlap removal together with its geometry-quality status.
+#[derive(Clone, Debug, PartialEq)]
+pub struct RemoveOverlapOutcome {
+    /// Resulting contours.
+    pub contours: Vec<Contour>,
+    /// Fallback used to produce the contours.
+    ///
+    /// User interfaces should show a warning whenever this is not
+    /// [`FallbackKind::None`].
+    pub fallback: FallbackKind,
+}
+
+/// Removes overlap, falling back to a flattened NonZero union when the strict
+/// curve boolean fails or disagrees with the polygon area oracle.
+///
+/// The fallback union is re-fitted to cubic Bézier segments with accuracy
+/// `tol * 10`. User interfaces should warn when the returned `fallback` is not
+/// [`FallbackKind::None`]. Invalid parameters are returned without fallback.
+pub fn remove_overlap_with_fallback(
+    contours: &[Contour],
+    kind: CurveKind,
+    tol: Tolerance,
+) -> Result<RemoveOverlapOutcome, Error> {
+    match remove_overlap(contours, kind, tol) {
+        Ok(contours) => Ok(RemoveOverlapOutcome {
+            contours,
+            fallback: FallbackKind::None,
+        }),
+        Err(Error::BooleanFailed { .. } | Error::BooleanMismatch { .. }) => {
+            fallback_remove_overlap(contours, kind, tol).map(|contours| RemoveOverlapOutcome {
+                contours,
+                fallback: FallbackKind::Flattened,
+            })
+        }
+        Err(error) => Err(error),
+    }
 }
 
 fn interleave_open_contours(input: &[Contour], closed_output: Vec<Contour>) -> Vec<Contour> {
@@ -303,6 +354,11 @@ fn clean_path(path: &BezPath, tol: f64) -> BezPath {
     let mut cleaned_segments = Vec::new();
     for segment in path.segments() {
         let cubic = segment.to_cubic();
+        let end = if closed && (cubic.p3 - first).hypot() <= tiny {
+            first
+        } else {
+            cubic.p3
+        };
         let all_tiny = (cubic.p3 - cubic.p0).hypot() <= tiny
             && (cubic.p1 - cubic.p0).hypot() <= tiny
             && (cubic.p2 - cubic.p0).hypot() <= tiny;
@@ -310,7 +366,7 @@ fn clean_path(path: &BezPath, tol: f64) -> BezPath {
             continue;
         }
         let logical_start = cleaned_segments.last().map(PathSeg::end).unwrap_or(first);
-        let line = kurbo::Line::new(logical_start, cubic.p3);
+        let line = kurbo::Line::new(logical_start, end);
         let cleaned = if distance_to_line(cubic.p1, line) <= tiny
             && distance_to_line(cubic.p2, line) <= tiny
         {
@@ -322,16 +378,11 @@ fn clean_path(path: &BezPath, tol: f64) -> BezPath {
                 cubic.p1
             };
             let control2 = if (cubic.p2 - cubic.p3).hypot() <= tiny {
-                cubic.p3
+                end
             } else {
                 cubic.p2
             };
-            PathSeg::Cubic(kurbo::CubicBez::new(
-                logical_start,
-                control1,
-                control2,
-                cubic.p3,
-            ))
+            PathSeg::Cubic(kurbo::CubicBez::new(logical_start, control1, control2, end))
         };
         if cleaned_segments
             .last()
@@ -477,79 +528,210 @@ fn validate_area(input: &[BezPath], output: &[BezPath]) -> Result<(), Error> {
     }
 }
 
-fn nonzero_boundaries_are_normalized(paths: &[BezPath]) -> bool {
-    let polygons = flatten_paths(paths, 0.05);
-    let winding: Vec<_> = polygons
-        .iter()
-        .map(|polygon| signed_polygon_area(polygon).signum() as i32)
-        .collect();
-    polygons.iter().enumerate().all(|(index, polygon)| {
-        let Some(sample) = polygon.first().copied() else {
-            return true;
-        };
-        let outside_winding: i32 = polygons
-            .iter()
-            .enumerate()
-            .filter(|(other, candidate)| *other != index && point_in_polygon(sample, candidate))
-            .map(|(other, _)| winding[other])
-            .sum();
-        outside_winding == 0 || outside_winding + winding[index] == 0
+fn windings_are_normalized(contours: &[Contour]) -> bool {
+    let Some(outer_clockwise) = dominant_orientation(contours) else {
+        return true;
+    };
+    let corrected = correct_direction(contours, outer_clockwise);
+    contours.iter().zip(&corrected).all(|(original, fixed)| {
+        let original_area = original.to_bezpath().area();
+        let fixed_area = fixed.to_bezpath().area();
+        original_area.abs() <= 1e-12
+            || fixed_area.abs() <= 1e-12
+            || original_area.signum() == fixed_area.signum()
     })
 }
 
 pub(crate) fn normalize_self_intersecting_contours(
     contours: Vec<Contour>,
 ) -> Result<Vec<Contour>, Error> {
-    let paths = to_bezpaths(&contours);
-    if !has_boundary_intersections(&paths) {
-        return Ok(contours);
+    const INTERSECTION_ACCURACY: f64 = 0.001;
+    let mut normalized = Vec::new();
+    for contour in &contours {
+        let path = contour.to_bezpath();
+        let split = catch_unwind(AssertUnwindSafe(|| {
+            split_self_intersecting_ring(&path, INTERSECTION_ACCURACY)
+        }))
+        .map_err(|_| {
+            boolean_failure("curve intersection panicked while normalizing stroke ring")
+        })?;
+        let Some(loops) = split else {
+            normalized.extend(postprocess(
+                &[clean_path(&path, INTERSECTION_ACCURACY)],
+                CurveKind::Cubic,
+                INTERSECTION_ACCURACY,
+            ));
+            continue;
+        };
+        normalized.extend(postprocess(&loops, CurveKind::Cubic, INTERSECTION_ACCURACY));
     }
-    let flattened = flatten_paths(&paths, 0.05);
-    let empty: Vec<Vec<[f64; 2]>> = Vec::new();
-    let shapes = catch_unwind(AssertUnwindSafe(|| {
-        flattened.overlay(&empty, OverlayRule::Subject, FillRule::NonZero)
-    }))
-    .map_err(|_| boolean_failure("i_overlay panicked while normalizing stroke rings"))?;
-    let mut normalized_paths = Vec::new();
-    for shape in shapes {
-        for polygon in shape {
-            let Some(first) = polygon.first() else {
-                continue;
-            };
-            let mut path = BezPath::new();
-            path.move_to((first[0], first[1]));
-            for point in &polygon[1..] {
-                path.line_to((point[0], point[1]));
-            }
-            path.close_path();
-            normalized_paths.push(path);
-        }
-    }
-    let mut normalized = postprocess(&normalized_paths, CurveKind::Cubic, 0.01);
     if let Some(clockwise) = dominant_orientation(&contours) {
         normalized = correct_direction(&normalized, clockwise);
     }
     Ok(normalized)
 }
 
-fn point_in_polygon(point: [f64; 2], polygon: &[[f64; 2]]) -> bool {
-    if polygon.len() < 3 {
-        return false;
+fn split_self_intersecting_ring(path: &BezPath, accuracy: f64) -> Option<Vec<BezPath>> {
+    let segments: Vec<_> = path.segments().collect();
+    if segments.is_empty() {
+        return None;
     }
-    let mut inside = false;
-    let mut previous = polygon.len() - 1;
-    for current in 0..polygon.len() {
-        let a = polygon[current];
-        let b = polygon[previous];
-        if (a[1] > point[1]) != (b[1] > point[1]) {
-            let crossing = (b[0] - a[0]) * (point[1] - a[1]) / (b[1] - a[1]) + a[0];
-            if point[0] < crossing {
-                inside = !inside;
+    let flo_path = kurbo_to_flo(path)?;
+    let mut cuts = vec![vec![0.0, 1.0]; segments.len()];
+    let mut found = false;
+    for ((left, left_t), (right, right_t)) in path_intersects_path(&flo_path, &flo_path, accuracy) {
+        if left >= right || are_only_shared_endpoint(left, left_t, right, right_t, segments.len()) {
+            continue;
+        }
+        found = true;
+        add_cut(&mut cuts[left], left_t);
+        add_cut(&mut cuts[right], right_t);
+    }
+    for (index, segment) in segments.iter().enumerate() {
+        let cubic = segment.to_cubic();
+        let curve = Curve::from_points(
+            coord(cubic.p0),
+            (coord(cubic.p1), coord(cubic.p2)),
+            coord(cubic.p3),
+        );
+        if let Some((first, second)) = find_self_intersection_point(&curve, accuracy) {
+            if add_cut(&mut cuts[index], first) | add_cut(&mut cuts[index], second) {
+                found = true;
             }
         }
-        previous = current;
     }
-    inside
+    if !found {
+        return None;
+    }
+
+    let mut pieces = Vec::new();
+    for (segment, segment_cuts) in segments.into_iter().zip(&mut cuts) {
+        segment_cuts.sort_by(f64::total_cmp);
+        segment_cuts.dedup_by(|left, right| (*left - *right).abs() <= 1e-7);
+        for range in segment_cuts.windows(2) {
+            if range[1] - range[0] <= 1e-8 {
+                continue;
+            }
+            let piece = segment.subsegment(range[0]..range[1]);
+            if (piece.end() - piece.start()).hypot() > accuracy * 0.01 {
+                pieces.push(piece);
+            }
+        }
+    }
+    let original_area = path.area();
+    let mut loops = directed_piece_loops(&pieces, accuracy);
+    loops.retain(|candidate| {
+        let area = candidate.area();
+        area.abs() > accuracy * accuracy && area * original_area > 0.0
+    });
+    let largest_area = loops
+        .iter()
+        .map(|candidate| candidate.area().abs())
+        .fold(0.0, f64::max);
+    // Intersection solvers can leave microscopic same-winding slivers at a
+    // multiple crossing. They are not stable stroke rings and otherwise make
+    // the downstream curve boolean fail.
+    loops.retain(|candidate| candidate.area().abs() >= largest_area * 0.001);
+    Some(loops)
+}
+
+fn are_only_shared_endpoint(
+    left: usize,
+    left_t: f64,
+    right: usize,
+    right_t: f64,
+    count: usize,
+) -> bool {
+    const PARAM_EPSILON: f64 = 1e-6;
+    (right == left + 1 && (left_t - 1.0).abs() <= PARAM_EPSILON && right_t.abs() <= PARAM_EPSILON)
+        || (left == 0
+            && right + 1 == count
+            && left_t.abs() <= PARAM_EPSILON
+            && (right_t - 1.0).abs() <= PARAM_EPSILON)
+}
+
+fn add_cut(cuts: &mut Vec<f64>, value: f64) -> bool {
+    const PARAM_EPSILON: f64 = 1e-7;
+    if !value.is_finite() || !(-PARAM_EPSILON..=1.0 + PARAM_EPSILON).contains(&value) {
+        return false;
+    }
+    let value = value.clamp(0.0, 1.0);
+    if cuts
+        .iter()
+        .any(|existing| (*existing - value).abs() <= PARAM_EPSILON)
+    {
+        false
+    } else {
+        cuts.push(value);
+        true
+    }
+}
+
+fn directed_piece_loops(pieces: &[PathSeg], accuracy: f64) -> Vec<BezPath> {
+    if pieces.is_empty() {
+        return Vec::new();
+    }
+    let mut node_points = Vec::<Point>::new();
+    let mut piece_nodes = Vec::with_capacity(pieces.len());
+    for piece in pieces {
+        let start = nearby_node(&mut node_points, piece.start(), accuracy);
+        let end = nearby_node(&mut node_points, piece.end(), accuracy);
+        piece_nodes.push((start, end));
+    }
+
+    let mut stack_nodes = vec![piece_nodes[0].0];
+    let mut stack_edges = Vec::new();
+    let mut positions = HashMap::from([(piece_nodes[0].0, 0_usize)]);
+    let mut loops = Vec::new();
+    for (piece, &(start, end)) in pieces.iter().zip(&piece_nodes) {
+        if stack_nodes.last().copied() != Some(start) {
+            stack_nodes.push(start);
+            positions.insert(start, stack_nodes.len() - 1);
+        }
+        stack_edges.push(*piece);
+        if let Some(&position) = positions.get(&end) {
+            let loop_edges = stack_edges.split_off(position);
+            stack_nodes.truncate(position + 1);
+            positions.clear();
+            positions.extend(
+                stack_nodes
+                    .iter()
+                    .copied()
+                    .enumerate()
+                    .map(|(index, node)| (node, index)),
+            );
+            if let Some(path) = closed_path_from_pieces(&loop_edges) {
+                loops.push(path);
+            }
+        } else {
+            stack_nodes.push(end);
+            positions.insert(end, stack_nodes.len() - 1);
+        }
+    }
+    loops
+}
+
+fn nearby_node(nodes: &mut Vec<Point>, point: Point, accuracy: f64) -> usize {
+    if let Some(index) = nodes
+        .iter()
+        .position(|candidate| (*candidate - point).hypot() <= accuracy * 2.0)
+    {
+        index
+    } else {
+        nodes.push(point);
+        nodes.len() - 1
+    }
+}
+
+fn closed_path_from_pieces(pieces: &[PathSeg]) -> Option<BezPath> {
+    let first = pieces.first()?;
+    let mut path = BezPath::new();
+    path.move_to(first.start());
+    for piece in pieces {
+        path.push(piece.as_path_el());
+    }
+    path.close_path();
+    Some(path)
 }
 
 fn flatten_paths(paths: &[BezPath], tolerance: f64) -> Vec<Vec<[f64; 2]>> {
@@ -565,6 +747,79 @@ fn flatten_paths(paths: &[BezPath], tolerance: f64) -> Vec<Vec<[f64; 2]>> {
             (polygon.len() >= 3).then_some(polygon)
         })
         .collect()
+}
+
+fn fallback_remove_overlap(
+    contours: &[Contour],
+    kind: CurveKind,
+    tol: f64,
+) -> Result<Vec<Contour>, Error> {
+    validate_tolerance(tol)?;
+    let closed: Vec<_> = contours
+        .iter()
+        .filter(|contour| contour.closed)
+        .cloned()
+        .collect();
+    if closed.is_empty() {
+        return Ok(contours.to_vec());
+    }
+    let polygons = flatten_paths(&to_bezpaths(&closed), tol);
+    let empty: Vec<Vec<[f64; 2]>> = Vec::new();
+    let shapes = catch_unwind(AssertUnwindSafe(|| {
+        polygons.overlay(&empty, OverlayRule::Union, FillRule::NonZero)
+    }))
+    .map_err(|_| boolean_failure("i_overlay panicked during fallback overlap removal"))?;
+    let fitted_paths: Vec<_> = shapes
+        .iter()
+        .flat_map(|shape| shape.iter())
+        .filter_map(|polygon| fit_polygon_to_cubics(polygon, tol * 10.0))
+        .collect();
+    let mut output = from_bezpaths(&fitted_paths, kind);
+    output.retain(|contour| contour.points.len() >= 3);
+    if let Some(outer_clockwise) = dominant_orientation(&closed) {
+        output = correct_direction(&output, outer_clockwise);
+    }
+    Ok(interleave_open_contours(contours, output))
+}
+
+fn fit_polygon_to_cubics(polygon: &[[f64; 2]], accuracy: f64) -> Option<BezPath> {
+    let edges = polygon_edges(polygon);
+    let first = edges.first()?.0;
+    let mut result = BezPath::new();
+    result.move_to((first[0], first[1]));
+    for &(start, end) in &edges {
+        let fitted = fit_to_bezpath(
+            &LineFit(Line::new(
+                Point::new(start[0], start[1]),
+                Point::new(end[0], end[1]),
+            )),
+            accuracy,
+        );
+        for element in fitted.elements() {
+            if !matches!(element, PathEl::MoveTo(_)) {
+                result.push(*element);
+            }
+        }
+    }
+    result.close_path();
+    Some(result)
+}
+
+struct LineFit(Line);
+
+impl ParamCurveFit for LineFit {
+    fn sample_pt_tangent(&self, t: f64, _: f64) -> CurveFitSample {
+        let (p, tangent) = self.sample_pt_deriv(t);
+        CurveFitSample { p, tangent }
+    }
+
+    fn sample_pt_deriv(&self, t: f64) -> (Point, Vec2) {
+        (self.0.p0.lerp(self.0.p1, t), self.0.p1 - self.0.p0)
+    }
+
+    fn break_cusp(&self, _: std::ops::Range<f64>) -> Option<f64> {
+        None
+    }
 }
 
 fn signed_polygon_area(polygon: &[[f64; 2]]) -> f64 {
@@ -669,22 +924,12 @@ fn points_near(left: Point, right: Point) -> bool {
     (left - right).hypot() <= 1e-7
 }
 
-fn same_path_segments(left: &BezPath, right: &BezPath) -> bool {
-    let left: Vec<_> = left.segments().map(|segment| segment.to_cubic()).collect();
-    let right: Vec<_> = right.segments().map(|segment| segment.to_cubic()).collect();
-    left.len() == right.len()
-        && left.iter().zip(&right).all(|(left, right)| {
-            points_near(left.p0, right.p0)
-                && points_near(left.p1, right.p1)
-                && points_near(left.p2, right.p2)
-                && points_near(left.p3, right.p3)
-        })
-}
-
 /// Uses an x-axis sweep and y-bbox rejection, making the common case
 /// `O(E log E + K)` for `E` edges and `K` overlapping bbox candidates.
-fn has_boundary_intersections(paths: &[BezPath]) -> bool {
-    let polygons = flatten_paths(paths, 0.05);
+fn has_crossing_or_overlap(paths: &[BezPath]) -> bool {
+    const FLATTEN_ACCURACY: f64 = 0.01;
+    const TOUCH_TOLERANCE: f64 = 0.001;
+    let polygons = flatten_paths(paths, FLATTEN_ACCURACY);
     let mut edges = Vec::new();
     for (path, polygon) in polygons.iter().enumerate() {
         let polygon_edges = polygon_edges(polygon);
@@ -699,16 +944,20 @@ fn has_boundary_intersections(paths: &[BezPath]) -> bool {
     edges.sort_by(|left, right| left.min_x.total_cmp(&right.min_x));
     for left in 0..edges.len() {
         for right in left + 1..edges.len() {
-            if edges[right].min_x > edges[left].max_x {
+            if edges[right].min_x > edges[left].max_x + TOUCH_TOLERANCE {
                 break;
             }
-            if edges[left].max_y < edges[right].min_y
-                || edges[right].max_y < edges[left].min_y
+            if edges[left].max_y + TOUCH_TOLERANCE < edges[right].min_y
+                || edges[right].max_y + TOUCH_TOLERANCE < edges[left].min_y
                 || edges[left].adjacent_to(&edges[right])
             {
                 continue;
             }
-            if line_segments_intersect(edges[left].segment, edges[right].segment) {
+            if flat_edges_cross_or_overlap(
+                edges[left].segment,
+                edges[right].segment,
+                TOUCH_TOLERANCE,
+            ) {
                 return true;
             }
         }
@@ -761,26 +1010,57 @@ fn polygon_edges(polygon: &[[f64; 2]]) -> Vec<([f64; 2], [f64; 2])> {
     edges
 }
 
-fn line_segments_intersect(left: ([f64; 2], [f64; 2]), right: ([f64; 2], [f64; 2])) -> bool {
-    const EPSILON: f64 = 1e-8;
-    let orientation = |a: [f64; 2], b: [f64; 2], c: [f64; 2]| {
-        (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
-    };
-    let on_segment = |a: [f64; 2], b: [f64; 2], p: [f64; 2]| {
-        p[0] >= a[0].min(b[0]) - EPSILON
-            && p[0] <= a[0].max(b[0]) + EPSILON
-            && p[1] >= a[1].min(b[1]) - EPSILON
-            && p[1] <= a[1].max(b[1]) + EPSILON
-    };
-    let o1 = orientation(left.0, left.1, right.0);
-    let o2 = orientation(left.0, left.1, right.1);
-    let o3 = orientation(right.0, right.1, left.0);
-    let o4 = orientation(right.0, right.1, left.1);
-    (o1 * o2 < -EPSILON && o3 * o4 < -EPSILON)
-        || (o1.abs() <= EPSILON && on_segment(left.0, left.1, right.0))
-        || (o2.abs() <= EPSILON && on_segment(left.0, left.1, right.1))
-        || (o3.abs() <= EPSILON && on_segment(right.0, right.1, left.0))
-        || (o4.abs() <= EPSILON && on_segment(right.0, right.1, left.1))
+fn flat_edges_cross_or_overlap(
+    left: ([f64; 2], [f64; 2]),
+    right: ([f64; 2], [f64; 2]),
+    touch_tolerance: f64,
+) -> bool {
+    let left_line = Line::new(
+        Point::new(left.0[0], left.0[1]),
+        Point::new(left.1[0], left.1[1]),
+    );
+    let right_line = Line::new(
+        Point::new(right.0[0], right.0[1]),
+        Point::new(right.1[0], right.1[1]),
+    );
+    if collinear_overlap(left_line, right_line, touch_tolerance) {
+        return true;
+    }
+    PathSeg::Line(left_line)
+        .intersect_line(right_line)
+        .iter()
+        .any(|intersection| {
+            let point = left_line.eval(intersection.segment_t);
+            [left_line.p0, left_line.p1, right_line.p0, right_line.p1]
+                .iter()
+                .all(|endpoint| (*endpoint - point).hypot() > touch_tolerance)
+        })
+}
+
+fn collinear_overlap(left: Line, right: Line, touch_tolerance: f64) -> bool {
+    const COLLINEAR_EPSILON: f64 = 1e-8;
+    let left_vector = left.p1 - left.p0;
+    let right_vector = right.p1 - right.p0;
+    let left_length = left_vector.hypot();
+    let right_length = right_vector.hypot();
+    if left_length <= COLLINEAR_EPSILON || right_length <= COLLINEAR_EPSILON {
+        return false;
+    }
+    if left_vector.cross(right_vector).abs() > COLLINEAR_EPSILON * left_length * right_length
+        || distance_to_line(right.p0, left) > COLLINEAR_EPSILON
+        || distance_to_line(right.p1, left) > COLLINEAR_EPSILON
+    {
+        return false;
+    }
+    let axis = left_vector / left_length;
+    let left_range = [0.0, left_length];
+    let right_projection = [
+        (right.p0 - left.p0).dot(axis),
+        (right.p1 - left.p0).dot(axis),
+    ];
+    let overlap_start = left_range[0].max(right_projection[0].min(right_projection[1]));
+    let overlap_end = left_range[1].min(right_projection[0].max(right_projection[1]));
+    overlap_end - overlap_start > touch_tolerance
 }
 
 #[cfg(test)]
@@ -846,6 +1126,27 @@ mod tests {
     }
 
     #[test]
+    fn fallback_recovers_from_a_corrupted_flo_result_and_reports_it() {
+        CORRUPT_FLO_RESULT.with(|enabled| enabled.set(true));
+        let outcome = remove_overlap_with_fallback(
+            &[
+                rectangle(0.0, 0.0, 100.0, 100.0),
+                rectangle(50.0, 0.0, 150.0, 100.0),
+            ],
+            CurveKind::Cubic,
+            0.01,
+        );
+        CORRUPT_FLO_RESULT.with(|enabled| enabled.set(false));
+        let outcome = outcome.expect("polygon fallback");
+        assert_eq!(outcome.fallback, FallbackKind::Flattened);
+        assert!(outcome
+            .contours
+            .iter()
+            .flat_map(|contour| &contour.points)
+            .any(|point| point.kind == PointKind::OffCurve));
+    }
+
+    #[test]
     fn cleanup_removes_tiny_segments_repairs_controls_and_cancels_backtracks() {
         let mut path = BezPath::new();
         path.move_to((0.0, 0.0));
@@ -876,19 +1177,11 @@ mod tests {
             normalize_self_intersecting_contours(from_bezpaths(&[stroked], CurveKind::Cubic))
                 .expect("normalize stroke rings");
         let originals = to_bezpaths(&contours);
-        let cleaned: Vec<_> = originals
-            .iter()
-            .map(|path| clean_path(path, 0.01))
-            .collect();
-        let same = cleaned
-            .iter()
-            .zip(&originals)
-            .all(|(left, right)| same_path_segments(left, right));
-        let intersects = has_boundary_intersections(&cleaned);
-        let normalized = nonzero_boundaries_are_normalized(&cleaned);
+        let intersects = has_crossing_or_overlap(&originals);
+        let normalized = windings_are_normalized(&contours);
         assert!(
-            same && !intersects && normalized,
-            "same={same}, intersects={intersects}, normalized={normalized}"
+            !intersects && normalized,
+            "intersects={intersects}, normalized={normalized}"
         );
     }
 }

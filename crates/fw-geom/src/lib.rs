@@ -12,7 +12,10 @@ mod error;
 mod interpolate;
 mod stroke;
 
-pub use boolean::{boolean, remove_overlap, BooleanOp};
+pub use boolean::{
+    boolean, remove_overlap, remove_overlap_with_fallback, BooleanOp, FallbackKind,
+    RemoveOverlapOutcome,
+};
 pub use convert::{from_bezpaths, to_bezpaths, CurveKind};
 pub use edit::{
     add_extrema, add_inflections, bbox, canonical_order, canonical_start_points, correct_direction,
