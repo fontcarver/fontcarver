@@ -184,6 +184,53 @@ fn rename_undo_restores_stable_id_and_component_references() {
 }
 
 #[test]
+fn failing_rename_mid_batch_restores_references_order_and_handles() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let original_order: Vec<_> = doc.font.glyph_order().cloned().collect();
+            let base_id = doc.glyph_id("base").unwrap();
+            let composite_id = doc.glyph_id("composite").unwrap();
+
+            let result = doc.apply(
+                Command::Batch(vec![
+                    Command::RenameGlyph {
+                        from: "base".into(),
+                        to: "renamed".into(),
+                    },
+                    Command::RenameGlyph {
+                        from: "composite".into(),
+                        to: "renamed".into(),
+                    },
+                ]),
+                "Rename batch",
+            );
+
+            assert!(result.is_err());
+            assert_eq!(
+                doc.font.glyph_order().cloned().collect::<Vec<_>>(),
+                original_order
+            );
+            assert_eq!(
+                doc.font.glyph("composite").unwrap().layers[0].components[0].base,
+                GlyphName::from("base")
+            );
+            assert_eq!(doc.glyph_id("base"), Some(base_id));
+            assert_eq!(doc.glyph_id("composite"), Some(composite_id));
+            assert_eq!(doc.glyph_id("renamed"), None);
+            assert_eq!(doc.glyph_name(base_id), Some(&GlyphName::from("base")));
+            assert_eq!(
+                doc.glyph_name(composite_id),
+                Some(&GlyphName::from("composite"))
+            );
+            assert_eq!(doc.undo_len(), 0);
+            assert!(!doc.dirty);
+        })
+        .unwrap();
+}
+
+#[test]
 fn remove_undo_restores_original_glyph_order() {
     let session = Session::new();
     let mut font = test_font();
