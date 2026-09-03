@@ -117,6 +117,32 @@ fn save_without_path_never_overwrites_an_imported_font() {
     assert_eq!(error.code, "invalid_params");
     assert_eq!(error.message, "imported fonts need an explicit .fwf path");
     assert_eq!(sha256(&imported_path), before);
+
+    let binary_target = config_dir.join("existing-target.ttf");
+    fs::write(&binary_target, b"known existing bytes").expect("write existing binary target");
+    let binary_target_before = sha256(&binary_target);
+    let error = api
+        .call(
+            "session.save",
+            json!({ "doc": opened["doc"], "path": binary_target }),
+        )
+        .expect_err("explicit binary font target must be rejected");
+    assert_eq!(error.code, "invalid_params");
+    assert_eq!(
+        error.message,
+        "save target must end with .fwf or .fwf.gz; use export for binary font formats"
+    );
+    assert_eq!(sha256(&binary_target), binary_target_before);
+
+    let compressed_target = config_dir.join("saved.fwf.gz");
+    let saved = api
+        .call(
+            "session.save",
+            json!({ "doc": opened["doc"], "path": compressed_target }),
+        )
+        .expect("explicit .fwf.gz target succeeds");
+    assert_eq!(saved["path"], compressed_target.to_string_lossy().as_ref());
+    assert!(compressed_target.is_file());
     fs::remove_dir_all(config_dir).ok();
 }
 

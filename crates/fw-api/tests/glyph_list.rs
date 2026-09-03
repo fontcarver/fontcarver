@@ -148,6 +148,20 @@ fn listing_uses_an_empty_cell_for_a_missing_master_layer() {
     assert_eq!(result.items[0].width, 0.0);
     assert_eq!(result.items[0].path.as_deref(), Some(""));
     assert!(result.items[0].is_empty);
+
+    let result_without_paths = list(
+        &api,
+        json!({
+            "doc": doc,
+            "master": null,
+            "filter": {},
+            "sort": "Order",
+            "offset": 0,
+            "limit": 10,
+            "include_paths": false
+        }),
+    );
+    assert_eq!(result_without_paths.items[0].path, None);
 }
 
 fn list(api: &Api, params: serde_json::Value) -> GlyphListResult {

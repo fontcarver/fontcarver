@@ -62,7 +62,12 @@ pub(crate) fn list(api: &Api, _params: EmptyParams) -> Result<Vec<DocSummary>, A
 
 pub(crate) fn save(api: &Api, params: SaveParams) -> Result<DocSummary, ApiError> {
     let path = match params.path {
-        Some(path) => path,
+        Some(path) if is_fwf_path(Path::new(&path)) => path,
+        Some(_) => {
+            return Err(ApiError::invalid_params(
+                "save target must end with .fwf or .fwf.gz; use export for binary font formats",
+            ))
+        }
         None => {
             let current = api
                 .session

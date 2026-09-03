@@ -314,7 +314,7 @@ fn build_cell(
             unicodes: glyph.unicodes.clone(),
             width: 0.0,
             bbox: None,
-            path: Some(String::new()),
+            path: include_path.then(String::new),
             color_label: glyph.color_label,
             export: glyph.export,
             has_components: false,
