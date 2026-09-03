@@ -1,20 +1,44 @@
-use fw_geom::{fit_span, CurveKind};
-use kurbo::{CubicBez, ParamCurve, PathSeg, Point, QuadBez, Vec2};
+use fw_geom::{fit_span, CurveKind, SpanFit};
+use kurbo::{
+    CubicBez, Line, ParamCurve, ParamCurveNearest, PathSeg, Point, QuadBez, QuadSpline, Vec2,
+};
 
-const SAMPLES: usize = 64;
+const SAMPLES: u32 = 64;
 
 fn sample(segment: PathSeg) -> Vec<Point> {
     (0..=SAMPLES)
-        .map(|step| segment.eval(step as f64 / SAMPLES as f64))
+        .map(|step| segment.eval(f64::from(step) / f64::from(SAMPLES)))
         .collect()
 }
 
-fn deviation(segment: &PathSeg, samples: &[Point]) -> f64 {
+/// Maximum distance from the samples to the segments the fit stands for.
+fn deviation(fit: &SpanFit, samples: &[Point]) -> f64 {
+    let (Some(&start), Some(&end)) = (samples.first(), samples.last()) else {
+        return f64::INFINITY;
+    };
+    let segments: Vec<PathSeg> = match fit {
+        SpanFit::Line => vec![PathSeg::Line(Line::new(start, end))],
+        SpanFit::Cubic(first, second) => {
+            vec![PathSeg::Cubic(CubicBez::new(start, *first, *second, end))]
+        }
+        SpanFit::Quadratic(controls) => {
+            let mut points = vec![start];
+            points.extend(controls.iter().copied());
+            points.push(end);
+            QuadSpline::new(points)
+                .to_quads()
+                .map(PathSeg::Quad)
+                .collect()
+        }
+    };
     samples
         .iter()
         .map(|&point| {
-            let nearest = kurbo::ParamCurveNearest::nearest(segment, point, 1e-9);
-            nearest.distance_sq.sqrt()
+            segments
+                .iter()
+                .map(|segment| segment.nearest(point, 1e-9).distance_sq)
+                .fold(f64::INFINITY, f64::min)
+                .sqrt()
         })
         .fold(0.0_f64, f64::max)
 }
@@ -32,15 +56,14 @@ fn arc() -> CubicBez {
 
 #[test]
 fn cubic_fit_reproduces_a_synthetic_arc() {
-    let arc = arc();
-    let samples = sample(PathSeg::Cubic(arc));
+    let samples = sample(PathSeg::Cubic(arc()));
     let fitted = fit_span(
         &samples,
         Vec2::new(0.0, 1.0),
         Vec2::new(-1.0, 0.0),
         CurveKind::Cubic,
     );
-    assert!(matches!(fitted, PathSeg::Cubic(_)));
+    assert!(matches!(fitted, SpanFit::Cubic(_, _)));
     assert!(
         deviation(&fitted, &samples) <= 1e-3,
         "deviation {}",
@@ -81,11 +104,34 @@ fn quadratic_fit_uses_the_tangent_intersection() {
         CurveKind::Quadratic { max_err: 0.1 },
     );
     match fitted {
-        PathSeg::Quad(fitted) => {
-            assert!((fitted.p1 - quad.p1).hypot() <= 1e-9);
+        SpanFit::Quadratic(controls) => {
+            assert_eq!(controls.len(), 1);
+            assert!((controls[0] - quad.p1).hypot() <= 1e-9);
         }
         other => panic!("expected a quadratic, got {other:?}"),
     }
+}
+
+#[test]
+fn quadratic_fit_subdivides_when_one_control_cannot_hold_the_span() {
+    let half = CubicBez::new(
+        Point::new(100.0, 0.0),
+        Point::new(100.0, 55.2),
+        Point::new(-100.0, 55.2),
+        Point::new(-100.0, 0.0),
+    );
+    let samples = sample(PathSeg::Cubic(half));
+    let fitted = fit_span(
+        &samples,
+        Vec2::new(0.0, 1.0),
+        Vec2::new(0.0, -1.0),
+        CurveKind::Quadratic { max_err: 0.5 },
+    );
+    match &fitted {
+        SpanFit::Quadratic(controls) => assert!(controls.len() > 1),
+        other => panic!("expected a quadratic chain, got {other:?}"),
+    }
+    assert!(deviation(&fitted, &samples) <= 0.5);
 }
 
 #[test]
@@ -101,7 +147,7 @@ fn parallel_tangents_and_short_input_fall_back_to_a_line() {
         Vec2::new(1.0, 0.0),
         CurveKind::Quadratic { max_err: 0.1 },
     );
-    assert!(matches!(parallel, PathSeg::Line(_)));
+    assert_eq!(parallel, SpanFit::Line);
 
     let short = fit_span(
         &samples[..2],
@@ -109,16 +155,17 @@ fn parallel_tangents_and_short_input_fall_back_to_a_line() {
         Vec2::new(0.0, -1.0),
         CurveKind::Cubic,
     );
-    assert!(matches!(short, PathSeg::Line(_)));
+    assert_eq!(short, SpanFit::Line);
 
-    let empty = fit_span(&[], Vec2::ZERO, Vec2::ZERO, CurveKind::Cubic);
-    assert!(matches!(empty, PathSeg::Line(_)));
+    assert_eq!(
+        fit_span(&[], Vec2::ZERO, Vec2::ZERO, CurveKind::Cubic),
+        SpanFit::Line
+    );
 }
 
 #[test]
 fn non_finite_samples_are_ignored() {
-    let arc = arc();
-    let mut samples = sample(PathSeg::Cubic(arc));
+    let mut samples = sample(PathSeg::Cubic(arc()));
     samples.insert(3, Point::new(f64::NAN, 0.0));
     let fitted = fit_span(
         &samples,
@@ -126,5 +173,5 @@ fn non_finite_samples_are_ignored() {
         Vec2::new(-1.0, 0.0),
         CurveKind::Cubic,
     );
-    assert!(matches!(fitted, PathSeg::Cubic(_)));
+    assert!(matches!(fitted, SpanFit::Cubic(_, _)));
 }

@@ -20,7 +20,7 @@ pub use convert::{from_bezpaths, to_bezpaths, CurveKind};
 pub use edit::{
     add_extrema, add_inflections, bbox, canonical_order, canonical_start_points, correct_direction,
     fit_span, intersections_with_line, nearest_on_path, reverse, round_to_grid, segment_to_points,
-    simplify, split_segment, transform, PathHit, SimplifyOptions,
+    simplify, split_segment, transform, PathHit, SimplifyOptions, SpanFit,
 };
 pub use error::Error;
 pub use interpolate::{compatible, interpolate, Incompatibility};
