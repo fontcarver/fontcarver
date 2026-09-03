@@ -23,3 +23,4 @@ tauri-plugin-fs.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter"] }

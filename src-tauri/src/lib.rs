@@ -6,6 +6,7 @@ use fw_api::Api;
 use fw_doc::Session;
 use tauri::Emitter;
 use tokio::sync::broadcast::error::RecvError;
+use tracing_subscriber::EnvFilter;
 
 mod commands;
 pub mod error;
@@ -19,6 +20,9 @@ pub use error::Error;
 /// Returns an error when Tauri cannot initialize or run the application.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> Result<(), Error> {
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
+
     let api = Arc::new(Api::new(Arc::new(Session::new())));
     let mut events = api.subscribe();
 
