@@ -125,7 +125,20 @@ pub fn export(
             message: "Automatic hinting is deferred to P5 and was not applied".to_owned(),
         });
     }
-    if crate::large_font::requires_workaround(font) {
+    warnings.extend(crate::metadata::name_warnings(&font.info));
+    if font
+        .glyphs
+        .values()
+        .any(|glyph| !glyph.variation_selectors.is_empty())
+    {
+        warnings.push(ExportWarning {
+            code: "variation-sequences-dropped",
+            message: "Unicode variation sequences are not emitted by the static P1 exporter"
+                .to_owned(),
+        });
+    }
+    warnings.extend(value_clamp_warnings(font, master));
+    if crate::large_font::requires_workaround(font, options.production_names) {
         warnings.push(ExportWarning {
             code: "post-names-omitted-capacity",
             message: "The font exceeds post format 2 name capacity; a name-less post format 3 table was emitted".to_owned(),
@@ -180,9 +193,9 @@ fn table_list(sfnt: &[u8]) -> Result<Vec<(Tag, u32)>, Error> {
 }
 
 fn subset_tables(sfnt: &[u8], requested: &[Tag]) -> Result<Vec<u8>, Error> {
-    const CORE: [[u8; 4]; 10] = [
+    const CORE: [[u8; 4]; 13] = [
         *b"head", *b"hhea", *b"maxp", *b"OS/2", *b"hmtx", *b"cmap", *b"loca", *b"glyf", *b"name",
-        *b"post",
+        *b"post", *b"fpgm", *b"prep", *b"cvt ",
     ];
     let requested: HashSet<_> = requested.iter().copied().collect();
     let face = FontRef::new(sfnt).map_err(|error| Error::parse("sfnt subset", error))?;
@@ -197,4 +210,59 @@ fn subset_tables(sfnt: &[u8], requested: &[Tag]) -> Result<Vec<u8>, Error> {
         }
     }
     Ok(builder.build())
+}
+
+fn value_clamp_warnings(font: &Font, master: &MasterId) -> Vec<ExportWarning> {
+    let mut coordinate_count = 0usize;
+    let mut horizontal_advance_count = 0usize;
+    let mut vertical_advance_count = 0usize;
+    for glyph in font.glyphs.values().filter(|glyph| glyph.export) {
+        let Some(layer) = glyph.master_layer(master) else {
+            continue;
+        };
+        coordinate_count += layer
+            .contours
+            .iter()
+            .flat_map(|contour| &contour.points)
+            .flat_map(|point| [point.x, point.y])
+            .filter(|value| outside_i16(*value))
+            .count();
+        coordinate_count += layer
+            .components
+            .iter()
+            .flat_map(|component| {
+                let coefficients = component.transform.as_coeffs();
+                [coefficients[4], coefficients[5]]
+            })
+            .filter(|value| outside_i16(*value))
+            .count();
+        horizontal_advance_count += usize::from(outside_u16(layer.width));
+        vertical_advance_count += usize::from(layer.vertical_width.is_some_and(outside_u16));
+    }
+    let mut warnings = Vec::new();
+    for (table, count, description) in [
+        ("glyf", coordinate_count, "outline coordinate values"),
+        (
+            "hmtx",
+            horizontal_advance_count,
+            "horizontal advance values",
+        ),
+        ("vmtx", vertical_advance_count, "vertical advance values"),
+    ] {
+        if count != 0 {
+            warnings.push(ExportWarning {
+                code: "value-clamped",
+                message: format!("{table}: clamped {count} {description} to the OpenType range"),
+            });
+        }
+    }
+    warnings
+}
+
+fn outside_i16(value: f64) -> bool {
+    !value.is_finite() || value.round() < f64::from(i16::MIN) || value.round() > f64::from(i16::MAX)
+}
+
+fn outside_u16(value: f64) -> bool {
+    !value.is_finite() || value.round() < 0.0 || value.round() > f64::from(u16::MAX)
 }

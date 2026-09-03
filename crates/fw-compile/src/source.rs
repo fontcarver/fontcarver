@@ -21,7 +21,7 @@ use fontir::{
     orchestration::{Context, Flags, IrWork, WorkId},
     source::Source,
 };
-use fw_model::{FeaturesSource, Font, KernSide, Master, MasterId};
+use fw_model::{FeaturesSource, Font, GlyphName, KernSide, Master, MasterId};
 use kurbo::Point;
 
 use crate::metadata::{apply_misc_metadata, names};
@@ -40,6 +40,7 @@ struct SourceData {
     master: MasterId,
     options: CompileOptions,
     large_font: bool,
+    fontc_safe_bmp_codepoints: Option<Arc<HashSet<(GlyphName, u32)>>>,
 }
 
 /// A static, single-master, in-memory source for fontc.
@@ -64,24 +65,15 @@ impl FwSource {
         if !(16..=16_384).contains(&font.info.units_per_em) {
             return Err(Error::InvalidUnitsPerEm(font.info.units_per_em));
         }
-        let mut source_font = font.clone();
-        if !source_font.glyphs.contains_key(".notdef") {
-            let first = source_font
-                .glyphs
-                .values()
-                .find(|glyph| glyph.export)
-                .map(|glyph| glyph.name.clone())
-                .ok_or(Error::NoExportedGlyphs)?;
-            source_font
-                .rename_glyph(first.as_ref(), ".notdef")
-                .map_err(|error| Error::InvalidSource(error.to_string()))?;
-        }
+        let large_font = crate::large_font::requires_workaround(font, options.production_names);
         Ok(Self {
             data: Arc::new(SourceData {
-                font: source_font,
+                font: font.clone(),
                 master: master.clone(),
                 options: options.clone(),
-                large_font: crate::large_font::requires_workaround(font),
+                large_font,
+                fontc_safe_bmp_codepoints: large_font
+                    .then(|| Arc::new(crate::large_font::fontc_safe_bmp_codepoints(font))),
             }),
         })
     }
@@ -107,11 +99,12 @@ pub fn compile_static(
         ..fontc::Options::default()
     };
     let bytes = fontc::generate_font(Box::new(source), fontc_options)?;
-    if crate::large_font::requires_workaround(font) {
-        crate::large_font::patch_tables(&bytes, font)
+    let bytes = if crate::large_font::requires_workaround(font, options.production_names) {
+        crate::large_font::patch_tables(&bytes, font, options.production_names)?
     } else {
-        Ok(bytes)
-    }
+        bytes
+    };
+    crate::metadata::patch_modified_timestamp(&bytes, &font.info)
 }
 
 impl Source for FwSource {
@@ -138,7 +131,7 @@ impl Source for FwSource {
                 Box::new(GlyphWork {
                     glyph,
                     master: self.data.master.clone(),
-                    suppress_codepoints: self.data.large_font,
+                    fontc_safe_bmp_codepoints: self.data.fontc_safe_bmp_codepoints.clone(),
                 }) as Box<IrWork>
             })
             .collect())
@@ -214,15 +207,10 @@ impl Work<Context, WorkId, IrError> for StaticMetadataWork {
         }
         if self.0.large_font {
             postscript_names.extend(
-                font.glyphs
-                    .values()
-                    .take(258)
-                    .zip(read_fonts::tables::post::DEFAULT_GLYPH_NAMES)
+                crate::large_font::workaround_renames(font, self.0.options.production_names)
+                    .into_iter()
                     .map(|(glyph, standard)| {
-                        (
-                            IrGlyphName::new(glyph.name.as_ref()),
-                            IrGlyphName::new(standard),
-                        )
+                        (IrGlyphName::new(glyph.as_ref()), IrGlyphName::new(standard))
                     }),
             );
         }
@@ -391,7 +379,7 @@ impl Work<Context, WorkId, IrError> for GlobalMetricsWork {
 struct GlyphWork {
     glyph: fw_model::Glyph,
     master: MasterId,
-    suppress_codepoints: bool,
+    fontc_safe_bmp_codepoints: Option<Arc<HashSet<(GlyphName, u32)>>>,
 }
 
 impl Work<Context, WorkId, IrError> for GlyphWork {
@@ -440,11 +428,20 @@ impl Work<Context, WorkId, IrError> for GlyphWork {
             contours,
             components,
         };
-        let codepoints = if self.suppress_codepoints {
-            HashSet::new()
-        } else {
-            self.glyph.unicodes.iter().copied().collect()
-        };
+        // The final large-font cmap is rebuilt from every model codepoint. The
+        // bounded BMP set here only keeps write-fonts 0.52's temporary format
+        // 4 builder away from its signed-delta and 16-bit-offset panics.
+        let codepoints = self
+            .glyph
+            .unicodes
+            .iter()
+            .copied()
+            .filter(|codepoint| {
+                self.fontc_safe_bmp_codepoints
+                    .as_ref()
+                    .is_none_or(|allowed| allowed.contains(&(self.glyph.name.clone(), *codepoint)))
+            })
+            .collect();
         let glyph = IrGlyph::new(
             name.clone(),
             self.glyph.export,
@@ -497,15 +494,9 @@ fn feature_source(font: &Font) -> IrFeaturesSource {
     for class in &font.features.classes {
         source.push('@');
         source.push_str(class.name.trim_start_matches('@'));
-        source.push_str(" = [");
-        source.push_str(
-            class
-                .code
-                .trim()
-                .trim_start_matches('[')
-                .trim_end_matches(']'),
-        );
-        source.push_str("];\n");
+        source.push_str(" = ");
+        append_class_body(&mut source, &class.code);
+        source.push_str(";\n");
     }
     for feature in font
         .features
@@ -531,6 +522,20 @@ fn feature_source(font: &Font) -> IrFeaturesSource {
         IrFeaturesSource::Empty
     } else {
         IrFeaturesSource::from_string(source)
+    }
+}
+
+// FeatureClass::code is a body, but older documents may contain the complete
+// bracketed class. Preserve either spelling verbatim so class references,
+// comments, and whitespace are not damaged by character trimming.
+fn append_class_body(target: &mut String, body: &str) {
+    let trimmed = body.trim();
+    if trimmed.starts_with('[') && trimmed.ends_with(']') {
+        target.push_str(body);
+    } else {
+        target.push('[');
+        target.push_str(body);
+        target.push(']');
     }
 }
 
@@ -636,5 +641,21 @@ impl Work<Context, WorkId, IrError> for NoopWork {
 
     fn exec(&self, _context: &Context) -> Result<(), IrError> {
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::append_class_body;
+
+    #[test]
+    fn feature_class_bodies_are_not_trimmed_by_bracket_characters() {
+        let mut bracketed = String::new();
+        append_class_body(&mut bracketed, "[ A B ]");
+        assert_eq!(bracketed, "[ A B ]");
+
+        let mut body = String::new();
+        append_class_body(&mut body, " A @Uppercase # keep this comment\n");
+        assert_eq!(body, "[ A @Uppercase # keep this comment\n]");
     }
 }

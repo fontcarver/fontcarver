@@ -1,4 +1,4 @@
-//! Preservation merge for raw tables and TrueType programs.
+//! Preservation merge for imported raw tables and untouched TrueType outlines.
 
 use std::collections::HashSet;
 
@@ -6,18 +6,52 @@ use fw_model::{FeaturesSource, Font, GlyphName, MasterId, Tag};
 use read_fonts::{types::GlyphId, FontRef, TableProvider};
 use sha2::{Digest, Sha256};
 use skrifa::{GlyphNameSource, GlyphNames};
-use write_fonts::{
-    from_obj::ToOwnedTable,
-    tables::glyf::{GlyfLocaBuilder, Glyph as WriteGlyph, SimpleGlyph},
-    FontBuilder,
-};
+use write_fonts::{from_obj::ToOwnedTable, FontBuilder};
 
 use crate::{Error, ExportOptions, ExportWarning};
 
 const LAYOUT_TAGS: [Tag; 4] = [Tag(*b"GSUB"), Tag(*b"GPOS"), Tag(*b"GDEF"), Tag(*b"BASE")];
+const GID_INDEXED_TAGS: [Tag; 15] = [
+    Tag(*b"kern"),
+    Tag(*b"MATH"),
+    Tag(*b"hdmx"),
+    Tag(*b"VDMX"),
+    Tag(*b"LTSH"),
+    Tag(*b"EBDT"),
+    Tag(*b"EBLC"),
+    Tag(*b"CBDT"),
+    Tag(*b"CBLC"),
+    Tag(*b"sbix"),
+    Tag(*b"COLR"),
+    Tag(*b"CPAL"),
+    Tag(*b"SVG "),
+    Tag(*b"VORG"),
+    Tag(*b"JSTF"),
+];
+const VARIATION_TAGS: [Tag; 7] = [
+    Tag(*b"gvar"),
+    Tag(*b"HVAR"),
+    Tag(*b"MVAR"),
+    Tag(*b"cvar"),
+    Tag(*b"avar"),
+    Tag(*b"fvar"),
+    Tag(*b"STAT"),
+];
 const DSIG: Tag = Tag(*b"DSIG");
 
-/// Merges compiled tables with eligible imported data and TrueType instructions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum OrderVerification {
+    Verified,
+    Changed,
+    Unavailable,
+}
+
+struct Provenance<'a> {
+    order: OrderVerification,
+    original: Option<FontRef<'a>>,
+}
+
+/// Merges compiled tables with eligible imported data and untouched outlines.
 pub fn preserve_merge(
     compiled: &[u8],
     font: &Font,
@@ -26,11 +60,32 @@ pub fn preserve_merge(
 ) -> Result<(Vec<u8>, Vec<ExportWarning>), Error> {
     let compiled_face =
         FontRef::new(compiled).map_err(|error| Error::parse("compiled sfnt", error))?;
+    let compiled_order =
+        crate::large_font::compiled_glyph_order(&compiled_face, font, options.production_names)?;
     let mut warnings = Vec::new();
-    let verified_order = provenance_order(font, &mut warnings);
+    let provenance = provenance(font, &compiled_order, &mut warnings);
+    let master = selected_master(font, options)?;
+    let source_has_hinting = has_hinting(font, master);
+    let imported_layout = font.features.source_of_truth == FeaturesSource::ImportedTables
+        && font
+            .extra
+            .raw_tables
+            .keys()
+            .any(|tag| LAYOUT_TAGS.contains(tag));
+    if provenance.order == OrderVerification::Unavailable
+        && ((options.preserve_untouched_tables && imported_layout)
+            || (options.keep_tt_instructions && source_has_hinting))
+    {
+        warnings.push(ExportWarning {
+            code: "preservation-unavailable-no-provenance",
+            message: "Layout and hinting preservation were skipped because neither original bytes nor imported glyph order provenance is available".to_owned(),
+        });
+    }
+
     let mut builder = FontBuilder::new();
     for record in compiled_face.table_directory().table_records() {
-        if record.tag().to_be_bytes() == DSIG.0 {
+        let tag = Tag(record.tag().to_be_bytes());
+        if tag == DSIG || VARIATION_TAGS.contains(&tag) {
             continue;
         }
         let data = compiled_face
@@ -39,18 +94,39 @@ pub fn preserve_merge(
         builder.add_raw(record.tag(), data.as_bytes());
     }
 
+    warn_variation_tables(font, &mut warnings);
     if options.preserve_untouched_tables {
-        merge_raw_tables(&mut builder, font, verified_order, &mut warnings);
+        merge_raw_tables(&mut builder, font, provenance.order, &mut warnings);
+    } else {
+        warn_tables_not_preserved(font, &mut warnings);
     }
 
     if options.keep_tt_instructions {
-        if touched.is_empty() && verified_order != Some(false) {
-            let master = selected_master(font, options)?;
-            if has_hinting(font, master) {
-                reattach_hinting(&mut builder, &compiled_face, font, master)?;
+        if touched.is_empty()
+            && provenance.order == OrderVerification::Verified
+            && provenance.original.as_ref().is_some_and(|original| {
+                original
+                    .table_data(read_fonts::types::Tag::new(b"glyf"))
+                    .is_some()
+            })
+        {
+            if let Some(original) = provenance.original.as_ref() {
+                preserve_original_outlines(&mut builder, &compiled_face, original)?;
             }
-        } else if !touched.is_empty() || has_hinting_in_font(font, options)? {
-            warnings.push(hinting_dropped_warning(touched, verified_order));
+        } else if source_has_hinting && !touched.is_empty() {
+            warnings.push(hinting_dropped_touched(touched));
+        } else if source_has_hinting {
+            match (provenance.order, provenance.original.as_ref()) {
+                (OrderVerification::Verified, _) => warnings.push(ExportWarning {
+                    code: "hinting-dropped",
+                    message: "TrueType instructions were dropped because the original outline bytes are unavailable".to_owned(),
+                }),
+                (OrderVerification::Changed, _) => warnings.push(ExportWarning {
+                    code: "hinting-dropped-glyph-set-changed",
+                    message: "TrueType instructions were dropped because the exported glyph set or order changed".to_owned(),
+                }),
+                (OrderVerification::Unavailable, _) => {}
+            }
         }
     }
 
@@ -60,80 +136,168 @@ pub fn preserve_merge(
 fn merge_raw_tables(
     builder: &mut FontBuilder<'_>,
     font: &Font,
-    verified_order: Option<bool>,
+    verified_order: OrderVerification,
     warnings: &mut Vec<ExportWarning>,
 ) {
     let imported_layout = font.features.source_of_truth == FeaturesSource::ImportedTables;
-    let mut layout_dropped = false;
+    let mut layout_dropped = Vec::new();
+    let mut gid_dropped = Vec::new();
     for (tag, data) in &font.extra.raw_tables {
-        if *tag == DSIG {
+        if *tag == DSIG || VARIATION_TAGS.contains(tag) {
             continue;
         }
         if LAYOUT_TAGS.contains(tag) {
-            if imported_layout && verified_order == Some(true) {
+            if imported_layout && verified_order == OrderVerification::Verified {
                 builder.add_raw(read_tag(*tag), data.clone());
             } else if imported_layout {
-                layout_dropped = true;
+                layout_dropped.push(*tag);
             }
             continue;
         }
-        let tag = read_tag(*tag);
-        if !builder.contains(tag) {
-            builder.add_raw(tag, data.clone());
+        if GID_INDEXED_TAGS.contains(tag) && verified_order != OrderVerification::Verified {
+            gid_dropped.push(*tag);
+            continue;
+        }
+        let read_tag = read_tag(*tag);
+        if *tag == Tag(*b"gasp") || !builder.contains(read_tag) {
+            builder.add_raw(read_tag, data.clone());
         }
     }
-    if layout_dropped {
+    if !layout_dropped.is_empty() && verified_order == OrderVerification::Changed {
         warnings.push(ExportWarning {
             code: "layout-dropped-glyph-order-changed",
-            message: "Imported GSUB/GPOS/GDEF/BASE tables were not copied because the original glyph order could not be verified unchanged".to_owned(),
+            message: format!(
+                "Imported layout tables were dropped because the glyph set or order changed: {}",
+                tag_list(layout_dropped)
+            ),
+        });
+    }
+    if !gid_dropped.is_empty() {
+        warnings.push(ExportWarning {
+            code: "raw-table-dropped-glyph-order-changed",
+            message: format!(
+                "Glyph-ID-indexed raw tables were dropped because the original glyph order was not verified unchanged: {}",
+                tag_list(gid_dropped)
+            ),
         });
     }
 }
 
-fn provenance_order(font: &Font, warnings: &mut Vec<ExportWarning>) -> Option<bool> {
-    let source = font.extra.source.as_ref()?;
-    let bytes = source.original_bytes.as_deref()?;
-    if !source.sha256.is_empty() {
-        let actual = format!("{:x}", Sha256::digest(bytes.as_slice()));
-        if actual != source.sha256 {
-            warnings.push(ExportWarning {
-                code: "provenance-hash-mismatch",
-                message: "Original font bytes did not match their import digest; provenance-dependent preservation was disabled".to_owned(),
-            });
-            return Some(false);
-        }
+fn warn_variation_tables(font: &Font, warnings: &mut Vec<ExportWarning>) {
+    let tags: Vec<_> = VARIATION_TAGS
+        .into_iter()
+        .filter(|tag| source_has_table(font, *tag))
+        .collect();
+    if !tags.is_empty() {
+        warnings.push(ExportWarning {
+            code: "variation-tables-dropped",
+            message: format!(
+                "Variation tables were dropped from the static export: {}",
+                tag_list(tags)
+            ),
+        });
     }
-    Some(original_face(bytes, font).is_some_and(|face| glyph_order_matches(&face, font)))
 }
 
-fn original_face<'a>(bytes: &'a [u8], font: &Font) -> Option<FontRef<'a>> {
+fn warn_tables_not_preserved(font: &Font, warnings: &mut Vec<ExportWarning>) {
+    let tags: Vec<_> = font
+        .extra
+        .raw_tables
+        .keys()
+        .copied()
+        .filter(|tag| *tag != DSIG && !VARIATION_TAGS.contains(tag))
+        .collect();
+    if !tags.is_empty() {
+        warnings.push(ExportWarning {
+            code: "tables-not-preserved",
+            message: format!(
+                "Imported raw tables were not preserved by request: {}",
+                tag_list(tags)
+            ),
+        });
+    }
+}
+
+fn provenance<'a>(
+    font: &'a Font,
+    compiled_order: &[GlyphName],
+    warnings: &mut Vec<ExportWarning>,
+) -> Provenance<'a> {
+    let Some(source) = font.extra.source.as_ref() else {
+        return Provenance {
+            order: OrderVerification::Unavailable,
+            original: None,
+        };
+    };
+    let bytes = source.original_bytes.as_deref();
+    if let Some(bytes) = bytes {
+        if !source.sha256.is_empty() {
+            let actual = format!("{:x}", Sha256::digest(bytes.as_slice()));
+            if actual != source.sha256 {
+                warnings.push(ExportWarning {
+                    code: "provenance-hash-mismatch",
+                    message: "Original font bytes did not match their import digest; provenance-dependent preservation was disabled".to_owned(),
+                });
+                return Provenance {
+                    order: OrderVerification::Changed,
+                    original: None,
+                };
+            }
+        }
+    }
+
+    let source_order = if source.glyph_order.is_empty() {
+        bytes.and_then(|bytes| order_from_matching_face(bytes, compiled_order))
+    } else {
+        Some(source.glyph_order.clone())
+    };
+    let Some(source_order) = source_order else {
+        return Provenance {
+            order: OrderVerification::Unavailable,
+            original: None,
+        };
+    };
+    let order = if source_order == compiled_order {
+        OrderVerification::Verified
+    } else {
+        OrderVerification::Changed
+    };
+    let original = bytes.and_then(|bytes| face_with_order(bytes, &source_order));
+    Provenance { order, original }
+}
+
+fn order_from_matching_face(bytes: &[u8], compiled_order: &[GlyphName]) -> Option<Vec<GlyphName>> {
     let mut same_count = None;
     for index in 0..u32::from(u16::MAX) {
         let Ok(face) = FontRef::from_index(bytes, index) else {
             break;
         };
-        let count_matches = face
-            .maxp()
-            .is_ok_and(|maxp| usize::from(maxp.num_glyphs()) == font.glyphs.len());
-        if count_matches && glyph_order_matches(&face, font) {
-            return Some(face);
+        let Some(order) = imported_glyph_order(&face) else {
+            continue;
+        };
+        if order == compiled_order {
+            return Some(order);
         }
-        if count_matches && same_count.is_none() {
-            same_count = Some(face);
+        if order.len() == compiled_order.len() && same_count.is_none() {
+            same_count = Some(order);
         }
     }
     same_count
 }
 
-fn glyph_order_matches(face: &FontRef<'_>, font: &Font) -> bool {
-    imported_glyph_order(face).is_some_and(|original| {
-        original
-            .iter()
-            .eq(font.glyph_order().map(GlyphName::as_ref))
-    })
+fn face_with_order<'a>(bytes: &'a [u8], expected: &[GlyphName]) -> Option<FontRef<'a>> {
+    for index in 0..u32::from(u16::MAX) {
+        let Ok(face) = FontRef::from_index(bytes, index) else {
+            break;
+        };
+        if imported_glyph_order(&face).as_deref() == Some(expected) {
+            return Some(face);
+        }
+    }
+    None
 }
 
-fn imported_glyph_order(face: &FontRef<'_>) -> Option<Vec<String>> {
+fn imported_glyph_order(face: &FontRef<'_>) -> Option<Vec<GlyphName>> {
     let count = face.maxp().ok()?.num_glyphs();
     let source = GlyphNames::new(face);
     let wholly_synthesized = source.source() == GlyphNameSource::Synthesized;
@@ -154,9 +318,41 @@ fn imported_glyph_order(face: &FontRef<'_>) -> Option<Vec<String>> {
                 value.push('_');
             }
         }
-        names.push(value);
+        names.push(GlyphName::from(value));
     }
     Some(names)
+}
+
+fn preserve_original_outlines(
+    builder: &mut FontBuilder<'_>,
+    compiled: &FontRef<'_>,
+    original: &FontRef<'_>,
+) -> Result<(), Error> {
+    for tag in [*b"glyf", *b"loca", *b"maxp"] {
+        let tag = read_fonts::types::Tag::new(&tag);
+        let data = original
+            .table_data(tag)
+            .ok_or_else(|| Error::parse("original hinting table", tag))?;
+        builder.add_raw(tag, data.as_bytes().to_vec());
+    }
+    for tag in [*b"fpgm", *b"prep", *b"cvt "] {
+        let tag = read_fonts::types::Tag::new(&tag);
+        if let Some(data) = original.table_data(tag) {
+            builder.add_raw(tag, data.as_bytes().to_vec());
+        }
+    }
+    let mut head: write_fonts::tables::head::Head = compiled
+        .head()
+        .map_err(|error| Error::parse("compiled head", error))?
+        .to_owned_table();
+    head.index_to_loc_format = original
+        .head()
+        .map_err(|error| Error::parse("original head", error))?
+        .index_to_loc_format();
+    builder
+        .add_table(&head)
+        .map_err(|error| Error::write("head", error))?;
+    Ok(())
 }
 
 fn selected_master<'a>(font: &'a Font, options: &ExportOptions) -> Result<&'a MasterId, Error> {
@@ -182,160 +378,34 @@ fn has_hinting(font: &Font, master: &MasterId) -> bool {
         })
 }
 
-fn has_hinting_in_font(font: &Font, options: &ExportOptions) -> Result<bool, Error> {
-    Ok(has_hinting(font, selected_master(font, options)?))
-}
-
-fn hinting_dropped_warning(
-    touched: &HashSet<GlyphName>,
-    verified_order: Option<bool>,
-) -> ExportWarning {
+fn hinting_dropped_touched(touched: &HashSet<GlyphName>) -> ExportWarning {
     let mut glyphs: Vec<_> = touched.iter().map(ToString::to_string).collect();
     glyphs.sort();
-    let message = if glyphs.is_empty() && verified_order == Some(false) {
-        "TrueType instructions were dropped because the original glyph order changed".to_owned()
-    } else {
-        format!(
-            "TrueType instructions were dropped because these glyphs changed: {}",
-            glyphs.join(", ")
-        )
-    };
     ExportWarning {
         code: "hinting-dropped",
-        message,
+        message: format!(
+            "TrueType instructions were dropped because these glyphs changed: {}",
+            glyphs.join(", ")
+        ),
     }
 }
 
-fn reattach_hinting(
-    font_builder: &mut FontBuilder<'_>,
-    compiled: &FontRef<'_>,
-    font: &Font,
-    master: &MasterId,
-) -> Result<(), Error> {
-    let glyf = compiled
-        .glyf()
-        .map_err(|error| Error::parse("glyf", error))?;
-    let loca = compiled
-        .loca(None)
-        .map_err(|error| Error::parse("loca", error))?;
-    let exported: Vec<_> = font.glyphs.values().filter(|glyph| glyph.export).collect();
-    let glyph_count = compiled
-        .maxp()
-        .map_err(|error| Error::parse("maxp", error))?
-        .num_glyphs();
-    if exported.len() != usize::from(glyph_count) {
-        return Err(Error::parse(
-            "glyph order",
-            format!(
-                "fontc emitted {glyph_count} glyphs for {} exported glyphs",
-                exported.len()
-            ),
-        ));
-    }
-
-    let mut glyf_loca = GlyfLocaBuilder::new();
-    let mut max_instruction_len = 0usize;
-    for (gid, model_glyph) in (0..glyph_count).zip(exported) {
-        let instructions = model_glyph
-            .master_layer(master)
-            .and_then(|layer| layer.tt_instructions.as_deref())
-            .unwrap_or_default();
-        max_instruction_len = max_instruction_len.max(instructions.len());
-        match loca
-            .get_glyf(GlyphId::new(u32::from(gid)), &glyf)
-            .map_err(|error| Error::parse("glyf", error))?
-        {
-            Some(glyph) => {
-                let mut glyph: WriteGlyph = glyph.to_owned_table();
-                match &mut glyph {
-                    WriteGlyph::Simple(simple) => simple.instructions = instructions.to_vec(),
-                    WriteGlyph::Composite(composite) => composite.set_instructions(instructions),
-                    WriteGlyph::Empty => {}
-                }
-                glyf_loca
-                    .add_glyph(&glyph)
-                    .map_err(|error| Error::write("glyf", error))?;
-            }
-            None if instructions.is_empty() => {
-                glyf_loca
-                    .add_glyph(&WriteGlyph::Empty)
-                    .map_err(|error| Error::write("glyf", error))?;
-            }
-            None => {
-                let simple = SimpleGlyph {
-                    instructions: instructions.to_vec(),
-                    ..SimpleGlyph::default()
-                };
-                glyf_loca
-                    .add_glyph(&simple)
-                    .map_err(|error| Error::write("glyf", error))?;
-            }
-        }
-    }
-    let (glyf, loca, loca_format) = glyf_loca.build();
-    font_builder
-        .add_table(&glyf)
-        .map_err(|error| Error::write("glyf", error))?;
-    font_builder
-        .add_table(&loca)
-        .map_err(|error| Error::write("loca", error))?;
-
-    let mut head: write_fonts::tables::head::Head = compiled
-        .head()
-        .map_err(|error| Error::parse("head", error))?
-        .to_owned_table();
-    head.index_to_loc_format = loca_format as i16;
-    font_builder
-        .add_table(&head)
-        .map_err(|error| Error::write("head", error))?;
-
-    let tt = &font
-        .master(master)
-        .ok_or_else(|| Error::MissingMaster(master.clone()))?
-        .tt;
-    let mut maxp: write_fonts::tables::maxp::Maxp = compiled
-        .maxp()
-        .map_err(|error| Error::parse("maxp", error))?
-        .to_owned_table();
-    maxp.max_stack_elements = tt.max_stack_elements.or(maxp.max_stack_elements);
-    maxp.max_storage = tt.max_storage.or(maxp.max_storage);
-    maxp.max_function_defs = tt.max_function_defs.or(maxp.max_function_defs);
-    maxp.max_instruction_defs = tt.max_instruction_defs.or(maxp.max_instruction_defs);
-    maxp.max_twilight_points = tt.max_twilight_points.or(maxp.max_twilight_points);
-    maxp.max_zones = tt.max_zones.or(maxp.max_zones);
-    maxp.max_size_of_instructions =
-        Some(tt.max_size_of_instructions.unwrap_or(
-            u16::try_from(max_instruction_len).map_err(|_| Error::Limit("instructions"))?,
-        ));
-    font_builder
-        .add_table(&maxp)
-        .map_err(|error| Error::write("maxp", error))?;
-
-    add_tt_programs(font_builder, font, tt);
-    Ok(())
-}
-
-fn add_tt_programs(builder: &mut FontBuilder<'_>, font: &Font, tt: &fw_model::TtMasterData) {
-    let source_has = |tag: Tag| {
-        font.extra
+fn source_has_table(font: &Font, tag: Tag) -> bool {
+    font.extra.raw_tables.contains_key(&tag)
+        || font
+            .extra
             .source
             .as_ref()
             .is_some_and(|source| source.table_tags.contains(&tag))
-    };
-    if !tt.fpgm.is_empty() || source_has(Tag(*b"fpgm")) {
-        builder.add_raw(read_fonts::types::Tag::new(b"fpgm"), tt.fpgm.clone());
-    }
-    if !tt.prep.is_empty() || source_has(Tag(*b"prep")) {
-        builder.add_raw(read_fonts::types::Tag::new(b"prep"), tt.prep.clone());
-    }
-    if !tt.cvt.is_empty() || source_has(Tag(*b"cvt ")) {
-        let bytes: Vec<_> = tt
-            .cvt
-            .iter()
-            .flat_map(|value| value.to_be_bytes())
-            .collect();
-        builder.add_raw(read_fonts::types::Tag::new(b"cvt "), bytes);
-    }
+}
+
+fn tag_list(mut tags: Vec<Tag>) -> String {
+    tags.sort();
+    tags.dedup();
+    tags.into_iter()
+        .map(|tag| tag.to_string())
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn read_tag(tag: Tag) -> read_fonts::types::Tag {

@@ -1608,6 +1608,7 @@ dependencies = [
 name = "fw-compile"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "criterion",
  "flate2",
  "fontc",
@@ -1619,6 +1620,7 @@ dependencies = [
  "harfrust",
  "kurbo",
  "read-fonts",
+ "serde_json",
  "sha2",
  "skrifa",
  "thiserror 2.0.20",
