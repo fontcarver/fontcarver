@@ -28,3 +28,4 @@ src-tauri/gen/schemas/
 /.scratch/
 /.superpowers/
 /.worktrees/
+crates/*/bindings/
