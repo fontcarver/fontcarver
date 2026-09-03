@@ -65,3 +65,29 @@ Only root `Cargo.toml`/`Cargo.lock` and new `crates/fw-geom/**` were committed. 
 - `cargo clippy -p fw-geom --all-targets -- -D warnings` — `Finished dev profile [unoptimized + debuginfo]`
 - `cargo test -p fw-geom` — final line: `test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out` (doc-tests); 50 non-doc tests passed
 - `cargo test -p fw-geom --release` — final line: `test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out` (doc-tests); 52 non-doc tests passed including both release-only corpus tests
+
+## Fix round 3
+
+**Status:** DONE
+
+- Closed-stroke ring sets now use flo's hole-preserving `path_remove_overlapped_points`, followed by the existing NonZero area oracle. The general `remove_overlap` primitive still uses `path_remove_interior_points`; open strokes and ring sets without retained holes also retain the NonZero primitive.
+- Added the additive `StrokeOutcome { contours, fallback }` and `expand_stroke_with_fallback`. Strict expansion remains unchanged at the API boundary; only curve-boolean failures and oracle mismatches route to the flattened NonZero fallback.
+- Flattened fallback polygons are now fitted as arc-length-parameterized polyline runs. Turns over 20 degrees are kurbo cusps, smooth runs are fitted together, and exact polyline moment integrals prevent quadrature undersampling from exploding the fitted point count. The forced `two` fallback is at most 2x its strict point count and below 300 points; the DejaVu `O` plus overlapping circular blob fallback is below 200 points. Both area checks are within 1%.
+- The overlap-removal fast path now makes its decision on cleaned paths. A zero-width-spiked 100x100 rectangle is changed to a four-point rectangle with area 10000, while geometrically unchanged paths retain byte-for-byte points and metadata. The `uni2727` oracle-order regression now uses a `cfg(test)` forced-boolean helper and cannot take the fast path.
+
+### DejaVu Sans stroke corpus (3,583 glyphs)
+
+| nib | strict | curved strict results | fallback API | flattened fallbacks | flattened Minkowski accuracy sample |
+|---|---:|---:|---:|---:|---:|
+| Round | 3,567/3,583 | 3,567/3,567 (100%) | 3,583/3,583 | 16 | 300/300 sampled successes within 2%; worst 0.389% |
+| Rect | 3,528/3,583 | 2,582/3,528 | 3,583/3,583 | 55 | 299/299 sampled successes within 2% in the 300-glyph sample; worst 1.778% |
+| Calligraphic (24x8, 0.4 rad) | 3,510/3,583 | 2,561/3,510 | 3,583/3,583 | 73 | 298/298 sampled successes within 2% in the 300-glyph sample; worst 1.810% |
+
+The independent accuracy oracle unions flattened per-segment nib sweeps with i_overlay NonZero fill. The deterministic 300-glyph sample is alphabetic and cross-script, excluding the IPA modifier/combining range; strict failures inside the sample are omitted from the accuracy denominator.
+
+### Verification output
+
+- `cargo fmt --all --check` — pass (no output)
+- `cargo clippy -p fw-geom --all-targets -- -D warnings` — final line: `Finished dev profile [unoptimized + debuginfo]`
+- `cargo test -p fw-geom` — final line: `test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out` (doc-tests); 55 non-doc tests passed
+- `cargo test -p fw-geom --release` — final line: `test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out` (doc-tests); 57 non-doc tests passed including both release-only corpus tests
