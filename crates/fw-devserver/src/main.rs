@@ -36,6 +36,9 @@ async fn main() -> Result<(), Error> {
         .map_err(|error| Error::Tracing(error.to_string()))?;
 
     let api = Arc::new(Api::new(Arc::new(Session::new())));
+    if let Err(error) = api.start_autosave() {
+        tracing::warn!(%error, "could not start crash-recovery autosave");
+    }
     for path in args.open {
         let summary: DocSummary = serde_json::from_value(api.call(
             "session.open",
