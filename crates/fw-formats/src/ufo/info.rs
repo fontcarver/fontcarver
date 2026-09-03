@@ -439,9 +439,10 @@ fn model_names(names: Option<&[norad::fontinfo::NameRecord]>) -> Vec<NameRecord>
                 ),
                 text: record.string.clone(),
                 platform: match record.platform_id {
+                    0 => NamePlatform::Unicode,
                     1 => NamePlatform::Mac,
                     3 => NamePlatform::Windows,
-                    _ => NamePlatform::Unicode,
+                    other => NamePlatform::Other(u16::try_from(other).unwrap_or(u16::MAX)),
                 },
             })
         })
@@ -460,6 +461,7 @@ fn norad_names(names: &[NameRecord]) -> Vec<norad::fontinfo::NameRecord> {
                 NamePlatform::Windows => (3, 1, 0x0409),
                 NamePlatform::Mac => (1, 0, 0),
                 NamePlatform::Unicode => (0, 4, 0),
+                NamePlatform::Other(platform) => (u32::from(platform), 0, 0),
             });
             norad::fontinfo::NameRecord {
                 name_id: u32::from(record.name_id),
