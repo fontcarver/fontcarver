@@ -1,6 +1,6 @@
 //! Axum routes for the browser-development transport.
 
-use std::sync::Arc;
+use std::{ffi::OsString, path::PathBuf, sync::Arc};
 
 use axum::{
     extract::{
@@ -31,6 +31,37 @@ struct ErrorEnvelope {
     error: ApiError,
 }
 
+/// Runtime configuration for the development server.
+#[derive(Clone, Debug, Default)]
+pub struct ServeOptions {
+    /// Overrides the FontWorkshop configuration directory for this server.
+    pub config_dir: Option<PathBuf>,
+}
+
+struct ConfigDirOverride {
+    previous: Option<OsString>,
+}
+
+impl ConfigDirOverride {
+    fn install(config_dir: Option<PathBuf>) -> Option<Self> {
+        config_dir.map(|config_dir| {
+            let previous = std::env::var_os("FW_CONFIG_DIR");
+            std::env::set_var("FW_CONFIG_DIR", config_dir);
+            Self { previous }
+        })
+    }
+}
+
+impl Drop for ConfigDirOverride {
+    fn drop(&mut self) {
+        if let Some(previous) = &self.previous {
+            std::env::set_var("FW_CONFIG_DIR", previous);
+        } else {
+            std::env::remove_var("FW_CONFIG_DIR");
+        }
+    }
+}
+
 /// Builds the HTTP and WebSocket router backed by `api`.
 pub fn router(api: Arc<Api>) -> Router {
     let cors = CorsLayer::new()
@@ -54,7 +85,12 @@ pub fn router(api: Arc<Api>) -> Router {
 /// # Errors
 ///
 /// Returns an error when Axum cannot serve a connection on `listener`.
-pub async fn serve(listener: TcpListener, api: Arc<Api>) -> Result<(), Error> {
+pub async fn serve(
+    listener: TcpListener,
+    api: Arc<Api>,
+    options: ServeOptions,
+) -> Result<(), Error> {
+    let _config_dir_override = ConfigDirOverride::install(options.config_dir);
     axum::serve(listener, router(api))
         .await
         .map_err(Error::from)
@@ -79,9 +115,14 @@ async fn api_call(
         }
     };
 
-    match api.call(&method, params) {
-        Ok(result) => (StatusCode::OK, Json(ResultEnvelope { result })).into_response(),
-        Err(error) => api_error_response(error),
+    let call = tokio::task::spawn_blocking(move || api.call(&method, params)).await;
+    match call {
+        Ok(Ok(result)) => (StatusCode::OK, Json(ResultEnvelope { result })).into_response(),
+        Ok(Err(error)) => api_error_response(error),
+        Err(error) => api_error_response(ApiError {
+            code: "internal".to_owned(),
+            message: format!("API worker task failed: {error}"),
+        }),
     }
 }
 
@@ -95,7 +136,8 @@ fn api_error_response(error: ApiError) -> Response {
 }
 
 async fn events(State(api): State<Arc<Api>>, upgrade: WebSocketUpgrade) -> Response {
-    upgrade.on_upgrade(move |socket| event_stream(socket, api.subscribe()))
+    let events = api.subscribe();
+    upgrade.on_upgrade(move |socket| event_stream(socket, events))
 }
 
 async fn event_stream(

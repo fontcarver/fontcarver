@@ -4,4 +4,4 @@ pub mod error;
 mod server;
 
 pub use error::Error;
-pub use server::{router, serve};
+pub use server::{router, serve, ServeOptions};

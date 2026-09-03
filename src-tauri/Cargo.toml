@@ -22,3 +22,4 @@ tauri-plugin-dialog.workspace = true
 tauri-plugin-fs.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
+tracing.workspace = true

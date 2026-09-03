@@ -16,35 +16,76 @@ interface ResultEnvelope<Result> {
 
 const INITIAL_RECONNECT_DELAY_MS = 250
 const MAX_RECONNECT_DELAY_MS = 5_000
+const DEFAULT_TIMEOUT_MS = 30_000
+
+export interface HttpTransportOptions {
+  timeoutMs?: number
+}
 
 export class HttpTransport implements Transport {
   readonly kind = 'http'
   private readonly baseUrl: string
+  private readonly timeoutMs: number
   private readonly eventListeners = new Set<(event: DocumentEvent) => void>()
   private socket: WebSocket | undefined
   private reconnectTimer: ReturnType<typeof setTimeout> | undefined
   private reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS
 
-  constructor(baseUrl: string) {
+  constructor(baseUrl: string, options: HttpTransportOptions = {}) {
     this.baseUrl = baseUrl.replace(/\/$/, '')
+    this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
   }
 
   async call<M extends keyof ApiMethods>(
     method: M,
     params: ApiMethods[M]['params'],
   ): Promise<ApiMethods[M]['result']> {
-    const response = await fetch(`${this.baseUrl}/api/${method}`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(params),
-    })
-    const envelope = (await response.json()) as
-      ErrorEnvelope | ResultEnvelope<ApiMethods[M]['result']>
+    const signal = AbortSignal.timeout(this.timeoutMs)
+    let response: Response
+    try {
+      response = await fetch(`${this.baseUrl}/api/${method}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(params),
+        signal,
+      })
+    } catch (error) {
+      if (signal.aborted) {
+        throw new ApiCallError(
+          'io',
+          `API request timed out after ${this.timeoutMs} ms`,
+        )
+      }
+      throw error
+    }
+
     if (!response.ok) {
+      let envelope: ErrorEnvelope
+      try {
+        envelope = (await response.json()) as ErrorEnvelope
+      } catch {
+        throw new ApiCallError(
+          'internal',
+          `HTTP ${response.status} ${response.statusText}: response was not valid JSON`,
+        )
+      }
       const error = 'error' in envelope ? envelope.error : undefined
       throw new ApiCallError(
-        error?.code ?? 'http_error',
-        error?.message ?? response.statusText,
+        error?.code ?? 'internal',
+        error?.message ??
+          `HTTP ${response.status} ${response.statusText}: response did not contain an API error`,
+      )
+    }
+
+    let envelope: ErrorEnvelope | ResultEnvelope<ApiMethods[M]['result']>
+    try {
+      envelope = (await response.json()) as
+        | ErrorEnvelope
+        | ResultEnvelope<ApiMethods[M]['result']>
+    } catch {
+      throw new ApiCallError(
+        'internal',
+        `HTTP ${response.status} ${response.statusText}: response was not valid JSON`,
       )
     }
     if (!('result' in envelope)) {

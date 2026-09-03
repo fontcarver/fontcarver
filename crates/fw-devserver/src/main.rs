@@ -4,7 +4,7 @@ use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 
 use clap::Parser;
 use fw_api::{Api, DocSummary};
-use fw_devserver::Error;
+use fw_devserver::{Error, ServeOptions};
 use fw_doc::Session;
 use tokio::net::TcpListener;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
@@ -47,5 +47,5 @@ async fn main() -> Result<(), Error> {
     let address = SocketAddr::from(([127, 0, 0, 1], args.port));
     let listener = TcpListener::bind(address).await?;
     tracing::info!(%address, "FontWorkshop development server listening");
-    fw_devserver::serve(listener, api).await
+    fw_devserver::serve(listener, api, ServeOptions::default()).await
 }

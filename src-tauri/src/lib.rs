@@ -31,11 +31,15 @@ pub fn run() -> Result<(), Error> {
             drop(std::thread::spawn(move || loop {
                 match events.blocking_recv() {
                     Ok(event) => {
-                        if app_handle.emit("fw:event", &event).is_err() {
+                        if let Err(error) = app_handle.emit("fw:event", &event) {
+                            tracing::warn!(%error, "failed to emit document event");
                             break;
                         }
                     }
-                    Err(RecvError::Lagged(_)) => continue,
+                    Err(RecvError::Lagged(skipped)) => {
+                        tracing::warn!(skipped, "Tauri event subscriber lagged");
+                        continue;
+                    }
                     Err(RecvError::Closed) => break,
                 }
             }));
