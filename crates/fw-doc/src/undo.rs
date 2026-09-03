@@ -35,6 +35,7 @@ pub struct UndoEntry {
     pub(crate) forward_handles: Vec<(GlyphName, Option<GlyphId>)>,
     pub(crate) renames: Vec<(GlyphName, GlyphName)>,
     pub(crate) change: Change,
+    pub(crate) component_graph_changed: bool,
     pub(crate) before_state: u64,
     pub(crate) after_state: u64,
     estimated_bytes: usize,
@@ -50,6 +51,7 @@ impl UndoEntry {
         forward_handles: Vec<(GlyphName, Option<GlyphId>)>,
         renames: Vec<(GlyphName, GlyphName)>,
         change: Change,
+        component_graph_changed: bool,
         before_state: u64,
         after_state: u64,
     ) -> Self {
@@ -62,6 +64,7 @@ impl UndoEntry {
             forward_handles,
             renames,
             change,
+            component_graph_changed,
             before_state,
             after_state,
             estimated_bytes,
@@ -75,6 +78,7 @@ impl UndoEntry {
         merge_latest_handles(&mut self.forward_handles, newer.forward_handles);
         self.renames.extend(newer.renames);
         self.change.merge(&newer.change);
+        self.component_graph_changed |= newer.component_graph_changed;
         self.after_state = newer.after_state;
         self.estimated_bytes = estimate_entry(&self.inverse, &self.forward);
     }
@@ -207,6 +211,45 @@ pub(crate) fn capture(font: &Font, impact: &Impact) -> Vec<Snapshot> {
         snapshots.push(Snapshot::GlyphOrder(font.glyph_order().cloned().collect()));
     }
     snapshots
+}
+
+pub(crate) fn restore(font: &mut Font, snapshots: &[Snapshot]) {
+    for snapshot in snapshots {
+        match snapshot {
+            Snapshot::FontInfo(info) => font.info = (**info).clone(),
+            Snapshot::Master(id, master) => {
+                if let Some(target) = font
+                    .masters
+                    .iter_mut()
+                    .find(|candidate| candidate.id == *id)
+                {
+                    *target = (**master).clone();
+                }
+            }
+            Snapshot::Glyph(_, _) | Snapshot::GlyphOrder(_) => {}
+        }
+    }
+    for snapshot in snapshots {
+        if let Snapshot::Glyph(name, None) = snapshot {
+            font.glyphs.shift_remove(name);
+        }
+    }
+    for snapshot in snapshots {
+        if let Snapshot::Glyph(name, Some(glyph)) = snapshot {
+            font.glyphs.insert(name.clone(), (**glyph).clone());
+        }
+    }
+    for snapshot in snapshots {
+        if let Snapshot::GlyphOrder(order) = snapshot {
+            let mut target = 0;
+            for name in order {
+                if let Some(current) = font.glyphs.get_index_of(name) {
+                    font.glyphs.move_index(current, target);
+                    target += 1;
+                }
+            }
+        }
+    }
 }
 
 fn merge_earliest_snapshots(existing: &mut Vec<Snapshot>, newer: Vec<Snapshot>) {

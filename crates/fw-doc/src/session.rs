@@ -9,6 +9,9 @@ use std::{
     },
 };
 
+#[cfg(debug_assertions)]
+use std::cell::Cell;
+
 use fw_model::Font;
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
@@ -56,7 +59,34 @@ impl FontOpener for DefaultFontOpener {
     }
 }
 
+#[cfg(debug_assertions)]
+thread_local! {
+    static CALLBACK_DEPTH: Cell<u32> = const { Cell::new(0) };
+}
+
+#[cfg(debug_assertions)]
+struct CallbackGuard;
+
+#[cfg(debug_assertions)]
+impl CallbackGuard {
+    fn enter() -> Self {
+        CALLBACK_DEPTH.with(|depth| depth.set(depth.get().saturating_add(1)));
+        Self
+    }
+}
+
+#[cfg(debug_assertions)]
+impl Drop for CallbackGuard {
+    fn drop(&mut self) {
+        CALLBACK_DEPTH.with(|depth| depth.set(depth.get().saturating_sub(1)));
+    }
+}
+
 /// Process-wide, thread-safe collection of open font documents.
+///
+/// Callbacks passed to this session must not call back into the same session;
+/// doing so deadlocks in release builds and returns [`Error::Reentrant`] in
+/// debug builds.
 pub struct Session {
     documents: RwLock<HashMap<DocId, Document>>,
     events: broadcast::Sender<DocumentEvent>,
@@ -147,26 +177,38 @@ impl Session {
     }
 
     /// Runs a read-only closure with an open document.
+    ///
+    /// The callback must not call back into this session; doing so deadlocks in
+    /// release builds and returns [`Error::Reentrant`] in debug builds.
     pub fn with_doc<R>(
         &self,
         id: DocId,
         callback: impl FnOnce(&Document) -> R,
     ) -> Result<R, Error> {
+        reject_reentrant()?;
         let documents = self.documents.read().map_err(|_| Error::LockPoisoned)?;
         let document = documents.get(&id).ok_or(Error::DocumentNotFound(id.0))?;
+        #[cfg(debug_assertions)]
+        let _callback_guard = CallbackGuard::enter();
         Ok(callback(document))
     }
 
     /// Runs a mutable closure with an open document.
+    ///
+    /// The callback must not call back into this session; doing so deadlocks in
+    /// release builds and returns [`Error::Reentrant`] in debug builds.
     pub fn with_doc_mut<R>(
         &self,
         id: DocId,
         callback: impl FnOnce(&mut Document) -> R,
     ) -> Result<R, Error> {
+        reject_reentrant()?;
         let mut documents = self.documents.write().map_err(|_| Error::LockPoisoned)?;
         let document = documents
             .get_mut(&id)
             .ok_or(Error::DocumentNotFound(id.0))?;
+        #[cfg(debug_assertions)]
+        let _callback_guard = CallbackGuard::enter();
         Ok(callback(document))
     }
 
@@ -174,6 +216,22 @@ impl Session {
     pub fn subscribe(&self) -> broadcast::Receiver<DocumentEvent> {
         self.events.subscribe()
     }
+}
+
+#[cfg(debug_assertions)]
+fn reject_reentrant() -> Result<(), Error> {
+    CALLBACK_DEPTH.with(|depth| {
+        if depth.get() == 0 {
+            Ok(())
+        } else {
+            Err(Error::Reentrant)
+        }
+    })
+}
+
+#[cfg(not(debug_assertions))]
+fn reject_reentrant() -> Result<(), Error> {
+    Ok(())
 }
 
 fn is_fwf_path(path: &Path) -> bool {

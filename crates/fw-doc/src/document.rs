@@ -17,7 +17,7 @@ use crate::{
     command::{self, Impact},
     fwf,
     session::DocId,
-    undo::{self, Snapshot, UndoEntry, UndoStack},
+    undo::{self, UndoEntry, UndoStack},
     Change, Command, Error,
 };
 
@@ -71,7 +71,10 @@ pub struct Document {
     saved_state: u64,
     next_state: u64,
     cache: Mutex<DocumentCache>,
-    events: Option<broadcast::Sender<DocumentEvent>>,
+    component_generation: u64,
+    dependents_generation: Option<u64>,
+    dependents_cache: HashMap<GlyphName, Vec<GlyphName>>,
+    events: broadcast::Sender<DocumentEvent>,
 }
 
 impl Document {
@@ -98,7 +101,10 @@ impl Document {
             saved_state: 0,
             next_state: 1,
             cache: Mutex::new(DocumentCache::default()),
-            events: Some(events),
+            component_generation: 0,
+            dependents_generation: None,
+            dependents_cache: HashMap::new(),
+            events,
         };
         let names: Vec<_> = document.font.glyph_order().cloned().collect();
         for name in names {
@@ -264,27 +270,49 @@ impl Document {
         label: String,
         coalesce: bool,
     ) -> Result<Change, Error> {
-        let impact = command::impact(&self.font, &command);
+        let mut impact = command::impact(&self.font, &command);
+        if !impact.renames.is_empty() {
+            let dependent_names: Vec<_> = {
+                let dependents = self.dependents();
+                impact
+                    .renames
+                    .iter()
+                    .filter_map(|(from, _)| dependents.get(from))
+                    .flatten()
+                    .cloned()
+                    .collect()
+            };
+            for name in &dependent_names {
+                impact.glyph(name);
+            }
+        }
+        let affected_before = if impact.affects_dependents {
+            let dependents = self.dependents();
+            affected_names(&impact, Some(dependents), None)
+        } else {
+            affected_names(&impact, None, None)
+        };
         let inverse = undo::capture(&self.font, &impact);
         let inverse_handles = self.capture_handles(&impact.glyphs);
-        let dependents_before = impact
-            .affects_dependents
-            .then(|| fw_model::dependents(&self.font));
         let before_state = self.current_state;
 
-        command::apply_to_font(&mut self.font, &command)?;
+        command::apply_to_font(&mut self.font, &command, &inverse)?;
         self.apply_handle_effects(&command)?;
+        if impact.component_graph_changed {
+            self.bump_component_generation();
+        }
 
         let forward = undo::capture(&self.font, &impact);
         let forward_handles = self.capture_handles(&impact.glyphs);
-        let dependents_after = impact
-            .affects_dependents
-            .then(|| fw_model::dependents(&self.font));
-        let affected_names = affected_names(
-            &impact,
-            dependents_before.as_ref(),
-            dependents_after.as_ref(),
-        );
+        let affected_names = if impact.affects_dependents && impact.component_graph_changed {
+            let dependents = self.dependents();
+            merge_names(
+                affected_before,
+                affected_names(&impact, None, Some(dependents)),
+            )
+        } else {
+            affected_before
+        };
         let change = self.make_change(&impact, &affected_names, &inverse_handles, &forward_handles);
         self.bump_glyphs(&change.glyphs)?;
 
@@ -300,6 +328,7 @@ impl Document {
             forward_handles,
             impact.renames,
             change.clone(),
+            impact.component_graph_changed,
             before_state,
             after_state,
         );
@@ -316,14 +345,17 @@ impl Document {
     fn restore_entry(&mut self, entry: &UndoEntry, forward: bool) -> Result<(), Error> {
         if forward {
             self.apply_history_renames(&entry.renames, true);
-            restore_snapshots(&mut self.font, &entry.forward);
+            undo::restore(&mut self.font, &entry.forward);
             self.restore_handles(&entry.forward_handles);
             self.current_state = entry.after_state;
         } else {
             self.apply_history_renames(&entry.renames, false);
-            restore_snapshots(&mut self.font, &entry.inverse);
+            undo::restore(&mut self.font, &entry.inverse);
             self.restore_handles(&entry.inverse_handles);
             self.current_state = entry.before_state;
+        }
+        if entry.component_graph_changed {
+            self.bump_component_generation();
         }
         self.dirty = self.current_state != self.saved_state;
         self.bump_glyphs(&entry.change.glyphs)?;
@@ -466,17 +498,30 @@ impl Document {
         Ok(())
     }
 
-    fn emit(&self, change: Change) {
-        if let Some(events) = &self.events {
-            let _ = events.send(DocumentEvent {
-                doc: self.doc_id,
-                generation: self.generation,
-                change,
-                undo_label: self.undo_label().map(str::to_owned),
-                redo_label: self.redo_label().map(str::to_owned),
-                dirty: self.dirty,
-            });
+    fn dependents(&mut self) -> &HashMap<GlyphName, Vec<GlyphName>> {
+        let stale = self
+            .dependents_generation
+            .is_none_or(|generation| generation != self.component_generation);
+        if stale {
+            self.dependents_cache = fw_model::dependents(&self.font);
+            self.dependents_generation = Some(self.component_generation);
         }
+        &self.dependents_cache
+    }
+
+    fn bump_component_generation(&mut self) {
+        self.component_generation = self.component_generation.saturating_add(1);
+    }
+
+    fn emit(&self, change: Change) {
+        let _ = self.events.send(DocumentEvent {
+            doc: self.doc_id,
+            generation: self.generation,
+            change,
+            undo_label: self.undo_label().map(str::to_owned),
+            redo_label: self.redo_label().map(str::to_owned),
+            dirty: self.dirty,
+        });
     }
 }
 
@@ -516,44 +561,17 @@ fn affected_names(
     affected
 }
 
-fn restore_snapshots(font: &mut Font, snapshots: &[Snapshot]) {
-    for snapshot in snapshots {
-        match snapshot {
-            Snapshot::FontInfo(info) => font.info = (**info).clone(),
-            Snapshot::Master(id, master) => {
-                if let Some(target) = font
-                    .masters
-                    .iter_mut()
-                    .find(|candidate| candidate.id == *id)
-                {
-                    *target = (**master).clone();
-                }
-            }
-            Snapshot::Glyph(_, _) | Snapshot::GlyphOrder(_) => {}
+fn merge_names(mut left: Vec<GlyphName>, right: Vec<GlyphName>) -> Vec<GlyphName> {
+    for name in right {
+        if !left.contains(&name) {
+            left.push(name);
         }
     }
-    for snapshot in snapshots {
-        if let Snapshot::Glyph(name, None) = snapshot {
-            font.glyphs.shift_remove(name);
-        }
-    }
-    for snapshot in snapshots {
-        if let Snapshot::Glyph(name, Some(glyph)) = snapshot {
-            font.glyphs.insert(name.clone(), (**glyph).clone());
-        }
-    }
-    for snapshot in snapshots {
-        if let Snapshot::GlyphOrder(order) = snapshot {
-            for (target, name) in order.iter().enumerate() {
-                if let Some(current) = font.glyphs.get_index_of(name) {
-                    font.glyphs.move_index(current, target);
-                }
-            }
-        }
-    }
+    left.sort();
+    left
 }
 
-fn rename_references(font: &mut Font, from: &GlyphName, to: &GlyphName) {
+pub(crate) fn rename_references(font: &mut Font, from: &GlyphName, to: &GlyphName) {
     for glyph in font.glyphs.values_mut() {
         for component in glyph.layers.iter_mut().flat_map(|layer| {
             layer.components.iter_mut().chain(

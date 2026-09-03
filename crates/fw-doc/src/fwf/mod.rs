@@ -6,7 +6,7 @@ mod write;
 use std::path::{Path, PathBuf};
 
 use fw_model::Font;
-use serde::{Deserialize, Serialize};
+use serde::{de::IgnoredAny, Deserialize, Serialize};
 
 use crate::Error;
 
@@ -27,8 +27,18 @@ struct ReadEnvelope {
     format: String,
     version: u32,
     font: Font,
+}
+
+#[derive(Deserialize)]
+struct MetadataEnvelope {
+    #[serde(default)]
+    format: String,
+    #[serde(default)]
+    version: u32,
     #[serde(default)]
     document_path: Option<PathBuf>,
+    #[serde(rename = "font")]
+    _font: IgnoredAny,
 }
 
 /// Writes a font to a `.fwf` or gzip-wrapped `.fwf.gz` path.
@@ -38,7 +48,7 @@ pub fn write(path: &Path, font: &Font) -> Result<(), Error> {
 
 /// Reads a native document, sniffing gzip by its magic bytes.
 pub fn read(path: &Path) -> Result<Font, Error> {
-    Ok(read::read(path)?.font)
+    Ok(validate(read::read(path)?)?.font)
 }
 
 pub(crate) fn write_autosave(
@@ -50,7 +60,9 @@ pub(crate) fn write_autosave(
 }
 
 pub(crate) fn read_document_path(path: &Path) -> Result<Option<PathBuf>, Error> {
-    Ok(read::read(path)?.document_path)
+    let envelope = read::read_metadata(path)?;
+    validate_metadata(&envelope)?;
+    Ok(envelope.document_path)
 }
 
 fn envelope<'a>(font: &'a Font, document_path: Option<&'a Path>) -> WriteEnvelope<'a> {
@@ -70,4 +82,14 @@ fn validate(envelope: ReadEnvelope) -> Result<ReadEnvelope, Error> {
         return Err(Error::UnsupportedFwfVersion(envelope.version));
     }
     Ok(envelope)
+}
+
+fn validate_metadata(envelope: &MetadataEnvelope) -> Result<(), Error> {
+    if envelope.format != FORMAT {
+        return Err(Error::InvalidFwfFormat(envelope.format.clone()));
+    }
+    if envelope.version > VERSION {
+        return Err(Error::UnsupportedFwfVersion(envelope.version));
+    }
+    Ok(())
 }

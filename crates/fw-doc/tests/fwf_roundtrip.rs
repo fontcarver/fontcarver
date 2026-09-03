@@ -65,3 +65,19 @@ fn reader_accepts_unknown_fields_and_rejects_newer_versions() {
     .unwrap();
     assert!(fwf::read(&future).is_err());
 }
+
+#[test]
+fn repeated_save_is_atomic_and_leaves_no_temporary_file() {
+    let dir = temp_dir("atomic-write");
+    let path = dir.join("font.fwf");
+    let temporary_path = dir.join("font.fwf.tmp");
+    let first = test_font();
+    fwf::write(&path, &first).unwrap();
+
+    let mut second = first;
+    second.info.family_name = "Second save".to_owned();
+    fwf::write(&path, &second).unwrap();
+
+    assert!(!temporary_path.exists());
+    assert_eq!(fwf::read(&path).unwrap(), second);
+}

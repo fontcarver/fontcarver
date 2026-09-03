@@ -156,18 +156,22 @@ fn run_worker(session: &Session, config: &AutosaveConfig, stop: &Arc<(Mutex<bool
 fn autosave_pass(session: &Session, dir: &Path) -> Result<(), Error> {
     std::fs::create_dir_all(dir)?;
     for id in session.ids() {
-        let result = session.with_doc(id, |document| {
+        let snapshot = session.with_doc(id, |document| {
             if !document.dirty {
-                return Ok(());
+                return None;
             }
-            let path = autosave_path(dir, id, document.path.as_deref());
-            fwf::write_autosave(&path, &document.font, document.path.as_deref())
+            Some((document.font.clone(), document.path.clone()))
         });
-        match result {
-            Ok(Ok(())) => {}
-            Ok(Err(error)) | Err(error) => {
-                tracing::warn!(%error, doc = id.0, "could not autosave document");
+        let result = match snapshot {
+            Ok(Some((font, document_path))) => {
+                let path = autosave_path(dir, id, document_path.as_deref());
+                fwf::write_autosave(&path, &font, document_path.as_deref())
             }
+            Ok(None) => Ok(()),
+            Err(error) => Err(error),
+        };
+        if let Err(error) = result {
+            tracing::warn!(%error, doc = id.0, "could not autosave document");
         }
     }
     Ok(())

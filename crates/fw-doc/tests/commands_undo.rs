@@ -1,11 +1,11 @@
 mod common;
 
-use std::{collections::BTreeSet, sync::Arc};
+use std::{collections::BTreeSet, sync::Arc, time::Instant};
 
 use fw_doc::{Command, Session};
 use fw_model::{Anchor, Component, Contour, Glyph, GlyphName};
 
-use common::{point, test_font};
+use common::{point, synthetic_font, test_font};
 
 #[test]
 fn set_width_undo_and_redo_restore_width_and_dirty_state() {
@@ -116,6 +116,33 @@ fn remove_undo_restores_original_glyph_order() {
             assert_eq!(
                 doc.font.glyph_order().cloned().collect::<Vec<_>>(),
                 expected
+            );
+        })
+        .unwrap();
+}
+
+#[test]
+fn undo_order_restore_skips_glyphs_removed_outside_commands() {
+    let session = Session::new();
+    let mut font = test_font();
+    font.insert_glyph(Glyph::new("last")).unwrap();
+    let id = session.open_font(font, None);
+    session
+        .with_doc_mut(id, |doc| {
+            doc.apply(
+                Command::RemoveGlyphs {
+                    names: vec!["composite".into()],
+                },
+                "Remove glyph",
+            )
+            .unwrap();
+            doc.font.glyphs.shift_remove("base");
+
+            doc.undo().unwrap();
+
+            assert_eq!(
+                doc.font.glyph_order().cloned().collect::<Vec<_>>(),
+                vec![GlyphName::from("composite"), GlyphName::from("last")]
             );
         })
         .unwrap();
@@ -374,6 +401,46 @@ fn regular_apply_finalizes_a_live_edit_and_clears_redo_history() {
             )
             .unwrap();
             assert_eq!(doc.redo().unwrap(), None);
+        })
+        .unwrap();
+}
+
+#[test]
+fn coalesced_outline_drag_meets_large_font_budget() {
+    let session = Session::new();
+    let id = session.open_font(synthetic_font(20_000), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let glyph = GlyphName::from("glyph-19999");
+            let layer = doc.font.glyph(&glyph).unwrap().layers[0].id.clone();
+            let token = doc.begin_edit("Drag outline");
+            let started = Instant::now();
+            for step in 0..200 {
+                doc.apply_in_edit(
+                    &token,
+                    Command::ReplaceLayerOutline {
+                        glyph: glyph.clone(),
+                        layer: layer.clone(),
+                        contours: vec![Contour {
+                            closed: false,
+                            points: vec![point(f64::from(step), 0.0)],
+                            ..Contour::default()
+                        }],
+                        components: Vec::new(),
+                        anchors: Vec::new(),
+                    },
+                )
+                .unwrap();
+            }
+            let elapsed = started.elapsed();
+            doc.end_edit(token);
+            if cfg!(not(debug_assertions)) {
+                assert!(
+                    elapsed.as_secs_f64() / 200.0 < 0.001,
+                    "outline drag averaged {:?} per step",
+                    elapsed / 200
+                );
+            }
         })
         .unwrap();
 }

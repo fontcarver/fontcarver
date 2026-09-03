@@ -8,7 +8,7 @@ use fw_model::{
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::Error;
+use crate::{document::rename_references, undo, Error, Snapshot};
 
 /// One atomic, undoable document mutation.
 #[allow(clippy::large_enum_variant)]
@@ -142,10 +142,11 @@ pub(crate) struct Impact {
     pub(crate) glyph_order: bool,
     pub(crate) renames: Vec<(GlyphName, GlyphName)>,
     pub(crate) affects_dependents: bool,
+    pub(crate) component_graph_changed: bool,
 }
 
 impl Impact {
-    fn glyph(&mut self, name: &GlyphName) {
+    pub(crate) fn glyph(&mut self, name: &GlyphName) {
         if !self.glyphs.contains(name) {
             self.glyphs.push(name.clone());
         }
@@ -170,6 +171,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.glyph(&glyph.name);
             impact.glyph_order = true;
             impact.affects_dependents = true;
+            impact.component_graph_changed = true;
         }
         Command::RemoveGlyphs { names } => {
             for name in names {
@@ -177,6 +179,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             }
             impact.glyph_order = true;
             impact.affects_dependents = true;
+            impact.component_graph_changed = true;
         }
         Command::RenameGlyph { from, to } => {
             impact.glyph(from);
@@ -184,20 +187,25 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             if from != to {
                 impact.renames.push((from.clone(), to.clone()));
             }
-            if let Some(dependents) = fw_model::dependents(font).get(from) {
-                for dependent in dependents {
-                    impact.glyph(dependent);
-                }
-            }
             impact.glyph_order = true;
             impact.affects_dependents = true;
+            impact.component_graph_changed |= from != to;
         }
         Command::SetUnicodes { glyph, .. }
         | Command::SetGlyphMeta { glyph, .. }
         | Command::SetWidth { glyph, .. } => impact.glyph(glyph),
-        Command::ReplaceLayerOutline { glyph, .. } => {
+        Command::ReplaceLayerOutline {
+            glyph,
+            layer,
+            components,
+            ..
+        } => {
             impact.glyph(glyph);
             impact.affects_dependents = true;
+            impact.component_graph_changed |= font
+                .glyph(glyph)
+                .and_then(|glyph| glyph.layers.iter().find(|candidate| candidate.id == *layer))
+                .is_none_or(|current| current.components != *components);
         }
         Command::SetFontInfo { .. } => impact.font_info = true,
         Command::SetMasterMetrics { master, .. } => impact.master(master),
@@ -209,18 +217,45 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
     }
 }
 
-pub(crate) fn apply_to_font(font: &mut Font, command: &Command) -> Result<(), Error> {
+pub(crate) fn apply_to_font(
+    font: &mut Font,
+    command: &Command,
+    rollback: &[Snapshot],
+) -> Result<(), Error> {
     match command {
         Command::Batch(commands) => {
-            let mut candidate = font.clone();
-            for command in commands {
-                apply_inner(&mut candidate, command)?;
+            let mut applied_renames = Vec::new();
+            if let Err(error) = apply_batch(font, commands, &mut applied_renames) {
+                for (from, to) in applied_renames.iter().rev() {
+                    rename_references(font, to, from);
+                }
+                undo::restore(font, rollback);
+                return Err(error);
             }
-            *font = candidate;
             Ok(())
         }
         command => apply_inner(font, command),
     }
+}
+
+fn apply_batch(
+    font: &mut Font,
+    commands: &[Command],
+    applied_renames: &mut Vec<(GlyphName, GlyphName)>,
+) -> Result<(), Error> {
+    for command in commands {
+        match command {
+            Command::Batch(nested) => apply_batch(font, nested, applied_renames)?,
+            Command::RenameGlyph { from, to } => {
+                apply_inner(font, command)?;
+                if from != to {
+                    applied_renames.push((from.clone(), to.clone()));
+                }
+            }
+            command => apply_inner(font, command)?,
+        }
+    }
+    Ok(())
 }
 
 fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {

@@ -38,6 +38,16 @@ pub fn test_font() -> Font {
     font
 }
 
+#[allow(dead_code)]
+pub fn synthetic_font(glyph_count: usize) -> Font {
+    let mut font = Font::new_empty("Synthetic", 1_000);
+    for index in 0..glyph_count {
+        font.insert_glyph(Glyph::new(format!("glyph-{index}")))
+            .expect("synthetic glyph is valid");
+    }
+    font
+}
+
 pub fn point(x: f64, y: f64) -> Point {
     Point {
         x,

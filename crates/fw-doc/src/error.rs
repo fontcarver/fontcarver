@@ -48,6 +48,9 @@ pub enum Error {
     /// A shared session lock was poisoned.
     #[error("document session lock is poisoned")]
     LockPoisoned,
+    /// A document callback tried to access a session recursively in a debug build.
+    #[error("session callbacks must not call back into the session")]
+    Reentrant,
     /// An underlying model invariant was rejected.
     #[error(transparent)]
     Model(#[from] fw_model::Error),

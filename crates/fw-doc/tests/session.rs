@@ -1,8 +1,12 @@
 mod common;
 
-use std::{sync::Arc, thread, time::Duration};
+use std::{
+    sync::Arc,
+    thread,
+    time::{Duration, Instant},
+};
 
-use common::{temp_dir, test_font};
+use common::{synthetic_font, temp_dir, test_font};
 use fw_doc::{
     autosave::{self, AutosaveConfig},
     Command, Error, FontOpener, Session,
@@ -106,6 +110,81 @@ fn autosave_writes_dirty_unsaved_documents_and_lists_them() {
     assert_eq!(entries[0].doc_path, None);
     let recovered = fw_doc::fwf::read(&entries[0].autosave_path).unwrap();
     assert_eq!(recovered.glyph("base").unwrap().layers[0].width, 888.0);
+}
+
+#[cfg(debug_assertions)]
+#[test]
+fn nested_session_access_returns_reentrant_error() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |_| {
+            assert!(matches!(
+                session.with_doc(id, |_| ()),
+                Err(Error::Reentrant)
+            ));
+        })
+        .unwrap();
+}
+
+#[test]
+fn autosave_serialization_does_not_hold_the_session_lock() {
+    let dir = temp_dir("autosave-lock-scope");
+    let session = Arc::new(Session::new());
+    let id = session.open_font(synthetic_font(5_000), None);
+    session
+        .with_doc_mut(id, |doc| {
+            doc.dirty = true;
+        })
+        .unwrap();
+    let handle = autosave::spawn(
+        Arc::clone(&session),
+        AutosaveConfig {
+            interval: Duration::from_millis(50),
+            dir,
+        },
+    );
+    let writer_session = Arc::clone(&session);
+    let writer = thread::spawn(move || {
+        let deadline = Instant::now() + Duration::from_millis(300);
+        let mut maximum_wait = Duration::ZERO;
+        while Instant::now() < deadline {
+            let started = Instant::now();
+            writer_session
+                .with_doc_mut(id, |doc| std::hint::black_box(doc.generation))
+                .unwrap();
+            maximum_wait = maximum_wait.max(started.elapsed());
+            thread::yield_now();
+        }
+        maximum_wait
+    });
+    let maximum_wait = writer.join().unwrap();
+    handle.stop();
+    if cfg!(not(debug_assertions)) {
+        assert!(
+            maximum_wait < Duration::from_millis(50),
+            "writer waited {maximum_wait:?}"
+        );
+    }
+}
+
+#[test]
+fn listing_large_autosave_meets_budget() {
+    let dir = temp_dir("autosave-list-budget");
+    let path = dir.join("large.autosave.fwf");
+    fw_doc::fwf::write(&path, &synthetic_font(5_000)).unwrap();
+
+    let started = Instant::now();
+    let entries = autosave::list_recoverable(&dir);
+    let elapsed = started.elapsed();
+
+    assert_eq!(entries.len(), 1);
+    if cfg!(not(debug_assertions)) {
+        assert!(
+            elapsed < Duration::from_millis(50),
+            "listing took {elapsed:?}"
+        );
+    }
 }
 
 #[test]
