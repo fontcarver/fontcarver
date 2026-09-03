@@ -27,10 +27,27 @@ fn main() -> Result<(), Box<dyn Error>> {
             "MasterMetrics",
         ],
     )?;
+    repair_command_double_option(&output_dir.join("Command.ts"))?;
     add_imports(&output_dir.join("Kerning.ts"), &["KernPair"])?;
     write_methods(&output_dir)?;
     write_index(&output_dir)?;
     Ok(())
+}
+
+fn repair_command_double_option(path: &Path) -> Result<(), std::io::Error> {
+    let contents = fs::read_to_string(path)?;
+    let source = "color_label: number | null | null,";
+    let replacement = "color_label?: number | null,";
+    if !contents.contains(source) {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!(
+                "cannot find SetGlyphMeta color_label declaration in `{}`",
+                path.display()
+            ),
+        ));
+    }
+    fs::write(path, contents.replacen(source, replacement, 1))
 }
 
 fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
@@ -163,7 +180,9 @@ fn generated_header() -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::add_imports;
+    use std::fs;
+
+    use super::{add_imports, repair_command_double_option};
 
     #[test]
     fn import_repair_error_names_the_missing_generated_file() {
@@ -174,5 +193,22 @@ mod tests {
         let error = add_imports(&path, &["Glyph"]).expect_err("missing patched file must fail");
 
         assert!(error.to_string().contains(&path.display().to_string()));
+    }
+
+    #[test]
+    fn repairs_double_option_as_optional_nullable_typescript() {
+        let path = std::env::temp_dir().join(format!(
+            "fontworkshop-command-binding-{}.ts",
+            std::process::id()
+        ));
+        fs::write(&path, "color_label: number | null | null,").unwrap();
+
+        repair_command_double_option(&path).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "color_label?: number | null,"
+        );
+        fs::remove_file(path).ok();
     }
 }
