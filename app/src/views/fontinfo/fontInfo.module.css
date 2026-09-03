@@ -1,0 +1,172 @@
+/* The Font Info tab: section rail, search and the read-only field tables. */
+
+.view {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.toolbar {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.toolbarSpacer {
+  flex: 1;
+}
+
+.search {
+  min-width: 120px;
+  flex: 0 1 220px;
+  height: var(--control-height);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-size: var(--text-size-sm);
+}
+
+.sectionTab {
+  display: inline-flex;
+  height: var(--control-height);
+  flex: none;
+  align-items: center;
+  padding: 0 var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+  white-space: nowrap;
+  cursor: default;
+}
+
+.sectionTab:hover {
+  background: var(--color-hover);
+}
+
+.sectionTab[aria-selected='true'] {
+  border-color: var(--color-border);
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+  font-weight: var(--text-weight-medium);
+}
+
+.body {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  background: var(--color-canvas);
+}
+
+.sectionTitle {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-size-lg);
+  font-weight: var(--text-weight-strong);
+}
+
+.group {
+  max-width: 900px;
+  margin-bottom: var(--space-4);
+}
+
+.groupTitle {
+  margin: 0 0 var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+  font-weight: var(--text-weight-strong);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rows {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.row {
+  display: grid;
+  min-height: var(--row-height);
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: 3px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  grid-template-columns: minmax(140px, 240px) 1fr;
+}
+
+.rowLabel {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+}
+
+.rowValue {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-text);
+  font-size: var(--text-size-sm);
+}
+
+.tableScroll {
+  max-width: 100%;
+  margin-bottom: var(--space-4);
+  overflow-x: auto;
+}
+
+.table {
+  border-collapse: collapse;
+  font-size: var(--text-size-sm);
+}
+
+.table th,
+.table td {
+  padding: 3px var(--space-3) 3px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--color-canvas);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+  font-weight: var(--text-weight-strong);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.table tbody th {
+  color: var(--color-text-muted);
+  font-weight: var(--text-weight-medium);
+}
+
+.numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+/* More specific than `.table td` so the long name-record text really wraps. */
+.table td.wrap {
+  max-width: 70ch;
+  min-width: 24ch;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.empty {
+  margin: 0;
+  padding: var(--space-3) 0;
+  color: var(--color-text-faint);
+  font-size: var(--text-size-sm);
+}

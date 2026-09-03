@@ -7,7 +7,9 @@ import { App } from './App'
 import { resetCommands } from './shell/commands'
 import { initialDocumentState, useDocumentStore } from './stores/documentStore'
 import { initialSessionState, useSessionStore } from './stores/sessionStore'
+import { forgetFontInfo } from './stores/fontInfoCache'
 import { initialUiState, useUiStore } from './stores/uiStore'
+import { makeFontInfoView } from './test/fontFixtures'
 import { createMockTransport, makeSummary } from './test/mockTransport'
 
 function emptySession() {
@@ -19,6 +21,7 @@ function emptySession() {
 
 beforeEach(() => {
   localStorage.clear()
+  forgetFontInfo(1)
   document.documentElement.removeAttribute('data-theme')
   resetCommands()
   useUiStore.setState(initialUiState())
@@ -201,6 +204,7 @@ describe('App shell', () => {
           color_labels: [],
         }),
         'glyphs.list': () => ({ total: 6253, items: [] }),
+        'doc.font_info': () => makeFontInfoView(),
       }),
     )
     render(<App />)
@@ -214,7 +218,13 @@ describe('App shell', () => {
     expect(screen.queryByText('Letter')).toBeNull()
     expect(screen.queryAllByLabelText('Cell size')).toHaveLength(0)
     expect(
-      screen.getByText('Font Info sections arrive with the Font Info panel.'),
+      screen.getByText(
+        'Font Info is read-only in this release; editing arrives with the next phase.',
+      ),
+    ).toBeInTheDocument()
+    // The Font Info tab itself renders the read-only field list.
+    expect(
+      await screen.findByRole('searchbox', { name: 'Search fields' }),
     ).toBeInTheDocument()
   })
 

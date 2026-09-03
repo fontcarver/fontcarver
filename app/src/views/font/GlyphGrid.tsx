@@ -22,6 +22,7 @@ import { GlyphContextMenu } from './GlyphContextMenu'
 import styles from './fontView.module.css'
 import { startFrameMeter } from './frameMeter'
 import { forgetGlyphNames, rememberGlyphNames } from './glyphNames'
+import { forgetOrder, rememberOrder } from './glyphOrder'
 import { GlyphPager } from './glyphPager'
 import type { GlyphQuery } from './glyphSelection'
 import { useGlyphSelection } from './useGlyphSelection'
@@ -106,6 +107,7 @@ export function GlyphGrid({ summary, query }: GlyphGridProps) {
             include_paths: true,
           })
           rememberGlyphNames(query.doc, result.items)
+          rememberOrder(query, offset, result.items, result.total)
           return result
         },
         onChange: bump,
@@ -152,6 +154,7 @@ export function GlyphGrid({ summary, query }: GlyphGridProps) {
         if (event.doc !== doc) return
         if (event.change.glyph_order) {
           forgetGlyphNames(doc)
+          forgetOrder(doc)
           pathCache.clearDoc(doc)
           pager.reset()
           pager.setRange(0, 0)
@@ -255,8 +258,8 @@ export function GlyphGrid({ summary, query }: GlyphGridProps) {
   const closeMenu = useCallback(() => setMenu(null), [])
 
   const openFocused = useCallback(() => {
-    const gid = pager.cell(focusIndex)?.gid
-    if (gid !== undefined) openGlyphTab(doc, gid)
+    const cell = pager.cell(focusIndex)
+    if (cell) openGlyphTab(doc, cell.gid, cell.name)
   }, [doc, focusIndex, pager])
 
   const onKeyDown = useCallback(

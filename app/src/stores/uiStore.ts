@@ -153,6 +153,7 @@ export interface UiState extends PersistedUi {
   togglePanel: (panel: PanelId) => void
   setPanelSize: (panel: PanelId, size: number) => void
   openTab: (tab: Omit<Tab, 'id'>) => string
+  setTabLabel: (id: string, label: string) => void
   setActiveTab: (id: string) => void
   closeTab: (id: string) => void
   closeTabsForDoc: (doc: DocId) => void
@@ -182,6 +183,7 @@ export function initialUiState(): Omit<
   | 'togglePanel'
   | 'setPanelSize'
   | 'openTab'
+  | 'setTabLabel'
   | 'setActiveTab'
   | 'closeTab'
   | 'closeTabsForDoc'
@@ -243,6 +245,19 @@ export const useUiStore = create<UiState>((set, get) => ({
       activeTab: id,
     }))
     return id
+  },
+
+  setTabLabel: (id, label) => {
+    set((state) => {
+      const tab = state.tabs.find((candidate) => candidate.id === id)
+      if (!tab || tab.label === label) return state
+      return {
+        ...state,
+        tabs: state.tabs.map((candidate) =>
+          candidate.id === id ? { ...candidate, label } : candidate,
+        ),
+      }
+    })
   },
 
   setActiveTab: (id) => {

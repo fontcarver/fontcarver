@@ -2,9 +2,18 @@ import { call, getTransport, type DocId } from '../api'
 import { i18n } from '../i18n'
 import { useDocumentStore } from '../stores/documentStore'
 import { activeSummary, useSessionStore } from '../stores/sessionStore'
-import { activeDocId, useUiStore, type ThemePreference } from '../stores/uiStore'
+import {
+  activeDocId,
+  useUiStore,
+  type ThemePreference,
+} from '../stores/uiStore'
 
 import { registerFontViewCommands } from '../views/font/fontCommands'
+import { glyphName } from '../views/font/glyphNames'
+import {
+  registerGlyphViewCommands,
+  zoomActiveGlyphView,
+} from '../views/glyph/glyphCommands'
 
 import { registerCommands, type Command } from './commands'
 import { closeTab, openFontInfoTab, openGlyphTab } from './tabActions'
@@ -41,6 +50,7 @@ async function runHistory(method: 'doc.undo' | 'doc.redo'): Promise<void> {
 /** Registers every built-in command. Safe to call more than once. */
 export function registerBuiltinCommands(): void {
   registerFontViewCommands()
+  registerGlyphViewCommands()
   registerCommands([
     {
       id: 'file.new',
@@ -48,7 +58,11 @@ export function registerBuiltinCommands(): void {
       menu: 'file',
       group: 'open',
       shortcut: 'Mod+N',
-      run: () => useSessionStore.getState().createDocument().then(() => undefined),
+      run: () =>
+        useSessionStore
+          .getState()
+          .createDocument()
+          .then(() => undefined),
     },
     {
       id: 'file.open',
@@ -166,7 +180,7 @@ export function registerBuiltinCommands(): void {
         if (doc === null) return
         const selection = useDocumentStore.getState().byDoc[doc]?.selection
         const first = selection ? [...selection][0] : undefined
-        if (first !== undefined) openGlyphTab(doc, first)
+        if (first !== undefined) openGlyphTab(doc, first, glyphName(doc, first))
       },
     },
     {
@@ -194,6 +208,7 @@ export function registerBuiltinCommands(): void {
       when: hasDocument,
       disabledReason: 'cmd.reason.noDocument',
       run: () => {
+        if (zoomActiveGlyphView(1)) return
         const doc = activeDoc()
         if (doc !== null) useDocumentStore.getState().stepCellSize(doc, 1)
       },
@@ -207,6 +222,7 @@ export function registerBuiltinCommands(): void {
       when: hasDocument,
       disabledReason: 'cmd.reason.noDocument',
       run: () => {
+        if (zoomActiveGlyphView(-1)) return
         const doc = activeDoc()
         if (doc !== null) useDocumentStore.getState().stepCellSize(doc, -1)
       },

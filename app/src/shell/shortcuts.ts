@@ -31,6 +31,8 @@ const CODE_KEYS: Record<string, string> = {
   Slash: '/',
   Comma: ',',
   Period: '.',
+  BracketLeft: '[',
+  BracketRight: ']',
 }
 
 function normaliseKey(key: string): string {
