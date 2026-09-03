@@ -29,7 +29,7 @@
     "file": {
       "new": "新建字体…",
       "open": "打开字体…",
-      "openRecent": "打开最近使用…",
+      "openRecent": "打开最近打开的文件…",
       "save": "保存",
       "saveAs": "另存为…",
       "close": "关闭字体",
@@ -83,7 +83,7 @@
     },
     "reason": {
       "noDocument": "没有打开的字体",
-      "noRecent": "没有最近使用的文件",
+      "noRecent": "没有最近打开的文件",
       "noSelection": "未选择任何字形",
       "nothingToUndo": "没有可撤销的操作",
       "nothingToRedo": "没有可重做的操作",
@@ -101,11 +101,11 @@
     "hint": "↑↓ 导航 · Enter 运行 · Esc 关闭"
   },
   "empty": {
-    "tagline": "打开一个字体以开始。",
+    "tagline": "打开字体即可开始。",
     "open": "打开字体…",
     "new": "新建字体…",
-    "recent": "最近的文件",
-    "noRecent": "暂无最近使用的文件。"
+    "recent": "最近打开的文件",
+    "noRecent": "暂无最近打开的文件。"
   },
   "dialog": {
     "open": {
@@ -149,7 +149,7 @@
     "unencoded": "未编码",
     "all": "所有字形",
     "overview": "概览",
-    "empty": "打开一个字体以查看其字形筛选器。",
+    "empty": "打开字体即可查看字形筛选器。",
     "collapse": "折叠{{section}}",
     "expand": "展开{{section}}",
     "glyphNote": "字形筛选器作用于字体标签页；请切换到该标签页以更改字形列表。",
@@ -181,7 +181,7 @@
       "Order": "字体顺序",
       "Unicode": "Unicode",
       "Name": "名称",
-      "Width": "宽度"
+      "Width": "字宽"
     },
     "fontInfoNote": "此版本中字体信息为只读；编辑功能将在下一阶段推出。"
   },
@@ -221,7 +221,7 @@
     "saved": "已保存 {{name}}",
     "opened": "已打开 {{name}}",
     "closed": "已关闭 {{name}}",
-    "about": "FontWorkshop {{version}} — 内核传输：{{kind}}",
+    "about": "FontWorkshop {{version}}——内核传输：{{kind}}",
     "copiedNames_one": "已复制 {{count, number}} 个字形名称",
     "copiedNames_other": "已复制 {{count, number}} 个字形名称",
     "copyFailed": "无法写入剪贴板"
@@ -288,17 +288,17 @@
       "descender": "下降部",
       "origin": "原点",
       "advance": "字宽",
-      "lsb": "LSB",
-      "rsb": "RSB",
+      "lsb": "左侧边距",
+      "rsb": "右侧边距",
       "verticalOrigin": "垂直原点",
       "verticalAdvance": "垂直字宽"
     },
     "hud": {
-      "label": "字形读数",
+      "label": "字形信息",
       "unicode": "Unicode",
-      "width": "宽度",
-      "lsb": "LSB",
-      "rsb": "RSB",
+      "width": "字宽",
+      "lsb": "左侧边距",
+      "rsb": "右侧边距",
       "points": "节点"
     }
   },
@@ -341,7 +341,7 @@
     "searchPlaceholder": "搜索所有分区…",
     "loading": "正在加载字体信息…",
     "unavailable": "字体信息不可用。",
-    "noMatches": "没有与搜索匹配的字段。",
+    "noMatches": "没有匹配的字段。",
     "noNames": "此字体没有名称记录。",
     "noMasters": "此字体没有母版。",
     "noAxes": "此字体没有可变轴。",
@@ -365,7 +365,7 @@
       "instances": "实例",
       "os2": "OS/2",
       "head": "head 与 gasp",
-      "caret": "插入符倾斜",
+      "caret": "插入符斜率",
       "postscript": "PostScript",
       "macintosh": "Macintosh"
     },
@@ -385,9 +385,9 @@
       "hidden": "隐藏",
       "instanceName": "名称",
       "styleName": "样式名称",
-      "familyOverride": "字族覆盖",
+      "familyOverride": "覆盖字族名称",
       "active": "启用",
-      "variableInstance": "可变命名实例"
+      "variableInstance": "可变字体命名实例"
     },
     "field": {
       "familyName": "字族名称",
@@ -483,8 +483,8 @@
       "designerUrl": "设计者网址",
       "license": "许可证",
       "licenseUrl": "许可证网址",
-      "typographicFamily": "字体排印字族",
-      "typographicSubfamily": "字体排印子字族",
+      "typographicFamily": "排印字族",
+      "typographicSubfamily": "排印子字族",
       "compatibleFull": "兼容完整名称",
       "sampleText": "示例文本",
       "postscriptCid": "PostScript CID 名称",
@@ -492,7 +492,7 @@
       "wwsSubfamily": "WWS 子字族",
       "lightBackground": "浅色背景调色板",
       "darkBackground": "深色背景调色板",
-      "variationsPrefix": "可变 PostScript 前缀"
+      "variationsPrefix": "可变字体 PostScript 前缀"
     }
   }
 }
