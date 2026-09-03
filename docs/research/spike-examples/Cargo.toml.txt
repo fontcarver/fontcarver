@@ -1,0 +1,59 @@
+[package]
+name = "crate-spike"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+
+[dependencies]
+# --- fontations (googlefonts) ---
+read-fonts   = { version = "0.43", features = ["experimental_traverse", "ift", "serde"] }
+write-fonts  = { version = "0.52", features = ["read", "serde", "dot2"] }
+skrifa       = { version = "0.46", features = ["traversal"] }
+font-types   = { version = "0.12", features = ["serde"] }
+
+# --- fontc pipeline (googlefonts) ---
+fea-rs        = "1.0"
+fontc         = "1.0"
+fontir        = "1.0"
+fontdrasil    = "1.0"
+fontbe        = "1.0"
+glyphs-reader = "1.0"
+ufo2fontir    = "1.0"
+glyphs2fontir = "1.0"
+
+# --- shaping ---
+harfrust = "0.13"
+
+# --- sources / IO ---
+norad     = { version = "0.18", features = ["kurbo", "rayon"] }
+plist     = "1.10"
+quick-xml = { version = "0.42", features = ["serialize"] }
+serde     = { version = "1", features = ["derive"] }
+
+# --- geometry / raster ---
+kurbo      = { version = "0.13", features = ["serde"] }
+tiny-skia  = "0.12"
+zeno       = "0.3"
+
+# --- boolean path ops candidates ---
+flo_curves        = "0.8"
+i_overlay         = "8.1"
+cavalier_contours = "0.9"
+lyon_path         = "1.0"
+lyon_algorithms   = "1.0"
+
+# --- webfont compression ---
+woff2-patched = "0.4"   # WOFF2 decode (fork of woff2-rs)
+woofwoof      = "1.0"   # WOFF2 encode + decode, pure-rust brotli
+wuff          = "0.2"   # WOFF1 + WOFF2 decode, pure rust
+woff          = "0.6"   # bodoni: WOFF1/WOFF2 converter
+brotli        = "9"
+flate2        = "1"
+zopfli        = "0.8"
+
+# --- app shell (resolution check only) ---
+tauri = "2"
+tracing-subscriber = "0.3"
+
+[features]
+default = []

@@ -19,7 +19,7 @@ crate source. A handful of items are marked **(unverified)**.
 | Curve-preserving boolean ops in pure Rust? | **Yes — `flo_curves` 0.8.1.** Union of two circles: 9 cubic segments, 0.006 % area error, no degenerate segments. `path_remove_interior_points` is the "Remove Overlap" primitive. |
 | WOFF2 encoder? | Yes, but **no pure-Rust encoder exists**. `woofwoof` 1.0.2 (Google woff2 C++ + Rust brotli) and `woff` 0.6.3 both vendor C/C++ and need a `cc`/C++ toolchain. Decoders are pure Rust (`wuff`, `woff2-patched`). |
 | skia-safe pure-cargo? | **No.** It downloads a 4.1 MB prebuilt tarball from GitHub releases at build time (244 MB target dir), or falls back to a full Skia source build (depot_tools + python + gn + ninja + clang). Do not depend on it. |
-| Biggest gaps | Type1/CFF *writing*, BDF/PCF/SFD, `.glyphs` writer, MATH/JSTF/VDMX/LTSH/PCLT/EBSC parsing, EBDT/CBDT/sbix **writing**, TT instruction assembler/disassembler, PS autohint, TT autoinstruct. |
+| Biggest gaps | CFF/CFF2 **writing**, EBDT/CBDT/sbix **writing**, BDF/PCF/SFD, `.glyphs` writer, MATH/JSTF/VDMX/LTSH/PCLT/EBSC parsing, TT instruction assembler/disassembler, PS autohint, TT autoinstruct, pure-Rust WOFF2 encoder. (Type 1 *reading* turns out to be already solved by `read_fonts::ps::type1`.) |
 
 ---
 
@@ -132,6 +132,7 @@ polycool 0.4.0 (new kurbo 0.13 dep)
 | `examples/custom_source.rs` | **third-party `fontir::source::Source` impl** driving the whole fontc pipeline |
 | `examples/roundtrip.rs` | GSUB/GPOS/GDEF read→write round trip, `FontBuilder` mixing, `fea-rs` from a string |
 | `examples/raster.rs` | hinted glyph @16 ppem → 8-bit alpha mask via tiny-skia `Mask` and zeno |
+| `examples/type1.rs` | `read_fonts::ps::type1::Type1Font` reading real `.pfb` files |
 | `skia-probe/` | separate crate proving skia-safe's build path |
 
 ---
@@ -281,6 +282,63 @@ Confirmed absent (no module, no `TableProvider` method, no `TopLevelTable` impl)
 
 For a FontForge-class editor this means **MATH, JSTF, VDMX, LTSH, PCLT and bdat/bloc parsers are ours to write.**
 `sbix`/`EBDT`/`CBDT`/`EBLC`/`CBLC` are *readable* but there is no writer anywhere in the stack (§3).
+
+#### Type 1 fonts — `read_fonts::ps::type1` (**a genuine surprise, and a big win**)
+`pub mod ps;` exposes `agl, cff, charmap, cs, encoding, error, hinting, string, transform, type1`.
+```rust
+pub struct Type1Font { .. }
+impl Type1Font {
+    pub fn new(data: &[u8]) -> Result<Self, Error>;      // accepts PFB and PFA
+    pub fn name(&self) -> Option<&str>;
+    pub fn full_name(&self) -> Option<&str>;
+    pub fn family_name(&self) -> Option<&str>;
+    pub fn weight(&self) -> Option<&str>;
+    pub fn italic_angle(&self) -> i32;
+    pub fn is_fixed_pitch(&self) -> bool;
+    pub fn underline_position(&self) -> i32;
+    pub fn underline_thickness(&self) -> i32;
+    pub fn bbox(&self) -> BoundingBox<Fixed>;
+    pub fn num_glyphs(&self) -> u32;
+    pub fn upem(&self) -> i32;
+    pub fn matrix(&self) -> FontMatrix;
+    pub fn transform(&self, ppem: Option<f32>) -> Transform;
+    pub fn encoding(&self) -> Option<Encoding<'_>>;
+    pub fn unicode_charmap(&self) -> &Charmap;
+    pub fn glyph_name(&self, gid: GlyphId) -> Option<&str>;
+    pub fn glyph_names(&self) -> impl Iterator<Item = (GlyphId, &str)>;
+    pub fn remapped_gid(&self, original_gid: GlyphId) -> GlyphId;
+    pub fn evaluate_charstring(&self, gid: GlyphId, sink: &mut impl CommandSink) -> Result<Option<Fixed>, Error>;
+    pub fn draw(&self, gid: GlyphId, ppem: Option<f32>, pen: &mut impl OutlinePen) -> Result<Option<f32>, Error>;
+}
+pub struct Encoding<'a>;
+impl<'a> Encoding<'a> {
+    pub fn predefined(&self) -> Option<PredefinedEncoding>;
+    pub fn glyph_name(&self, code: u8) -> Option<&'a str>;
+    pub fn map(&self, code: u8) -> Option<GlyphId>;
+}
+```
+Internals confirm real PFB/PFA handling: `PFB_TEXT_SEGMENT_TAG = 0x8001`, `PFB_BINARY_SEGMENT_TAG = 0x8002`,
+`decode_pfb_tag`, `decode_pfb_binary_segments`, `find_eexec_data` (token-aware, so it won't match `eexec`
+inside a comment or string), hex-or-binary `decrypt(.., EEXEC_SEED)`, `CharstringKind::Type1` with
+`seac_components` resolution via `PredefinedEncoding::Standard`.
+
+**VERIFIED** (`examples/type1.rs`) on real URW `.pfb` files:
+```
+/usr/share/fonts/X11/Type1/P052-BoldItalic.pfb
+  name=Some("P052-BoldItalic") full=Some("P052 Bold Italic") family=Some("P052") weight=Some("Bold")
+  num_glyphs=855 upem=1000 italic_angle=-9
+  bbox=BoundingBox { x_min: -170.0, y_min: -314.0, x_max: 1134.0, y_max: 1107.0 } fixed_pitch=false
+  first glyph names: [".notdef", "B", "C", "D", "E", "F", "G", "H"]
+  draw(GlyphId(1)) advance=Some(667.0)
+    M13 29 L8 -3 C78 -1 110 0 147 0 L245 -1 C304 -3 322 -3 332 -3 C381 -3 418 4 454 18 C544 55 601 131 601 214 ...
+/usr/share/fonts/X11/Type1/NimbusSansNarrow-Oblique.pfb
+  name=Some("NimbusSansNarrow-Oblique") ... num_glyphs=855 upem=1000
+  draw(GlyphId(1)) advance=Some(547.0)  ->  M61 0 L314 0 C449 0 555 114 555 258 ... Z
+```
+Note this is a **standalone reader**, not wired into `TableProvider`/`skrifa` — `Type1Font::draw` takes a
+`read_fonts::model::pen::OutlinePen` (the same trait skrifa re-exports), so it drops straight into our
+outline pipeline. Glyph order is charstrings-dict order, so build our own name→GID map from
+`glyph_names()`. `.afm`/`.pfm` sidecar metrics are still ours to parse.
 
 #### Variations helpers
 `read_fonts::tables::variations` gives the shared primitives:
@@ -1224,7 +1282,257 @@ googlefonts stack uses.** No separate crate needed.
 
 ### 2.h `kurbo` 0.13.1
 
-*(see §2.h-detail below — filled from the dedicated source read)*
+`edition = "2024"`, `rust-version = "1.85"`. Features:
+`default = ["std"]`, `std = ["polycool/std", "euclid?/std"]`, `libm`, `mint`, `euclid`, `serde`, `schemars`.
+
+**Module-path corrections (important — several paths in the brief do not exist):**
+
+| Module | Declaration in `lib.rs` | Real public path |
+|---|---|---|
+| `fit` | `mod fit;` (**private**) | `kurbo::{ParamCurveFit, CurveFitSample, fit_to_bezpath, fit_to_bezpath_opt, fit_to_cubic}` |
+| `expand` | `mod expand;` (**private**) | `kurbo::{Diagonal2, expand_path, expand_path_signed}` |
+| `moments` | `mod moments;` (**private**) | `kurbo::{Moments, ParamCurveMoments}` |
+| `stroke` | `mod stroke;` (**private**) | `kurbo::{Stroke, StrokeOpts, StrokeOptLevel, StrokeCtx, Join, Cap, Dashes, stroke, stroke_with, dash}` |
+| `simplify` | `pub mod simplify;` | `kurbo::simplify::*` ✔ as in brief |
+| `offset` | `pub mod offset;` | `kurbo::offset::offset_cubic` ✔ as in brief |
+
+#### `BezPath`
+```rust
+pub struct BezPath(Vec<PathEl>);
+impl BezPath {
+    pub fn new() -> BezPath;
+    pub fn with_capacity(capacity: usize) -> BezPath;
+    pub fn from_vec(v: Vec<PathEl>) -> BezPath;
+    pub fn push(&mut self, el: PathEl);  pub fn pop(&mut self) -> Option<PathEl>;
+    pub fn move_to<P: Into<Point>>(&mut self, p: P);
+    pub fn line_to<P: Into<Point>>(&mut self, p: P);
+    pub fn quad_to<P: Into<Point>>(&mut self, p1: P, p2: P);
+    pub fn curve_to<P: Into<Point>>(&mut self, p1: P, p2: P, p3: P);
+    pub fn close_path(&mut self);
+    pub fn into_elements(self) -> Vec<PathEl>;
+    pub fn elements(&self) -> &[PathEl];
+    pub fn elements_mut(&mut self) -> &mut [PathEl];
+    pub fn iter(&self) -> impl Iterator<Item = PathEl> + Clone + '_;
+    pub fn segments(&self) -> impl Iterator<Item = PathSeg> + Clone + '_;
+    pub fn apply_affine(&mut self, affine: Affine);
+    pub fn control_box(&self) -> Rect;              // conservative, from control points
+    pub fn current_position(&self) -> Option<Point>;
+    pub fn subpaths(&self) -> impl Iterator<Item = &[PathEl]>;
+    pub fn reverse_subpaths(&self) -> BezPath;      // returns a NEW path
+    pub fn from_path_segments(segments: impl Iterator<Item = PathSeg>) -> BezPath;
+    #[cfg(feature = "std")] pub fn to_svg(&self) -> String;
+    #[cfg(feature = "std")] pub fn write_to<W: std::io::Write>(&self, w: W) -> std::io::Result<()>;
+    pub fn from_svg(data: &str) -> Result<BezPath, SvgParseError>;
+}
+pub enum PathEl { MoveTo(Point), LineTo(Point), QuadTo(Point, Point), CurveTo(Point, Point, Point), ClosePath }
+pub enum PathSeg { Line(Line), Quad(QuadBez), Cubic(CubicBez) }
+
+pub fn flatten(path: impl IntoIterator<Item = PathEl>, tolerance: f64, callback: impl FnMut(PathEl));
+```
+`area()`, `perimeter(accuracy)`, `bounding_box()` (tight, uses extrema), `winding(pt)`, `contains(pt)`
+are **`Shape` trait** methods, not inherent:
+```rust
+pub trait Shape {
+    type PathElementsIter<'iter>: Iterator<Item = PathEl> + 'iter where Self: 'iter;
+    fn path_elements(&self, tolerance: f64) -> Self::PathElementsIter<'_>;
+    fn to_path(&self, tolerance: f64) -> BezPath { .. }
+    fn into_path(self, tolerance: f64) -> BezPath where Self: Sized { .. }
+    fn path_segments(&self, tolerance: f64) -> Segments<Self::PathElementsIter<'_>> { .. }
+    fn area(&self) -> f64;
+    fn perimeter(&self, accuracy: f64) -> f64;
+    fn winding(&self, pt: Point) -> i32;
+    fn contains(&self, pt: Point) -> bool { self.winding(pt) != 0 }   // nonzero by default
+    fn bounding_box(&self) -> Rect;
+    fn as_line(&self) -> Option<Line> { None }
+    fn as_rect(&self) -> Option<Rect> { None }
+    fn as_rounded_rect(&self) -> Option<RoundedRect> { None }
+    fn as_circle(&self) -> Option<Circle> { None }
+    fn as_path_slice(&self) -> Option<&[PathEl]> { None }
+}
+```
+
+#### Curves
+```rust
+pub struct CubicBez { pub p0: Point, pub p1: Point, pub p2: Point, pub p3: Point }
+pub enum CuspType { Loop, DoubleInflection }
+impl CubicBez {
+    pub fn new<P: Into<Point>>(p0: P, p1: P, p2: P, p3: P) -> CubicBez;
+    pub fn to_quads(&self, accuracy: f64) -> impl Iterator<Item = (f64, f64, QuadBez)>;
+    pub fn approx_spline(&self, accuracy: f64) -> Option<QuadSpline>;
+    pub fn inflections(&self) -> ArrayVec<f64, 2>;
+    pub fn tangents_to_point(&self, p: Point) -> ArrayVec<f64, 4>;
+}
+/// Port of fontTools cu2qu; all returned splines have the SAME number of control points.
+pub fn cubics_to_quadratic_splines(curves: &[CubicBez], accuracy: f64) -> Option<Vec<QuadSpline>>;
+
+pub struct QuadBez { pub p0: Point, pub p1: Point, pub p2: Point }
+impl QuadBez { pub fn raise(&self) -> CubicBez; }   // exact degree elevation
+
+pub const DEFAULT_ACCURACY: f64 = 1e-6;
+pub const MAX_EXTREMA: usize = 4;
+pub trait ParamCurve: Sized {
+    fn eval(&self, t: f64) -> Point;
+    fn subsegment(&self, range: Range<f64>) -> Self;
+    fn subdivide(&self) -> (Self, Self) { .. }
+    fn start(&self) -> Point;  fn end(&self) -> Point;
+}
+pub trait ParamCurveDeriv { type DerivResult: ParamCurve; fn deriv(&self) -> Self::DerivResult; .. }
+pub trait ParamCurveArclen: ParamCurve {
+    fn arclen(&self, accuracy: f64) -> f64;
+    fn inv_arclen(&self, arclen: f64, accuracy: f64) -> f64 { .. }
+}
+pub trait ParamCurveArea { fn signed_area(&self) -> f64; }
+pub struct Nearest { pub distance_sq: f64, pub t: f64 }
+pub trait ParamCurveNearest { fn nearest(&self, p: Point, accuracy: f64) -> Nearest; }
+pub trait ParamCurveExtrema: ParamCurve {
+    fn extrema(&self) -> ArrayVec<f64, MAX_EXTREMA>;
+    fn extrema_ranges(&self) -> ArrayVec<Range<f64>, { MAX_EXTREMA + 1 }> { .. }
+    fn bounding_box(&self) -> Rect { .. }
+}
+```
+`cubics_to_quadratic_splines` is exactly what a **CFF → TrueType** converter needs.
+**There is no public `CubicBez::lower()`** — `try_approx_quadratic` and `approx_quad_control` are private;
+use `to_quads()` (many quads, not G1-continuous) or `approx_spline`/`cubics_to_quadratic_splines`.
+
+#### Intersections — **very limited**
+```rust
+pub struct LineIntersection { pub line_t: f64, pub segment_t: f64 }
+impl PathSeg {
+    pub fn intersect_line(&self, line: Line) -> ArrayVec<LineIntersection, 3>;
+    pub fn min_dist(&self, other: PathSeg, accuracy: f64) -> MinDistance;   // closest point, not intersection
+}
+pub struct MinDistance { pub distance: f64, pub t1: f64, pub t2: f64 }
+```
+**kurbo 0.13.1 has NO curve/curve (Bézier×Bézier) intersection routine.** `Rect::intersect` is bbox only.
+For curve×curve you must use `flo_curves::bezier::intersection` (fat-line/Bézier-clipping) or write it.
+
+#### Fitting
+```rust
+pub trait ParamCurveFit {
+    fn sample_pt_tangent(&self, t: f64, sign: f64) -> CurveFitSample;
+    fn sample_pt_deriv(&self, t: f64) -> (Point, Vec2);
+    fn moment_integrals(&self, range: Range<f64>) -> (f64, f64, f64) { .. }
+    fn break_cusp(&self, range: Range<f64>) -> Option<f64>;
+}
+pub struct CurveFitSample { pub p: Point, pub tangent: Vec2 }
+pub fn fit_to_bezpath(source: &impl ParamCurveFit, accuracy: f64) -> BezPath;      // fast
+pub fn fit_to_bezpath_opt(source: &impl ParamCurveFit, accuracy: f64) -> BezPath;  // near-minimal segments
+pub fn fit_to_cubic(source: &impl ParamCurveFit, range: Range<f64>, accuracy: f64)
+    -> Option<(CubicBez, f64)>;   // (cubic, squared error)
+```
+Documented upstream as *"still experimental, signature might change."*
+
+#### Simplify
+```rust
+pub struct SimplifyBezPath(Vec<SimplifyCubic>);   // implements ParamCurveFit
+impl SimplifyBezPath { pub fn new(path: impl IntoIterator<Item = PathEl>) -> Self; }
+pub struct SimplifyOptions;   // fields PRIVATE, builder-only; Default = angle_thresh 1e-3, Subdivide
+impl SimplifyOptions {
+    pub fn opt_level(self, level: SimplifyOptLevel) -> Self;
+    pub fn angle_thresh(self, thresh: f64) -> Self;
+}
+pub enum SimplifyOptLevel { Subdivide, Optimize }   // no Clone/Copy/Debug derives
+pub fn simplify_bezpath(path: impl IntoIterator<Item = PathEl>, accuracy: f64,
+                        options: &SimplifyOptions) -> BezPath;
+```
+
+#### Offset / expand
+```rust
+pub fn offset_cubic(c: CubicBez, d: f64, tolerance: f64, result: &mut BezPath);
+```
+**`kurbo::offset::CubicOffset` does NOT exist publicly in 0.13.1** — `struct CubicOffset` at
+`src/offset.rs:20` is declared without `pub`. Only the free function is callable. (Older kurbo exposed
+`CubicOffset`; code written against docs for 0.11/0.12 will not compile.)
+```rust
+pub struct Diagonal2 { pub xx: f64, pub yy: f64 }
+impl Diagonal2 { pub const fn new(xx: f64, yy: f64) -> Self; pub const fn inv(self) -> Self;
+                 pub const fn abs(self) -> Self; pub fn scale_normal(self, n: Vec2) -> Vec2; }
+pub fn expand_path(path: impl Shape, expand: Diagonal2, join: Join, miter_limit: f64, tolerance: f64) -> BezPath;
+pub fn expand_path_signed(path: impl Shape, expand: Diagonal2, join: Join, miter_limit: f64, tolerance: f64) -> BezPath;
+```
+`expand_path` grows/shrinks a **filled** path (nonzero winding), auto-detecting orientation from signed
+area; independent x/y factors. New in 0.13. **This is the primitive for "embolden / condense" in a font
+editor** — much closer to what we need than a stroker.
+
+#### Stroke
+```rust
+pub enum Join { Bevel, Miter, Round }
+pub enum Cap  { Butt, Square, Round }
+pub type Dashes = SmallVec<[f64; 4]>;
+pub struct Stroke { pub width: f64, pub join: Join, pub miter_limit: f64,
+                    pub start_cap: Cap, pub end_cap: Cap,
+                    pub dash_pattern: Dashes, pub dash_offset: f64 }
+impl Stroke {
+    pub const fn new(width: f64) -> Self;   // Round joins/caps, miter_limit 4.0
+    pub const fn with_join(self, join: Join) -> Self;
+    pub const fn with_miter_limit(self, limit: f64) -> Self;
+    pub const fn with_start_cap(self, cap: Cap) -> Self;
+    pub const fn with_end_cap(self, cap: Cap) -> Self;
+    pub const fn with_caps(self, cap: Cap) -> Self;
+    pub fn with_dashes<P>(self, offset: f64, pattern: P) -> Self where P: IntoIterator, P::Item: Borrow<f64>;
+    pub fn is_finite(&self) -> bool;  pub fn is_nan(&self) -> bool;
+}
+pub struct StrokeOpts;   // fields private
+impl StrokeOpts { pub fn opt_level(self, l: StrokeOptLevel) -> Self;
+                  pub fn stable_dash_order(self, stable: bool) -> Self; }
+pub enum StrokeOptLevel { Subdivide, Optimized }   // doc: "currently has no effect"
+pub struct StrokeCtx;   impl StrokeCtx { pub fn output(&self) -> &BezPath; }
+pub fn stroke(path: impl IntoIterator<Item = PathEl>, style: &Stroke, opts: &StrokeOpts,
+              tolerance: f64) -> BezPath;
+pub fn stroke_with(path: impl IntoIterator<Item = PathEl>, style: &Stroke, opts: &StrokeOpts,
+                   tolerance: f64, ctx: &mut StrokeCtx);   // reuses buffers, no per-call alloc
+pub fn dash<'a>(inner: impl Iterator<Item = PathEl> + 'a, dash_offset: f64, dashes: &'a [f64])
+    -> impl Iterator<Item = PathEl> + 'a;
+```
+`stroke()` is an *approximation* (parallel-curve offsetting + joins/caps), documented against Nehab 2020.
+`StrokeOptLevel::Optimized` is currently a no-op. For a font editor's "expand stroke" on a calligraphic
+skeleton this is usable but **not** production-grade for variable-width pens or for exact envelope
+computation — see §3. `flo_curves::bezier::path::stroke_path` is an alternative worth benchmarking, and
+it has `StrokeOptions::with_remove_interior_points()`, which `kurbo::stroke` lacks.
+
+#### `Affine`
+```rust
+pub struct Affine([f64; 6]);
+impl Affine {
+    pub const IDENTITY: Affine;  pub const FLIP_Y: Affine;  pub const FLIP_X: Affine;
+    pub const fn new(c: [f64; 6]) -> Affine;
+    pub const fn scale(s: f64) -> Affine;
+    pub const fn scale_non_uniform(s_x: f64, s_y: f64) -> Affine;
+    pub fn scale_about(s: f64, center: impl Into<Point>) -> Affine;
+    pub fn rotate(th: f64) -> Affine;                       // radians
+    pub fn rotate_about(th: f64, center: impl Into<Point>) -> Affine;
+    pub fn translate<V: Into<Vec2>>(p: V) -> Affine;
+    pub const fn skew(skew_x: f64, skew_y: f64) -> Affine;  // faux-oblique
+    pub fn reflect(point: impl Into<Point>, direction: impl Into<Vec2>) -> Self;
+    // pre_* / then_* composition: rotate, rotate_about, scale, scale_non_uniform, scale_about,
+    //                            translate, skew, reflect
+    pub const fn map_unit_square(rect: Rect) -> Affine;
+    pub const fn as_coeffs(self) -> [f64; 6];
+    pub const fn determinant(self) -> f64;
+    pub const fn nuclear_norm_squared(self) -> f64;
+    pub const fn frobenius_norm_squared(self) -> f64;
+    pub fn spectral_norm(self) -> f64;
+    pub const fn inverse(self) -> Affine;          // NaN if determinant == 0
+    pub fn transform_rect_bbox(self, rect: Rect) -> Rect;
+    pub const fn is_finite(&self) -> bool;  pub const fn is_nan(&self) -> bool;
+    pub const fn translation(self) -> Vec2;
+    pub const fn with_translation(self, trans: Vec2) -> Affine;
+}
+```
+`Mul<Point>`, `Mul<Affine>`, `MulAssign` implemented. **`Affine::svd()` exists but is `pub(crate)`** —
+only `spectral_norm()` consumes it. If we need singular values (e.g. to decide component decomposition
+thresholds like Glyphs' "decompose transformed components"), we compute them ourselves.
+
+#### Other new-in-0.13 items
+* `kurbo::Moments { moment_x, moment_y, moment_xx, moment_xy, moment_yy }` and
+  `pub trait ParamCurveMoments<'a> { fn moments(&'a self) -> Moments; }` with a blanket impl for any
+  `&'a T: IntoIterator<Item = PathEl>` — a port of fontTools' `momentsPen`. Gives centroid / inertia of
+  a glyph outline for free (useful for auto-spacing heuristics and italic-angle estimation).
+* `kurbo::Axis { Horizontal, Vertical }` with `cross()`, `pack_point/pack_size/pack_vec2/pack_xy`.
+* `kurbo::Triangle` with `centroid`, `inscribed_circle`, `circumscribed_circle`, `inflate`.
+* **`polycool` 0.4** is a new transitive dep, used in exactly one place: `CubicBez::nearest()` solves the
+  degree-5 closest-point polynomial via `polycool::Poly::new([..]).roots_between(0.0, 1.0, accuracy)`.
+  Everything else uses kurbo's own closed-form `common::solve_{quadratic,cubic,quartic}`.
 
 ---
 
@@ -1463,3 +1771,224 @@ i_overlay same case:                      1 shapes  / 296 points   in 236.734µs
 operations in the glyph editor), `i_overlay` kept as a second opinion / fast preview / validation
 oracle (compare areas; if they diverge by more than a tolerance, flag the glyph).
 
+
+---
+
+### 2.l WOFF1 / WOFF2 — encoder + decoder survey
+
+Nothing on crates.io implements a **pure-Rust WOFF2 encoder**. Everything that compresses vendors
+Google's C++ `woff2` library.
+
+| Crate | Ver | Encode | Decode | Pure Rust? | Notes |
+|---|---|---|---|---|---|
+| **`woofwoof`** | 1.0.2 | WOFF2 ✔ | WOFF2 ✔ | **No** — `build.rs` compiles 11 vendored `woff2/src/*.cc` with `cc(cpp).flag("-std=c++11")`; brotli is the Rust `brotli` 7 crate via a shim | 90 k downloads, by fasterthanlime, updated 2026-01. Simplest API. |
+| **`woff`** (bodoni) | 0.6.3 | WOFF1 ✔ (vendored `sfnt2woff` C + `libz-sys`) / WOFF2 ✔ (vendored Google C++ + vendored C brotli) | WOFF1 ✔ / WOFF2 ✔ | **No** | Features `version1`/`version2`. WOFF1 needs `DEP_Z_INCLUDE` from `libz-sys`. |
+| **`wuff`** | 0.2.9 | ✘ | WOFF1 ✔ + WOFF2 ✔ | **Yes**, `#![no_std]` | 462 k downloads, updated 2026-09-01, by nicoburns (Servo/Blitz). Best decoder. |
+| **`woff2-patched`** | 0.4.0 | ✘ | WOFF2 ✔ | **Yes** | fork of `woff2-rs`, last release 2025-02. |
+| `woff2` | 0.3.0 | ✘ | WOFF2 ✔ | Yes | unmaintained since 2022; superseded by `woff2-patched`. |
+| `oxifont-webfont` | 0.2.2 | ✘ | WOFF1+WOFF2 | Yes | tiny/new (848 downloads); part of the OxiFont project. |
+
+#### APIs
+```rust
+// woofwoof 1.0.2 -- src/lib.rs
+pub fn compress<T>(data: &[u8], metadata: T, quality: usize, transform: bool) -> Option<Vec<u8>>
+    where T: Into<Vec<u8>>;
+pub fn decompress(data: &[u8]) -> Option<Vec<u8>>;
+
+// woff 0.6.3
+pub mod version1 {
+    pub fn compress(data: &[u8], major_version: usize, minor_version: usize) -> Option<Vec<u8>>;
+    pub fn decompress(data: &[u8]) -> Option<Vec<u8>>;
+}
+pub mod version2 {
+    pub fn compress<T: Into<Vec<u8>>>(data: &[u8], metadata: T, quality: usize, transform: bool) -> Option<Vec<u8>>;
+    pub fn decompress(data: &[u8]) -> Option<Vec<u8>>;
+}
+
+// wuff 0.2.9
+pub fn decompress_woff1(raw: &[u8]) -> Result<Vec<u8>, WuffErr>;
+pub fn decompress_woff2(raw: &[u8]) -> Result<Vec<u8>, WuffErr>;
+pub fn decompress_woff1_with_custom_z(raw: &[u8],
+    decompress_z: &mut dyn FnMut(&[u8], usize) -> Result<Vec<u8>, Box<dyn Error>>) -> Result<Vec<u8>, WuffErr>;
+pub fn decompress_woff2_with_custom_brotli(raw: &[u8],
+    decompress_brotli: &mut dyn FnMut(&[u8], usize) -> Result<Vec<u8>, Box<dyn Error>>) -> Result<Vec<u8>, WuffErr>;
+
+// woff2-patched 0.4.0
+pub fn is_woff2(input_buffer: &[u8]) -> bool;
+pub fn convert_woff2_to_ttf(input_buffer: &mut impl bytes::Buf) -> Result<Vec<u8>, DecodeError>;
+```
+
+#### Measured on DejaVuSans.ttf, 759 720 B, 20 tables, 6253 glyphs (**VERIFIED**, release build)
+```
+woofwoof::compress(transform=false)      -> 307040 B (40.4%)  ; roundtrip parses OK, 20/20 tables
+woofwoof::compress(q=11, transform=true) -> 258652 B (34.0%)  in 1562 ms  (magic "wOF2")
+woofwoof::decompress                     -> 759644 B          in    6 ms  ; 20/20 tables, 6253 glyphs
+woff2_patched::convert_woff2_to_ttf      -> 760548 B                      ; 20/20 tables, 6253 glyphs
+wuff::decompress_woff2                   -> 759644 B                      ; 20/20 tables, 6253 glyphs
+woff::version2::compress                 -> 258652 B          in 1593 ms  (identical output to woofwoof)
+woff::version1::compress                 -> 379132 B (49.9%)  in   38 ms  (magic "wOFF")
+woff::version1::decompress               -> 759720 B  ; glyf bytes BYTE-IDENTICAL to original
+wuff::decompress_woff1                   -> 759720 B  ; glyf bytes BYTE-IDENTICAL to original
+```
+Observations:
+* **WOFF1 is byte-exact** (it is per-table zlib, no glyf transform), WOFF2 is not (the glyf transform is
+  a lossy *re-encoding*: padding, point-flag packing and composite ordering change). All 20 tables and
+  the glyph count survive in every case; only exact bytes differ.
+* WOFF2 encode at quality 11 is **~1.6 s for a 760 KB font** (release). That's a background job, not a
+  UI-thread operation. Lower `quality` for previews.
+* Decode is ~6 ms — fine to do synchronously.
+* `woff2-patched` produces a slightly larger reconstruction (760 548 B) than `wuff`/`woofwoof`
+  (759 644 B) because of different table padding; both parse.
+
+#### Recommendation
+* **Decode:** `wuff` 0.2.9 — pure Rust, `no_std`, one crate for both WOFF1 and WOFF2, best maintained
+  (462 k downloads, released 2026-09-01), and its `*_with_custom_*` variants let us plug our own
+  brotli/flate2 so we don't get a second brotli in the tree.
+* **Encode WOFF2:** `woofwoof` 1.0.2 is the least-bad option today, but it **requires a C++ compiler on
+  every build host and cross-compilation target** — a real problem for a Tauri app that ships
+  Windows/macOS/Linux/ARM builds. Alternatives: (a) accept the `cc` dependency and set up CI toolchains;
+  (b) write a pure-Rust WOFF2 encoder ourselves (the format is well specified: table
+  directory with UIntBase128 lengths + the glyf/loca/hmtx transforms + one brotli stream — the Rust
+  `brotli` 9 crate already provides the hard part). Estimated 1–2 k lines. See §3.
+* **Encode WOFF1:** trivial to write ourselves in ~200 lines with `flate2` or `zopfli` (per-table zlib +
+  a 44-byte header + optional XML metadata block). Avoids the `libz-sys`/C dependency that `woff` 0.6.3
+  drags in. **Recommended: write our own WOFF1.**
+
+---
+
+### 2.m `skia-safe` 0.99.0 — **not a pure-cargo build; do not depend on it**
+
+**VERIFIED** in `skia-probe/`:
+* Resolves cleanly (62 packages) alongside nothing else, and `cargo check` succeeds in **8.2 s**…
+* …but only because the default `binary-cache` feature made `skia-bindings` **download**
+  `skia-binaries-a25a0fdb7d90429aa2d1-x86_64-unknown-linux-gnu-jpegd-jpege-pdf.tar.gz` (4.1 MB
+  compressed) from `github.com/rust-skia/skia-binaries/releases` and unpack `libskia.a` +
+  `libskia-bindings.a` + a pregenerated `bindings.rs`. Resulting `target/` = **244 MB**.
+* If no prebuilt matches the target triple + feature set, `build_support/skia.rs` clones Google's
+  `depot_tools` and `skia` repos, runs `git-sync-deps` with **Python**, configures with **GN** and
+  builds with **ninja** + **clang**. That is a multi-GB, ~30-minute build with four non-Rust
+  prerequisites.
+* Offline builds need `SKIA_BINARIES_URL=file:///…tar.gz`.
+
+**Verdict:** unacceptable for a cross-platform Tauri app's build. `tiny-skia` + `zeno` + `kurbo` cover
+everything a font editor's canvas actually needs (fills, strokes, gradients, blend modes, alpha masks,
+PNG I/O) in pure Rust with zero build prerequisites. Note also that tiny-skia is a *port of Skia's
+CPU raster pipeline*, so the rendering is visually consistent with Skia by construction.
+
+---
+
+## 3. Risks & gaps — what we still have to write ourselves
+
+### 3.1 Format readers/writers with no crate at all
+
+| Item | Status | Effort | Notes |
+|---|---|---|---|
+| **Type 1 / PFB / PFA *reading*** | ✅ **ALREADY DONE** — `read_fonts::ps::type1::Type1Font` is a complete Type1 reader with PFB segment decoding, `eexec` decryption (hex and binary), Private dict, Subrs, `seac`, `/Encoding`, and Type1-charstring evaluation. **VERIFIED** on two real `.pfb` files (see §2.a-Type1). | — | Only AFM/PFM sidecar metric parsing is left, which is trivial. |
+| **Type 1 writing** | none | M | eexec encryption + Type2→Type1 charstring conversion. Only if we want Type1 export. Probably skip. |
+| **BDF** | no crate in the fontations ecosystem | S | Simple text format; ~500 lines both ways. |
+| **PCF** | none | M | Binary, endianness- and format-flag-heavy; ~1–1.5 k lines. |
+| **FontForge `.sfd`** | none | L | Large, undocumented, versioned text format. Only worth it if we want FontForge project import. Consider partial (glyphs + metrics + kerning) import only. |
+| **`.glyphs` writer** | `glyphs-reader` 1.0.0 is **read-only**; no `Serialize`, no `save`. It also *drops unrecognized custom parameters with only a warning*. | M–L | If we advertise `.glyphs` round-trip we must write the ASCII-plist emitter *and* a passthrough for unknown keys, which the reader currently discards. **Recommend: import-only for `.glyphs`, or fork glyphs-reader to keep a raw `Plist` shadow of everything.** |
+| **WOFF2 encoder (pure Rust)** | only C++-backed crates exist | M | ~1–2 k lines: UIntBase128 table directory, glyf/loca/hmtx transforms, brotli via the pure-Rust `brotli` 9 crate. Buys us dependency-free cross-compilation. |
+| **WOFF1 encoder** | `woff` 0.6.3 works but drags in `libz-sys` (C) | S | ~200 lines with `flate2`/`zopfli`. Recommended. |
+| **`.ttc` writing** | `write_fonts::FontBuilder` explicitly `panic!("TTCHeader writing not supported (yet)")` | S | Straightforward: shared table dedup + TTC header. |
+| **SVG-in-OpenType (`SVG ` table) writing** | read-fonts reads it; nothing writes it | S | Just a compressed/uncompressed document list. |
+
+### 3.2 Tables nobody in this stack parses or writes
+
+read-fonts does **not** parse: `MATH`, `JSTF`, `VDMX`, `LTSH`, `PCLT`, `EBSC`, `bdat`/`bloc`, and the
+AAT extras `bsln`/`just`/`opbd`/`lcar`/`prop`/`acnt`/`Zapf`. `fpgm`/`prep` have raw-bytes access only.
+
+Nothing in the stack **writes**: `CFF`, `CFF2`, `EBLC`/`EBDT`, `CBLC`/`CBDT`, `sbix`, `SVG `, `kern`
+(legacy), `hdmx`, `VDMX`, `LTSH`, `MATH`, `JSTF`, `DSIG`, `fpgm`/`prep`/`cvt `, `bdat`/`bloc`, `EBSC`,
+any AAT table.
+
+| Item | Effort | Notes |
+|---|---|---|
+| **`MATH` reader + writer** | M | We can build on `read_fonts::model::FontTables::math_data()` raw bytes, or on `FontRef::table_data`. Needed for any math-font ambitions. |
+| **EBDT/EBLC + CBDT/CBLC + sbix WRITERS** | **L — biggest single gap for the bitmap side** | skrifa *reads* all of these (`skrifa::bitmap`), but there is no writer anywhere. Formats 1/2/5/6/7/8/9 for EBDT, `IndexSubTable1..5` for EBLC, plus `bitmapSizeTable`/`sbitLineMetrics`. Plan on ~2–3 k lines. This is unavoidable for a bitmap font editor. |
+| **`bdat`/`bloc` (Apple)** | S once EBDT exists | Structurally the same; different tags/versions. |
+| **`EBSC`** | S | Small scaling table. |
+| **`hdmx`/`VDMX`/`LTSH`** | S each | Trivially generated once we can rasterize/hint at a ppem — and we can (skrifa + zeno). |
+| **legacy `kern` table writer** | S | Format 0 subtable only, for old-Mac compatibility. |
+
+### 3.3 Hinting toolchain
+
+| Item | Status | Effort | Notes |
+|---|---|---|---|
+| **TrueType instruction *interpreter*** | ✅ present — skrifa has a complete FreeType-equivalent TT VM that runs `fpgm`/`prep`/glyph instructions and produces grid-fit outlines (**VERIFIED at 16 ppem**). | — | Big win. Grid-fit preview is essentially free. |
+| **TrueType instruction assembler (text → bytecode)** | **missing everywhere** | M | ~250 opcodes, labels, `PUSHB`/`PUSHW` packing, `IF`/`ELSE`/`EIF`/`FDEF` nesting. ~1–1.5 k lines. Needed for a FontForge-style instruction editor. |
+| **TrueType instruction disassembler (bytecode → text)** | **missing** (skrifa's engine decodes internally but exposes nothing) | S–M | Easier than the assembler; the opcode table is shared. |
+| **TT autoinstructor (auto-hinting that *emits bytecode*)** | **missing** | **L** | skrifa's autohinter *moves points at render time*; it does not emit `fpgm`/`prep`/glyph instructions. Emitting real bytecode (à la ttfautohint) is a big, separate project. **Recommend: ship skrifa's autohinter as a render-time "auto" mode, and integrate/port `ttfautohint` semantics only if customers demand baked-in bytecode.** |
+| **PostScript (CFF) autohint — hint *generation*** | **missing** | M–L | skrifa *applies* PS hints (`src/outline/cff/hint.rs`, blues/stems) but nothing *computes* stem hints and blue zones from outlines. This is the `psautohint`/`hintplus` job. |
+| **`cvt `/`fpgm`/`prep` writers** | trivial (raw byte tables) via `FontBuilder::add_raw` | XS | — |
+| **`gasp` writer** | ✅ fontbe has one | — | — |
+
+### 3.4 Geometry algorithms
+
+| Item | Status | Effort |
+|---|---|---|
+| **Boolean ops / Remove Overlap** | ✅ `flo_curves::bezier::path::{path_add, path_sub, path_intersect, path_remove_interior_points}` — VERIFIED curve-preserving and correct | — |
+| **Curve × curve intersection** | ✅ `flo_curves::bezier::intersection` (kurbo has **none**) | — |
+| **Expand stroke** | ⚠️ `kurbo::stroke` (approximate, `StrokeOptLevel::Optimized` is a documented no-op) and `flo_curves::bezier::path::stroke_path` (has `with_remove_interior_points()`). Neither does variable-width / calligraphic pens, nor elliptical nibs. | M if we want a real calligraphic pen |
+| **Embolden / condense (filled-path expand)** | ✅ `kurbo::expand_path` / `expand_path_signed` with `Diagonal2` (new in 0.13) — independent x/y growth of a filled outline | — |
+| **Cubic ↔ quadratic conversion (CFF ↔ TrueType)** | ✅ `kurbo::cubics_to_quadratic_splines` (cu2qu port), `QuadBez::raise()` | — |
+| **Simplify / curve fitting** | ✅ `kurbo::simplify_bezpath`, `fit_to_bezpath{,_opt}`, `fit_to_cubic` (upstream calls them "experimental") | — |
+| **Offset curves** | ✅ `kurbo::offset::offset_cubic` (note: **no public `CubicOffset` type** in 0.13.1) + `flo_curves::bezier::offset*` (4 different algorithms) | — |
+| **Nearest point / extrema / area / moments** | ✅ kurbo `ParamCurveNearest`, `ParamCurveExtrema`, `Shape::area`, `ParamCurveMoments` | — |
+| **Interpolate / mask-based instance generation** | ✅ `fontir` variation model, or roll our own on `BezPath` | — |
+| **Autotrace / bitmap → outline** | none in this stack | M–L | `flo_curves::bezier::vectorize` exists (**unverified** — not exercised in this spike); otherwise potrace-style is ours. |
+| **Point-type/curve-continuity analysis (smooth/corner/tangent)** | ours | S |
+| **Overlap/self-intersection *detection* for validation** | ours, on top of flo_curves | S |
+
+### 3.5 Source-format fidelity risks
+
+* **norad writes UFO 3 only.** `Font::save` returns `FontWriteError::Downgrade` for anything else. If we
+  must save UFO 2, that's ours. Also `Font::save` **deletes and recreates the target directory** — for a
+  large UFO on a network drive that's slow and risky. Budget an incremental writer.
+* **norad's `public.objectLibs` is library-managed**; hand-setting it is an error. Our editor's
+  per-point/per-contour metadata must go through norad's `Identifier`/`lib` accessors.
+* **glyphs-reader silently drops unrecognized custom parameters** (one-time `log::warn!`) and has TODOs
+  for "numerous unsupported attributes" on shapes and layer attributes. Round-tripping `.glyphs`
+  faithfully requires either a fork that keeps a raw `Plist` shadow, or accepting lossy import.
+* **fontc's UFO source (`ufo2fontir::DesignSpaceIrSource`) is path-only** — no in-memory constructor.
+  For an editor that keeps everything in RAM we implement our own `Source` (proven feasible, §2.d).
+* **`fontbe` pins `icu_properties = "=2.1"` exactly.** Any other ICU version anywhere in the app tree
+  will fail to resolve. Watch this.
+* **`read_fonts::model` is `experimental_font_api`** and `read-fonts`/`skrifa`/`write-fonts` are all
+  pre-1.0 (0.43/0.46/0.52) and move fast (three releases in Aug 2026 alone). Pin exact versions, vendor
+  a compatibility shim layer, and expect a churn budget every quarter.
+
+### 3.6 Things that turned out *better* than expected
+
+1. **`fontc::generate_font(Box<dyn Source>, Options)` is a genuine library API** and works with a
+   third-party `Source` over an in-memory model, for static single-master fonts, with zero filesystem
+   access. That removes the biggest architectural risk in the whole plan: we do **not** have to
+   reimplement the UFO→binary compiler, kerning→GPOS, anchors→mark features, or the variation model.
+2. **skrifa ships a full TrueType bytecode interpreter, a CFF hinter and a FreeType-equivalent
+   autohinter.** Grid-fit preview and hinted rasterization are a few dozen lines.
+3. **`fea-rs` compiles FEA from a `String` with source-span diagnostics** and hands back write-fonts
+   `Gsub`/`Gpos`/`Gdef`/`name`/`STAT`/`BASE` objects, and can be extended with our own generated
+   lookups through `FeatureProvider`. A live FEA editor with inline errors is straightforward.
+4. **harfrust takes `read_fonts::FontRef` directly**, so "compile in memory → shape immediately" needs
+   no glue at all. Live proofing of unsaved edits is trivial.
+5. **`flo_curves` genuinely preserves cubics** through boolean ops, at sub-millisecond cost.
+6. **`norad` already contains the designspace parser** the whole googlefonts stack uses — no extra crate.
+7. **`read_fonts::model::Font`** (owned, `Arc`, no lifetime, pluggable table callback) is a much better
+   fit for a Tauri command boundary than the borrowed `FontRef`, and it exposes raw bytes for all 55
+   known tags including the ones read-fonts doesn't parse.
+8. **`read_fonts::ps::type1::Type1Font` is a complete, working Type 1 (.pfb/.pfa) reader** — eexec,
+   PFB segments, Private dict, Subrs, seac, Encoding, charstring evaluation to an `OutlinePen`.
+   Verified on real URW fonts. That removes a whole planned subsystem.
+
+### 3.7 Suggested architecture consequences
+
+* Kernel crate layout: `fw-model` (our IR) → `fw-io` (UFO/glyphs/designspace/BDF/PCF/SFD/binary) →
+  `fw-geom` (kurbo + flo_curves) → `fw-compile` (impl `fontir::source::Source`, call
+  `fontc::generate_font`) → `fw-render` (skrifa + zeno/tiny-skia) → `fw-tauri` (commands).
+* Depend on `fontc` with `default-features = false, features = ["rayon"]` to drop `clap`.
+* Keep a `fw-binary` layer over `read-fonts`/`write-fonts` that (a) uses `FontBuilder::add_raw` to
+  preserve untouched tables byte-for-byte, and (b) owns the parsers/writers for everything in §3.2.
+* Pin `read-fonts`, `write-fonts`, `skrifa`, `font-types` to exact versions; they are pre-1.0.
+* Put WOFF2 encoding, `.ttc` assembly and full-font compiles on a background thread; everything else
+  measured here is interactive-speed.
