@@ -20,7 +20,7 @@ FontWorkshop is a cross-platform (Linux, macOS, Windows) desktop font editor bui
 Non-negotiables:
 
 1. **Vector and bitmap fonts are both first-class.** Outline editing (cubic and quadratic) and bitmap-strike editing live in one document.
-2. **Latin and CJK are both first-class from day one.** Glyph grid, search, batch operations and file I/O are designed for 65,535-glyph fonts. Components, vertical metrics and vertical features are core, not add-ons.
+2. **Latin and CJK are both first-class from day one.** Glyph grid, search, batch operations and file I/O are designed for 65,535-glyph fonts. Components, vertical metrics and vertical features are core, not add-ons. A complete vertical-layout pipeline (`vhea`/`vmtx`/`VORG`, `vert`/`vrt2`/`vkrn`/`vpal`, vertical kerning and a vertical text preview) is a deliberate v1 differentiator: the competitor research found that neither Glyphs nor FontLab documents one.
 3. **Widest practical format support**: TTF, OTF (CFF/CFF2), TTC/OTC, WOFF, WOFF2, variable fonts, UFO 2/3 + designspace, Glyphs 2/3, SFD, Type 1 (PFA/PFB), SVG fonts/glyphs, BDF, PCF, Windows FNT/FON, Linux PSF, EBDT/CBDT/sbix bitmap tables, OTB, FEA, AFM/PFM, TTX (read). Full OpenType layout: GSUB/GPOS/GDEF/BASE/MATH/STAT/COLR/CPAL and every FEA construct fea-rs supports.
 4. **User experience is the top priority.** Every editing flow must be as fast and discoverable as Glyphs: single window, tabs, inspector, live preview, command palette, sensible shortcuts, undo everywhere.
 5. **Lossless where the user did not touch anything.** Opening a binary font and exporting it must preserve tables we do not model (raw copy), hinting of untouched glyphs, and layout behaviour (shaping identical).
