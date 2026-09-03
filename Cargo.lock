@@ -1617,6 +1617,7 @@ dependencies = [
  "fw-api",
  "fw-doc",
  "fw-fixtures",
+ "fw-formats",
  "fw-model",
  "fw-sfnt",
  "predicates",

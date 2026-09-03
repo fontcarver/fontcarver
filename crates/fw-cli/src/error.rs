@@ -13,6 +13,14 @@ pub enum Error {
         /// Document-layer failure.
         source: fw_doc::Error,
     },
+    /// A source font could not be imported.
+    #[error("failed to import `{}`: {source}", path.display())]
+    OpenSource {
+        /// Input document path.
+        path: PathBuf,
+        /// Source-format failure.
+        source: fw_formats::Error,
+    },
     /// An open document could not be accessed.
     #[error(transparent)]
     Document(#[from] fw_doc::Error),
@@ -33,13 +41,19 @@ pub enum Error {
     /// A glyph-filter expression was not recognized.
     #[error("invalid glyph filter '{0}'")]
     InvalidFilter(String),
-    /// Conversion to the requested output format is not available yet.
-    #[error(
-        "unsupported output format '{extension}': only .fwf and .fwf.gz are supported in this version"
-    )]
+    /// The requested output format is not supported by this command.
+    #[error("unsupported output format '{extension}': supported formats are {supported}")]
     UnsupportedOutput {
         /// Requested filename extension, without the leading dot.
         extension: String,
+        /// Comma-separated list of formats the command accepts.
+        supported: &'static str,
+    },
+    /// The requested master does not exist in the document.
+    #[error("unknown master '{name}'")]
+    UnknownMaster {
+        /// Master name or identifier that was requested.
+        name: String,
     },
 }
 
@@ -49,6 +63,7 @@ impl Error {
     pub fn exit_code(&self) -> u8 {
         match self {
             Self::UnsupportedOutput { .. } => 2,
+            Self::UnknownMaster { .. } => 2,
             _ => 1,
         }
     }

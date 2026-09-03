@@ -17,8 +17,12 @@ struct Cli {
 enum Command {
     /// Show document metadata and preserved font tables.
     Inspect(cmd::inspect::Args),
-    /// Convert a supported font to a FontWorkshop document.
+    /// Convert a font between document, source, and binary formats.
     Convert(cmd::convert::Args),
+    /// Compile a document into a binary font.
+    Build(cmd::build::Args),
+    /// Shape text with the document's own compiled font.
+    Shape(cmd::shape::Args),
     /// List and filter glyphs in a font.
     Glyphs(cmd::glyphs::Args),
 }
@@ -28,6 +32,8 @@ impl Command {
         match self {
             Self::Inspect(args) => cmd::inspect::run(args),
             Self::Convert(args) => cmd::convert::run(args),
+            Self::Build(args) => cmd::build::run(args),
+            Self::Shape(args) => cmd::shape::run(args),
             Self::Glyphs(args) => cmd::glyphs::run(args),
         }
     }
