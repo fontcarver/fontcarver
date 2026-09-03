@@ -3,9 +3,8 @@
 use std::{collections::HashSet, path::Path, str::FromStr};
 
 use fw_model::{
-    Anchor, Component, Contour, Extra, FeatureBlock, Features, FeaturesSource, Font, Glyph,
-    GlyphName, KernSide, Kerning, KerningGroups, Layer, LayerKind, Master, MasterId, Point,
-    PointKind, SourceProvenance,
+    Anchor, Component, Contour, Extra, Font, Glyph, GlyphName, Layer, LayerKind, Master, MasterId,
+    Point, PointKind, SourceProvenance,
 };
 use norad::{AffineTransform, Color, ContourPoint, Identifier, Name, PointType};
 use plist::{Dictionary, Value};
@@ -13,6 +12,7 @@ use plist::{Dictionary, Value};
 use super::{
     extra, info,
     metadata::{self, ObjectMetadata},
+    structure,
     value::{dict_to_json, json_to_dict, json_to_plist, plist_to_json},
 };
 use crate::Error;
@@ -23,11 +23,12 @@ const UFO_METAINFO_KEY: &str = "ufo.metainfo";
 const UFO_LAYER_LIB_KEY: &str = "ufo.layer_lib";
 const UFO_GLYPH_LIB_KEY: &str = "ufo.lib";
 const UFO_LAYER_GLYPH_LIBS_KEY: &str = "ufo.layer_libs";
+pub(crate) const UFO_MASTER_KEY: &str = "ufo.master";
 
 pub(crate) fn from_norad(source: &norad::Font, path: &Path) -> Result<Font, Error> {
     let master_id = MasterId::new();
     let (font_info, metrics, private_dict, guides) = info::from_norad(&source.font_info)?;
-    let master = Master {
+    let mut master = Master {
         id: master_id.clone(),
         name: source
             .font_info
@@ -35,16 +36,20 @@ pub(crate) fn from_norad(source: &norad::Font, path: &Path) -> Result<Font, Erro
             .clone()
             .unwrap_or_else(|| "Regular".to_owned()),
         metrics,
+        guides: guides.clone(),
         private_dict,
         user_data: serde_json::json!({ "ufo.source_path": path.to_string_lossy() }),
         ..Master::default()
     };
+    if let Some(raw) = font_info.user_data.get(info::RAW_FONTINFO_KEY) {
+        super::value::insert_json_value(&mut master.user_data, info::RAW_FONTINFO_KEY, raw.clone());
+    }
     let mut font = Font {
         info: font_info,
         masters: vec![master],
         guides,
-        features: features_from_norad(&source.features),
-        kerning_groups: groups_from_norad(&source.groups),
+        features: structure::features_from_norad(&source.features),
+        kerning_groups: structure::groups_from_norad(&source.groups),
         extra: Extra {
             source: Some(SourceProvenance {
                 path: Some(path.to_string_lossy().into_owned()),
@@ -55,7 +60,7 @@ pub(crate) fn from_norad(source: &norad::Font, path: &Path) -> Result<Font, Erro
         },
         ..Font::default()
     };
-    font.masters[0].kerning_h = kerning_from_norad(&source.kerning);
+    font.masters[0].kerning_h = structure::kerning_from_norad(&source.kerning);
 
     let mut object_metadata = Vec::new();
     metadata::record_global_guides(&source.font_info, &mut object_metadata)?;
@@ -96,6 +101,7 @@ pub(crate) fn from_norad(source: &norad::Font, path: &Path) -> Result<Font, Erro
                 kind,
                 &glyph_name,
                 &layer_name,
+                &master_id,
                 &mut object_metadata,
             )?;
             if !ufo_layer.is_default() && !ufo_glyph.lib.is_empty() {
@@ -184,7 +190,12 @@ pub(crate) fn to_norad(font: &Font, master: &Master) -> Result<norad::Font, Erro
         target.meta = plist::from_value(&raw)?;
         target.meta.format_version = norad::FormatVersion::V3;
     }
-    target.font_info = info::to_norad(&font.info, master, &font.guides, &guide_ids)?;
+    let guides = if master.guides.is_empty() {
+        &font.guides
+    } else {
+        &master.guides
+    };
+    target.font_info = info::to_norad(&font.info, master, guides, &guide_ids)?;
     for (index, guide) in target.font_info.guidelines.iter_mut().flatten().enumerate() {
         if let Some(lib) = metadata::lookup(&object_metadata, None, None, "guideline", index, None)
             .map(ObjectMetadata::decoded_lib)
@@ -194,9 +205,9 @@ pub(crate) fn to_norad(font: &Font, master: &Master) -> Result<norad::Font, Erro
             guide.replace_lib(lib);
         }
     }
-    target.features = features_to_norad(&font.features);
-    target.groups = groups_to_norad(font)?;
-    target.kerning = kerning_to_norad(&master.kerning_h)?;
+    target.features = structure::features_to_norad(&font.features);
+    target.groups = structure::groups_to_norad(font)?;
+    target.kerning = structure::kerning_to_norad(&master.kerning_h)?;
     target.lib = font
         .extra
         .lib
@@ -213,9 +224,9 @@ pub(crate) fn to_norad(font: &Font, master: &Master) -> Result<norad::Font, Erro
                 .collect(),
         ),
     );
-    target
-        .lib
-        .insert(extra::EXTRA_KEY.to_owned(), extra::build(font, master)?);
+    if let Some(extra) = extra::build(font, master)? {
+        target.lib.insert(extra::EXTRA_KEY.to_owned(), extra);
+    }
 
     let layer_names = collect_layer_names(font, &master.id);
     for layer_name in &layer_names {
@@ -232,7 +243,7 @@ pub(crate) fn to_norad(font: &Font, master: &Master) -> Result<norad::Font, Erro
         for layer in glyph
             .layers
             .iter()
-            .filter(|layer| layer_belongs(layer, &master.id))
+            .filter(|layer| layer_belongs(font, layer, &master.id))
         {
             let layer_name = model_layer_name(layer, &master.id);
             let mut ufo_glyph = glyph_to_norad(glyph, layer, &layer_name, &object_metadata)?;
@@ -249,7 +260,7 @@ pub(crate) fn to_norad(font: &Font, master: &Master) -> Result<norad::Font, Erro
             ufo_layer.insert_glyph(ufo_glyph);
         }
     }
-    extra::copy_images(font, master, &mut target)?;
+    extra::copy_data_and_images(font, master, &mut target)?;
     Ok(target)
 }
 
@@ -259,6 +270,7 @@ fn layer_from_norad(
     kind: LayerKind,
     glyph_name: &str,
     layer_name: &str,
+    master_id: &MasterId,
     metadata_entries: &mut Vec<ObjectMetadata>,
 ) -> Result<Layer, Error> {
     let mut layer = Layer {
@@ -315,6 +327,13 @@ fn layer_from_norad(
         layer.user_data =
             serde_json::json!({ UFO_LAYER_LIB_KEY: dict_to_json(&source_layer.lib)? });
     }
+    if matches!(layer.kind, LayerKind::Custom(_)) {
+        super::value::insert_json_value(
+            &mut layer.user_data,
+            UFO_MASTER_KEY,
+            serde_json::Value::String(master_id.to_string()),
+        );
+    }
     metadata::record_glyph_objects(glyph, glyph_name, layer_name, metadata_entries)?;
     Ok(layer)
 }
@@ -328,13 +347,15 @@ fn glyph_to_norad(
     let mut result = norad::Glyph::new(glyph.name.as_ref());
     result.width = layer.width;
     result.height = layer.vertical_width.unwrap_or_default();
-    result.codepoints.set(
-        glyph
-            .unicodes
-            .iter()
-            .filter_map(|value| char::from_u32(*value)),
-    );
-    result.note = (!glyph.note.is_empty()).then(|| glyph.note.clone());
+    if layer_name == "public.default" {
+        result.codepoints.set(
+            glyph
+                .unicodes
+                .iter()
+                .filter_map(|value| char::from_u32(*value)),
+        );
+        result.note = (!glyph.note.is_empty()).then(|| glyph.note.clone());
+    }
     result.contours = layer
         .contours
         .iter()
@@ -576,131 +597,6 @@ fn glyph_order(source: &norad::Font) -> Vec<String> {
     result
 }
 
-fn groups_from_norad(groups: &norad::Groups) -> KerningGroups {
-    let mut result = KerningGroups::default();
-    for (name, members) in groups {
-        let members = members
-            .iter()
-            .map(|member| GlyphName::from(member.to_string()))
-            .collect();
-        if name.starts_with("public.kern1.") {
-            result.side1.insert(name.to_string(), members);
-        } else if name.starts_with("public.kern2.") {
-            result.side2.insert(name.to_string(), members);
-        }
-    }
-    result
-}
-
-fn groups_to_norad(font: &Font) -> Result<norad::Groups, Error> {
-    let mut groups = norad::Groups::default();
-    for (name, members) in font
-        .kerning_groups
-        .side1
-        .iter()
-        .chain(&font.kerning_groups.side2)
-    {
-        groups.insert(
-            valid_name(name)?,
-            members
-                .iter()
-                .map(|name| valid_name(name.as_ref()))
-                .collect::<Result<_, _>>()?,
-        );
-    }
-    if let Some(other) = font
-        .extra
-        .lib
-        .get(UFO_GROUPS_KEY)
-        .and_then(serde_json::Value::as_object)
-    {
-        for (name, members) in other {
-            let members = members
-                .as_array()
-                .into_iter()
-                .flatten()
-                .filter_map(serde_json::Value::as_str)
-                .map(valid_name)
-                .collect::<Result<Vec<_>, _>>()?;
-            groups.insert(valid_name(name)?, members);
-        }
-    }
-    Ok(groups)
-}
-
-fn kerning_from_norad(kerning: &norad::Kerning) -> Kerning {
-    Kerning(
-        kerning
-            .iter()
-            .flat_map(|(left, rights)| {
-                rights
-                    .iter()
-                    .map(move |(right, value)| ((kern_side(left), kern_side(right)), *value))
-            })
-            .collect(),
-    )
-}
-
-fn kerning_to_norad(kerning: &Kerning) -> Result<norad::Kerning, Error> {
-    let mut result = norad::Kerning::default();
-    for ((left, right), value) in &kerning.0 {
-        result
-            .entry(kern_name(left)?)
-            .or_default()
-            .insert(kern_name(right)?, *value);
-    }
-    Ok(result)
-}
-
-fn kern_side(name: &Name) -> KernSide {
-    if name.starts_with("public.kern1.") || name.starts_with("public.kern2.") {
-        KernSide::Group(name.to_string())
-    } else {
-        KernSide::Glyph(GlyphName::from(name.to_string()))
-    }
-}
-
-fn kern_name(side: &KernSide) -> Result<Name, Error> {
-    match side {
-        KernSide::Glyph(name) => valid_name(name.as_ref()),
-        KernSide::Group(name) => valid_name(name),
-    }
-}
-
-fn features_from_norad(features: &str) -> Features {
-    Features {
-        features: (!features.is_empty())
-            .then(|| FeatureBlock {
-                tag: "fea".to_owned(),
-                code: features.to_owned(),
-                automatic: false,
-                ..FeatureBlock::default()
-            })
-            .into_iter()
-            .collect(),
-        source_of_truth: FeaturesSource::Fea,
-        ..Features::default()
-    }
-}
-
-fn features_to_norad(features: &Features) -> String {
-    features
-        .prefixes
-        .iter()
-        .filter(|block| !block.disabled)
-        .map(|block| block.code.as_str())
-        .chain(features.classes.iter().map(|class| class.code.as_str()))
-        .chain(
-            features
-                .features
-                .iter()
-                .filter(|block| !block.disabled)
-                .map(|block| block.code.as_str()),
-        )
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
 fn collect_layer_names(font: &Font, master: &MasterId) -> Vec<String> {
     let mut names = vec!["public.default".to_owned()];
     let mut seen = HashSet::from(["public.default".to_owned()]);
@@ -708,7 +604,7 @@ fn collect_layer_names(font: &Font, master: &MasterId) -> Vec<String> {
         .glyphs
         .values()
         .flat_map(|glyph| glyph.layers.iter())
-        .filter(|layer| layer_belongs(layer, master))
+        .filter(|layer| layer_belongs(font, layer, master))
     {
         let name = model_layer_name(layer, master);
         if seen.insert(name.clone()) {
@@ -718,12 +614,19 @@ fn collect_layer_names(font: &Font, master: &MasterId) -> Vec<String> {
     names
 }
 
-pub(crate) fn layer_belongs(layer: &Layer, master: &MasterId) -> bool {
+pub(crate) fn layer_belongs(font: &Font, layer: &Layer, master: &MasterId) -> bool {
     match &layer.kind {
         LayerKind::Master(id) | LayerKind::Background(id) => id == master,
         LayerKind::Brace { master: id, .. } | LayerKind::Bracket { master: id, .. } => id == master,
         LayerKind::Backup { of, .. } => of == master,
-        LayerKind::Custom(_) => true,
+        LayerKind::Custom(_) => layer
+            .user_data
+            .get(UFO_MASTER_KEY)
+            .and_then(serde_json::Value::as_str)
+            .map_or_else(
+                || master == &font.default_master().id,
+                |owner| owner == master.to_string(),
+            ),
     }
 }
 

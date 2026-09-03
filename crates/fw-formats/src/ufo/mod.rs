@@ -11,6 +11,7 @@ mod designspace;
 mod extra;
 mod info;
 mod metadata;
+mod structure;
 mod value;
 mod writer;
 
@@ -34,6 +35,8 @@ pub fn read_ufo(path: &Path) -> Result<Font, Error> {
 }
 
 /// Reads a designspace and all of its UFO sources.
+///
+/// Static, single-master fonts should be read with [`read_ufo`] instead.
 pub fn read_designspace(path: &Path) -> Result<Font, Error> {
     designspace::read(path)
 }
@@ -53,6 +56,10 @@ pub fn write_ufo(
 }
 
 /// Writes one UFO per master and a `<family>.designspace` document.
+///
+/// A designspace cannot represent an axis-less source location in a form accepted by norad. For
+/// an axis-less font this writes the default master as UFO, does not create a designspace, and
+/// returns [`Error::NoAxes`]. Call [`write_ufo`] directly for static, single-master fonts.
 pub fn write_designspace(font: &Font, dir: &Path) -> Result<PathBuf, Error> {
     designspace::write(font, dir)
 }

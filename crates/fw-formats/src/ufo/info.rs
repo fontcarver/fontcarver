@@ -169,9 +169,10 @@ pub(crate) fn to_norad(
     guides: &[Guide],
     guide_ids: &[Option<String>],
 ) -> Result<norad::FontInfo, Error> {
-    let mut result = info
+    let mut result = master
         .user_data
         .get(RAW_FONTINFO_KEY)
+        .or_else(|| info.user_data.get(RAW_FONTINFO_KEY))
         .map(json_to_plist)
         .transpose()?
         .map(|value| plist::from_value::<norad::FontInfo>(&value))
@@ -179,7 +180,11 @@ pub(crate) fn to_norad(
         .unwrap_or_default();
 
     result.family_name = optional_string(&info.family_name);
-    result.style_name = optional_string(&info.style_name);
+    result.style_name = optional_string(if master.name.is_empty() {
+        &info.style_name
+    } else {
+        &master.name
+    });
     result.units_per_em = (info.units_per_em != 0).then(|| u32::from(info.units_per_em).into());
     result.version_major =
         (info.version_major != 0).then(|| i32::try_from(info.version_major).unwrap_or(i32::MAX));
@@ -361,16 +366,10 @@ pub(crate) fn guide_from_norad(guide: &Guideline) -> Guide {
 }
 
 pub(crate) fn guide_to_norad(guide: &Guide, identifier: Option<&str>) -> Result<Guideline, Error> {
-    let line = if guide.angle.rem_euclid(360.0) == 0.0 {
-        Line::Horizontal(guide.y)
-    } else if guide.angle.rem_euclid(360.0) == 90.0 {
-        Line::Vertical(guide.x)
-    } else {
-        Line::Angle {
-            x: guide.x,
-            y: guide.y,
-            degrees: guide.angle.rem_euclid(360.0),
-        }
+    let line = Line::Angle {
+        x: guide.x,
+        y: guide.y,
+        degrees: guide.angle.rem_euclid(360.0),
     };
     let name = guide
         .name

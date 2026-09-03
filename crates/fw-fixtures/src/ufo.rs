@@ -10,6 +10,8 @@ use plist::Value;
 use crate::Error;
 
 /// Writes the deterministic three-glyph `Minimal.ufo` fixture to `dir`.
+///
+/// This deletes and recreates `dir`, matching [`norad::Font::save`] semantics.
 pub fn write_minimal(dir: &Path) -> Result<(), Error> {
     if let Some(parent) = dir.parent() {
         std::fs::create_dir_all(parent)?;

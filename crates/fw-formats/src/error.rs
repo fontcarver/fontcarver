@@ -47,6 +47,9 @@ pub enum Error {
     /// A designspace axis tag is invalid.
     #[error("invalid designspace axis tag {0:?}")]
     InvalidAxisTag(String),
+    /// A static font has no axes and must be exported directly as UFO.
+    #[error("a designspace requires at least one axis; the font was written as a UFO instead")]
+    NoAxes,
     /// A serialized property-list value cannot be represented by JSON.
     #[error("unsupported property-list value: {0}")]
     UnsupportedPlist(String),
