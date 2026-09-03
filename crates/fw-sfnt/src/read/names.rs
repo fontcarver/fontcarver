@@ -248,7 +248,7 @@ const MAC_LANGUAGES: &[(u16, &str)] = &[
     (31, "fa"),
     (32, "ru"),
     (33, "zh-Hans"),
-    (34, "nl"),
+    (34, "nl-BE"),
     (35, "ga"),
     (36, "sq"),
     (37, "ro"),
@@ -327,9 +327,9 @@ const MAC_LANGUAGES: &[(u16, &str)] = &[
     (143, "iu"),
     (144, "gd"),
     (145, "gv"),
-    (146, "ga"),
+    (146, "ga-Latg"),
     (147, "to"),
-    (148, "el"),
+    (148, "grc"),
     (149, "kl"),
     (150, "az-Latn"),
     (151, "nn"),
@@ -450,7 +450,7 @@ const WINDOWS_LANGUAGES: &[(u16, &str)] = &[
     (0x048c, "prs-AF"),
     (0x0491, "gd-GB"),
     (0x0801, "ar-IQ"),
-    (0x0804, "zh-Hans"),
+    (0x0804, "zh-CN"),
     (0x0807, "de-CH"),
     (0x0809, "en-GB"),
     (0x080a, "es-MX"),
@@ -473,7 +473,7 @@ const WINDOWS_LANGUAGES: &[(u16, &str)] = &[
     (0x085f, "tzm-Latn-DZ"),
     (0x086b, "quz-EC"),
     (0x0c01, "ar-EG"),
-    (0x0c04, "zh-Hant"),
+    (0x0c04, "zh-HK"),
     (0x0c07, "de-AT"),
     (0x0c09, "en-AU"),
     (0x0c0a, "es-ES"),
@@ -548,3 +548,43 @@ const WINDOWS_LANGUAGES: &[(u16, &str)] = &[
     (0x500a, "es-PR"),
     (0x540a, "es-US"),
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn corrected_mac_language_ids_match_fonttools() {
+        assert_eq!(mac_language(34), Some("nl-BE"));
+        assert_eq!(mac_language(146), Some("ga-Latg"));
+        assert_eq!(mac_language(148), Some("grc"));
+    }
+
+    #[test]
+    fn chinese_windows_language_ids_match_fonttools() {
+        assert_eq!(windows_language(0x0404), Some("zh-TW"));
+        assert_eq!(windows_language(0x0804), Some("zh-CN"));
+        assert_eq!(windows_language(0x0c04), Some("zh-HK"));
+        assert_eq!(windows_language(0x1004), Some("zh-SG"));
+        assert_eq!(windows_language(0x1404), Some("zh-MO"));
+    }
+
+    #[test]
+    fn convenience_fields_prefer_english_windows_names() {
+        let records = vec![
+            NameRecord {
+                name_id: 1,
+                language: "zh-CN".to_owned(),
+                text: "Chinese family".to_owned(),
+                platform: NamePlatform::Windows,
+            },
+            NameRecord {
+                name_id: 1,
+                language: "en-US".to_owned(),
+                text: "English family".to_owned(),
+                platform: NamePlatform::Windows,
+            },
+        ];
+        assert_eq!(select(&records, 1).as_deref(), Some("English family"));
+    }
+}

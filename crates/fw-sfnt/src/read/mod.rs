@@ -167,21 +167,15 @@ fn read_face(face: &FontRef<'_>, warnings: &mut Vec<Warning>) -> Result<Font, Er
     master.name = font.info.style_name.clone();
     master.location = variations::default_location(&font.axes);
     hinting::apply(face, &maxp, &mut master.tt)?;
-    cff::apply_private(face, &mut font.info, &mut master.private_dict)?;
+    let private_dict_has_hints =
+        cff::apply_private(face, &mut font.info, &mut master.private_dict)?;
     let master_id = master.id.clone();
     font.masters = vec![master];
     font.cid = cff::cid_info(face, glyph_count, &glyph_names)?;
 
     let vertical = vertical::VerticalMetrics::new(face)?;
     let glyf_source = glyf::GlyfSource::new(face)?;
-    let cff_source = cff::CffSource::new(face);
-    if cff_source.is_some() {
-        warnings.push(Warning {
-            code: "cff-hints-not-imported",
-            message: "CFF outlines were imported without per-glyph stem and hint-mask data"
-                .to_owned(),
-        });
-    }
+    let cff_source = cff::CffSource::new(face, private_dict_has_hints)?;
 
     for gid in 0..glyph_count {
         let mut glyph = fw_model::Glyph::new(glyph_names[usize::from(gid)].clone());
@@ -203,6 +197,13 @@ fn read_face(face: &FontRef<'_>, warnings: &mut Vec<Warning>) -> Result<Font, Er
         }
         glyph.layers.push(layer);
         font.glyphs.insert(glyph.name.clone(), glyph);
+    }
+    if cff_source.as_ref().is_some_and(cff::CffSource::has_hints) {
+        warnings.push(Warning {
+            code: "cff-hints-not-imported",
+            message: "CFF outlines were imported without per-glyph stem and hint-mask data"
+                .to_owned(),
+        });
     }
     font.extra.raw_tables = raw::raw_tables(face);
     if [Tag(*b"GSUB"), Tag(*b"GPOS"), Tag(*b"GDEF")]

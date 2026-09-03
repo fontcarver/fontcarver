@@ -17,3 +17,4 @@ wuff.workspace = true
 [dev-dependencies]
 fw-fixtures = { path = "../fw-fixtures" }
 read-fonts.workspace = true
+write-fonts.workspace = true

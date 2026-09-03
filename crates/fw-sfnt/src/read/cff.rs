@@ -1,9 +1,12 @@
-use std::{collections::BTreeMap, ops::Range};
+use std::{cell::Cell, collections::BTreeMap, ops::Range};
 
 use fw_model::{CidInfo, Contour, FontInfo, GlyphName, Layer, Point, PointKind, PsPrivate};
 use read_fonts::{
-    ps::cff::{dict, index::Index, CffFontRef},
-    types::GlyphId,
+    ps::{
+        cff::{dict, index::Index, CffFontRef},
+        cs,
+    },
+    types::{Fixed, GlyphId},
     FontRef, TableProvider,
 };
 use skrifa::{
@@ -15,13 +18,29 @@ use crate::Error;
 
 pub(crate) struct CffSource<'a> {
     outlines: OutlineGlyphCollection<'a>,
+    font: CffFontRef<'a>,
+    has_hints: Cell<bool>,
 }
 
 impl<'a> CffSource<'a> {
-    pub(crate) fn new(face: &FontRef<'a>) -> Option<Self> {
-        OutlineGlyphCollection::with_format(face, OutlineGlyphFormat::Cff2)
+    pub(crate) fn new(
+        face: &FontRef<'a>,
+        private_dict_has_hints: bool,
+    ) -> Result<Option<Self>, Error> {
+        let Some(outlines) = OutlineGlyphCollection::with_format(face, OutlineGlyphFormat::Cff2)
             .or_else(|| OutlineGlyphCollection::with_format(face, OutlineGlyphFormat::Cff))
-            .map(|outlines| Self { outlines })
+        else {
+            return Ok(None);
+        };
+        let font = cff_font(face)?.ok_or_else(|| Error::Parse {
+            table: "CFF/CFF2",
+            reason: "outline collection has no matching CFF table".to_owned(),
+        })?;
+        Ok(Some(Self {
+            outlines,
+            font,
+            has_hints: Cell::new(private_dict_has_hints),
+        }))
     }
 
     pub(crate) fn apply(&self, gid: u16, layer: &mut Layer) -> Result<(), Error> {
@@ -42,7 +61,30 @@ impl<'a> CffSource<'a> {
                 reason: format!("glyph {gid} emitted an unexpected quadratic segment"),
             });
         }
+        self.detect_charstring_hints(gid)?;
         layer.contours = pen.contours;
+        Ok(())
+    }
+
+    pub(crate) fn has_hints(&self) -> bool {
+        self.has_hints.get()
+    }
+
+    fn detect_charstring_hints(&self, gid: u16) -> Result<(), Error> {
+        if self.has_hints.get() {
+            return Ok(());
+        }
+        let gid = GlyphId::new(u32::from(gid));
+        let subfont_index = self.font.subfont_index(gid).unwrap_or(0);
+        let subfont = self
+            .font
+            .subfont(subfont_index, &[])
+            .map_err(|error| Error::parse("CFF/CFF2 Private DICT", error))?;
+        let mut detector = HintDetector::default();
+        self.font
+            .evaluate_charstring(&subfont, gid, &[], &mut detector)
+            .map_err(|error| Error::parse("CFF/CFF2 CharString", error))?;
+        self.has_hints.set(detector.saw_hint);
         Ok(())
     }
 }
@@ -106,9 +148,9 @@ pub(crate) fn apply_private(
     face: &FontRef<'_>,
     info: &mut FontInfo,
     target: &mut PsPrivate,
-) -> Result<(), Error> {
+) -> Result<bool, Error> {
     let Some(cff_data) = cff_data_and_top_dict(face)? else {
-        return Ok(());
+        return Ok(false);
     };
     let top_entries = dict_entries(cff_data.top_dict, "CFF/CFF2 Top DICT")?;
     for entry in &top_entries {
@@ -117,15 +159,19 @@ pub(crate) fn apply_private(
         }
     }
     let Some(range) = private_range(cff_data.data, &top_entries, cff_data.is_cff2)? else {
-        return Ok(());
+        return Ok(false);
     };
     let private_data = cff_data.data.get(range).ok_or_else(|| Error::Parse {
         table: "CFF/CFF2 Private DICT",
         reason: "private dictionary range is out of bounds".to_owned(),
     })?;
+    let mut has_hints = false;
     for entry in dict_entries(private_data, "CFF/CFF2 Private DICT")? {
         match entry {
-            dict::Entry::BlueValues(values) => target.blue_values = flatten_blues(&values),
+            dict::Entry::BlueValues(values) => {
+                has_hints = true;
+                target.blue_values = flatten_blues(&values);
+            }
             dict::Entry::OtherBlues(values) => target.other_blues = flatten_blues(&values),
             dict::Entry::FamilyBlues(values) => target.family_blues = flatten_blues(&values),
             dict::Entry::FamilyOtherBlues(values) => {
@@ -134,8 +180,14 @@ pub(crate) fn apply_private(
             dict::Entry::BlueScale(value) => target.blue_scale = Some(value.to_f64()),
             dict::Entry::BlueShift(value) => target.blue_shift = Some(value.to_f64()),
             dict::Entry::BlueFuzz(value) => target.blue_fuzz = Some(value.to_f64()),
-            dict::Entry::StdHw(value) => target.std_hw = Some(value.to_f64()),
-            dict::Entry::StdVw(value) => target.std_vw = Some(value.to_f64()),
+            dict::Entry::StdHw(value) => {
+                has_hints = true;
+                target.std_hw = Some(value.to_f64());
+            }
+            dict::Entry::StdVw(value) => {
+                has_hints = true;
+                target.std_vw = Some(value.to_f64());
+            }
             dict::Entry::StemSnapH(values) => {
                 target.stem_snap_h = values.values().iter().map(|value| value.to_f64()).collect()
             }
@@ -153,17 +205,22 @@ pub(crate) fn apply_private(
             _ => {}
         }
     }
-    Ok(())
+    Ok(has_hints)
 }
 
 fn cff_font<'a>(face: &FontRef<'a>) -> Result<Option<CffFontRef<'a>>, Error> {
-    let Some(data) = face.table_data(read_fonts::types::Tag::new(b"CFF ")) else {
-        return Ok(None);
-    };
     let upem = face.head().ok().map(|head| i32::from(head.units_per_em()));
-    CffFontRef::new_cff(data.as_bytes(), 0, upem)
-        .map(Some)
-        .map_err(|error| Error::parse("CFF ", error))
+    if let Some(data) = face.table_data(read_fonts::types::Tag::new(b"CFF ")) {
+        return CffFontRef::new_cff(data.as_bytes(), 0, upem)
+            .map(Some)
+            .map_err(|error| Error::parse("CFF ", error));
+    }
+    if let Some(data) = face.table_data(read_fonts::types::Tag::new(b"CFF2")) {
+        return CffFontRef::new_cff2(data.as_bytes(), upem)
+            .map(Some)
+            .map_err(|error| Error::parse("CFF2", error));
+    }
+    Ok(None)
 }
 
 fn ros(face: &FontRef<'_>) -> Result<Option<(String, String, u32)>, Error> {
@@ -285,7 +342,6 @@ fn flatten_blues(values: &read_fonts::ps::hinting::Blues) -> Vec<f64> {
 struct CffPen {
     contours: Vec<Contour>,
     points: Vec<Point>,
-    last_segment_line: bool,
     saw_quadratic: bool,
 }
 
@@ -316,12 +372,10 @@ impl OutlinePen for CffPen {
     fn move_to(&mut self, x: f32, y: f32) {
         self.finish_open();
         self.push(x, y, PointKind::Move);
-        self.last_segment_line = false;
     }
 
     fn line_to(&mut self, x: f32, y: f32) {
         self.push(x, y, PointKind::Line);
-        self.last_segment_line = true;
     }
 
     fn quad_to(&mut self, _cx0: f32, _cy0: f32, _x: f32, _y: f32) {
@@ -332,19 +386,24 @@ impl OutlinePen for CffPen {
         self.push(cx0, cy0, PointKind::OffCurve);
         self.push(cx1, cy1, PointKind::OffCurve);
         self.push(x, y, PointKind::Curve);
-        self.last_segment_line = false;
     }
 
     fn close(&mut self) {
         if self.points.is_empty() {
             return;
         }
-        if let Some(first) = self.points.first_mut() {
-            first.kind = if self.last_segment_line {
-                PointKind::Line
-            } else {
-                PointKind::Curve
-            };
+        let first_position = self.points.first().map(|point| (point.x, point.y));
+        let closing_kind = self.points.last().and_then(|last| {
+            (last.kind != PointKind::OffCurve && Some((last.x, last.y)) == first_position)
+                .then_some(last.kind)
+        });
+        if let Some(kind) = closing_kind {
+            self.points.pop();
+            if let Some(first) = self.points.first_mut() {
+                first.kind = kind;
+            }
+        } else if let Some(first) = self.points.first_mut() {
+            first.kind = PointKind::Line;
         }
         self.contours.push(Contour {
             closed: true,
@@ -352,5 +411,101 @@ impl OutlinePen for CffPen {
             name: None,
             id: None,
         });
+    }
+}
+
+#[derive(Default)]
+struct HintDetector {
+    saw_hint: bool,
+}
+
+impl cs::CommandSink for HintDetector {
+    fn move_to(&mut self, _x: Fixed, _y: Fixed) {}
+
+    fn line_to(&mut self, _x: Fixed, _y: Fixed) {}
+
+    fn curve_to(
+        &mut self,
+        _cx0: Fixed,
+        _cy0: Fixed,
+        _cx1: Fixed,
+        _cy1: Fixed,
+        _x: Fixed,
+        _y: Fixed,
+    ) {
+    }
+
+    fn close(&mut self) {}
+
+    fn hstem(&mut self, _y: Fixed, _dy: Fixed) {
+        self.saw_hint = true;
+    }
+
+    fn vstem(&mut self, _x: Fixed, _dx: Fixed) {
+        self.saw_hint = true;
+    }
+
+    fn hint_mask(&mut self, _mask: &[u8]) {
+        self.saw_hint = true;
+    }
+
+    fn counter_mask(&mut self, _mask: &[u8]) {
+        self.saw_hint = true;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn closed_curve_uses_final_endpoint_kind_without_repeating_start() {
+        let mut pen = CffPen::default();
+        pen.move_to(0.0, 0.0);
+        pen.curve_to(1.0, 0.0, 1.0, 1.0, 0.0, 0.0);
+        pen.close();
+
+        let contour = &pen.contours[0];
+        assert_eq!(contour.points[0].kind, PointKind::Curve);
+        assert_eq!(contour.points.len(), 3);
+        assert_ne!(
+            (contour.points[0].x, contour.points[0].y),
+            (contour.points[2].x, contour.points[2].y)
+        );
+        assert!(contour.try_to_bezpath().is_ok());
+    }
+
+    #[test]
+    fn implicit_close_is_a_line_when_final_endpoint_differs() {
+        let mut pen = CffPen::default();
+        pen.move_to(0.0, 0.0);
+        pen.curve_to(1.0, 0.0, 1.0, 1.0, 0.0, 1.0);
+        pen.close();
+
+        let contour = &pen.contours[0];
+        assert_eq!(contour.points[0].kind, PointKind::Line);
+        assert_eq!(
+            contour.points.last().expect("last point").kind,
+            PointKind::Curve
+        );
+        assert!(contour.try_to_bezpath().is_ok());
+    }
+
+    #[test]
+    fn open_contour_retains_move_and_explicit_final_endpoint() {
+        let mut pen = CffPen::default();
+        pen.move_to(0.0, 0.0);
+        pen.curve_to(1.0, 0.0, 1.0, 1.0, 0.0, 0.0);
+        pen.finish_open();
+
+        let contour = &pen.contours[0];
+        assert!(!contour.closed);
+        assert_eq!(contour.points[0].kind, PointKind::Move);
+        assert_eq!(
+            contour.points.last().expect("last point").kind,
+            PointKind::Curve
+        );
+        assert_eq!(contour.points.len(), 4);
+        assert!(contour.try_to_bezpath().is_ok());
     }
 }

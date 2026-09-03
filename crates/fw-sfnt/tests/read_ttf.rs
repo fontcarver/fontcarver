@@ -1,8 +1,9 @@
 use std::fs;
 
 use fw_model::{PointKind, Tag, TtIndex};
-use fw_sfnt::{read_path, ReadOptions};
+use fw_sfnt::{read_bytes, read_path, ReadOptions};
 use read_fonts::{FontRef, TableProvider};
+use write_fonts::FontBuilder;
 
 #[test]
 fn reads_dejavu_into_the_document_model() {
@@ -100,4 +101,24 @@ fn can_drop_original_bytes_without_losing_provenance() {
         .expect("source provenance");
     assert!(provenance.original_bytes.is_none());
     assert_eq!(provenance.sha256.len(), 64);
+}
+
+#[test]
+fn drops_dsig_while_preserving_other_raw_tables() {
+    let bytes = fs::read(fw_fixtures::path("DejaVuSans.ttf")).expect("read fixture");
+    let source = FontRef::new(&bytes).expect("parse fixture directly");
+    let mut builder = FontBuilder::new();
+    builder
+        .add_raw(write_fonts::types::Tag::new(b"DSIG"), vec![0; 8])
+        .copy_missing_tables(source);
+    let with_dsig = builder.build();
+    let rebuilt = FontRef::new(&with_dsig).expect("parse DSIG-bearing font");
+    assert!(rebuilt
+        .table_data(read_fonts::types::Tag::new(b"DSIG"))
+        .is_some());
+
+    let outcome = read_bytes(&with_dsig, &ReadOptions::default()).expect("import DSIG font");
+    let raw_tables = &outcome.fonts[0].extra.raw_tables;
+    assert!(!raw_tables.contains_key(&Tag(*b"DSIG")));
+    assert!(raw_tables.contains_key(&Tag(*b"GSUB")));
 }

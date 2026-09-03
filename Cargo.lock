@@ -1044,6 +1044,7 @@ dependencies = [
  "sha2",
  "skrifa",
  "thiserror 2.0.20",
+ "write-fonts",
  "wuff",
 ]
 
@@ -4720,6 +4721,19 @@ name = "wit-bindgen"
 version = "0.57.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
+
+[[package]]
+name = "write-fonts"
+version = "0.52.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "843cebb7bd36359861dbce43d54ac8b33dfdf7b80a95913adc1ef7c7bb881e62"
+dependencies = [
+ "font-types",
+ "indexmap 2.14.1",
+ "kurbo",
+ "log",
+ "read-fonts",
+]
 
 [[package]]
 name = "writeable"
