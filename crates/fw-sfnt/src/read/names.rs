@@ -92,6 +92,7 @@ pub(crate) fn name_by_id(face: &FontRef<'_>, name_id: u16) -> Option<String> {
 pub(crate) fn glyph_names(
     face: &FontRef<'_>,
     glyph_count: u16,
+    unicodes: &[Vec<u32>],
     warnings: &mut Vec<Warning>,
 ) -> Result<Vec<GlyphName>, Error> {
     if let Some(cids) = super::cff::cid_values(face)? {
@@ -104,9 +105,17 @@ pub(crate) fn glyph_names(
                 ),
             });
         }
-        return Ok(cids
-            .into_iter()
-            .map(|cid| GlyphName::from(format!("cid{cid:05}")))
+        let mut used = HashSet::with_capacity(usize::from(glyph_count));
+        return Ok((0..glyph_count)
+            .zip(cids)
+            .map(|(gid, cid)| {
+                let candidate = unicodes
+                    .get(usize::from(gid))
+                    .and_then(|values| first_naming_codepoint(values))
+                    .map_or_else(|| format!("cid{cid:05}"), unicode_glyph_name);
+                unique_glyph_name(candidate, gid, &mut used)
+            })
+            .map(GlyphName::from)
             .collect());
     }
 
@@ -126,12 +135,7 @@ pub(crate) fn glyph_names(
         } else {
             format!("glyph{gid:05}")
         };
-        if !used.insert(value.clone()) {
-            value = format!("{value}.gid{gid}");
-            while !used.insert(value.clone()) {
-                value.push('_');
-            }
-        }
+        value = unique_glyph_name(value, gid, &mut used);
         result.push(GlyphName::from(value));
     }
     if synthesized {
@@ -143,6 +147,42 @@ pub(crate) fn glyph_names(
         });
     }
     Ok(result)
+}
+
+fn first_naming_codepoint(codepoints: &[u32]) -> Option<u32> {
+    codepoints
+        .iter()
+        .copied()
+        .find(|codepoint| {
+            matches!(
+                codepoint,
+                0x3400..=0x4DBF
+                    | 0x4E00..=0x9FFF
+                    | 0x20000..=0x2A6DF
+                    | 0x2A700..=0x2EE5F
+                    | 0x30000..=0x323AF
+            )
+        })
+        .or_else(|| codepoints.first().copied())
+}
+
+fn unicode_glyph_name(codepoint: u32) -> String {
+    if codepoint <= 0xFFFF {
+        format!("uni{codepoint:04X}")
+    } else {
+        format!("u{codepoint:05X}")
+    }
+}
+
+fn unique_glyph_name(mut candidate: String, gid: u16, used: &mut HashSet<String>) -> String {
+    if used.insert(candidate.clone()) {
+        return candidate;
+    }
+    candidate = format!("{candidate}.gid{gid}");
+    while !used.insert(candidate.clone()) {
+        candidate.push('_');
+    }
+    candidate
 }
 
 fn optional_name<'a>(face: &FontRef<'a>) -> Result<Option<Name<'a>>, Error> {

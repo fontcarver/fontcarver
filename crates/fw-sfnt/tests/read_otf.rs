@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use fw_model::{Font, PointKind};
+use fw_model::{glyph_for_unicode, Font, PointKind};
 use fw_sfnt::{read_path, ReadOptions};
 
 #[test]
@@ -140,4 +140,11 @@ fn reads_external_cid_cff_metadata_when_available() {
     assert_eq!(cid.registry, "Adobe");
     assert_eq!(cid.ordering, "Identity");
     assert!(!cid.cid_map.is_empty());
+    assert_eq!(
+        glyph_for_unicode(&outcome.fonts[0], 0x4E00)
+            .expect("U+4E00 glyph")
+            .name
+            .as_ref(),
+        "uni4E00"
+    );
 }

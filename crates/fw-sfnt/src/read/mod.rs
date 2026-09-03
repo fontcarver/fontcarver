@@ -162,7 +162,7 @@ fn read_face(face: &FontRef<'_>, warnings: &mut Vec<Warning>) -> Result<Font, Er
     variations::apply(face, &mut font)?;
 
     let glyph_data = cmap::glyph_data(face, glyph_count)?;
-    let glyph_names = names::glyph_names(face, glyph_count, warnings)?;
+    let glyph_names = names::glyph_names(face, glyph_count, &glyph_data.unicodes, warnings)?;
     let mut master = metrics::master(face, &font.info)?;
     master.name = font.info.style_name.clone();
     master.location = variations::default_location(&font.axes);
