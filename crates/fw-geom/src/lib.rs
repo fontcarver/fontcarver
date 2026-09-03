@@ -25,7 +25,7 @@ pub use edit::{
 pub use error::Error;
 pub use interpolate::{compatible, interpolate, Incompatibility};
 pub use kurbo::{Cap, Join};
-pub use stroke::{expand_stroke, Nib, StrokeOptions};
+pub use stroke::{expand_stroke, expand_stroke_with_fallback, Nib, StrokeOptions, StrokeOutcome};
 
 /// A geometric tolerance measured in font units.
 pub type Tolerance = f64;

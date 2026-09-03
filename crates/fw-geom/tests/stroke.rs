@@ -1,6 +1,9 @@
 mod fixtures;
 
-use fw_geom::{bbox, expand_stroke, Cap, CurveKind, Join, Nib, StrokeOptions};
+use fw_geom::{
+    bbox, expand_stroke, expand_stroke_with_fallback, Cap, CurveKind, FallbackKind, Join, Nib,
+    StrokeOptions,
+};
 use fw_model::{Contour, PointKind};
 use kurbo::Shape;
 
@@ -210,8 +213,23 @@ fn rectangular_nib_closed_circle_keeps_curved_rings() {
 }
 
 #[test]
-#[cfg(not(debug_assertions))]
-fn dejavu_round_stroke_corpus_is_at_least_ninety_percent_curved() {
+fn stroke_fallback_is_additive_and_reports_strict_success() {
+    let square = fixtures::rect(0.0, 0.0, 200.0, 200.0);
+    let strict = expand_stroke(
+        std::slice::from_ref(&square),
+        &closed_options(Nib::Round),
+        CurveKind::Cubic,
+    )
+    .expect("strict square stroke");
+    let outcome =
+        expand_stroke_with_fallback(&[square], &closed_options(Nib::Round), CurveKind::Cubic)
+            .expect("square stroke outcome");
+    assert_eq!(outcome.fallback, FallbackKind::None);
+    assert_eq!(outcome.contours, strict);
+}
+
+#[test]
+fn dejavu_two_stroke_outcome_is_compact_and_accurate() {
     let path = fw_fixtures::path("DejaVuSans.ttf");
     if !path.is_file() {
         eprintln!("skipping test: DejaVuSans.ttf is unavailable");
@@ -220,39 +238,293 @@ fn dejavu_round_stroke_corpus_is_at_least_ninety_percent_curved() {
     let outcome =
         fw_sfnt::read_path(&path, &fw_sfnt::ReadOptions::default()).expect("read DejaVu Sans");
     let font = &outcome.fonts[0];
-    let mut total = 0_usize;
-    let mut successful = 0_usize;
-    let mut curved = 0_usize;
-    for glyph in font.glyphs.values() {
-        let Some(layer) = glyph.master_layer(&font.default_master().id) else {
-            continue;
-        };
-        if !layer.contours.iter().any(|contour| contour.closed) {
-            continue;
+    let layer = font
+        .glyph("two")
+        .and_then(|glyph| glyph.master_layer(&font.default_master().id))
+        .expect("two master layer");
+    let outcome = expand_stroke_with_fallback(
+        &layer.contours,
+        &closed_options(Nib::Round),
+        CurveKind::Cubic,
+    )
+    .expect("round stroke two with fallback");
+    let points = outcome
+        .contours
+        .iter()
+        .map(|contour| contour.points.len())
+        .sum::<usize>();
+    assert!(points <= 300, "fallback has {points} points");
+    let reference = minkowski_reference_area(&layer.contours, &closed_options(Nib::Round), 0.1);
+    let area = fixtures::filled_area(&outcome.contours);
+    assert!(
+        (area - reference).abs() / reference < 0.01,
+        "fallback area={area}, reference={reference}"
+    );
+}
+
+#[test]
+#[cfg(not(debug_assertions))]
+fn dejavu_stroke_corpus_meets_strict_fallback_and_accuracy_targets() {
+    let path = fw_fixtures::path("DejaVuSans.ttf");
+    if !path.is_file() {
+        eprintln!("skipping test: DejaVuSans.ttf is unavailable");
+        return;
+    }
+    let outcome =
+        fw_sfnt::read_path(&path, &fw_sfnt::ReadOptions::default()).expect("read DejaVu Sans");
+    let font = &outcome.fonts[0];
+    let nibs = [
+        Nib::Round,
+        Nib::Rect,
+        Nib::Calligraphic {
+            width: 24.0,
+            height: 8.0,
+            angle: 0.4,
+        },
+    ];
+    for nib in nibs {
+        let opts = closed_options(nib);
+        let mut successful = 0_usize;
+        let mut curved = 0_usize;
+        let mut fallback = 0_usize;
+        let mut flattened = 0_usize;
+        let mut total = 0_usize;
+        for glyph in font.glyphs.values() {
+            let Some(layer) = glyph.master_layer(&font.default_master().id) else {
+                continue;
+            };
+            if !layer.contours.iter().any(|contour| contour.closed) {
+                continue;
+            }
+            total += 1;
+            if let Ok(result) = expand_stroke(&layer.contours, &opts, CurveKind::Cubic) {
+                successful += 1;
+                curved += usize::from(
+                    result
+                        .iter()
+                        .flat_map(|contour| &contour.points)
+                        .any(|point| point.kind == PointKind::OffCurve),
+                );
+            }
+            if let Ok(outcome) =
+                expand_stroke_with_fallback(&layer.contours, &opts, CurveKind::Cubic)
+            {
+                fallback += 1;
+                flattened += usize::from(outcome.fallback == FallbackKind::Flattened);
+            }
         }
-        total += 1;
-        let Ok(result) = expand_stroke(
-            &layer.contours,
-            &closed_options(Nib::Round),
-            CurveKind::Cubic,
-        ) else {
-            continue;
-        };
-        successful += 1;
-        if result
+        let mut sample_total = 0_usize;
+        let mut sample_successful = 0_usize;
+        let mut accurate = 0_usize;
+        let mut worst_error = 0.0_f64;
+        let mut worst_name = "";
+        let mut worst_areas = (0.0, 0.0);
+        // A deterministic cross-script sample of 300 alphabetic glyphs,
+        // excluding the IPA modifier and combining-mark range.
+        for (name, layer) in font
+            .glyphs
             .iter()
-            .flat_map(|contour| &contour.points)
-            .any(|point| point.kind == PointKind::OffCurve)
+            .filter_map(|(name, glyph)| {
+                if !glyph
+                    .unicodes
+                    .iter()
+                    .filter_map(|value| char::from_u32(*value))
+                    .any(|value| {
+                        value.is_alphabetic() && !('\u{0180}'..='\u{036f}').contains(&value)
+                    })
+                {
+                    return None;
+                }
+                glyph
+                    .master_layer(&font.default_master().id)
+                    .filter(|layer| layer.contours.iter().any(|contour| contour.closed))
+                    .map(|layer| (name, layer))
+            })
+            .take(300)
         {
-            curved += 1;
+            sample_total += 1;
+            let Ok(result) = expand_stroke(&layer.contours, &opts, CurveKind::Cubic) else {
+                continue;
+            };
+            sample_successful += 1;
+            let reference = minkowski_reference_area(&layer.contours, &opts, 0.1);
+            if reference <= 1e-9 {
+                continue;
+            }
+            let area = nonzero_contour_area(&result, 0.1);
+            let error = (area - reference).abs() / reference;
+            if error > worst_error {
+                worst_error = error;
+                worst_name = name;
+                worst_areas = (area, reference);
+            }
+            accurate += usize::from(error <= 0.02);
+        }
+        eprintln!(
+            "DejaVu {nib:?} strokes: total={total}, strict={successful}, curved={curved}, fallback={fallback}, flattened={flattened}, accuracy={accurate}/{sample_successful} successes in {sample_total}-glyph sample, worst_error={worst_error:.6}, worst={worst_name} area={} reference={}",
+            worst_areas.0,
+            worst_areas.1,
+        );
+        let minimum = if nib == Nib::Round { 3_550 } else { 3_450 };
+        assert!(successful >= minimum, "{nib:?}: strict={successful}");
+        if nib == Nib::Round {
+            assert_eq!(curved, successful);
+        }
+        assert_eq!(fallback, total, "{nib:?}");
+        assert_eq!(sample_total, 300, "{nib:?}");
+        assert_eq!(accurate, sample_successful, "{nib:?}: worst={worst_error}");
+    }
+}
+
+fn minkowski_reference_area(contours: &[Contour], opts: &StrokeOptions, tolerance: f64) -> f64 {
+    use kurbo::{flatten, PathEl};
+
+    let nib = reference_nib_vertices(opts.nib);
+    let mut sweeps = Vec::<Vec<[f64; 2]>>::new();
+    for contour in contours {
+        let mut points = Vec::new();
+        flatten(contour.to_bezpath().iter(), tolerance, |element| {
+            if let PathEl::MoveTo(point) | PathEl::LineTo(point) = element {
+                points.push([point.x, point.y]);
+            }
+        });
+        if contour.closed && points.first() != points.last() {
+            if let Some(first) = points.first().copied() {
+                points.push(first);
+            }
+        }
+        for edge in points.windows(2) {
+            let cloud: Vec<_> = edge
+                .iter()
+                .flat_map(|point| {
+                    nib.iter()
+                        .map(move |offset| [point[0] + offset[0], point[1] + offset[1]])
+                })
+                .collect();
+            if let Some(hull) = convex_hull(&cloud) {
+                sweeps.push(hull);
+            }
         }
     }
-    eprintln!(
-        "DejaVu round strokes: total={total}, successful={successful}, failed={}, curved={curved}",
-        total - successful
-    );
-    assert!(successful > 0);
-    assert!(curved * 10 >= successful * 9);
+    overlay_area(&sweeps)
+}
+
+#[cfg(not(debug_assertions))]
+fn nonzero_contour_area(contours: &[Contour], tolerance: f64) -> f64 {
+    use kurbo::{flatten, PathEl};
+
+    let polygons: Vec<_> = contours
+        .iter()
+        .filter(|contour| contour.closed)
+        .filter_map(|contour| {
+            let mut polygon = Vec::new();
+            flatten(contour.to_bezpath().iter(), tolerance, |element| {
+                if let PathEl::MoveTo(point) | PathEl::LineTo(point) = element {
+                    polygon.push([point.x, point.y]);
+                }
+            });
+            (polygon.len() >= 3).then_some(polygon)
+        })
+        .collect();
+    overlay_area(&polygons)
+}
+
+fn overlay_area(polygons: &Vec<Vec<[f64; 2]>>) -> f64 {
+    use i_overlay::{
+        core::{fill_rule::FillRule, overlay_rule::OverlayRule},
+        float::single::SingleFloatOverlay,
+    };
+
+    let empty: Vec<Vec<[f64; 2]>> = Vec::new();
+    polygons
+        .overlay(&empty, OverlayRule::Union, FillRule::NonZero)
+        .iter()
+        .map(|shape| {
+            shape
+                .iter()
+                .map(|polygon| {
+                    polygon
+                        .iter()
+                        .zip(polygon.iter().cycle().skip(1))
+                        .map(|(left, right)| left[0] * right[1] - right[0] * left[1])
+                        .sum::<f64>()
+                        * 0.5
+                })
+                .sum::<f64>()
+                .abs()
+        })
+        .sum()
+}
+
+fn reference_nib_vertices(nib: Nib) -> Vec<[f64; 2]> {
+    match nib {
+        Nib::Round => (0..64)
+            .map(|index| {
+                let angle = std::f64::consts::TAU * index as f64 / 64.0;
+                [10.0 * angle.cos(), 10.0 * angle.sin()]
+            })
+            .collect(),
+        Nib::Rect => vec![[-10.0, -10.0], [10.0, -10.0], [10.0, 10.0], [-10.0, 10.0]],
+        Nib::Calligraphic {
+            width,
+            height,
+            angle,
+        } => {
+            let (sin, cos) = angle.sin_cos();
+            [
+                [-width * 0.5, -height * 0.5],
+                [width * 0.5, -height * 0.5],
+                [width * 0.5, height * 0.5],
+                [-width * 0.5, height * 0.5],
+            ]
+            .into_iter()
+            .map(|point| {
+                [
+                    point[0] * cos - point[1] * sin,
+                    point[0] * sin + point[1] * cos,
+                ]
+            })
+            .collect()
+        }
+    }
+}
+
+fn convex_hull(points: &[[f64; 2]]) -> Option<Vec<[f64; 2]>> {
+    let mut points = points.to_vec();
+    points.sort_by(|left, right| {
+        left[0]
+            .total_cmp(&right[0])
+            .then(left[1].total_cmp(&right[1]))
+    });
+    points.dedup();
+    if points.len() < 3 {
+        return None;
+    }
+    let cross = |a: [f64; 2], b: [f64; 2], c: [f64; 2]| {
+        (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+    };
+    let mut lower = Vec::new();
+    for &point in &points {
+        while lower.len() >= 2
+            && cross(lower[lower.len() - 2], lower[lower.len() - 1], point) <= 0.0
+        {
+            lower.pop();
+        }
+        lower.push(point);
+    }
+    let mut upper = Vec::new();
+    for &point in points.iter().rev() {
+        while upper.len() >= 2
+            && cross(upper[upper.len() - 2], upper[upper.len() - 1], point) <= 0.0
+        {
+            upper.pop();
+        }
+        upper.push(point);
+    }
+    lower.pop();
+    upper.pop();
+    lower.extend(upper);
+    Some(lower)
 }
 
 #[test]
