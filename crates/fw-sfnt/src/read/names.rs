@@ -13,7 +13,7 @@ use crate::Error;
 pub(crate) fn font_info(face: &FontRef<'_>, head: &Head<'_>) -> Result<FontInfo, Error> {
     let mut info = FontInfo {
         units_per_em: head.units_per_em(),
-        open_type_head_created: Some(head.created().as_secs().to_string()),
+        open_type_head_created: Some(ufo_date(head.created().as_secs())),
         open_type_head_flags: set_bits(u32::from(head.flags().bits())),
         open_type_head_lowest_rec_ppem: Some(head.lowest_rec_ppem()),
         ..FontInfo::default()
@@ -48,6 +48,34 @@ pub(crate) fn font_info(face: &FontRef<'_>, head: &Head<'_>) -> Result<FontInfo,
     info.open_type_name_wws_family_name = select(&info.names, 21);
     info.open_type_name_wws_subfamily_name = select(&info.names, 22);
     Ok(info)
+}
+
+fn ufo_date(seconds_since_1904: i64) -> String {
+    const SECONDS_PER_DAY: i64 = 86_400;
+    const DAYS_1904_TO_1970: i64 = 24_107;
+
+    let days_since_unix_epoch = seconds_since_1904.div_euclid(SECONDS_PER_DAY) - DAYS_1904_TO_1970;
+    let seconds_in_day = seconds_since_1904.rem_euclid(SECONDS_PER_DAY);
+    let (year, month, day) = civil_from_days(days_since_unix_epoch);
+    let hour = seconds_in_day / 3_600;
+    let minute = (seconds_in_day % 3_600) / 60;
+    let second = seconds_in_day % 60;
+    format!("{year:04}/{month:02}/{day:02} {hour:02}:{minute:02}:{second:02}")
+}
+
+fn civil_from_days(days_since_unix_epoch: i64) -> (i64, i64, i64) {
+    let days = days_since_unix_epoch + 719_468;
+    let era = days.div_euclid(146_097);
+    let day_of_era = days - era * 146_097;
+    let year_of_era =
+        (day_of_era - day_of_era / 1_460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+    let mut year = year_of_era + era * 400;
+    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+    let month_prime = (5 * day_of_year + 2) / 153;
+    let day = day_of_year - (153 * month_prime + 2) / 5 + 1;
+    let month = month_prime + if month_prime < 10 { 3 } else { -9 };
+    year += i64::from(month <= 2);
+    (year, month, day)
 }
 
 pub(crate) fn best_name(face: &FontRef<'_>, name_id: u16) -> Option<String> {

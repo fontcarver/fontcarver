@@ -18,6 +18,10 @@ fn reads_dejavu_into_the_document_model() {
     let font = &outcome.fonts[0];
     assert_eq!(font.glyphs.len(), usize::from(maxp.num_glyphs()));
     assert_eq!(font.info.family_name, "DejaVu Sans");
+    assert_eq!(
+        font.info.open_type_head_created.as_deref(),
+        Some("2023/08/10 17:39:05")
+    );
 
     let glyph_a = font.glyph("A").expect("A glyph");
     assert!(glyph_a.unicodes.contains(&0x41));
