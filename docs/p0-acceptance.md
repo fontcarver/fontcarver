@@ -6,9 +6,10 @@ Host: Linux, Rust 1.94, Node 24, pnpm 10, GNOME Wayland with XWayland
 
 ## Result
 
-**PASS.** The complete Rust, frontend, browser and desktop acceptance passes.
-All three global performance gates are inside budget, all committed font
-fixtures inspect successfully, and every P0 exit criterion is satisfied.
+**PASS WITH ONE RULED DEVIATION.** The complete Rust, frontend, browser and
+desktop acceptance passes. All three global performance gates are inside
+budget and all committed font fixtures inspect successfully. The original
+binary-export exit criterion is explicitly deferred to P1, as recorded below.
 
 ## Performance gates
 
@@ -29,23 +30,23 @@ Source Han median open: **386.52 ms < 3 s — PASS**.
 ### Release CLI open and FWF save/load gate
 
 Task 12-A established the gate with a 0.549 s Source Han inspection and a
-4.104 s save+load. The required independent Task 12-B rerun was:
+4.104 s save+load. The final fix-wave rerun after adopting the per-glyph-line
+FWF layout was:
 
 ```text
-$ /usr/bin/time -p scripts/perf-open.sh
+$ scripts/perf-open.sh
 Building release fw...
-Finished `release` profile [optimized] target(s) in 6.19s
-inspect DejaVuSans.ttf: 0.052 s
-inspect SourceHanSansSC-Regular.otf: 0.562 s
-convert Source Han Sans to FWF: 1.623 s
-inspect converted FWF: 2.587 s
-save+load total: 4.211 s
+Finished `release` profile [optimized] target(s) in 21.80s
+inspect DejaVuSans.ttf: 0.054 s
+inspect SourceHanSansSC-Regular.otf: 0.660 s
+convert Source Han Sans to FWF: 2.037 s
+inspect converted FWF: 2.748 s
+save+load total: 4.786 s
 PASS: open <= 3 s; save+load <= 6 s
-real 11.11
 ```
 
-- Source Han release inspection: **0.562 s < 3 s — PASS**.
-- Source Han FWF save+load: **4.211 s < 6 s — PASS**.
+- Source Han release inspection: **0.660 s < 3 s — PASS**.
+- Source Han FWF save+load: **4.786 s < 6 s — PASS**.
 
 ### Warmed 300-cell glyph page
 
@@ -251,6 +252,11 @@ launches and their child Vite processes were terminated. Screenshot:
 - ✅ **65k-glyph grid remains smooth:** 16.8 ms p95 frame delta (< 20 ms),
   bounded virtual paging, and the e2e rendered cell 65,535.
 - ✅ **`.fwf` round trip:** plain and gzip semantic release tests pass; the
-  Source Han save+load gate is 4.211 s (< 6 s).
-- ✅ **CLI convert TTF → FWF → inspect preserves glyph count:** DejaVu Sans
-  reports 6,253 before and after, all exit codes zero.
+  Source Han save+load gate is 4.786 s (< 6 s).
+- ⚠️ **DEVIATED — CLI converts TTF → FWF → TTF (glyph-identical):** binary
+  export arrives in P1 through `fw-compile`. The met P0 criterion is TTF → FWF
+  → inspect with equal glyph count: DejaVu Sans reports 6,253 before and after,
+  with all exit codes zero.
+- ⚠️ **Autosave/crash recovery:** the kernel implementation and tests exist,
+  but launch-time scheduling and recovery UI are unwired in P0 and deferred to
+  P1 alongside editing.
