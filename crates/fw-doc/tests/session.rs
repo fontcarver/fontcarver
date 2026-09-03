@@ -211,9 +211,7 @@ fn session_is_send_sync_and_dispatches_binary_fonts_through_the_opener() {
     ));
 }
 
-// enabled when fw-sfnt lands
 #[test]
-#[ignore]
 fn session_opens_ttf() {
     let session = Session::new();
     let id = session
