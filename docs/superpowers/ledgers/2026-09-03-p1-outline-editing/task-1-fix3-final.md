@@ -1,0 +1,7 @@
+- Status: Complete; report updated, worktree clean, not pushed.
+- Commit: `adcc5b1` — `fix(fw-geom): hole-preserving stroke union, stroke fallback, run-based refit, fast-path cleanup`
+- Tests: fmt, clippy `-D warnings`, debug (55), and release (57) all pass.
+- Round: strict 3567/3583, curved 3567/3567, fallback 3583/3583.
+- Rect: strict 3528/3583, curved 2582/3528, fallback 3583/3583.
+- Calligraphic: strict 3510/3583, curved 2561/3510, fallback 3583/3583.
+- Accuracy sample worst errors: Round 0.389%, Rect 1.778%, Calligraphic 1.810%.CODEX_DONE exit=0

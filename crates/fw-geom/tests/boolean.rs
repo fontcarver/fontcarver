@@ -48,6 +48,30 @@ fn point_touching_contours_take_the_unchanged_fast_path() {
 }
 
 #[test]
+fn fast_path_cleans_a_zero_width_spike() {
+    let spiked = fw_model::Contour {
+        closed: true,
+        points: vec![
+            fixtures::point(0.0, 0.0, fw_model::PointKind::Line),
+            fixtures::point(100.0, 0.0, fw_model::PointKind::Line),
+            fixtures::point(100.0, 100.0, fw_model::PointKind::Line),
+            fixtures::point(50.0, 100.0, fw_model::PointKind::Line),
+            fixtures::point(50.0, 120.0, fw_model::PointKind::Line),
+            fixtures::point(50.0, 100.0, fw_model::PointKind::Line),
+            fixtures::point(0.0, 100.0, fw_model::PointKind::Line),
+        ],
+        name: None,
+        id: None,
+    };
+    let result = remove_overlap(std::slice::from_ref(&spiked), CurveKind::Cubic, 0.01)
+        .expect("clean spiked rectangle");
+    assert_ne!(result, vec![spiked]);
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].points.len(), 4);
+    assert!((fixtures::filled_area(&result) - 10_000.0).abs() < 0.01);
+}
+
+#[test]
 fn tangent_curves_take_the_unchanged_fast_path() {
     let first = fixtures::circle(100.0);
     let mut second = fixtures::circle(100.0);
@@ -210,7 +234,16 @@ fn self_touching_input_never_panics() {
 }
 
 #[test]
-fn dejavu_uni2727_remove_overlap_regression() {
+fn fallback_api_reports_when_it_preserves_an_untouched_outline() {
+    let contours = [fixtures::rect(0.0, 0.0, 100.0, 100.0)];
+    let outcome =
+        remove_overlap_with_fallback(&contours, CurveKind::Cubic, 0.01).expect("simple outline");
+    assert_eq!(outcome.contours, contours);
+    assert_eq!(outcome.fallback, FallbackKind::None);
+}
+
+#[test]
+fn dejavu_o_with_overlapping_blob_has_a_compact_accurate_fallback() {
     let path = fw_fixtures::path("DejaVuSans.ttf");
     if !path.is_file() {
         eprintln!("skipping test: DejaVuSans.ttf is unavailable");
@@ -220,24 +253,71 @@ fn dejavu_uni2727_remove_overlap_regression() {
         fw_sfnt::read_path(&path, &fw_sfnt::ReadOptions::default()).expect("read DejaVu Sans");
     let font = &outcome.fonts[0];
     let layer = font
-        .glyph("uni2727")
+        .glyph("O")
         .and_then(|glyph| glyph.master_layer(&font.default_master().id))
-        .expect("uni2727 master layer");
-    assert!(remove_overlap(
-        &layer.contours,
-        CurveKind::Quadratic { max_err: 0.01 },
-        0.01,
-    )
-    .is_ok());
+        .expect("O master layer");
+    let mut contours = layer.contours.clone();
+    contours.push(fixtures::circle(250.0));
+    for point in &mut contours.last_mut().expect("blob").points {
+        point.x += 1_350.0;
+        point.y += 750.0;
+    }
+    let outcome = remove_overlap_with_fallback(&contours, CurveKind::Cubic, 0.01)
+        .expect("O plus overlapping blob fallback");
+    assert_eq!(outcome.fallback, FallbackKind::Flattened);
+    let points = outcome
+        .contours
+        .iter()
+        .map(|contour| contour.points.len())
+        .sum::<usize>();
+    assert!(points <= 200, "fallback has {points} points");
+    let input_area = nonzero_area(&contours, 0.01);
+    let output_area = nonzero_area(&outcome.contours, 0.01);
+    assert!(
+        (output_area - input_area).abs() / input_area < 0.01,
+        "input area={input_area}, output area={output_area}"
+    );
 }
 
-#[test]
-fn fallback_api_reports_when_it_preserves_an_untouched_outline() {
-    let contours = [fixtures::rect(0.0, 0.0, 100.0, 100.0)];
-    let outcome =
-        remove_overlap_with_fallback(&contours, CurveKind::Cubic, 0.01).expect("simple outline");
-    assert_eq!(outcome.contours, contours);
-    assert_eq!(outcome.fallback, FallbackKind::None);
+fn nonzero_area(contours: &[fw_model::Contour], tolerance: f64) -> f64 {
+    use i_overlay::{
+        core::{fill_rule::FillRule, overlay_rule::OverlayRule},
+        float::single::SingleFloatOverlay,
+    };
+    use kurbo::{flatten, PathEl};
+
+    let polygons: Vec<Vec<[f64; 2]>> = contours
+        .iter()
+        .filter(|contour| contour.closed)
+        .filter_map(|contour| {
+            let mut polygon = Vec::new();
+            flatten(contour.to_bezpath().iter(), tolerance, |element| {
+                if let PathEl::MoveTo(point) | PathEl::LineTo(point) = element {
+                    polygon.push([point.x, point.y]);
+                }
+            });
+            (polygon.len() >= 3).then_some(polygon)
+        })
+        .collect();
+    let empty: Vec<Vec<[f64; 2]>> = Vec::new();
+    polygons
+        .overlay(&empty, OverlayRule::Subject, FillRule::NonZero)
+        .iter()
+        .map(|shape| {
+            shape
+                .iter()
+                .map(|polygon| {
+                    polygon
+                        .iter()
+                        .zip(polygon.iter().cycle().skip(1))
+                        .map(|(left, right)| left[0] * right[1] - right[0] * left[1])
+                        .sum::<f64>()
+                        * 0.5
+                })
+                .sum::<f64>()
+                .abs()
+        })
+        .sum()
 }
 
 #[test]

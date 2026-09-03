@@ -7,7 +7,7 @@ use kurbo::{
 };
 
 use crate::{
-    from_bezpaths, remove_overlap, to_bezpaths, Cap, CurveKind, Error, Join,
+    from_bezpaths, to_bezpaths, Cap, CurveKind, Error, FallbackKind, Join,
     DEFAULT_BOOLEAN_TOLERANCE,
 };
 
@@ -62,6 +62,18 @@ impl Default for StrokeOptions {
     }
 }
 
+/// Result of stroke expansion together with its geometry-quality status.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StrokeOutcome {
+    /// Expanded stroke contours.
+    pub contours: Vec<Contour>,
+    /// Fallback used to produce the contours.
+    ///
+    /// User interfaces should show a warning whenever this is not
+    /// [`FallbackKind::None`].
+    pub fallback: FallbackKind,
+}
+
 /// Expands centerline contours into closed filled outlines.
 ///
 /// Round nibs use kurbo's offset-based stroker. `Rect` and `Calligraphic`
@@ -75,11 +87,41 @@ pub fn expand_stroke(
     kind: CurveKind,
 ) -> Result<Vec<Contour>, Error> {
     validate_options(opts)?;
+    expand_stroke_impl(contours, opts, kind, false).map(|outcome| outcome.contours)
+}
+
+/// Expands centerline contours, falling back to a flattened NonZero union when
+/// the strict curve-preserving stroke-ring union fails its area oracle.
+///
+/// User interfaces should warn when the returned [`StrokeOutcome::fallback`]
+/// is not [`FallbackKind::None`]. Invalid parameters are returned without
+/// fallback.
+pub fn expand_stroke_with_fallback(
+    contours: &[Contour],
+    opts: &StrokeOptions,
+    kind: CurveKind,
+) -> Result<StrokeOutcome, Error> {
+    validate_options(opts)?;
+    expand_stroke_impl(contours, opts, kind, true)
+}
+
+fn expand_stroke_impl(
+    contours: &[Contour],
+    opts: &StrokeOptions,
+    kind: CurveKind,
+    allow_fallback: bool,
+) -> Result<StrokeOutcome, Error> {
     match opts.nib {
-        Nib::Round => round_stroke(contours, opts, kind),
+        Nib::Round => round_stroke(contours, opts, kind, allow_fallback),
         Nib::Rect => {
             let half = opts.width * 0.5;
-            convex_nib_stroke(contours, rectangle_corners(half, half, 0.0), opts, kind)
+            convex_nib_stroke(
+                contours,
+                rectangle_corners(half, half, 0.0),
+                opts,
+                kind,
+                allow_fallback,
+            )
         }
         Nib::Calligraphic {
             width,
@@ -90,6 +132,7 @@ pub fn expand_stroke(
             rectangle_corners(width * 0.5, height * 0.5, angle),
             opts,
             kind,
+            allow_fallback,
         ),
     }
 }
@@ -129,9 +172,13 @@ fn round_stroke(
     contours: &[Contour],
     opts: &StrokeOptions,
     kind: CurveKind,
-) -> Result<Vec<Contour>, Error> {
+    allow_fallback: bool,
+) -> Result<StrokeOutcome, Error> {
     if opts.remove_internal && opts.remove_external {
-        return Ok(Vec::new());
+        return Ok(StrokeOutcome {
+            contours: Vec::new(),
+            fallback: FallbackKind::None,
+        });
     }
     let style = Stroke::new(opts.width)
         .with_join(opts.join)
@@ -159,7 +206,14 @@ fn round_stroke(
         };
         expanded.extend(filter_stroke_rings(source, rings, opts));
     }
-    remove_overlap(&expanded, kind, DEFAULT_BOOLEAN_TOLERANCE)
+    union_stroke_rings(
+        &expanded,
+        kind,
+        allow_fallback,
+        contours.iter().any(|contour| contour.closed)
+            && !opts.remove_internal
+            && !opts.remove_external,
+    )
 }
 
 fn compact_round_rings(rings: &[Contour], accuracy: f64) -> Vec<Contour> {
@@ -272,9 +326,13 @@ fn convex_nib_stroke(
     corners: [Vec2; 4],
     opts: &StrokeOptions,
     kind: CurveKind,
-) -> Result<Vec<Contour>, Error> {
+    allow_fallback: bool,
+) -> Result<StrokeOutcome, Error> {
     if opts.remove_internal && opts.remove_external {
-        return Ok(Vec::new());
+        return Ok(StrokeOutcome {
+            contours: Vec::new(),
+            fallback: FallbackKind::None,
+        });
     }
     let mut expanded = Vec::new();
     for (source, path) in contours.iter().zip(to_bezpaths(contours)) {
@@ -287,7 +345,42 @@ fn convex_nib_stroke(
         };
         expanded.extend(filter_stroke_rings(source, rings, opts));
     }
-    remove_overlap(&expanded, kind, DEFAULT_BOOLEAN_TOLERANCE)
+    union_stroke_rings(
+        &expanded,
+        kind,
+        allow_fallback,
+        contours.iter().any(|contour| contour.closed)
+            && !opts.remove_internal
+            && !opts.remove_external,
+    )
+}
+
+fn union_stroke_rings(
+    rings: &[Contour],
+    kind: CurveKind,
+    allow_fallback: bool,
+    preserve_holes: bool,
+) -> Result<StrokeOutcome, Error> {
+    let strict = if preserve_holes {
+        crate::boolean::remove_stroke_overlap(rings, kind, DEFAULT_BOOLEAN_TOLERANCE)
+    } else {
+        crate::remove_overlap(rings, kind, DEFAULT_BOOLEAN_TOLERANCE)
+    };
+    match strict {
+        Ok(contours) => Ok(StrokeOutcome {
+            contours,
+            fallback: FallbackKind::None,
+        }),
+        Err(Error::BooleanFailed { .. } | Error::BooleanMismatch { .. }) if allow_fallback => {
+            crate::boolean::fallback_remove_overlap(rings, kind, DEFAULT_BOOLEAN_TOLERANCE).map(
+                |contours| StrokeOutcome {
+                    contours,
+                    fallback: FallbackKind::Flattened,
+                },
+            )
+        }
+        Err(error) => Err(error),
+    }
 }
 
 fn rectangle_corners(half_width: f64, half_height: f64, angle: f64) -> [Vec2; 4] {
@@ -758,5 +851,71 @@ fn angular_progress(from: f64, angle: f64, outward: Vec2) -> f64 {
         ccw
     } else {
         (-angle + from).rem_euclid(std::f64::consts::TAU)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dejavu_two_forced_stroke_fallback_is_compact_and_within_one_percent() {
+        let path = fw_fixtures::path("DejaVuSans.ttf");
+        if !path.is_file() {
+            eprintln!("skipping test: DejaVuSans.ttf is unavailable");
+            return;
+        }
+        let read =
+            fw_sfnt::read_path(&path, &fw_sfnt::ReadOptions::default()).expect("read DejaVu Sans");
+        let font = &read.fonts[0];
+        let contours = &font
+            .glyph("two")
+            .and_then(|glyph| glyph.master_layer(&font.default_master().id))
+            .expect("two master layer")
+            .contours;
+        let opts = StrokeOptions {
+            width: 20.0,
+            nib: Nib::Round,
+            cap: Cap::Round,
+            join: Join::Round,
+            miter_limit: 4.0,
+            remove_internal: false,
+            remove_external: false,
+        };
+        let strict = expand_stroke(contours, &opts, CurveKind::Cubic).expect("strict stroke two");
+        crate::boolean::set_corrupt_flo_result_for_test(true);
+        let outcome = expand_stroke_with_fallback(contours, &opts, CurveKind::Cubic);
+        crate::boolean::set_corrupt_flo_result_for_test(false);
+        let outcome = outcome.expect("forced stroke fallback");
+        assert_eq!(outcome.fallback, FallbackKind::Flattened);
+        let points = outcome
+            .contours
+            .iter()
+            .map(|contour| contour.points.len())
+            .sum::<usize>();
+        assert!(points <= 300, "fallback has {points} points");
+        let strict_points = strict
+            .iter()
+            .map(|contour| contour.points.len())
+            .sum::<usize>();
+        assert!(
+            points <= strict_points * 2,
+            "strict has {strict_points} points; fallback has {points}"
+        );
+        let strict_area = strict
+            .iter()
+            .map(|contour| contour.to_bezpath().area())
+            .sum::<f64>()
+            .abs();
+        let fallback_area = outcome
+            .contours
+            .iter()
+            .map(|contour| contour.to_bezpath().area())
+            .sum::<f64>()
+            .abs();
+        assert!(
+            (strict_area - fallback_area).abs() / strict_area < 0.01,
+            "strict area={strict_area}, fallback area={fallback_area}"
+        );
     }
 }

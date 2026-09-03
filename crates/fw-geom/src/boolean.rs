@@ -5,7 +5,8 @@ use std::{
 
 use flo_curves::{
     bezier::path::{
-        path_add, path_intersect, path_remove_interior_points, path_sub, SimpleBezierPath,
+        path_add, path_intersect, path_remove_interior_points, path_remove_overlapped_points,
+        path_sub, SimpleBezierPath,
     },
     bezier::{find_self_intersection_point, path::path_intersects_path, BezierCurveFactory, Curve},
     geo::Coord2,
@@ -38,15 +39,40 @@ pub enum BooleanOp {
 /// Removes overlapping interior edges from a set of contours.
 ///
 /// Open contours are not part of the filled boolean and are returned unchanged.
-/// If no filled boundaries cross or overlap and their windings already match
-/// [`correct_direction`], the complete input is returned byte-for-byte and in
-/// the same order. Otherwise open contours keep their relative input slots,
-/// boolean-generated closed contours occupy the closed slots in result order,
-/// and any additional closed contours are appended.
+/// If cleanup leaves the closed geometry unchanged, no filled boundaries cross
+/// or overlap, and their windings already match [`correct_direction`], the
+/// complete input is returned byte-for-byte and in the same order. Otherwise
+/// open contours keep their relative input slots, boolean-generated closed
+/// contours occupy the closed slots in result order, and any additional closed
+/// contours are appended.
 pub fn remove_overlap(
     contours: &[Contour],
     kind: CurveKind,
     tol: Tolerance,
+) -> Result<Vec<Contour>, Error> {
+    remove_overlap_impl(contours, kind, tol, OverlapRule::NonZero, false)
+}
+
+#[derive(Clone, Copy)]
+enum OverlapRule {
+    NonZero,
+    StrokeRings,
+}
+
+pub(crate) fn remove_stroke_overlap(
+    contours: &[Contour],
+    kind: CurveKind,
+    tol: Tolerance,
+) -> Result<Vec<Contour>, Error> {
+    remove_overlap_impl(contours, kind, tol, OverlapRule::StrokeRings, false)
+}
+
+fn remove_overlap_impl(
+    contours: &[Contour],
+    kind: CurveKind,
+    tol: Tolerance,
+    rule: OverlapRule,
+    force_boolean: bool,
 ) -> Result<Vec<Contour>, Error> {
     validate_tolerance(tol)?;
     let closed: Vec<_> = contours
@@ -57,17 +83,28 @@ pub fn remove_overlap(
     if closed.is_empty() {
         return Ok(contours.to_vec());
     }
-    let clean_paths: Vec<_> = to_bezpaths(&closed)
+    let original_paths = to_bezpaths(&closed);
+    let clean_paths: Vec<_> = original_paths
         .iter()
         .map(|path| clean_path(path, tol))
         .filter(|path| path.segments().next().is_some())
         .collect();
-    let original_paths = to_bezpaths(&closed);
-    if !has_crossing_or_overlap(&original_paths) && windings_are_normalized(&closed) {
-        if contours_match_kind(&closed, kind) {
+    let clean_contours = postprocess(&clean_paths, CurveKind::Cubic, tol);
+    if !force_boolean
+        && !has_crossing_or_overlap(&clean_paths)
+        && windings_are_normalized(&clean_contours)
+    {
+        if original_paths.len() == clean_paths.len()
+            && original_paths
+                .iter()
+                .zip(&clean_paths)
+                .all(|(original, clean)| same_path_segments(original, clean, tol))
+            && contours_match_kind(&closed, kind)
+        {
             return Ok(contours.to_vec());
         }
-        let converted = postprocess(&clean_paths, kind, tol);
+        let mut converted = postprocess(&clean_paths, kind, tol);
+        restore_unchanged_contours(&mut converted, &closed);
         return Ok(interleave_open_contours(contours, converted));
     }
     let flo_paths: Vec<_> = clean_paths.iter().filter_map(kurbo_to_flo).collect();
@@ -79,8 +116,13 @@ pub fn remove_overlap(
             .collect());
     }
 
-    let result = catch_unwind(AssertUnwindSafe(|| {
-        path_remove_interior_points::<SimpleBezierPath, SimpleBezierPath>(&flo_paths, tol)
+    let result = catch_unwind(AssertUnwindSafe(|| match rule {
+        OverlapRule::NonZero => {
+            path_remove_interior_points::<SimpleBezierPath, SimpleBezierPath>(&flo_paths, tol)
+        }
+        OverlapRule::StrokeRings => {
+            path_remove_overlapped_points::<SimpleBezierPath, SimpleBezierPath>(&flo_paths, tol)
+        }
     }))
     .map_err(|_| boolean_failure("flo_curves panicked while removing overlap"))?;
     let mut result_paths: Vec<_> = result
@@ -98,7 +140,16 @@ pub fn remove_overlap(
     Ok(interleave_open_contours(contours, output))
 }
 
-/// Whether [`remove_overlap_with_fallback`] used polygonal fallback geometry.
+#[cfg(test)]
+fn remove_overlap_force_boolean(
+    contours: &[Contour],
+    kind: CurveKind,
+    tol: Tolerance,
+) -> Result<Vec<Contour>, Error> {
+    remove_overlap_impl(contours, kind, tol, OverlapRule::NonZero, true)
+}
+
+/// Whether a geometry operation used flattened fallback geometry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FallbackKind {
     /// The strict curve-preserving operation succeeded.
@@ -172,6 +223,26 @@ fn contours_match_kind(contours: &[Contour], kind: CurveKind) -> bool {
             .flat_map(|contour| &contour.points)
             .all(|point| point.kind != PointKind::Curve),
     }
+}
+
+fn same_path_segments(left: &BezPath, right: &BezPath, tolerance: f64) -> bool {
+    let tolerance = tolerance.max(1e-9) * 0.01;
+    let left: Vec<_> = left.segments().map(|segment| segment.to_cubic()).collect();
+    let right: Vec<_> = right.segments().map(|segment| segment.to_cubic()).collect();
+    left.len() == right.len()
+        && left.iter().zip(&right).all(|(left, right)| {
+            let controls_match = [left.p0, left.p1, left.p2, left.p3]
+                .into_iter()
+                .zip([right.p0, right.p1, right.p2, right.p3])
+                .all(|(left, right)| (left - right).hypot() <= tolerance);
+            let line = Line::new(left.p0, left.p3);
+            let both_trace_the_same_line = (left.p0 - right.p0).hypot() <= tolerance
+                && (left.p3 - right.p3).hypot() <= tolerance
+                && [left.p1, left.p2, right.p1, right.p2]
+                    .into_iter()
+                    .all(|point| distance_to_line(point, line) <= tolerance);
+            controls_match || both_trace_the_same_line
+        })
 }
 
 /// Applies a filled-outline boolean operation to two contour sets.
@@ -749,7 +820,7 @@ fn flatten_paths(paths: &[BezPath], tolerance: f64) -> Vec<Vec<[f64; 2]>> {
         .collect()
 }
 
-fn fallback_remove_overlap(
+pub(crate) fn fallback_remove_overlap(
     contours: &[Contour],
     kind: CurveKind,
     tol: f64,
@@ -773,6 +844,7 @@ fn fallback_remove_overlap(
         .iter()
         .flat_map(|shape| shape.iter())
         .filter_map(|polygon| fit_polygon_to_cubics(polygon, tol * 10.0))
+        .map(|path| clean_path(&path, tol))
         .collect();
     let mut output = from_bezpaths(&fitted_paths, kind);
     output.retain(|contour| contour.points.len() >= 3);
@@ -783,42 +855,164 @@ fn fallback_remove_overlap(
 }
 
 fn fit_polygon_to_cubics(polygon: &[[f64; 2]], accuracy: f64) -> Option<BezPath> {
-    let edges = polygon_edges(polygon);
-    let first = edges.first()?.0;
-    let mut result = BezPath::new();
-    result.move_to((first[0], first[1]));
-    for &(start, end) in &edges {
-        let fitted = fit_to_bezpath(
-            &LineFit(Line::new(
-                Point::new(start[0], start[1]),
-                Point::new(end[0], end[1]),
-            )),
-            accuracy,
-        );
-        for element in fitted.elements() {
-            if !matches!(element, PathEl::MoveTo(_)) {
-                result.push(*element);
-            }
-        }
-    }
+    let fit = PolylineFit::new(polygon)?;
+    let mut result = fit_to_bezpath(&fit, accuracy);
     result.close_path();
     Some(result)
 }
 
-struct LineFit(Line);
+struct PolylineFit {
+    points: Vec<Point>,
+    cumulative: Vec<f64>,
+    cusps: Vec<f64>,
+    length: f64,
+}
 
-impl ParamCurveFit for LineFit {
-    fn sample_pt_tangent(&self, t: f64, _: f64) -> CurveFitSample {
-        let (p, tangent) = self.sample_pt_deriv(t);
+impl PolylineFit {
+    fn new(polygon: &[[f64; 2]]) -> Option<Self> {
+        const POINT_EPSILON: f64 = 1e-9;
+        let mut points = Vec::new();
+        for &[x, y] in polygon {
+            let point = Point::new(x, y);
+            if points
+                .last()
+                .is_none_or(|previous: &Point| (*previous - point).hypot() > POINT_EPSILON)
+            {
+                points.push(point);
+            }
+        }
+        if points.len() >= 2 && (points[0] - points[points.len() - 1]).hypot() <= POINT_EPSILON {
+            points.pop();
+        }
+        if points.len() < 3 {
+            return None;
+        }
+
+        let first_corner = (0..points.len()).find(|&index| polygon_corner(&points, index));
+        if let Some(index) = first_corner {
+            points.rotate_left(index);
+        }
+        points.push(points[0]);
+
+        let mut cumulative = Vec::with_capacity(points.len());
+        cumulative.push(0.0);
+        for edge in points.windows(2) {
+            let length = (edge[1] - edge[0]).hypot();
+            cumulative.push(cumulative.last().copied().unwrap_or(0.0) + length);
+        }
+        let length = cumulative.last().copied().unwrap_or(0.0);
+        if length <= POINT_EPSILON {
+            return None;
+        }
+        let cusps = (1..points.len() - 1)
+            .filter(|&index| polyline_corner(&points, index))
+            .map(|index| cumulative[index] / length)
+            .collect();
+        Some(Self {
+            points,
+            cumulative,
+            cusps,
+            length,
+        })
+    }
+
+    fn sample(&self, t: f64, sign: f64) -> (Point, Vec2) {
+        let distance = t.clamp(0.0, 1.0) * self.length;
+        let mut index = self
+            .cumulative
+            .partition_point(|value| *value < distance)
+            .saturating_sub(1)
+            .min(self.points.len() - 2);
+        if sign >= 0.0
+            && index + 1 < self.points.len() - 1
+            && (self.cumulative[index + 1] - distance).abs() <= 1e-10 * self.length
+        {
+            index += 1;
+        }
+        let edge = self.points[index + 1] - self.points[index];
+        let edge_length = edge.hypot();
+        let local = if edge_length > 0.0 {
+            (distance - self.cumulative[index]) / edge_length
+        } else {
+            0.0
+        };
+        (
+            self.points[index] + edge * local,
+            edge * (self.length / edge_length.max(f64::EPSILON)),
+        )
+    }
+}
+
+fn polygon_corner(points: &[Point], index: usize) -> bool {
+    let previous = points[(index + points.len() - 1) % points.len()];
+    let current = points[index];
+    let next = points[(index + 1) % points.len()];
+    is_corner(previous, current, next)
+}
+
+fn polyline_corner(points: &[Point], index: usize) -> bool {
+    is_corner(points[index - 1], points[index], points[index + 1])
+}
+
+fn is_corner(previous: Point, current: Point, next: Point) -> bool {
+    const CORNER_COSINE: f64 = 0.939_692_620_785_908_4; // cos(20 degrees)
+    let incoming = current - previous;
+    let outgoing = next - current;
+    let scale = incoming.hypot() * outgoing.hypot();
+    scale > 0.0 && incoming.dot(outgoing) < CORNER_COSINE * scale
+}
+
+impl ParamCurveFit for PolylineFit {
+    fn sample_pt_tangent(&self, t: f64, sign: f64) -> CurveFitSample {
+        let (p, tangent) = self.sample(t, sign);
         CurveFitSample { p, tangent }
     }
 
     fn sample_pt_deriv(&self, t: f64) -> (Point, Vec2) {
-        (self.0.p0.lerp(self.0.p1, t), self.0.p1 - self.0.p0)
+        self.sample(t, 1.0)
     }
 
-    fn break_cusp(&self, _: std::ops::Range<f64>) -> Option<f64> {
-        None
+    fn moment_integrals(&self, range: std::ops::Range<f64>) -> (f64, f64, f64) {
+        let start = range.start.clamp(0.0, 1.0) * self.length;
+        let end = range.end.clamp(0.0, 1.0) * self.length;
+        let mut moments = (0.0, 0.0, 0.0);
+        for index in 0..self.points.len() - 1 {
+            let edge_start = self.cumulative[index];
+            let edge_end = self.cumulative[index + 1];
+            let overlap_start = start.max(edge_start);
+            let overlap_end = end.min(edge_end);
+            if overlap_end <= overlap_start {
+                continue;
+            }
+            let edge_length = edge_end - edge_start;
+            let p0 = self.points[index].lerp(
+                self.points[index + 1],
+                (overlap_start - edge_start) / edge_length,
+            );
+            let p1 = self.points[index].lerp(
+                self.points[index + 1],
+                (overlap_end - edge_start) / edge_length,
+            );
+            let dx = p1.x - p0.x;
+            let dy = p1.y - p0.y;
+            moments.0 += dx * (p0.y + p1.y) * 0.5;
+            moments.1 += dx * (p0.x * p0.y + (p0.x * dy + dx * p0.y) * 0.5 + dx * dy / 3.0);
+            moments.2 += dx * (p0.y * p0.y + p0.y * dy + dy * dy / 3.0);
+        }
+        moments
+    }
+
+    fn break_cusp(&self, range: std::ops::Range<f64>) -> Option<f64> {
+        let midpoint = (range.start + range.end) * 0.5;
+        self.cusps
+            .iter()
+            .copied()
+            .filter(|cusp| *cusp > range.start + 1e-12 && *cusp < range.end - 1e-12)
+            .min_by(|left, right| {
+                (*left - midpoint)
+                    .abs()
+                    .total_cmp(&(*right - midpoint).abs())
+            })
     }
 }
 
@@ -1069,6 +1263,11 @@ thread_local! {
 }
 
 #[cfg(test)]
+pub(crate) fn set_corrupt_flo_result_for_test(enabled: bool) {
+    CORRUPT_FLO_RESULT.with(|value| value.set(enabled));
+}
+
+#[cfg(test)]
 fn corrupt_flo_result_for_test(paths: &mut Vec<BezPath>) {
     CORRUPT_FLO_RESULT.with(|enabled| {
         if enabled.get() {
@@ -1139,11 +1338,15 @@ mod tests {
         CORRUPT_FLO_RESULT.with(|enabled| enabled.set(false));
         let outcome = outcome.expect("polygon fallback");
         assert_eq!(outcome.fallback, FallbackKind::Flattened);
-        assert!(outcome
-            .contours
-            .iter()
-            .flat_map(|contour| &contour.points)
-            .any(|point| point.kind == PointKind::OffCurve));
+        assert!(
+            outcome
+                .contours
+                .iter()
+                .map(|contour| contour.points.len())
+                .sum::<usize>()
+                <= 8
+        );
+        assert!((outcome.contours[0].to_bezpath().area().abs() - 15_000.0).abs() < 0.01);
     }
 
     #[test]
@@ -1183,5 +1386,27 @@ mod tests {
             !intersects && normalized,
             "intersects={intersects}, normalized={normalized}"
         );
+    }
+
+    #[test]
+    fn dejavu_uni2727_force_boolean_exercises_final_winding_oracle_order() {
+        let path = fw_fixtures::path("DejaVuSans.ttf");
+        if !path.is_file() {
+            eprintln!("skipping test: DejaVuSans.ttf is unavailable");
+            return;
+        }
+        let outcome =
+            fw_sfnt::read_path(&path, &fw_sfnt::ReadOptions::default()).expect("read DejaVu Sans");
+        let font = &outcome.fonts[0];
+        let layer = font
+            .glyph("uni2727")
+            .and_then(|glyph| glyph.master_layer(&font.default_master().id))
+            .expect("uni2727 master layer");
+        assert!(remove_overlap_force_boolean(
+            &layer.contours,
+            CurveKind::Quadratic { max_err: 0.01 },
+            0.01,
+        )
+        .is_ok());
     }
 }
