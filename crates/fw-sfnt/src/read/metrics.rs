@@ -45,6 +45,7 @@ pub(crate) fn master(face: &FontRef<'_>, info: &FontInfo) -> Result<Master, Erro
     } else {
         None
     };
+    let os2_heights = os2.as_ref().filter(|table| table.version() >= 2);
     let mut metrics = MasterMetrics {
         ascender: os2.as_ref().map_or_else(
             || f64::from(hhea.ascender().to_i16()),
@@ -54,14 +55,14 @@ pub(crate) fn master(face: &FontRef<'_>, info: &FontInfo) -> Result<Master, Erro
             || f64::from(hhea.descender().to_i16()),
             |table| f64::from(table.s_typo_descender()),
         ),
-        x_height: os2
-            .as_ref()
+        x_height: os2_heights
             .and_then(|table| table.sx_height())
+            .filter(|height| *height != 0)
             .map(f64::from)
             .unwrap_or(0.0),
-        cap_height: os2
-            .as_ref()
+        cap_height: os2_heights
             .and_then(|table| table.s_cap_height())
+            .filter(|height| *height != 0)
             .map(f64::from)
             .unwrap_or(0.0),
         italic_angle: post
@@ -102,6 +103,35 @@ pub(crate) fn master(face: &FontRef<'_>, info: &FontInfo) -> Result<Master, Erro
         metrics,
         ..Master::default()
     })
+}
+
+pub(crate) fn apply_height_fallbacks(font: &mut fw_model::Font) {
+    let Some(master) = font.masters.first() else {
+        return;
+    };
+    let master_id = master.id.clone();
+    let x_height = (master.metrics.x_height == 0.0)
+        .then(|| glyph_top(font, "x", &master_id))
+        .flatten();
+    let cap_height = (master.metrics.cap_height == 0.0)
+        .then(|| glyph_top(font, "H", &master_id))
+        .flatten();
+    if let Some(metrics) = font.masters.first_mut().map(|master| &mut master.metrics) {
+        if let Some(x_height) = x_height {
+            metrics.x_height = x_height;
+        }
+        if let Some(cap_height) = cap_height {
+            metrics.cap_height = cap_height;
+        }
+    }
+}
+
+fn glyph_top(font: &fw_model::Font, glyph: &str, master: &fw_model::MasterId) -> Option<f64> {
+    font.glyph(glyph)?;
+    fw_model::layer_bbox(font, glyph, master)
+        .ok()
+        .flatten()
+        .map(|bounds| bounds.y1)
 }
 
 fn set_bits(bits: u32) -> Vec<u8> {

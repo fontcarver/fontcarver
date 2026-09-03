@@ -198,6 +198,7 @@ fn read_face(face: &FontRef<'_>, warnings: &mut Vec<Warning>) -> Result<Font, Er
         glyph.layers.push(layer);
         font.glyphs.insert(glyph.name.clone(), glyph);
     }
+    metrics::apply_height_fallbacks(&mut font);
     if cff_source.as_ref().is_some_and(cff::CffSource::has_hints) {
         warnings.push(Warning {
             code: "cff-hints-not-imported",

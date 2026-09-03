@@ -84,6 +84,31 @@ fn reads_dejavu_into_the_document_model() {
 }
 
 #[test]
+fn reads_or_derives_x_height_and_cap_height() {
+    let dejavu = read_path(
+        &fw_fixtures::path("DejaVuSans.ttf"),
+        &ReadOptions::default(),
+    )
+    .expect("read DejaVu Sans");
+    let dejavu_metrics = &dejavu.fonts[0].default_master().metrics;
+    assert_eq!(dejavu_metrics.x_height, 1_120.0);
+    assert_eq!(dejavu_metrics.cap_height, 1_493.0);
+
+    let noto_path = fw_fixtures::path("NotoSans-Regular.ttf");
+    let noto_bytes = fs::read(&noto_path).expect("read Noto Sans fixture");
+    let noto_source = FontRef::new(&noto_bytes).expect("parse Noto Sans directly");
+    let noto_os2 = noto_source.os2().expect("Noto Sans OS/2 table");
+    assert!(noto_os2.version() >= 2);
+    assert_eq!(noto_os2.sx_height(), Some(536));
+    assert_eq!(noto_os2.s_cap_height(), Some(714));
+
+    let noto = read_path(&noto_path, &ReadOptions::default()).expect("read Noto Sans");
+    let noto_metrics = &noto.fonts[0].default_master().metrics;
+    assert_eq!(noto_metrics.x_height, 536.0);
+    assert_eq!(noto_metrics.cap_height, 714.0);
+}
+
+#[test]
 fn can_drop_original_bytes_without_losing_provenance() {
     let path = fw_fixtures::path("NotoSans-Regular.ttf");
     let outcome = read_path(
