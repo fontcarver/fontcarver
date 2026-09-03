@@ -393,7 +393,7 @@ fn cff_import_warning_reaches_document_summary() {
         .call(
             "session.open",
             json!({
-                "path": fw_fixtures::path("test1012.otf"),
+                "path": fw_fixtures::path("SourceSans3Min.otf"),
                 "face_index": null
             }),
         )

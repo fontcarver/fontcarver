@@ -5,11 +5,11 @@ use fw_sfnt::{read_bytes, Error, ReadOptions};
 const FIXTURES: &[&str] = &[
     "DejaVuSans.ttf",
     "DejaVuSans.woff",
+    "DejaVuSansMin.woff2",
     "NotoSans-Regular.ttf",
     "NotoSerifTibetan-Regular.ttf",
-    "test1012.otf",
-    "NimbusRoman-Regular-o.otf",
-    "CantarellMin.woff2",
+    "SourceSans3Min.otf",
+    "SourceSerif4Min.otf",
 ];
 
 #[test]

@@ -38,11 +38,12 @@ fn decodes_woff1_and_woff2() {
     assert_eq!(woff_source.original_bytes.as_deref(), Some(&decoded));
 
     let woff2 = read_path(
-        &fw_fixtures::path("CantarellMin.woff2"),
+        &fw_fixtures::path("DejaVuSansMin.woff2"),
         &ReadOptions::default(),
     )
     .expect("read WOFF2");
-    assert!(!woff2.fonts[0].glyphs.is_empty());
+    assert_eq!(woff2.fonts[0].glyphs.len(), 53);
+    assert_eq!(woff2.fonts[0].info.family_name, "DejaVu Sans");
     assert_eq!(
         woff2.fonts[0]
             .extra

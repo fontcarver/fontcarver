@@ -119,37 +119,20 @@ name ID 0 "copyright") rather than taken on trust.
 | --- | --- | --- |
 | `DejaVuSans.ttf` | Bitstream Vera Fonts license (permissive, MIT-style) + public-domain DejaVu changes; Arev additions © Tavmjong Bah | name ID 0/13/14: "Copyright (c) 2003 by Bitstream, Inc. … DejaVu changes are in public domain", <http://dejavu.sourceforge.net/wiki/index.php/License> |
 | `DejaVuSans.woff` | same as above (WOFF wrapper of the committed TTF) | identical `name` table |
+| `DejaVuSansMin.woff2` | same as above (53-glyph WOFF2 subset of the committed TTF) | name ID 0/13/14 retained unchanged from `DejaVuSans.ttf` |
 | `NotoSans-Regular.ttf` | SIL Open Font License 1.1 | name ID 13 "licensed under the SIL Open Font License, Version 1.1", name ID 14 <http://scripts.sil.org/OFL> |
 | `NotoSerifTibetan-Regular.ttf` | SIL Open Font License 1.1 | name ID 13/14, same wording |
-| `CantarellMin.woff2` | **GNU GPL v3 or later** — see flag below | name ID 13: "This font is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License … either version 3 of the License, or (at your option) any later version"; name ID 0 "Copyright (c) 2009 Dave Crossland" |
-| `test1012.otf` | **Undeclared in the font; inherits GPL-3.0-or-later as FontForge test data** — see flag below | name ID 0 is only "Copyright (c) 2019,"; no name ID 13/14. Provenance per `fixtures/README.md`: FontForge `tests/fonts/test1012.otf` |
-| `NimbusRoman-Regular-o.otf` | **URW++ Base35: Aladdin Free Public License / GPL** — see flag below | name ID 0 "(URW)++,Copyright 2014 by (URW)++ Design & Development"; no name ID 13/14. Provenance per `fixtures/README.md`: Debian `fonts-urw-base35` |
+| `SourceSans3Min.otf` | SIL Open Font License 1.1 | name ID 13 identifies OFL 1.1 and name ID 14 is <http://scripts.sil.org/OFL>; name ID 0 identifies Adobe and Reserved Font Name `Source`; the modified subset's primary family is `FontWorkshop CFF Sans Fixture` |
+| `SourceSerif4Min.otf` | SIL Open Font License 1.1 | name ID 13 identifies OFL 1.1 and name ID 14 is <http://scripts.sil.org/OFL>; name ID 0 identifies Adobe and Reserved Font Name `Source`; the modified subset's primary family is `FontWorkshop CFF Serif Fixture` |
 
 `fixtures/ufo/Minimal.ufo` is a hand-written 3-glyph UFO created for this project
 and is covered by FontWorkshop's own license.
 
-**Flag — three committed fixtures are not permissively licensed.** They are font
-*data* in aggregation, so they do not change the license of FontWorkshop's code,
-but this repository does redistribute them:
-
-1. `CantarellMin.woff2` — `fixtures/README.md` records it as "SIL Open Font
-   License 1.1 (Cantarell)", but this is the **2009 Dave Crossland release, whose
-   embedded license is GPLv3-or-later**; Cantarell was only relicensed to the OFL
-   later. The README row is wrong and should be corrected or the fixture replaced
-   with an OFL-era Cantarell.
-2. `test1012.otf` — a FontForge test font with no embedded license, so it takes
-   FontForge's overall GPL-3.0-or-later. `fixtures/README.md` already labels it
-   that way. It is used by `crates/fw-sfnt/tests/read_otf.rs`,
-   `crates/fw-sfnt/tests/robustness.rs` and `crates/fw-api/tests/dispatch.rs`.
-3. `NimbusRoman-Regular-o.otf` — URW++ Base35, distributed under the Aladdin Free
-   Public License and the GPL; neither is on the allowed list in
-   `docs/licensing.md` §5.
-
-None of the three is shipped in a FontWorkshop build artifact — they are only test
-inputs under `fixtures/` — and nothing is derived from them. Recommended follow-up
-(not done here, since this change is licensing metadata only): replace all three
-with OFL or public-domain equivalents, and fix the `CantarellMin.woff2` row in
-`fixtures/README.md`.
+All committed font fixtures are now under licenses allowed by
+`docs/licensing.md` §5: SIL OFL 1.1 or the Bitstream Vera/DejaVu license. The full
+OFL 1.1 text and the Adobe fonts' per-font copyright and Reserved Font Name
+statements are in `fixtures/LICENSE-OFL.txt`. Exact source URLs, versions, subset
+commands, sizes, and hashes are in `fixtures/README.md`.
 
 ### 2.2 Optional, not committed
 

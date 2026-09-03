@@ -145,13 +145,13 @@ acceptance; the exit code is the command's actual exit code.
 
 ```text
 $ for font in fixtures/fonts/*; do ./target/release/fw inspect "$font"; done
-CantarellMin.woff2          family=Cantarell; glyphs=27; format=woff2; warnings=none; exit=0
-DejaVuSans.ttf              family=DejaVu Sans; glyphs=6253; format=ttf; warnings=none; exit=0
-DejaVuSans.woff             family=DejaVu Sans; glyphs=6253; format=woff; warnings=none; exit=0
-NimbusRoman-Regular-o.otf  family=Nimbus Roman; glyphs=2; format=otf; warnings=none; exit=0
-NotoSans-Regular.ttf        family=Noto Sans; glyphs=3748; format=ttf; warnings=none; exit=0
+DejaVuSans.ttf               family=DejaVu Sans; glyphs=6253; format=ttf; warnings=none; exit=0
+DejaVuSans.woff              family=DejaVu Sans; glyphs=6253; format=woff; warnings=none; exit=0
+DejaVuSansMin.woff2          family=DejaVu Sans; glyphs=53; format=woff2; warnings=none; exit=0
+NotoSans-Regular.ttf         family=Noto Sans; glyphs=3748; format=ttf; warnings=none; exit=0
 NotoSerifTibetan-Regular.ttf family=Noto Serif Tibetan; glyphs=1891; format=ttf; warnings=none; exit=0
-test1012.otf                family=ArabicKern; glyphs=4; format=otf; warnings=cff-hints-not-imported; exit=0
+SourceSans3Min.otf           family=FontWorkshop CFF Sans Fixture; glyphs=5; format=otf; warnings=cff-hints-not-imported; exit=0
+SourceSerif4Min.otf          family=FontWorkshop CFF Serif Fixture; glyphs=2; format=otf; warnings=none; exit=0
 
 $ ./target/release/fw inspect /home/chen/githubprojects/pixelfonts/SourceHanSanOTF/SimplifiedChinese/SourceHanSansSC-Regular.otf
 family=Source Han Sans SC; glyphs=65535; format=otf; warnings=cff-hints-not-imported; exit=0
