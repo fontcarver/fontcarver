@@ -1741,6 +1741,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "fw-layout"
+version = "0.1.0"
+dependencies = [
+ "fw-compile",
+ "fw-fixtures",
+ "fw-model",
+ "fw-sfnt",
+ "harfrust",
+ "kurbo",
+ "read-fonts",
+ "serde",
+ "thiserror 2.0.20",
+ "tracing",
+ "ts-rs",
+]
+
+[[package]]
 name = "fw-model"
 version = "0.1.0"
 dependencies = [
