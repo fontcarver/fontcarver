@@ -57,6 +57,24 @@
   color: var(--color-text-faint);
 }
 
+/*
+ * A highlighted row whose command is unavailable. The solid accent fill is not
+ * used here: disabled text on it would be unreadable. Instead the row gets a
+ * neutral tint plus an accent bar, and every span switches from the faint to
+ * the muted token, which clears 4.5:1 on this background in both themes.
+ */
+.paletteItemHighlight {
+  background: var(--color-hover);
+  box-shadow: inset 2px 0 0 var(--color-accent);
+  color: var(--color-text-muted);
+}
+
+.paletteItemHighlight .hint,
+.paletteItemHighlight .paletteMenu,
+.paletteItemHighlight .paletteReason {
+  color: var(--color-text-muted);
+}
+
 .paletteLabel {
   overflow: hidden;
   flex: 1;

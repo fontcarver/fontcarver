@@ -130,9 +130,14 @@ export function CommandPaletteDialog() {
                 !enabled && command.disabledReason
                   ? t(command.disabledReason)
                   : undefined
+              // The four states are mutually exclusive so no cascade order can
+              // put disabled (faint) text on the solid accent fill.
               const classes = [paletteStyles.paletteItem]
-              if (index === active) classes.push(paletteStyles.paletteItemActive)
-              if (!enabled) classes.push(paletteStyles.paletteItemDisabled)
+              if (enabled && index === active)
+                classes.push(paletteStyles.paletteItemActive)
+              else if (!enabled && index === active)
+                classes.push(paletteStyles.paletteItemHighlight)
+              else if (!enabled) classes.push(paletteStyles.paletteItemDisabled)
               return (
                 <li key={command.id}>
                   <button

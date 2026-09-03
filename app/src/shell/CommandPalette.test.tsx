@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { initialUiState, useUiStore } from '../stores/uiStore'
 
 import { CommandPalette } from './CommandPalette'
+import paletteStyles from './CommandPalette.module.css'
 import { registerCommand, resetCommands } from './commands'
 
 const openFont = vi.fn()
@@ -65,6 +66,23 @@ describe('CommandPalette', () => {
 
     expect(gated).not.toHaveBeenCalled()
     expect(useUiStore.getState().paletteOpen).toBe(true)
+  })
+
+  it('highlights an unavailable row without the unreadable accent fill', async () => {
+    const user = userEvent.setup()
+    render(<CommandPalette />)
+
+    const enabledRow = screen.getByRole('option', { name: /Open Font/ })
+    expect(enabledRow.className).toContain(paletteStyles.paletteItemActive)
+
+    await user.keyboard('{ArrowDown}{ArrowDown}')
+
+    const disabledRow = screen.getByRole('option', { name: /Close Font/ })
+    expect(disabledRow).toHaveAttribute('aria-selected', 'true')
+    expect(disabledRow.className).toContain(paletteStyles.paletteItemHighlight)
+    expect(disabledRow.className).not.toContain(paletteStyles.paletteItemActive)
+    expect(disabledRow.className).not.toContain(paletteStyles.paletteItemDisabled)
+    expect(enabledRow.className).not.toContain(paletteStyles.paletteItemActive)
   })
 
   it('filters by title and runs the highlighted command on Enter', async () => {

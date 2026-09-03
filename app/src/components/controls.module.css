@@ -25,9 +25,15 @@
   background: var(--color-active);
 }
 
+/*
+ * A disabled button drops its variant fill rather than dimming it: faint text
+ * over the accent (or over a translucent accent) is unreadable. `:disabled`
+ * outranks `.primary`/`.ghost`, so this holds for every variant.
+ */
 .button:disabled {
+  border-color: var(--color-border);
+  background: var(--color-surface);
   color: var(--color-text-faint);
-  opacity: 0.7;
 }
 
 .primary {

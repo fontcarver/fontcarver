@@ -77,11 +77,16 @@
 }
 
 .menuItem:hover:not(:disabled),
-.menuItem:focus-visible {
+.menuItem:focus-visible:not(:disabled) {
   background: var(--color-hover);
 }
 
+/*
+ * Unavailable rows stay listed but never take a highlight fill, so their faint
+ * text is always read against the popup surface (>= 4.5:1 in both themes).
+ */
 .menuItem:disabled {
+  background: transparent;
   color: var(--color-text-faint);
 }
 
