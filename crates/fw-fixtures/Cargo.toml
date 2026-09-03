@@ -6,4 +6,9 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+norad.workspace = true
+plist.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

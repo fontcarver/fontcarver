@@ -5,6 +5,7 @@
 use std::path::{Path, PathBuf};
 
 pub mod error;
+pub mod ufo;
 
 pub use error::Error;
 
@@ -12,6 +13,12 @@ pub use error::Error;
 #[must_use]
 pub fn path(name: &str) -> PathBuf {
     workspace_root().join("fixtures").join("fonts").join(name)
+}
+
+/// Returns the path to a committed UFO fixture in `fixtures/ufo`.
+#[must_use]
+pub fn ufo_path(name: &str) -> PathBuf {
+    workspace_root().join("fixtures").join("ufo").join(name)
 }
 
 /// Returns the path to an available external fixture.
