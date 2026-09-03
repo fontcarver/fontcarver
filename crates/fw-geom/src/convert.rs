@@ -25,14 +25,24 @@ pub fn to_bezpaths(contours: &[Contour]) -> Vec<BezPath> {
 ///
 /// Generated points have [`TtIndex::Unnumbered`] because these paths no longer
 /// have a stable relationship to source TrueType point indices.
+/// A non-finite or non-positive quadratic error is rejected with an empty result.
 pub fn from_bezpaths(paths: &[BezPath], kind: CurveKind) -> Vec<Contour> {
+    if let CurveKind::Quadratic { max_err } = kind {
+        if !max_err.is_finite() || max_err <= 0.0 {
+            tracing::warn!(
+                max_err,
+                error = %crate::Error::InvalidParameter { parameter: "quadratic approximation error" },
+                "path conversion rejected an invalid parameter"
+            );
+            return Vec::new();
+        }
+    }
     paths
         .iter()
         .flat_map(|path| match kind {
             CurveKind::Cubic => path_to_contours(path),
             CurveKind::Quadratic { max_err } => {
-                let accuracy = valid_accuracy(max_err);
-                path_to_contours(&quadratic_approximation(path, accuracy))
+                path_to_contours(&quadratic_approximation(path, max_err))
             }
         })
         .collect()
@@ -82,14 +92,6 @@ pub(crate) fn path_to_contours(path: &BezPath) -> Vec<Contour> {
     }
     finish(&mut contours, &mut points, false, start);
     contours
-}
-
-fn valid_accuracy(accuracy: f64) -> f64 {
-    if accuracy.is_finite() && accuracy > 0.0 {
-        accuracy
-    } else {
-        0.01
-    }
 }
 
 fn elevate_quadratics(path: &BezPath) -> BezPath {

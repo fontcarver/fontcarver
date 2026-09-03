@@ -19,7 +19,7 @@ fn noisy_circle_is_reduced() {
         id: None,
     };
     let result = simplify(
-        &[contour],
+        std::slice::from_ref(&contour),
         &SimplifyOptions {
             error: 1.0,
             ignore_slopes: false,
@@ -31,6 +31,8 @@ fn noisy_circle_is_reduced() {
         },
     );
     assert!(result[0].points.len() < 20, "{:?}", result[0].points);
+    let deviation = fixtures::max_sampled_deviation(&contour, &result[0]);
+    assert!(deviation <= 1.0, "maximum deviation was {deviation}");
 }
 
 #[test]
@@ -58,4 +60,17 @@ fn extrema_are_explicit_unless_ignored() {
         .iter()
         .filter(|point| point.kind != PointKind::OffCurve)
         .any(|point| (point.x - 50.0).abs() < 1e-6 && (point.y - 75.0).abs() < 1e-6));
+}
+
+#[test]
+fn invalid_error_is_rejected_without_substituting_the_default() {
+    let contour = fixtures::rect(0.0, 0.0, 100.0, 100.0);
+    let result = simplify(
+        std::slice::from_ref(&contour),
+        &SimplifyOptions {
+            error: f64::NAN,
+            ..SimplifyOptions::default()
+        },
+    );
+    assert_eq!(result, vec![contour]);
 }

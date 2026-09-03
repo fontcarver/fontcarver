@@ -1,6 +1,6 @@
 mod fixtures;
 
-use fw_geom::{bbox, intersections_with_line, nearest_on_path, split_segment};
+use fw_geom::{bbox, intersections_with_line, nearest_on_path, segment_to_points, split_segment};
 use fw_model::{Contour, PointKind};
 use kurbo::{Line, ParamCurve, Point};
 use proptest::prelude::*;
@@ -30,6 +30,26 @@ fn nearest_reports_segment_and_parameter() {
     assert_eq!(hit.segment, 0);
     assert!((hit.t - 0.25).abs() < 1e-9);
     assert!((hit.distance - 5.0).abs() < 1e-9);
+}
+
+#[test]
+fn segment_indices_map_to_model_point_spans() {
+    let contour = Contour {
+        closed: true,
+        points: vec![
+            fixtures::point(25.0, 100.0, PointKind::OffCurve),
+            fixtures::point(75.0, 100.0, PointKind::OffCurve),
+            fixtures::point(100.0, 0.0, PointKind::QCurve),
+            fixtures::point(50.0, -50.0, PointKind::Line),
+            fixtures::point(0.0, 0.0, PointKind::QCurve),
+        ],
+        name: None,
+        id: None,
+    };
+    assert_eq!(segment_to_points(&contour, 0), (2, 3));
+    assert_eq!(segment_to_points(&contour, 1), (3, 4));
+    assert_eq!(segment_to_points(&contour, 2), (4, 2));
+    assert_eq!(segment_to_points(&contour, 3), (4, 2));
 }
 
 #[test]

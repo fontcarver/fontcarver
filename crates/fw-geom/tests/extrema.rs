@@ -52,6 +52,12 @@ fn quadratic_conversion_has_no_implied_points() {
 }
 
 #[test]
+fn invalid_quadratic_accuracy_is_rejected_without_a_fallback() {
+    let paths = to_bezpaths(&[fixtures::rect(0.0, 0.0, 100.0, 100.0)]);
+    assert!(from_bezpaths(&paths, CurveKind::Quadratic { max_err: f64::NAN }).is_empty());
+}
+
+#[test]
 fn an_s_curve_gets_its_inflection() {
     let contour = Contour {
         closed: false,

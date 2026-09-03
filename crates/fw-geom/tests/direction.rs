@@ -23,6 +23,19 @@ fn nested_contours_alternate_direction() {
 }
 
 #[test]
+fn three_level_nesting_alternates_outer_hole_and_island() {
+    let contours = [
+        fixtures::rect(0.0, 0.0, 100.0, 100.0),
+        fixtures::rect(20.0, 20.0, 80.0, 80.0),
+        fixtures::rect(40.0, 40.0, 60.0, 60.0),
+    ];
+    let fixed = correct_direction(&contours, true);
+    assert!(fixed[0].to_bezpath().area() < 0.0);
+    assert!(fixed[1].to_bezpath().area() > 0.0);
+    assert!(fixed[2].to_bezpath().area() < 0.0);
+}
+
+#[test]
 fn canonicalization_is_stable() {
     let contours = [
         fixtures::rect(20.0, 20.0, 30.0, 30.0),

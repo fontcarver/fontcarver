@@ -16,8 +16,8 @@ pub use boolean::{boolean, remove_overlap, BooleanOp};
 pub use convert::{from_bezpaths, to_bezpaths, CurveKind};
 pub use edit::{
     add_extrema, add_inflections, bbox, canonical_order, canonical_start_points, correct_direction,
-    intersections_with_line, nearest_on_path, reverse, round_to_grid, simplify, split_segment,
-    transform, PathHit, SimplifyOptions,
+    intersections_with_line, nearest_on_path, reverse, round_to_grid, segment_to_points, simplify,
+    split_segment, transform, PathHit, SimplifyOptions,
 };
 pub use error::Error;
 pub use interpolate::{compatible, interpolate, Incompatibility};

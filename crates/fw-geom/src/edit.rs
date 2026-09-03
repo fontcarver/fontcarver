@@ -24,7 +24,7 @@ pub struct SimplifyOptions {
     pub smooth_curves: bool,
     /// Convert curve segments that fit their chord within `error` to lines.
     pub force_lines: bool,
-    /// Snap nearly horizontal or vertical line endpoints to a common coordinate.
+    /// Snap line endpoints whose x or y difference is at most [`Self::error`].
     pub nearly_hv_lines: bool,
     /// Rotate closed contours to begin at the leftmost, then lowest, on-curve point.
     pub start_at_extrema: bool,
@@ -49,7 +49,11 @@ impl Default for SimplifyOptions {
 pub struct PathHit {
     /// Index of the containing contour.
     pub contour: usize,
-    /// Index of the segment within that contour.
+    /// Index in `Contour::to_bezpath().segments()`.
+    ///
+    /// Closed contours start at their first on-curve point, and quadratic
+    /// chains materialise implied midpoint segments. Use [`segment_to_points`]
+    /// to recover the corresponding span in the model point list.
     pub segment: usize,
     /// Parametric position on the segment in the inclusive range `0..=1`.
     pub t: f64,
@@ -60,12 +64,21 @@ pub struct PathHit {
 }
 
 /// Simplifies contours using kurbo's curve fitter and FontForge-style flags.
+///
+/// A non-finite or non-positive error is rejected by returning the input
+/// unchanged. When extrema are preserved, refitting may move an extremum by
+/// at most the simplify error; extrema within `max(8 * error, 0.01)` of a
+/// fitted endpoint are treated as already present.
 pub fn simplify(contours: &[Contour], opts: &SimplifyOptions) -> Vec<Contour> {
-    let error = if opts.error.is_finite() && opts.error > 0.0 {
-        opts.error
-    } else {
-        DEFAULT_SIMPLIFY_TOLERANCE
-    };
+    if !opts.error.is_finite() || opts.error <= 0.0 {
+        tracing::warn!(
+            simplify_error = opts.error,
+            error = %crate::Error::InvalidParameter { parameter: "simplify error" },
+            "simplify rejected an invalid parameter"
+        );
+        return contours.to_vec();
+    }
+    let error = opts.error;
     let mut result = Vec::with_capacity(contours.len());
     for contour in contours {
         let mut prepared = contour.clone();
@@ -125,6 +138,73 @@ pub fn simplify(contours: &[Contour], opts: &SimplifyOptions) -> Vec<Contour> {
         result.push(output);
     }
     result
+}
+
+/// Maps a Bézier segment index back to its source model-point span.
+///
+/// The segment basis is exactly `contour.to_bezpath().segments()`. Closed
+/// contours therefore begin at the first on-curve point rather than point
+/// zero. Every segment materialised from one implied quadratic chain maps to
+/// the same pair of explicit on-curve endpoints. For an all-off-curve contour,
+/// the pair names adjacent controls around the implied-point ring. An invalid
+/// segment maps to `(contour.points.len(), contour.points.len())`.
+pub fn segment_to_points(contour: &Contour, segment: usize) -> (usize, usize) {
+    let len = contour.points.len();
+    if len == 0 {
+        return (0, 0);
+    }
+    let on_curves: Vec<_> = contour
+        .points
+        .iter()
+        .enumerate()
+        .filter(|(_, point)| point.kind != PointKind::OffCurve)
+        .map(|(index, _)| index)
+        .collect();
+    if on_curves.is_empty() {
+        return if contour.closed && segment < len {
+            (segment, (segment + 1) % len)
+        } else {
+            (len, len)
+        };
+    }
+
+    let mut mappings = Vec::new();
+    if contour.closed {
+        let start = on_curves[0];
+        let mut from = start;
+        let mut controls = 0;
+        for offset in 1..=len {
+            let index = (start + offset) % len;
+            if contour.points[index].kind == PointKind::OffCurve {
+                controls += 1;
+            } else {
+                let count = model_segment_count(&contour.points[index], controls);
+                mappings.extend(std::iter::repeat_n((from, index), count));
+                from = index;
+                controls = 0;
+            }
+        }
+    } else {
+        let mut from = on_curves[0];
+        for &index in &on_curves[1..] {
+            let controls = contour.points[from + 1..index]
+                .iter()
+                .filter(|point| point.kind == PointKind::OffCurve)
+                .count();
+            let count = model_segment_count(&contour.points[index], controls);
+            mappings.extend(std::iter::repeat_n((from, index), count));
+            from = index;
+        }
+    }
+    mappings.get(segment).copied().unwrap_or((len, len))
+}
+
+fn model_segment_count(endpoint: &fw_model::Point, controls: usize) -> usize {
+    if controls == 0 || (endpoint.kind == PointKind::Curve && controls == 2) {
+        1
+    } else {
+        controls
+    }
 }
 
 /// Inserts on-curve points at missing horizontal and vertical curve extrema.
