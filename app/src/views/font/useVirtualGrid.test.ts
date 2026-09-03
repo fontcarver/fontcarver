@@ -1,6 +1,12 @@
+import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import { cellBox, computeGrid, indicesInRect } from './useVirtualGrid'
+import {
+  cellBox,
+  computeGrid,
+  indicesInRect,
+  useVirtualGrid,
+} from './useVirtualGrid'
 
 const CJK = {
   total: 65_535,
@@ -134,5 +140,87 @@ describe('indicesInRect', () => {
     )
 
     expect(indices).toEqual([0, 1, 2])
+  })
+})
+
+/** A scroll container jsdom can report a size and an offset for. */
+function scrollContainer() {
+  const element = document.createElement('div')
+  let scrollTop = 0
+  Object.defineProperty(element, 'clientWidth', {
+    configurable: true,
+    value: CJK.width,
+  })
+  Object.defineProperty(element, 'clientHeight', {
+    configurable: true,
+    value: CJK.height,
+  })
+  Object.defineProperty(element, 'scrollTop', {
+    configurable: true,
+    get: () => scrollTop,
+    set: (value: number) => {
+      scrollTop = value
+    },
+  })
+  return element
+}
+
+describe('useVirtualGrid', () => {
+  const mount = (element: HTMLElement) => {
+    const containerRef = { current: element }
+    return renderHook(() =>
+      useVirtualGrid({
+        total: CJK.total,
+        cellSize: CJK.cellSize,
+        gap: CJK.gap,
+        containerRef,
+      }),
+    )
+  }
+
+  it('keeps both overscan rows when the offset is inside a row', () => {
+    const element = scrollContainer()
+    const { result } = mount(element)
+
+    // 100 px is a third of the way into row 1; rows 1-12 overlap the viewport.
+    element.scrollTop = 100
+    act(() => result.current.onScroll())
+
+    expect(result.current.metrics.firstRow).toBe(0)
+    expect(result.current.metrics.lastRow).toBe(14)
+    expect(result.current.metrics.last).toBe(15 * 16 - 1)
+  })
+
+  it('overscans two rows on each side once away from the top', () => {
+    const element = scrollContainer()
+    const { result } = mount(element)
+
+    // Rows 13-24 overlap the viewport at this offset.
+    element.scrollTop = 1_000
+    act(() => result.current.onScroll())
+
+    expect(result.current.metrics.firstRow).toBe(11)
+    expect(result.current.metrics.lastRow).toBe(26)
+  })
+
+  it('does not re-render while the rendered rows stay the same', () => {
+    const element = scrollContainer()
+    const { result } = mount(element)
+
+    element.scrollTop = 1_000
+    act(() => result.current.onScroll())
+    const before = result.current.metrics
+
+    element.scrollTop = 1_001
+    act(() => result.current.onScroll())
+
+    expect(result.current.metrics).toEqual(before)
+  })
+
+  it('reports the container size it measured on mount', () => {
+    const { result } = mount(scrollContainer())
+
+    expect(result.current.cols).toBe(16)
+    expect(result.current.rows).toBe(4096)
   })
 })

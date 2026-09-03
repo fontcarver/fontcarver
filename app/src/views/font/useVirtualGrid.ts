@@ -6,7 +6,7 @@
  * it can be asserted against a 65,535-glyph font without a DOM.
  */
 
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useState, type RefObject } from 'react'
 
 /** Rows rendered above and below the viewport so scrolling never shows a gap. */
 export const DEFAULT_OVERSCAN_ROWS = 2
@@ -183,17 +183,19 @@ export function useVirtualGrid({
 }: VirtualGridOptions): VirtualGrid {
   const [viewport, setViewport] = useState({ width: 0, height: 0 })
   const [scrollTop, setScrollTop] = useState(0)
-  const pitch = Math.max(1, cellSize) + Math.max(0, gap)
-  const scrollRef = useRef(0)
 
   useEffect(() => {
     const element = containerRef.current
     if (!element) return
+    // Keep the previous object when nothing moved: a fresh one would re-render
+    // every observer callback, and re-run any effect that depends on the size.
     const measure = () =>
-      setViewport({
-        width: element.clientWidth,
-        height: element.clientHeight,
-      })
+      setViewport((current) =>
+        current.width === element.clientWidth &&
+        current.height === element.clientHeight
+          ? current
+          : { width: element.clientWidth, height: element.clientHeight },
+      )
     measure()
     if (typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(measure)
@@ -201,13 +203,27 @@ export function useVirtualGrid({
     return () => observer.disconnect()
   }, [containerRef])
 
+  /**
+   * Records the exact scroll offset, but only when the rendered rows actually
+   * move. Rounding the offset to a row boundary instead would be cheaper still
+   * and wrong: between boundaries it would hide one of the two overscan rows
+   * below the fold.
+   */
   const onScroll = useCallback(() => {
     const element = containerRef.current
     if (!element) return
-    scrollRef.current = element.scrollTop
-    const quantised = Math.floor(element.scrollTop / pitch) * pitch
-    setScrollTop((current) => (current === quantised ? current : quantised))
-  }, [containerRef, pitch])
+    const next = element.scrollTop
+    setScrollTop((current) => {
+      if (current === next) return current
+      const shape = { total, cellSize, gap, overscanRows, ...viewport }
+      const before = computeGrid({ ...shape, scrollTop: current })
+      const after = computeGrid({ ...shape, scrollTop: next })
+      return before.firstRow === after.firstRow &&
+        before.lastRow === after.lastRow
+        ? current
+        : next
+    })
+  }, [cellSize, containerRef, gap, overscanRows, total, viewport])
 
   const metrics = computeGrid({
     total,

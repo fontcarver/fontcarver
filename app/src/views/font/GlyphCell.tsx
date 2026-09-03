@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef } from 'react'
+import { memo, useCallback, useEffect, useRef } from 'react'
 
 import type { DocId, GlyphCell as GlyphCellData } from '../../api'
 import type { EmBox } from '../../canvas/glyphPaint'
@@ -50,16 +50,23 @@ function GlyphCellView({
   theme,
   fontFamily,
 }: GlyphCellProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
-  useEffect(() => {
-    const canvas = canvasRef.current
+  /**
+   * A 65k-glyph scroll churns through thousands of cells, so the backing store
+   * is released the moment the canvas detaches rather than left to the
+   * collector. This has to be a ref callback: React nulls a ref *before* it
+   * runs unmount effects, and a cell that was pending on its first render has
+   * no canvas yet when a mount effect would capture one. The callback is
+   * stable, so React attaches it once and the cleanup runs only on detach.
+   */
+  const attachCanvas = useCallback((node: HTMLCanvasElement | null) => {
+    canvasRef.current = node
     return () => {
-      // A 65k-glyph scroll churns through thousands of cells; releasing the
-      // backing store on unmount frees the pixels without waiting for GC.
-      if (!canvas) return
-      canvas.width = 0
-      canvas.height = 0
+      canvasRef.current = null
+      if (!node) return
+      node.width = 0
+      node.height = 0
     }
   }, [])
 
@@ -133,7 +140,7 @@ function GlyphCellView({
       style={style}
     >
       <canvas
-        ref={canvasRef}
+        ref={attachCanvas}
         className={styles.cellCanvas}
         style={{ width: size, height: size }}
       />
