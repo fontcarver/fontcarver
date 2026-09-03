@@ -78,3 +78,45 @@ impl From<fw_sfnt::Error> for ApiError {
         }
     }
 }
+
+impl From<fw_compile::Error> for ApiError {
+    fn from(error: fw_compile::Error) -> Self {
+        let message = error.to_string();
+        match error {
+            fw_compile::Error::MissingMaster(_) => Self::not_found(message),
+            fw_compile::Error::NoExportedGlyphs
+            | fw_compile::Error::InvalidUnitsPerEm(_)
+            | fw_compile::Error::UnsupportedFormat(_) => Self::invalid_params(message),
+            fw_compile::Error::Io(_) => Self::io(message),
+            _ => Self::new("export", message),
+        }
+    }
+}
+
+impl From<fw_formats::Error> for ApiError {
+    fn from(error: fw_formats::Error) -> Self {
+        let message = error.to_string();
+        match error {
+            fw_formats::Error::MissingMaster(_) | fw_formats::Error::MissingSourceMaster(_) => {
+                Self::not_found(message)
+            }
+            fw_formats::Error::Io { .. } => Self::io(message),
+            fw_formats::Error::NoAxes
+            | fw_formats::Error::InvalidName(_)
+            | fw_formats::Error::InvalidIdentifier(_)
+            | fw_formats::Error::InvalidAxisTag(_) => Self::invalid_params(message),
+            _ => Self::parse(message),
+        }
+    }
+}
+
+impl From<fw_layout::Error> for ApiError {
+    fn from(error: fw_layout::Error) -> Self {
+        let message = error.to_string();
+        match error {
+            fw_layout::Error::MissingMaster(_) => Self::not_found(message),
+            fw_layout::Error::Compile(error) => Self::from(error),
+            fw_layout::Error::Parse(_) => Self::new("shaping", message),
+        }
+    }
+}

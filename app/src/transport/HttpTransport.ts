@@ -1,4 +1,4 @@
-import type { ApiMethods, DocumentEvent } from '../api/generated'
+import type { ApiMethods, Event } from '../api/generated'
 import { ApiCallError, type Transport } from './Transport'
 
 interface ApiErrorPayload {
@@ -26,7 +26,7 @@ export class HttpTransport implements Transport {
   readonly kind = 'http'
   private readonly baseUrl: string
   private readonly timeoutMs: number
-  private readonly eventListeners = new Set<(event: DocumentEvent) => void>()
+  private readonly eventListeners = new Set<(event: Event) => void>()
   private socket: WebSocket | undefined
   private reconnectTimer: ReturnType<typeof setTimeout> | undefined
   private reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS
@@ -96,7 +96,7 @@ export class HttpTransport implements Transport {
     return envelope.result
   }
 
-  onEvent(cb: (event: DocumentEvent) => void): () => void {
+  onEvent(cb: (event: Event) => void): () => void {
     this.eventListeners.add(cb)
     this.connectEvents()
     let active = true
@@ -123,9 +123,9 @@ export class HttpTransport implements Transport {
     }
     socket.onmessage = ({ data }) => {
       if (typeof data !== 'string') return
-      let event: DocumentEvent
+      let event: Event
       try {
-        event = JSON.parse(data) as DocumentEvent
+        event = JSON.parse(data) as Event
       } catch {
         return
       }

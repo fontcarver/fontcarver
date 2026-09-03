@@ -7,8 +7,11 @@ rust-version.workspace = true
 
 [dependencies]
 dirs = "6"
+fw-compile = { path = "../fw-compile" }
 fw-doc = { path = "../fw-doc" }
+fw-formats = { path = "../fw-formats" }
 fw-glyphdata = { path = "../fw-glyphdata" }
+fw-layout = { path = "../fw-layout" }
 fw-model = { path = "../fw-model", features = ["ts"] }
 fw-sfnt = { path = "../fw-sfnt" }
 kurbo.workspace = true
@@ -22,4 +25,6 @@ ts-rs.workspace = true
 
 [dev-dependencies]
 fw-fixtures = { path = "../fw-fixtures" }
+kurbo.workspace = true
 sha2.workspace = true
+tempfile.workspace = true

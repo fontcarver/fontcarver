@@ -1,4 +1,4 @@
-import type { ApiMethods, DocumentEvent } from '../api/generated'
+import type { ApiMethods, Event } from '../api/generated'
 
 export interface Transport {
   readonly kind: 'tauri' | 'http'
@@ -6,7 +6,7 @@ export interface Transport {
     method: M,
     params: ApiMethods[M]['params'],
   ): Promise<ApiMethods[M]['result']>
-  onEvent(cb: (event: DocumentEvent) => void): () => void
+  onEvent(cb: (event: Event) => void): () => void
 }
 
 export class ApiCallError extends Error {

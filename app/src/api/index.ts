@@ -1,2 +1,8 @@
 export * from './generated'
-export { call, getTransport, onDocumentEvent, setTransport } from './client'
+export {
+  call,
+  getTransport,
+  onDocumentEvent,
+  onProgressEvent,
+  setTransport,
+} from './client'

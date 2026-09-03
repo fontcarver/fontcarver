@@ -120,7 +120,7 @@ async fn events(State(api): State<Arc<Api>>, upgrade: WebSocketUpgrade) -> Respo
 
 async fn event_stream(
     mut socket: WebSocket,
-    mut events: tokio::sync::broadcast::Receiver<fw_api::DocumentEvent>,
+    mut events: tokio::sync::broadcast::Receiver<fw_api::Event>,
 ) {
     loop {
         tokio::select! {
@@ -136,7 +136,7 @@ async fn event_stream(
                 let text = match serde_json::to_string(&event) {
                     Ok(text) => text,
                     Err(error) => {
-                        tracing::error!(%error, "failed to serialize document event");
+                        tracing::error!(%error, "failed to serialize kernel event");
                         continue;
                     }
                 };

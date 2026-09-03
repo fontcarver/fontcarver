@@ -1,0 +1,279 @@
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
+
+use fw_api::{Api, Event, ExportReport, RecoveryEntry};
+use fw_doc::{
+    autosave::{spawn, AutosaveConfig},
+    Session,
+};
+use fw_model::{Contour, Font, Glyph, Layer};
+use kurbo::BezPath;
+use serde_json::json;
+use sha2::{Digest, Sha256};
+
+fn export_font() -> Font {
+    let mut font = Font::new_empty("Export Test", 1_000);
+    // A fixed creation stamp keeps two exports of the same font byte-identical.
+    font.info.open_type_head_created = Some("2020/01/02 03:04:05".to_owned());
+    let master = font.default_master().id.clone();
+    for (name, unicode, width) in [
+        (".notdef", None, 600.0),
+        ("space", Some(0x20), 250.0),
+        ("A", Some(0x41), 600.0),
+        ("B", Some(0x42), 620.0),
+    ] {
+        let mut glyph = Glyph::new(name);
+        glyph.unicodes.extend(unicode);
+        let mut layer = Layer::new_master(master.clone());
+        layer.width = width;
+        let mut path = BezPath::new();
+        path.move_to((50.0, 0.0));
+        path.line_to((50.0, 700.0));
+        path.line_to((width - 50.0, 700.0));
+        path.line_to((width - 50.0, 0.0));
+        path.close_path();
+        layer.contours = Contour::from_bezpath(&path);
+        glyph.layers.push(layer);
+        font.insert_glyph(glyph).expect("insert export glyph");
+    }
+    font
+}
+
+fn digest(bytes: &[u8]) -> String {
+    format!("{:x}", Sha256::digest(bytes))
+}
+
+#[test]
+fn exported_ttf_matches_the_compiler_output_byte_for_byte() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let path = directory.path().join("ExportTest.ttf");
+    let font = export_font();
+    let expected = fw_compile::export(&font, &|_| 0, &fw_compile::ExportOptions::default())
+        .expect("reference export");
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(font, None);
+    let api = Api::new(session);
+
+    let report: ExportReport = serde_json::from_value(
+        api.call(
+            "session.export",
+            json!({ "doc": doc, "path": path, "options": { "format": "Ttf" } }),
+        )
+        .expect("export ttf"),
+    )
+    .expect("decode export report");
+
+    let written = std::fs::read(&path).expect("read exported font");
+    assert_eq!(digest(&written), digest(&expected.bytes));
+    assert_eq!(report.bytes_written, written.len() as u64);
+    assert_eq!(report.touched_glyphs, 0);
+    assert!(report
+        .tables
+        .iter()
+        .any(|(tag, length)| tag == "glyf" && *length > 0));
+}
+
+#[test]
+fn export_emits_compile_and_write_progress() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let path = directory.path().join("Progress.ttf");
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(export_font(), None);
+    let api = Api::new(session);
+    let mut events = api.subscribe();
+
+    api.call(
+        "session.export",
+        json!({ "doc": doc, "path": path, "options": { "format": "Ttf" } }),
+    )
+    .expect("export ttf");
+
+    let mut stages = Vec::new();
+    while let Ok(event) = events.try_recv() {
+        if let Event::Progress(progress) = event {
+            assert_eq!(progress.doc, doc);
+            stages.push((progress.stage, progress.percent));
+        }
+    }
+    assert_eq!(
+        stages,
+        vec![
+            ("compile".to_owned(), 0),
+            ("preserve".to_owned(), 60),
+            ("write".to_owned(), 100),
+        ]
+    );
+}
+
+#[test]
+fn edited_glyphs_are_reported_as_touched_since_import() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let path = directory.path().join("Touched.ttf");
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(export_font(), None);
+    let api = Api::new(Arc::clone(&session));
+    api.call(
+        "doc.apply",
+        json!({
+            "doc": doc,
+            "command": { "SetWidth": { "glyph": "A", "layer": layer_of(&session, doc, "A"), "width": 640.0 } },
+            "label": "Set width"
+        }),
+    )
+    .expect("edit a glyph");
+
+    let report: ExportReport = serde_json::from_value(
+        api.call(
+            "session.export",
+            json!({ "doc": doc, "path": path, "options": { "format": "Ttf" } }),
+        )
+        .expect("export ttf"),
+    )
+    .expect("decode export report");
+
+    assert_eq!(report.touched_glyphs, 1);
+}
+
+fn layer_of(session: &Session, doc: fw_doc::DocId, glyph: &str) -> String {
+    session
+        .with_doc(doc, |document| {
+            let master = document.font.default_master().id.clone();
+            document
+                .font
+                .glyph(glyph)
+                .and_then(|glyph| glyph.master_layer(&master))
+                .map(|layer| layer.id.to_string())
+                .expect("master layer")
+        })
+        .expect("open document")
+}
+
+#[test]
+fn exports_woff2_and_a_ufo_package() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(export_font(), None);
+    let api = Api::new(session);
+
+    let woff2 = directory.path().join("ExportTest.woff2");
+    api.call(
+        "session.export",
+        json!({ "doc": doc, "path": woff2, "options": { "format": "Woff2" } }),
+    )
+    .expect("export woff2");
+    assert_eq!(&std::fs::read(&woff2).expect("read woff2")[..4], b"wOF2");
+
+    let ufo = directory.path().join("ExportTest.ufo");
+    let report: ExportReport = serde_json::from_value(
+        api.call(
+            "session.export",
+            json!({ "doc": doc, "path": ufo, "options": { "format": "Ufo" } }),
+        )
+        .expect("export ufo"),
+    )
+    .expect("decode export report");
+    assert!(ufo.join("metainfo.plist").is_file());
+    assert!(report.bytes_written > 0);
+
+    let fwf = directory.path().join("ExportTest.fwf");
+    api.call(
+        "session.export",
+        json!({ "doc": doc, "path": fwf, "options": { "format": "Fwf" } }),
+    )
+    .expect("export fwf");
+    assert!(fwf.is_file());
+}
+
+#[test]
+fn recovery_lists_opens_and_discards_an_autosave() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let document_path = directory.path().join("Recovered.fwf");
+    let session = Arc::new(Session::new());
+    let api = Api::new(Arc::clone(&session));
+    api.configure_config_dir(directory.path().join("config"))
+        .expect("configure the config directory");
+    let doc = session.open_font(export_font(), Some(document_path.clone()));
+    session
+        .with_doc_mut(doc, |document| document.dirty = true)
+        .expect("mark the document dirty");
+    let autosave_dir = directory.path().join("config/autosave");
+    let handle = spawn(
+        Arc::clone(&session),
+        AutosaveConfig {
+            interval: Duration::from_millis(20),
+            dir: autosave_dir.clone(),
+        },
+    );
+
+    let entries = wait_for_recoverable(&api);
+    handle.stop();
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0].doc_path.as_deref(), document_path.to_str());
+    assert!(entries[0].saved_at_ms > 0);
+
+    let summary = api
+        .call(
+            "session.recover",
+            json!({ "autosave_path": entries[0].autosave_path }),
+        )
+        .expect("recover the snapshot");
+    assert_eq!(summary["family_name"], "Export Test");
+    assert_eq!(summary["path"], json!(document_path.to_str()));
+    assert_eq!(summary["dirty"], json!(true));
+
+    api.call(
+        "session.discard_recovery",
+        json!({ "autosave_path": entries[0].autosave_path }),
+    )
+    .expect("discard the snapshot");
+    assert!(!std::path::Path::new(&entries[0].autosave_path).exists());
+    assert_eq!(
+        api.call("session.recover_list", json!({}))
+            .expect("list recoverable documents"),
+        json!([])
+    );
+}
+
+fn wait_for_recoverable(api: &Api) -> Vec<RecoveryEntry> {
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        let entries: Vec<RecoveryEntry> = serde_json::from_value(
+            api.call("session.recover_list", json!({}))
+                .expect("list recoverable documents"),
+        )
+        .expect("decode recovery entries");
+        if !entries.is_empty() || Instant::now() > deadline {
+            return entries;
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
+#[test]
+fn autosave_starts_from_preferences() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let session = Arc::new(Session::new());
+    let api = Api::new(Arc::clone(&session));
+    api.configure_config_dir(directory.path().join("config"))
+        .expect("configure the config directory");
+    api.call(
+        "prefs.set",
+        json!({ "prefs": {
+            "theme": "system",
+            "language": "en",
+            "recent_limit": 20,
+            "autosave_seconds": 1
+        }}),
+    )
+    .expect("store preferences");
+    let doc = session.open_font(export_font(), Some(directory.path().join("Auto.fwf")));
+    session
+        .with_doc_mut(doc, |document| document.dirty = true)
+        .expect("mark the document dirty");
+
+    api.start_autosave().expect("start autosave");
+
+    assert_eq!(wait_for_recoverable(&api).len(), 1);
+}

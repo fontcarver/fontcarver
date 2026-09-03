@@ -123,7 +123,7 @@ fn write_json(api: &Api, name: &str, value: &impl serde::Serialize) -> Result<()
     Ok(())
 }
 
-fn config_dir(api: &Api) -> Result<PathBuf, ApiError> {
+pub(crate) fn config_dir(api: &Api) -> Result<PathBuf, ApiError> {
     if let Some(path) = api.config_dir() {
         return Ok(path.to_owned());
     }

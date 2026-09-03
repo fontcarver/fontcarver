@@ -1,4 +1,4 @@
-import type { ApiMethods, DocSummary, DocumentEvent } from '../api'
+import type { ApiMethods, DocSummary, DocumentEvent, Event } from '../api'
 import type { Transport } from '../transport'
 
 /** One recorded API call. */
@@ -17,7 +17,7 @@ export type MockHandlers = {
 /** A transport double that records calls and can push events. */
 export interface MockTransport extends Transport {
   readonly calls: RecordedCall[]
-  emit: (event: DocumentEvent) => void
+  emit: (event: DocumentEvent | Event) => void
 }
 
 /** Creates a transport double for store and component tests. */
@@ -25,7 +25,7 @@ export function createMockTransport(
   handlers: MockHandlers = {},
 ): MockTransport {
   const calls: RecordedCall[] = []
-  const listeners = new Set<(event: DocumentEvent) => void>()
+  const listeners = new Set<(event: Event) => void>()
 
   return {
     kind: 'http',
@@ -42,7 +42,8 @@ export function createMockTransport(
       return () => listeners.delete(cb)
     },
     emit(event) {
-      for (const listener of [...listeners]) listener(event)
+      const wrapped: Event = 'kind' in event ? event : { kind: 'Document', ...event }
+      for (const listener of [...listeners]) listener(wrapped)
     },
   }
 }

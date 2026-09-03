@@ -4,14 +4,22 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::{Arc, OnceLock},
+    thread,
+    time::Duration,
 };
 
-use fw_doc::{DocId, DocumentEvent, Session};
+use fw_doc::{
+    autosave::{spawn as spawn_autosave, AutosaveConfig, AutosaveHandle},
+    DocId, Session,
+};
+use fw_layout::Shaper;
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
-use tokio::sync::broadcast;
+use tokio::sync::broadcast::{self, error::RecvError};
 
-use crate::{error::ApiError, handlers, DocWarning, SidebarCounts};
+use crate::{error::ApiError, handlers, DocWarning, Event, ProgressEvent, SidebarCounts};
+
+const EVENT_CAPACITY: usize = 1024;
 
 /// Method name, parameter TypeScript type, and result TypeScript type.
 pub const METHODS: &[(&str, &str, &str)] = &[
@@ -38,6 +46,28 @@ pub const METHODS: &[(&str, &str, &str)] = &[
     ("doc.redo", "DocParams", "Change | null"),
     ("prefs.get", "EmptyParams", "Prefs"),
     ("prefs.set", "SetPrefsParams", "Prefs"),
+    ("glyphs.outline", "LayerOutlineParams", "LayerOutline"),
+    (
+        "glyphs.flattened_components",
+        "LayerOutlineParams",
+        "FlattenedComponents",
+    ),
+    ("glyphs.add", "AddGlyphsParams", "AddGlyphsResult"),
+    ("glyphs.ids", "GlyphIdsParams", "Array<GlyphId>"),
+    (
+        "doc.metrics_resolve",
+        "MetricsResolveParams",
+        "ResolvedMetrics",
+    ),
+    ("text.shape", "ShapeParams", "ShapedRun"),
+    ("session.export", "ExportParams", "ExportReport"),
+    (
+        "session.recover_list",
+        "EmptyParams",
+        "Array<RecoveryEntry>",
+    ),
+    ("session.recover", "RecoveryParams", "DocSummary"),
+    ("session.discard_recovery", "RecoveryParams", "null"),
 ];
 
 /// Thread-safe typed facade over an editable document session.
@@ -46,18 +76,27 @@ pub struct Api {
     pub(crate) sidebar_cache: std::sync::Mutex<HashMap<DocId, (u64, SidebarCounts)>>,
     pub(crate) warnings: std::sync::Mutex<HashMap<DocId, Vec<DocWarning>>>,
     pub(crate) config_lock: std::sync::Mutex<()>,
+    pub(crate) shaper: Shaper,
     config_dir: OnceLock<PathBuf>,
+    events: broadcast::Sender<Event>,
+    event_bridge: OnceLock<()>,
+    autosave: OnceLock<AutosaveHandle>,
 }
 
 impl Api {
     /// Creates an API facade for `session`.
     pub fn new(session: Arc<Session>) -> Self {
+        let (events, _) = broadcast::channel(EVENT_CAPACITY);
         Self {
             session,
             sidebar_cache: std::sync::Mutex::new(HashMap::new()),
             warnings: std::sync::Mutex::new(HashMap::new()),
             config_lock: std::sync::Mutex::new(()),
+            shaper: Shaper::new(),
             config_dir: OnceLock::new(),
+            events,
+            event_bridge: OnceLock::new(),
+            autosave: OnceLock::new(),
         }
     }
 
@@ -86,9 +125,76 @@ impl Api {
         self.config_dir.get().map(PathBuf::as_path)
     }
 
-    /// Subscribes to document change events from the underlying session.
-    pub fn subscribe(&self) -> broadcast::Receiver<DocumentEvent> {
-        self.session.subscribe()
+    /// Subscribes to document change and progress events.
+    ///
+    /// The first subscription starts a forwarding thread that republishes the
+    /// session's document events on this stream; the thread stops when the
+    /// session is dropped.
+    pub fn subscribe(&self) -> broadcast::Receiver<Event> {
+        self.start_event_bridge();
+        self.events.subscribe()
+    }
+
+    /// Starts periodic crash-recovery snapshots for every open document.
+    ///
+    /// The interval comes from [`crate::Prefs::autosave_seconds`]; a zero
+    /// interval leaves autosave off. Calling this more than once is a no-op.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the recovery directory cannot be determined.
+    pub fn start_autosave(&self) -> Result<(), ApiError> {
+        if self.autosave.get().is_some() {
+            return Ok(());
+        }
+        let seconds = handlers::prefs::get(self, crate::EmptyParams {})?.autosave_seconds;
+        if seconds == 0 {
+            return Ok(());
+        }
+        let config = AutosaveConfig {
+            interval: Duration::from_secs(u64::from(seconds)),
+            dir: self.autosave_dir()?,
+        };
+        let handle = spawn_autosave(Arc::clone(&self.session), config);
+        let _ = self.autosave.set(handle);
+        Ok(())
+    }
+
+    /// Returns the directory holding crash-recovery snapshots.
+    pub(crate) fn autosave_dir(&self) -> Result<PathBuf, ApiError> {
+        Ok(handlers::prefs::config_dir(self)?.join("autosave"))
+    }
+
+    pub(crate) fn emit_progress(&self, doc: DocId, stage: &str, percent: u8) {
+        let _ = self.events.send(Event::Progress(ProgressEvent {
+            doc,
+            stage: stage.to_owned(),
+            percent,
+        }));
+    }
+
+    fn start_event_bridge(&self) {
+        self.event_bridge.get_or_init(|| {
+            let mut source = self.session.subscribe();
+            let sink = self.events.clone();
+            let started = thread::Builder::new()
+                .name("fontworkshop-events".to_owned())
+                .spawn(move || loop {
+                    match source.blocking_recv() {
+                        Ok(event) => {
+                            // An error here only means nobody is listening yet.
+                            let _ = sink.send(Event::Document(event));
+                        }
+                        Err(RecvError::Lagged(skipped)) => {
+                            tracing::warn!(skipped, "API event forwarder lagged");
+                        }
+                        Err(RecvError::Closed) => break,
+                    }
+                });
+            if let Err(error) = started {
+                tracing::error!(%error, "could not start the API event forwarder");
+            }
+        });
     }
 
     fn invoke<P, R>(
@@ -148,6 +254,16 @@ define_dispatch! {
     "doc.redo" => handlers::doc::redo,
     "prefs.get" => handlers::prefs::get,
     "prefs.set" => handlers::prefs::set,
+    "glyphs.outline" => handlers::editing::outline,
+    "glyphs.flattened_components" => handlers::editing::flattened_components,
+    "glyphs.add" => handlers::editing::add,
+    "glyphs.ids" => handlers::editing::ids,
+    "doc.metrics_resolve" => handlers::editing::metrics_resolve,
+    "text.shape" => handlers::shaping::shape,
+    "session.export" => handlers::export::export,
+    "session.recover_list" => handlers::session::recover_list,
+    "session.recover" => handlers::session::recover,
+    "session.discard_recovery" => handlers::session::discard_recovery,
 }
 
 #[cfg(test)]

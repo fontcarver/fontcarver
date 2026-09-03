@@ -1588,9 +1588,12 @@ name = "fw-api"
 version = "0.1.0"
 dependencies = [
  "dirs",
+ "fw-compile",
  "fw-doc",
  "fw-fixtures",
+ "fw-formats",
  "fw-glyphdata",
+ "fw-layout",
  "fw-model",
  "fw-sfnt",
  "kurbo",
@@ -1598,6 +1601,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "tempfile",
  "thiserror 2.0.20",
  "tokio",
  "tracing",

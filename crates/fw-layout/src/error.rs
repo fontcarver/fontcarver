@@ -14,7 +14,4 @@ pub enum Error {
     /// The compiled font could not be parsed back.
     #[error("could not parse the compiled shaping font: {0}")]
     Parse(String),
-    /// A shared cache lock was poisoned by a panicking thread.
-    #[error("shaping cache lock is poisoned")]
-    LockPoisoned,
 }
