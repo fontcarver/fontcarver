@@ -20,8 +20,36 @@ describe('computeGrid', () => {
     expect(metrics.rows).toBe(4096)
     expect(metrics.contentHeight).toBe(4096 * 72 + 8)
     expect(metrics.firstRow).toBe(0)
-    expect(metrics.lastRow).toBe(13)
-    expect([metrics.first, metrics.last]).toEqual([0, 223])
+    // Rows 0-10 are visible (row 11 starts exactly on the fold), plus two
+    // rows of overscan below.
+    expect(metrics.lastRow).toBe(12)
+    expect([metrics.first, metrics.last]).toEqual([0, 207])
+  })
+
+  it('renders exactly two overscan rows past the last visible one', () => {
+    // 800 px of viewport, 8 px of leading gap, 72 px pitch: the last row that
+    // overlaps the viewport is row 10, whose box is 728-792.
+    const metrics = computeGrid({ ...CJK, scrollTop: 0 })
+    const lastVisibleTop = 8 + 10 * 72
+
+    expect(lastVisibleTop).toBeLessThan(800)
+    expect(8 + 11 * 72).toBe(800)
+    expect(metrics.lastRow - 10).toBe(2)
+  })
+
+  it('counts a row as visible as soon as one pixel of it is on screen', () => {
+    const metrics = computeGrid({ ...CJK, scrollTop: 8, overscanRows: 0 })
+
+    // Scrolled by 8 px the viewport ends at 808, so row 11 (800-864) shows.
+    expect(metrics.firstRow).toBe(0)
+    expect(metrics.lastRow).toBe(11)
+  })
+
+  it('drops a row whose bottom edge has just left the viewport', () => {
+    const metrics = computeGrid({ ...CJK, scrollTop: 72, overscanRows: 0 })
+
+    // Row 0 spans 8-72, so at scrollTop 72 it is exactly gone.
+    expect(metrics.firstRow).toBe(1)
   })
 
   it('renders only the visible rows plus two rows of overscan when scrolled', () => {

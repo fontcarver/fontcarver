@@ -12,6 +12,28 @@ afterEach(cleanup)
  * instead of silently skipping it, and keeps "Not implemented" noise out of
  * the test output.
  */
+/**
+ * jsdom implements no `PointerEvent`, so a dispatched `pointerdown` carries
+ * none of the mouse properties the grid reads (`button`, `clientX`). Mapping it
+ * onto `MouseEvent` keeps the production guards honest in tests.
+ */
+if (typeof globalThis.PointerEvent === 'undefined') {
+  class PointerEventPolyfill extends MouseEvent {
+    readonly pointerId: number
+    readonly pointerType: string
+    readonly isPrimary: boolean
+
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init)
+      this.pointerId = init.pointerId ?? 1
+      this.pointerType = init.pointerType ?? 'mouse'
+      this.isPrimary = init.isPrimary ?? true
+    }
+  }
+  globalThis.PointerEvent =
+    PointerEventPolyfill as unknown as typeof globalThis.PointerEvent
+}
+
 if (typeof globalThis.Path2D === 'undefined') {
   globalThis.Path2D = class {
     constructor(readonly data?: string) {}

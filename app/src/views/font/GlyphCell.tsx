@@ -54,6 +54,17 @@ function GlyphCellView({
 
   useEffect(() => {
     const canvas = canvasRef.current
+    return () => {
+      // A 65k-glyph scroll churns through thousands of cells; releasing the
+      // backing store on unmount frees the pixels without waiting for GC.
+      if (!canvas) return
+      canvas.width = 0
+      canvas.height = 0
+    }
+  }, [])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
     if (!canvas || !cell) return
     const device = Math.max(1, Math.round(size * dpr))
     if (canvas.width !== device) canvas.width = device

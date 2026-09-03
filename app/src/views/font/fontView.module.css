@@ -137,6 +137,21 @@
   line-height: 0;
 }
 
+/* The cell is painted on a canvas, so the hover affordance is a ring drawn
+   over it rather than a background change. */
+.cell::after {
+  position: absolute;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  content: '';
+  inset: -1px;
+  pointer-events: none;
+}
+
+.cell:hover::after {
+  border-color: var(--color-border-strong);
+}
+
 .cellCanvas {
   display: block;
 }
@@ -190,9 +205,12 @@
   cursor: default;
 }
 
-.menuItem:hover:not(:disabled) {
+.menuItem:hover:not(:disabled),
+.menuItem:focus-visible:not(:disabled),
+.menuItem:focus:not(:disabled) {
   background: var(--color-accent);
   color: var(--color-accent-text);
+  outline: none;
 }
 
 .menuItem:disabled {

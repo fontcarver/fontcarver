@@ -3,6 +3,7 @@ import { useMemo } from 'react'
 import type { DocSummary } from '../../api'
 import { selectDocView, useDocumentStore } from '../../stores/documentStore'
 
+import './caches'
 import { FilterChips } from './FilterChips'
 import styles from './fontView.module.css'
 import { GlyphGrid } from './GlyphGrid'

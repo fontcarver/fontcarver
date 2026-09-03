@@ -144,7 +144,10 @@ describe('FontView', () => {
     )
   })
 
-  it('selects a glyph on click and extends the selection with Shift', async () => {
+  // Pointer, keyboard, rubber-band and context-menu behaviour is covered in
+  // GlyphGrid.test.tsx, which stubs a real viewport; this only checks that the
+  // view wires a click through to the store.
+  it('selects a glyph on click', async () => {
     const user = userEvent.setup()
     setTransport(transportFor(6_253))
     const summary = makeSummary()

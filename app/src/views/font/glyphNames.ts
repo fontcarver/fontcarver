@@ -9,7 +9,6 @@
  */
 
 import type { DocId, GlyphCell, GlyphId } from '../../api'
-import { onDocumentForgotten } from '../../stores/documentStore'
 
 const byDoc = new Map<DocId, Map<GlyphId, string>>()
 
@@ -48,5 +47,3 @@ export function glyphNamesOf(doc: DocId, gids: Iterable<GlyphId>): string[] {
 export function forgetGlyphNames(doc: DocId): void {
   byDoc.delete(doc)
 }
-
-onDocumentForgotten(forgetGlyphNames)

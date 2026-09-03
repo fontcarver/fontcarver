@@ -1,14 +1,15 @@
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type { DocId, GlyphFilter } from '../../api'
+import type { DocId } from '../../api'
 import { Panel } from '../../components/Panel'
+import panelStyles from '../../shell/panels.module.css'
 import {
   emptyFilter,
+  isFiltered,
   selectDocView,
   useDocumentStore,
 } from '../../stores/documentStore'
-import panelStyles from '../../shell/panels.module.css'
 
 import { COLOR_LABELS, colorLabelKey } from './colorLabels'
 import { FilterRow } from './FilterRow'
@@ -17,27 +18,14 @@ export interface SidebarFiltersProps {
   doc: DocId
 }
 
+/** Delay between an edit and the taxonomy-count refresh, in milliseconds. */
+export const SIDEBAR_REFRESH_MS = 250
+
 /** Adds or removes one value of a multi-select filter section. */
 function toggled<T>(values: readonly T[], value: T): T[] {
   return values.includes(value)
     ? values.filter((entry) => entry !== value)
     : [...values, value]
-}
-
-/** Whether any condition of the filter is set. */
-export function isFiltered(filter: GlyphFilter): boolean {
-  return (
-    filter.query !== null ||
-    filter.categories.length > 0 ||
-    filter.scripts.length > 0 ||
-    filter.blocks.length > 0 ||
-    filter.color_labels.length > 0 ||
-    filter.tags.length > 0 ||
-    filter.unicode_ranges.length > 0 ||
-    filter.unencoded_only ||
-    filter.changed_only ||
-    filter.has_components !== null
-  )
 }
 
 /**
@@ -52,10 +40,21 @@ export function SidebarFilters({ doc }: SidebarFiltersProps) {
   const setFilter = useDocumentStore((state) => state.setFilter)
   const counts = view.sidebar
   const filter = view.filter
+  const stale = view.sidebarGeneration !== view.generation
 
   useEffect(() => {
-    if (counts === null) void loadSidebar(doc)
-  }, [counts, doc, loadSidebar])
+    if (!stale) return
+    // The first load has nothing to show, so it goes out at once. Later the
+    // counts are derived from every glyph, so an edit invalidates them: the
+    // previous counts stay on screen until the new ones land, and a burst of
+    // edits collapses into one request.
+    if (counts === null) {
+      void loadSidebar(doc)
+      return
+    }
+    const timer = setTimeout(() => void loadSidebar(doc), SIDEBAR_REFRESH_MS)
+    return () => clearTimeout(timer)
+  }, [counts, doc, loadSidebar, stale])
 
   if (counts === null)
     return <p className={panelStyles.hintBlock}>{t('sidebar.empty')}</p>

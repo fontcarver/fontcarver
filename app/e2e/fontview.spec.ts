@@ -60,4 +60,20 @@ test.describe('font view', () => {
       page.getByRole('button', { name: 'Remove filter Letter' }),
     ).toBeVisible()
   })
+
+  test('reports the selection in the status bar', async ({ page }) => {
+    await page.goto('/')
+    const grid = page.getByRole('listbox', { name: 'Glyphs' })
+    const status = page.getByRole('contentinfo')
+
+    await expect(status.getByText('0 selected')).toBeVisible()
+
+    await grid.getByRole('option', { name: 'A', exact: true }).click()
+    await expect(status.getByText('1 selected')).toBeVisible()
+
+    await grid.getByRole('option', { name: 'D', exact: true }).click({
+      modifiers: ['Shift'],
+    })
+    await expect(status.getByText('4 selected')).toBeVisible()
+  })
 })

@@ -75,10 +75,20 @@ export function computeGrid(input: GridInput): GridMetrics {
     }
   }
 
-  const top = Math.max(0, input.scrollTop - gap)
-  const bottom = Math.max(0, input.scrollTop + input.height - gap)
-  const firstRow = Math.max(0, Math.floor(top / pitch) - overscan)
-  const lastRow = Math.min(rows - 1, Math.floor(bottom / pitch) + overscan)
+  // A row is visible when its box overlaps the viewport. Row `r` spans
+  // `gap + r * pitch` to `gap + r * pitch + cellSize`, so a row whose top edge
+  // sits exactly on the viewport's bottom edge is *not* visible; using
+  // `floor` there would render one row too many below the fold.
+  const visibleFirst = Math.floor(
+    (input.scrollTop - gap - cellSize) / pitch + 1,
+  )
+  const visibleLast =
+    Math.ceil((input.scrollTop + input.height - gap) / pitch) - 1
+  const firstRow = Math.min(
+    rows - 1,
+    Math.max(0, Math.max(0, visibleFirst) - overscan),
+  )
+  const lastRow = Math.min(rows - 1, Math.max(firstRow, visibleLast + overscan))
   const first = firstRow * cols
   const last = Math.min(total - 1, (lastRow + 1) * cols - 1)
   return { cols, rows, pitch, contentHeight, firstRow, lastRow, first, last }

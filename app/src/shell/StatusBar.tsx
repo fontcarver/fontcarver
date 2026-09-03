@@ -38,16 +38,16 @@ export function StatusBar() {
               {t('status.ofTotal', { total: summary.glyph_count })}
             </span>
           ) : null}
-          {view.selection.size > 0 ? (
-            <span className={styles.statusNumeric}>
-              {t('status.selected', { count: view.selection.size })}
-            </span>
-          ) : null}
+          <span className={styles.statusNumeric}>
+            {t('status.selected', { count: view.selection.size })}
+          </span>
           <span className={summary.dirty ? styles.statusDirty : undefined}>
             {summary.dirty ? t('status.dirty') : t('status.clean')}
           </span>
           {summary.warnings.length > 0 ? (
-            <span>{t('status.warnings', { count: summary.warnings.length })}</span>
+            <span>
+              {t('status.warnings', { count: summary.warnings.length })}
+            </span>
           ) : null}
           <span className={styles.statusSpacer} />
           <span className={styles.statusNumeric}>

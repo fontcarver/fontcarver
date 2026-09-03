@@ -171,7 +171,21 @@ describe('paintCell', () => {
     expect(ctx.stroke).toHaveBeenCalled()
   })
 
-  it('drops the label in cells too small to read one', () => {
+  it('still labels a 32 px cell, with smaller type', () => {
+    const ctx = mockContext()
+
+    paintCell(
+      ctx as unknown as CanvasRenderingContext2D,
+      makeCell(),
+      options({ size: 32 }),
+    )
+
+    expect(ctx.fillText).toHaveBeenCalledTimes(1)
+    expect(ctx.fillText.mock.calls[0]?.[0]).toBe('A')
+    expect(ctx.font).toBe('8px system-ui')
+  })
+
+  it('drops the label only in cells too small to read one', () => {
     const ctx = mockContext()
 
     paintCell(
@@ -181,6 +195,18 @@ describe('paintCell', () => {
     )
 
     expect(ctx.fillText).not.toHaveBeenCalled()
+  })
+
+  it('labels index mode in a small cell too', () => {
+    const ctx = mockContext()
+
+    paintCell(
+      ctx as unknown as CanvasRenderingContext2D,
+      makeCell(),
+      options({ size: 32, labelMode: 'index', index: 12 }),
+    )
+
+    expect(ctx.fillText.mock.calls[0]?.[0]).toBe('12')
   })
 })
 

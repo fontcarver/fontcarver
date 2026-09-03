@@ -60,8 +60,14 @@ export interface PaintCellOptions {
   fontFamily: string
 }
 
-/** Smallest cell that still has room for a readable label. */
-export const LABEL_MIN_SIZE = 40
+/**
+ * Smallest cell that still has room for a readable label. Below this the name
+ * is only available as the cell's tooltip.
+ */
+export const LABEL_MIN_SIZE = 32
+
+/** Cell size at which the label switches to the full-size type. */
+const LABEL_LARGE_SIZE = 48
 
 /** Height of the colour-label stripe along the top of a cell. */
 const STRIPE_HEIGHT = 3
@@ -114,8 +120,8 @@ export function paintCell(
   ctx.fillStyle = options.selected ? theme.backgroundSelected : theme.background
   ctx.fillRect(0, 0, size, size)
 
-  const showLabel = options.labelMode !== 'index' || size >= LABEL_MIN_SIZE
-  const labelHeight = size >= LABEL_MIN_SIZE && showLabel ? 14 : 0
+  const showLabel = size >= LABEL_MIN_SIZE
+  const labelHeight = showLabel ? (size >= LABEL_LARGE_SIZE ? 14 : 10) : 0
   const pad = Math.max(2, Math.round(size * 0.08))
   const box: Rect = {
     x: pad,
@@ -150,7 +156,10 @@ export function paintCell(
   }
 
   if (labelHeight > 0) {
-    const fontSize = Math.min(11, Math.max(9, Math.round(size * 0.16)))
+    const fontSize =
+      size >= LABEL_LARGE_SIZE
+        ? Math.min(11, Math.max(9, Math.round(size * 0.16)))
+        : 8
     ctx.font = `${fontSize}px ${options.fontFamily}`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'alphabetic'
@@ -160,7 +169,7 @@ export function paintCell(
       cellLabel(cell, options.labelMode, options.index),
       size - pad,
     )
-    ctx.fillText(text, size / 2, size - pad + 1)
+    ctx.fillText(text, size / 2, size - Math.max(1, pad - 1))
   }
 
   if (options.selected || options.focused) {

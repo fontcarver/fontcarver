@@ -64,7 +64,9 @@ describe('App shell', () => {
 
     await user.click(within(menubar).getByRole('menuitem', { name: 'Path' }))
 
-    const item = screen.getByRole('menuitem', { name: 'Arrives in a later phase' })
+    const item = screen.getByRole('menuitem', {
+      name: 'Arrives in a later phase',
+    })
     expect(item).toBeDisabled()
   })
 
@@ -80,7 +82,9 @@ describe('App shell', () => {
     const saveAs = within(menu).getByRole('menuitem', { name: /Save As/ })
     expect(saveAs).toBeDisabled()
     expect(saveAs).toHaveAttribute('title', 'No font is open')
-    expect(within(menu).getAllByText('No font is open').length).toBeGreaterThan(0)
+    expect(within(menu).getAllByText('No font is open').length).toBeGreaterThan(
+      0,
+    )
   })
 
   it('follows a system theme change while the preference is system', async () => {
@@ -184,6 +188,10 @@ describe('App shell', () => {
     expect(screen.getByRole('listbox', { name: 'Glyphs' })).toBeInTheDocument()
     expect(await screen.findByText('Letter')).toBeInTheDocument()
     expect(screen.getAllByText('6,253 glyphs').length).toBeGreaterThan(0)
+    // Both counts are always on the status bar, selection included.
+    expect(
+      within(screen.getByRole('contentinfo')).getByText('0 selected'),
+    ).toBeInTheDocument()
   })
 
   it('makes the sidebar and inspector follow the active tab kind', async () => {

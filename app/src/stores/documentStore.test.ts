@@ -162,3 +162,59 @@ describe('document teardown', () => {
     expect(released).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('document generation', () => {
+  it('only moves a known generation forward', () => {
+    const store = useDocumentStore.getState()
+    store.noteGeneration(7, 4) // unknown document: ignored
+    expect(useDocumentStore.getState().byDoc[7]).toBeUndefined()
+
+    store.ensure(7)
+    store.noteGeneration(7, 4)
+    expect(useDocumentStore.getState().byDoc[7]?.generation).toBe(4)
+
+    store.noteGeneration(7, 2)
+    expect(useDocumentStore.getState().byDoc[7]?.generation).toBe(4)
+  })
+
+  it('stamps the sidebar counts with the generation they were loaded for', async () => {
+    setTransport(
+      createMockTransport({
+        'doc.sidebar': () =>
+          ({
+            categories: [],
+            scripts: [],
+            blocks: [],
+            unencoded: 0,
+            total: 12,
+            color_labels: [],
+          }) satisfies SidebarCounts,
+      }),
+    )
+    const store = useDocumentStore.getState()
+    store.ensure(2)
+    store.noteGeneration(2, 6)
+
+    await store.loadSidebar(2)
+
+    const view = useDocumentStore.getState().byDoc[2]
+    expect(view?.sidebar?.total).toBe(12)
+    expect(view?.sidebarGeneration).toBe(6)
+
+    // A later edit makes them stale again.
+    store.noteGeneration(2, 7)
+    expect(useDocumentStore.getState().byDoc[2]?.sidebarGeneration).toBe(6)
+    expect(useDocumentStore.getState().byDoc[2]?.generation).toBe(7)
+  })
+
+  it('records the grid focus glyph', () => {
+    const store = useDocumentStore.getState()
+    store.ensure(3)
+
+    store.setFocus(3, 41)
+    expect(useDocumentStore.getState().byDoc[3]?.focus).toBe(41)
+
+    store.setFocus(3, null)
+    expect(useDocumentStore.getState().byDoc[3]?.focus).toBeNull()
+  })
+})

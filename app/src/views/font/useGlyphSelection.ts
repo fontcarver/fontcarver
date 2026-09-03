@@ -6,7 +6,7 @@
  * falling back to the kernel when the cells are not in the page cache.
  */
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import type { DocId, GlyphId } from '../../api'
 import { useDocumentStore } from '../../stores/documentStore'
@@ -58,9 +58,24 @@ export function useGlyphSelection({
   const setSelection = useDocumentStore((state) => state.setSelection)
   const [focusIndex, setFocusIndex] = useState(0)
   const anchorRef = useRef(0)
+  /**
+   * Counter identifying the newest selection request. A range that has to ask
+   * the kernel for its handles can resolve after a later click or key press,
+   * so every request captures this value and only the current one may write.
+   */
+  const requestRef = useRef(0)
+
+  useEffect(
+    () => () => {
+      // Unmounting (a new filter, sort or master) retires the pending request.
+      requestRef.current += 1
+    },
+    [],
+  )
 
   const apply = useCallback(
     (gids: readonly GlyphId[], additive: boolean) => {
+      requestRef.current += 1
       const current = useDocumentStore.getState().byDoc[doc]?.selection
       setSelection(doc, additive && current ? withAdded(current, gids) : gids)
     },
@@ -85,7 +100,10 @@ export function useGlyphSelection({
   const selectRange = useCallback(
     async (from: number, to: number, additive: boolean) => {
       const [first, last] = rangeBetween(from, to)
-      apply(await gidsFor(first, last), additive)
+      const request = (requestRef.current += 1)
+      const gids = await gidsFor(first, last)
+      if (request !== requestRef.current) return
+      apply(gids, additive)
     },
     [apply, gidsFor],
   )
@@ -103,6 +121,7 @@ export function useGlyphSelection({
       anchorRef.current = index
       const gid = pager.cell(index)?.gid
       if (gid === undefined) return
+      requestRef.current += 1
       if (!additive) {
         setSelection(doc, [gid])
         return
@@ -129,7 +148,10 @@ export function useGlyphSelection({
     setFocusIndex(index)
   }, [])
 
-  const clear = useCallback(() => setSelection(doc, []), [doc, setSelection])
+  const clear = useCallback(() => {
+    requestRef.current += 1
+    setSelection(doc, [])
+  }, [doc, setSelection])
 
   return { focusIndex, apply, selectAt, focusAt, anchorAt, clear }
 }

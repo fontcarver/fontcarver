@@ -11,7 +11,6 @@ import { useEffect, useState } from 'react'
 
 import { call, type DocId, type MasterId } from '../../api'
 import { emBoxFor, type EmBox } from '../../canvas/glyphPaint'
-import { onDocumentForgotten } from '../../stores/documentStore'
 
 /** Ascender and descender per master of one document. */
 type MasterMetrics = Map<string, { ascender: number; descender: number }>
@@ -49,8 +48,6 @@ async function loadMetrics(doc: DocId): Promise<MasterMetrics> {
 export function forgetFontMetrics(doc: DocId): void {
   cache.delete(doc)
 }
-
-onDocumentForgotten(forgetFontMetrics)
 
 /**
  * The em box for one master. Until the metrics arrive — and for fonts that

@@ -1,4 +1,8 @@
-import { useEffect, useRef } from 'react'
+import {
+  useEffect,
+  useRef,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { getCommand, isCommandEnabled, runCommand } from '../../shell/commands'
@@ -11,12 +15,15 @@ export interface GlyphContextMenuProps {
   y: number
   /** Command ids listed in the menu, in order. */
   commands: readonly string[]
+  /** Closes the menu; the grid takes keyboard focus back. */
   onClose: () => void
 }
 
 /**
  * The glyph-grid context menu. It lists registry commands, so a command that
- * gains a new gate or title is reflected here without a change.
+ * gains a new gate or title is reflected here without a change. The first
+ * enabled item takes focus when the menu opens, and focus returns to the grid
+ * when it closes.
  */
 export function GlyphContextMenu({
   x,
@@ -28,7 +35,11 @@ export function GlyphContextMenu({
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    ref.current?.focus()
+    ref.current
+      ?.querySelector<HTMLButtonElement>(
+        'button[role="menuitem"]:not(:disabled)',
+      )
+      ?.focus()
     const onPointerDown = (event: Event) => {
       if (!ref.current?.contains(event.target as Node)) onClose()
     }
@@ -43,14 +54,31 @@ export function GlyphContextMenu({
     }
   }, [onClose])
 
+  const onMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+    event.preventDefault()
+    const items = [
+      ...(ref.current?.querySelectorAll<HTMLButtonElement>(
+        'button[role="menuitem"]:not(:disabled)',
+      ) ?? []),
+    ]
+    if (items.length === 0) return
+    const current = items.indexOf(document.activeElement as HTMLButtonElement)
+    const delta = event.key === 'ArrowDown' ? 1 : -1
+    const next =
+      (((current < 0 ? 0 : current + delta) % items.length) + items.length) %
+      items.length
+    items[next]?.focus()
+  }
+
   return (
     <div
       ref={ref}
       role="menu"
       aria-label={t('fontView.contextMenu')}
-      tabIndex={-1}
       className={styles.menu}
       style={{ left: x, top: y }}
+      onKeyDown={onMenuKeyDown}
     >
       {commands.map((id) => {
         const command = getCommand(id)

@@ -14,7 +14,11 @@ import { useTranslation } from 'react-i18next'
 import { call, onDocumentEvent, type DocSummary, type GlyphId } from '../../api'
 import { pathCache } from '../../canvas/pathCache'
 import { openGlyphTab } from '../../shell/tabActions'
-import { selectDocView, useDocumentStore } from '../../stores/documentStore'
+import {
+  isFiltered,
+  selectDocView,
+  useDocumentStore,
+} from '../../stores/documentStore'
 import { useUiStore } from '../../stores/uiStore'
 
 import { GlyphCell } from './GlyphCell'
@@ -22,7 +26,7 @@ import { GlyphContextMenu } from './GlyphContextMenu'
 import styles from './fontView.module.css'
 import { startFrameMeter } from './frameMeter'
 import { forgetGlyphNames, rememberGlyphNames } from './glyphNames'
-import { GlyphPager } from './glyphPager'
+import { GlyphPager, requiresFullReload } from './glyphPager'
 import type { GlyphQuery } from './glyphSelection'
 import { useGlyphSelection } from './useGlyphSelection'
 import { uiFontFamily, useCellTheme } from './useCellTheme'
@@ -85,6 +89,7 @@ export function GlyphGrid({ summary, query }: GlyphGridProps) {
   const doc = summary.doc
   const view = useDocumentStore(selectDocView(doc))
   const setMatchCount = useDocumentStore((state) => state.setMatchCount)
+  const setFocus = useDocumentStore((state) => state.setFocus)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [version, bump] = useReducer((count: number) => count + 1, 0)
@@ -135,6 +140,21 @@ export function GlyphGrid({ summary, query }: GlyphGridProps) {
 
   useEffect(() => startFrameMeter(), [])
 
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    // Development probe: lets a browser agent confirm that the page cache
+    // stays bounded while scrolling a 65k-glyph font.
+    const target = globalThis as { __fwGridStats?: () => unknown }
+    target.__fwGridStats = () => ({
+      pages: pager.pageCount,
+      cells: pager.cellCount,
+      total: pager.total,
+    })
+    return () => {
+      delete target.__fwGridStats
+    }
+  }, [pager])
+
   useEffect(() => () => pager.cancel(), [pager])
 
   useEffect(() => {
@@ -150,19 +170,32 @@ export function GlyphGrid({ summary, query }: GlyphGridProps) {
     () =>
       onDocumentEvent((event) => {
         if (event.doc !== doc) return
-        if (event.change.glyph_order) {
-          forgetGlyphNames(doc)
-          pathCache.clearDoc(doc)
+        // Answers computed before this edit are stale wherever they are.
+        pager.setGeneration(event.generation)
+        if (event.change.glyph_order) forgetGlyphNames(doc)
+        pathCache.drop(doc, event.change.glyphs)
+        if (event.change.glyph_order) pathCache.clearDoc(doc)
+
+        if (
+          requiresFullReload(event.change, query.sort, isFiltered(query.filter))
+        ) {
+          // Order or membership can have moved anywhere, and the total with
+          // them, so the only truthful answer is to load the list again.
           pager.reset()
           pager.setRange(0, 0)
           return
         }
-        if (event.change.glyphs.length === 0) return
-        pathCache.drop(doc, event.change.glyphs)
         pager.invalidate(event.change.glyphs)
       }),
-    [doc, pager],
+    [doc, pager, query.filter, query.sort],
   )
+
+  // Keeps the store's focus glyph in step with the focus cell, so glyph-scoped
+  // commands (the menu bar, the palette, the context menu) act on the cell the
+  // user last touched rather than on the first member of the selection.
+  useEffect(() => {
+    setFocus(doc, pager.cell(focusIndex)?.gid ?? null)
+  }, [doc, focusIndex, pager, setFocus, version])
 
   const contentPoint = useCallback(
     (clientX: number, clientY: number): { x: number; y: number } | null => {
@@ -252,7 +285,10 @@ export function GlyphGrid({ summary, query }: GlyphGridProps) {
     [anchorAt, apply, band, metrics, pager, total, view.cellSize],
   )
 
-  const closeMenu = useCallback(() => setMenu(null), [])
+  const closeMenu = useCallback(() => {
+    setMenu(null)
+    containerRef.current?.focus()
+  }, [])
 
   const openFocused = useCallback(() => {
     const gid = pager.cell(focusIndex)?.gid
