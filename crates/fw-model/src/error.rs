@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{GlyphName, MasterId};
+use crate::{GlyphName, LayerId, MasterId};
 
 /// An error produced by the document model.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, thiserror::Error)]
@@ -20,6 +20,14 @@ pub enum Error {
     MissingGlyph {
         /// The missing name.
         glyph: GlyphName,
+    },
+    /// A glyph has no layer with a requested identifier.
+    #[error("glyph `{glyph}` has no layer `{layer}`")]
+    MissingLayer {
+        /// The affected glyph.
+        glyph: GlyphName,
+        /// The requested layer identifier.
+        layer: LayerId,
     },
     /// A glyph has no layer for a requested master.
     #[error("glyph `{glyph}` has no layer for master `{master}`")]

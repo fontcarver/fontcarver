@@ -6,6 +6,6 @@ mod relationships;
 mod validation;
 
 pub use compatibility::{masters_compatible, Incompatibility};
-pub use outline::{flatten_layer, layer_bbox};
+pub use outline::{flatten_layer, flatten_layer_by_id, layer_bbox};
 pub use relationships::{dependents, glyph_for_unicode};
 pub use validation::{validate, Issue};
