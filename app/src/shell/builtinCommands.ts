@@ -4,6 +4,8 @@ import { useDocumentStore } from '../stores/documentStore'
 import { activeSummary, useSessionStore } from '../stores/sessionStore'
 import { activeDocId, useUiStore, type ThemePreference } from '../stores/uiStore'
 
+import { registerFontViewCommands } from '../views/font/fontCommands'
+
 import { registerCommands, type Command } from './commands'
 import { closeTab, openFontInfoTab, openGlyphTab } from './tabActions'
 
@@ -38,6 +40,7 @@ async function runHistory(method: 'doc.undo' | 'doc.redo'): Promise<void> {
 
 /** Registers every built-in command. Safe to call more than once. */
 export function registerBuiltinCommands(): void {
+  registerFontViewCommands()
   registerCommands([
     {
       id: 'file.new',

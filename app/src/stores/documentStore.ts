@@ -44,6 +44,8 @@ export function emptyFilter(): GlyphFilter {
 /** Per-document font-view state. */
 export interface DocView {
   sidebar: SidebarCounts | null
+  /** Glyphs matching the current filter, or `null` until the grid knows. */
+  matchCount: number | null
   selection: ReadonlySet<GlyphId>
   filter: GlyphFilter
   sort: GlyphSort
@@ -56,6 +58,7 @@ export interface DocView {
 export function newDocView(): DocView {
   return {
     sidebar: null,
+    matchCount: null,
     selection: new Set(),
     filter: emptyFilter(),
     sort: 'Order',
@@ -74,6 +77,23 @@ export const EMPTY_DOC_VIEW: DocView = Object.freeze({
   selection: Object.freeze(new Set<GlyphId>()) as ReadonlySet<GlyphId>,
 })
 
+/** Called with the document id when a document's view state is discarded. */
+export type ForgetListener = (doc: DocId) => void
+
+const forgetListeners = new Set<ForgetListener>()
+
+/**
+ * Subscribes to document teardown. Per-document caches outside this store
+ * (glyph names, master metrics) register here so closing a document releases
+ * them without the store having to know what they are.
+ */
+export function onDocumentForgotten(listener: ForgetListener): () => void {
+  forgetListeners.add(listener)
+  return () => {
+    forgetListeners.delete(listener)
+  }
+}
+
 function clampCellSize(size: number): number {
   return Math.min(CELL_SIZE_MAX, Math.max(CELL_SIZE_MIN, Math.round(size)))
 }
@@ -88,6 +108,7 @@ export interface DocumentState {
   setSort: (doc: DocId, sort: GlyphSort) => void
   setMaster: (doc: DocId, master: MasterId | null) => void
   setCellSize: (doc: DocId, size: number) => void
+  setMatchCount: (doc: DocId, matchCount: number | null) => void
   stepCellSize: (doc: DocId, direction: 1 | -1) => void
   setLabelMode: (doc: DocId, mode: LabelMode) => void
   setSelection: (doc: DocId, selection: Iterable<GlyphId>) => void
@@ -128,13 +149,15 @@ export const useDocumentStore = create<DocumentState>((set, get) => {
       if (!get().byDoc[doc]) patch(doc, {})
     },
 
-    forget: (doc) =>
+    forget: (doc) => {
+      for (const listener of [...forgetListeners]) listener(doc)
       set((state) => {
         if (!(doc in state.byDoc)) return state
         const byDoc = { ...state.byDoc }
         delete byDoc[doc]
         return { byDoc }
-      }),
+      })
+    },
 
     loadSidebar: async (doc) => {
       get().ensure(doc)
@@ -152,7 +175,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => {
 
     setFilter: (doc, update) => {
       const current = get().byDoc[doc]?.filter ?? emptyFilter()
-      patch(doc, { filter: { ...current, ...update } })
+      patch(doc, { filter: { ...current, ...update }, matchCount: null })
     },
 
     setSort: (doc, sort) => patch(doc, { sort }),
@@ -160,6 +183,11 @@ export const useDocumentStore = create<DocumentState>((set, get) => {
     setMaster: (doc, master) => patch(doc, { master }),
 
     setCellSize: (doc, size) => patch(doc, { cellSize: clampCellSize(size) }),
+
+    setMatchCount: (doc, matchCount) => {
+      if (get().byDoc[doc]?.matchCount === matchCount) return
+      patch(doc, { matchCount })
+    },
 
     stepCellSize: (doc, direction) => {
       const current = get().byDoc[doc]?.cellSize ?? CELL_SIZE_DEFAULT

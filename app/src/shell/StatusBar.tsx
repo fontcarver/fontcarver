@@ -19,13 +19,25 @@ export function StatusBar() {
   const view = useDocumentStore(selectDocView(doc))
 
   return (
-    <div className={styles.statusbar}>
+    <div
+      className={styles.statusbar}
+      role="contentinfo"
+      aria-label={t('a11y.statusBar')}
+    >
       {summary ? (
         <>
           <span className={styles.statusName}>{documentLabel(summary)}</span>
           <span className={styles.statusNumeric}>
-            {t('status.glyphs', { count: summary.glyph_count })}
+            {t('status.glyphs', {
+              count: view.matchCount ?? summary.glyph_count,
+            })}
           </span>
+          {view.matchCount !== null &&
+          view.matchCount !== summary.glyph_count ? (
+            <span className={styles.statusNumeric}>
+              {t('status.ofTotal', { total: summary.glyph_count })}
+            </span>
+          ) : null}
           {view.selection.size > 0 ? (
             <span className={styles.statusNumeric}>
               {t('status.selected', { count: view.selection.size })}

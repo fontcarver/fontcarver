@@ -37,7 +37,10 @@
       "undo": "Undo",
       "undoLabelled": "Undo {{label}}",
       "redo": "Redo",
-      "redoLabelled": "Redo {{label}}"
+      "redoLabelled": "Redo {{label}}",
+      "selectAll": "Select All Glyphs",
+      "selectNone": "Deselect All",
+      "copyGlyphNames": "Copy Glyph Names"
     },
     "glyph": {
       "open": "Open Glyph in New Tab"
@@ -73,7 +76,8 @@
       "nothingToRedo": "Nothing to redo",
       "oneTab": "Only one tab is open",
       "noTab": "No tab is open",
-      "themeActive": "Already the current theme"
+      "themeActive": "Already the current theme",
+      "noFontTab": "The active tab is not a Font tab"
     }
   },
   "palette": {
@@ -132,7 +136,6 @@
     "all": "All glyphs",
     "overview": "Overview",
     "empty": "Open a font to see its glyph filters.",
-    "note": "Filtering becomes interactive with the font view.",
     "collapse": "Collapse {{section}}",
     "expand": "Expand {{section}}",
     "glyphNote": "Layers and the glyph list arrive with the glyph view.",
@@ -170,10 +173,6 @@
     "fontInfoNote": "Font Info sections arrive with the Font Info panel."
   },
   "view": {
-    "font": {
-      "title": "Font view",
-      "note": "The virtualised glyph grid, filters and search arrive in the next task."
-    },
     "glyph": {
       "title": "Glyph view",
       "note": "The outline canvas, metrics and glyph inspector arrive in the next task."
@@ -195,7 +194,8 @@
     "cellSize": "{{size}} px cells",
     "transport": "Kernel: {{kind}}",
     "warnings_one": "{{count}} warning",
-    "warnings_other": "{{count}} warnings"
+    "warnings_other": "{{count}} warnings",
+    "ofTotal": "of {{total, number}}"
   },
   "theme": {
     "label": "Theme",
@@ -213,7 +213,10 @@
     "saved": "Saved {{name}}",
     "opened": "Opened {{name}}",
     "closed": "Closed {{name}}",
-    "about": "FontWorkshop {{version}} — kernel transport: {{kind}}"
+    "about": "FontWorkshop {{version}} — kernel transport: {{kind}}",
+    "copiedNames_one": "Copied {{count, number}} glyph name",
+    "copiedNames_other": "Copied {{count, number}} glyph names",
+    "copyFailed": "Could not write to the clipboard"
   },
   "a11y": {
     "menubar": "Application menu",
@@ -222,6 +225,36 @@
     "inspectorResize": "Resize inspector",
     "notifications": "Notifications",
     "toggleSidebar": "Toggle sidebar",
-    "toggleInspector": "Toggle inspector"
+    "toggleInspector": "Toggle inspector",
+    "statusBar": "Status"
+  },
+  "fontView": {
+    "toolbar": "Glyph grid controls",
+    "gridLabel": "Glyphs",
+    "search": "Search glyphs",
+    "searchPlaceholder": "Name, U+0041, uni0041…",
+    "noMatches": "No glyphs match the current filter.",
+    "encodedOnly": "Encoded only",
+    "clearFilters": "Clear filters",
+    "removeFilter": "Remove filter {{name}}",
+    "contextMenu": "Glyph actions",
+    "chip": {
+      "query": "Search: {{query}}"
+    },
+    "color": {
+      "red": "Red",
+      "orange": "Orange",
+      "brown": "Brown",
+      "yellow": "Yellow",
+      "lightGreen": "Light Green",
+      "darkGreen": "Dark Green",
+      "cyan": "Cyan",
+      "blue": "Blue",
+      "purple": "Purple",
+      "pink": "Pink",
+      "lightGray": "Light Gray",
+      "darkGray": "Dark Gray",
+      "unknown": "Other colour"
+    }
   }
 }

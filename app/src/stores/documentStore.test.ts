@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setTransport, type SidebarCounts } from '../api'
 import { createMockTransport } from '../test/mockTransport'
@@ -9,6 +9,7 @@ import {
   CELL_SIZE_MAX,
   CELL_SIZE_MIN,
   initialDocumentState,
+  onDocumentForgotten,
   selectDocView,
   useDocumentStore,
 } from './documentStore'
@@ -143,5 +144,21 @@ describe('documentStore', () => {
 
     expect(useUiStore.getState().toasts).toEqual([])
     expect(useDocumentStore.getState().byDoc[4]).toBeUndefined()
+  })
+})
+
+describe('document teardown', () => {
+  it('tells per-document caches to release a forgotten document', () => {
+    const released = vi.fn()
+    const stop = onDocumentForgotten(released)
+    useDocumentStore.getState().ensure(4)
+
+    useDocumentStore.getState().forget(4)
+    expect(released).toHaveBeenCalledWith(4)
+
+    stop()
+    useDocumentStore.getState().ensure(5)
+    useDocumentStore.getState().forget(5)
+    expect(released).toHaveBeenCalledTimes(1)
   })
 })
