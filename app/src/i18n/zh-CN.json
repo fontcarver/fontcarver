@@ -352,7 +352,7 @@
       "masters": "母版",
       "axes": "轴 / 实例",
       "other": "其他",
-      "tables": "Tables"
+      "tables": "表"
     },
     "group": {
       "identification": "标识信息",
@@ -389,8 +389,8 @@
       "familyOverride": "覆盖字族名称",
       "active": "启用",
       "variableInstance": "可变字体命名实例",
-      "byteLength": "Byte length",
-      "preservation": "Preservation"
+      "byteLength": "字节数",
+      "preservation": "保留状态"
     },
     "field": {
       "familyName": "字族名称",
@@ -497,9 +497,9 @@
       "darkBackground": "深色背景调色板",
       "variationsPrefix": "可变字体 PostScript 前缀"
     },
-    "noTables": "This document has no imported table inventory.",
-    "tablesLabel": "OpenType tables",
-    "preserved": "Preserved",
-    "bytes": "{{count, number}} bytes"
+    "noTables": "此文档没有导入的 OpenType 表清单。",
+    "tablesLabel": "OpenType 表",
+    "preserved": "原样保留",
+    "bytes": "{{count, number}} 字节"
   }
 }
