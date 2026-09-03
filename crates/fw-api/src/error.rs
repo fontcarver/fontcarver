@@ -51,9 +51,11 @@ impl From<fw_doc::Error> for ApiError {
             | fw_doc::Error::MissingGlyph(_)
             | fw_doc::Error::MissingLayer { .. }
             | fw_doc::Error::MissingMaster(_) => Self::not_found(message),
-            fw_doc::Error::InvalidEditToken | fw_doc::Error::Model(_) => {
-                Self::invalid_params(message)
-            }
+            fw_doc::Error::InvalidEditToken
+            | fw_doc::Error::InvalidCommand(_)
+            | fw_doc::Error::MetricsKeyCycle
+            | fw_doc::Error::Model(_) => Self::invalid_params(message),
+            fw_doc::Error::Geometry(_) => Self::new("geometry", message),
             fw_doc::Error::Io(_) => Self::io(message),
             fw_doc::Error::UnsupportedFormat(_)
             | fw_doc::Error::InvalidFwfFormat(_)
