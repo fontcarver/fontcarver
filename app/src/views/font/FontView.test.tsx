@@ -20,6 +20,9 @@ function cellFor(index: number): GlyphCellData {
     gid: index,
     name: NAMES[index % NAMES.length] ?? `g${index}`,
     unicodes: [0x41 + (index % NAMES.length)],
+    category: 'Letter',
+    sub_category: 'Uppercase',
+    script: 'Latn',
     width: 1479,
     bbox: [0, 0, 1400, 1493],
     path: 'M0 0L100 0L100 100Z',
@@ -47,6 +50,8 @@ function transportFor(total: number) {
     'doc.font_info': () => ({
       info: {} as never,
       masters: [],
+      tables: [],
+      instances: [],
     }),
     'glyphs.list': (params: GlyphListParams) => ({
       total: params.filter.query === null ? total : 1,

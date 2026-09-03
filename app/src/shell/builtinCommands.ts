@@ -9,6 +9,11 @@ import {
 } from '../stores/uiStore'
 
 import { registerFontViewCommands } from '../views/font/fontCommands'
+import { glyphName } from '../views/font/glyphNames'
+import {
+  registerGlyphViewCommands,
+  zoomActiveGlyphView,
+} from '../views/glyph/glyphCommands'
 
 import { registerCommands, type Command } from './commands'
 import { closeTab, openFontInfoTab, openGlyphTab } from './tabActions'
@@ -59,6 +64,7 @@ async function runHistory(method: 'doc.undo' | 'doc.redo'): Promise<void> {
 /** Registers every built-in command. Safe to call more than once. */
 export function registerBuiltinCommands(): void {
   registerFontViewCommands()
+  registerGlyphViewCommands()
   registerCommands([
     {
       id: 'file.new',
@@ -182,7 +188,8 @@ export function registerBuiltinCommands(): void {
       run: () => {
         const doc = activeDoc()
         const gid = targetGlyph()
-        if (doc !== null && gid !== undefined) openGlyphTab(doc, gid)
+        if (doc !== null && gid !== undefined)
+          openGlyphTab(doc, gid, glyphName(doc, gid))
       },
     },
     {
@@ -210,6 +217,7 @@ export function registerBuiltinCommands(): void {
       when: hasDocument,
       disabledReason: 'cmd.reason.noDocument',
       run: () => {
+        if (zoomActiveGlyphView(1)) return
         const doc = activeDoc()
         if (doc !== null) useDocumentStore.getState().stepCellSize(doc, 1)
       },
@@ -223,6 +231,7 @@ export function registerBuiltinCommands(): void {
       when: hasDocument,
       disabledReason: 'cmd.reason.noDocument',
       run: () => {
+        if (zoomActiveGlyphView(-1)) return
         const doc = activeDoc()
         if (doc !== null) useDocumentStore.getState().stepCellSize(doc, -1)
       },

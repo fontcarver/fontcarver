@@ -33,7 +33,7 @@ function transport() {
       total: TOTAL,
       color_labels: [],
     }),
-    'doc.font_info': () => ({ info: {} as never, masters: [] }),
+    'doc.font_info': () => ({ info: {} as never, masters: [], tables: [], instances: [] }),
     'glyphs.list': (params: GlyphListParams) =>
       glyphPage(params.offset, params.limit, TOTAL, names),
   })

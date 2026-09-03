@@ -22,6 +22,7 @@ pub(crate) fn font_info(api: &Api, params: DocParams) -> Result<FontInfoView, Ap
             info: document.font.info.clone(),
             masters: document.font.masters.clone(),
             tables: table_inventory(&document.font),
+            instances: document.font.instances.clone(),
         })
         .map_err(ApiError::from)
 }

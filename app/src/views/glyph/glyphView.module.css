@@ -1,0 +1,175 @@
+/* The glyph tab: toolbar, canvas stage and the corner readout. */
+
+.view {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.toolbar {
+  height: auto;
+  min-height: 28px;
+  flex-wrap: wrap;
+  padding-block: 2px;
+}
+
+.toolbarGroup {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.toolbarLabel {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+  white-space: nowrap;
+}
+
+.toolbarSelect {
+  width: auto;
+  min-width: 84px;
+}
+
+.toolbarSpacer {
+  flex: 1;
+}
+
+.toolbarZoomGroup {
+  margin-left: auto;
+}
+
+.toolbarToggleGroup {
+  flex-wrap: wrap;
+}
+
+.toolbarCount {
+  min-width: 66px;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.stage {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  background: var(--color-canvas);
+}
+
+.canvasWrapper {
+  position: absolute;
+  inset: 0;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  touch-action: none;
+}
+
+.canvas:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
+.hud {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  min-width: 140px;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  font-size: var(--text-size-xs);
+  pointer-events: none;
+}
+
+.hudName {
+  margin-bottom: var(--space-1);
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: var(--text-size-sm);
+  font-weight: var(--text-weight-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hudList {
+  margin: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.hudRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.hudRow dt {
+  color: var(--color-text-muted);
+}
+
+.hudRow dd {
+  margin: 0;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.message {
+  padding: var(--space-5);
+  color: var(--color-text-faint);
+  font-size: var(--text-size-sm);
+}
+
+.inspectorList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inspectorRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--row-height);
+  font-size: var(--text-size-sm);
+}
+
+.inspectorRow span:last-child {
+  flex: none;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.inspectorName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspectorEmpty {
+  color: var(--color-text-faint);
+  font-size: var(--text-size-sm);
+}
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: var(--space-1);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 2px;
+  vertical-align: middle;
+}

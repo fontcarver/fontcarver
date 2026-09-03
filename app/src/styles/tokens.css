@@ -72,6 +72,25 @@
   --color-warning-soft: #f7ecd7;
   --color-focus-ring: #3a6ea5;
   --color-overlay: rgb(28 28 32 / 32%);
+
+  /* Glyph editor canvas. Canvas cannot read CSS variables, so these are read
+     once per theme and handed to the drawing modules as plain colours. */
+  --color-glyph-fill: #17171a;
+  --color-glyph-outline: #3f3f47;
+  --color-glyph-metric: #b9b9c0;
+  --color-glyph-metric-strong: #8d8d96;
+  --color-glyph-sidebearing: #9ab0c8;
+  --color-glyph-node-corner: #2f5f9e;
+  --color-glyph-node-smooth: #2c7a4b;
+  --color-glyph-node-implied: #2f7f8f;
+  --color-glyph-node-offcurve: #7b7b85;
+  --color-glyph-handle: #a8a8b2;
+  --color-glyph-start: #2f5f9e;
+  --color-glyph-component: #9a9aa4;
+  --color-glyph-anchor: #a3417c;
+  --color-glyph-guide-local: #3a6ea5;
+  --color-glyph-guide-global: #a33a35;
+  --color-glyph-ruler: #ededf0;
 }
 
 :root[data-theme='dark'] {
@@ -100,4 +119,22 @@
   --color-warning-soft: #3a2f1c;
   --color-focus-ring: #78a6de;
   --color-overlay: rgb(0 0 0 / 48%);
+
+  /* Glyph editor canvas (dark). */
+  --color-glyph-fill: #e7e7ea;
+  --color-glyph-outline: #c3c3cc;
+  --color-glyph-metric: #4b4b55;
+  --color-glyph-metric-strong: #74747f;
+  --color-glyph-sidebearing: #566d86;
+  --color-glyph-node-corner: #7aa9e0;
+  --color-glyph-node-smooth: #64c08c;
+  --color-glyph-node-implied: #6fc2d2;
+  --color-glyph-node-offcurve: #9b9ba6;
+  --color-glyph-handle: #6a6a75;
+  --color-glyph-start: #7aa9e0;
+  --color-glyph-component: #7d7d88;
+  --color-glyph-anchor: #d986b8;
+  --color-glyph-guide-local: #5f92cc;
+  --color-glyph-guide-global: #e08a85;
+  --color-glyph-ruler: #232328;
 }

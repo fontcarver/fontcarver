@@ -2,12 +2,13 @@ import { useTranslation } from 'react-i18next'
 
 import { getTransport } from '../api'
 import { selectDocView, useDocumentStore } from '../stores/documentStore'
+import { useEditorStore } from '../stores/editorStore'
 import {
   documentLabel,
   selectSummary,
   useSessionStore,
 } from '../stores/sessionStore'
-import { selectActiveDoc, useUiStore } from '../stores/uiStore'
+import { selectActiveDoc, selectActiveTab, useUiStore } from '../stores/uiStore'
 
 import styles from './StatusBar.module.css'
 
@@ -15,8 +16,12 @@ import styles from './StatusBar.module.css'
 export function StatusBar() {
   const { t } = useTranslation()
   const doc = useUiStore(selectActiveDoc)
+  const tab = useUiStore(selectActiveTab)
   const summary = useSessionStore(selectSummary(doc))
   const view = useDocumentStore(selectDocView(doc))
+  const pointer = useEditorStore((state) => state.pointer)
+  const zoom = useEditorStore((state) => state.zoom)
+  const onGlyphTab = tab?.kind === 'glyph'
 
   return (
     <div
@@ -50,9 +55,27 @@ export function StatusBar() {
             </span>
           ) : null}
           <span className={styles.statusSpacer} />
-          <span className={styles.statusNumeric}>
-            {t('status.cellSize', { size: view.cellSize })}
-          </span>
+          {onGlyphTab ? (
+            <>
+              <span className={styles.statusNumeric}>
+                {pointer
+                  ? t('status.coordinates', { x: pointer.x, y: pointer.y })
+                  : t('status.noCoordinates')}
+              </span>
+              <span className={styles.statusNumeric}>
+                {t('status.zoom', {
+                  size: Math.max(
+                    1,
+                    Math.round(zoom * (summary.units_per_em || 1000)),
+                  ),
+                })}
+              </span>
+            </>
+          ) : (
+            <span className={styles.statusNumeric}>
+              {t('status.cellSize', { size: view.cellSize })}
+            </span>
+          )}
         </>
       ) : (
         <>

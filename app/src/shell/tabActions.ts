@@ -1,6 +1,6 @@
 import type { DocId, GlyphId } from '../api'
 import { useSessionStore } from '../stores/sessionStore'
-import { useUiStore } from '../stores/uiStore'
+import { tabId, useUiStore } from '../stores/uiStore'
 
 /**
  * Closes one tab. The Font tab represents the document itself, so closing it
@@ -21,6 +21,23 @@ export function closeTab(id: string): void {
 /** Opens (or focuses) the Glyph tab for one glyph of a document. */
 export function openGlyphTab(doc: DocId, gid: GlyphId, label?: string): string {
   return useUiStore.getState().openTab({ kind: 'glyph', doc, gid, label })
+}
+
+/**
+ * Moves a glyph tab from one glyph to another. Stepping through glyphs must
+ * not pile up tabs, so the new tab is opened and the old one closed.
+ */
+export function replaceGlyphTab(
+  doc: DocId,
+  fromGid: GlyphId,
+  toGid: GlyphId,
+  label?: string,
+): string {
+  const ui = useUiStore.getState()
+  const previous = tabId('glyph', doc, fromGid)
+  const next = openGlyphTab(doc, toGid, label)
+  if (next !== previous) ui.closeTab(previous)
+  return next
 }
 
 /** Opens (or focuses) the Font Info tab of a document. */

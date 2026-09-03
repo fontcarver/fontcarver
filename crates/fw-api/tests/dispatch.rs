@@ -9,11 +9,48 @@ use fw_api::{
     GlyphCell, GlyphCellParams,
 };
 use fw_doc::Session;
-use fw_model::{Font, Glyph, Layer};
+use fw_model::{Font, Glyph, Instance, Layer};
 use serde_json::json;
 use sha2::{Digest, Sha256};
 
 static CONFIG_ENV_LOCK: Mutex<()> = Mutex::new(());
+
+#[test]
+fn font_info_includes_named_instances() {
+    let mut font = Font::new_empty("Test Family", 1_000);
+    let mut instance = Instance {
+        name: "Display Semibold".to_owned(),
+        style_name: "Semibold".to_owned(),
+        family_name: Some("Test Display".to_owned()),
+        active: true,
+        is_variable_named_instance: true,
+        ..Instance::default()
+    };
+    instance
+        .location
+        .insert("wght".parse().expect("valid axis tag"), 650.0);
+    font.instances.push(instance);
+
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(font, None);
+    let api = Api::new(session);
+
+    let info = api
+        .call("doc.font_info", json!({ "doc": doc }))
+        .expect("font info");
+    assert_eq!(
+        info["instances"],
+        json!([{
+            "name": "Display Semibold",
+            "location": { "wght": 650.0 },
+            "style_name": "Semibold",
+            "family_name": "Test Display",
+            "active": true,
+            "is_variable_named_instance": true,
+            "user_data": null
+        }])
+    );
+}
 
 #[test]
 fn dispatches_session_open_and_reports_boundary_errors() {
