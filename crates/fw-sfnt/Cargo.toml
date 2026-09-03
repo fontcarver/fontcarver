@@ -6,4 +6,14 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+fw-model = { path = "../fw-model" }
+kurbo.workspace = true
+read-fonts.workspace = true
+sha2.workspace = true
+skrifa.workspace = true
 thiserror.workspace = true
+wuff.workspace = true
+
+[dev-dependencies]
+fw-fixtures = { path = "../fw-fixtures" }
+read-fonts.workspace = true
