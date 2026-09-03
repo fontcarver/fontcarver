@@ -33,13 +33,13 @@ fn write_temporary(
     if is_gzip_path(target_path) {
         let encoder = GzEncoder::new(file, Compression::default());
         let mut writer = BufWriter::new(encoder);
-        serde_json::to_writer_pretty(&mut writer, envelope)?;
+        serde_json::to_writer(&mut writer, envelope)?;
         writer.flush()?;
         let encoder = writer.into_inner().map_err(|error| error.into_error())?;
         encoder.finish()?.sync_all()?;
     } else {
         let mut writer = BufWriter::new(file);
-        serde_json::to_writer_pretty(&mut writer, envelope)?;
+        serde_json::to_writer(&mut writer, envelope)?;
         writer.flush()?;
         writer
             .into_inner()
