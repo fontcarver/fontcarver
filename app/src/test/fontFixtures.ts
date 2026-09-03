@@ -13,6 +13,7 @@ import type {
   Glyph,
   GlyphCell,
   GlyphDetail,
+  Instance,
   Layer,
   Master,
   MasterMetrics,
@@ -183,6 +184,20 @@ export function makeMaster(overrides: Partial<Master> = {}): Master {
   }
 }
 
+/** One named export instance. */
+export function makeInstance(overrides: Partial<Instance> = {}): Instance {
+  return {
+    name: 'Regular',
+    location: {},
+    style_name: 'Regular',
+    family_name: null,
+    active: true,
+    is_variable_named_instance: false,
+    user_data: null,
+    ...overrides,
+  }
+}
+
 /** Font-wide metadata with only the required fields filled in. */
 export function makeFontInfo(overrides: Partial<FontInfo> = {}): FontInfo {
   const info: FontInfo = {
@@ -258,5 +273,10 @@ export function makeFontInfo(overrides: Partial<FontInfo> = {}): FontInfo {
 export function makeFontInfoView(
   overrides: Partial<FontInfoView> = {},
 ): FontInfoView {
-  return { info: makeFontInfo(), masters: [makeMaster()], ...overrides }
+  return {
+    info: makeFontInfo(),
+    masters: [makeMaster()],
+    instances: [],
+    ...overrides,
+  }
 }

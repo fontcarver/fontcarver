@@ -16,6 +16,53 @@ import type { GlyphTheme } from './glyphTheme'
 
 const MARKER_SIZE = 5
 const LABEL_FONT_SIZE = 10
+const LABEL_GAP = 2
+
+interface LabelBox {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
+function intersects(a: LabelBox, b: LabelBox): boolean {
+  return (
+    a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
+  )
+}
+
+function labelPosition(
+  x: number,
+  preferredY: number,
+  width: number,
+  placed: readonly LabelBox[],
+): { y: number; box: LabelBox } {
+  const step = LABEL_FONT_SIZE + LABEL_GAP
+  for (let attempt = 0; attempt <= placed.length * 2 + 2; attempt += 1) {
+    const distance = Math.ceil(attempt / 2) * step
+    const y =
+      attempt === 0
+        ? preferredY
+        : preferredY + (attempt % 2 === 1 ? -distance : distance)
+    const box = {
+      left: x,
+      top: y - LABEL_FONT_SIZE,
+      right: x + width,
+      bottom: y,
+    }
+    if (!placed.some((other) => intersects(box, other))) return { y, box }
+  }
+  const y = preferredY - (placed.length + 1) * step
+  return {
+    y,
+    box: {
+      left: x,
+      top: y - LABEL_FONT_SIZE,
+      right: x + width,
+      bottom: y,
+    },
+  }
+}
 
 /** What `drawComponents` renders. */
 export interface ComponentsData {
@@ -61,6 +108,7 @@ export function drawComponents(
   ctx.font = `${LABEL_FONT_SIZE}px ${theme.fontFamily}`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'bottom'
+  const labels: LabelBox[] = []
   for (const component of data.components) {
     const origin = viewport.toScreen({
       x: component.transform[4],
@@ -72,11 +120,16 @@ export function drawComponents(
     ctx.moveTo(origin.x, origin.y - MARKER_SIZE)
     ctx.lineTo(origin.x, origin.y + MARKER_SIZE)
     ctx.stroke()
-    ctx.fillText(
-      component.base.toString(),
-      origin.x + MARKER_SIZE + 2,
-      origin.y - 2,
+    const text = component.base.toString()
+    const x = origin.x + MARKER_SIZE + LABEL_GAP
+    const position = labelPosition(
+      x,
+      origin.y - LABEL_GAP,
+      ctx.measureText(text).width,
+      labels,
     )
+    labels.push(position.box)
+    ctx.fillText(text, x, position.y)
   }
   ctx.restore()
 }

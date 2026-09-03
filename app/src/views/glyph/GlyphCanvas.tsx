@@ -117,6 +117,12 @@ export function GlyphCanvas({
     }
   }, [handle, handleRef])
 
+  // A Glyph tab replaces the previous tab content, so focusing on each fitKey
+  // change makes Space-tap and Space-drag available immediately on opening.
+  useEffect(() => {
+    canvasRef.current?.focus({ preventScroll: true })
+  }, [fitKey])
+
   // Size tracking. The first measurement, and every change of glyph, refits.
   useEffect(() => {
     const wrapper = wrapperRef.current
@@ -271,6 +277,7 @@ export function GlyphCanvas({
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
         onPointerLeave={onPointerLeave}
+        onClick={(event) => event.currentTarget.focus({ preventScroll: true })}
         onKeyDown={onKeyDown}
         onKeyUp={onKeyUp}
       />

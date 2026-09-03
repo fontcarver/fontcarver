@@ -82,6 +82,7 @@
   --color-glyph-sidebearing: #9ab0c8;
   --color-glyph-node-corner: #2f5f9e;
   --color-glyph-node-smooth: #2c7a4b;
+  --color-glyph-node-implied: #2f7f8f;
   --color-glyph-node-offcurve: #7b7b85;
   --color-glyph-handle: #a8a8b2;
   --color-glyph-start: #2f5f9e;
@@ -127,6 +128,7 @@
   --color-glyph-sidebearing: #566d86;
   --color-glyph-node-corner: #7aa9e0;
   --color-glyph-node-smooth: #64c08c;
+  --color-glyph-node-implied: #6fc2d2;
   --color-glyph-node-offcurve: #9b9ba6;
   --color-glyph-handle: #6a6a75;
   --color-glyph-start: #7aa9e0;

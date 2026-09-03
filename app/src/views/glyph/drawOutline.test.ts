@@ -4,6 +4,13 @@ import type { Contour, Point, PointKind } from '../../api'
 import { Viewport } from '../../canvas/Viewport'
 import { createRecordingContext } from '../../test/recordingContext'
 
+import {
+  controlPoints,
+  directionTarget,
+  handleLines,
+  onCurvePoints,
+  resolveContour,
+} from './contourGeometry'
 import { drawOutline, traceContour } from './drawOutline'
 import { FALLBACK_GLYPH_THEME } from './glyphTheme'
 
@@ -24,6 +31,36 @@ function viewportOf(): Viewport {
   viewport.scale = 1
   viewport.offset = { x: 0, y: 0 }
   return viewport
+}
+
+/** A viewport that keeps positive font y on screen: screen y = 400 − font y. */
+function shiftedViewport(): Viewport {
+  const viewport = viewportOf()
+  viewport.offset = { x: 0, y: 400 }
+  return viewport
+}
+
+/** How many strokes were drawn while `strokeStyle` held `colour`. */
+function strokesWith(
+  recording: ReturnType<typeof createRecordingContext>,
+  colour: string,
+): number {
+  let count = 0
+  for (let index = 0; index < recording.calls('stroke').length; index += 1)
+    if (recording.styleAt('stroke', 'strokeStyle', index) === colour) count += 1
+  return count
+}
+
+/** The `arc` call whose centre matches, if any. */
+function arcAt(
+  recording: ReturnType<typeof createRecordingContext>,
+  x: number,
+  y: number,
+): unknown[] | undefined {
+  return recording
+    .calls('arc')
+    .map((op) => op.args)
+    .find((args) => args[0] === x && args[1] === y)
 }
 
 describe('traceContour', () => {
@@ -225,5 +262,97 @@ describe('drawOutline', () => {
       FALLBACK_GLYPH_THEME,
     )
     expect(recording.ops).toHaveLength(0)
+  })
+})
+
+describe('resolveContour edge cases', () => {
+  /** A closed quadratic contour whose point list begins on an off-curve. */
+  const offCurveStart = contourOf([
+    point(0, 100, 'OffCurve'),
+    point(100, 0, 'QCurve'),
+    point(200, 100, 'OffCurve'),
+    point(100, 200, 'QCurve'),
+  ])
+
+  /** A closed TrueType contour with no on-curve point at all. */
+  const allOffCurve = contourOf([
+    point(0, 0, 'OffCurve'),
+    point(100, 0, 'OffCurve'),
+    point(100, 100, 'OffCurve'),
+    point(0, 100, 'OffCurve'),
+  ])
+
+  it('starts an off-curve-start contour at its first explicit on-curve point', () => {
+    const resolved = resolveContour(offCurveStart)
+    expect(resolved.start).toMatchObject({ x: 100, y: 0 })
+    expect(resolved.start?.source?.kind).toBe('QCurve')
+    // The path heads towards the first control, not towards points[0].
+    expect(directionTarget(resolved)).toMatchObject({ x: 200, y: 100 })
+    // Two distinct on-curve points; the closing segment reuses the start.
+    expect(onCurvePoints(resolved)).toHaveLength(2)
+    expect(handleLines(resolved)).toHaveLength(4)
+  })
+
+  it('marks the start of an off-curve-start contour, not its first point', () => {
+    const recording = createRecordingContext()
+    drawOutline(
+      recording.ctx,
+      shiftedViewport(),
+      { contours: [offCurveStart], filled: false, showPoints: true },
+      FALLBACK_GLYPH_THEME,
+    )
+
+    // The ring sits on the on-curve point at (100, 0), i.e. screen (100, 400).
+    expect(arcAt(recording, 100, 400)).toEqual([100, 400, 6, 0, Math.PI * 2])
+    // Nothing is marked at points[0] = (0, 100) → screen (0, 300).
+    expect(arcAt(recording, 0, 300)?.[2]).not.toBe(6)
+    expect(strokesWith(recording, FALLBACK_GLYPH_THEME.handle)).toBe(1)
+  })
+
+  it('gives an all-off-curve contour four implied on-curve points', () => {
+    const resolved = resolveContour(allOffCurve)
+    expect(resolved.start).toEqual({ x: 0, y: 50, source: null })
+    const nodes = onCurvePoints(resolved)
+    expect(nodes).toHaveLength(4)
+    expect(nodes.every((node) => node.source === null)).toBe(true)
+    expect(nodes.map((node) => [node.x, node.y])).toEqual([
+      [0, 50],
+      [50, 0],
+      [100, 50],
+      [50, 100],
+    ])
+    expect(controlPoints(resolved)).toHaveLength(4)
+    // Every control is joined to the two implied points it governs.
+    expect(handleLines(resolved)).toHaveLength(8)
+  })
+
+  it('draws handles, implied nodes and the start marker for an all-off-curve contour', () => {
+    const recording = createRecordingContext()
+    drawOutline(
+      recording.ctx,
+      shiftedViewport(),
+      { contours: [allOffCurve], filled: false, showPoints: true },
+      FALLBACK_GLYPH_THEME,
+    )
+
+    // One stroked pass for the eight handle lines.
+    expect(strokesWith(recording, FALLBACK_GLYPH_THEME.handle)).toBe(1)
+    const handleMoves = recording.ops
+      .slice(
+        recording.ops.findIndex(
+          (op) =>
+            op.name === 'set:strokeStyle' &&
+            op.args[0] === FALLBACK_GLYPH_THEME.handle,
+        ),
+      )
+      .filter((op) => op.name === 'moveTo')
+    expect(handleMoves.length).toBeGreaterThanOrEqual(8)
+
+    // Four hollow diamonds, one per implied on-curve point.
+    expect(strokesWith(recording, FALLBACK_GLYPH_THEME.nodeImplied)).toBe(4)
+    expect(recording.calls('fillRect')).toHaveLength(0)
+
+    // The start ring sits on the first implied point, (0, 50) → (0, 350).
+    expect(arcAt(recording, 0, 350)).toEqual([0, 350, 6, 0, Math.PI * 2])
   })
 })

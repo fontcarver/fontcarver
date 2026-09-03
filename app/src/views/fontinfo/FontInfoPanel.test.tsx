@@ -7,6 +7,7 @@ import { forgetFontInfo } from '../../stores/fontInfoCache'
 import {
   makeFontInfo,
   makeFontInfoView,
+  makeInstance,
   makeMaster,
   makeMasterMetrics,
 } from '../../test/fontFixtures'
@@ -139,10 +140,77 @@ describe('FontInfoPanel', () => {
     render(<FontInfoPanel summary={makeSummary()} />)
     await screen.findByText('DejaVu Sans')
 
-    await user.click(screen.getByRole('tab', { name: 'Axes' }))
+    await user.click(screen.getByRole('tab', { name: 'Axes / Instances' }))
     expect(
       screen.getByText('This font has no variation axes.'),
     ).toBeInTheDocument()
+    expect(screen.getByText('This font has no instances.')).toBeInTheDocument()
+  })
+
+  it('shows every named instance and its per-axis location', async () => {
+    const user = userEvent.setup()
+    setTransport(
+      transportFor(
+        makeFontInfoView({
+          instances: [
+            makeInstance({
+              name: 'Text Regular',
+              style_name: 'Regular',
+              location: { wght: 400, wdth: 100 },
+              active: true,
+            }),
+            makeInstance({
+              name: 'Display Semibold',
+              style_name: 'Semibold',
+              family_name: 'DejaVu Display',
+              location: { wght: 650, wdth: 90 },
+              active: false,
+              is_variable_named_instance: true,
+            }),
+          ],
+        }),
+      ),
+    )
+    render(
+      <FontInfoPanel
+        summary={makeSummary({
+          axes: [
+            {
+              tag: 'wght',
+              name: 'Weight',
+              min: 100,
+              default: 400,
+              max: 900,
+              hidden: false,
+            },
+            {
+              tag: 'wdth',
+              name: 'Width',
+              min: 75,
+              default: 100,
+              max: 125,
+              hidden: false,
+            },
+          ],
+        })}
+      />,
+    )
+    await screen.findByText('DejaVu Sans')
+
+    await user.click(screen.getByRole('tab', { name: 'Axes / Instances' }))
+
+    const table = screen.getByRole('table', { name: 'Instances' })
+    expect(within(table).getAllByRole('row')).toHaveLength(3)
+    expect(within(table).getByText('Text Regular')).toBeInTheDocument()
+    const display = within(table).getByRole('row', {
+      name: /Display Semibold/,
+    })
+    expect(within(display).getByText('Semibold')).toBeInTheDocument()
+    expect(within(display).getByText('DejaVu Display')).toBeInTheDocument()
+    expect(within(display).getByText('650')).toBeInTheDocument()
+    expect(within(display).getByText('90')).toBeInTheDocument()
+    expect(within(display).getByText('No')).toBeInTheDocument()
+    expect(within(display).getByText('Yes')).toBeInTheDocument()
   })
 
   it('surfaces a transport failure instead of an empty panel', async () => {

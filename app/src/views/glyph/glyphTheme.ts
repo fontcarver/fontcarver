@@ -22,6 +22,7 @@ export interface GlyphTheme {
   sidebearing: string
   nodeCorner: string
   nodeSmooth: string
+  nodeImplied: string
   nodeOffCurve: string
   handle: string
   start: string
@@ -46,6 +47,7 @@ export const FALLBACK_GLYPH_THEME: GlyphTheme = {
   sidebearing: '#9ab0c8',
   nodeCorner: '#2f5f9e',
   nodeSmooth: '#2c7a4b',
+  nodeImplied: '#2f7f8f',
   nodeOffCurve: '#7b7b85',
   handle: '#a8a8b2',
   start: '#2f5f9e',
@@ -78,6 +80,7 @@ export function readGlyphTheme(): GlyphTheme {
     sidebearing: token('--color-glyph-sidebearing', fb.sidebearing),
     nodeCorner: token('--color-glyph-node-corner', fb.nodeCorner),
     nodeSmooth: token('--color-glyph-node-smooth', fb.nodeSmooth),
+    nodeImplied: token('--color-glyph-node-implied', fb.nodeImplied),
     nodeOffCurve: token('--color-glyph-node-offcurve', fb.nodeOffCurve),
     handle: token('--color-glyph-handle', fb.handle),
     start: token('--color-glyph-start', fb.start),

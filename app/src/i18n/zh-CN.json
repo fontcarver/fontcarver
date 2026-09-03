@@ -290,8 +290,8 @@
       "advance": "advance",
       "lsb": "LSB",
       "rsb": "RSB",
-      "verticalOrigin": "vertical origin",
-      "verticalAdvance": "vertical advance"
+      "verticalOrigin": "vert. origin",
+      "verticalAdvance": "vert. advance"
     },
     "hud": {
       "label": "Glyph readout",
@@ -345,11 +345,12 @@
     "noNames": "This font has no name records.",
     "noMasters": "This font has no masters.",
     "noAxes": "This font has no variation axes.",
+    "noInstances": "This font has no instances.",
     "section": {
       "font": "Font",
       "names": "Names",
       "masters": "Masters",
-      "axes": "Axes",
+      "axes": "Axes / Instances",
       "other": "Other"
     },
     "group": {
@@ -359,6 +360,9 @@
       "legal": "Legal",
       "note": "Note",
       "warnings": "Import warnings",
+      "axes": "Axes",
+      "masterLocations": "Master locations",
+      "instances": "Instances",
       "os2": "OS/2",
       "head": "head and gasp",
       "caret": "Caret slope",
@@ -378,7 +382,12 @@
       "min": "Minimum",
       "default": "Default",
       "max": "Maximum",
-      "hidden": "Hidden"
+      "hidden": "Hidden",
+      "instanceName": "Name",
+      "styleName": "Style name",
+      "familyOverride": "Family override",
+      "active": "Active",
+      "variableInstance": "Variable named instance"
     },
     "field": {
       "familyName": "Family name",

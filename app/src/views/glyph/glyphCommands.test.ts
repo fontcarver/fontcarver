@@ -6,6 +6,7 @@ import {
   resetCommands,
   runCommand,
 } from '../../shell/commands'
+import { commandForEvent } from '../../shell/shortcuts'
 import {
   CELL_SIZE_DEFAULT,
   initialDocumentState,
@@ -114,5 +115,28 @@ describe('glyph view commands', () => {
     expect(useEditorStore.getState().overlays.filled).toBe(true)
     runCommand('view.glyph.rulers')
     expect(useEditorStore.getState().overlays.rulers).toBe(false)
+  })
+
+  it('binds Space to fill only on a glyph tab outside editable fields', () => {
+    mountedView()
+    const space = new KeyboardEvent('keydown', {
+      key: ' ',
+      code: 'Space',
+      bubbles: true,
+      cancelable: true,
+    })
+
+    useUiStore.getState().openTab({ kind: 'font', doc: 1 })
+    expect(isCommandEnabled('view.toggleFill')).toBe(false)
+
+    useUiStore.getState().openTab({ kind: 'glyph', doc: 1, gid: 42 })
+    expect(commandForEvent(space, false)).toBe('view.toggleFill')
+    expect(runCommand('view.toggleFill')).toBe(true)
+    expect(useEditorStore.getState().overlays.filled).toBe(true)
+
+    const input = document.createElement('input')
+    document.body.append(input)
+    input.focus()
+    expect(isCommandEnabled('view.toggleFill')).toBe(false)
   })
 })

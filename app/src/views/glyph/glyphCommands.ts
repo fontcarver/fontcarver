@@ -10,6 +10,7 @@
 
 import type { DocId, GlyphId } from '../../api'
 import { registerCommands, type Command } from '../../shell/commands'
+import { isEditableTarget } from '../../shell/shortcuts'
 import { useEditorStore } from '../../stores/editorStore'
 import { selectActiveTab, useUiStore } from '../../stores/uiStore'
 
@@ -64,6 +65,13 @@ function onGlyphTab(): boolean {
   return selectActiveTab(useUiStore.getState())?.kind === 'glyph'
 }
 
+function canToggleFill(): boolean {
+  return (
+    onGlyphTab() &&
+    !isEditableTarget(globalThis.document?.activeElement ?? null)
+  )
+}
+
 function overlayCommand(key: keyof GlyphOverlays): Command {
   return {
     id: `view.glyph.${key}`,
@@ -108,6 +116,21 @@ export function registerGlyphViewCommands(): void {
       when: () => activeGlyphView() !== null,
       disabledReason: 'cmd.reason.noGlyphTab',
       run: () => activeGlyphView()?.step(1),
+    },
+    {
+      id: 'view.toggleFill',
+      title: 'cmd.view.glyph.filled',
+      shortcut: 'Space',
+      when: canToggleFill,
+      disabledReason: 'cmd.reason.noGlyphTab',
+      run: () => {
+        // A focused glyph canvas owns Space until keyup so it can distinguish
+        // a tap from a Space-drag. The global command covers a newly opened
+        // tab before any explicit click, and focus elsewhere in the view.
+        if (globalThis.document?.activeElement instanceof HTMLCanvasElement)
+          return
+        useEditorStore.getState().toggleOverlay('filled')
+      },
     },
     overlayCommand('filled'),
     overlayCommand('points'),

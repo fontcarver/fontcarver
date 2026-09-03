@@ -47,6 +47,7 @@ function transportFor(total: number) {
     'doc.font_info': () => ({
       info: {} as never,
       masters: [],
+      instances: [],
     }),
     'glyphs.list': (params: GlyphListParams) => ({
       total: params.filter.query === null ? total : 1,

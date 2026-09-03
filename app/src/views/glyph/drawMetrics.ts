@@ -27,7 +27,15 @@ const RULER_LABEL_MARGIN = 20
 interface MetricLine {
   y: number
   label: string
+  style: 'regular' | 'strong' | 'vertical'
+}
+
+/** Coincident metric lines share one stroke and one composite label. */
+interface MetricGroup {
+  screenY: number
+  labels: string[]
   strong: boolean
+  vertical: boolean
 }
 
 function crisp(value: number): number {
@@ -73,8 +81,8 @@ export const DEFAULT_METRIC_LABELS: MetricLabels = {
   advance: 'advance',
   lsb: 'LSB',
   rsb: 'RSB',
-  verticalOrigin: 'vertical origin',
-  verticalAdvance: 'vertical advance',
+  verticalOrigin: 'vert. origin',
+  verticalAdvance: 'vert. advance',
 }
 
 /** What `drawMetrics` renders. */
@@ -95,24 +103,27 @@ export function drawMetrics(
   const { metrics, labels } = data
   // A metric a font does not define comes back as zero, which would draw a
   // second line on top of the baseline; those are dropped rather than drawn.
-  const horizontals: MetricLine[] = [
-    { y: metrics.descender, label: labels.descender, strong: false },
-    { y: 0, label: labels.baseline, strong: true },
-    { y: metrics.xHeight, label: labels.xHeight, strong: false },
-    { y: metrics.capHeight, label: labels.capHeight, strong: false },
-    { y: metrics.ascender, label: labels.ascender, strong: false },
-  ].filter((metric) => metric.strong || metric.y !== 0)
+  const baseHorizontals: MetricLine[] = [
+    { y: metrics.descender, label: labels.descender, style: 'regular' },
+    { y: 0, label: labels.baseline, style: 'strong' },
+    { y: metrics.xHeight, label: labels.xHeight, style: 'regular' },
+    { y: metrics.capHeight, label: labels.capHeight, style: 'regular' },
+    { y: metrics.ascender, label: labels.ascender, style: 'regular' },
+  ]
+  const horizontals = baseHorizontals.filter(
+    (metric) => metric.style === 'strong' || metric.y !== 0,
+  )
   if (metrics.verticalOrigin !== null) {
     horizontals.push({
       y: metrics.verticalOrigin,
       label: labels.verticalOrigin,
-      strong: false,
+      style: 'vertical',
     })
     if (metrics.verticalWidth !== null)
       horizontals.push({
         y: metrics.verticalOrigin - metrics.verticalWidth,
         label: labels.verticalAdvance,
-        strong: false,
+        style: 'vertical',
       })
   }
 
@@ -122,21 +133,38 @@ export function drawMetrics(
   ctx.textBaseline = 'bottom'
   ctx.textAlign = 'left'
 
-  const seen = new Set<number>()
+  const groups = new Map<number, MetricGroup>()
   for (const metric of horizontals) {
-    const y = crisp(viewport.toScreen({ x: 0, y: metric.y }).y)
-    if (y < -1 || y > viewport.height + 1) continue
-    if (seen.has(y) && !metric.strong) continue
-    seen.add(y)
-    ctx.strokeStyle = metric.strong ? theme.metricStrong : theme.metric
-    line(ctx, 0, y, viewport.width, y)
+    const screenY = crisp(viewport.toScreen({ x: 0, y: metric.y }).y)
+    if (screenY < -1 || screenY > viewport.height + 1) continue
+    const label = `${metric.label} ${Math.round(metric.y)}`
+    const group = groups.get(screenY)
+    if (group) {
+      group.labels.push(label)
+      group.strong ||= metric.style === 'strong'
+      group.vertical ||= metric.style === 'vertical'
+    } else {
+      groups.set(screenY, {
+        screenY,
+        labels: [label],
+        strong: metric.style === 'strong',
+        vertical: metric.style === 'vertical',
+      })
+    }
+  }
+
+  for (const metric of groups.values()) {
+    ctx.strokeStyle = metric.vertical
+      ? theme.sidebearing
+      : metric.strong
+        ? theme.metricStrong
+        : theme.metric
+    ctx.setLineDash(metric.vertical ? [6, 3] : [])
+    line(ctx, 0, metric.screenY, viewport.width, metric.screenY)
+    ctx.setLineDash([])
     if (data.showLabels) {
       ctx.fillStyle = theme.metricLabel
-      ctx.fillText(
-        `${metric.label} ${Math.round(metric.y)}`,
-        LABEL_INSET,
-        y - 2,
-      )
+      ctx.fillText(metric.labels.join(' · '), LABEL_INSET, metric.screenY - 2)
     }
   }
 

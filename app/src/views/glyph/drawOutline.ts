@@ -3,14 +3,25 @@
  * start markers and path-direction arrows.
  *
  * Contours arrive as UFO-style point lists, which express cubic and quadratic
- * segments in the same structure, including TrueType contours whose on-curve
- * points are implied. `traceContour` is the one place that resolves those
- * conventions into canvas path calls; everything else in the editor reuses it.
+ * segments in the same structure — including TrueType contours whose on-curve
+ * points are implied, and contours that begin on an off-curve point.
+ * `resolveContour` turns one such list into an explicit sequence of segments
+ * whose end points are always on-curve. The path, nodes, handles and start
+ * marker are all derived from that sequence, so the overlays cannot disagree
+ * with the outline they annotate.
  */
 
-import type { Contour, Point } from '../../api'
+import type { Contour } from '../../api'
 import type { Point2, Viewport } from '../../canvas/Viewport'
 
+import {
+  controlPoints,
+  directionTarget,
+  handleLines,
+  onCurvePoints,
+  resolveContour,
+  type ResolvedContour,
+} from './contourGeometry'
 import type { GlyphTheme } from './glyphTheme'
 
 /** The subset of the canvas path API the tracer needs. */
@@ -35,64 +46,10 @@ export type PointMap = (point: Point2) => Point2
 /** Node sizes in CSS pixels. */
 const CORNER_SIZE = 6
 const SMOOTH_RADIUS = 3.6
+const IMPLIED_RADIUS = 3.4
 const OFF_CURVE_RADIUS = 2.6
 const START_RADIUS = 6
 const ARROW_LENGTH = 9
-
-function isOnCurve(point: Point): boolean {
-  return point.kind !== 'OffCurve'
-}
-
-function midpoint(a: Point2, b: Point2): Point2 {
-  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
-}
-
-/**
- * Emits the segments that end at each on-curve point of `rest`, using the
- * off-curve points that precede it as control points.
- */
-function emitSegments(
-  sink: PathSink,
-  rest: readonly Point[],
-  map: PointMap,
-): void {
-  let pending: Point[] = []
-  for (const point of rest) {
-    if (!isOnCurve(point)) {
-      pending.push(point)
-      continue
-    }
-    const end = map(point)
-    if (
-      pending.length === 0 ||
-      point.kind === 'Line' ||
-      point.kind === 'Move'
-    ) {
-      sink.lineTo(end.x, end.y)
-    } else if (point.kind === 'QCurve') {
-      // A quadratic run: every pair of consecutive controls has an implied
-      // on-curve point at its midpoint, which is what TrueType stores.
-      for (let index = 0; index < pending.length - 1; index += 1) {
-        const control = pending[index] as Point
-        const next = pending[index + 1] as Point
-        const implied = map(midpoint(control, next))
-        const c = map(control)
-        sink.quadraticCurveTo(c.x, c.y, implied.x, implied.y)
-      }
-      const last = map(pending[pending.length - 1] as Point)
-      sink.quadraticCurveTo(last.x, last.y, end.x, end.y)
-    } else if (pending.length >= 2) {
-      const c1 = map(pending[pending.length - 2] as Point)
-      const c2 = map(pending[pending.length - 1] as Point)
-      sink.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, end.x, end.y)
-    } else {
-      // A cubic segment with a single control point degenerates to a quadratic.
-      const c = map(pending[0] as Point)
-      sink.quadraticCurveTo(c.x, c.y, end.x, end.y)
-    }
-    pending = []
-  }
-}
 
 /** Traces one contour into a path sink, mapping every point through `map`. */
 export function traceContour(
@@ -100,42 +57,24 @@ export function traceContour(
   contour: Contour,
   map: PointMap,
 ): void {
-  const points = contour.points
-  if (points.length === 0) return
-
-  if (!contour.closed) {
-    const first = points[0] as Point
-    const start = map(first)
-    sink.moveTo(start.x, start.y)
-    emitSegments(sink, points.slice(1), map)
-    return
-  }
-
-  const startIndex = points.findIndex(isOnCurve)
-  if (startIndex < 0) {
-    // Every point is off-curve: a quadratic contour whose on-curve points are
-    // all implied. It starts halfway between the last and the first control.
-    const first = points[0] as Point
-    const last = points[points.length - 1] as Point
-    const start = map(midpoint(last, first))
-    sink.moveTo(start.x, start.y)
-    for (let index = 0; index < points.length; index += 1) {
-      const control = points[index] as Point
-      const next = points[(index + 1) % points.length] as Point
-      const c = map(control)
-      const end = map(midpoint(control, next))
-      sink.quadraticCurveTo(c.x, c.y, end.x, end.y)
-    }
-    sink.closePath()
-    return
-  }
-
-  const rotated = [...points.slice(startIndex), ...points.slice(0, startIndex)]
-  const first = rotated[0] as Point
-  const start = map(first)
+  const resolved = resolveContour(contour)
+  if (!resolved.start) return
+  const start = map(resolved.start)
   sink.moveTo(start.x, start.y)
-  emitSegments(sink, [...rotated.slice(1), first], map)
-  sink.closePath()
+  for (const segment of resolved.segments) {
+    const to = map(segment.to)
+    if (segment.kind === 'line') {
+      sink.lineTo(to.x, to.y)
+    } else if (segment.kind === 'quad') {
+      const control = map(segment.control)
+      sink.quadraticCurveTo(control.x, control.y, to.x, to.y)
+    } else {
+      const c1 = map(segment.c1)
+      const c2 = map(segment.c2)
+      sink.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, to.x, to.y)
+    }
+  }
+  if (resolved.closed) sink.closePath()
 }
 
 /** Traces every contour of a layer into one path. */
@@ -165,32 +104,38 @@ function drawCircle(
   ctx.fill()
 }
 
-/** Draws the handle lines that join off-curve points to their on-curve node. */
+/** A hollow diamond, marking an on-curve point the font leaves implied. */
+function drawDiamond(
+  ctx: CanvasRenderingContext2D,
+  centre: Point2,
+  radius: number,
+): void {
+  ctx.beginPath()
+  ctx.moveTo(centre.x, centre.y - radius)
+  ctx.lineTo(centre.x + radius, centre.y)
+  ctx.lineTo(centre.x, centre.y + radius)
+  ctx.lineTo(centre.x - radius, centre.y)
+  ctx.closePath()
+  ctx.stroke()
+}
+
+/** Draws the handle lines that join controls to the points they govern. */
 function drawHandles(
   ctx: CanvasRenderingContext2D,
-  contour: Contour,
+  resolved: ResolvedContour,
   map: PointMap,
   theme: GlyphTheme,
 ): void {
-  const points = contour.points
+  const lines = handleLines(resolved)
+  if (lines.length === 0) return
   ctx.strokeStyle = theme.handle
   ctx.lineWidth = 1
   ctx.beginPath()
-  for (let index = 0; index < points.length; index += 1) {
-    const point = points[index] as Point
-    if (isOnCurve(point)) continue
-    const from = map(point)
-    const neighbours = [
-      points[index - 1] ??
-        (contour.closed ? points[points.length - 1] : undefined),
-      points[index + 1] ?? (contour.closed ? points[0] : undefined),
-    ]
-    for (const neighbour of neighbours) {
-      if (!neighbour || !isOnCurve(neighbour)) continue
-      const to = map(neighbour)
-      ctx.moveTo(from.x, from.y)
-      ctx.lineTo(to.x, to.y)
-    }
+  for (const [control, node] of lines) {
+    const from = map(control)
+    const to = map(node)
+    ctx.moveTo(from.x, from.y)
+    ctx.lineTo(to.x, to.y)
   }
   ctx.stroke()
 }
@@ -198,16 +143,12 @@ function drawHandles(
 /** Draws the start-point ring and the arrow showing the path direction. */
 function drawStartMarker(
   ctx: CanvasRenderingContext2D,
-  contour: Contour,
+  resolved: ResolvedContour,
   map: PointMap,
   theme: GlyphTheme,
 ): void {
-  const points = contour.points
-  const first = points[0]
-  if (!first) return
-  const start = map(first)
-  const next =
-    points[1] ?? (contour.closed ? points[points.length - 1] : undefined)
+  if (!resolved.start) return
+  const start = map(resolved.start)
 
   ctx.strokeStyle = theme.start
   ctx.lineWidth = 1.5
@@ -215,8 +156,9 @@ function drawStartMarker(
   ctx.arc(start.x, start.y, START_RADIUS, 0, Math.PI * 2)
   ctx.stroke()
 
-  if (!next) return
-  const to = map(next)
+  const target = directionTarget(resolved)
+  if (!target) return
+  const to = map(target)
   const dx = to.x - start.x
   const dy = to.y - start.y
   const length = Math.hypot(dx, dy)
@@ -241,21 +183,26 @@ function drawStartMarker(
   ctx.fill()
 }
 
-/** Draws the on-curve and off-curve nodes of one contour. */
+/** Draws the on-curve and off-curve nodes of one resolved contour. */
 function drawNodes(
   ctx: CanvasRenderingContext2D,
-  contour: Contour,
+  resolved: ResolvedContour,
   map: PointMap,
   theme: GlyphTheme,
 ): void {
-  for (const point of contour.points) {
-    const at = map(point)
-    if (!isOnCurve(point)) {
-      ctx.fillStyle = theme.nodeOffCurve
-      drawCircle(ctx, at, OFF_CURVE_RADIUS)
-      continue
-    }
-    if (point.smooth) {
+  ctx.fillStyle = theme.nodeOffCurve
+  for (const control of controlPoints(resolved))
+    drawCircle(ctx, map(control), OFF_CURVE_RADIUS)
+
+  for (const node of onCurvePoints(resolved)) {
+    const at = map(node)
+    if (node.source === null) {
+      // An on-curve point the font leaves implied gets its own hollow marker,
+      // so a TrueType outline still reads as the point list it really is.
+      ctx.strokeStyle = theme.nodeImplied
+      ctx.lineWidth = 1
+      drawDiamond(ctx, at, IMPLIED_RADIUS)
+    } else if (node.source.smooth) {
       ctx.fillStyle = theme.nodeSmooth
       drawCircle(ctx, at, SMOOTH_RADIUS)
     } else {
@@ -298,9 +245,10 @@ export function drawOutline(
 
   if (data.showPoints) {
     for (const contour of data.contours) {
-      drawHandles(ctx, contour, map, theme)
-      drawNodes(ctx, contour, map, theme)
-      drawStartMarker(ctx, contour, map, theme)
+      const resolved = resolveContour(contour)
+      drawHandles(ctx, resolved, map, theme)
+      drawNodes(ctx, resolved, map, theme)
+      drawStartMarker(ctx, resolved, map, theme)
     }
   }
   ctx.restore()

@@ -73,6 +73,15 @@
   font-weight: var(--text-weight-strong);
 }
 
+.subsectionTitle {
+  margin: 0 0 var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+  font-weight: var(--text-weight-strong);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .group {
   max-width: 900px;
   margin-bottom: var(--space-4);

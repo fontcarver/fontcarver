@@ -1,8 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setTransport, type GlyphDetailParams } from '../../api'
+import { Viewport } from '../../canvas/Viewport'
 import {
   initialDocumentState,
   useDocumentStore,
@@ -58,7 +59,10 @@ beforeEach(() => {
   resetOrders()
 })
 
-afterEach(() => setTransport(undefined))
+afterEach(() => {
+  setTransport(undefined)
+  vi.restoreAllMocks()
+})
 
 describe('GlyphView', () => {
   it('requests the glyph once and shows its metrics in the readout', async () => {
@@ -112,6 +116,72 @@ describe('GlyphView', () => {
     expect(useEditorStore.getState().overlays.filled).toBe(false)
     await user.click(screen.getByRole('button', { name: 'Fill' }))
     expect(useEditorStore.getState().overlays.filled).toBe(true)
+  })
+
+  it('focuses the canvas on opening and on click so Space toggles fill', async () => {
+    const user = userEvent.setup()
+    setTransport(transportFor())
+    useUiStore.getState().openTab({ kind: 'glyph', doc: 1, gid: 42 })
+
+    render(<GlyphView summary={makeSummary()} gid={42} />)
+    const canvas = await screen.findByRole('img', {
+      name: 'Glyph aacute, U+00E1',
+    })
+
+    expect(canvas).toHaveFocus()
+    canvas.blur()
+    expect(canvas).not.toHaveFocus()
+    await user.click(canvas)
+    expect(canvas).toHaveFocus()
+
+    await user.keyboard(' ')
+    expect(useEditorStore.getState().overlays.filled).toBe(true)
+  })
+
+  it('Space-drags the newly focused canvas without toggling fill', async () => {
+    const pan = vi.spyOn(Viewport.prototype, 'pan')
+    setTransport(transportFor())
+    useUiStore.getState().openTab({ kind: 'glyph', doc: 1, gid: 42 })
+
+    render(<GlyphView summary={makeSummary()} gid={42} />)
+    const canvas = await screen.findByRole('img', {
+      name: 'Glyph aacute, U+00E1',
+    })
+
+    fireEvent.keyDown(canvas, { key: ' ', code: 'Space' })
+    const pointer = (
+      type: string,
+      clientX: number,
+      clientY: number,
+    ): MouseEvent => {
+      const event = new MouseEvent(type, {
+        bubbles: true,
+        button: 0,
+        clientX,
+        clientY,
+      })
+      Object.defineProperty(event, 'pointerId', { value: 7 })
+      return event
+    }
+    fireEvent(canvas, pointer('pointerdown', 100, 120))
+    fireEvent(canvas, pointer('pointermove', 125, 110))
+    fireEvent(canvas, pointer('pointerup', 125, 110))
+    fireEvent.keyUp(canvas, { key: ' ', code: 'Space' })
+
+    expect(pan).toHaveBeenCalledWith(25, -10)
+    expect(useEditorStore.getState().overlays.filled).toBe(false)
+  })
+
+  it('places zoom and Fit before the wrappable overlay toggles', async () => {
+    setTransport(transportFor())
+    render(<GlyphView summary={makeSummary()} gid={42} />)
+    await screen.findByText('aacute')
+
+    const fit = screen.getByRole('button', { name: 'Fit Glyph in Window' })
+    const fill = screen.getByRole('button', { name: 'Fill' })
+    expect(
+      fit.compareDocumentPosition(fill) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0)
   })
 
   it('reports a glyph that cannot be loaded', async () => {

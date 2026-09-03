@@ -9,12 +9,10 @@
 }
 
 .toolbar {
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.toolbar::-webkit-scrollbar {
-  display: none;
+  height: auto;
+  min-height: 28px;
+  flex-wrap: wrap;
+  padding-block: 2px;
 }
 
 .toolbarGroup {
@@ -37,6 +35,14 @@
 
 .toolbarSpacer {
   flex: 1;
+}
+
+.toolbarZoomGroup {
+  margin-left: auto;
+}
+
+.toolbarToggleGroup {
+  flex-wrap: wrap;
 }
 
 .toolbarCount {

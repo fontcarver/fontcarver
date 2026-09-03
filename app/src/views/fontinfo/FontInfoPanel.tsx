@@ -90,6 +90,7 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
             heading={heading}
             axes={summary.axes}
             masters={info.masters}
+            instances={info.instances}
             query={query}
           />
         )

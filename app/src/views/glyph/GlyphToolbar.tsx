@@ -85,26 +85,9 @@ export function GlyphToolbar({
         </span>
       </span>
 
-      <span
-        className={styles.toolbarGroup}
-        role="group"
-        aria-label={t('glyphView.overlays')}
-      >
-        {OVERLAYS.map((key) => (
-          <Button
-            key={key}
-            aria-pressed={overlays[key]}
-            onClick={() => toggleOverlay(key)}
-            title={t(`cmd.view.glyph.${key}`)}
-          >
-            {t(`glyphView.overlay.${key}`)}
-          </Button>
-        ))}
-      </span>
-
       <span className={styles.toolbarSpacer} />
 
-      <span className={styles.toolbarGroup}>
+      <span className={`${styles.toolbarGroup} ${styles.toolbarZoomGroup}`}>
         <Button
           onClick={() => onZoom(1 / ZOOM_STEP)}
           aria-label={t('cmd.view.zoomOut')}
@@ -123,6 +106,23 @@ export function GlyphToolbar({
           +
         </Button>
         <Button onClick={onFit}>{t('cmd.view.zoomFit')}</Button>
+      </span>
+
+      <span
+        className={`${styles.toolbarGroup} ${styles.toolbarToggleGroup}`}
+        role="group"
+        aria-label={t('glyphView.overlays')}
+      >
+        {OVERLAYS.map((key) => (
+          <Button
+            key={key}
+            aria-pressed={overlays[key]}
+            onClick={() => toggleOverlay(key)}
+            title={t(`cmd.view.glyph.${key}`)}
+          >
+            {t(`glyphView.overlay.${key}`)}
+          </Button>
+        ))}
       </span>
     </Toolbar>
   )
