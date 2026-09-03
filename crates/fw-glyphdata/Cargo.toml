@@ -7,4 +7,3 @@ rust-version.workspace = true
 
 [dependencies]
 icu_properties.workspace = true
-thiserror.workspace = true
