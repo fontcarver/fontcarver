@@ -1,5 +1,7 @@
 //! Glyph names, Unicode properties, and related data for FontWorkshop.
 
+#![warn(missing_docs)]
+
 mod aglfn;
 mod category;
 mod names;

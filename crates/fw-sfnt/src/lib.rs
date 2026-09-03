@@ -1,5 +1,7 @@
 //! Reading sfnt and web-font containers into FontWorkshop's document model.
 
+#![warn(missing_docs)]
+
 pub mod error;
 mod read;
 
