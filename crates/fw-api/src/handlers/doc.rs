@@ -1,12 +1,15 @@
 //! Document query and mutation handlers.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use fw_doc::EditToken;
+use fw_model::{Font, SourceProvenance, Tag};
+use read_fonts::FileRef;
 
 use crate::{
     handlers::session::summary_for, Api, ApiError, ApplyParams, DocParams, DocSummary,
     EditApplyParams, EditBeginParams, EditEndParams, EditTokenId, FontInfoView, SidebarCounts,
+    TableInfo,
 };
 
 pub(crate) fn summary(api: &Api, params: DocParams) -> Result<DocSummary, ApiError> {
@@ -18,8 +21,72 @@ pub(crate) fn font_info(api: &Api, params: DocParams) -> Result<FontInfoView, Ap
         .with_doc(params.doc, |document| FontInfoView {
             info: document.font.info.clone(),
             masters: document.font.masters.clone(),
+            tables: table_inventory(&document.font),
         })
         .map_err(ApiError::from)
+}
+
+fn table_inventory(font: &Font) -> Vec<TableInfo> {
+    let source_lengths = font
+        .extra
+        .source
+        .as_ref()
+        .map(source_table_lengths)
+        .unwrap_or_default();
+    let mut tables = font
+        .extra
+        .raw_tables
+        .iter()
+        .map(|(tag, bytes)| {
+            (
+                *tag,
+                TableInfo {
+                    tag: tag.to_string(),
+                    len: u32::try_from(bytes.len()).unwrap_or(u32::MAX),
+                    preserved: true,
+                },
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+    if let Some(source) = &font.extra.source {
+        for tag in &source.table_tags {
+            tables.entry(*tag).or_insert_with(|| TableInfo {
+                tag: tag.to_string(),
+                len: source_lengths.get(tag).copied().unwrap_or_default(),
+                preserved: false,
+            });
+        }
+    }
+    tables.into_values().collect()
+}
+
+fn source_table_lengths(source: &SourceProvenance) -> BTreeMap<Tag, u32> {
+    if source.table_tags.is_empty() {
+        return BTreeMap::new();
+    }
+    let Some(bytes) = source.original_bytes.as_deref() else {
+        return BTreeMap::new();
+    };
+    let Ok(file) = FileRef::new(bytes.as_slice()) else {
+        return BTreeMap::new();
+    };
+    file.fonts()
+        .filter_map(Result::ok)
+        .find(|face| {
+            face.table_directory()
+                .table_records()
+                .iter()
+                .map(|record| Tag(record.tag().to_be_bytes()))
+                .eq(source.table_tags.iter().copied())
+        })
+        .map(|face| {
+            face.table_directory()
+                .table_records()
+                .iter()
+                .map(|record| (Tag(record.tag().to_be_bytes()), record.length()))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 pub(crate) fn sidebar(api: &Api, params: DocParams) -> Result<SidebarCounts, ApiError> {

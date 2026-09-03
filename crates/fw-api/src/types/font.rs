@@ -13,6 +13,18 @@ pub struct DocParams {
     pub doc: DocId,
 }
 
+/// One table from the imported font's sfnt directory.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
+pub struct TableInfo {
+    /// Four-character OpenType table tag.
+    pub tag: String,
+    /// Table length in bytes, or zero when the source bytes are unavailable.
+    pub len: u32,
+    /// Whether the table is retained verbatim for a preservation merge.
+    pub preserved: bool,
+}
+
 /// Editable font metadata and complete master records.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize, TS)]
 #[ts(export)]
@@ -21,6 +33,8 @@ pub struct FontInfoView {
     pub info: FontInfo,
     /// Design-space masters.
     pub masters: Vec<Master>,
+    /// Imported sfnt table inventory, sorted by tag.
+    pub tables: Vec<TableInfo>,
 }
 
 /// Counts used to populate the font-view filter sidebar.

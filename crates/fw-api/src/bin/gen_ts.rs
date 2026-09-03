@@ -47,6 +47,7 @@ fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
     Prefs::export_all(config)?;
     SetPrefsParams::export_all(config)?;
     DocParams::export_all(config)?;
+    TableInfo::export_all(config)?;
     FontInfoView::export_all(config)?;
     SidebarCounts::export_all(config)?;
     GlyphFilter::export_all(config)?;

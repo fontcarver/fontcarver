@@ -1199,6 +1199,7 @@ dependencies = [
  "fw-model",
  "fw-sfnt",
  "kurbo",
+ "read-fonts",
  "serde",
  "serde_json",
  "sha2",

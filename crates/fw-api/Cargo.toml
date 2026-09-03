@@ -12,6 +12,7 @@ fw-glyphdata = { path = "../fw-glyphdata" }
 fw-model = { path = "../fw-model", features = ["ts"] }
 fw-sfnt = { path = "../fw-sfnt" }
 kurbo.workspace = true
+read-fonts.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

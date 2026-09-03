@@ -255,6 +255,52 @@ fn collection_warning_uses_file_contents_not_extension() {
     fs::remove_dir_all(config_dir).ok();
 }
 
+#[test]
+fn font_info_reports_preserved_and_consumed_table_lengths() {
+    let _env_guard = config_env_guard();
+    let config_dir = test_config_dir("font-info-tables");
+    std::env::set_var("FW_CONFIG_DIR", &config_dir);
+    let fixture = fw_fixtures::path("DejaVuSans.ttf");
+    let bytes = fs::read(&fixture).expect("read font fixture");
+    let api = Api::new(Arc::new(Session::new()));
+    let opened = api
+        .call(
+            "session.open",
+            json!({ "path": fixture, "face_index": null }),
+        )
+        .expect("open fixture");
+
+    let font_info = api
+        .call("doc.font_info", json!({ "doc": opened["doc"] }))
+        .expect("font info");
+    let tables = font_info["tables"]
+        .as_array()
+        .expect("font info table inventory");
+    assert!(tables.windows(2).all(|pair| {
+        pair[0]["tag"].as_str().expect("table tag") < pair[1]["tag"].as_str().expect("table tag")
+    }));
+
+    let gsub = tables
+        .iter()
+        .find(|table| table["tag"] == "GSUB")
+        .expect("preserved GSUB table");
+    assert_eq!(gsub["preserved"], true);
+    assert_eq!(gsub["len"], sfnt_table_len(&bytes, b"GSUB"));
+
+    let glyf = tables
+        .iter()
+        .find(|table| table["tag"] == "glyf")
+        .expect("consumed glyf table");
+    assert_eq!(glyf["preserved"], false);
+    assert_eq!(glyf["len"], sfnt_table_len(&bytes, b"glyf"));
+    assert_eq!(
+        tables.iter().filter(|table| table["tag"] == "GSUB").count(),
+        1
+    );
+
+    fs::remove_dir_all(config_dir).ok();
+}
+
 fn test_config_dir(label: &str) -> std::path::PathBuf {
     let dir = std::env::temp_dir().join(format!(
         "fontworkshop-fw-api-{label}-{}",
@@ -296,6 +342,17 @@ fn two_face_ttc(sfnt_path: &Path) -> Vec<u8> {
     ttc.extend_from_slice(&font_offset.to_be_bytes());
     ttc.extend_from_slice(&sfnt);
     ttc
+}
+
+fn sfnt_table_len(bytes: &[u8], wanted: &[u8; 4]) -> u32 {
+    let table_count = usize::from(u16::from_be_bytes([bytes[4], bytes[5]]));
+    (0..table_count)
+        .find_map(|index| {
+            let record = &bytes[12 + index * 16..12 + (index + 1) * 16];
+            (&record[..4] == wanted)
+                .then(|| u32::from_be_bytes(record[12..16].try_into().expect("table length bytes")))
+        })
+        .expect("fixture table")
 }
 
 #[test]
