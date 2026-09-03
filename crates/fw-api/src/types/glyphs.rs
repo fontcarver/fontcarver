@@ -124,6 +124,25 @@ pub struct GlyphListResult {
     pub items: Vec<GlyphCell>,
 }
 
+/// Parameters for locating a glyph in a filtered, sorted grid listing.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
+pub struct GlyphIndexParams {
+    /// Open document identifier.
+    pub doc: DocId,
+    /// Stable session glyph handle to locate.
+    pub gid: GlyphId,
+    /// Master used for width sorting and component filtering.
+    #[serde(default)]
+    pub master: Option<MasterId>,
+    /// Filter conditions.
+    #[serde(default)]
+    pub filter: GlyphFilter,
+    /// Sort order.
+    #[serde(default)]
+    pub sort: GlyphSort,
+}
+
 /// Parameters for fetching one glyph-grid cell.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
 #[ts(export)]

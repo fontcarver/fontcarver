@@ -98,6 +98,35 @@ fn lists_filters_sorts_pages_paths_and_searches_glyphs() {
     assert_eq!(second_page.items.len(), 2);
     assert_ne!(first_page.items[0].gid, second_page.items[0].gid);
 
+    let filtered_page = list(
+        &api,
+        json!({
+            "doc": doc,
+            "master": null,
+            "filter": { "categories": ["Letter"], "scripts": ["Latn"] },
+            "sort": "Name",
+            "offset": 37,
+            "limit": 11,
+            "include_paths": false
+        }),
+    );
+    assert_eq!(filtered_page.items.len(), 11);
+    for (page_index, glyph) in filtered_page.items.iter().enumerate() {
+        let index = api
+            .call(
+                "glyphs.index_of",
+                json!({
+                    "doc": doc,
+                    "gid": glyph.gid,
+                    "master": null,
+                    "filter": { "categories": ["Letter"], "scripts": ["Latn"] },
+                    "sort": "Name"
+                }),
+            )
+            .expect("find glyph in filtered and sorted listing");
+        assert_eq!(index, json!(37 + page_index as u32));
+    }
+
     let search = api
         .call(
             "glyphs.search",

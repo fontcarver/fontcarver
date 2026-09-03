@@ -55,6 +55,7 @@ fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
     GlyphListParams::export_all(config)?;
     GlyphCell::export_all(config)?;
     GlyphListResult::export_all(config)?;
+    GlyphIndexParams::export_all(config)?;
     GlyphCellParams::export_all(config)?;
     LayerPath::export_all(config)?;
     GlyphDetail::export_all(config)?;
@@ -129,7 +130,7 @@ fn collect_type_names(expression: &str, names: &mut BTreeSet<String>) {
         .split(|character: char| !(character.is_ascii_alphanumeric() || character == '_'))
         .filter(|token| !token.is_empty())
     {
-        if !matches!(token, "Array" | "null" | "string") {
+        if !matches!(token, "Array" | "null" | "number" | "string") {
             names.insert(token.to_owned());
         }
     }

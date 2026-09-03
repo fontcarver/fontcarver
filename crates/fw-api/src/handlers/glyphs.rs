@@ -9,7 +9,7 @@ use kurbo::{BezPath, PathEl, Point, Shape};
 
 use crate::{
     Api, ApiError, GlyphCell, GlyphCellParams, GlyphDetail, GlyphDetailParams, GlyphFilter,
-    GlyphListParams, GlyphListResult, GlyphSearchParams, GlyphSort, LayerPath,
+    GlyphIndexParams, GlyphListParams, GlyphListResult, GlyphSearchParams, GlyphSort, LayerPath,
 };
 
 const MAX_GLYPH_PAGE: u32 = 2_000;
@@ -37,6 +37,20 @@ pub(crate) fn cell(api: &Api, params: GlyphCellParams) -> Result<GlyphCell, ApiE
     api.session
         .with_doc(params.doc, |document| {
             build_cell(document, params.gid, &params.master, true)
+        })
+        .map_err(ApiError::from)?
+}
+
+pub(crate) fn index_of(api: &Api, params: GlyphIndexParams) -> Result<Option<u32>, ApiError> {
+    api.session
+        .with_doc(params.doc, |document| {
+            let master = selected_master(document, params.master.as_ref())?;
+            let mut matches = matching_candidates(document, &master, &params.filter, None)?;
+            sort_candidates(&mut matches, params.sort);
+            Ok(matches
+                .iter()
+                .position(|candidate| candidate.gid == params.gid)
+                .map(|index| u32::try_from(index).unwrap_or(u32::MAX)))
         })
         .map_err(ApiError::from)?
 }
@@ -76,28 +90,7 @@ fn list_impl(
     api.session
         .with_doc(params.doc, |document| {
             let master = selected_master(document, params.master.as_ref())?;
-            let mut matches = Vec::new();
-            for (order, name) in document.font.glyph_order().enumerate() {
-                let glyph = document.font.glyph(name).ok_or_else(|| {
-                    ApiError::internal(format!("glyph order references missing glyph `{name}`"))
-                })?;
-                let layer = glyph.master_layer(&master);
-                let gid = document.glyph_id(name).ok_or_else(|| {
-                    ApiError::internal(format!("glyph `{name}` has no session handle"))
-                })?;
-                if matches_filter(glyph, layer, document.glyph_generation(gid), &params.filter) {
-                    matches.push(Candidate {
-                        order,
-                        gid,
-                        name: name.to_string(),
-                        first_unicode: glyph.unicodes.first().copied(),
-                        width: layer.map_or(0.0, |layer| layer.width),
-                        search_rank: search_query
-                            .and_then(|query| query_rank(glyph, query))
-                            .unwrap_or_default(),
-                    });
-                }
-            }
+            let mut matches = matching_candidates(document, &master, &params.filter, search_query)?;
             if search_query.is_some() {
                 matches.sort_by(|left, right| {
                     left.search_rank
@@ -119,6 +112,37 @@ fn list_impl(
             Ok(GlyphListResult { total, items })
         })
         .map_err(ApiError::from)?
+}
+
+fn matching_candidates(
+    document: &Document,
+    master: &MasterId,
+    filter: &GlyphFilter,
+    search_query: Option<&str>,
+) -> Result<Vec<Candidate>, ApiError> {
+    let mut matches = Vec::new();
+    for (order, name) in document.font.glyph_order().enumerate() {
+        let glyph = document.font.glyph(name).ok_or_else(|| {
+            ApiError::internal(format!("glyph order references missing glyph `{name}`"))
+        })?;
+        let layer = glyph.master_layer(master);
+        let gid = document
+            .glyph_id(name)
+            .ok_or_else(|| ApiError::internal(format!("glyph `{name}` has no session handle")))?;
+        if matches_filter(glyph, layer, document.glyph_generation(gid), filter) {
+            matches.push(Candidate {
+                order,
+                gid,
+                name: name.to_string(),
+                first_unicode: glyph.unicodes.first().copied(),
+                width: layer.map_or(0.0, |layer| layer.width),
+                search_rank: search_query
+                    .and_then(|query| query_rank(glyph, query))
+                    .unwrap_or_default(),
+            });
+        }
+    }
+    Ok(matches)
 }
 
 fn selected_master(
