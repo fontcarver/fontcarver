@@ -116,6 +116,43 @@ fn beginning_an_edit_finalizes_the_previous_gesture() {
 }
 
 #[test]
+fn reducing_undo_budget_evicts_oldest_entries_and_keeps_cursor_consistent() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            for (value, label) in [(65, "First"), (66, "Second"), (67, "Third")] {
+                doc.apply(
+                    Command::SetUnicodes {
+                        glyph: "base".into(),
+                        unicodes: vec![value],
+                    },
+                    label,
+                )
+                .unwrap();
+            }
+            assert_eq!(doc.undo_len(), 3);
+
+            doc.set_undo_budget(1);
+            assert_eq!(doc.undo_len(), 1);
+            assert_eq!(doc.undo_label(), Some("Third"));
+            assert_eq!(doc.redo_label(), None);
+
+            doc.undo().unwrap();
+            assert_eq!(doc.font.glyph("base").unwrap().unicodes, vec![66]);
+            assert_eq!(doc.undo_label(), None);
+            assert_eq!(doc.redo_label(), Some("Third"));
+            assert_eq!(doc.undo().unwrap(), None);
+
+            doc.redo().unwrap();
+            assert_eq!(doc.font.glyph("base").unwrap().unicodes, vec![67]);
+            assert_eq!(doc.undo_label(), Some("Third"));
+            assert_eq!(doc.redo_label(), None);
+        })
+        .unwrap();
+}
+
+#[test]
 fn rename_undo_restores_stable_id_and_component_references() {
     let session = Session::new();
     let id = session.open_font(test_font(), None);

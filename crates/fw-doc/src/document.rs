@@ -230,6 +230,15 @@ impl Document {
         self.undo.len()
     }
 
+    /// Sets the estimated byte budget for undo and redo history.
+    ///
+    /// If the retained history exceeds `bytes`, the oldest entries are evicted
+    /// immediately. The newest entry is always retained so the latest mutation
+    /// remains undoable even when its estimate alone exceeds the budget.
+    pub fn set_undo_budget(&mut self, bytes: usize) {
+        self.undo.set_memory_budget(bytes);
+    }
+
     /// Resolves and caches a glyph's component-flattened path for one master.
     pub fn flattened_path(&self, id: GlyphId, master: &MasterId) -> Result<Arc<BezPath>, Error> {
         let Some(name) = self.glyph_name(id) else {
