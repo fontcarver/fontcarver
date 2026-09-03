@@ -113,6 +113,40 @@ fn reads_or_derives_x_height_and_cap_height() {
 }
 
 #[test]
+fn infers_smooth_points_from_quadratic_tangents() {
+    let outcome = read_path(
+        &fw_fixtures::path("DejaVuSans.ttf"),
+        &ReadOptions::default(),
+    )
+    .expect("read DejaVu Sans");
+    let font = &outcome.fonts[0];
+
+    let o_points: Vec<_> = font
+        .glyph("o")
+        .expect("o glyph")
+        .layers
+        .iter()
+        .flat_map(|layer| &layer.contours)
+        .flat_map(|contour| &contour.points)
+        .filter(|point| point.kind != PointKind::OffCurve)
+        .collect();
+    assert!(!o_points.is_empty());
+    assert!(o_points.iter().all(|point| point.smooth));
+
+    let h_points: Vec<_> = font
+        .glyph("H")
+        .expect("H glyph")
+        .layers
+        .iter()
+        .flat_map(|layer| &layer.contours)
+        .flat_map(|contour| &contour.points)
+        .filter(|point| point.kind != PointKind::OffCurve)
+        .collect();
+    assert!(!h_points.is_empty());
+    assert!(h_points.iter().all(|point| !point.smooth));
+}
+
+#[test]
 fn can_drop_original_bytes_without_losing_provenance() {
     let path = fw_fixtures::path("NotoSans-Regular.ttf");
     let outcome = read_path(
