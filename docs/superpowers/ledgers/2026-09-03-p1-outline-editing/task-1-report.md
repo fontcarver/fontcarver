@@ -43,3 +43,25 @@ Only root `Cargo.toml`/`Cargo.lock` and new `crates/fw-geom/**` were committed. 
 - `cargo clippy -p fw-geom --all-targets -- -D warnings` — `Finished dev profile [unoptimized + debuginfo]`
 - `cargo test -p fw-geom` — `test result: ok` throughout; 42 tests plus doc-tests, 0 failed
 - `cargo test -p fw-geom --release` — `test result: ok` throughout; 42 tests plus doc-tests, 0 failed
+
+## Fix round 2
+
+**Status:** DONE
+
+- Closed stroke rings are no longer polygonalised as a group. Each ring is checked independently; self-intersections are found on the original Bézier segments, those segments are split at the intersection parameters, and directed loops with the wrong winding (plus numerically unstable microscopic slivers) are discarded. Unaffected rings remain curved. Smooth round-stroke cubic runs are compacted with a verified fit error of 2.5% of nib width.
+- The 200×200 round-join square now has an outer ring of 4 lines + 4 curves and a 4-corner inner ring. DejaVu `B` has 45 output on-curve points versus 17 source on-curve points, with off-curve points retained. `Nib::Rect` on a closed circle also retains off-curve points.
+- The strict overlap fast path now uses an x/bbox sweep over flattened exact line intersections, treats endpoint/tangent contacts within 0.001 units as non-crossing, detects collinear overlap, and compares winding against `correct_direction`. The area oracle now measures the final direction-corrected output; `uni2727` succeeds again.
+- Added `remove_overlap_with_fallback`, `RemoveOverlapOutcome`, and `FallbackKind`. Strict flo failures and oracle mismatches fall back to an i_overlay NonZero union whose polygon edges are re-fitted with `kurbo::fit_to_bezpath` at `tol * 10`. The API docs require UI warning when `fallback != FallbackKind::None`; plain `remove_overlap` remains strict. The `remove_overlap` docs now spell out contour ordering.
+
+### Corpus before / after (DejaVu Sans, 3,583 glyphs with contours)
+
+- Strict `remove_overlap`: 3,236/3,583 successful (347 `BooleanMismatch`) before; 3,583/3,583 successful after. 3,580 are byte-identical; the three genuinely overlapping outlines changed (`shade`, `uniF001`, `uniF003`).
+- `remove_overlap_with_fallback`: 3,583/3,583 successful after (all untouched corpus glyphs used `FallbackKind::None`; the forced-failure regression exercises `Flattened`).
+- Round-nib `expand_stroke`: 3,174/3,583 successful and 385/3,174 curved before; 3,250/3,583 successful and 3,250/3,250 curved after (100%). Failures fell from 409 to 333 and remain strict flo failures for which the new explicit fallback API is available.
+
+### Verification output
+
+- `cargo fmt --all --check` — pass (no output)
+- `cargo clippy -p fw-geom --all-targets -- -D warnings` — `Finished dev profile [unoptimized + debuginfo]`
+- `cargo test -p fw-geom` — final line: `test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out` (doc-tests); 50 non-doc tests passed
+- `cargo test -p fw-geom --release` — final line: `test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out` (doc-tests); 52 non-doc tests passed including both release-only corpus tests
