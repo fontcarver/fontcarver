@@ -80,8 +80,7 @@ export class HttpTransport implements Transport {
     let envelope: ErrorEnvelope | ResultEnvelope<ApiMethods[M]['result']>
     try {
       envelope = (await response.json()) as
-        | ErrorEnvelope
-        | ResultEnvelope<ApiMethods[M]['result']>
+        ErrorEnvelope | ResultEnvelope<ApiMethods[M]['result']>
     } catch {
       throw new ApiCallError(
         'internal',

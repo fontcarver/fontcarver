@@ -3,10 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setTransport } from '../api'
 import { createMockTransport, makeSummary } from '../test/mockTransport'
 
-import {
-  initialDocumentState,
-  useDocumentStore,
-} from './documentStore'
+import { initialDocumentState, useDocumentStore } from './documentStore'
 import { initialSessionState, useSessionStore } from './sessionStore'
 import { initialUiState, selectActiveDoc, tabId, useUiStore } from './uiStore'
 
@@ -31,7 +28,9 @@ describe('sessionStore.open', () => {
     })
     setTransport(transport)
 
-    const result = await useSessionStore.getState().open('/fonts/DejaVuSans.ttf')
+    const result = await useSessionStore
+      .getState()
+      .open('/fonts/DejaVuSans.ttf')
 
     expect(result).toEqual(summary)
     expect(transport.calls[0]).toEqual({
@@ -128,7 +127,9 @@ describe('sessionStore.save', () => {
     useSessionStore.setState({ docs: [makeSummary({ path: '/docs/a.fwf' })] })
 
     expect(await useSessionStore.getState().save(1)).toBe(false)
-    expect(useUiStore.getState().toasts[0]).toMatchObject({ message: 'disk full' })
+    expect(useUiStore.getState().toasts[0]).toMatchObject({
+      message: 'disk full',
+    })
   })
 })
 
@@ -236,7 +237,9 @@ describe('sessionStore events', () => {
     setTransport(transport)
 
     const stop = useSessionStore.getState().start()
-    await vi.waitFor(() => expect(useSessionStore.getState().docs).toHaveLength(1))
+    await vi.waitFor(() =>
+      expect(useSessionStore.getState().docs).toHaveLength(1),
+    )
     expect(useUiStore.getState().activeTab).toBe(tabId('font', 1))
 
     transport.emit({

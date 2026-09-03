@@ -78,7 +78,9 @@ describe('HttpTransport.call', () => {
   it('times out a hung request with an io ApiCallError', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => {
       return new Promise((_resolve, reject) => {
-        init?.signal?.addEventListener('abort', () => reject(init.signal?.reason))
+        init?.signal?.addEventListener('abort', () =>
+          reject(init.signal?.reason),
+        )
       })
     })
     const transport = new HttpTransport('http://localhost:8787', {

@@ -40,7 +40,9 @@ describe('CloseDocumentDialog', () => {
       screen.getByRole('dialog', { name: 'Unsaved changes' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Don’t Save' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Don’t Save' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
   })
 
@@ -62,7 +64,9 @@ describe('CloseDocumentDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Don’t Save' }))
 
     await waitFor(() => expect(useSessionStore.getState().docs).toEqual([]))
-    expect(transport.calls.map((call) => call.method)).toEqual(['session.close'])
+    expect(transport.calls.map((call) => call.method)).toEqual([
+      'session.close',
+    ])
   })
 
   it('saves and then closes when Save is chosen', async () => {

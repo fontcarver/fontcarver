@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { MENU_ORDER, commandsForMenu, runCommand, type MenuId } from './commands'
+import {
+  MENU_ORDER,
+  commandsForMenu,
+  runCommand,
+  type MenuId,
+} from './commands'
 import styles from './MenuBar.module.css'
 import { MenuItem } from './MenuItem'
 import { useCommandRegistry } from './useCommandRegistry'
@@ -29,7 +34,8 @@ export function MenuBar() {
   const moveMenu = useCallback(
     (current: MenuId, delta: number, keepOpen: boolean) => {
       const index = MENU_ORDER.indexOf(current)
-      const next = MENU_ORDER[(index + delta + MENU_ORDER.length) % MENU_ORDER.length]
+      const next =
+        MENU_ORDER[(index + delta + MENU_ORDER.length) % MENU_ORDER.length]
       if (!next) return
       if (keepOpen) setOpen(next)
       focusTitle(next)
@@ -96,7 +102,12 @@ export function MenuBar() {
     const commands = commandsForMenu(menu)
     if (commands.length === 0)
       return (
-        <button type="button" role="menuitem" disabled className={styles.menuItem}>
+        <button
+          type="button"
+          role="menuitem"
+          disabled
+          className={styles.menuItem}
+        >
           <span className={styles.menuItemLabel}>{t('menu.empty')}</span>
         </button>
       )
@@ -105,7 +116,9 @@ export function MenuBar() {
     let previousGroup: string | undefined
     for (const command of commands) {
       if (previousGroup !== undefined && command.group !== previousGroup)
-        nodes.push(<div key={`sep-${command.id}`} className={styles.menuSeparator} />)
+        nodes.push(
+          <div key={`sep-${command.id}`} className={styles.menuSeparator} />,
+        )
       previousGroup = command.group
       nodes.push(
         <MenuItem
@@ -125,7 +138,11 @@ export function MenuBar() {
   return (
     <div ref={barRef} className={styles.menubar}>
       <span className={styles.wordmark}>{t('app.name')}</span>
-      <div role="menubar" aria-label={t('a11y.menubar')} className={styles.menuList}>
+      <div
+        role="menubar"
+        aria-label={t('a11y.menubar')}
+        className={styles.menuList}
+      >
         {MENU_ORDER.map((menu) => (
           <div key={menu} role="none" className={styles.menuRoot}>
             <button

@@ -16,7 +16,9 @@ test.describe('glyph view', () => {
 
     await grid.getByRole('option', { name: 'A', exact: true }).dblclick()
 
-    await expect(page.getByRole('tab', { name: 'A', exact: true })).toBeVisible()
+    await expect(
+      page.getByRole('tab', { name: 'A', exact: true }),
+    ).toBeVisible()
     await expect(
       page.getByRole('img', { name: /^Glyph A, U\+0041$/ }),
     ).toBeVisible()
@@ -34,12 +36,16 @@ test.describe('glyph view', () => {
     await page.goto('/')
     const grid = page.getByRole('listbox', { name: 'Glyphs' })
     await grid.getByRole('option', { name: 'A', exact: true }).dblclick()
-    await expect(page.getByRole('tab', { name: 'A', exact: true })).toBeVisible()
+    await expect(
+      page.getByRole('tab', { name: 'A', exact: true }),
+    ).toBeVisible()
 
     await page.getByRole('img', { name: /^Glyph A/ }).click()
     await page.keyboard.press('Control+]')
 
-    await expect(page.getByRole('tab', { name: 'B', exact: true })).toBeVisible()
+    await expect(
+      page.getByRole('tab', { name: 'B', exact: true }),
+    ).toBeVisible()
     await expect(page.getByRole('tab', { name: 'A', exact: true })).toHaveCount(
       0,
     )

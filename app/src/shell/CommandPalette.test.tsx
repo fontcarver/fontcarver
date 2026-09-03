@@ -50,7 +50,9 @@ describe('CommandPalette', () => {
   it('lists commands with their shortcut hints', () => {
     render(<CommandPalette />)
 
-    expect(screen.getByRole('option', { name: /Open Font/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole('option', { name: /Open Font/ }),
+    ).toBeInTheDocument()
     expect(screen.getByText('Ctrl+O')).toBeInTheDocument()
   })
 
@@ -81,7 +83,9 @@ describe('CommandPalette', () => {
     expect(disabledRow).toHaveAttribute('aria-selected', 'true')
     expect(disabledRow.className).toContain(paletteStyles.paletteItemHighlight)
     expect(disabledRow.className).not.toContain(paletteStyles.paletteItemActive)
-    expect(disabledRow.className).not.toContain(paletteStyles.paletteItemDisabled)
+    expect(disabledRow.className).not.toContain(
+      paletteStyles.paletteItemDisabled,
+    )
     expect(enabledRow.className).not.toContain(paletteStyles.paletteItemActive)
   })
 

@@ -27,7 +27,9 @@ export function CommandPaletteDialog() {
   const dialogRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
   const [restoreFocus] = useState<HTMLElement | null>(() =>
-    document.activeElement instanceof HTMLElement ? document.activeElement : null,
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null,
   )
 
   useEffect(() => {
@@ -35,14 +37,18 @@ export function CommandPaletteDialog() {
     return () => {
       const focused = document.activeElement
       const focusLeftThePalette =
-        focused !== null && focused !== document.body && !dialog?.contains(focused)
+        focused !== null &&
+        focused !== document.body &&
+        !dialog?.contains(focused)
       if (!focusLeftThePalette) restoreFocus?.focus()
     }
   }, [restoreFocus])
 
   // Recomputed on every render: the list is small, `when()` must be fresh, and
   // `useCommandRegistry()` above re-renders us when the registry changes.
-  const commands = fuzzyRank(query, listCommands(), (command) => t(command.title))
+  const commands = fuzzyRank(query, listCommands(), (command) =>
+    t(command.title),
+  )
 
   useEffect(() => {
     const highlighted = listRef.current?.querySelector('[data-active="true"]')
@@ -68,11 +74,15 @@ export function CommandPaletteDialog() {
       close()
     } else if (event.key === 'ArrowDown') {
       event.preventDefault()
-      setActive((index) => (commands.length === 0 ? 0 : (index + 1) % commands.length))
+      setActive((index) =>
+        commands.length === 0 ? 0 : (index + 1) % commands.length,
+      )
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
       setActive((index) =>
-        commands.length === 0 ? 0 : (index - 1 + commands.length) % commands.length,
+        commands.length === 0
+          ? 0
+          : (index - 1 + commands.length) % commands.length,
       )
     } else if (event.key === 'Enter') {
       event.preventDefault()
@@ -157,7 +167,9 @@ export function CommandPaletteDialog() {
                       {t(command.title)}
                     </span>
                     {reason ? (
-                      <span className={paletteStyles.paletteReason}>{reason}</span>
+                      <span className={paletteStyles.paletteReason}>
+                        {reason}
+                      </span>
                     ) : null}
                     {command.menu ? (
                       <span className={paletteStyles.paletteMenu}>
