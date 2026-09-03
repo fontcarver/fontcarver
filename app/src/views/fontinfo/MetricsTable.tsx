@@ -104,7 +104,7 @@ export function MetricsTable({ masters, query, heading }: MetricsTableProps) {
             <tr>
               <th scope="col">{t('fontInfo.column.metric')}</th>
               {masters.map((master) => (
-                <th key={master.id.toString()} scope="col">
+                <th key={master.id} scope="col">
                   {master.name}
                 </th>
               ))}
@@ -115,7 +115,7 @@ export function MetricsTable({ masters, query, heading }: MetricsTableProps) {
               <tr key={key}>
                 <th scope="row">{t(key)}</th>
                 {masters.map((master) => (
-                  <td key={master.id.toString()} className={styles.numeric}>
+                  <td key={master.id} className={styles.numeric}>
                     {read(master)}
                   </td>
                 ))}

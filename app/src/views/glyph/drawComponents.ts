@@ -120,7 +120,7 @@ export function drawComponents(
     ctx.moveTo(origin.x, origin.y - MARKER_SIZE)
     ctx.lineTo(origin.x, origin.y + MARKER_SIZE)
     ctx.stroke()
-    const text = component.base.toString()
+    const text = component.base
     const x = origin.x + MARKER_SIZE + LABEL_GAP
     const position = labelPosition(
       x,

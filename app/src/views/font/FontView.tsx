@@ -26,12 +26,7 @@ export function FontView({ summary }: FontViewProps) {
   )
   const queryKey = useMemo(
     () =>
-      JSON.stringify([
-        query.doc,
-        query.master?.toString() ?? '',
-        query.sort,
-        query.filter,
-      ]),
+      JSON.stringify([query.doc, query.master ?? '', query.sort, query.filter]),
     [query],
   )
 

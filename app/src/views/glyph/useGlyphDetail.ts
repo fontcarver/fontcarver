@@ -51,7 +51,7 @@ export function useGlyphDetail(
     error: null,
   })
 
-  const masterKey = master?.toString() ?? ''
+  const masterKey = master ?? ''
   const key = `${doc}:${gid ?? 'none'}:${masterKey}:${reload}`
 
   useEffect(() => {

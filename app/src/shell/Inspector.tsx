@@ -45,8 +45,7 @@ export function Inspector() {
   }
 
   const doc = summary.doc
-  const masterId =
-    view.master?.toString() ?? summary.masters[0]?.id.toString() ?? ''
+  const masterId = view.master ?? summary.masters[0]?.id ?? ''
 
   return (
     <>
@@ -90,7 +89,7 @@ export function Inspector() {
                 label={t('inspector.master')}
                 value={masterId}
                 options={summary.masters.map((master) => ({
-                  value: master.id.toString(),
+                  value: master.id,
                   label: master.name,
                 }))}
                 onChange={(value) => setMaster(doc, value)}

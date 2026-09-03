@@ -12,7 +12,7 @@ use crate::Error;
 #[serde(transparent)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
-pub struct GlyphName(#[cfg_attr(feature = "ts", ts(type = "String"))] pub SmolStr);
+pub struct GlyphName(#[cfg_attr(feature = "ts", ts(type = "string"))] pub SmolStr);
 
 impl fmt::Display for GlyphName {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -69,7 +69,7 @@ pub struct GlyphId(pub u32);
 #[serde(transparent)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
-pub struct MasterId(#[cfg_attr(feature = "ts", ts(type = "String"))] pub SmolStr);
+pub struct MasterId(#[cfg_attr(feature = "ts", ts(type = "string"))] pub SmolStr);
 
 impl MasterId {
     /// Generates a UUID v4 identifier without separators.
@@ -95,7 +95,7 @@ impl fmt::Display for MasterId {
 #[serde(transparent)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
-pub struct LayerId(#[cfg_attr(feature = "ts", ts(type = "String"))] pub SmolStr);
+pub struct LayerId(#[cfg_attr(feature = "ts", ts(type = "string"))] pub SmolStr);
 
 impl LayerId {
     /// Generates a UUID v4 identifier without separators.

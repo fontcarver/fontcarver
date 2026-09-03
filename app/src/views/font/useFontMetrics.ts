@@ -25,7 +25,7 @@ function metricsOf(doc: DocId): MasterMetrics | null {
   if (!info) return null
   return new Map(
     info.masters.map((master) => [
-      master.id.toString(),
+      master.id,
       {
         ascender: master.metrics.ascender,
         descender: master.metrics.descender,
@@ -48,7 +48,7 @@ export function useFontMetrics(
   master: MasterId | null,
   unitsPerEm: number,
 ): EmBox {
-  const masterKey = master?.toString() ?? ''
+  const masterKey = master ?? ''
   const [metrics, setMetrics] = useState<MasterMetrics | null>(() =>
     doc === null ? null : metricsOf(doc),
   )

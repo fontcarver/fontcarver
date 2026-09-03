@@ -107,7 +107,7 @@ export function AxesTable({
                   </thead>
                   <tbody>
                     {masters.map((master) => (
-                      <tr key={master.id.toString()}>
+                      <tr key={master.id}>
                         <th scope="row">{master.name}</th>
                         {visibleAxes.map((axis) => (
                           <td key={axis.tag} className={styles.numeric}>

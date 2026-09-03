@@ -68,18 +68,18 @@ export interface GlyphScene {
 
 /** The master a layer belongs to, or `null` for a free-standing custom layer. */
 export function layerMasterId(kind: LayerKind): string | null {
-  if ('Master' in kind) return kind.Master.toString()
-  if ('Brace' in kind) return kind.Brace.master.toString()
-  if ('Bracket' in kind) return kind.Bracket.master.toString()
-  if ('Background' in kind) return kind.Background.toString()
-  if ('Backup' in kind) return kind.Backup.of.toString()
+  if ('Master' in kind) return kind.Master
+  if ('Brace' in kind) return kind.Brace.master
+  if ('Bracket' in kind) return kind.Bracket.master
+  if ('Background' in kind) return kind.Background
+  if ('Backup' in kind) return kind.Backup.of
   return null
 }
 
 /** Whether a layer is the plain master layer of `master`. */
 function isMasterLayer(layer: Layer, master: string | null): boolean {
   if (!('Master' in layer.kind)) return false
-  return master === null || layer.kind.Master.toString() === master
+  return master === null || layer.kind.Master === master
 }
 
 /**
@@ -90,7 +90,7 @@ export function activeLayer(
   glyph: Glyph,
   master: MasterId | null,
 ): Layer | null {
-  const wanted = master?.toString() ?? null
+  const wanted = master
   return (
     glyph.layers.find((layer) => isMasterLayer(layer, wanted)) ??
     glyph.layers.find((layer) => isMasterLayer(layer, null)) ??
@@ -146,9 +146,8 @@ export function buildScene({
   const flattened =
     layer === null
       ? null
-      : (detail.paths.find(
-          (path) => path.layer.toString() === layer.id.toString(),
-        )?.flattened ?? null)
+      : (detail.paths.find((path) => path.layer === layer.id)?.flattened ??
+        null)
 
   const guides: SceneGuide[] = [
     ...(master?.guides ?? []).map((guide): SceneGuide => ({
@@ -162,7 +161,7 @@ export function buildScene({
   ]
 
   return {
-    name: glyph.name.toString(),
+    name: glyph.name,
     unicodes: glyph.unicodes,
     layer,
     // Imported fonts leave the layer unnamed; the master names it instead.

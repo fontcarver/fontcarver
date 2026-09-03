@@ -58,7 +58,7 @@ export function GlyphInspector() {
     <>
       <Panel title={t('glyphInspector.glyph')}>
         <Field label={t('glyphInspector.name')} readOnly>
-          {glyph.name.toString()}
+          {glyph.name}
         </Field>
         <Field label={t('glyphInspector.unicodes')} readOnly>
           {formatUnicodes(glyph.unicodes)}
@@ -147,12 +147,10 @@ export function GlyphInspector() {
         >
           {scene.components.map((component, index) => (
             <div
-              key={`${component.base.toString()}-${index}`}
+              key={`${component.base}-${index}`}
               className={styles.inspectorRow}
             >
-              <span className={styles.inspectorName}>
-                {component.base.toString()}
-              </span>
+              <span className={styles.inspectorName}>{component.base}</span>
               <span>
                 {`${round(component.transform[4])}, ${round(component.transform[5])}`}
               </span>
@@ -181,7 +179,7 @@ export function GlyphInspector() {
       <Panel title={t('glyphInspector.layers')}>
         <List count={glyph.layers.length} empty={t('glyphInspector.noLayers')}>
           {glyph.layers.map((layer, index) => (
-            <div key={layer.id.toString()} className={styles.inspectorRow}>
+            <div key={layer.id} className={styles.inspectorRow}>
               <span className={styles.inspectorName}>
                 {layerLabel(layer, index)}
               </span>

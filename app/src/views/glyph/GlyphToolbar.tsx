@@ -46,8 +46,7 @@ export function GlyphToolbar({
   const toggleOverlay = useEditorStore((state) => state.toggleOverlay)
   const zoom = useEditorStore((state) => state.zoom)
 
-  const masterId =
-    view?.master?.toString() ?? summary.masters[0]?.id.toString() ?? ''
+  const masterId = view?.master ?? summary.masters[0]?.id ?? ''
   const pixelsPerEm = Math.max(1, Math.round(zoom * scene.metrics.upem))
 
   return (
@@ -77,7 +76,7 @@ export function GlyphToolbar({
             value={masterId}
             disabled={summary.masters.length < 2}
             options={summary.masters.map((master) => ({
-              value: master.id.toString(),
+              value: master.id,
               label: master.name,
             }))}
             onChange={(value) => setMaster(doc, value)}

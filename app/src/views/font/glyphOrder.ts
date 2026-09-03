@@ -29,7 +29,7 @@ const orders = new Map<string, OrderEntry>()
 export function orderKey(query: GlyphQuery): string {
   return JSON.stringify([
     query.doc,
-    query.master?.toString() ?? '',
+    query.master ?? '',
     query.sort,
     query.filter,
   ])

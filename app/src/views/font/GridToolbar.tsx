@@ -37,8 +37,7 @@ export function GridToolbar({ summary, view }: GridToolbarProps) {
   const setCellSize = useDocumentStore((state) => state.setCellSize)
   const setFilter = useDocumentStore((state) => state.setFilter)
 
-  const masterId =
-    view.master?.toString() ?? summary.masters[0]?.id.toString() ?? ''
+  const masterId = view.master ?? summary.masters[0]?.id ?? ''
   const encodedOnly = view.filter.unicode_ranges.length > 0
   const shown = view.matchCount ?? summary.glyph_count
 
@@ -52,7 +51,7 @@ export function GridToolbar({ summary, view }: GridToolbarProps) {
             value={masterId}
             disabled={summary.masters.length < 2}
             options={summary.masters.map((master) => ({
-              value: master.id.toString(),
+              value: master.id,
               label: master.name,
             }))}
             onChange={(value) => setMaster(doc, value)}

@@ -50,12 +50,8 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
 
   const master = useMemo(() => {
     const masters = fontInfo.info?.masters ?? []
-    const wanted = masterId?.toString() ?? ''
-    return (
-      masters.find((entry) => entry.id.toString() === wanted) ??
-      masters[0] ??
-      null
-    )
+    const wanted = masterId ?? ''
+    return masters.find((entry) => entry.id === wanted) ?? masters[0] ?? null
   }, [fontInfo.info, masterId])
 
   const scene = useMemo(
@@ -160,7 +156,7 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
           labels={labels}
           overlays={overlays}
           flattened={flattened}
-          fitKey={`${doc}:${gid}:${masterId?.toString() ?? ''}`}
+          fitKey={`${doc}:${gid}:${masterId ?? ''}`}
           label={t('glyphView.canvasLabel', {
             name: scene.name,
             unicode: formatUnicodes(scene.unicodes),
