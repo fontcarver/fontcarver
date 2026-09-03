@@ -307,11 +307,15 @@ fn build_cell(
         .font
         .glyph(name)
         .ok_or_else(|| ApiError::not_found(format!("glyph `{name}` does not exist")))?;
+    let (category, sub_category, script) = glyph_classification(glyph);
     let Some(layer) = glyph.master_layer(master) else {
         return Ok(GlyphCell {
             gid,
             name: name.to_string(),
             unicodes: glyph.unicodes.clone(),
+            category,
+            sub_category,
+            script,
             width: 0.0,
             bbox: None,
             path: include_path.then(String::new),
@@ -331,6 +335,9 @@ fn build_cell(
         gid,
         name: name.to_string(),
         unicodes: glyph.unicodes.clone(),
+        category,
+        sub_category,
+        script,
         width: layer.width,
         bbox,
         path: include_path.then(|| rounded_svg(&flattened)),
@@ -346,11 +353,15 @@ fn build_detail(document: &Document, gid: GlyphId) -> Result<GlyphDetail, ApiErr
     let name = document
         .glyph_name(gid)
         .ok_or_else(|| ApiError::not_found(format!("glyph handle {} does not exist", gid.0)))?;
-    let glyph = document
+    let mut glyph = document
         .font
         .glyph(name)
         .ok_or_else(|| ApiError::not_found(format!("glyph `{name}` does not exist")))?
         .clone();
+    let (category, sub_category, script) = glyph_classification(&glyph);
+    glyph.category = Some(category);
+    glyph.sub_category = Some(sub_category);
+    glyph.script = Some(script);
     let paths = glyph
         .layers
         .iter()
@@ -362,6 +373,30 @@ fn build_detail(document: &Document, gid: GlyphId) -> Result<GlyphDetail, ApiErr
         })
         .collect::<Result<Vec<_>, _>>()?;
     Ok(GlyphDetail { glyph, paths })
+}
+
+fn glyph_classification(glyph: &Glyph) -> (String, String, String) {
+    let first_unicode = glyph.unicodes.first().copied();
+    let category = glyph.category.clone().unwrap_or_else(|| {
+        first_unicode
+            .map(fw_glyphdata::category)
+            .map(category_name)
+            .unwrap_or("Unencoded")
+            .to_owned()
+    });
+    let sub_category = glyph.sub_category.clone().unwrap_or_else(|| {
+        first_unicode
+            .map(fw_glyphdata::sub_category)
+            .unwrap_or("Other")
+            .to_owned()
+    });
+    let script = glyph.script.clone().unwrap_or_else(|| {
+        first_unicode
+            .map(fw_glyphdata::script)
+            .unwrap_or("Zzzz")
+            .to_owned()
+    });
+    (category, sub_category, script)
 }
 
 fn flatten_detail_layer(document: &Document, layer: &Layer) -> Result<BezPath, ApiError> {

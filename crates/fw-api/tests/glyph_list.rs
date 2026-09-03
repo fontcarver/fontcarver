@@ -64,6 +64,32 @@ fn lists_filters_sorts_pages_paths_and_searches_glyphs() {
         .path
         .as_deref()
         .is_some_and(|path| path.starts_with('M')));
+    let glyph_a_json = api
+        .call(
+            "glyphs.list",
+            json!({
+                "doc": doc,
+                "master": null,
+                "filter": { "query": "U+0041" },
+                "sort": "Order",
+                "offset": 0,
+                "limit": 1,
+                "include_paths": false
+            }),
+        )
+        .expect("list A with derived classification");
+    assert_eq!(glyph_a_json["items"][0]["category"], "Letter");
+    assert_eq!(glyph_a_json["items"][0]["sub_category"], "Uppercase");
+    assert_eq!(glyph_a_json["items"][0]["script"], "Latn");
+    let glyph_a_detail = api
+        .call(
+            "glyphs.detail",
+            json!({ "doc": doc, "gid": glyph_a.items[0].gid }),
+        )
+        .expect("detail A with derived classification");
+    assert_eq!(glyph_a_detail["glyph"]["category"], "Letter");
+    assert_eq!(glyph_a_detail["glyph"]["sub_category"], "Uppercase");
+    assert_eq!(glyph_a_detail["glyph"]["script"], "Latn");
 
     let first_page = list(&api, page_params(&doc, 0, 2));
     let second_page = list(&api, page_params(&doc, 2, 2));
@@ -119,8 +145,7 @@ fn lists_filters_sorts_pages_paths_and_searches_glyphs() {
 #[test]
 fn listing_uses_an_empty_cell_for_a_missing_master_layer() {
     let mut font = Font::new_empty("Malformed", 1_000);
-    let mut glyph = Glyph::new("broken");
-    glyph.unicodes.push(0x42);
+    let glyph = Glyph::new("broken");
     font.insert_glyph(glyph).expect("insert glyph");
     font.glyph_mut("broken")
         .expect("inserted glyph")
@@ -148,6 +173,23 @@ fn listing_uses_an_empty_cell_for_a_missing_master_layer() {
     assert_eq!(result.items[0].width, 0.0);
     assert_eq!(result.items[0].path.as_deref(), Some(""));
     assert!(result.items[0].is_empty);
+    let result_json = api
+        .call(
+            "glyphs.list",
+            json!({
+                "doc": doc,
+                "master": null,
+                "filter": {},
+                "sort": "Order",
+                "offset": 0,
+                "limit": 10,
+                "include_paths": false
+            }),
+        )
+        .expect("list unencoded classification");
+    assert_eq!(result_json["items"][0]["category"], "Unencoded");
+    assert_eq!(result_json["items"][0]["sub_category"], "Other");
+    assert_eq!(result_json["items"][0]["script"], "Zzzz");
 
     let result_without_paths = list(
         &api,

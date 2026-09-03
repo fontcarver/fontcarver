@@ -89,6 +89,12 @@ pub struct GlyphCell {
     pub name: String,
     /// Assigned Unicode scalar values.
     pub unicodes: Vec<u32>,
+    /// Explicit or Unicode-derived broad glyph category.
+    pub category: String,
+    /// Explicit or Unicode-derived glyph subcategory.
+    pub sub_category: String,
+    /// Explicit or Unicode-derived ISO 15924 script code.
+    pub script: String,
     /// Horizontal advance width in the selected master.
     pub width: f64,
     /// Exact flattened outline bounds as `[xmin, ymin, xmax, ymax]`.
