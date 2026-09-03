@@ -1,0 +1,202 @@
+{
+  "app": {
+    "name": "FontWorkshop",
+    "tagline": "A workshop for outline, bitmap and variable fonts."
+  },
+  "common": {
+    "cancel": "Cancel",
+    "close": "Close",
+    "open": "Open",
+    "save": "Save"
+  },
+  "menu": {
+    "file": "File",
+    "edit": "Edit",
+    "glyph": "Glyph",
+    "view": "View",
+    "window": "Window",
+    "help": "Help"
+  },
+  "cmd": {
+    "file": {
+      "new": "New Font…",
+      "open": "Open Font…",
+      "openRecent": "Open Recent…",
+      "save": "Save",
+      "saveAs": "Save As…",
+      "close": "Close Font",
+      "fontInfo": "Font Info"
+    },
+    "edit": {
+      "undo": "Undo",
+      "undoLabelled": "Undo {{label}}",
+      "redo": "Redo",
+      "redoLabelled": "Redo {{label}}"
+    },
+    "glyph": {
+      "open": "Open Glyph in New Tab"
+    },
+    "view": {
+      "toggleSidebar": "Toggle Sidebar",
+      "toggleInspector": "Toggle Inspector",
+      "zoomIn": "Larger Cells",
+      "zoomOut": "Smaller Cells",
+      "theme": {
+        "light": "Light Theme",
+        "dark": "Dark Theme",
+        "system": "Match System Theme"
+      }
+    },
+    "window": {
+      "nextTab": "Next Tab",
+      "previousTab": "Previous Tab",
+      "closeTab": "Close Tab"
+    },
+    "palette": {
+      "open": "Command Palette…"
+    },
+    "help": {
+      "shortcuts": "Keyboard Shortcuts",
+      "about": "About FontWorkshop"
+    }
+  },
+  "palette": {
+    "title": "Commands",
+    "placeholder": "Type a command…",
+    "empty": "No matching commands",
+    "hint": "↑↓ to navigate · Enter to run · Esc to close"
+  },
+  "empty": {
+    "tagline": "Open a font to begin.",
+    "open": "Open Font…",
+    "new": "New Font…",
+    "recent": "Recent files",
+    "noRecent": "No recent files yet."
+  },
+  "dialog": {
+    "open": {
+      "title": "Open Font",
+      "label": "File path",
+      "placeholder": "/path/to/font.ttf",
+      "hint": "Browser mode has no native file dialog: type a path the kernel can read.",
+      "confirm": "Open"
+    },
+    "saveAs": {
+      "title": "Save As",
+      "label": "Document path",
+      "placeholder": "/path/to/font.fwf",
+      "hint": "FontWorkshop documents are saved as .fwf or .fwf.gz.",
+      "confirm": "Save"
+    },
+    "closeDirty": "“{{name}}” has unsaved changes. Close it anyway?"
+  },
+  "document": {
+    "newFamily": "New Font",
+    "untitled": "Untitled"
+  },
+  "tab": {
+    "font": "Font",
+    "glyph": "Glyph",
+    "fontinfo": "Font Info",
+    "close": "Close {{title}}"
+  },
+  "sidebar": {
+    "title": "Filters",
+    "categories": "Categories",
+    "scripts": "Scripts",
+    "blocks": "Unicode blocks",
+    "colors": "Colour labels",
+    "unencoded": "Unencoded",
+    "all": "All glyphs",
+    "overview": "Overview",
+    "empty": "Open a font to see its glyph filters.",
+    "note": "Filtering becomes interactive with the font view.",
+    "collapse": "Collapse {{section}}",
+    "expand": "Expand {{section}}"
+  },
+  "inspector": {
+    "title": "Inspector",
+    "document": "Document",
+    "view": "View",
+    "family": "Family",
+    "style": "Style",
+    "format": "Format",
+    "unitsPerEm": "Units per em",
+    "glyphs": "Glyphs",
+    "masters": "Masters",
+    "axes": "Axes",
+    "path": "Path",
+    "master": "Master",
+    "cellSize": "Cell size",
+    "labels": "Labels",
+    "sort": "Sort",
+    "empty": "No document open.",
+    "glyphNote": "The glyph inspector arrives with the glyph view.",
+    "labelMode": {
+      "name": "Glyph name",
+      "unicode": "Unicode",
+      "index": "Index"
+    },
+    "sortMode": {
+      "Order": "Font order",
+      "Unicode": "Unicode",
+      "Name": "Name",
+      "Width": "Width"
+    }
+  },
+  "view": {
+    "font": {
+      "title": "Font view",
+      "note": "The virtualised glyph grid, filters and search arrive in the next task."
+    },
+    "glyph": {
+      "title": "Glyph view",
+      "note": "The outline canvas, metrics and glyph inspector arrive in the next task."
+    },
+    "fontinfo": {
+      "title": "Font info",
+      "note": "Names, masters, axes and table details arrive in the next task."
+    },
+    "glyphLabel": "Glyph {{gid}}"
+  },
+  "status": {
+    "noDocument": "No document open",
+    "glyphs_one": "{{count, number}} glyph",
+    "glyphs_other": "{{count, number}} glyphs",
+    "selected_one": "{{count, number}} selected",
+    "selected_other": "{{count, number}} selected",
+    "dirty": "Unsaved changes",
+    "clean": "Saved",
+    "cellSize": "{{size}} px cells",
+    "transport": "Kernel: {{kind}}",
+    "warnings_one": "{{count}} warning",
+    "warnings_other": "{{count}} warnings"
+  },
+  "theme": {
+    "label": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "zh-CN": "简体中文"
+  },
+  "toast": {
+    "dismiss": "Dismiss notification",
+    "saved": "Saved {{name}}",
+    "opened": "Opened {{name}}",
+    "closed": "Closed {{name}}",
+    "about": "FontWorkshop {{version}} — kernel transport: {{kind}}"
+  },
+  "a11y": {
+    "menubar": "Application menu",
+    "tabs": "Open tabs",
+    "sidebarResize": "Resize sidebar",
+    "inspectorResize": "Resize inspector",
+    "notifications": "Notifications",
+    "toggleSidebar": "Toggle sidebar",
+    "toggleInspector": "Toggle inspector"
+  }
+}

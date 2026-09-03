@@ -1,11 +1,105 @@
+/*
+ * FontWorkshop design tokens.
+ *
+ * The only place colours, spacing, radii and typography are defined. Component
+ * CSS Modules must reference these variables and never hard-code a colour.
+ *
+ * Themes: `data-theme` on <html> is resolved by the UI store to `light` or
+ * `dark`; when the preference is `system` the store resolves it from
+ * `prefers-color-scheme` and keeps it in sync.
+ */
+
 :root {
-  color-scheme: light dark;
-  --color-canvas: #f2efe7;
-  --color-text: #171716;
-  --font-interface: Inter, ui-sans-serif, system-ui, sans-serif;
+  /* Typography */
+  --font-ui:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', 'Noto Sans',
+    'Noto Sans SC', sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono',
+    monospace;
+  --text-size: 13px;
+  --text-size-sm: 12px;
+  --text-size-xs: 11px;
+  --text-size-lg: 15px;
+  --text-weight-medium: 500;
+  --text-weight-strong: 600;
+  --line-height: 1.45;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+
+  /* Structural sizes */
+  --row-height: 22px;
+  --control-height: 24px;
+  --menubar-height: 28px;
+  --tabbar-height: 30px;
+  --statusbar-height: 24px;
+  --gutter-width: 4px;
+
+  --duration-fast: 90ms;
+
+  /* Light theme (default) */
+  color-scheme: light;
+  --color-app: #e7e7e8;
+  --color-surface: #f4f4f5;
+  --color-surface-raised: #fbfbfc;
+  --color-canvas: #ffffff;
+  --color-sunken: #dedee0;
+  --color-border: #cfcfd3;
+  --color-border-strong: #b3b3b9;
+  --color-border-subtle: #e2e2e5;
+  --color-text: #17171a;
+  --color-text-muted: #64646d;
+  --color-text-faint: #8e8e98;
+  --color-text-inverted: #ffffff;
+  --color-accent: #3a6ea5;
+  --color-accent-hover: #33608f;
+  --color-accent-text: #ffffff;
+  --color-accent-soft: #dde7f2;
+  --color-hover: #e9e9ec;
+  --color-active: #dcdce1;
+  --color-danger: #a33a35;
+  --color-danger-soft: #f6e2e1;
+  --color-warning: #8a6420;
+  --color-warning-soft: #f7ecd7;
+  --color-focus-ring: #3a6ea5;
+  --color-overlay: rgb(28 28 32 / 32%);
+  --shadow-popover: 0 6px 20px rgb(20 20 26 / 16%);
 }
 
 :root[data-theme='dark'] {
-  --color-canvas: #171716;
-  --color-text: #f2efe7;
+  color-scheme: dark;
+  --color-app: #202024;
+  --color-surface: #26262b;
+  --color-surface-raised: #2e2e34;
+  --color-canvas: #1a1a1e;
+  --color-sunken: #171719;
+  --color-border: #3a3a41;
+  --color-border-strong: #4c4c55;
+  --color-border-subtle: #303036;
+  --color-text: #e7e7ea;
+  --color-text-muted: #9c9ca6;
+  --color-text-faint: #71717b;
+  --color-text-inverted: #17171a;
+  --color-accent: #5f92cc;
+  --color-accent-hover: #6f9fd5;
+  --color-accent-text: #0f1620;
+  --color-accent-soft: #2b3a4d;
+  --color-hover: #303037;
+  --color-active: #3a3a43;
+  --color-danger: #e08a85;
+  --color-danger-soft: #3d2827;
+  --color-warning: #d8ae62;
+  --color-warning-soft: #3a2f1c;
+  --color-focus-ring: #78a6de;
+  --color-overlay: rgb(0 0 0 / 48%);
+  --shadow-popover: 0 6px 20px rgb(0 0 0 / 45%);
 }
