@@ -136,7 +136,29 @@ export function isEditableTarget(target: EventTarget | null): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
 }
 
-/** Finds the command bound to a keyboard event, honouring `allowInInput`. */
+/**
+ * Whether the target is a natively interactive control that owns keys such as
+ * Space and Enter — a button, a link with `href`, a select, a summary, an
+ * element with `role="button"`, or anything made focusable with `tabindex`.
+ * A `<canvas>` is excluded: the glyph view makes its canvas focusable so it can
+ * own Space itself, so a focusable canvas must not read as an interactive
+ * control.
+ */
+export function isInteractiveTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  if (target instanceof HTMLCanvasElement) return false
+  const tag = target.tagName
+  if (tag === 'BUTTON' || tag === 'SELECT' || tag === 'SUMMARY') return true
+  if (tag === 'A' && target.hasAttribute('href')) return true
+  if (target.getAttribute('role') === 'button') return true
+  return target.hasAttribute('tabindex')
+}
+
+/**
+ * Finds the command bound to a keyboard event, honouring `allowInInput` and
+ * each command's `when` guard: a command that is currently disabled is not
+ * treated as bound, so the dispatcher leaves the key to its native action.
+ */
 export function commandForEvent(
   event: KeyboardEvent,
   mac: boolean = isMacPlatform(),
@@ -146,7 +168,13 @@ export function commandForEvent(
     if (!command.shortcut) continue
     if (editable && !command.allowInInput) continue
     const parsed = parseShortcut(command.shortcut)
-    if (parsed && matchesShortcut(event, parsed, mac)) return command.id
+    if (!parsed || !matchesShortcut(event, parsed, mac)) continue
+    // Honour the command's `when` guard before claiming the event. A command
+    // whose `when()` is currently false is not bound to this keystroke, so the
+    // dispatcher must not `preventDefault` — the key proceeds to its native
+    // action (for example Space activating the focused button).
+    if (command.when && !command.when()) continue
+    return command.id
   }
   return undefined
 }

@@ -6,7 +6,7 @@ import {
   resetCommands,
   runCommand,
 } from '../../shell/commands'
-import { commandForEvent } from '../../shell/shortcuts'
+import { commandForEvent, installShortcuts } from '../../shell/shortcuts'
 import {
   CELL_SIZE_DEFAULT,
   initialDocumentState,
@@ -138,5 +138,73 @@ describe('glyph view commands', () => {
     document.body.append(input)
     input.focus()
     expect(isCommandEnabled('view.toggleFill')).toBe(false)
+  })
+
+  it('leaves Space to a focused button when no glyph tab is open', () => {
+    const stop = installShortcuts(window)
+    const button = document.createElement('button')
+    document.body.append(button)
+    button.focus()
+
+    const space = new KeyboardEvent('keydown', {
+      key: ' ',
+      code: 'Space',
+      bubbles: true,
+      cancelable: true,
+    })
+    button.dispatchEvent(space)
+
+    // A cancelled keydown would suppress the browser's native
+    // Space-activates-the-button behaviour, so the dispatcher must leave it be.
+    expect(space.defaultPrevented).toBe(false)
+    expect(useEditorStore.getState().overlays.filled).toBe(false)
+    stop()
+  })
+
+  it('leaves Space to a focused button inside a glyph tab', () => {
+    mountedView()
+    useUiStore.getState().openTab({ kind: 'glyph', doc: 1, gid: 42 })
+    const stop = installShortcuts(window)
+    const button = document.createElement('button')
+    document.body.append(button)
+    button.focus()
+
+    const space = new KeyboardEvent('keydown', {
+      key: ' ',
+      code: 'Space',
+      bubbles: true,
+      cancelable: true,
+    })
+    button.dispatchEvent(space)
+
+    // Even on a glyph tab, a focused toolbar button keeps Space for its own
+    // activation: the fill preview must not toggle and the default must stand.
+    expect(space.defaultPrevented).toBe(false)
+    expect(useEditorStore.getState().overlays.filled).toBe(false)
+    stop()
+  })
+
+  it('still claims Space for the focused glyph canvas', () => {
+    mountedView()
+    useUiStore.getState().openTab({ kind: 'glyph', doc: 1, gid: 42 })
+    const stop = installShortcuts(window)
+    const canvas = document.createElement('canvas')
+    canvas.tabIndex = 0
+    document.body.append(canvas)
+    canvas.focus()
+
+    const space = new KeyboardEvent('keydown', {
+      key: ' ',
+      code: 'Space',
+      bubbles: true,
+      cancelable: true,
+    })
+    // The canvas owns Space: the command still resolves and claims the event
+    // (preventing a page scroll). The tap-vs-drag fill toggle then happens on
+    // the canvas's own keyup, so the command body defers here.
+    expect(commandForEvent(space, false)).toBe('view.toggleFill')
+    canvas.dispatchEvent(space)
+    expect(space.defaultPrevented).toBe(true)
+    stop()
   })
 })

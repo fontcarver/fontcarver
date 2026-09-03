@@ -10,7 +10,7 @@
 
 import type { DocId, GlyphId } from '../../api'
 import { registerCommands, type Command } from '../../shell/commands'
-import { isEditableTarget } from '../../shell/shortcuts'
+import { isEditableTarget, isInteractiveTarget } from '../../shell/shortcuts'
 import { useEditorStore } from '../../stores/editorStore'
 import { selectActiveTab, useUiStore } from '../../stores/uiStore'
 
@@ -66,9 +66,14 @@ function onGlyphTab(): boolean {
 }
 
 function canToggleFill(): boolean {
+  // The focused element decides ownership of Space: only when the glyph view
+  // holds focus on a plain surface (the canvas, or a non-interactive area)
+  // does Space toggle the fill. A focused button, link, select or other
+  // interactive control keeps Space for its own native activation, even inside
+  // a glyph tab.
+  const active = globalThis.document?.activeElement ?? null
   return (
-    onGlyphTab() &&
-    !isEditableTarget(globalThis.document?.activeElement ?? null)
+    onGlyphTab() && !isEditableTarget(active) && !isInteractiveTarget(active)
   )
 }
 
