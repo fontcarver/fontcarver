@@ -1,7 +1,7 @@
 //! Document-query API types.
 
 use fw_doc::DocId;
-use fw_model::{FontInfo, Master};
+use fw_model::{FontInfo, Instance, Master};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -13,7 +13,7 @@ pub struct DocParams {
     pub doc: DocId,
 }
 
-/// Editable font metadata and complete master records.
+/// Editable font metadata, complete master records and export instances.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize, TS)]
 #[ts(export)]
 pub struct FontInfoView {
@@ -21,6 +21,9 @@ pub struct FontInfoView {
     pub info: FontInfo,
     /// Design-space masters.
     pub masters: Vec<Master>,
+    /// Named export instances of the design space.
+    #[serde(default)]
+    pub instances: Vec<Instance>,
 }
 
 /// Counts used to populate the font-view filter sidebar.

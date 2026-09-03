@@ -18,6 +18,7 @@ pub(crate) fn font_info(api: &Api, params: DocParams) -> Result<FontInfoView, Ap
         .with_doc(params.doc, |document| FontInfoView {
             info: document.font.info.clone(),
             masters: document.font.masters.clone(),
+            instances: document.font.instances.clone(),
         })
         .map_err(ApiError::from)
 }
