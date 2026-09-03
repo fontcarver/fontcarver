@@ -12,6 +12,10 @@ fn source_han_sans_opens_within_the_release_budget() {
     let font = &outcome.fonts[0];
 
     assert_eq!(font.glyphs.len(), 65_535);
+    assert_eq!(
+        font.glyph_order().next().map(|name| name.as_ref()),
+        Some(".notdef")
+    );
     assert!(glyph_for_unicode(font, 0x4E00).is_some());
     assert!(font.cid.is_some());
     if cfg!(not(debug_assertions)) {
