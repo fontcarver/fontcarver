@@ -1,0 +1,11 @@
+### Task 6: Editor core — selection, hit testing, edit sessions, Select tool, undo wiring (UI)
+
+**Files:** `app/src/editor/{selection.ts, hitTest.ts, snapping.ts, editSession.ts, gestures/*.ts, tools/select.ts, tools/registry.ts, hud.ts}`, `app/src/views/glyph/{GlyphCanvas.tsx (editable), InfoBox.tsx, ToolPalette.tsx}`, `app/src/stores/editorStore.ts`, tests.
+
+**Behaviour (Glyphs grammar; see research §3):** selection of nodes/handles/segments/components/anchors/guides; click/shift-click/ctrl-click/marquee (Alt marquee ignores handles); drag moves selection with optimistic local update and `doc.edit_begin` on pointer-down, `doc.edit_apply(MovePoints)` throttled to animation frames (≤ 60/s), `doc.edit_end` on pointer-up → one undo entry; Shift constrains to 0/45/90°; Alt-drag a handle keeps angle; Ctrl+Alt on a smooth node's handle mirrors; double-click or Enter toggles smooth/corner (Alt keeps outline); Delete = KeepShape delete, Shift+Delete = break; arrows nudge 1/10/100 (Shift/Ctrl) coalesced within 500 ms; Tab/Shift+Tab cycle points; Alt-click a line segment converts to curve; drag segment reshapes (Alt keeps handle angles); Escape deselects; `Mod+A` all points. Info box (fixed) shows editable X/Y (node), ΔX/ΔY/length (handle), x/y/w/h + 9-point origin + proportional lock (multi), component name/offset/scale/rotation, guide fields — commits are single commands. Cursor-following HUD shows Δx/Δy/angle/length during drags and the stem width when two nodes are selected. Hover cursors: segment = insert (ghost node at projected point), node = move, node+Alt = break handle, near component = ghost nodes fade in.
+- [ ] **Step 1: Tests**: hit testing precedence and tolerances (nodes 3 px, handles 3 px, segments 4 px, DPR-aware); marquee with Alt; drag → exactly one `edit_begin`/N `edit_apply`/one `edit_end` with a mocked transport and one undo label; smooth toggle emits `SetSmooth`; nudge coalescing; Info box commit emits `SetPointPosition`.
+- [ ] **Step 2: Implement**; verify with agent-browser on DejaVu `g` and Nimbus `o`; screenshots `docs/screenshots/p1-select-{drag,handles,infobox}.png`.
+- [ ] **Step 3:** commit `feat(app): editable glyph canvas — selection, drag editing, info box, undo wiring`.
+
+---
+
