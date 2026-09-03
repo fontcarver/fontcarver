@@ -24,3 +24,4 @@ src-tauri/gen/schemas/
 /test-output/
 /.scratch/
 /.superpowers/
+/.worktrees/

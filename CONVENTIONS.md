@@ -51,7 +51,7 @@ scripts/              # dev/automation scripts
 - Every user-visible string goes through `t('key')` (i18next); keys in `app/src/i18n/en.json`; `zh-CN.json` is produced by a translation pass (never by the same agent that wrote the feature).
 - Styling: CSS Modules + design tokens in `app/src/styles/tokens.css`; support light/dark via `data-theme`; no inline style objects except for computed geometry.
 - Accessibility: every interactive element keyboard reachable; icon buttons have `aria-label`.
-- Tests: Vitest + Testing Library for stores/components; e2e via `scripts/e2e/*.ts` using agent-browser against `fw-devserver`.
+- Tests: Vitest + Testing Library for stores/components; automated e2e with Playwright in `app/e2e/` against `fw-devserver` + Vite; agent-browser is used for interactive visual verification (screenshots) during UI tasks.
 
 ## Git
 
