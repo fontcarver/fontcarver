@@ -225,3 +225,61 @@ fn metrics_resolve_follows_a_metrics_key() {
     assert_eq!(metrics["width"], 540.0);
     assert_eq!(metrics["source"], "Key");
 }
+
+#[test]
+fn apply_accepts_outline_commands_through_json_dispatch() {
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(composite_font(), None);
+    let api = Api::new(Arc::clone(&session));
+    let gid = gid_of(&api, doc, "a");
+    let layer = serde_json::from_value::<LayerOutline>(
+        api.call("glyphs.outline", json!({ "doc": doc, "gid": gid }))
+            .expect("read outline"),
+    )
+    .expect("decode outline")
+    .layer;
+
+    api.call(
+        "doc.apply",
+        json!({
+            "doc": doc,
+            "command": { "MovePoints": {
+                "glyph": "a",
+                "layer": layer,
+                "points": [{ "contour": 0, "point": 0 }],
+                "delta": [10.0, 0.0],
+                "handles": "WithHandles"
+            }},
+            "label": "Move nodes"
+        }),
+    )
+    .expect("move points through raw JSON");
+    api.call(
+        "doc.apply",
+        json!({
+            "doc": doc,
+            "command": { "PathOp": {
+                "glyph": "a",
+                "layer": layer,
+                "op": "CorrectDirection"
+            }},
+            "label": "Correct direction"
+        }),
+    )
+    .expect("run a path operation through raw JSON");
+
+    let outline: LayerOutline = serde_json::from_value(
+        api.call("glyphs.outline", json!({ "doc": doc, "gid": gid }))
+            .expect("read outline"),
+    )
+    .expect("decode outline");
+    assert_eq!(outline.contours.len(), 1);
+    assert!(
+        outline.contours[0]
+            .points
+            .iter()
+            .any(|point| point.x == 60.0),
+        "the moved point is missing: {:?}",
+        outline.contours[0].points
+    );
+}
