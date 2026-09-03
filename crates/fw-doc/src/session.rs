@@ -45,6 +45,18 @@ impl FontOpener for DefaultFontOpener {
         };
         let outcome =
             fw_sfnt::read_path(path, &options).map_err(|error| Error::Sfnt(error.to_string()))?;
+        if face_index.is_none() {
+            let bytes = outcome
+                .fonts
+                .first()
+                .and_then(|font| font.extra.source.as_ref())
+                .and_then(|source| source.original_bytes.as_deref());
+            if let Some(warning) =
+                bytes.and_then(|bytes| fw_sfnt::collection_warning(bytes.as_slice()))
+            {
+                tracing::warn!(code = warning.code, message = %warning.message, path = %path.display());
+            }
+        }
         if !outcome.warnings.is_empty() {
             tracing::warn!(warning_count = outcome.warnings.len(), path = %path.display(), "warnings while opening binary font");
         }

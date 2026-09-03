@@ -5,6 +5,6 @@ mod read;
 
 pub use error::Error;
 pub use read::{
-    face_count, face_names, read_bytes, read_path, sniff, Container, ReadOptions, ReadOutcome,
-    Warning,
+    collection_warning, face_count, face_names, read_bytes, read_path, sniff, Container,
+    ReadOptions, ReadOutcome, Warning,
 };

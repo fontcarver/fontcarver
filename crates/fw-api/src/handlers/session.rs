@@ -178,20 +178,16 @@ fn open_binary(
 ) -> Result<(DocId, Vec<DocWarning>), ApiError> {
     let bytes = fs::read(path)
         .map_err(|error| ApiError::io(format!("failed to read `{}`: {error}", path.display())))?;
-    let mut warnings =
-        if face_index.is_none() && fw_sfnt::sniff(&bytes) == Some(fw_sfnt::Container::Ttc) {
-            let count = fw_sfnt::face_count(&bytes)?;
-            if count > 1 {
-                vec![DocWarning {
-                    code: "collection-face-opened".to_owned(),
-                    message: format!("collection has {count} faces; opened face 0"),
-                }]
-            } else {
-                Vec::new()
-            }
-        } else {
-            Vec::new()
-        };
+    let mut warnings = face_index
+        .is_none()
+        .then(|| fw_sfnt::collection_warning(&bytes))
+        .flatten()
+        .map(|warning| DocWarning {
+            code: warning.code.to_owned(),
+            message: warning.message,
+        })
+        .into_iter()
+        .collect::<Vec<_>>();
     let options = fw_sfnt::ReadOptions {
         font_index: face_index,
         keep_original_bytes: true,

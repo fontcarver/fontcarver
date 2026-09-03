@@ -13,22 +13,6 @@ pub enum Error {
         /// Document-layer failure.
         source: fw_doc::Error,
     },
-    /// A font collection could not be read for face metadata.
-    #[error("failed to read `{}`: {source}", path.display())]
-    Read {
-        /// Input collection path.
-        path: PathBuf,
-        /// Filesystem failure.
-        source: std::io::Error,
-    },
-    /// A font collection's face metadata could not be decoded.
-    #[error("failed to inspect faces in `{}`: {source}", path.display())]
-    Faces {
-        /// Input collection path.
-        path: PathBuf,
-        /// Font decoding failure.
-        source: fw_sfnt::Error,
-    },
     /// An open document could not be accessed.
     #[error(transparent)]
     Document(#[from] fw_doc::Error),

@@ -77,6 +77,22 @@ pub fn face_count(bytes: &[u8]) -> Result<u32, Error> {
     container::decoded_face_count(&decoded)
 }
 
+/// Returns the warning shown when a collection defaults to its first face.
+///
+/// Invalid or non-collection bytes return `None`; normal import reports their
+/// decoding errors separately.
+#[must_use]
+pub fn collection_warning(bytes: &[u8]) -> Option<Warning> {
+    if sniff(bytes) != Some(Container::Ttc) {
+        return None;
+    }
+    let count = face_count(bytes).ok()?;
+    (count > 1).then(|| Warning {
+        code: "collection-face-opened",
+        message: format!("collection has {count} faces; opened face 0"),
+    })
+}
+
 /// Returns the best full name for every face in an sfnt or web-font container.
 pub fn face_names(bytes: &[u8]) -> Result<Vec<String>, Error> {
     let (_, decoded) = container::decode(bytes)?;
