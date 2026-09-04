@@ -163,6 +163,8 @@ export interface VirtualGrid {
   rows: number
   cols: number
   range: [number, number]
+  /** Offset the rendered range was computed for, in CSS pixels. */
+  scrollTop: number
   /** Scrolls the container so that the cell at `index` is fully visible. */
   scrollTo: (index: number) => void
   /** Scroll handler to attach to the container. */
@@ -258,6 +260,7 @@ export function useVirtualGrid({
     rows: metrics.rows,
     cols: metrics.cols,
     range: [metrics.first, metrics.last],
+    scrollTop,
     scrollTo,
     onScroll,
   }

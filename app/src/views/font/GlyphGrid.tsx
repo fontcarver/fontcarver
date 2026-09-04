@@ -26,6 +26,7 @@ import { GlyphPager } from './glyphPager'
 import type { GlyphQuery } from './glyphSelection'
 import { invalidateFor } from './invalidation'
 import { useGlyphSelection } from './useGlyphSelection'
+import { useScrollMemory } from './useScrollMemory'
 import { uiFontFamily, useCellTheme } from './useCellTheme'
 import { useFontMetrics } from './useFontMetrics'
 import { cellBox, indicesInRect, useVirtualGrid } from './useVirtualGrid'
@@ -122,11 +123,19 @@ export function GlyphGrid({ summary, query }: GlyphGridProps) {
   const dpr = globalThis.devicePixelRatio || 1
   const total = pager.total ?? 0
 
-  const { metrics, scrollTo, onScroll } = useVirtualGrid({
+  const { metrics, scrollTop, scrollTo, onScroll } = useVirtualGrid({
     total,
     cellSize: view.cellSize,
     gap: GRID_GAP,
     containerRef,
+  })
+
+  useScrollMemory({
+    query,
+    containerRef,
+    scrollTop,
+    loaded: pager.total !== null,
+    onScroll,
   })
 
   const { focusIndex, apply, selectAt, focusAt, anchorAt, clear } =
