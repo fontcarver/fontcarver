@@ -27,7 +27,10 @@ export function useEditorLabels(): EditorLabels {
       deletePoints: t('editor.undo.deletePoints'),
       insertPoint: t('editor.undo.insertPoint'),
       convertSegment: t('editor.undo.convertSegment'),
-      metrics: {
+      snap: {
+        node: t('editor.snap.node'),
+        handle: t('editor.snap.handle'),
+        guide: t('editor.snap.guide'),
         baseline: t('glyphView.metric.baseline'),
         xHeight: t('glyphView.metric.xHeight'),
         capHeight: t('glyphView.metric.capHeight'),

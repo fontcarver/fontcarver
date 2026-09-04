@@ -35,18 +35,31 @@ export interface SnapMatch {
   point: Point2 | null
 }
 
+/**
+ * What a snap target is called in the HUD.
+ *
+ * The names are handed in already translated: this module has no i18n of its
+ * own, and every user-visible string in the editor comes from one bundle.
+ */
+export interface SnapNames {
+  node: string
+  handle: string
+  /** Fallback for a guide with no name of its own. */
+  guide: string
+  baseline: string
+  xHeight: string
+  capHeight: string
+  ascender: string
+  descender: string
+}
+
 /** Everything snapping looks at. */
 export interface SnapInput {
   outline: EditOutline
   anchors: readonly Anchor[]
   guides: readonly ScopedGuide[]
   metrics: SceneMetrics
-  metricLabels: Readonly<
-    Record<
-      'baseline' | 'xHeight' | 'capHeight' | 'ascender' | 'descender',
-      string
-    >
-  >
+  names: SnapNames
   viewport: Viewport
   /** `contour:point` keys excluded from snapping, i.e. what is being dragged. */
   exclude: ReadonlySet<string>
@@ -76,7 +89,7 @@ function pointTargets(input: SnapInput): PointTarget[] {
     if (input.exclude.has(key)) continue
     targets.push({
       point: { x: point.x, y: point.y },
-      label: point.onCurve ? 'node' : 'handle',
+      label: point.onCurve ? input.names.node : input.names.handle,
       rank: point.onCurve ? 0 : 1,
     })
   }
@@ -91,13 +104,13 @@ function pointTargets(input: SnapInput): PointTarget[] {
 
 /** Horizontal metric lines, in font units, with their labels. */
 function metricLines(input: SnapInput): { y: number; label: string }[] {
-  const { metrics, metricLabels } = input
+  const { metrics, names } = input
   return [
-    { y: 0, label: metricLabels.baseline },
-    { y: metrics.xHeight, label: metricLabels.xHeight },
-    { y: metrics.capHeight, label: metricLabels.capHeight },
-    { y: metrics.ascender, label: metricLabels.ascender },
-    { y: metrics.descender, label: metricLabels.descender },
+    { y: 0, label: names.baseline },
+    { y: metrics.xHeight, label: names.xHeight },
+    { y: metrics.capHeight, label: names.capHeight },
+    { y: metrics.ascender, label: names.ascender },
+    { y: metrics.descender, label: names.descender },
   ]
 }
 
@@ -150,7 +163,7 @@ export function snapDelta(
   for (const entry of input.guides) {
     const { guide } = entry
     const angle = ((guide.angle % 180) + 180) % 180
-    const name = guide.name ?? 'guide'
+    const name = guide.name ?? input.names.guide
     if (angle === 0 && Math.abs(guide.y - primary.y) <= reach && !snappedY)
       snappedY = { value: guide.y, label: name }
     if (angle === 90 && Math.abs(guide.x - primary.x) <= reach && !snappedX)

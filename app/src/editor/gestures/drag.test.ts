@@ -216,6 +216,92 @@ describe('segment reshaping', () => {
   })
 })
 
+describe('proportional nudge', () => {
+  it("scales the neighbouring node's handle along the segment", async () => {
+    const mock = transport()
+    const nudge = { ...NO_MODIFIERS, mod: true, alt: true }
+    const drag = beginDrag(
+      context({ contours: [curved] }),
+      {
+        target: { kind: 'node', contour: 0, point: 3 },
+        point: { x: 200, y: 0 },
+        distance: 0,
+      },
+      { x: 200, y: 0 },
+      nudge,
+    )
+    await drag?.ready()
+    // The chord from (0, 0) grows from 200 to 300 units, so the handle that
+    // belongs to the *other* end of the segment grows by the same half again
+    // (design spec §4.3: Ctrl+Alt+drag nudges, adjacent unselected handles
+    // scale proportionally).
+    drag?.move({ x: 300, y: 0 }, nudge)
+    await drag?.finish()
+
+    const command = applied(mock)[0]
+    const moves =
+      command && 'Batch' in command
+        ? command.Batch.map((entry) =>
+            'MovePoints' in entry
+              ? [entry.MovePoints.points[0]?.point, entry.MovePoints.delta]
+              : null,
+          )
+        : []
+    expect(moves).toEqual([
+      [1, [30, 60]],
+      [2, [100, 0]],
+      [3, [100, 0]],
+    ])
+
+    const preview = drag?.preview.contours[0]?.points
+    expect(preview?.[1]).toMatchObject({ x: 90, y: 180 })
+    expect(preview?.[3]).toMatchObject({ x: 300, y: 0 })
+  })
+
+  it('leaves a handle alone when it is part of the selection', async () => {
+    const mock = transport()
+    const nudge = { ...NO_MODIFIERS, mod: true, alt: true }
+    const selection = selectionOf([
+      { kind: 'node', contour: 0, point: 3 },
+      { kind: 'handle', contour: 0, point: 1 },
+    ])
+    const drag = beginDrag(
+      context({ contours: [curved], selection }),
+      {
+        target: { kind: 'node', contour: 0, point: 3 },
+        point: { x: 200, y: 0 },
+        distance: 0,
+      },
+      { x: 200, y: 0 },
+      nudge,
+    )
+    await drag?.ready()
+    drag?.move({ x: 300, y: 0 }, nudge)
+    await drag?.finish()
+
+    // Point 1 travels with the selection, so it is not scaled on top of that:
+    // one plain move of the whole set, and the handle lands 100 units right.
+    expect(applied(mock)).toEqual([
+      {
+        MovePoints: {
+          glyph: 'a',
+          layer: 'layer-1',
+          points: [
+            { contour: 0, point: 1 },
+            { contour: 0, point: 3 },
+          ],
+          delta: [100, 0],
+          handles: 'WithHandles',
+        },
+      },
+    ])
+    expect(drag?.preview.contours[0]?.points[1]).toMatchObject({
+      x: 160,
+      y: 120,
+    })
+  })
+})
+
 describe('constrainDelta', () => {
   it('locks to the nearest 0/45/90 degree direction', () => {
     expect(constrainDelta({ x: 40, y: 3 })).toEqual({

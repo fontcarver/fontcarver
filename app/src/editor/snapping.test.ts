@@ -46,7 +46,10 @@ function input(overrides: Partial<SnapInput> = {}): SnapInput {
       verticalOrigin: null,
       verticalWidth: null,
     },
-    metricLabels: {
+    names: {
+      node: 'NODE',
+      handle: 'HANDLE',
+      guide: 'GUIDE',
       baseline: 'baseline',
       xHeight: 'x-height',
       capHeight: 'cap height',
@@ -60,6 +63,29 @@ function input(overrides: Partial<SnapInput> = {}): SnapInput {
 }
 
 describe('snapDelta', () => {
+  it("names its targets from the caller's bundle, never a literal", () => {
+    // Every user-visible string in the editor arrives translated; the module
+    // must not invent one of its own.
+    const unnamed = input({
+      guides: [
+        {
+          guide: {
+            x: 0,
+            y: 250,
+            angle: 0,
+            name: null,
+            locked: false,
+            color: null,
+          },
+          scope: 'layer',
+        },
+      ],
+    })
+    expect(snapDelta(unnamed, { x: 0, y: 0 }, [{ x: 300, y: 253 }]).label).toBe(
+      'GUIDE',
+    )
+  })
+
   it('is 6 CSS pixels', () => {
     expect(SNAP_DISTANCE).toBe(6)
   })
@@ -68,7 +94,7 @@ describe('snapDelta', () => {
     // Dragging point 2 from (100, 500) by (−3, −497) lands near (97, 3).
     const match = snapDelta(input(), { x: -3, y: -497 }, [{ x: 97, y: 3 }])
     expect(match.delta).toEqual({ x: 0, y: -500 })
-    expect(match.label).toBe('node')
+    expect(match.label).toBe('NODE')
     expect(match.point).toEqual({ x: 100, y: 0 })
   })
 

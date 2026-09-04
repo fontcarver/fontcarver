@@ -142,7 +142,10 @@ export function planDrag(
       anchors: inSelection ? selectedIndexes(selection, 'anchor') : [],
       components: inSelection ? selectedIndexes(selection, 'component') : [],
       // Alt moves the node alone; the default carries its handles with it.
-      handleMode: modifiers.alt ? 'PointsOnly' : 'WithHandles',
+      // Ctrl+Alt is a different gesture — the proportional nudge — and there
+      // the node keeps its handles while the neighbours' handles scale.
+      handleMode:
+        modifiers.alt && !modifiers.mod ? 'PointsOnly' : 'WithHandles',
       label: labels.movePoints(Math.max(nodes, refs.length ? nodes : 1)),
     }
   }
@@ -269,6 +272,8 @@ export class DragGesture {
   /** Per-point deltas, when the gesture constrains each point separately. */
   private deltas: Map<string, Point2> | null = null
   private sentDeltas = new Map<string, Point2>()
+  /** Handles of neighbouring nodes that a proportional nudge rescales. */
+  private proportional: ProportionalHandle[] = []
   private mirror: { handle: PointRef; node: Point2; from: Point2 } | null = null
   private snapLabel: string | null = null
 
@@ -294,6 +299,16 @@ export class DragGesture {
             ...plan.refs.flatMap((ref) => handlesOfNode(context.contours, ref)),
           ])
         : uniqueRefs(plan.refs)
+
+    // Ctrl+Alt on a node nudges: the node and its own handles move, and the
+    // handles of the neighbouring nodes keep their share of each segment
+    // (design spec §4.3).
+    if (plan.kind === 'points' && modifiers.mod && modifiers.alt)
+      this.proportional = proportionalHandles(
+        context.contours,
+        plan.refs,
+        new Set(this.movedRefs.map((ref) => `${ref.contour}:${ref.point}`)),
+      )
 
     // Ctrl+Alt on a smooth node's handle mirrors length and angle onto the
     // opposite handle (design spec §4.3).
@@ -361,8 +376,10 @@ export class DragGesture {
     this.deltas =
       this.plan.kind === 'segment' && modifiers.alt && !modifiers.mod
         ? this.perHandleDeltas(delta)
-        : null
-    if (this.deltas) angleLocked = true
+        : this.proportional.length > 0
+          ? this.nudgeDeltas(delta)
+          : null
+    if (this.deltas && this.plan.kind === 'segment') angleLocked = true
 
     this.snapLabel = null
     // Snapping would pull an angle-locked handle off its line, which is the
@@ -394,6 +411,40 @@ export class DragGesture {
       )
     }
     return deltas.size > 0 ? deltas : null
+  }
+
+  /**
+   * A proportional nudge: everything the gesture carries moves by `delta`, and
+   * each neighbouring node's handle keeps its share of the segment whose chord
+   * the move just stretched or shortened.
+   */
+  private nudgeDeltas(delta: Point2): Map<string, Point2> {
+    const deltas = new Map<string, Point2>()
+    for (const ref of this.movedRefs)
+      deltas.set(`${ref.contour}:${ref.point}`, delta)
+    for (const entry of this.proportional) {
+      const before = Math.hypot(
+        entry.node.x - entry.anchor.x,
+        entry.node.y - entry.anchor.y,
+      )
+      if (before < 1e-9) continue
+      const after = Math.hypot(
+        entry.node.x + delta.x - entry.anchor.x,
+        entry.node.y + delta.y - entry.anchor.y,
+      )
+      const scale = after / before
+      deltas.set(`${entry.ref.contour}:${entry.ref.point}`, {
+        x:
+          entry.anchor.x +
+          (entry.handle.x - entry.anchor.x) * scale -
+          entry.handle.x,
+        y:
+          entry.anchor.y +
+          (entry.handle.y - entry.anchor.y) * scale -
+          entry.handle.y,
+      })
+    }
+    return deltas
   }
 
   /** The optimistic geometry the canvas should draw. */
@@ -466,8 +517,17 @@ export class DragGesture {
     deltas: ReadonlyMap<string, Point2>,
   ): Command | null {
     const commands: Command[] = []
-    for (const ref of this.plan.refs) {
-      const key = `${ref.contour}:${ref.point}`
+    // Every point the gesture constrains individually, in stored order so the
+    // batch is deterministic — the map also carries points that are not in
+    // `plan.refs`, such as a neighbour's handle under a proportional nudge.
+    const keys = [...deltas.keys()].sort((a, b) => {
+      const [ac = '0', ap = '0'] = a.split(':')
+      const [bc = '0', bp = '0'] = b.split(':')
+      return Number(ac) - Number(bc) || Number(ap) - Number(bp)
+    })
+    for (const key of keys) {
+      const [contour = '0', point = '0'] = key.split(':')
+      const ref: PointRef = { contour: Number(contour), point: Number(point) }
       const total = deltas.get(key)
       if (!total) continue
       const sent = this.sentDeltas.get(key) ?? { x: 0, y: 0 }
@@ -561,6 +621,65 @@ export class DragGesture {
       ? (commands[0] as Command)
       : { Batch: commands }
   }
+}
+
+/** A neighbouring node's handle that a proportional nudge rescales. */
+interface ProportionalHandle {
+  ref: PointRef
+  /** The handle's current position. */
+  handle: Point2
+  /** The node the handle belongs to, which stays put. */
+  anchor: Point2
+  /** The node being dragged, whose move changes the chord. */
+  node: Point2
+}
+
+/**
+ * The handles that a proportional nudge rescales.
+ *
+ * For every segment that ends at a dragged node, the control belonging to the
+ * *other* end is collected — unless it is itself part of the gesture, in which
+ * case it already travels with the selection and must not be scaled on top.
+ */
+function proportionalHandles(
+  contours: readonly Contour[],
+  refs: readonly PointRef[],
+  moving: ReadonlySet<string>,
+): ProportionalHandle[] {
+  const outline = buildEditOutline(contours)
+  const dragged = new Set(refs.map((ref) => `${ref.contour}:${ref.point}`))
+  const found = new Map<string, ProportionalHandle>()
+  for (const segment of outline.segments) {
+    if (segment.controlRefs.length === 0) continue
+    const ends: [PointRef | null, PointRef | null][] = [
+      [segment.fromRef, segment.toRef],
+      [segment.toRef, segment.fromRef],
+    ]
+    for (const [near, far] of ends) {
+      if (!near || !far) continue
+      if (!dragged.has(`${near.contour}:${near.point}`)) continue
+      if (dragged.has(`${far.contour}:${far.point}`)) continue
+      // The control adjacent to `far` is the one that belongs to it.
+      const ref =
+        far === segment.fromRef
+          ? segment.controlRefs[0]
+          : segment.controlRefs[segment.controlRefs.length - 1]
+      if (!ref) continue
+      const key = `${ref.contour}:${ref.point}`
+      if (moving.has(key) || found.has(key)) continue
+      const handle = pointAt(contours, ref)
+      const anchor = pointAt(contours, far)
+      const node = pointAt(contours, near)
+      if (!handle || !anchor || !node) continue
+      found.set(key, {
+        ref,
+        handle: { x: handle.x, y: handle.y },
+        anchor: { x: anchor.x, y: anchor.y },
+        node: { x: node.x, y: node.y },
+      })
+    }
+  }
+  return [...found.values()]
 }
 
 /** Starts a drag, or returns `null` when the hit is not draggable. */

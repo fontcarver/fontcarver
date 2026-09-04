@@ -57,7 +57,7 @@ import {
   smoothCommand,
   type LayerTarget,
 } from './pointCommands'
-import { snapDelta, type SnapMatch } from './snapping'
+import { snapDelta, type SnapMatch, type SnapNames } from './snapping'
 import {
   EMPTY_SELECTION,
   onlyTarget,
@@ -86,12 +86,8 @@ export interface EditorLabels {
   deletePoints: string
   insertPoint: string
   convertSegment: string
-  metrics: Readonly<
-    Record<
-      'baseline' | 'xHeight' | 'capHeight' | 'ascender' | 'descender',
-      string
-    >
-  >
+  /** Names the HUD gives a snap target, already translated. */
+  snap: SnapNames
   hud: HudLabels
 }
 
@@ -755,7 +751,7 @@ export class EditorController {
           verticalOrigin: null,
           verticalWidth: null,
         } satisfies SceneMetrics),
-      metricLabels: this.labels.metrics,
+      names: this.labels.snap,
       viewport: this.viewport,
       exclude,
     }

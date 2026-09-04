@@ -568,6 +568,11 @@
     "a11y": {
       "selection_one": "{{count}} item selected",
       "selection_other": "{{count}} items selected"
+    },
+    "snap": {
+      "node": "node",
+      "handle": "handle",
+      "guide": "guide"
     }
   },
   "infoBox": {

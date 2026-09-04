@@ -43,7 +43,10 @@ const labels: EditorLabels = {
   deletePoints: 'Delete points',
   insertPoint: 'Insert point',
   convertSegment: 'Convert segment',
-  metrics: {
+  snap: {
+    node: 'node',
+    handle: 'handle',
+    guide: 'guide',
     baseline: 'baseline',
     xHeight: 'x-height',
     capHeight: 'cap height',
