@@ -3,7 +3,10 @@
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
-    sync::{Arc, OnceLock},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex, OnceLock,
+    },
     thread,
     time::Duration,
 };
@@ -78,12 +81,22 @@ pub struct Api {
     pub(crate) session: Arc<Session>,
     pub(crate) sidebar_cache: std::sync::Mutex<HashMap<DocId, (u64, SidebarCounts)>>,
     pub(crate) warnings: std::sync::Mutex<HashMap<DocId, Vec<DocWarning>>>,
+    pub(crate) recovered: std::sync::Mutex<HashMap<DocId, String>>,
     pub(crate) config_lock: std::sync::Mutex<()>,
     pub(crate) shaper: Shaper,
     config_dir: OnceLock<PathBuf>,
     events: broadcast::Sender<Event>,
-    event_bridge: OnceLock<()>,
+    event_bridge: Mutex<bool>,
+    shutdown: Arc<AtomicBool>,
     autosave: OnceLock<AutosaveHandle>,
+}
+
+impl Drop for Api {
+    fn drop(&mut self) {
+        // The forwarder holds only the session and the sender, so it would
+        // outlive this facade and republish into a channel nobody reads.
+        self.shutdown.store(true, Ordering::Release);
+    }
 }
 
 impl Api {
@@ -94,11 +107,13 @@ impl Api {
             session,
             sidebar_cache: std::sync::Mutex::new(HashMap::new()),
             warnings: std::sync::Mutex::new(HashMap::new()),
+            recovered: std::sync::Mutex::new(HashMap::new()),
             config_lock: std::sync::Mutex::new(()),
             shaper: Shaper::new(),
             config_dir: OnceLock::new(),
             events,
-            event_bridge: OnceLock::new(),
+            event_bridge: Mutex::new(false),
+            shutdown: Arc::new(AtomicBool::new(false)),
             autosave: OnceLock::new(),
         }
     }
@@ -131,8 +146,13 @@ impl Api {
     /// Subscribes to document change and progress events.
     ///
     /// The first subscription starts a forwarding thread that republishes the
-    /// session's document events on this stream; the thread stops when the
-    /// session is dropped.
+    /// session's document events on this stream; it stops when this facade is
+    /// dropped or the session closes. A subscription made after a failed thread
+    /// spawn tries again, so a transient failure does not silently leave the
+    /// stream carrying progress events only.
+    ///
+    /// Document and progress events are not ordered against each other; see
+    /// [`Event`].
     pub fn subscribe(&self) -> broadcast::Receiver<Event> {
         self.start_event_bridge();
         self.events.subscribe()
@@ -191,27 +211,44 @@ impl Api {
     }
 
     fn start_event_bridge(&self) {
-        self.event_bridge.get_or_init(|| {
-            let mut source = self.session.subscribe();
-            let sink = self.events.clone();
-            let started = thread::Builder::new()
-                .name("fontworkshop-events".to_owned())
-                .spawn(move || loop {
-                    match source.blocking_recv() {
-                        Ok(event) => {
-                            // An error here only means nobody is listening yet.
-                            let _ = sink.send(Event::Document(event));
+        let mut started = self
+            .event_bridge
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        *started = start_once(*started, || self.spawn_event_bridge());
+    }
+
+    fn spawn_event_bridge(&self) -> bool {
+        let mut source = self.session.subscribe();
+        let sink = self.events.clone();
+        let shutdown = Arc::clone(&self.shutdown);
+        let spawned = thread::Builder::new()
+            .name("fontworkshop-events".to_owned())
+            .spawn(move || loop {
+                if shutdown.load(Ordering::Acquire) {
+                    break;
+                }
+                match source.blocking_recv() {
+                    Ok(event) => {
+                        if shutdown.load(Ordering::Acquire) {
+                            break;
                         }
-                        Err(RecvError::Lagged(skipped)) => {
-                            tracing::warn!(skipped, "API event forwarder lagged");
-                        }
-                        Err(RecvError::Closed) => break,
+                        // An error here only means nobody is listening yet.
+                        let _ = sink.send(Event::Document(event));
                     }
-                });
-            if let Err(error) = started {
+                    Err(RecvError::Lagged(skipped)) => {
+                        tracing::warn!(skipped, "API event forwarder lagged");
+                    }
+                    Err(RecvError::Closed) => break,
+                }
+            });
+        match spawned {
+            Ok(_handle) => true,
+            Err(error) => {
                 tracing::error!(%error, "could not start the API event forwarder");
+                false
             }
-        });
+        }
     }
 
     fn invoke<P, R>(
@@ -228,6 +265,14 @@ impl Api {
         let result = handler(self, params)?;
         serde_json::to_value(result).map_err(|error| ApiError::internal(error.to_string()))
     }
+}
+
+/// Runs `spawn` unless the thread it starts is already running.
+///
+/// Returns whether a forwarder is running afterwards, so a failed spawn is
+/// retried by the next caller instead of being remembered as started.
+fn start_once(started: bool, spawn: impl FnOnce() -> bool) -> bool {
+    started || spawn()
 }
 
 macro_rules! define_dispatch {
@@ -301,6 +346,33 @@ mod tests {
         );
         assert_eq!(typed.len(), METHODS.len(), "duplicate typed method");
         assert_eq!(handled, typed);
+    }
+
+    #[test]
+    fn a_failed_forwarder_spawn_is_retried_by_the_next_subscription() {
+        let mut attempts = 0;
+        let mut spawn = |started: bool| {
+            super::start_once(started, || {
+                attempts += 1;
+                attempts > 1
+            })
+        };
+
+        assert!(!spawn(false), "the first spawn fails");
+        assert!(spawn(false), "the next subscription retries");
+        assert!(spawn(true), "a running forwarder is not spawned again");
+        assert_eq!(attempts, 2);
+    }
+
+    #[test]
+    fn dropping_the_api_stops_the_event_forwarder() {
+        let api = super::Api::new(std::sync::Arc::new(fw_doc::Session::new()));
+        let shutdown = std::sync::Arc::clone(&api.shutdown);
+        let _events = api.subscribe();
+
+        drop(api);
+
+        assert!(shutdown.load(std::sync::atomic::Ordering::Acquire));
     }
 
     #[test]

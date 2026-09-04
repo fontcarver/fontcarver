@@ -128,6 +128,14 @@ pub struct DocSummary {
     pub format: String,
     /// Non-fatal diagnostics associated with opening the document.
     pub warnings: Vec<DocWarning>,
+    /// Path of the document this one was recovered from, when it was recovered.
+    ///
+    /// A recovered document keeps the original path and stays dirty, so saving
+    /// it overwrites the file the snapshot belongs to; this marker lets the UI
+    /// say so before the user does.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub recovered_from: Option<String>,
 }
 
 /// A non-fatal diagnostic associated with opening a document.

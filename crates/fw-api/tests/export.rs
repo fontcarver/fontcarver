@@ -298,6 +298,18 @@ fn recovery_lists_opens_and_discards_an_autosave() {
     assert_eq!(summary["family_name"], "Export Test");
     assert_eq!(summary["path"], json!(document_path.to_str()));
     assert_eq!(summary["dirty"], json!(true));
+    assert_eq!(
+        summary["recovered_from"],
+        json!(document_path.to_str()),
+        "a recovered document must be marked as such"
+    );
+    let opened = api
+        .call("doc.summary", json!({ "doc": doc }))
+        .expect("summary of the normally opened document");
+    assert!(
+        opened.get("recovered_from").is_none(),
+        "a normally opened document must not be marked as recovered: {opened}"
+    );
 
     api.call(
         "session.discard_recovery",
