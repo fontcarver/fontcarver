@@ -1,4 +1,11 @@
-use std::sync::Arc;
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    thread,
+    time::{Duration, Instant},
+};
 
 use fw_api::{Api, ShapedRun};
 use fw_doc::Session;
@@ -139,4 +146,146 @@ fn width_edits_are_visible_before_the_shaping_font_is_rebuilt() {
 
     assert!(run.stale, "{run:?}");
     assert_eq!(run.glyphs[0].x_advance, 500.0);
+}
+
+fn layer_of(session: &Session, doc: fw_doc::DocId, glyph: &str) -> String {
+    session
+        .with_doc(doc, |document| {
+            let master = document.font.default_master().id.clone();
+            document
+                .font
+                .glyph(glyph)
+                .and_then(|glyph| glyph.master_layer(&master))
+                .map(|layer| layer.id.to_string())
+                .expect("master layer")
+        })
+        .expect("open document")
+}
+
+#[test]
+fn a_shaping_compile_does_not_block_document_edits() {
+    let font = fw_sfnt::read_path(
+        &fw_fixtures::path("DejaVuSans.ttf"),
+        &fw_sfnt::ReadOptions::default(),
+    )
+    .expect("read DejaVu Sans")
+    .fonts
+    .remove(0);
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(font, None);
+    let api = Arc::new(Api::new(Arc::clone(&session)));
+    let layer = layer_of(&session, doc, "A");
+
+    let entered = Arc::new(AtomicBool::new(false));
+    let shaping = {
+        let api = Arc::clone(&api);
+        let entered = Arc::clone(&entered);
+        thread::spawn(move || {
+            entered.store(true, Ordering::Release);
+            let began = Instant::now();
+            api.call("text.shape", json!({ "doc": doc, "text": "AVWA" }))
+                .expect("shape the imported font");
+            began.elapsed()
+        })
+    };
+    while !entered.load(Ordering::Acquire) {
+        thread::sleep(Duration::from_millis(1));
+    }
+    // Give the synchronous first compile time to get under way.
+    thread::sleep(Duration::from_millis(250));
+
+    let began = Instant::now();
+    api.call(
+        "doc.apply",
+        json!({
+            "doc": doc,
+            "command": { "SetWidth": { "glyph": "A", "layer": layer, "width": 1400.0 } },
+            "label": "Set width"
+        }),
+    )
+    .expect("apply an edit while the shaping font compiles");
+    let edit = began.elapsed();
+    let compile = shaping.join().expect("join the shaping thread");
+
+    assert!(
+        compile > Duration::from_millis(500),
+        "the compile finished too quickly to prove anything: {compile:?}"
+    );
+    assert!(
+        edit < Duration::from_millis(500) && edit * 10 < compile,
+        "the edit waited for the shaping compile: edit {edit:?}, compile {compile:?}"
+    );
+}
+
+#[test]
+fn a_failed_background_rebuild_is_reported_and_retried() {
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(ligature_font(), None);
+    let api = Api::new(Arc::clone(&session));
+    let layer = layer_of(&session, doc, "i");
+    api.call("text.shape", json!({ "doc": doc, "text": "fi" }))
+        .expect("compile the first shaping font");
+
+    // Break the feature source, then edit so the rebuild picks the break up.
+    session
+        .with_doc_mut(doc, |document| {
+            document.font.features.features[0].code = "this is not valid feature code".to_owned();
+        })
+        .expect("break the feature source");
+    api.call(
+        "doc.apply",
+        json!({
+            "doc": doc,
+            "command": { "SetWidth": { "glyph": "i", "layer": layer, "width": 500.0 } },
+            "label": "Set width"
+        }),
+    )
+    .expect("widen i");
+
+    let failed = wait_for_run(&api, doc, |run| {
+        run.warnings
+            .iter()
+            .any(|warning| warning.starts_with("compile-failed"))
+    });
+    assert!(failed.stale, "{failed:?}");
+
+    // Repairing the source and editing again retries the rebuild.
+    session
+        .with_doc_mut(doc, |document| {
+            document.font.features.features[0].code = "sub f i by f_i;".to_owned();
+        })
+        .expect("repair the feature source");
+    api.call(
+        "doc.apply",
+        json!({
+            "doc": doc,
+            "command": { "SetWidth": { "glyph": "i", "layer": layer, "width": 520.0 } },
+            "label": "Set width"
+        }),
+    )
+    .expect("widen i again");
+
+    let recovered = wait_for_run(&api, doc, |run| !run.stale);
+    assert!(recovered.warnings.is_empty(), "{:?}", recovered.warnings);
+    assert_eq!(recovered.names, vec![Some("f_i".to_owned())]);
+}
+
+/// Shapes `fi` until `accept` is happy with the run or the deadline passes.
+fn wait_for_run(api: &Api, doc: fw_doc::DocId, accept: impl Fn(&ShapedRun) -> bool) -> ShapedRun {
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        let run: ShapedRun = serde_json::from_value(
+            api.call("text.shape", json!({ "doc": doc, "text": "fi" }))
+                .expect("shape text"),
+        )
+        .expect("decode shaped run");
+        if accept(&run) {
+            return run;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "the shaper never reached the expected state: {run:?}"
+        );
+        thread::sleep(Duration::from_millis(20));
+    }
 }

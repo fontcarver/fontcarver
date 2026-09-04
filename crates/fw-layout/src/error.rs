@@ -14,4 +14,7 @@ pub enum Error {
     /// The compiled font could not be parsed back.
     #[error("could not parse the compiled shaping font: {0}")]
     Parse(String),
+    /// A shaping plan needed a copy of the document font and none was supplied.
+    #[error("shaping needs a copy of the document font")]
+    MissingFont,
 }

@@ -1,6 +1,7 @@
 //! Text-shaping handler backed by `fw-layout`.
 
-use fw_layout::{FontKey, ShapeRequest, ShapedRun};
+use fw_layout::{widths_for_text, FontKey, ModelWidths, ShapePlan, ShapeRequest, ShapedRun};
+use fw_model::Font;
 
 use crate::{Api, ApiError, ShapeParams};
 
@@ -13,25 +14,40 @@ pub(crate) fn shape(api: &Api, params: ShapeParams) -> Result<ShapedRun, ApiErro
         direction: params.direction,
         size: params.size,
     };
-    // Shaping reads the model in place: copying a large font on every keystroke
-    // would cost far more than the shaping itself.
+    let (plan, font, widths) = prepare(api, &params.doc, params.master.as_ref(), &request.text)?;
+    // Compiling and shaping happen outside the session lock: a first compile
+    // takes seconds, and holding the lock would stall every edit of every open
+    // document for that long.
+    api.shaper
+        .shape_planned(plan, font, &widths, &request)
+        .map_err(ApiError::from)
+}
+
+/// Reads everything a shaping request needs while the document is held.
+///
+/// Only the plan and the model widths of the requested text are always
+/// collected; the font is copied only when a compile is actually going to run,
+/// so a burst of keystrokes copies it at most once per scheduled rebuild.
+fn prepare(
+    api: &Api,
+    doc: &fw_doc::DocId,
+    master: Option<&fw_model::MasterId>,
+    text: &str,
+) -> Result<(ShapePlan, Option<Font>, ModelWidths), ApiError> {
     api.session
-        .with_doc(params.doc, |document| {
-            let master = match &params.master {
+        .with_doc(*doc, |document| {
+            let master = match master {
                 Some(master) => master.clone(),
                 None => document.font.default_master().id.clone(),
             };
-            api.shaper
-                .shape(
-                    &document.font,
-                    &FontKey {
-                        doc: params.doc.0,
-                        master,
-                    },
-                    document.generation,
-                    &request,
-                )
-                .map_err(ApiError::from)
+            if document.font.master(&master).is_none() {
+                return Err(ApiError::from(fw_layout::Error::MissingMaster(master)));
+            }
+            let key = FontKey { doc: doc.0, master };
+            let plan = api.shaper.plan(&key, document.generation);
+            let font = plan.needs_font().then(|| document.font.clone());
+            let widths = widths_for_text(&document.font, &key.master, text);
+            Ok((plan, font, widths))
         })
         .map_err(ApiError::from)?
 }
