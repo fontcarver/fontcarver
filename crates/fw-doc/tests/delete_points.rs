@@ -447,6 +447,13 @@ fn keep_shape_deletion_sweeps_a_real_corpus_without_errors() {
                 // larger one: sampling only the original span would miss a
                 // fitted segment that bulges away from the original between the
                 // samples of the new curve.
+                //
+                // The two directions are deliberately asymmetric. Forward
+                // measures the original span against the whole rewritten
+                // contour, so a sample may land on a neighbouring segment;
+                // backward measures the joined span against only the two
+                // original segments it replaced, which is the stricter of the
+                // two. The gate takes whichever is larger.
                 let mut forward = 0.0_f64;
                 for segment in &span {
                     for step in 0..=16 {

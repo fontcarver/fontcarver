@@ -143,12 +143,12 @@ fn put_back<T>(values: &mut [T], captured: Vec<(usize, T)>) {
 /// back when the operation fails or leaves one of the contours it touched in a
 /// state that `Contour::try_to_bezpath` rejects, so a failed outline command
 /// never changes the document. A command that only rewrites existing points,
-/// components and anchors in place — the per-frame commands of a drag — captures
-/// just the parts it names, which keeps a preview frame proportional to the
-/// selection rather than to the glyph; a command that adds, removes or rebuilds
-/// contours captures the whole layer. Either way a rejected `TransformSelection`
-/// restores its component transforms and anchor positions along with the
-/// contours.
+/// components and anchors in place captures exactly the parts it names; a
+/// command that adds, removes or rebuilds contours captures the whole layer.
+/// Either way a rejected `TransformSelection` restores its component transforms
+/// and anchor positions along with the contours. This capture is not the whole
+/// cost of an edit: `Document::apply_command` snapshots the glyph for undo
+/// around every command, preview frames included.
 ///
 /// Only the contours an operation reports touching are checked. A layer may
 /// already hold a contour the model tolerates but the path builder rejects (an
