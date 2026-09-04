@@ -1,4 +1,8 @@
-use std::time::{Duration, Instant};
+use std::{
+    sync::Arc,
+    thread,
+    time::{Duration, Instant},
+};
 
 use fw_layout::{widths_for_text, FontKey, ShapeRequest, ShapedRun, Shaper};
 use fw_model::{Contour, FeatureBlock, Font, Glyph, Layer, MasterId};
@@ -308,4 +312,71 @@ fn a_failed_rebuild_is_reported_and_retried_on_the_next_generation() {
     assert!(!fresh.stale, "{fresh:?}");
     assert!(fresh.warnings.is_empty(), "{:?}", fresh.warnings);
     assert_eq!(fresh.names, vec![Some("f_i".to_owned())]);
+}
+
+#[test]
+fn a_claimed_rebuild_is_not_copied_by_a_concurrent_request() {
+    let font = ligature_font();
+    // A long debounce keeps the claim and the pending build alive for the test.
+    let shaper = Shaper::with_debounce(Duration::from_secs(30));
+    let key = key(&font);
+    shaper
+        .shape(&font, &key, 1, &request("f"))
+        .expect("compile the first shaping font");
+
+    let claimant = shaper.plan(&key, 2);
+    assert!(
+        claimant.needs_font(),
+        "the first stale request must rebuild"
+    );
+    let concurrent = shaper.plan(&key, 2);
+    assert!(
+        !concurrent.needs_font(),
+        "a claimed rebuild must not copy the font a second time"
+    );
+
+    // An unconsumed plan releases its claim, so the build is not lost.
+    drop(claimant);
+    drop(concurrent);
+    assert!(
+        shaper.plan(&key, 2).needs_font(),
+        "a released claim must be retakeable"
+    );
+}
+
+#[test]
+fn a_claimed_first_compile_is_awaited_instead_of_repeated() {
+    let font = ligature_font();
+    let shaper = Arc::new(Shaper::new());
+    let key = key(&font);
+    let widths = widths_for_text(&font, &key.master, "fi");
+
+    let claimant = shaper.plan(&key, 1);
+    assert!(claimant.needs_font(), "the first compile must be claimed");
+    let waiting = shaper.plan(&key, 1);
+    assert!(
+        !waiting.needs_font(),
+        "a claimed first compile must not be repeated"
+    );
+
+    let waiter = {
+        let shaper = Arc::clone(&shaper);
+        let widths = widths.clone();
+        // No font is handed over, so the waiter cannot compile: it can only
+        // succeed by waiting for the claimant's result.
+        thread::spawn(move || shaper.shape_planned(waiting, None, &widths, &request("fi")))
+    };
+    thread::sleep(Duration::from_millis(50));
+    let claimed = shaper
+        .shape_planned(claimant, Some(font.clone()), &widths, &request("fi"))
+        .expect("the claimed first compile");
+    let waited = waiter
+        .join()
+        .expect("join the waiting thread")
+        .expect("the waiting request");
+
+    assert!(!claimed.stale, "{claimed:?}");
+    assert!(!waited.stale, "{waited:?}");
+    assert_eq!(waited.names, claimed.names);
+    assert_eq!(waited.glyphs, claimed.glyphs);
 }
