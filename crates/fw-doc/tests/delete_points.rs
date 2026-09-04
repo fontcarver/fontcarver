@@ -2,7 +2,7 @@ mod common;
 
 use fw_doc::{Command, DefaultFontOpener, DeleteMode, FontOpener, PointRef, Session};
 use fw_model::{Contour, Font, GlyphName, LayerId, Point, PointKind};
-use kurbo::{ParamCurve, PathSeg, Point as KurboPoint};
+use kurbo::{ParamCurve, ParamCurveNearest, PathSeg, Point as KurboPoint};
 
 use common::test_font;
 
@@ -318,6 +318,52 @@ fn span_of(contour: &Contour, previous: usize, node: usize, next: usize) -> Vec<
         .collect()
 }
 
+/// Whether two points coincide to within a rounding error.
+fn coincident(left: KurboPoint, right: KurboPoint) -> bool {
+    (left - right).hypot() <= 1.0e-9
+}
+
+/// The segments of a rewritten contour that run from `from` round to `to`.
+///
+/// Both ends survive a deletion unchanged, so the run between them is exactly
+/// the joined span the deletion produced.
+fn joined_span(updated: &Contour, from: KurboPoint, to: KurboPoint) -> Vec<PathSeg> {
+    let segments: Vec<PathSeg> = updated.to_bezpath().segments().collect();
+    let Some(start) = segments
+        .iter()
+        .position(|segment| coincident(segment.start(), from))
+    else {
+        return Vec::new();
+    };
+    let mut span = Vec::new();
+    for offset in 0..segments.len() {
+        let Some(&segment) = segments.get((start + offset) % segments.len()) else {
+            break;
+        };
+        span.push(segment);
+        if coincident(segment.end(), to) {
+            return span;
+        }
+    }
+    Vec::new()
+}
+
+/// The largest distance from any sample of `from` to the nearest point of `to`.
+fn one_way_deviation(from: &[PathSeg], to: &[PathSeg]) -> f64 {
+    let mut worst = 0.0_f64;
+    for segment in from {
+        for step in 0..=16 {
+            let sample = segment.eval(f64::from(step) / 16.0);
+            let nearest = to
+                .iter()
+                .map(|candidate| candidate.nearest(sample, 1.0e-6).distance_sq)
+                .fold(f64::INFINITY, f64::min);
+            worst = worst.max(nearest.sqrt());
+        }
+    }
+    worst
+}
+
 fn neighbours(contour: &Contour, node: usize) -> (usize, usize) {
     let len = contour.points.len();
     let previous = (1..len)
@@ -349,6 +395,8 @@ fn keep_shape_deletion_sweeps_a_real_corpus_without_errors() {
     let mut straight = Vec::new();
     let mut all = Vec::new();
     let mut deletions = 0_usize;
+    let mut forward_only = 0.0_f64;
+    let mut backward_only = 0.0_f64;
 
     for name in CORPUS {
         let glyph = font.glyph(name).expect("corpus glyph exists");
@@ -395,15 +443,39 @@ fn keep_shape_deletion_sweeps_a_real_corpus_without_errors() {
                 let Some(updated) = contours.get(contour_index) else {
                     continue;
                 };
-                let mut deviation = 0.0_f64;
+                // Deviation is measured in both directions and gated on the
+                // larger one: sampling only the original span would miss a
+                // fitted segment that bulges away from the original between the
+                // samples of the new curve.
+                //
+                // The two directions are deliberately asymmetric. Forward
+                // measures the original span against the whole rewritten
+                // contour, so a sample may land on a neighbouring segment;
+                // backward measures the joined span against only the two
+                // original segments it replaced, which is the stricter of the
+                // two. The gate takes whichever is larger.
+                let mut forward = 0.0_f64;
                 for segment in &span {
                     for step in 0..=16 {
                         let sample = segment.eval(f64::from(step) / 16.0);
                         let hit =
                             fw_geom::nearest_on_path(std::slice::from_ref(updated), sample, 1.0e9);
-                        deviation = deviation.max(hit.map_or(f64::INFINITY, |hit| hit.distance));
+                        forward = forward.max(hit.map_or(f64::INFINITY, |hit| hit.distance));
                     }
                 }
+                let new_span = joined_span(
+                    updated,
+                    KurboPoint::new(contour.points[previous].x, contour.points[previous].y),
+                    KurboPoint::new(contour.points[next].x, contour.points[next].y),
+                );
+                assert!(
+                    !new_span.is_empty(),
+                    "{name}[{contour_index}] point {node}: the joined span was not found"
+                );
+                let backward = one_way_deviation(&new_span, &span);
+                forward_only = forward_only.max(if chord > 0.0 { forward / chord } else { 0.0 });
+                backward_only = backward_only.max(if chord > 0.0 { backward / chord } else { 0.0 });
+                let deviation = forward.max(backward);
                 let relative = if chord > 0.0 { deviation / chord } else { 0.0 };
                 all.push(relative);
                 if is_straight {
@@ -447,6 +519,11 @@ fn keep_shape_deletion_sweeps_a_real_corpus_without_errors() {
         "all joins: median {:.3} %, max {:.3} % of the joined chord",
         overall_median * 100.0,
         overall_max * 100.0
+    );
+    println!(
+        "per direction: original samples max {:.3} %, new-span samples max {:.3} %",
+        forward_only * 100.0,
+        backward_only * 100.0
     );
 
     assert!(deletions >= 80, "corpus is smaller than expected");
