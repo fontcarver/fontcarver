@@ -2,7 +2,8 @@ use std::collections::BTreeSet;
 
 use fw_model::{
     query::{declared_curve_format, CurveFormat},
-    Contour, Font, GlyphName, Layer, LayerId, LayerKind, MasterId, Point, PointKind,
+    Anchor, Component, Contour, Font, GlyphName, Layer, LayerId, LayerKind, MasterId, Point,
+    PointKind,
 };
 
 use crate::Error;
@@ -41,13 +42,112 @@ impl Touched {
     }
 }
 
+/// The layer state an outline command may overwrite, captured before it runs.
+enum Restore {
+    /// Individual contours, components and anchors at stable indexes.
+    ///
+    /// Only commands that rewrite points in place — never adding, removing or
+    /// reordering a contour, component or anchor — are captured this way.
+    Parts {
+        /// Captured contours and where they sit.
+        contours: Vec<(usize, Contour)>,
+        /// Captured components and where they sit.
+        components: Vec<(usize, Component)>,
+        /// Captured anchors and where they sit.
+        anchors: Vec<(usize, Anchor)>,
+    },
+    /// The whole layer, for commands that restructure or rebuild it.
+    Layer(Box<Layer>),
+}
+
+impl Restore {
+    /// Captures everything `command` is able to overwrite in `target`.
+    fn capture(target: &Layer, command: &Command) -> Self {
+        match command {
+            Command::MovePoints { points, .. } | Command::SetSmooth { points, .. } => {
+                Self::contours(target, points.iter().map(|point| point.contour))
+            }
+            Command::SetPointPosition { point, .. } | Command::SetStartPoint { point, .. } => {
+                Self::contours(target, [point.contour])
+            }
+            Command::InsertPointOnSegment { contour, .. }
+            | Command::ConvertSegment { contour, .. } => Self::contours(target, [*contour]),
+            Command::ReverseContours { contours, .. } => {
+                Self::contours(target, contours.iter().copied())
+            }
+            Command::TransformSelection {
+                points,
+                components,
+                anchors,
+                ..
+            } if !(points.is_empty() && components.is_empty() && anchors.is_empty()) => {
+                Self::Parts {
+                    contours: pick(&target.contours, points.iter().map(|point| point.contour)),
+                    components: pick(&target.components, components.iter().copied()),
+                    anchors: pick(&target.anchors, anchors.iter().copied()),
+                }
+            }
+            _ => Self::Layer(Box::new(target.clone())),
+        }
+    }
+
+    /// Captures only the listed contours.
+    fn contours(target: &Layer, indices: impl IntoIterator<Item = usize>) -> Self {
+        Self::Parts {
+            contours: pick(&target.contours, indices),
+            components: Vec::new(),
+            anchors: Vec::new(),
+        }
+    }
+
+    /// Puts the captured state back.
+    fn apply_to(self, target: &mut Layer) {
+        match self {
+            Self::Layer(layer) => *target = *layer,
+            Self::Parts {
+                contours,
+                components,
+                anchors,
+            } => {
+                put_back(&mut target.contours, contours);
+                put_back(&mut target.components, components);
+                put_back(&mut target.anchors, anchors);
+            }
+        }
+    }
+}
+
+/// Clones the values at the listed indexes, skipping indexes out of range.
+fn pick<T: Clone>(values: &[T], indices: impl IntoIterator<Item = usize>) -> Vec<(usize, T)> {
+    let mut chosen: Vec<usize> = indices.into_iter().collect();
+    chosen.sort_unstable();
+    chosen.dedup();
+    chosen
+        .into_iter()
+        .filter_map(|index| values.get(index).map(|value| (index, value.clone())))
+        .collect()
+}
+
+/// Writes captured values back to the indexes they came from.
+fn put_back<T>(values: &mut [T], captured: Vec<(usize, T)>) {
+    for (index, value) in captured {
+        if let Some(slot) = values.get_mut(index) {
+            *slot = value;
+        }
+    }
+}
+
 /// Applies one outline command and rejects any malformed result.
 ///
-/// The command's layer is captured before the operation and restored in full —
-/// contours, components, anchors and everything else a layer carries — when the
-/// operation fails or leaves one of the contours it touched in a state that
-/// `Contour::try_to_bezpath` rejects, so a failed outline command never changes
-/// the document.
+/// Whatever the command can overwrite is captured before the operation and put
+/// back when the operation fails or leaves one of the contours it touched in a
+/// state that `Contour::try_to_bezpath` rejects, so a failed outline command
+/// never changes the document. A command that only moves existing points — the
+/// per-frame commands of a drag — captures just the contours it names, which
+/// keeps a preview frame proportional to the selection rather than to the
+/// glyph; a command that restructures the layer captures the whole layer, so a
+/// rejected `TransformSelection` also restores component transforms and
+/// anchors.
 ///
 /// Only the contours an operation reports touching are checked. A layer may
 /// already hold a contour the model tolerates but the path builder rejects (an
@@ -59,12 +159,12 @@ pub(super) fn apply(font: &mut Font, command: &Command) -> Result<(), Error> {
             "non-outline command routed to outline handler".to_owned(),
         ));
     };
-    let restore = layer_mut(font, glyph, layer)?.clone();
+    let restore = Restore::capture(layer_mut(font, glyph, layer)?, command);
     let outcome =
         dispatch(font, command).and_then(|touched| validate(font, glyph, layer, &touched));
     if outcome.is_err() {
         if let Ok(target) = layer_mut(font, glyph, layer) {
-            *target = restore;
+            restore.apply_to(target);
         }
     }
     outcome

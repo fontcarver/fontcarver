@@ -926,7 +926,7 @@ fn a_rejected_transform_restores_components_and_anchors_too() {
                 .apply(
                     Command::TransformSelection {
                         glyph: glyph.clone(),
-                        layer,
+                        layer: layer.clone(),
                         points: vec![PointRef {
                             contour: 1,
                             point: 0,
@@ -943,6 +943,26 @@ fn a_rejected_transform_restores_components_and_anchors_too() {
                 doc.font.glyph(&glyph).unwrap(),
                 &before,
                 "components and anchors are restored with the contours"
+            );
+
+            let error = doc
+                .apply(
+                    Command::TransformSelection {
+                        glyph: glyph.clone(),
+                        layer,
+                        points: Vec::new(),
+                        components: Vec::new(),
+                        anchors: Vec::new(),
+                        affine: Affine::scale(2.0).as_coeffs(),
+                    },
+                    "Transform everything",
+                )
+                .unwrap_err();
+            assert!(matches!(error, Error::InvalidCommand(_)), "{error}");
+            assert_eq!(
+                doc.font.glyph(&glyph).unwrap(),
+                &before,
+                "a whole-layer transform restores the whole layer"
             );
         })
         .unwrap();
