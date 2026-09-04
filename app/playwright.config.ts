@@ -16,20 +16,26 @@ import { defineConfig } from '@playwright/test'
  */
 const apiPort = process.env.FW_API_PORT ?? '8787'
 const uiPort = process.env.FW_UI_PORT ?? '1420'
-const baseURL = `http://localhost:${uiPort}`
+// Both servers bind the IPv4 loopback, and `localhost` resolves to `::1`
+// first on some runners, so every URL here names the address explicitly.
+const baseURL = `http://127.0.0.1:${uiPort}`
 const apiURL = `http://127.0.0.1:${apiPort}`
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url))
-const builtDevserver = `${repoRoot}target/debug/fw-devserver`
 
 /**
- * The pre-built binary when there is one, so a run costs no compilation; a
- * checkout that has not built it yet falls back to Cargo, which is why the
- * kernel server gets a longer start-up budget than Vite.
+ * The pre-built binary when there is one, so a run costs no compilation, and
+ * the release one first: only a release kernel opens the 65,535-glyph corpus
+ * the CJK spec wants inside the transport's request timeout. A checkout that
+ * has built neither falls back to Cargo, which is why the kernel server gets a
+ * longer start-up budget than Vite.
  */
-const devserver = existsSync(builtDevserver)
-  ? builtDevserver
-  : 'cargo run --quiet -p fw-devserver --'
+const devserver =
+  [
+    `${repoRoot}target/release/fw-devserver`,
+    `${repoRoot}target/debug/fw-devserver`,
+  ].find((binary) => existsSync(binary)) ??
+  'cargo run --quiet -p fw-devserver --'
 
 /** The font every spec but the CJK one is written against. */
 const fixture = 'fixtures/fonts/DejaVuSans.ttf'
