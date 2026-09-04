@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { setTransport, type ApplyParams } from '../api'
 import { Viewport } from '../canvas/Viewport'
@@ -17,6 +17,7 @@ import {
   type PointerInput,
 } from './editorController'
 import { NO_MODIFIERS, type Modifiers } from './gestures/drag'
+import { NUDGE_TIMEOUT } from './gestures/nudge'
 
 const layer = makeLayer({
   width: 600,
@@ -84,10 +85,19 @@ function source(): EditorSource {
   }
 }
 
+/** What the view would have been told. */
+interface Recorded {
+  selections: string[][]
+  editing: boolean[]
+  reloads: number
+  errors: unknown[]
+}
+
 /** 1 CSS pixel per font unit, font origin at canvas (0, 300). */
 function makeController(): {
   controller: EditorController
   transport: MockTransport
+  recorded: Recorded
 } {
   const transport = createMockTransport({
     'doc.apply': () => change(),
@@ -102,8 +112,26 @@ function makeController(): {
   viewport.scale = 1
   viewport.offset = { x: 0, y: 300 }
   const controller = new EditorController(viewport, labels)
+  const recorded: Recorded = {
+    selections: [],
+    editing: [],
+    reloads: 0,
+    errors: [],
+  }
+  controller.setCallbacks({
+    repaint: () => undefined,
+    onSelectionChange: (selection) =>
+      recorded.selections.push([...selection.keys()]),
+    onEditingChange: (editing) => recorded.editing.push(editing),
+    onZoomChange: () => undefined,
+    onReload: () => {
+      recorded.reloads += 1
+    },
+    onCursorChange: () => undefined,
+    onError: (error) => recorded.errors.push(error),
+  })
   controller.setSource(source())
-  return { controller, transport }
+  return { controller, transport, recorded }
 }
 
 function change() {
@@ -311,5 +339,71 @@ describe('EditorController modifier grammar', () => {
     // An Alt-drag of a node still grabs the node it is pointing at.
     controller.pointerDown(at(200, 300, alt))
     expect([...controller.currentSelection.keys()]).toEqual(['node:0:1'])
+  })
+})
+
+describe('EditorController nudging', () => {
+  it('shows the move on the first key press, before the kernel answers', () => {
+    const { controller } = makeController()
+    controller.setSelection(
+      new Map([['node:0:1', { kind: 'node', contour: 0, point: 1 }]]),
+    )
+
+    controller.nudgeSelection({ x: 1, y: 0 }, NO_MODIFIERS)
+    // The optimistic preview carries the nudge exactly as a drag does.
+    expect(controller.frame().contours?.[0]?.points[1]).toMatchObject({
+      x: 201,
+      y: 0,
+    })
+    controller.nudgeSelection({ x: 1, y: 0 }, { ...NO_MODIFIERS, shift: true })
+    expect(controller.frame().contours?.[0]?.points[1]).toMatchObject({
+      x: 211,
+      y: 0,
+    })
+  })
+
+  it('ends the run on its own timer and lets the view catch up', async () => {
+    vi.useFakeTimers()
+    try {
+      const { controller, transport, recorded } = makeController()
+      controller.selectAll()
+      controller.nudgeSelection({ x: 0, y: 1 }, NO_MODIFIERS)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(recorded.editing.at(-1)).toBe(true)
+      const reloadsDuring = recorded.reloads
+
+      await vi.advanceTimersByTimeAsync(NUDGE_TIMEOUT + 50)
+
+      expect(
+        transport.calls.filter((entry) => entry.method === 'doc.edit_end'),
+      ).toHaveLength(1)
+      expect(recorded.editing.at(-1)).toBe(false)
+      expect(recorded.reloads).toBeGreaterThan(reloadsDuring)
+      // The preview is handed back to the refetched outline.
+      expect(controller.frame().contours).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('closes a nudge run before the next gesture starts', async () => {
+    vi.useFakeTimers()
+    try {
+      const { controller, transport } = makeController()
+      controller.selectAll()
+      controller.nudgeSelection({ x: 0, y: -1 }, NO_MODIFIERS)
+      await vi.advanceTimersByTimeAsync(0)
+      // Any other action closes the run rather than leaving it to the timer.
+      controller.pointerDown(at(380, 20))
+      await vi.advanceTimersByTimeAsync(0)
+
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+        'doc.edit_end',
+      ])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

@@ -17,6 +17,7 @@ import {
   type PointerInput,
 } from '../../editor/editorController'
 import type { Modifiers } from '../../editor/gestures/drag'
+import { reportError } from '../../shell/commands'
 import { selectActiveTool, useEditorStore } from '../../stores/editorStore'
 import type { Selection } from '../../editor/selection'
 
@@ -163,6 +164,7 @@ export function GlyphCanvas({
       onZoomChange,
       onReload,
       onCursorChange: setCursor,
+      onError: reportError,
     })
   }, [controller, draw, onReload, onZoomChange])
 

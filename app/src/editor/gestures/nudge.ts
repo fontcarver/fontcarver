@@ -37,6 +37,12 @@ export interface NudgeContext {
   scheduler?: Scheduler
   /** Idle timeout; injected by tests. */
   timeout?: number
+  /**
+   * Called when a run closes, including from the idle timer. Without it the
+   * owner cannot know that the gesture is over, because the timer fires inside
+   * this object rather than in response to any input.
+   */
+  onEnd?: () => void
 }
 
 /**
@@ -104,7 +110,12 @@ export class NudgeCoalescer {
     const session = this.session
     this.session = null
     this.signature = ''
-    if (session) await session.end()
+    if (!session) return
+    // The owner is told synchronously, before the round trip: it has to drop
+    // its optimistic preview and re-enable reloads whether or not the kernel
+    // answers, and a run started meanwhile must not be closed by this one.
+    this.context.onEnd?.()
+    await session.end()
   }
 
   private restartTimer(): void {

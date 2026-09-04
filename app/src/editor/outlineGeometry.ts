@@ -13,7 +13,7 @@
  * controls yields N segments.
  */
 
-import type { Contour, Point, PointRef } from '../api'
+import type { Contour, HandleMode, Point, PointRef } from '../api'
 import type { FontBox, Point2 } from '../canvas/Viewport'
 import { resolveContour } from '../views/glyph/contourGeometry'
 
@@ -251,6 +251,28 @@ export function oppositeHandle(
       contour.points[candidate]?.kind === 'OffCurve',
   )
   return index === undefined ? null : { contour: node.contour, point: index }
+}
+
+/**
+ * The stored points a move really translates: the requested ones plus, in
+ * `WithHandles` mode, the off-curve handles of every requested node — the same
+ * set `Command::MovePoints` moves in the kernel, so an optimistic preview and
+ * the applied command agree.
+ */
+export function movedPointRefs(
+  contours: readonly Contour[],
+  refs: readonly PointRef[],
+  handles: HandleMode,
+): PointRef[] {
+  const all =
+    handles === 'WithHandles'
+      ? [...refs, ...refs.flatMap((ref) => handlesOfNode(contours, ref))]
+      : [...refs]
+  const seen = new Map<string, PointRef>()
+  for (const ref of all) seen.set(`${ref.contour}:${ref.point}`, ref)
+  return [...seen.values()].sort(
+    (a, b) => a.contour - b.contour || a.point - b.point,
+  )
 }
 
 /** Applies a translation to the listed stored points, returning new contours. */

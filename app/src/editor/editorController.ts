@@ -12,7 +12,15 @@
  * animation frame, so the outline can never lag the pointer.
  */
 
-import type { Anchor, Contour, DocId, GlyphId, LayerOutline } from '../api'
+import type {
+  Anchor,
+  Contour,
+  DocId,
+  GlyphId,
+  HandleMode,
+  LayerOutline,
+  PointRef,
+} from '../api'
 import type { Point2, Viewport } from '../canvas/Viewport'
 import type { SceneMetrics } from '../views/glyph/glyphScene'
 
@@ -32,7 +40,12 @@ import {
 } from './gestures/drag'
 import { marqueeRect, marqueeSelection, marqueeSize } from './gestures/marquee'
 import { NudgeCoalescer, nudgeStep } from './gestures/nudge'
-import { buildEditOutline, type EditOutline } from './outlineGeometry'
+import {
+  buildEditOutline,
+  movedPointRefs,
+  translatePoints,
+  type EditOutline,
+} from './outlineGeometry'
 import {
   commit,
   convertSegmentCommand,
@@ -100,6 +113,11 @@ export interface EditorCallbacks {
   /** A gesture finished: refetch the outline and reconcile. */
   onReload: () => void
   onCursorChange: (cursor: string) => void
+  /**
+   * A kernel call failed. Editing must not swallow transport errors: the shell
+   * turns these into a toast, the same way a failed command does.
+   */
+  onError: (error: unknown) => void
 }
 
 /** A pointer event, normalised to canvas space. */
@@ -118,6 +136,7 @@ const SILENT_CALLBACKS: EditorCallbacks = {
   onZoomChange: () => undefined,
   onReload: () => undefined,
   onCursorChange: () => undefined,
+  onError: () => undefined,
 }
 
 export class EditorController {
@@ -144,8 +163,15 @@ export class EditorController {
     anchors: readonly Anchor[]
   } | null = null
   private nudge: NudgeCoalescer | null = null
+  private nudgeRun: {
+    base: readonly Contour[]
+    total: Point2
+    refs: PointRef[]
+    anchors: readonly Anchor[]
+  } | null = null
   private spaceHeld = false
   private tool: ToolId = 'select'
+  private editingPublished = false
 
   constructor(viewport: Viewport, labels: EditorLabels) {
     this.viewport = viewport
@@ -158,6 +184,20 @@ export class EditorController {
    */
   setCallbacks(callbacks: EditorCallbacks): void {
     this.callbacks = callbacks
+  }
+
+  /**
+   * Publishes whether a gesture is live.
+   *
+   * It is derived rather than toggled: a drag that finishes asynchronously
+   * must not clear the flag that an arrow-key run set in the meantime, and the
+   * data hooks rely on this flag to know when it is safe to reload.
+   */
+  private publishEditing(): void {
+    const editing = this.drag !== null || this.nudge?.active === true
+    if (editing === this.editingPublished) return
+    this.editingPublished = editing
+    this.callbacks.onEditingChange(editing)
   }
 
   /** Replaces the translated strings after a language change. */
@@ -434,32 +474,73 @@ export class EditorController {
     )
   }
 
-  /** One arrow press. */
+  /**
+   * One arrow press.
+   *
+   * The move is shown immediately from a local copy — the kernel is told on
+   * the next animation frame and the whole run becomes one undo entry — so an
+   * arrow key feels the same as a drag rather than waiting on a round trip.
+   */
   nudgeSelection(direction: Point2, modifiers: Modifiers): void {
     const target = this.layerTarget()
+    const source = this.source
     const points = selectedPointRefs(this.selection)
-    if (!target || points.length === 0) return
+    if (!target || !source || points.length === 0) return
     const step = nudgeStep(modifiers)
+    const delta = { x: direction.x * step, y: direction.y * step }
+    const handles: HandleMode = modifiers.alt ? 'PointsOnly' : 'WithHandles'
     this.nudge ??= new NudgeCoalescer({
       doc: target.doc,
       glyph: target.glyph,
       layer: target.layer,
       label: (count) => this.labels.nudgePoints(count),
+      onEnd: () => this.closeNudge(),
     })
-    this.callbacks.onEditingChange(true)
-    this.nudge.nudge(
-      points,
-      { x: direction.x * step, y: direction.y * step },
-      modifiers.alt ? 'PointsOnly' : 'WithHandles',
-    )
+    this.nudge.nudge(points, delta, handles)
+    this.publishEditing()
+
+    // Accumulate against the layer as the kernel last reported it: reloads are
+    // deferred for the length of the run, so that geometry stays put.
+    const base = this.nudgeRun?.base ?? source.outline.contours
+    const total = this.nudgeRun
+      ? {
+          x: this.nudgeRun.total.x + delta.x,
+          y: this.nudgeRun.total.y + delta.y,
+        }
+      : delta
+    this.nudgeRun = {
+      base,
+      total,
+      refs: movedPointRefs(base, points, handles),
+      anchors: source.outline.anchors,
+    }
+    this.preview = {
+      contours: translatePoints(base, this.nudgeRun.refs, total.x, total.y),
+      anchors: this.nudgeRun.anchors,
+    }
+    this.callbacks.repaint()
   }
 
   /** Finalises a run of nudges: one undo entry, then a reload. */
   async endNudge(): Promise<void> {
     if (!this.nudge?.active) return
-    await this.nudge.end()
-    this.callbacks.onEditingChange(false)
+    try {
+      await this.nudge.end()
+    } catch (error) {
+      this.callbacks.onError(error)
+    }
+  }
+
+  /**
+   * A nudge run closed, from the idle timer or from any other action. The
+   * preview is handed back to the layer and reloads resume.
+   */
+  private closeNudge(): void {
+    this.nudgeRun = null
+    this.preview = null
+    this.publishEditing()
     this.callbacks.onReload()
+    this.callbacks.repaint()
   }
 
   /** Escape: cancel a live drag, or clear the selection. */
@@ -469,7 +550,7 @@ export class EditorController {
       this.drag = null
       this.preview = null
       void drag.cancel().then(() => {
-        this.callbacks.onEditingChange(false)
+        this.publishEditing()
         this.callbacks.onReload()
       })
       this.callbacks.repaint()
@@ -605,7 +686,7 @@ export class EditorController {
     )
     if (!drag) return
     this.drag = drag
-    this.callbacks.onEditingChange(true)
+    this.publishEditing()
   }
 
   private snapInput() {
@@ -649,7 +730,7 @@ export class EditorController {
     this.snap = null
     const changed = await drag.finish()
     this.preview = null
-    this.callbacks.onEditingChange(false)
+    this.publishEditing()
     if (changed) this.callbacks.onReload()
     else this.callbacks.repaint()
   }

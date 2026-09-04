@@ -98,6 +98,17 @@ export function setCommandErrorReporter(
   errorReporter = reporter
 }
 
+/**
+ * Reports an error through the same handler command bodies use.
+ *
+ * Anything the user triggered deserves the same feedback whether it went
+ * through the command registry or straight through an editing gesture, so the
+ * editor reports its transport failures here rather than inventing a channel.
+ */
+export function reportError(error: unknown): void {
+  errorReporter(error)
+}
+
 /** Registers one command. Re-registering the same id replaces the definition. */
 export function registerCommand(command: Command): void {
   registry.set(command.id, command)
