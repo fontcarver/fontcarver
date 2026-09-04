@@ -414,6 +414,9 @@ impl Document {
                     *slot = Some(to.clone());
                 }
             }
+            Command::DuplicateGlyph { name, .. } => {
+                self.allocate_handle(name.clone());
+            }
             Command::Batch(commands) => {
                 for command in commands {
                     self.apply_handle_effects(command)?;
@@ -499,6 +502,9 @@ impl Document {
             font_info: impact.font_info,
             masters: !impact.masters.is_empty(),
             glyph_order: impact.glyph_order,
+            metrics: impact.metrics,
+            layers: impact.layers,
+            guides: impact.guides,
         }
     }
 

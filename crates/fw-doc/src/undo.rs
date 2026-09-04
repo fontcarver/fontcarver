@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use fw_model::{Font, FontInfo, Glyph, GlyphId, GlyphName, Master, MasterId};
+use fw_model::{Font, FontInfo, Glyph, GlyphId, GlyphName, Guide, Master, MasterId};
 
 use crate::{command::Impact, Change};
 
@@ -20,6 +20,8 @@ pub enum Snapshot {
     Master(MasterId, Arc<Master>),
     /// Persistent glyph ordering.
     GlyphOrder(Vec<GlyphName>),
+    /// Font-global guides.
+    FontGuides(Arc<Vec<Guide>>),
 }
 
 /// One labelled atomic operation in the undo timeline.
@@ -215,6 +217,9 @@ pub(crate) fn capture(font: &Font, impact: &Impact) -> Vec<Snapshot> {
     if impact.glyph_order {
         snapshots.push(Snapshot::GlyphOrder(font.glyph_order().cloned().collect()));
     }
+    if impact.font_guides {
+        snapshots.push(Snapshot::FontGuides(Arc::new(font.guides.clone())));
+    }
     snapshots
 }
 
@@ -231,6 +236,7 @@ pub(crate) fn restore(font: &mut Font, snapshots: &[Snapshot]) {
                     *target = (**master).clone();
                 }
             }
+            Snapshot::FontGuides(guides) => font.guides = (**guides).clone(),
             Snapshot::Glyph(_, _) | Snapshot::GlyphOrder(_) => {}
         }
     }
@@ -285,7 +291,8 @@ fn same_snapshot_key(left: &Snapshot, right: &Snapshot) -> bool {
     match (left, right) {
         (Snapshot::Glyph(left, _), Snapshot::Glyph(right, _)) => left == right,
         (Snapshot::FontInfo(_), Snapshot::FontInfo(_))
-        | (Snapshot::GlyphOrder(_), Snapshot::GlyphOrder(_)) => true,
+        | (Snapshot::GlyphOrder(_), Snapshot::GlyphOrder(_))
+        | (Snapshot::FontGuides(_), Snapshot::FontGuides(_)) => true,
         (Snapshot::Master(left, _), Snapshot::Master(right, _)) => left == right,
         _ => false,
     }
@@ -363,5 +370,6 @@ fn estimate_snapshot(snapshot: &Snapshot) -> usize {
         Snapshot::FontInfo(_) => std::mem::size_of::<FontInfo>(),
         Snapshot::Master(_, _) => std::mem::size_of::<Master>(),
         Snapshot::GlyphOrder(names) => names.iter().map(|name| name.len()).sum(),
+        Snapshot::FontGuides(guides) => guides.len().saturating_mul(std::mem::size_of::<Guide>()),
     }
 }

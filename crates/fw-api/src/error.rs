@@ -35,6 +35,10 @@ impl ApiError {
         Self::new("internal", message)
     }
 
+    pub(crate) fn geometry(message: impl Into<String>) -> Self {
+        Self::new("geometry", message)
+    }
+
     fn new(code: &str, message: impl Into<String>) -> Self {
         Self {
             code: code.to_owned(),
@@ -51,9 +55,11 @@ impl From<fw_doc::Error> for ApiError {
             | fw_doc::Error::MissingGlyph(_)
             | fw_doc::Error::MissingLayer { .. }
             | fw_doc::Error::MissingMaster(_) => Self::not_found(message),
-            fw_doc::Error::InvalidEditToken | fw_doc::Error::Model(_) => {
-                Self::invalid_params(message)
-            }
+            fw_doc::Error::InvalidEditToken
+            | fw_doc::Error::InvalidCommand(_)
+            | fw_doc::Error::MetricsKeyCycle
+            | fw_doc::Error::Model(_) => Self::invalid_params(message),
+            fw_doc::Error::Geometry(_) => Self::geometry(message),
             fw_doc::Error::Io(_) => Self::io(message),
             fw_doc::Error::UnsupportedFormat(_)
             | fw_doc::Error::InvalidFwfFormat(_)
@@ -73,6 +79,32 @@ impl From<fw_sfnt::Error> for ApiError {
         match error {
             fw_sfnt::Error::Io { .. } => Self::io(error.to_string()),
             other => Self::parse(other.to_string()),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ApiError;
+
+    #[test]
+    fn document_errors_map_to_stable_codes() {
+        let cases = [
+            (
+                fw_doc::Error::InvalidCommand("bad index".to_owned()),
+                "invalid_params",
+            ),
+            (fw_doc::Error::MetricsKeyCycle, "invalid_params"),
+            (
+                fw_doc::Error::Geometry("overlap removal failed".to_owned()),
+                "geometry",
+            ),
+        ];
+        for (error, code) in cases {
+            let message = error.to_string();
+            let mapped = ApiError::from(error);
+            assert_eq!(mapped.code, code);
+            assert_eq!(mapped.message, message);
         }
     }
 }

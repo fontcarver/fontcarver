@@ -217,3 +217,61 @@ fn compatibility_and_validation_report_topology_unicode_and_group_issues() {
         2
     );
 }
+
+#[test]
+fn flatten_layer_by_id_uses_the_named_layer_and_its_master() {
+    let mut font = fw_model::Font::new_empty("Test Family", 1_000);
+    let master = font.default_master().id.clone();
+
+    let mut base = Glyph::new("base");
+    base.layers
+        .push(fw_model::Layer::new_master(master.clone()));
+    base.master_layer_mut(&master)
+        .unwrap()
+        .contours
+        .push(triangle());
+    font.insert_glyph(base).unwrap();
+
+    let mut composite = Glyph::new("composite");
+    composite
+        .layers
+        .push(fw_model::Layer::new_master(master.clone()));
+    composite
+        .master_layer_mut(&master)
+        .unwrap()
+        .components
+        .push(Component {
+            base: "base".into(),
+            ..Component::default()
+        });
+    let mut background = fw_model::Layer {
+        kind: fw_model::LayerKind::Background(master.clone()),
+        ..fw_model::Layer::default()
+    };
+    background.contours.push(triangle());
+    background.components.push(Component {
+        base: "base".into(),
+        transform: Affine::translate((500.0, 0.0)),
+        ..Component::default()
+    });
+    let background_id = background.id.clone();
+    composite.layers.push(background);
+    font.insert_glyph(composite).unwrap();
+
+    let master_layer_id = font
+        .glyph("composite")
+        .unwrap()
+        .master_layer(&master)
+        .unwrap()
+        .id
+        .clone();
+    let master_path = fw_model::flatten_layer_by_id(&font, "composite", &master_layer_id).unwrap();
+    assert_eq!(master_path.bounding_box().x1, 100.0);
+
+    let background_path =
+        fw_model::flatten_layer_by_id(&font, "composite", &background_id).unwrap();
+    assert_eq!(background_path.bounding_box().x1, 600.0);
+
+    let missing = fw_model::flatten_layer_by_id(&font, "composite", &fw_model::LayerId::new());
+    assert!(matches!(missing, Err(Error::MissingLayer { .. })));
+}
