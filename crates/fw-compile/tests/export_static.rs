@@ -2,7 +2,9 @@ mod common;
 
 use std::time::Instant;
 
-use fw_compile::{export, shaping_fingerprint, ExportFormat, ExportOptions};
+use fw_compile::{
+    export, export_with_progress, shaping_fingerprint, ExportFormat, ExportOptions, ExportStage,
+};
 use fw_model::{Font, Glyph, Layer, NamePlatform, NameRecord, Tag};
 use read_fonts::{tables::cmap::CmapSubtable, types::Tag as ReadTag, FontRef, TableProvider};
 use skrifa::MetadataProvider;
@@ -351,4 +353,48 @@ fn cmap_formats(bytes: &[u8]) -> Vec<u16> {
             },
         )
         .collect()
+}
+
+#[test]
+fn progress_reports_every_stage_that_actually_runs() {
+    let font = common::scratch_font();
+    let mut stages = Vec::new();
+    export_with_progress(
+        &font,
+        &|_| 0,
+        &ExportOptions::default(),
+        &mut |stage, percent| stages.push((stage, percent)),
+    )
+    .expect("export with progress");
+
+    assert_eq!(
+        stages,
+        vec![
+            (ExportStage::Compile, 0),
+            (ExportStage::Preserve, 60),
+            (ExportStage::Write, 90),
+        ]
+    );
+    assert_eq!(ExportStage::Compile.as_str(), "compile");
+    assert_eq!(ExportStage::Preserve.as_str(), "preserve");
+    assert_eq!(ExportStage::Write.as_str(), "write");
+}
+
+#[test]
+fn a_failing_export_stops_reporting_at_the_stage_that_failed() {
+    let font = common::scratch_font();
+    let mut stages = Vec::new();
+    let error = export_with_progress(
+        &font,
+        &|_| 0,
+        &ExportOptions {
+            master: Some(fw_model::MasterId("missing".into())),
+            ..ExportOptions::default()
+        },
+        &mut |stage, percent| stages.push((stage, percent)),
+    )
+    .expect_err("unknown master");
+
+    assert!(error.to_string().contains("missing"), "{error}");
+    assert!(stages.is_empty(), "{stages:?}");
 }
