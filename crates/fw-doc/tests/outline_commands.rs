@@ -440,3 +440,298 @@ fn every_path_operation_is_undoable_and_geometry_errors_are_atomic() {
         })
         .unwrap();
 }
+
+#[test]
+fn move_points_moves_selected_handles_in_both_modes() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let layer = doc.font.glyph("base").unwrap().layers[0].id.clone();
+            doc.font.glyph_mut("base").unwrap().layers[0].contours = vec![cubic_contour()];
+            let before = doc.font.glyph("base").unwrap().clone();
+
+            doc.apply(
+                Command::MovePoints {
+                    glyph: "base".into(),
+                    layer: layer.clone(),
+                    points: vec![PointRef {
+                        contour: 0,
+                        point: 1,
+                    }],
+                    delta: (5.0, -7.0),
+                    handles: HandleMode::PointsOnly,
+                },
+                "Drag handle",
+            )
+            .unwrap();
+            let points = &doc.font.glyph("base").unwrap().layers[0].contours[0].points;
+            assert_eq!((points[1].x, points[1].y), (35.0, 93.0));
+            assert_eq!((points[0].x, points[0].y), (0.0, 0.0));
+            assert_eq!((points[2].x, points[2].y), (70.0, 100.0));
+            doc.undo().unwrap();
+            assert_eq!(doc.font.glyph("base").unwrap(), &before);
+
+            doc.apply(
+                Command::MovePoints {
+                    glyph: "base".into(),
+                    layer,
+                    points: vec![
+                        PointRef {
+                            contour: 0,
+                            point: 1,
+                        },
+                        PointRef {
+                            contour: 0,
+                            point: 3,
+                        },
+                    ],
+                    delta: (10.0, 0.0),
+                    handles: HandleMode::WithHandles,
+                },
+                "Drag node and handle",
+            )
+            .unwrap();
+            let points = &doc.font.glyph("base").unwrap().layers[0].contours[0].points;
+            assert_eq!((points[0].x, points[0].y), (0.0, 0.0));
+            assert_eq!((points[1].x, points[1].y), (40.0, 100.0));
+            assert_eq!((points[2].x, points[2].y), (80.0, 100.0));
+            assert_eq!((points[3].x, points[3].y), (110.0, 0.0));
+            doc.undo().unwrap();
+            assert_eq!(doc.font.glyph("base").unwrap(), &before);
+        })
+        .unwrap();
+}
+
+/// A closed TrueType-style contour: three nodes, one handle per segment.
+fn quadratic_triangle() -> Contour {
+    Contour {
+        closed: true,
+        points: vec![
+            Point {
+                x: 0.0,
+                y: 0.0,
+                kind: PointKind::QCurve,
+                ..Point::default()
+            },
+            Point {
+                x: 50.0,
+                y: -40.0,
+                kind: PointKind::OffCurve,
+                ..Point::default()
+            },
+            Point {
+                x: 100.0,
+                y: 0.0,
+                kind: PointKind::QCurve,
+                ..Point::default()
+            },
+            Point {
+                x: 60.0,
+                y: 60.0,
+                kind: PointKind::OffCurve,
+                ..Point::default()
+            },
+            Point {
+                x: 50.0,
+                y: 100.0,
+                kind: PointKind::QCurve,
+                ..Point::default()
+            },
+            Point {
+                x: -20.0,
+                y: 50.0,
+                kind: PointKind::OffCurve,
+                ..Point::default()
+            },
+        ],
+        ..Contour::default()
+    }
+}
+
+#[test]
+fn convert_segment_keeps_the_start_point_and_honours_the_layer_curve_kind() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let glyph = GlyphName::from("base");
+            let layer = doc.font.glyph(&glyph).unwrap().layers[0].id.clone();
+            doc.font.glyph_mut(&glyph).unwrap().layers[0].contours = vec![quadratic_triangle()];
+
+            doc.apply(
+                Command::ConvertSegment {
+                    glyph: glyph.clone(),
+                    layer: layer.clone(),
+                    contour: 0,
+                    segment: 2,
+                    to: SegmentKind::Line,
+                },
+                "Line",
+            )
+            .unwrap();
+            let contour = &doc.font.glyph(&glyph).unwrap().layers[0].contours[0];
+            assert_eq!((contour.points[0].x, contour.points[0].y), (0.0, 0.0));
+            assert_eq!(contour.points.len(), 5);
+            assert_eq!(contour.points[0].kind, PointKind::Line);
+
+            doc.apply(
+                Command::ConvertSegment {
+                    glyph: glyph.clone(),
+                    layer,
+                    contour: 0,
+                    segment: 2,
+                    to: SegmentKind::Curve,
+                },
+                "Curve",
+            )
+            .unwrap();
+            let contour = &doc.font.glyph(&glyph).unwrap().layers[0].contours[0];
+            assert_eq!((contour.points[0].x, contour.points[0].y), (0.0, 0.0));
+            assert_eq!(contour.points.len(), 6);
+            assert_eq!(contour.points[0].kind, PointKind::QCurve);
+            assert_eq!(
+                (contour.points[5].x, contour.points[5].y),
+                (25.0, 50.0),
+                "a quadratic layer gets one handle at the chord midpoint"
+            );
+            assert!(!contour
+                .points
+                .iter()
+                .any(|point| point.kind == PointKind::Curve));
+            contour.try_to_bezpath().unwrap();
+        })
+        .unwrap();
+}
+
+#[test]
+fn degenerate_contours_are_rejected_instead_of_panicking() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let glyph = GlyphName::from("base");
+            let layer = doc.font.glyph(&glyph).unwrap().layers[0].id.clone();
+            let single = Contour {
+                closed: true,
+                points: vec![Point {
+                    x: 10.0,
+                    y: 20.0,
+                    kind: PointKind::Line,
+                    ..Point::default()
+                }],
+                ..Contour::default()
+            };
+            let handles_only = Contour {
+                closed: true,
+                points: vec![
+                    Point {
+                        x: 0.0,
+                        y: 0.0,
+                        kind: PointKind::OffCurve,
+                        ..Point::default()
+                    },
+                    Point {
+                        x: 50.0,
+                        y: 80.0,
+                        kind: PointKind::OffCurve,
+                        ..Point::default()
+                    },
+                    Point {
+                        x: 100.0,
+                        y: 0.0,
+                        kind: PointKind::OffCurve,
+                        ..Point::default()
+                    },
+                ],
+                ..Contour::default()
+            };
+            doc.font.glyph_mut(&glyph).unwrap().layers[0].contours =
+                vec![single, handles_only.clone()];
+            let before = doc.font.glyph(&glyph).unwrap().clone();
+            for contour in 0..2 {
+                for to in [SegmentKind::Curve, SegmentKind::Line] {
+                    let error = doc
+                        .apply(
+                            Command::ConvertSegment {
+                                glyph: glyph.clone(),
+                                layer: layer.clone(),
+                                contour,
+                                segment: 0,
+                                to,
+                            },
+                            "Convert",
+                        )
+                        .unwrap_err();
+                    assert!(matches!(error, Error::InvalidCommand(_)), "{error}");
+                    assert_eq!(doc.font.glyph(&glyph).unwrap(), &before);
+                }
+            }
+
+            doc.apply(
+                Command::DeletePoints {
+                    glyph: glyph.clone(),
+                    layer: layer.clone(),
+                    points: (0..3).map(|point| PointRef { contour: 1, point }).collect(),
+                    mode: DeleteMode::KeepShape,
+                },
+                "Delete every point",
+            )
+            .unwrap();
+            assert_eq!(
+                doc.font.glyph(&glyph).unwrap().layers[0].contours.len(),
+                1,
+                "an emptied contour is removed"
+            );
+        })
+        .unwrap();
+}
+
+#[test]
+fn a_malformed_contour_is_rejected_and_leaves_the_layer_unchanged() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let glyph = GlyphName::from("base");
+            let layer = doc.font.glyph(&glyph).unwrap().layers[0].id.clone();
+            let before = doc.font.glyph(&glyph).unwrap().clone();
+            let malformed = Contour {
+                closed: false,
+                points: vec![
+                    Point {
+                        x: 0.0,
+                        y: 0.0,
+                        kind: PointKind::Move,
+                        ..Point::default()
+                    },
+                    Point {
+                        x: 10.0,
+                        y: 10.0,
+                        kind: PointKind::OffCurve,
+                        ..Point::default()
+                    },
+                    Point {
+                        x: 20.0,
+                        y: 0.0,
+                        kind: PointKind::Curve,
+                        ..Point::default()
+                    },
+                ],
+                ..Contour::default()
+            };
+            let error = doc
+                .apply(
+                    Command::AddContour {
+                        glyph: glyph.clone(),
+                        layer,
+                        contour: malformed,
+                    },
+                    "Add malformed contour",
+                )
+                .unwrap_err();
+            assert!(matches!(error, Error::InvalidCommand(_)), "{error}");
+            assert_eq!(doc.font.glyph(&glyph).unwrap(), &before);
+        })
+        .unwrap();
+}

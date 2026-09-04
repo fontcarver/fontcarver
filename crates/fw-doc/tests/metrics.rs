@@ -1,7 +1,9 @@
 mod common;
 
 use fw_doc::{metrics, Command, Error, MetricsSource, Session};
-use fw_model::{Anchor, Component, Glyph, GlyphName, MetricsKeys};
+use fw_model::{
+    Anchor, Component, Contour, Glyph, GlyphName, Layer, LayerKind, MetricsKeys, Point, PointKind,
+};
 use kurbo::Affine;
 
 use common::test_font;
@@ -101,6 +103,77 @@ fn set_metrics_keys_is_undoable() {
             assert!(change.metrics);
             doc.undo().unwrap();
             assert_eq!(doc.font.glyph("base").unwrap(), &before);
+        })
+        .unwrap();
+}
+
+#[test]
+fn set_metrics_uses_the_commands_own_layer_bounds() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let glyph = GlyphName::from("base");
+            let master = doc.font.default_master().id.clone();
+            let mut background = Layer {
+                kind: LayerKind::Background(master),
+                width: 500.0,
+                ..Layer::default()
+            };
+            background.contours.push(Contour {
+                closed: true,
+                points: vec![
+                    Point {
+                        x: 200.0,
+                        y: 0.0,
+                        kind: PointKind::Line,
+                        ..Point::default()
+                    },
+                    Point {
+                        x: 300.0,
+                        y: 0.0,
+                        kind: PointKind::Line,
+                        ..Point::default()
+                    },
+                    Point {
+                        x: 300.0,
+                        y: 100.0,
+                        kind: PointKind::Line,
+                        ..Point::default()
+                    },
+                ],
+                ..Contour::default()
+            });
+            let background_id = background.id.clone();
+            doc.apply(
+                Command::AddLayer {
+                    glyph: glyph.clone(),
+                    layer: background,
+                },
+                "Background",
+            )
+            .unwrap();
+
+            doc.apply(
+                Command::SetMetrics {
+                    glyph: glyph.clone(),
+                    layer: background_id.clone(),
+                    width: None,
+                    lsb: Some(50.0),
+                    rsb: Some(10.0),
+                },
+                "Background metrics",
+            )
+            .unwrap();
+
+            let stored = doc.font.glyph(&glyph).unwrap();
+            let background = stored.layer(&background_id).unwrap();
+            // The background layer's own bounds are 200..300, not the master's 0..100.
+            assert_eq!(background.contours[0].points[0].x, 50.0);
+            assert_eq!(background.width, 160.0);
+            // The master layer is untouched.
+            assert_eq!(stored.layers[0].contours[0].points[0].x, 0.0);
+            assert_eq!(stored.layers[0].width, 500.0);
         })
         .unwrap();
 }

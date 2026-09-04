@@ -38,7 +38,7 @@ scripts/              # dev/automation scripts
 - Serialization: `serde` with explicit field names, `#[serde(default)]` for optional fields, `deny_unknown_fields` **off** (forward compatibility). The `.fwf` schema lives in `fw-doc/src/fwf/schema.md` and must be updated with every model change.
 - Tests: unit tests next to code (`#[cfg(test)]`), integration tests in `crates/<name>/tests/`, fixtures via `fixtures::path("name")`. Round-trip tests compare **semantics** (parsed structures, shaping output), not bytes, unless byte identity is the requirement.
 - Performance-sensitive paths (grid thumbnails, open, export) get a `criterion` benchmark or at least a timed integration test with a budget assertion.
-- Dependencies: prefer the fontations family (`read-fonts`, `write-fonts`, `skrifa`), `kurbo`, `norad`, `fea-rs`, `fontc`, `harfrust`, `tiny-skia`, `flo_curves`. Adding a new dependency requires a one-line justification in the PR/commit message.
+- Dependencies: prefer the fontations family (`read-fonts`, `write-fonts`, `skrifa`), `kurbo`, `norad`, `fea-rs`, `fontc`, `harfrust`, `tiny-skia`, `flo_curves`. Adding a new dependency requires a one-line justification in the PR/commit message **and a permissive license** — MIT, Apache-2.0, BSD-2/3-Clause, 0BSD, ISC, Zlib, BSL-1.0, Unicode-DFS/Unicode-3.0, or a public-domain equivalent. Never GPL/LGPL/AGPL/SSPL/CDDL/EUPL, direct or transitive. MPL-2.0 only with an explicit ruling recorded in `THIRD_PARTY.md`. The same rule applies to npm dependencies. See `docs/licensing.md` §5.
 
 ## TypeScript / React
 
@@ -52,6 +52,20 @@ scripts/              # dev/automation scripts
 - Styling: CSS Modules + design tokens in `app/src/styles/tokens.css`; support light/dark via `data-theme`; no inline style objects except for computed geometry.
 - Accessibility: every interactive element keyboard reachable; icon buttons have `aria-label`.
 - Tests: Vitest + Testing Library for stores/components; automated e2e with Playwright in `app/e2e/` against `fw-devserver` + Vite; agent-browser is used for interactive visual verification (screenshots) during UI tasks.
+
+## Licensing and porting from FontForge
+
+FontWorkshop is licensed `MIT OR Apache-2.0` (`LICENSE-MIT`, `LICENSE-APACHE`). FontForge is a **behavioural and format reference**, not a codebase we translate. The full reasoning is in `docs/licensing.md`; these are the rules you follow.
+
+1. **Read the C file's header before adapting anything from `fontforge/`.** FontForge as a whole is GPLv3-or-later, but most of its source is 3-clause BSD. Only a file whose own header states the revised (3-clause) BSD license may be adapted. A GPL-only file — or one with no license, or another license (Open Group, Adobe) — must be re-implemented from the format specification or from observed behaviour, without reading and transcribing it. Naming a FontForge flag or policy in a doc comment to say which behaviour you match is description, not copying, and is fine.
+2. **Attribute every adapted block.** Put a comment at the top of the adapted function or module:
+   ```rust
+   // Adapted from FontForge <path> (3-clause BSD, Copyright (C) <years> George Williams / <author>)
+   ```
+   reproducing the exact copyright line from that file's header, and add a row to the table in `THIRD_PARTY.md` §1.2 (our file, the FontForge source file, the license found in its header).
+3. **Never link or embed FontForge.** No linking against libfontforge, no bundled binaries, no shelling out to `fontforge`, no vendored FontForge sources. The `fontforge/` checkout is gitignored research material and is never committed or shipped; tests reach its font corpus only through `fw_fixtures::external("fontforge-tests")`, which skips when absent.
+4. **New dependencies must be permissively licensed** — see the dependency rule under *Rust* above and `docs/licensing.md` §5. Test fixtures are data, but they are still redistributed: record every committed fixture in `fixtures/README.md` and `THIRD_PARTY.md` §2 with its license verified from the font's own `name` table, and prefer OFL or public-domain fonts.
+5. **Reviewers check rules 1–4.** A task that ports FontForge code must name, in its report, every FontForge source file it drew from and the license found in each of those files' headers; a report that does not is incomplete and the review fails. A reviewer who cannot verify the license of an adapted block rejects the change.
 
 ## Git
 

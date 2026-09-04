@@ -40,11 +40,13 @@ pub enum HandleMode {
 /// Shape-preservation policy for point deletion.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 pub enum DeleteMode {
-    /// Re-fit the two neighboring segments into one segment.
+    /// Re-fit the segments around every deleted node into one segment.
     #[default]
     KeepShape,
     /// Remove both adjacent segments and leave open contour pieces.
     BreakContour,
+    /// Remove the listed points and their handles without re-fitting.
+    Simple,
 }
 
 /// Segment representation requested by a conversion command.

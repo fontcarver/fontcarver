@@ -1,4 +1,4 @@
-use fw_model::{Font, GlyphName, LayerId, LayerKind, MasterId};
+use fw_model::{Font, GlyphName, LayerId};
 use kurbo::{Affine, Shape, Vec2};
 
 use crate::Error;
@@ -15,15 +15,15 @@ pub(super) fn set(
 ) -> Result<(), Error> {
     let values = [width, lsb, rsb].into_iter().flatten().collect::<Vec<_>>();
     ensure_finite(&values, "metrics")?;
-    let master = layer_master(font, glyph, layer)?;
-
+    let current_width = layer_mut(font, glyph, layer)?.width;
+    // Sidebearings follow the bounds of the command's own layer, not the
+    // master layer, so background and brace layers keep their own metrics.
     let bounds = if lsb.is_some() || rsb.is_some() {
-        let flattened = fw_model::query::flatten_layer(font, glyph, &master)?;
+        let flattened = fw_model::query::flatten_layer_by_id(font, glyph, layer)?;
         (!flattened.elements().is_empty()).then(|| flattened.bounding_box())
     } else {
         None
     };
-    let current_width = layer_mut(font, glyph, layer)?.width;
     let mut final_width = width.unwrap_or(current_width);
     let delta = match (lsb, bounds) {
         (Some(lsb), Some(bounds)) => {
@@ -54,22 +54,4 @@ pub(super) fn set(
     }
     target.width = final_width;
     Ok(())
-}
-
-fn layer_master(font: &Font, glyph: &GlyphName, layer: &LayerId) -> Result<MasterId, Error> {
-    let glyph_data = font
-        .glyph(glyph)
-        .ok_or_else(|| Error::MissingGlyph(glyph.clone()))?;
-    let layer_data = glyph_data.layer(layer).ok_or_else(|| Error::MissingLayer {
-        glyph: glyph.clone(),
-        layer: layer.clone(),
-    })?;
-    Ok(match &layer_data.kind {
-        LayerKind::Master(master)
-        | LayerKind::Background(master)
-        | LayerKind::Brace { master, .. }
-        | LayerKind::Bracket { master, .. } => master.clone(),
-        LayerKind::Backup { of, .. } => of.clone(),
-        LayerKind::Custom(_) => font.default_master().id.clone(),
-    })
 }

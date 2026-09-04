@@ -35,6 +35,6 @@ pub use kerning::{KernPair, KernSide, Kerning, KerningGroups};
 pub use layer::{ColorLayer, DiagonalHint, HintMask, Image, Layer, LayerKind, PsHints, StemHint};
 pub use master::{Master, MasterMetrics, PsPrivate, Stem, TtMasterData, Zone};
 pub use query::{
-    dependents, flatten_layer, glyph_for_unicode, layer_bbox, masters_compatible, validate,
-    Incompatibility, Issue,
+    dependents, flatten_layer, flatten_layer_by_id, glyph_for_unicode, layer_bbox,
+    masters_compatible, validate, Incompatibility, Issue,
 };

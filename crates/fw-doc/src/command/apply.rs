@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 
-use fw_model::{Anchor, Component, Contour, Font, Glyph, GlyphName, Layer, LayerId, MasterId};
+use fw_model::{
+    Anchor, Component, Contour, Font, Glyph, GlyphName, Layer, LayerId, LayerKind, MasterId,
+};
 
 use crate::{document::rename_references, undo, Error, Snapshot};
 
@@ -56,6 +58,8 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
                 impact.glyph(name);
             }
             impact.glyph_order = true;
+            impact.layers = true;
+            impact.metrics = true;
             impact.affects_dependents = true;
             impact.component_graph_changed = true;
         }
@@ -91,28 +95,33 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
                 .and_then(|glyph| glyph.layers.iter().find(|candidate| candidate.id == *layer))
                 .is_none_or(|current| current.components != *components);
         }
-        Command::MovePoints { glyph, .. }
-        | Command::SetPointPosition { glyph, .. }
-        | Command::SetSmooth { glyph, .. }
-        | Command::InsertPointOnSegment { glyph, .. }
-        | Command::DeletePoints { glyph, .. }
-        | Command::ConvertSegment { glyph, .. }
-        | Command::AddContour { glyph, .. }
-        | Command::DeleteContours { glyph, .. }
-        | Command::ReverseContours { glyph, .. }
-        | Command::SetStartPoint { glyph, .. }
-        | Command::JoinContours { glyph, .. }
-        | Command::SplitContour { glyph, .. }
-        | Command::PathOp { glyph, .. } => {
+        Command::MovePoints { glyph, layer, .. }
+        | Command::SetPointPosition { glyph, layer, .. }
+        | Command::SetSmooth { glyph, layer, .. }
+        | Command::InsertPointOnSegment { glyph, layer, .. }
+        | Command::DeletePoints { glyph, layer, .. }
+        | Command::ConvertSegment { glyph, layer, .. }
+        | Command::AddContour { glyph, layer, .. }
+        | Command::DeleteContours { glyph, layer, .. }
+        | Command::ReverseContours { glyph, layer, .. }
+        | Command::SetStartPoint { glyph, layer, .. }
+        | Command::JoinContours { glyph, layer, .. }
+        | Command::SplitContour { glyph, layer, .. }
+        | Command::PathOp { glyph, layer, .. } => {
             impact.glyph(glyph);
             impact.affects_dependents = true;
+            impact.metrics |= is_master_layer(font, glyph, layer);
         }
         Command::TransformSelection {
-            glyph, components, ..
+            glyph,
+            layer,
+            components,
+            ..
         } => {
             impact.glyph(glyph);
             impact.affects_dependents = true;
             impact.component_graph_changed |= !components.is_empty();
+            impact.metrics |= is_master_layer(font, glyph, layer);
         }
         Command::AddComponent { glyph, .. }
         | Command::SetComponent { glyph, .. }
@@ -175,6 +184,16 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             }
         }
     }
+}
+
+/// Reports whether a layer is the main layer of a design-space master.
+///
+/// Outline edits on a master layer change the derived sidebearings, so they
+/// invalidate metrics as well.
+fn is_master_layer(font: &Font, glyph: &GlyphName, layer: &LayerId) -> bool {
+    font.glyph(glyph)
+        .and_then(|glyph| glyph.layer(layer))
+        .is_some_and(|layer| matches!(layer.kind, LayerKind::Master(_)))
 }
 
 pub(crate) fn apply_to_font(

@@ -1,6 +1,6 @@
 use std::collections::{BTreeSet, HashSet};
 
-use fw_model::{Font, Glyph, GlyphName};
+use fw_model::{Font, Glyph, GlyphName, LayerId};
 
 use crate::Error;
 
@@ -60,6 +60,9 @@ pub(super) fn duplicate(
     glyph.name = name.clone();
     glyph.unicodes.clear();
     glyph.variation_selectors.clear();
+    for layer in &mut glyph.layers {
+        layer.id = LayerId::new();
+    }
     font.insert_glyph(glyph).map_err(Error::from)
 }
 

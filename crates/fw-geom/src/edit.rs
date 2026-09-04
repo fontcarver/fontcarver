@@ -9,6 +9,10 @@ use crate::{
     convert::path_to_contours, from_bezpaths, to_bezpaths, CurveKind, DEFAULT_SIMPLIFY_TOLERANCE,
 };
 
+mod fit;
+
+pub use fit::{fit_span, SpanFit};
+
 const ENDPOINT_EXTREMA_TOLERANCE: f64 = 0.01;
 
 /// Controls FontForge-compatible policy around kurbo's simplification core.

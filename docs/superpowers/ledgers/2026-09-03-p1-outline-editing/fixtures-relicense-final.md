@@ -1,0 +1,6 @@
+- Status: Complete; all three GPL/AFPL fixtures replaced with permissive subsets.
+- Commit: `3acdc1c327302773494fa2301f734427732782f6` (not pushed).
+- Rust: fmt, clippy, and 304 workspace tests passed.
+- App: API generation, TypeScript check, and 307 tests passed.
+- Report: [fixtures-relicense-report.md](/home/chen/githubprojects/pixelfonts/fontworkshop/.superpowers/sdd/2026-09-03-p1-outline-editing/fixtures-relicense-report.md)
+- Concerns: None. The optional uncommitted FontForge corpus remains documented and never shipped.
