@@ -31,6 +31,12 @@ pub enum Error {
     #[error("edit token is not active")]
     InvalidEditToken,
     /// A command contains an invalid index, scope, or parameter.
+    ///
+    /// Malformed contours surface here too: an outline command that would leave
+    /// a contour `fw_model::Contour::try_to_bezpath` rejects — `AddContour` with
+    /// a malformed contour, for instance — is reported as an invalid command
+    /// rather than as [`Error::Model`], because one shared validator classifies
+    /// every such result.
     #[error("invalid command: {0}")]
     InvalidCommand(String),
     /// An outline operation failed in the geometry engine.
