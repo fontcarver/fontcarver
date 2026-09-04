@@ -11,7 +11,10 @@ test.describe('CJK font view', () => {
   test('opens Source Han Sans and renders cells at the end of the grid', async ({
     page,
   }) => {
-    test.setTimeout(30_000)
+    // A debug `fw-devserver` needs about 75 s to parse a 65,535-glyph OTF; a
+    // release build does it in under 3 s (docs/p0-acceptance.md). The suite
+    // runs against the debug binary, so the budget is the debug one.
+    test.setTimeout(240_000)
     await page.goto('/')
 
     await page.getByRole('menuitem', { name: 'File', exact: true }).click()
@@ -28,7 +31,7 @@ test.describe('CJK font view', () => {
     await expect(grid).toBeVisible()
     await expect(
       page.getByRole('contentinfo').getByText('65,535 glyphs'),
-    ).toBeVisible({ timeout: 20_000 })
+    ).toBeVisible({ timeout: 180_000 })
 
     await grid.evaluate((element) => {
       const scroller = element as unknown as {
