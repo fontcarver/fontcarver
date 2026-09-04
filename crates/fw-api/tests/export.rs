@@ -227,6 +227,70 @@ fn layer_of(session: &Session, doc: fw_doc::DocId, glyph: &str) -> String {
 }
 
 #[test]
+fn exporting_an_untouched_import_preserves_its_raw_tables() {
+    use read_fonts::{FontRef, TableProvider as _};
+
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let path = directory.path().join("Preserved.ttf");
+    let source = fw_fixtures::path("DejaVuSansMin.woff2");
+    let api = Api::new(Arc::new(Session::new()));
+    api.configure_config_dir(directory.path().join("config"))
+        .expect("configure the config directory");
+    let summary = api
+        .call("session.open", json!({ "path": source }))
+        .expect("open the imported font");
+    let doc = summary["doc"].clone();
+
+    let report: ExportReport = serde_json::from_value(
+        api.call(
+            "session.export",
+            json!({ "doc": doc, "path": path, "options": { "format": "Ttf" } }),
+        )
+        .expect("export ttf"),
+    )
+    .expect("decode export report");
+
+    assert_eq!(report.touched_glyphs, 0);
+    assert!(
+        !report
+            .warnings
+            .iter()
+            .any(|warning| warning.code.starts_with("hinting-dropped")),
+        "an untouched import must keep its hinting: {:?}",
+        report.warnings
+    );
+
+    let imported = fw_sfnt::read_path(&source, &fw_sfnt::ReadOptions::default())
+        .expect("read the fixture")
+        .fonts
+        .remove(0);
+    let original = imported
+        .extra
+        .source
+        .as_ref()
+        .and_then(|source| source.original_bytes.clone())
+        .expect("imported source bytes");
+    let written = std::fs::read(&path).expect("read the exported font");
+    let input = FontRef::new(&original).expect("parse the imported sfnt");
+    let output = FontRef::new(&written).expect("parse the exported font");
+    for tag in [*b"glyf", *b"loca", *b"maxp", *b"fpgm", *b"prep", *b"cvt "] {
+        let tag = read_fonts::types::Tag::new(&tag);
+        assert_eq!(
+            output.table_data(tag).map(|data| data.as_bytes().to_vec()),
+            input.table_data(tag).map(|data| data.as_bytes().to_vec()),
+            "{tag} was not preserved verbatim"
+        );
+    }
+    for (tag, expected) in &imported.extra.raw_tables {
+        let actual = output
+            .table_data(read_fonts::types::Tag::new(&tag.0))
+            .unwrap_or_else(|| panic!("missing preserved {tag}"));
+        assert_eq!(actual.as_bytes(), expected, "raw table {tag} changed");
+    }
+    assert!(output.glyf().is_ok());
+}
+
+#[test]
 fn exports_woff2_and_a_ufo_package() {
     let directory = tempfile::tempdir().expect("temporary directory");
     let session = Arc::new(Session::new());

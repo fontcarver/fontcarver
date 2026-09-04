@@ -299,4 +299,27 @@ fn apply_accepts_outline_commands_through_json_dispatch() {
         "the moved point is missing: {:?}",
         outline.contours[0].points
     );
+
+    let before = outline.contours[0].points.len();
+    api.call(
+        "doc.apply",
+        json!({
+            "doc": doc,
+            "command": { "DeletePoints": {
+                "glyph": "a",
+                "layer": layer,
+                "points": [{ "contour": 0, "point": 0 }],
+                "mode": "Simple"
+            }},
+            "label": "Delete nodes"
+        }),
+    )
+    .expect("delete points in Simple mode through raw JSON");
+
+    let deleted: LayerOutline = serde_json::from_value(
+        api.call("glyphs.outline", json!({ "doc": doc, "gid": gid }))
+            .expect("read outline"),
+    )
+    .expect("decode outline");
+    assert_eq!(deleted.contours[0].points.len(), before - 1);
 }
