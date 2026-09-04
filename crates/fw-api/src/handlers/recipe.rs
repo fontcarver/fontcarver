@@ -2,8 +2,9 @@
 //!
 //! Supported items, separated by whitespace, commas, or semicolons:
 //! `A`, `uni4E00`, `U+0041` (single glyphs); `A-Z`, `uni4E00-uni4E1F`,
-//! `U+0041-U+005A` (inclusive ranges); `a.sc`, `f_i` (unencoded variants and
-//! ligatures); and `@charset:GB2312` (a legacy CJK repertoire).
+//! `U+0041-U+005A` (inclusive ranges); a bare literal character such as `\u{4e00}`;
+//! `a.sc`, `f_i` (unencoded variants and ligatures); and `@charset:GB2312`
+//! (a legacy CJK repertoire).
 
 use fw_glyphdata::{cjk_charset_membership, name_for_unicode, unicode_for_name, CjkCharsets};
 use fw_model::GlyphName;
@@ -20,10 +21,18 @@ pub(crate) enum RecipeItem {
     },
     /// An item that could not be understood.
     Unknown(String),
+    /// A range that asks for more glyphs than one recipe item may create.
+    TooLarge(String),
 }
 
 /// The highest scalar value scanned when expanding a legacy CJK charset.
 const CHARSET_SCAN_LIMIT: u32 = 0xFFFF;
+
+/// The most glyphs one recipe item may expand to.
+///
+/// `U+0000-U+10FFFF` would otherwise turn a typo into a batch of 1.1 million
+/// commands; the largest supported repertoire, GB 18030 level 1, needs far less.
+const EXPANSION_LIMIT: u32 = 65_536;
 
 /// Parses a recipe into the glyphs it asks for, in recipe order.
 pub(crate) fn parse(recipe: &str) -> Vec<RecipeItem> {
@@ -37,9 +46,16 @@ pub(crate) fn parse(recipe: &str) -> Vec<RecipeItem> {
             expand_charset(charset, token, &mut items);
             continue;
         }
-        if let Some(range) = range(token) {
-            items.extend(range);
-            continue;
+        match range(token) {
+            Some(Ok(range)) => {
+                items.extend(range);
+                continue;
+            }
+            Some(Err(too_large)) => {
+                items.push(too_large);
+                continue;
+            }
+            None => {}
         }
         items.push(single(token));
     }
@@ -51,7 +67,11 @@ fn single(token: &str) -> RecipeItem {
         return encoded(unicode);
     }
     if !is_glyph_name(token) {
-        return RecipeItem::Unknown(token.to_owned());
+        // A bare literal character means the same as a one-element range.
+        return match one_character(token) {
+            Some(unicode) => encoded(unicode),
+            None => RecipeItem::Unknown(token.to_owned()),
+        };
     }
     // A suffix or a ligature underscore names a variant, never an encoded glyph.
     let unicode = if token.contains('.') || token.contains('_') {
@@ -65,19 +85,23 @@ fn single(token: &str) -> RecipeItem {
     }
 }
 
-fn range(token: &str) -> Option<Vec<RecipeItem>> {
+/// Expands one inclusive range, or reports it as too large to expand.
+///
+/// `None` means the token is not a range at all.
+fn range(token: &str) -> Option<Result<Vec<RecipeItem>, RecipeItem>> {
     let (start, end) = token.split_once('-')?;
     let start = scalar(start)?;
     let end = scalar(end)?;
     if start > end {
         return None;
     }
-    Some(
-        (start..=end)
-            .filter_map(char::from_u32)
-            .map(|character| encoded(u32::from(character)))
-            .collect(),
-    )
+    if end.saturating_sub(start).saturating_add(1) > EXPANSION_LIMIT {
+        return Some(Err(RecipeItem::TooLarge(token.to_owned())));
+    }
+    Some(Ok((start..=end)
+        .filter_map(char::from_u32)
+        .map(|character| encoded(u32::from(character)))
+        .collect()))
 }
 
 fn expand_charset(name: &str, token: &str, items: &mut Vec<RecipeItem>) {
@@ -126,10 +150,15 @@ fn scalar(token: &str) -> Option<u32> {
     if let Some(unicode) = literal_scalar(token) {
         return Some(unicode);
     }
+    one_character(token).or_else(|| unicode_for_name(token))
+}
+
+/// Returns the scalar value of a token that is exactly one character.
+fn one_character(token: &str) -> Option<u32> {
     let mut characters = token.chars();
     match (characters.next(), characters.next()) {
         (Some(character), None) => Some(u32::from(character)),
-        _ => unicode_for_name(token),
+        _ => None,
     }
 }
 
@@ -162,7 +191,7 @@ mod tests {
             .into_iter()
             .map(|item| match item {
                 RecipeItem::Glyph { name, .. } => name.to_string(),
-                RecipeItem::Unknown(token) => format!("?{token}"),
+                RecipeItem::Unknown(token) | RecipeItem::TooLarge(token) => format!("?{token}"),
             })
             .collect()
     }
@@ -200,6 +229,28 @@ mod tests {
                 unicode: Some(0x00C1)
             }]
         );
+    }
+
+    #[test]
+    fn a_range_beyond_the_cap_is_reported_as_too_large() {
+        assert_eq!(
+            parse("U+0000-U+10FFFF"),
+            vec![RecipeItem::TooLarge("U+0000-U+10FFFF".to_owned())]
+        );
+        // The cap is inclusive, so a range of exactly the cap still expands.
+        assert_eq!(parse("U+0000-U+FFFF").len(), 63_488);
+    }
+
+    #[test]
+    fn a_bare_non_ascii_character_resolves_like_a_one_element_range() {
+        assert_eq!(
+            parse("\u{4e00}"),
+            vec![RecipeItem::Glyph {
+                name: "uni4E00".into(),
+                unicode: Some(0x4E00)
+            }]
+        );
+        assert_eq!(parse("\u{4e00}"), parse("\u{4e00}-\u{4e00}"));
     }
 
     #[test]

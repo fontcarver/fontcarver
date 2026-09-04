@@ -179,6 +179,23 @@ fn add_skips_existing_names_and_reports_unknown_items() {
 }
 
 #[test]
+fn an_oversized_range_is_skipped_instead_of_expanded() {
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(composite_font(), None);
+    let api = Api::new(session);
+
+    let result = api
+        .call(
+            "glyphs.add",
+            json!({ "doc": doc, "recipe": "U+0000-U+10FFFF" }),
+        )
+        .expect("add glyphs");
+
+    assert_eq!(result["added"], json!([]));
+    assert_eq!(result["skipped"], json!(["too-large: U+0000-U+10FFFF"]));
+}
+
+#[test]
 fn ids_returns_every_match_in_the_requested_order() {
     let (api, doc) = dejavu();
 
