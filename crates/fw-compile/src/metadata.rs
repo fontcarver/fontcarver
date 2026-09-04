@@ -240,7 +240,9 @@ fn insert_default_name(names: &mut HashMap<NameKey, String>, id: NameId, value: 
 /// Ensures one English record exists for `id`, reusing another language's text.
 ///
 /// A font whose source only carries, for example, German names would otherwise
-/// ship without the English records every consumer falls back to.
+/// ship without the English records every consumer falls back to. The source
+/// record is picked by a total order over the whole key, never by `HashMap`
+/// iteration, so two exports of the same font stay byte-identical.
 fn insert_english_default(names: &mut HashMap<NameKey, String>, id: NameId, value: String) {
     if names
         .keys()
@@ -251,7 +253,14 @@ fn insert_english_default(names: &mut HashMap<NameKey, String>, id: NameId, valu
     let text = names
         .iter()
         .filter(|(key, _)| key.name_id == id)
-        .min_by_key(|(key, _)| key.lang_id)
+        .min_by_key(|(key, _)| {
+            (
+                key.lang_id,
+                key.platform_id,
+                key.encoding_id,
+                key.name_id.to_u16(),
+            )
+        })
         .map_or(value, |(_, text)| text.clone());
     names.insert(NameKey::new_with_lang(id, &text, ENGLISH_LANGUAGE), text);
 }
@@ -354,4 +363,49 @@ fn bits_u16(bits: &[u8]) -> u16 {
 
 fn tag_bytes(value: &str) -> Option<[u8; 4]> {
     value.as_bytes().try_into().ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use fw_model::{FontInfo, NamePlatform, NameRecord};
+    use write_fonts::types::NameId;
+
+    use super::{names, ENGLISH_LANGUAGE};
+
+    /// Builds an info block whose only family names are two German records.
+    ///
+    /// The two records share a language but not an encoding, because one holds
+    /// a character outside the BMP; both therefore survive as distinct keys and
+    /// the English synthesis has to break the tie.
+    fn two_german_family_records() -> FontInfo {
+        let mut info = FontInfo {
+            family_name: "Fallback".to_owned(),
+            style_name: "Regular".to_owned(),
+            ..FontInfo::default()
+        };
+        for text in ["Alpha", "Alpha \u{1D400}"] {
+            info.names.push(NameRecord {
+                name_id: NameId::FAMILY_NAME.to_u16(),
+                language: "de".to_owned(),
+                text: text.to_owned(),
+                platform: NamePlatform::Windows,
+            });
+        }
+        info
+    }
+
+    #[test]
+    fn english_synthesis_breaks_ties_deterministically() {
+        let info = two_german_family_records();
+        for _ in 0..64 {
+            let names = names(&info);
+            let english = names
+                .iter()
+                .find(|(key, _)| {
+                    key.name_id == NameId::FAMILY_NAME && key.lang_id == ENGLISH_LANGUAGE
+                })
+                .map(|(_, text)| text.clone());
+            assert_eq!(english.as_deref(), Some("Alpha"));
+        }
+    }
 }
