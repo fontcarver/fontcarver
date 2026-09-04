@@ -7,7 +7,7 @@ use super::super::{
     CurveKind, PathOp, PointRef, SegmentKind,
 };
 use super::{
-    cyclic_between, index_error, inferred_kind, on_curve_indices, repair_kinds, validate_points,
+    cyclic_between, index_error, layer_curve_kind, on_curve_indices, repair_kinds, validate_points,
 };
 
 /// Appends a contour to the layer.
@@ -93,8 +93,11 @@ pub(super) fn convert(
     segment: usize,
     to: SegmentKind,
 ) -> Result<(), Error> {
+    let quadratic = matches!(
+        layer_curve_kind(font, glyph, layer),
+        CurveKind::Quadratic { .. }
+    );
     let contours = &mut layer_mut(font, glyph, layer)?.contours;
-    let quadratic = matches!(inferred_kind(contours), CurveKind::Quadratic { .. });
     let len = contours.len();
     let contour = contours
         .get_mut(contour_index)
@@ -293,12 +296,13 @@ pub(super) fn path_op(
     layer: &LayerId,
     op: &PathOp,
 ) -> Result<(), Error> {
+    let layer_kind = layer_curve_kind(font, glyph, layer);
     let target = layer_mut(font, glyph, layer)?;
     let contours = &target.contours;
     let result = match op {
         PathOp::RemoveOverlap => fw_geom::remove_overlap(
             contours,
-            inferred_kind(contours).geometry(),
+            layer_kind.geometry(),
             fw_geom::DEFAULT_BOOLEAN_TOLERANCE,
         )
         .map_err(|error| Error::Geometry(error.to_string()))?,
@@ -316,12 +320,10 @@ pub(super) fn path_op(
         }
         PathOp::CanonicalStart => fw_geom::canonical_start_points(contours),
         PathOp::CanonicalOrder => fw_geom::canonical_order(contours),
-        PathOp::ExpandStroke(options) => fw_geom::expand_stroke(
-            contours,
-            &options.geometry(),
-            inferred_kind(contours).geometry(),
-        )
-        .map_err(|error| Error::Geometry(error.to_string()))?,
+        PathOp::ExpandStroke(options) => {
+            fw_geom::expand_stroke(contours, &options.geometry(), layer_kind.geometry())
+                .map_err(|error| Error::Geometry(error.to_string()))?
+        }
         PathOp::ConvertCurves(kind) => {
             if matches!(kind, CurveKind::Quadratic { max_err } if !max_err.is_finite() || *max_err <= 0.0)
             {

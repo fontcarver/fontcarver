@@ -12,7 +12,7 @@ use super::super::{
     CurveKind, DeleteMode, PointRef,
 };
 use super::{
-    adjacent_indices, cyclic_between, inferred_kind, next_on_curve, off_curve, on_curve_indices,
+    adjacent_indices, cyclic_between, layer_curve_kind, next_on_curve, off_curve, on_curve_indices,
     previous_on_curve, repair_kinds, validate_points,
 };
 
@@ -27,9 +27,9 @@ pub(super) fn delete_points(
     points: &[PointRef],
     mode: DeleteMode,
 ) -> Result<(), Error> {
+    let kind = layer_curve_kind(font, glyph, layer);
     let target = layer_mut(font, glyph, layer)?;
     validate_points(&target.contours, points)?;
-    let kind = inferred_kind(&target.contours);
     let mut grouped = BTreeMap::<usize, BTreeSet<usize>>::new();
     for point in points {
         grouped

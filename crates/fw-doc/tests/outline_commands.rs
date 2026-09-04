@@ -735,3 +735,84 @@ fn a_malformed_contour_is_rejected_and_leaves_the_layer_unchanged() {
         })
         .unwrap();
 }
+
+/// A font whose provenance declares TrueType (quadratic) outlines.
+fn quadratic_font() -> fw_model::Font {
+    let mut font = test_font();
+    font.extra.source = Some(fw_model::SourceProvenance {
+        format: "sfnt".to_owned(),
+        table_tags: vec![fw_model::Tag(*b"head"), fw_model::Tag(*b"glyf")],
+        ..fw_model::SourceProvenance::default()
+    });
+    font
+}
+
+#[test]
+fn a_quadratic_font_gets_quadratic_handles_on_a_straight_glyph() {
+    let session = Session::new();
+    let id = session.open_font(quadratic_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let glyph = GlyphName::from("base");
+            let layer = doc.font.glyph(&glyph).unwrap().layers[0].id.clone();
+            assert!(
+                doc.font.glyph(&glyph).unwrap().layers[0].contours[0]
+                    .points
+                    .iter()
+                    .all(|point| point.kind == PointKind::Line),
+                "the fixture glyph holds no curve to infer a kind from"
+            );
+            doc.apply(
+                Command::ConvertSegment {
+                    glyph: glyph.clone(),
+                    layer,
+                    contour: 0,
+                    segment: 0,
+                    to: SegmentKind::Curve,
+                },
+                "Curve",
+            )
+            .unwrap();
+            let contour = &doc.font.glyph(&glyph).unwrap().layers[0].contours[0];
+            assert_eq!(contour.points.len(), 5, "one control point is inserted");
+            assert!(
+                !contour
+                    .points
+                    .iter()
+                    .any(|point| point.kind == PointKind::Curve),
+                "a TrueType font must not receive cubic handles"
+            );
+            assert_eq!(contour.points[1].kind, PointKind::OffCurve);
+            assert_eq!((contour.points[1].x, contour.points[1].y), (50.0, 0.0));
+            assert_eq!(contour.points[2].kind, PointKind::QCurve);
+            contour.try_to_bezpath().unwrap();
+        })
+        .unwrap();
+}
+
+#[test]
+fn a_font_without_a_declaration_still_infers_the_kind_from_the_outlines() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let glyph = GlyphName::from("base");
+            let layer = doc.font.glyph(&glyph).unwrap().layers[0].id.clone();
+            doc.apply(
+                Command::ConvertSegment {
+                    glyph: glyph.clone(),
+                    layer,
+                    contour: 0,
+                    segment: 0,
+                    to: SegmentKind::Curve,
+                },
+                "Curve",
+            )
+            .unwrap();
+            let contour = &doc.font.glyph(&glyph).unwrap().layers[0].contours[0];
+            assert_eq!(contour.points.len(), 6, "two handles are inserted");
+            assert_eq!(contour.points[3].kind, PointKind::Curve);
+            contour.try_to_bezpath().unwrap();
+        })
+        .unwrap();
+}

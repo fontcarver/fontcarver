@@ -1,4 +1,7 @@
-use fw_model::{Contour, Font, GlyphName, LayerId, Point, PointKind};
+use fw_model::{
+    query::{declared_curve_format, CurveFormat},
+    Contour, Font, GlyphName, Layer, LayerId, LayerKind, MasterId, Point, PointKind,
+};
 
 use crate::Error;
 
@@ -159,9 +162,46 @@ fn validate_points(contours: &[Contour], points: &[PointRef]) -> Result<(), Erro
     Ok(())
 }
 
+/// Maximum cubic-to-quadratic approximation error used for generated handles.
+const QUADRATIC_MAX_ERR: f64 = 0.1;
+
+/// The curve kind an operation on one layer should produce.
+///
+/// The font's own declaration wins: a TrueType (`glyf`) source never receives
+/// cubic handles, and a PostScript source never receives quadratic ones, however
+/// the layer at hand happens to be drawn. Only a document that declares nothing
+/// — one drawn from scratch — falls back to [`inferred_kind`], which reads the
+/// layer's existing outlines.
+fn layer_curve_kind(font: &Font, glyph: &GlyphName, layer: &LayerId) -> CurveKind {
+    let target = font.glyph(glyph).and_then(|glyph| glyph.layer(layer));
+    let master = target.and_then(layer_master);
+    match declared_curve_format(font, master.as_ref()) {
+        Some(CurveFormat::Quadratic) => CurveKind::Quadratic {
+            max_err: QUADRATIC_MAX_ERR,
+        },
+        Some(CurveFormat::Cubic) => CurveKind::Cubic,
+        None => inferred_kind(target.map_or(&[], |layer| layer.contours.as_slice())),
+    }
+}
+
+/// The master a layer belongs to, when it belongs to one.
+fn layer_master(layer: &Layer) -> Option<MasterId> {
+    match &layer.kind {
+        LayerKind::Master(master)
+        | LayerKind::Background(master)
+        | LayerKind::Brace { master, .. }
+        | LayerKind::Bracket { master, .. } => Some(master.clone()),
+        LayerKind::Backup { of, .. } => Some(of.clone()),
+        LayerKind::Custom(_) => None,
+    }
+}
+
+/// The curve kind a layer's own outlines suggest.
 fn inferred_kind(contours: &[Contour]) -> CurveKind {
     if contours.iter().any(Contour::is_quadratic) {
-        CurveKind::Quadratic { max_err: 0.1 }
+        CurveKind::Quadratic {
+            max_err: QUADRATIC_MAX_ERR,
+        }
     } else {
         CurveKind::Cubic
     }
