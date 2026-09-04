@@ -154,18 +154,24 @@ export function registerGlyphViewCommands(): void {
       },
     },
     {
-      id: 'edit.selectAll',
-      title: 'cmd.edit.selectAll',
+      // The Font view owns `edit.selectAll` (every glyph in the font); this is
+      // the Edit tab's own "every point of this layer". Sharing the id would
+      // let whichever view registers last replace the other.
+      id: 'edit.selectAllPoints',
+      title: 'cmd.edit.selectAllPoints',
       menu: 'edit',
       group: 'selection',
       shortcut: 'Mod+A',
-      when: () => onGlyphTab() && activeEditor() !== null,
+      // Gated on the tab kind alone: Mod+A must belong to exactly one of the
+      // two select-all commands at any moment, and "which tab is open" is what
+      // decides that. A tab whose editor is still loading simply does nothing.
+      when: onGlyphTab,
       disabledReason: 'cmd.reason.noGlyphTab',
       run: () => activeEditor()?.selectAll(),
     },
     {
-      id: 'edit.deselect',
-      title: 'cmd.edit.deselect',
+      id: 'edit.deselectPoints',
+      title: 'cmd.edit.deselectPoints',
       menu: 'edit',
       group: 'selection',
       when: hasSelection,
@@ -173,8 +179,8 @@ export function registerGlyphViewCommands(): void {
       run: () => activeEditor()?.escape(),
     },
     {
-      id: 'edit.delete',
-      title: 'cmd.edit.delete',
+      id: 'edit.deletePoints',
+      title: 'cmd.edit.deletePoints',
       menu: 'edit',
       group: 'selection',
       shortcut: 'Delete',
@@ -183,8 +189,8 @@ export function registerGlyphViewCommands(): void {
       run: () => activeEditor()?.deleteSelection(false),
     },
     {
-      id: 'edit.deleteBreak',
-      title: 'cmd.edit.deleteBreak',
+      id: 'edit.deletePointsBreak',
+      title: 'cmd.edit.deletePointsBreak',
       menu: 'edit',
       group: 'selection',
       shortcut: 'Shift+Delete',

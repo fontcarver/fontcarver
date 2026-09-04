@@ -42,7 +42,11 @@
       "redoLabelled": "Redo {{label}}",
       "selectAll": "Select All Glyphs",
       "selectNone": "Deselect All",
-      "copyGlyphNames": "Copy Glyph Names"
+      "copyGlyphNames": "Copy Glyph Names",
+      "selectAllPoints": "Select All Points",
+      "deselectPoints": "Deselect Points",
+      "deletePoints": "Delete Selected Points",
+      "deletePointsBreak": "Delete and Open Path"
     },
     "glyph": {
       "open": "Open Glyph in New Tab",
@@ -67,7 +71,8 @@
         "anchors": "Show Anchors",
         "guides": "Show Guides",
         "rulers": "Show Rulers"
-      }
+      },
+      "toggleInfoBox": "Show Info Box"
     },
     "window": {
       "nextTab": "Next Tab",
@@ -93,12 +98,9 @@
       "noFontTab": "The active tab is not a Font tab",
       "noGlyphTab": "The active tab is not a Glyph tab"
     },
-    "edit.selectAll": "Select All Points",
-    "edit.deselect": "Deselect",
-    "edit.delete": "Delete Selected Points",
-    "edit.deleteBreak": "Delete and Open Path",
-    "path.toggleSmooth": "Toggle Smooth/Corner",
-    "view.toggleInfoBox": "Show Info Box"
+    "path": {
+      "toggleSmooth": "Toggle Smooth/Corner"
+    }
   },
   "palette": {
     "title": "Commands",

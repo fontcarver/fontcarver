@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setTransport } from '../api'
+import { i18n } from '../i18n'
 import { initialDocumentState, useDocumentStore } from '../stores/documentStore'
 import { initialSessionState, useSessionStore } from '../stores/sessionStore'
 import { initialUiState, useUiStore } from '../stores/uiStore'
@@ -8,12 +9,14 @@ import { createMockTransport, makeSummary } from '../test/mockTransport'
 
 import { registerBuiltinCommands } from './builtinCommands'
 import {
+  getCommand,
   isCommandEnabled,
   listCommands,
   resetCommands,
   runCommand,
   setCommandErrorReporter,
 } from './commands'
+import { commandForEvent } from './shortcuts'
 
 function openDocument(summary = makeSummary()) {
   useSessionStore.setState({ docs: [summary] })
@@ -37,6 +40,35 @@ afterEach(() => {
 })
 
 describe('built-in commands', () => {
+  it('gives every command a title that the catalogue resolves', () => {
+    // A title key that i18next cannot resolve renders as the raw key in the
+    // menus, the palette and the shortcut help. Nesting matters: a flat
+    // `cmd.edit.delete` key is shadowed by the `cmd.edit` object.
+    const unresolved = listCommands()
+      .map((command) => command.title)
+      .filter((title) => i18n.t(title) === title)
+
+    expect(unresolved).toEqual([])
+  })
+
+  it('keeps the Font and Edit tab select-all commands apart', () => {
+    // Both are bound to Mod+A and both live in the Edit menu; sharing an id
+    // would let the later registration silently replace the earlier one.
+    expect(getCommand('edit.selectAll')?.title).toBe('cmd.edit.selectAll')
+    expect(getCommand('edit.selectAllPoints')?.title).toBe(
+      'cmd.edit.selectAllPoints',
+    )
+  })
+
+  it('routes Mod+A to the command of the active tab kind', () => {
+    const event = new KeyboardEvent('keydown', { key: 'a', ctrlKey: true })
+    openDocument()
+    expect(commandForEvent(event, false)).toBe('edit.selectAll')
+
+    useUiStore.getState().openTab({ kind: 'glyph', doc: 1, gid: 7 })
+    expect(commandForEvent(event, false)).toBe('edit.selectAllPoints')
+  })
+
   it('explains every gated command', () => {
     const gatedWithoutReason = listCommands()
       .filter((command) => command.when && !command.disabledReason)

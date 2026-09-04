@@ -42,7 +42,11 @@
       "redoLabelled": "重做{{label}}",
       "selectAll": "选择所有字形",
       "selectNone": "取消全选",
-      "copyGlyphNames": "复制字形名称"
+      "copyGlyphNames": "复制字形名称",
+      "selectAllPoints": "Select All Points",
+      "deselectPoints": "Deselect Points",
+      "deletePoints": "Delete Selected Points",
+      "deletePointsBreak": "Delete and Open Path"
     },
     "glyph": {
       "open": "在新标签页中打开字形",
@@ -67,7 +71,8 @@
         "anchors": "显示锚点",
         "guides": "显示参考线",
         "rulers": "显示标尺"
-      }
+      },
+      "toggleInfoBox": "Show Info Box"
     },
     "window": {
       "nextTab": "下一个标签页",
@@ -93,12 +98,9 @@
       "noFontTab": "当前标签页不是字体标签页",
       "noGlyphTab": "当前标签页不是字形标签页"
     },
-    "edit.selectAll": "Select All Points",
-    "edit.deselect": "Deselect",
-    "edit.delete": "Delete Selected Points",
-    "edit.deleteBreak": "Delete and Open Path",
-    "path.toggleSmooth": "Toggle Smooth/Corner",
-    "view.toggleInfoBox": "Show Info Box"
+    "path": {
+      "toggleSmooth": "Toggle Smooth/Corner"
+    }
   },
   "palette": {
     "title": "命令",
