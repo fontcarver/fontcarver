@@ -967,3 +967,98 @@ fn a_rejected_transform_restores_components_and_anchors_too() {
         })
         .unwrap();
 }
+
+#[test]
+fn a_layer_converted_to_cubic_outranks_the_import_declaration() {
+    let session = Session::new();
+    let id = session.open_font(quadratic_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let glyph = GlyphName::from("base");
+            let layer = doc.font.glyph(&glyph).unwrap().layers[0].id.clone();
+            doc.font.glyph_mut(&glyph).unwrap().layers[0].contours = vec![quadratic_triangle()];
+
+            doc.apply(
+                Command::PathOp {
+                    glyph: glyph.clone(),
+                    layer: layer.clone(),
+                    op: PathOp::ConvertCurves(CurveKind::Cubic),
+                },
+                "To cubic",
+            )
+            .unwrap();
+            let contour = &doc.font.glyph(&glyph).unwrap().layers[0].contours[0];
+            assert!(
+                contour
+                    .points
+                    .iter()
+                    .any(|point| point.kind == PointKind::Curve)
+                    && !contour.is_quadratic(),
+                "the layer is uniformly cubic after the conversion"
+            );
+
+            doc.apply(
+                Command::ConvertSegment {
+                    glyph: glyph.clone(),
+                    layer: layer.clone(),
+                    contour: 0,
+                    segment: 0,
+                    to: SegmentKind::Line,
+                },
+                "Line",
+            )
+            .unwrap();
+            doc.apply(
+                Command::ConvertSegment {
+                    glyph: glyph.clone(),
+                    layer,
+                    contour: 0,
+                    segment: 0,
+                    to: SegmentKind::Curve,
+                },
+                "Curve",
+            )
+            .unwrap();
+            let contour = &doc.font.glyph(&glyph).unwrap().layers[0].contours[0];
+            assert!(
+                !contour.is_quadratic(),
+                "outlines the user converted to cubic outrank the import declaration"
+            );
+            assert_eq!(contour.points[1].kind, PointKind::OffCurve);
+            assert_eq!(contour.points[2].kind, PointKind::OffCurve);
+            assert_eq!(contour.points[3].kind, PointKind::Curve);
+            contour.try_to_bezpath().unwrap();
+        })
+        .unwrap();
+}
+
+#[test]
+fn cubic_outlines_without_a_declaration_stay_cubic() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let glyph = GlyphName::from("base");
+            let layer = doc.font.glyph(&glyph).unwrap().layers[0].id.clone();
+            doc.font.glyph_mut(&glyph).unwrap().layers[0]
+                .contours
+                .push(cubic_contour());
+
+            doc.apply(
+                Command::ConvertSegment {
+                    glyph: glyph.clone(),
+                    layer,
+                    contour: 0,
+                    segment: 0,
+                    to: SegmentKind::Curve,
+                },
+                "Curve",
+            )
+            .unwrap();
+            let contour = &doc.font.glyph(&glyph).unwrap().layers[0].contours[0];
+            assert_eq!(contour.points.len(), 6, "two handles are inserted");
+            assert_eq!(contour.points[3].kind, PointKind::Curve);
+            contour.try_to_bezpath().unwrap();
+        })
+        .unwrap();
+}

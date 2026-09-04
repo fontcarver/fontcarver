@@ -315,22 +315,65 @@ fn validate_points(contours: &[Contour], points: &[PointRef]) -> Result<(), Erro
 /// Maximum cubic-to-quadratic approximation error used for generated handles.
 const QUADRATIC_MAX_ERR: f64 = 0.1;
 
+/// What one layer's own outlines say about their curve family.
+enum LayerCurves {
+    /// No curved segment at all, so the outlines say nothing.
+    Ambiguous,
+    /// Every curved segment is quadratic.
+    Quadratic,
+    /// Every curved segment is cubic.
+    Cubic,
+    /// Both families are present.
+    Mixed,
+}
+
 /// The curve kind an operation on one layer should produce.
 ///
-/// The font's own declaration wins: a TrueType (`glyf`) source never receives
-/// cubic handles, and a PostScript source never receives quadratic ones, however
-/// the layer at hand happens to be drawn. Only a document that declares nothing
-/// — one drawn from scratch — falls back to [`inferred_kind`], which reads the
-/// layer's existing outlines.
+/// The font's declared format — which [`fw_model::query::declared_curve_format`]
+/// reads from what an import preserved — decides, because a layer holding only
+/// straight segments says nothing about the family the font is drawn in. The one
+/// exception is a layer whose curves *uniformly* contradict the declaration: the
+/// declaration is import provenance and does not follow a
+/// [`PathOp::ConvertCurves`](super::PathOp::ConvertCurves) the user ran, so an
+/// imported TrueType glyph converted to cubic keeps receiving cubic handles. A
+/// layer mixing both families follows the declaration, and a document that
+/// declares nothing falls back to [`inferred_kind`].
 fn layer_curve_kind(font: &Font, glyph: &GlyphName, layer: &LayerId) -> CurveKind {
     let target = font.glyph(glyph).and_then(|glyph| glyph.layer(layer));
+    let contours = target.map_or(&[][..], |layer| layer.contours.as_slice());
     let master = target.and_then(layer_master);
+    let quadratic = CurveKind::Quadratic {
+        max_err: QUADRATIC_MAX_ERR,
+    };
     match declared_curve_format(font, master.as_ref()) {
-        Some(CurveFormat::Quadratic) => CurveKind::Quadratic {
-            max_err: QUADRATIC_MAX_ERR,
+        None => inferred_kind(contours),
+        Some(CurveFormat::Quadratic) => match layer_curves(contours) {
+            LayerCurves::Cubic => CurveKind::Cubic,
+            _ => quadratic,
         },
-        Some(CurveFormat::Cubic) => CurveKind::Cubic,
-        None => inferred_kind(target.map_or(&[], |layer| layer.contours.as_slice())),
+        Some(CurveFormat::Cubic) => match layer_curves(contours) {
+            LayerCurves::Quadratic => quadratic,
+            _ => CurveKind::Cubic,
+        },
+    }
+}
+
+/// Reads the curve families present in a layer's stored point kinds.
+fn layer_curves(contours: &[Contour]) -> LayerCurves {
+    let mut quadratic = false;
+    let mut cubic = false;
+    for point in contours.iter().flat_map(|contour| &contour.points) {
+        match point.kind {
+            PointKind::QCurve => quadratic = true,
+            PointKind::Curve => cubic = true,
+            _ => {}
+        }
+    }
+    match (quadratic, cubic) {
+        (false, false) => LayerCurves::Ambiguous,
+        (true, false) => LayerCurves::Quadratic,
+        (false, true) => LayerCurves::Cubic,
+        (true, true) => LayerCurves::Mixed,
     }
 }
 
