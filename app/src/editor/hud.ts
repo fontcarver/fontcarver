@@ -34,7 +34,13 @@ export type HudState =
       stem?: number | null
       snap?: string | null
     }
-  | { kind: 'handle'; delta: Point2; angle: number; length: number; snap?: string | null }
+  | {
+      kind: 'handle'
+      delta: Point2
+      angle: number
+      length: number
+      snap?: string | null
+    }
   | { kind: 'marquee'; width: number; height: number }
 
 function signed(value: number): string {

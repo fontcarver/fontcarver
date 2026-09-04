@@ -59,9 +59,7 @@ function pointIndexes(contour: Contour): Map<Point, number> {
 }
 
 /** Builds the editable index of one layer's contours. */
-export function buildEditOutline(
-  contours: readonly Contour[],
-): EditOutline {
+export function buildEditOutline(contours: readonly Contour[]): EditOutline {
   const points: EditPoint[] = []
   const segments: EditSegment[] = []
 
@@ -249,7 +247,8 @@ export function oppositeHandle(
   if (!contour) return null
   const index = adjacentIndexes(contour, node.point).find(
     (candidate) =>
-      candidate !== handle.point && contour.points[candidate]?.kind === 'OffCurve',
+      candidate !== handle.point &&
+      contour.points[candidate]?.kind === 'OffCurve',
   )
   return index === undefined ? null : { contour: node.contour, point: index }
 }

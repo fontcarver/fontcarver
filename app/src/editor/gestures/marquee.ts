@@ -37,7 +37,10 @@ export function marqueeRect(from: Point2, to: Point2): MarqueeRect {
 }
 
 /** Width and height of a marquee in canvas pixels. */
-export function marqueeSize(rect: MarqueeRect): { width: number; height: number } {
+export function marqueeSize(rect: MarqueeRect): {
+  width: number
+  height: number
+} {
   return { width: rect.x1 - rect.x0, height: rect.y1 - rect.y0 }
 }
 
@@ -65,7 +68,11 @@ export function marqueeSelection(
     targets.push(
       point.onCurve
         ? { kind: 'node', contour: point.ref.contour, point: point.ref.point }
-        : { kind: 'handle', contour: point.ref.contour, point: point.ref.point },
+        : {
+            kind: 'handle',
+            contour: point.ref.contour,
+            point: point.ref.point,
+          },
     )
   }
 

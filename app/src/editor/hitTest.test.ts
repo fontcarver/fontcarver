@@ -81,9 +81,9 @@ describe('hitTest', () => {
     zoomed.scale = 4
     zoomed.offset = { x: 0, y: 300 }
     // Font (200, 0) is now at screen (800, 300); 4 px away is still a hit.
-    expect(hitTest(input({ viewport: zoomed }), { x: 804, y: 300 })?.target).toEqual(
-      { kind: 'node', contour: 0, point: 1 },
-    )
+    expect(
+      hitTest(input({ viewport: zoomed }), { x: 804, y: 300 })?.target,
+    ).toEqual({ kind: 'node', contour: 0, point: 1 })
   })
 
   it('prefers a node to a handle when both are in range', () => {
@@ -94,10 +94,10 @@ describe('hitTest', () => {
       makePoint(102, 0, 'OffCurve'),
       makePoint(0, 60, 'Curve'),
     ])
-    const hit = hitTest(
-      input({ outline: buildEditOutline([overlapping]) }),
-      { x: 101, y: 300 },
-    )
+    const hit = hitTest(input({ outline: buildEditOutline([overlapping]) }), {
+      x: 101,
+      y: 300,
+    })
     expect(hit?.target).toEqual({ kind: 'node', contour: 0, point: 1 })
   })
 
@@ -145,7 +145,8 @@ describe('hitTest', () => {
       point: 2,
     })
     expect(
-      hitTest(input(), { x: 240, y: 180 }, { ignoreHandles: true })?.target.kind,
+      hitTest(input(), { x: 240, y: 180 }, { ignoreHandles: true })?.target
+        .kind,
     ).not.toBe('handle')
   })
 

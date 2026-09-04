@@ -21,11 +21,7 @@ import type {
   PointRef,
 } from '../../api'
 import type { Point2 } from '../../canvas/Viewport'
-import {
-  EditSession,
-  frameScheduler,
-  type Scheduler,
-} from '../editSession'
+import { EditSession, frameScheduler, type Scheduler } from '../editSession'
 import type { Hit } from '../hitTest'
 import {
   buildEditOutline,
@@ -136,9 +132,7 @@ export function planDrag(
     const refs = inSelection
       ? selectedPointRefs(selection)
       : [{ contour: target.contour, point: target.point }]
-    const nodes = inSelection
-      ? selectedNodeRefs(selection).length
-      : 1
+    const nodes = inSelection ? selectedNodeRefs(selection).length : 1
     return {
       kind: 'points',
       refs,
@@ -177,7 +171,9 @@ export function planDrag(
     return {
       kind: 'anchor',
       refs: [],
-      anchors: inSelection ? selectedIndexes(selection, 'anchor') : [target.index],
+      anchors: inSelection
+        ? selectedIndexes(selection, 'anchor')
+        : [target.index],
       components: [],
       handleMode: 'PointsOnly',
       label: labels.moveAnchor,
@@ -288,9 +284,7 @@ export class DragGesture {
       plan.handleMode === 'WithHandles'
         ? uniqueRefs([
             ...plan.refs,
-            ...plan.refs.flatMap((ref) =>
-              handlesOfNode(context.contours, ref),
-            ),
+            ...plan.refs.flatMap((ref) => handlesOfNode(context.contours, ref)),
           ])
         : uniqueRefs(plan.refs)
 
@@ -492,7 +486,9 @@ export class DragGesture {
       })
     }
     if (commands.length === 0) return null
-    return commands.length === 1 ? (commands[0] as Command) : { Batch: commands }
+    return commands.length === 1
+      ? (commands[0] as Command)
+      : { Batch: commands }
   }
 }
 

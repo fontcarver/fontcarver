@@ -270,7 +270,10 @@ function drawNodes(
 ): void {
   const storedIndex = new Map<Point, number>()
   contour.points.forEach((point, index) => storedIndex.set(point, index))
-  const keyOf = (source: Point | null, kind: 'node' | 'handle'): string | null => {
+  const keyOf = (
+    source: Point | null,
+    kind: 'node' | 'handle',
+  ): string | null => {
     if (!source) return null
     const index = storedIndex.get(source)
     return index === undefined ? null : `${kind}:${contourIndex}:${index}`

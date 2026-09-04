@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { setTransport, type Command, type EditApplyParams } from '../../api'
 import { makeContour, makePoint } from '../../test/fontFixtures'
-import { createMockTransport, type MockTransport } from '../../test/mockTransport'
+import {
+  createMockTransport,
+  type MockTransport,
+} from '../../test/mockTransport'
 import { immediateScheduler } from '../editSession'
 import type { Hit } from '../hitTest'
 import { EMPTY_SELECTION, selectionOf } from '../selection'
@@ -134,8 +137,14 @@ describe('planDrag', () => {
 
 describe('constrainDelta', () => {
   it('locks to the nearest 0/45/90 degree direction', () => {
-    expect(constrainDelta({ x: 40, y: 3 })).toEqual({ x: 40.11234224026316, y: 0 })
-    expect(constrainDelta({ x: 3, y: 40 })).toEqual({ x: 0, y: 40.11234224026316 })
+    expect(constrainDelta({ x: 40, y: 3 })).toEqual({
+      x: 40.11234224026316,
+      y: 0,
+    })
+    expect(constrainDelta({ x: 3, y: 40 })).toEqual({
+      x: 0,
+      y: 40.11234224026316,
+    })
     const diagonal = constrainDelta({ x: 30, y: 28 })
     expect(diagonal.x).toBeCloseTo(diagonal.y, 6)
   })
@@ -273,7 +282,9 @@ describe('DragGesture', () => {
     drag?.move({ x: 240, y: 6 }, { ...NO_MODIFIERS, shift: true })
     await drag?.finish()
     const command = applied(mock)[0]
-    expect(command && 'MovePoints' in command && command.MovePoints.delta[1]).toBe(0)
+    expect(
+      command && 'MovePoints' in command && command.MovePoints.delta[1],
+    ).toBe(0)
   })
 
   it('ends the gesture and undoes it when Escape cancels a drag', async () => {

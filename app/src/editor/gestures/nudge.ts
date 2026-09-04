@@ -109,13 +109,10 @@ export class NudgeCoalescer {
 
   private restartTimer(): void {
     if (this.timer !== null) clearTimeout(this.timer)
-    this.timer = setTimeout(
-      () => {
-        this.timer = null
-        void this.end()
-      },
-      this.context.timeout ?? NUDGE_TIMEOUT,
-    )
+    this.timer = setTimeout(() => {
+      this.timer = null
+      void this.end()
+    }, this.context.timeout ?? NUDGE_TIMEOUT)
   }
 
   private command(): Command | null {

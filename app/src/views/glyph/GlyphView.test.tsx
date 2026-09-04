@@ -18,35 +18,37 @@ import {
   makeGlyph,
   makeGlyphDetail,
   makeLayer,
+  makeLayerOutline,
   makePoint,
 } from '../../test/fontFixtures'
 import { createMockTransport, makeSummary } from '../../test/mockTransport'
 
 import { GlyphView } from './GlyphView'
 
+const layer = makeLayer({
+  width: 600,
+  contours: [
+    makeContour([
+      makePoint(40, 0),
+      makePoint(560, 0),
+      makePoint(560, 700, 'Line', true),
+      makePoint(40, 700),
+    ]),
+  ],
+  anchors: [{ name: 'top', x: 300, y: 700 }],
+})
+
 const glyph = makeGlyph({
   name: 'aacute',
   unicodes: [0xe1],
-  layers: [
-    makeLayer({
-      width: 600,
-      contours: [
-        makeContour([
-          makePoint(40, 0),
-          makePoint(560, 0),
-          makePoint(560, 700, 'Line', true),
-          makePoint(40, 700),
-        ]),
-      ],
-      anchors: [{ name: 'top', x: 300, y: 700 }],
-    }),
-  ],
+  layers: [layer],
 })
 
 function transportFor() {
   return createMockTransport({
     'glyphs.detail': () => makeGlyphDetail(glyph),
     'glyphs.cell': () => makeCell({ gid: 42, name: 'aacute', width: 600 }),
+    'glyphs.outline': () => makeLayerOutline(layer),
     'doc.font_info': () => makeFontInfoView(),
   })
 }
@@ -74,8 +76,9 @@ describe('GlyphView', () => {
     expect(await screen.findByText('aacute')).toBeInTheDocument()
     expect(screen.getByText('U+00E1')).toBeInTheDocument()
     // Advance 600 with bounds 40 … 560 gives 40 units on both sides.
-    expect(screen.getByText('600')).toBeInTheDocument()
-    expect(screen.getAllByText('40')).toHaveLength(2)
+    expect(screen.getByLabelText('advance')).toHaveValue('600')
+    expect(screen.getByLabelText('LSB')).toHaveValue('40')
+    expect(screen.getByLabelText('RSB')).toHaveValue('40')
 
     const details = transport.calls.filter(
       (entry) => entry.method === 'glyphs.detail',
@@ -191,6 +194,7 @@ describe('GlyphView', () => {
           throw new Error('glyph handle 42 does not exist')
         },
         'glyphs.cell': () => makeCell(),
+        'glyphs.outline': () => makeLayerOutline(layer),
         'doc.font_info': () => makeFontInfoView(),
       }),
     )

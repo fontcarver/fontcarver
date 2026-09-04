@@ -59,7 +59,11 @@ export class EditSession {
   private applied = false
   private closed = false
 
-  constructor(doc: DocId, label: string, scheduler: Scheduler = frameScheduler) {
+  constructor(
+    doc: DocId,
+    label: string,
+    scheduler: Scheduler = frameScheduler,
+  ) {
     this.doc = doc
     this.label = label
     this.scheduler = scheduler

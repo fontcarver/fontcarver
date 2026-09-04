@@ -9,6 +9,8 @@
  */
 
 import type { DocId, GlyphId } from '../../api'
+import { activeEditor } from '../../editor/activeEditor'
+import { selectionCounts } from '../../editor/selection'
 import { registerCommands, type Command } from '../../shell/commands'
 import { isEditableTarget, isInteractiveTarget } from '../../shell/shortcuts'
 import { useEditorStore } from '../../stores/editorStore'
@@ -63,6 +65,20 @@ export function zoomActiveGlyphView(direction: 1 | -1): boolean {
 
 function onGlyphTab(): boolean {
   return selectActiveTab(useUiStore.getState())?.kind === 'glyph'
+}
+
+/** Whether the canvas of a glyph tab currently owns the keyboard. */
+function canvasHasFocus(): boolean {
+  return (
+    onGlyphTab() &&
+    globalThis.document?.activeElement instanceof HTMLCanvasElement
+  )
+}
+
+/** Whether an editor is mounted and something is selected in it. */
+function hasSelection(): boolean {
+  const editor = activeEditor()
+  return onGlyphTab() && editor !== null && editor.currentSelection.size > 0
 }
 
 function canToggleFill(): boolean {
@@ -136,6 +152,69 @@ export function registerGlyphViewCommands(): void {
           return
         useEditorStore.getState().toggleOverlay('filled')
       },
+    },
+    {
+      id: 'edit.selectAll',
+      title: 'cmd.edit.selectAll',
+      menu: 'edit',
+      group: 'selection',
+      shortcut: 'Mod+A',
+      when: () => onGlyphTab() && activeEditor() !== null,
+      disabledReason: 'cmd.reason.noGlyphTab',
+      run: () => activeEditor()?.selectAll(),
+    },
+    {
+      id: 'edit.deselect',
+      title: 'cmd.edit.deselect',
+      menu: 'edit',
+      group: 'selection',
+      when: hasSelection,
+      disabledReason: 'cmd.reason.noSelection',
+      run: () => activeEditor()?.escape(),
+    },
+    {
+      id: 'edit.delete',
+      title: 'cmd.edit.delete',
+      menu: 'edit',
+      group: 'selection',
+      shortcut: 'Delete',
+      when: hasSelection,
+      disabledReason: 'cmd.reason.noSelection',
+      run: () => activeEditor()?.deleteSelection(false),
+    },
+    {
+      id: 'edit.deleteBreak',
+      title: 'cmd.edit.deleteBreak',
+      menu: 'edit',
+      group: 'selection',
+      shortcut: 'Shift+Delete',
+      when: hasSelection,
+      disabledReason: 'cmd.reason.noSelection',
+      run: () => activeEditor()?.deleteSelection(true),
+    },
+    {
+      id: 'path.toggleSmooth',
+      title: 'cmd.path.toggleSmooth',
+      menu: 'path',
+      group: 'nodes',
+      shortcut: 'Enter',
+      when: () => {
+        const editor = activeEditor()
+        if (!editor || !canvasHasFocus()) return false
+        return selectionCounts(editor.currentSelection).nodes > 0
+      },
+      disabledReason: 'cmd.reason.noSelection',
+      run: () => activeEditor()?.toggleSmooth(false),
+    },
+    {
+      id: 'view.toggleInfoBox',
+      title: 'cmd.view.toggleInfoBox',
+      menu: 'view',
+      group: 'panels',
+      shortcut: 'Mod+Shift+I',
+      when: onGlyphTab,
+      disabledReason: 'cmd.reason.noGlyphTab',
+      run: () => useEditorStore.getState().toggleInfoBox(),
     },
     overlayCommand('filled'),
     overlayCommand('points'),

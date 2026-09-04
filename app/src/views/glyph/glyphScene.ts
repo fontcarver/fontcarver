@@ -55,10 +55,10 @@ export interface GlyphScene {
   /** The layer being shown, or `null` for a glyph with no layers at all. */
   layer: Layer | null
   layerName: string
-  contours: Contour[]
-  components: Component[]
-  anchors: Anchor[]
-  guides: SceneGuide[]
+  contours: readonly Contour[]
+  components: readonly Component[]
+  anchors: readonly Anchor[]
+  guides: readonly SceneGuide[]
   metrics: SceneMetrics
   /** Exact outline bounds from the kernel, or `null` when the glyph is blank. */
   bbox: FontBox | null

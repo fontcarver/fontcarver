@@ -11,7 +11,9 @@ import type { Viewport } from '../../canvas/Viewport'
 
 import { drawAnchors } from './drawAnchors'
 import { drawComponents } from './drawComponents'
+import { drawEditing, NO_OVERLAY, type EditingOverlay } from './drawEditing'
 import { drawGuides } from './drawGuides'
+import { drawHud } from './drawHud'
 import { drawMetrics, type MetricLabels } from './drawMetrics'
 import { drawOutline } from './drawOutline'
 import { drawRulers } from './drawRulers'
@@ -49,6 +51,14 @@ export interface RenderGlyphOptions {
   flattened: Path2D | null
   /** Pointer position in font units, or `null` when the pointer is away. */
   pointer: { x: number; y: number } | null
+  /** Selection keys, drawn as the selection layer of the outline. */
+  selected?: ReadonlySet<string>
+  /** Transient editing feedback: marquee, snap halo, ghosts, alignment lines. */
+  editing?: EditingOverlay
+  /** Cursor-HUD text, or `null` when no gesture is running. */
+  hud?: string | null
+  /** Pointer position in canvas pixels, where the HUD is anchored. */
+  pointerScreen?: { x: number; y: number } | null
 }
 
 /** Paints one frame of the glyph editor. */
@@ -92,6 +102,7 @@ export function renderGlyph(
       contours: scene.contours,
       filled: overlays.filled,
       showPoints: overlays.points,
+      selected: options.selected,
     },
     theme,
   )
@@ -106,4 +117,13 @@ export function renderGlyph(
 
   if (overlays.rulers)
     drawRulers(ctx, viewport, { pointer: options.pointer }, theme)
+
+  drawEditing(ctx, viewport, options.editing ?? NO_OVERLAY, theme)
+  drawHud(
+    ctx,
+    viewport,
+    options.pointerScreen ?? null,
+    options.hud ?? null,
+    theme,
+  )
 }

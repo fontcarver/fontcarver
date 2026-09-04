@@ -1,6 +1,23 @@
-import { useCallback, useEffect, useMemo, useRef, type RefObject } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react'
 
 import { Viewport } from '../../canvas/Viewport'
+import { registerEditor } from '../../editor/activeEditor'
+import {
+  EditorController,
+  type EditorLabels,
+  type EditorSource,
+  type PointerInput,
+} from '../../editor/editorController'
+import type { Modifiers } from '../../editor/gestures/drag'
+import { selectActiveTool, useEditorStore } from '../../stores/editorStore'
+import type { Selection } from '../../editor/selection'
 
 import type { MetricLabels } from './drawMetrics'
 import styles from './glyphView.module.css'
@@ -28,22 +45,42 @@ export interface GlyphCanvasProps {
   /** Identity of the glyph shown; changing it refits the view. */
   fitKey: string
   label: string
+  /** The editable layer and everything the editor needs about it. */
+  source: EditorSource | null
+  /** Translated undo labels and readout words. */
+  editorLabels: EditorLabels
   /** Reports the pointer position in font units, or `null` when it leaves. */
   onPointerFont: (point: { x: number; y: number } | null) => void
   /** Reports the zoom after every viewport change. */
   onZoomChange: (scale: number) => void
   /** Toggles the fill preview when the space bar is tapped. */
   onToggleFilled: () => void
+  /** A gesture finished; the outline must be refetched. */
+  onReload: () => void
   handleRef?: RefObject<GlyphCanvasHandle | null>
+}
+
+function modifiersOf(event: {
+  shiftKey: boolean
+  altKey: boolean
+  ctrlKey: boolean
+  metaKey: boolean
+}): Modifiers {
+  return {
+    shift: event.shiftKey,
+    alt: event.altKey,
+    mod: event.ctrlKey || event.metaKey,
+  }
 }
 
 /**
  * The glyph editor canvas.
  *
  * React owns the element, its size and the input events; every pixel is drawn
- * by the plain modules in this folder through `renderGlyph`. The viewport is a
- * mutable object rather than component state, so a pan or a zoom repaints
- * without a React render.
+ * by the plain modules in this folder through `renderGlyph`, and every input
+ * decision is made by `EditorController`. The viewport is a mutable object
+ * rather than component state, so a pan, a zoom or a drag repaints without a
+ * React render.
  */
 export function GlyphCanvas({
   scene,
@@ -53,9 +90,12 @@ export function GlyphCanvas({
   flattened,
   fitKey,
   label,
+  source,
+  editorLabels,
   onPointerFont,
   onZoomChange,
   onToggleFilled,
+  onReload,
   handleRef,
 }: GlyphCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -63,11 +103,19 @@ export function GlyphCanvas({
   const viewport = useMemo(() => new Viewport(), [])
   const pointerRef = useRef<{ x: number; y: number } | null>(null)
   const fittedRef = useRef('')
+  const tool = useEditorStore(selectActiveTool)
 
-  // The draw inputs are read through a ref so the event handlers installed on
-  // the element stay stable while still painting the current scene. The ref is
-  // seeded on the first render and refreshed in an effect afterwards.
   const frame = useRef({ scene, theme, labels, overlays, flattened })
+  const [cursor, setCursor] = useState('default')
+
+  // The controller must outlive every render: it holds the live gesture and
+  // the selection. Its callbacks, labels and tool are pushed in by effects
+  // rather than by rebuilding it.
+  const controller = useMemo(
+    () => new EditorController(viewport, editorLabels),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [viewport],
+  )
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -79,15 +127,51 @@ export function GlyphCanvas({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     const current = frame.current
+    const editing = controller.frame()
     renderGlyph(ctx, viewport, {
-      scene: current.scene,
+      scene: editing.contours
+        ? {
+            ...current.scene,
+            contours: editing.contours,
+            anchors: editing.anchors ?? current.scene.anchors,
+          }
+        : current.scene,
       theme: current.theme,
       labels: current.labels,
       overlays: current.overlays,
       flattened: current.flattened,
       pointer: pointerRef.current,
+      selected: editing.selected,
+      editing: editing.overlay,
+      hud: editing.hud,
+      pointerScreen: editing.pointerScreen,
     })
-  }, [viewport])
+  }, [controller, viewport])
+
+  useEffect(() => {
+    controller.setCallbacks({
+      repaint: draw,
+      onSelectionChange: (selection: Selection) =>
+        useEditorStore.getState().setSelection(selection),
+      onEditingChange: (editing) =>
+        useEditorStore.getState().setEditing(editing),
+      onZoomChange,
+      onReload,
+      onCursorChange: setCursor,
+    })
+  }, [controller, draw, onReload, onZoomChange])
+
+  useEffect(
+    () => controller.setLabels(editorLabels),
+    [controller, editorLabels],
+  )
+  useEffect(() => controller.setTool(tool), [controller, tool])
+  useEffect(() => {
+    controller.setSource(source)
+    draw()
+  }, [controller, draw, source])
+  useEffect(() => registerEditor(controller), [controller])
+  useEffect(() => () => controller.dispose(), [controller])
 
   const fit = useCallback(() => {
     viewport.fit(sceneBox(frame.current.scene), FIT_PADDING)
@@ -165,8 +249,7 @@ export function GlyphCanvas({
       const at = { x: event.clientX - rect.left, y: event.clientY - rect.top }
       const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1
       if (event.ctrlKey || event.metaKey) {
-        viewport.zoomAt(at, Math.exp(-event.deltaY * unit * 0.0025))
-        onZoomChange(viewport.scale)
+        controller.zoomAtPoint(at, Math.exp(-event.deltaY * unit * 0.0025))
       } else {
         viewport.pan(-event.deltaX * unit, -event.deltaY * unit)
       }
@@ -176,81 +259,107 @@ export function GlyphCanvas({
     }
     canvas.addEventListener('wheel', onWheel, { passive: false })
     return () => canvas.removeEventListener('wheel', onWheel)
-  }, [draw, onPointerFont, onZoomChange, viewport])
+  }, [controller, draw, onPointerFont, viewport])
 
   // Space is both "pan while held" and "toggle the fill preview when tapped".
   const spaceRef = useRef({ held: false, dragged: false })
-  const dragRef = useRef<{ id: number; x: number; y: number } | null>(null)
 
-  const onPointerDown = useCallback(
-    (event: React.PointerEvent<HTMLCanvasElement>) => {
-      const panning =
-        event.button === 1 || (event.button === 0 && spaceRef.current.held)
-      if (!panning) {
-        event.currentTarget.focus()
-        return
-      }
-      event.preventDefault()
-      event.currentTarget.focus()
-      dragRef.current = {
-        id: event.pointerId,
-        x: event.clientX,
-        y: event.clientY,
-      }
-      spaceRef.current.dragged = true
-      try {
-        event.currentTarget.setPointerCapture(event.pointerId)
-      } catch {
-        // A synthetic pointer id has nothing to capture; the move still tracks.
+  const pointerInput = useCallback(
+    (event: React.PointerEvent<HTMLCanvasElement>): PointerInput => {
+      const rect = event.currentTarget.getBoundingClientRect()
+      return {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+        button: event.button,
+        modifiers: modifiersOf(event),
       }
     },
     [],
   )
 
-  const onPointerMove = useCallback(
+  const onPointerDown = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
-      const rect = event.currentTarget.getBoundingClientRect()
-      const at = { x: event.clientX - rect.left, y: event.clientY - rect.top }
-      const drag = dragRef.current
-      if (drag && drag.id === event.pointerId) {
-        viewport.pan(event.clientX - drag.x, event.clientY - drag.y)
-        dragRef.current = { id: drag.id, x: event.clientX, y: event.clientY }
+      event.preventDefault()
+      event.currentTarget.focus({ preventScroll: true })
+      spaceRef.current.dragged = spaceRef.current.held
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId)
+      } catch {
+        // A synthetic pointer id has nothing to capture; the move still tracks.
       }
-      pointerRef.current = viewport.toFont(at)
-      onPointerFont(roundPoint(pointerRef.current))
-      draw()
+      controller.pointerDown(pointerInput(event))
     },
-    [draw, onPointerFont, viewport],
+    [controller, pointerInput],
   )
 
-  const endDrag = useCallback(
+  const onPointerMove = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
-      if (dragRef.current?.id !== event.pointerId) return
-      dragRef.current = null
+      const input = pointerInput(event)
+      pointerRef.current = viewport.toFont({ x: input.x, y: input.y })
+      onPointerFont(roundPoint(pointerRef.current))
+      controller.pointerMove(input)
+      draw()
+    },
+    [controller, draw, onPointerFont, pointerInput, viewport],
+  )
+
+  const endPointer = useCallback(
+    (event: React.PointerEvent<HTMLCanvasElement>) => {
+      controller.pointerUp(pointerInput(event))
       try {
         event.currentTarget.releasePointerCapture(event.pointerId)
       } catch {
         // The capture was never established.
       }
     },
-    [],
+    [controller, pointerInput],
   )
 
   const onPointerLeave = useCallback(() => {
     pointerRef.current = null
     onPointerFont(null)
-    draw()
-  }, [draw, onPointerFont])
+    controller.pointerLeave()
+  }, [controller, onPointerFont])
 
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLCanvasElement>) => {
-      if (event.key !== ' ' || event.ctrlKey || event.metaKey || event.altKey)
+      const modifiers = modifiersOf(event)
+      if (event.key === ' ' && !modifiers.mod && !modifiers.alt) {
+        event.preventDefault()
+        if (event.repeat) return
+        spaceRef.current = { held: true, dragged: false }
+        controller.setSpaceHeld(true)
         return
-      event.preventDefault()
-      if (event.repeat) return
-      spaceRef.current = { held: true, dragged: false }
+      }
+      const arrows: Record<string, { x: number; y: number }> = {
+        ArrowLeft: { x: -1, y: 0 },
+        ArrowRight: { x: 1, y: 0 },
+        ArrowUp: { x: 0, y: 1 },
+        ArrowDown: { x: 0, y: -1 },
+      }
+      const direction = arrows[event.key]
+      if (direction) {
+        event.preventDefault()
+        controller.nudgeSelection(direction, modifiers)
+        return
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        void controller.endNudge()
+        controller.escape()
+        return
+      }
+      // Tab cycles nodes only while something is selected; with an empty
+      // selection it must still move focus out of the canvas (§12).
+      if (event.key === 'Tab' && controller.currentSelection.size > 0) {
+        event.preventDefault()
+        controller.cycleNodes(modifiers.shift ? -1 : 1)
+      }
+      // Delete, ⇧Delete, Enter and Mod+A are registered commands, so the
+      // shortcut layer owns them and the menu lists them; handling them here
+      // as well would run each action twice.
     },
-    [],
+    [controller],
   )
 
   const onKeyUp = useCallback(
@@ -259,9 +368,10 @@ export function GlyphCanvas({
       event.preventDefault()
       const { held, dragged } = spaceRef.current
       spaceRef.current = { held: false, dragged: false }
+      controller.setSpaceHeld(false)
       if (held && !dragged) onToggleFilled()
     },
-    [onToggleFilled],
+    [controller, onToggleFilled],
   )
 
   return (
@@ -269,15 +379,24 @@ export function GlyphCanvas({
       <canvas
         ref={canvasRef}
         className={styles.canvas}
+        style={{ cursor }}
         role="img"
         aria-label={label}
         tabIndex={0}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
+        onPointerUp={endPointer}
+        onPointerCancel={endPointer}
         onPointerLeave={onPointerLeave}
-        onClick={(event) => event.currentTarget.focus({ preventScroll: true })}
+        onDoubleClick={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect()
+          controller.doubleClick({
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top,
+            button: event.button,
+            modifiers: modifiersOf(event),
+          })
+        }}
         onKeyDown={onKeyDown}
         onKeyUp={onKeyUp}
       />

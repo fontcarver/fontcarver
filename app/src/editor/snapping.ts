@@ -41,7 +41,12 @@ export interface SnapInput {
   anchors: readonly Anchor[]
   guides: readonly ScopedGuide[]
   metrics: SceneMetrics
-  metricLabels: Readonly<Record<'baseline' | 'xHeight' | 'capHeight' | 'ascender' | 'descender', string>>
+  metricLabels: Readonly<
+    Record<
+      'baseline' | 'xHeight' | 'capHeight' | 'ascender' | 'descender',
+      string
+    >
+  >
   viewport: Viewport
   /** `contour:point` keys excluded from snapping, i.e. what is being dragged. */
   exclude: ReadonlySet<string>

@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setTransport, type Command, type EditApplyParams } from '../../api'
-import { createMockTransport, type MockTransport } from '../../test/mockTransport'
+import {
+  createMockTransport,
+  type MockTransport,
+} from '../../test/mockTransport'
 import { immediateScheduler } from '../editSession'
 
 import { NO_MODIFIERS } from './drag'

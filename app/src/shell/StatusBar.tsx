@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { getTransport } from '../api'
 import { selectDocView, useDocumentStore } from '../stores/documentStore'
 import { useEditorStore } from '../stores/editorStore'
+import { formatUnicodes } from '../views/glyph/glyphScene'
 import {
   documentLabel,
   selectSummary,
@@ -21,7 +22,11 @@ export function StatusBar() {
   const view = useDocumentStore(selectDocView(doc))
   const pointer = useEditorStore((state) => state.pointer)
   const zoom = useEditorStore((state) => state.zoom)
+  const activeGlyph = useEditorStore((state) => state.activeGlyph)
+  const selection = useEditorStore((state) => state.selection)
+  const snapping = useEditorStore((state) => state.snapping)
   const onGlyphTab = tab?.kind === 'glyph'
+  const glyphScene = onGlyphTab ? (activeGlyph?.scene ?? null) : null
 
   return (
     <div
@@ -55,6 +60,33 @@ export function StatusBar() {
             </span>
           ) : null}
           <span className={styles.statusSpacer} />
+          {glyphScene ? (
+            <>
+              <span className={styles.statusName}>{glyphScene.name}</span>
+              <span className={styles.statusNumeric}>
+                {formatUnicodes(glyphScene.unicodes)}
+              </span>
+              <span className={styles.statusNumeric}>
+                {t('glyphView.metric.advance')}{' '}
+                {Math.round(glyphScene.metrics.width)}
+              </span>
+              <span className={styles.statusNumeric}>
+                {`${
+                  glyphScene.metrics.lsb === null
+                    ? '—'
+                    : Math.round(glyphScene.metrics.lsb)
+                } / ${
+                  glyphScene.metrics.rsb === null
+                    ? '—'
+                    : Math.round(glyphScene.metrics.rsb)
+                }`}
+              </span>
+              <span className={styles.statusNumeric}>
+                {t('status.selectionPoints', { count: selection.size })}
+              </span>
+              <span>{snapping ? t('status.snapOn') : t('status.snapOff')}</span>
+            </>
+          ) : null}
           {onGlyphTab ? (
             <>
               <span className={styles.statusNumeric}>

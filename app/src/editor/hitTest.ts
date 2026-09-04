@@ -14,7 +14,12 @@ import type { Anchor, Guide } from '../api'
 import type { Point2, Viewport } from '../canvas/Viewport'
 
 import { nearestOnSegment, type EditOutline } from './outlineGeometry'
-import { isSelected, type EditTarget, type GuideScope, type Selection } from './selection'
+import {
+  isSelected,
+  type EditTarget,
+  type GuideScope,
+  type Selection,
+} from './selection'
 
 /** Hit radii in CSS pixels, design spec §4.2. */
 export const HIT_RADII = {
@@ -111,7 +116,11 @@ export function hitTest(
     const away = inPixels(point)
     const radius = point.onCurve ? HIT_RADII.node : HIT_RADII.handle
     if (away > radius) continue
-    const hit: Hit = { target, point: { x: point.x, y: point.y }, distance: away }
+    const hit: Hit = {
+      target,
+      point: { x: point.x, y: point.y },
+      distance: away,
+    }
     if (!point.onCurve) handles.push(hit)
     else if (isSelected(selection, target)) selectedNodes.push(hit)
     else nodes.push(hit)
