@@ -816,3 +816,134 @@ fn a_font_without_a_declaration_still_infers_the_kind_from_the_outlines() {
         })
         .unwrap();
 }
+
+/// An open contour whose cubic endpoint is preceded by a single handle.
+fn malformed_contour() -> Contour {
+    Contour {
+        closed: false,
+        points: vec![
+            Point {
+                x: 0.0,
+                y: 0.0,
+                kind: PointKind::Move,
+                ..Point::default()
+            },
+            Point {
+                x: 10.0,
+                y: 10.0,
+                kind: PointKind::OffCurve,
+                ..Point::default()
+            },
+            Point {
+                x: 20.0,
+                y: 0.0,
+                kind: PointKind::Curve,
+                ..Point::default()
+            },
+        ],
+        ..Contour::default()
+    }
+}
+
+#[test]
+fn a_pre_existing_malformed_contour_does_not_block_edits_on_other_contours() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let glyph = GlyphName::from("base");
+            let layer = doc.font.glyph(&glyph).unwrap().layers[0].id.clone();
+            doc.font.glyph_mut(&glyph).unwrap().layers[0]
+                .contours
+                .push(malformed_contour());
+
+            doc.apply(
+                Command::MovePoints {
+                    glyph: glyph.clone(),
+                    layer: layer.clone(),
+                    points: vec![PointRef {
+                        contour: 0,
+                        point: 1,
+                    }],
+                    delta: (5.0, 7.0),
+                    handles: HandleMode::PointsOnly,
+                },
+                "Move",
+            )
+            .expect("an untouched malformed contour must not block the edit");
+            let contours = &doc.font.glyph(&glyph).unwrap().layers[0].contours;
+            assert_eq!(
+                (contours[0].points[1].x, contours[0].points[1].y),
+                (105.0, 7.0)
+            );
+            assert_eq!(contours.len(), 2, "the malformed contour is left alone");
+
+            let before = doc.font.glyph(&glyph).unwrap().clone();
+            let error = doc
+                .apply(
+                    Command::AddContour {
+                        glyph: glyph.clone(),
+                        layer,
+                        contour: malformed_contour(),
+                    },
+                    "Add malformed contour",
+                )
+                .unwrap_err();
+            assert!(matches!(error, Error::InvalidCommand(_)), "{error}");
+            assert_eq!(
+                doc.font.glyph(&glyph).unwrap(),
+                &before,
+                "a command that malforms the contour it touches is still rejected"
+            );
+        })
+        .unwrap();
+}
+
+#[test]
+fn a_rejected_transform_restores_components_and_anchors_too() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let glyph = GlyphName::from("base");
+            let layer = doc.font.glyph(&glyph).unwrap().layers[0].id.clone();
+            {
+                let target = &mut doc.font.glyph_mut(&glyph).unwrap().layers[0];
+                target.contours.push(malformed_contour());
+                target.components.push(fw_model::Component {
+                    base: GlyphName::from("composite"),
+                    ..fw_model::Component::default()
+                });
+                target.anchors.push(fw_model::Anchor {
+                    name: "top".to_owned(),
+                    x: 40.0,
+                    y: 60.0,
+                });
+            }
+            let before = doc.font.glyph(&glyph).unwrap().clone();
+
+            let error = doc
+                .apply(
+                    Command::TransformSelection {
+                        glyph: glyph.clone(),
+                        layer,
+                        points: vec![PointRef {
+                            contour: 1,
+                            point: 0,
+                        }],
+                        components: vec![0],
+                        anchors: vec![0],
+                        affine: Affine::translate((11.0, 13.0)).as_coeffs(),
+                    },
+                    "Transform",
+                )
+                .unwrap_err();
+            assert!(matches!(error, Error::InvalidCommand(_)), "{error}");
+            assert_eq!(
+                doc.font.glyph(&glyph).unwrap(),
+                &before,
+                "components and anchors are restored with the contours"
+            );
+        })
+        .unwrap();
+}

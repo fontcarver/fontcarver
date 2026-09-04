@@ -13,20 +13,26 @@ use super::super::{
 };
 use super::{
     adjacent_indices, cyclic_between, layer_curve_kind, next_on_curve, off_curve, on_curve_indices,
-    previous_on_curve, repair_kinds, validate_points,
+    previous_on_curve, repair_kinds, validate_points, Touched,
 };
 
 /// Samples taken from every original segment of a joined span.
 const SPAN_SAMPLES: u32 = 32;
 
 /// Deletes stored points under one of the three deletion policies.
+///
+/// The layer's contour list is rebuilt once: every contour without a deleted
+/// point is moved across untouched, and each contour that loses points is
+/// replaced by its rewritten form, by nothing when it is emptied, or by the
+/// open pieces [`DeleteMode::BreakContour`] leaves behind. The reported
+/// [`Touched`] indexes address that rebuilt list.
 pub(super) fn delete_points(
     font: &mut Font,
     glyph: &GlyphName,
     layer: &LayerId,
     points: &[PointRef],
     mode: DeleteMode,
-) -> Result<(), Error> {
+) -> Result<Touched, Error> {
     let kind = layer_curve_kind(font, glyph, layer);
     let target = layer_mut(font, glyph, layer)?;
     validate_points(&target.contours, points)?;
@@ -37,27 +43,26 @@ pub(super) fn delete_points(
             .or_default()
             .insert(point.point);
     }
-    for (index, indices) in grouped.into_iter().rev() {
-        match mode {
-            DeleteMode::KeepShape => match keep_shape(&target.contours[index], &indices, kind)? {
-                Some(contour) => target.contours[index] = contour,
-                None => {
-                    target.contours.remove(index);
-                }
-            },
-            DeleteMode::Simple => match simple(&target.contours[index], &indices) {
-                Some(contour) => target.contours[index] = contour,
-                None => {
-                    target.contours.remove(index);
-                }
-            },
-            DeleteMode::BreakContour => {
-                let indices: Vec<usize> = indices.into_iter().collect();
-                break_at_points(&mut target.contours, index, &indices)?;
-            }
+    let source = std::mem::take(&mut target.contours);
+    let mut rebuilt = Vec::with_capacity(source.len());
+    let mut touched = BTreeSet::new();
+    for (index, contour) in source.into_iter().enumerate() {
+        let Some(indices) = grouped.get(&index) else {
+            rebuilt.push(contour);
+            continue;
+        };
+        let replacements: Vec<Contour> = match mode {
+            DeleteMode::KeepShape => keep_shape(&contour, indices, kind)?.into_iter().collect(),
+            DeleteMode::Simple => simple(&contour, indices).into_iter().collect(),
+            DeleteMode::BreakContour => break_at_points(&contour, indices)?,
+        };
+        for replacement in replacements {
+            touched.insert(rebuilt.len());
+            rebuilt.push(replacement);
         }
     }
-    Ok(())
+    target.contours = rebuilt;
+    Ok(Touched::Contours(touched))
 }
 
 /// Removes the listed points and their handles without re-fitting.
@@ -416,15 +421,13 @@ fn delete_handle_as_line(contour: &mut Contour, index: usize) -> Result<(), Erro
 }
 
 /// Removes the listed points and both adjacent segments, opening the contour.
-fn break_at_points(
-    contours: &mut Vec<Contour>,
-    contour_index: usize,
-    indices: &[usize],
-) -> Result<(), Error> {
+///
+/// Returns the open pieces that replace the contour, in order.
+fn break_at_points(source: &Contour, indices: &BTreeSet<usize>) -> Result<Vec<Contour>, Error> {
+    let mut contour = source.clone();
     if indices.is_empty() {
-        return Ok(());
+        return Ok(vec![contour]);
     }
-    let mut contour = contours.remove(contour_index);
     let selected_on_curves = indices
         .iter()
         .copied()
@@ -435,8 +438,7 @@ fn break_at_points(
             delete_handle_as_line(&mut contour, index)?;
         }
         repair_kinds(&mut contour);
-        contours.insert(contour_index, contour);
-        return Ok(());
+        return Ok(vec![contour]);
     }
 
     let len = contour.points.len();
@@ -508,7 +510,7 @@ fn break_at_points(
         groups.push(current);
     }
 
-    let mut insert_at = contour_index;
+    let mut pieces = Vec::new();
     let mut metadata_available = true;
     for mut group in groups {
         while group
@@ -553,9 +555,8 @@ fn break_at_points(
         if piece.points.is_empty() {
             continue;
         }
-        contours.insert(insert_at, piece);
+        pieces.push(piece);
         metadata_available = false;
-        insert_at += 1;
     }
-    Ok(())
+    Ok(pieces)
 }

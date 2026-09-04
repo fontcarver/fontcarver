@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use fw_model::{
     query::{declared_curve_format, CurveFormat},
     Contour, Font, GlyphName, Layer, LayerId, LayerKind, MasterId, Point, PointKind,
@@ -11,34 +13,81 @@ mod delete;
 mod points;
 mod segments;
 
+/// The contours an outline operation may have changed.
+///
+/// Indexes address the layer's contour list *after* the operation ran, so an
+/// operation that adds or removes contours reports where its results ended up.
+pub(super) enum Touched {
+    /// Only these contours were written.
+    Contours(BTreeSet<usize>),
+    /// The whole contour list was rebuilt.
+    Layer,
+}
+
+impl Touched {
+    /// Nothing that could be malformed was written.
+    fn none() -> Self {
+        Self::Contours(BTreeSet::new())
+    }
+
+    /// One contour, addressed by index.
+    fn one(index: usize) -> Self {
+        Self::Contours(BTreeSet::from([index]))
+    }
+
+    /// Every contour the listed points belong to.
+    fn of_points(points: &[PointRef]) -> Self {
+        Self::Contours(points.iter().map(|point| point.contour).collect())
+    }
+}
+
 /// Applies one outline command and rejects any malformed result.
 ///
-/// The command's layer is captured before the operation and restored when the
-/// operation fails or leaves a contour that `Contour::try_to_bezpath` rejects,
-/// so a failed outline command never changes the document.
+/// The command's layer is captured before the operation and restored in full —
+/// contours, components, anchors and everything else a layer carries — when the
+/// operation fails or leaves one of the contours it touched in a state that
+/// `Contour::try_to_bezpath` rejects, so a failed outline command never changes
+/// the document.
+///
+/// Only the contours an operation reports touching are checked. A layer may
+/// already hold a contour the model tolerates but the path builder rejects (an
+/// import can produce one), and such a contour must not block editing of the
+/// contours around it.
 pub(super) fn apply(font: &mut Font, command: &Command) -> Result<(), Error> {
     let Some((glyph, layer)) = target(command) else {
         return Err(Error::Internal(
             "non-outline command routed to outline handler".to_owned(),
         ));
     };
-    let restore = layer_mut(font, glyph, layer)?.contours.clone();
-    let outcome = dispatch(font, command).and_then(|()| validate(font, glyph, layer));
+    let restore = layer_mut(font, glyph, layer)?.clone();
+    let outcome =
+        dispatch(font, command).and_then(|touched| validate(font, glyph, layer, &touched));
     if outcome.is_err() {
         if let Ok(target) = layer_mut(font, glyph, layer) {
-            target.contours = restore;
+            *target = restore;
         }
     }
     outcome
 }
 
-fn validate(font: &mut Font, glyph: &GlyphName, layer: &LayerId) -> Result<(), Error> {
+fn validate(
+    font: &mut Font,
+    glyph: &GlyphName,
+    layer: &LayerId,
+    touched: &Touched,
+) -> Result<(), Error> {
     let target = layer_mut(font, glyph, layer)?;
-    match target
-        .contours
-        .iter()
-        .find_map(|contour| contour.try_to_bezpath().err())
-    {
+    let malformed = match touched {
+        Touched::Layer => target
+            .contours
+            .iter()
+            .find_map(|contour| contour.try_to_bezpath().err()),
+        Touched::Contours(indices) => indices
+            .iter()
+            .filter_map(|&index| target.contours.get(index))
+            .find_map(|contour| contour.try_to_bezpath().err()),
+    };
+    match malformed {
         Some(error) => Err(Error::InvalidCommand(format!(
             "the command would leave a malformed contour: {error}"
         ))),
@@ -66,7 +115,7 @@ fn target(command: &Command) -> Option<(&GlyphName, &LayerId)> {
     }
 }
 
-fn dispatch(font: &mut Font, command: &Command) -> Result<(), Error> {
+fn dispatch(font: &mut Font, command: &Command) -> Result<Touched, Error> {
     match command {
         Command::MovePoints {
             glyph,

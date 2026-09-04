@@ -9,7 +9,7 @@ use super::super::{
     apply::{checked_indices, ensure_finite, layer_mut},
     HandleMode, PointRef,
 };
-use super::{adjacent_indices, validate_points};
+use super::{adjacent_indices, validate_points, Touched};
 
 /// Translates the listed points, optionally carrying unselected handles.
 ///
@@ -24,7 +24,7 @@ pub(super) fn move_points(
     requested: &[PointRef],
     delta: (f64, f64),
     handles: HandleMode,
-) -> Result<(), Error> {
+) -> Result<Touched, Error> {
     ensure_finite(&[delta.0, delta.1], "point delta")?;
     let target = layer_mut(font, glyph, layer)?;
     validate_points(&target.contours, requested)?;
@@ -54,7 +54,7 @@ pub(super) fn move_points(
         point.x += delta.0;
         point.y += delta.1;
     }
-    Ok(())
+    Ok(Touched::of_points(requested))
 }
 
 /// Sets one stored point's absolute position.
@@ -65,14 +65,14 @@ pub(super) fn set_position(
     point_ref: PointRef,
     x: f64,
     y: f64,
-) -> Result<(), Error> {
+) -> Result<Touched, Error> {
     ensure_finite(&[x, y], "point position")?;
     let target = layer_mut(font, glyph, layer)?;
     validate_points(&target.contours, &[point_ref])?;
     let point = &mut target.contours[point_ref.contour].points[point_ref.point];
     point.x = x;
     point.y = y;
-    Ok(())
+    Ok(Touched::one(point_ref.contour))
 }
 
 /// Sets the smooth flag of the listed nodes and optionally levels their handles.
@@ -83,7 +83,7 @@ pub(super) fn set_smooth(
     requested: &[PointRef],
     smooth: bool,
     level_handles: bool,
-) -> Result<(), Error> {
+) -> Result<Touched, Error> {
     let target = layer_mut(font, glyph, layer)?;
     validate_points(&target.contours, requested)?;
     let mut points = requested
@@ -100,7 +100,7 @@ pub(super) fn set_smooth(
             level_node_handles(contour, point_ref.point);
         }
     }
-    Ok(())
+    Ok(Touched::of_points(requested))
 }
 
 fn level_node_handles(contour: &mut Contour, node: usize) {
@@ -145,7 +145,7 @@ pub(super) fn transform_selection(
     components: &[usize],
     anchors: &[usize],
     coefficients: [f64; 6],
-) -> Result<(), Error> {
+) -> Result<Touched, Error> {
     ensure_finite(&coefficients, "affine transform")?;
     let affine = Affine::new(coefficients);
     let target = layer_mut(font, glyph, layer)?;
@@ -162,7 +162,7 @@ pub(super) fn transform_selection(
             anchor.x = transformed.x;
             anchor.y = transformed.y;
         }
-        return Ok(());
+        return Ok(Touched::Layer);
     }
     let transformed = fw_geom::transform(&target.contours, affine);
     for point in points.iter().copied().collect::<HashSet<_>>() {
@@ -180,5 +180,5 @@ pub(super) fn transform_selection(
         target.anchors[index].x = transformed.x;
         target.anchors[index].y = transformed.y;
     }
-    Ok(())
+    Ok(Touched::of_points(points))
 }
