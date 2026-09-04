@@ -61,6 +61,21 @@ const labels: EditorLabels = {
   },
 }
 
+/** A layer whose bottom span is a cubic, for the segment cases. */
+const curvedLayer = makeLayer({
+  width: 600,
+  contours: [
+    makeContour([
+      makePoint(0, 0),
+      makePoint(60, 120, 'OffCurve'),
+      makePoint(140, 120, 'OffCurve'),
+      makePoint(200, 0, 'Curve'),
+      makePoint(200, 200, 'Line'),
+      makePoint(0, 200, 'Line'),
+    ]),
+  ],
+})
+
 function source(): EditorSource {
   return {
     doc: 1,
@@ -405,5 +420,120 @@ describe('EditorController nudging', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('EditorController error handling', () => {
+  function failing(method: 'doc.edit_apply' | 'doc.apply'): MockTransport {
+    const mock = createMockTransport({
+      'doc.edit_begin': () => 5,
+      'doc.edit_apply': () => {
+        if (method === 'doc.edit_apply') throw new Error('kernel says no')
+        return change()
+      },
+      'doc.edit_end': () => null,
+      'doc.apply': () => {
+        if (method === 'doc.apply') throw new Error('kernel says no')
+        return change()
+      },
+      'doc.undo': () => null,
+    })
+    setTransport(mock)
+    return mock
+  }
+
+  it('recovers the view when an apply fails mid-drag', async () => {
+    const { controller, recorded } = makeController()
+    failing('doc.edit_apply')
+
+    controller.pointerDown(at(200, 300))
+    controller.pointerMove(at(230, 300))
+    controller.pointerUp(at(230, 300))
+    await settle()
+
+    expect(recorded.editing.at(-1)).toBe(false)
+    expect(controller.frame().contours).toBeNull()
+    expect(recorded.reloads).toBeGreaterThan(0)
+    expect(String(recorded.errors[0])).toContain('kernel says no')
+  })
+
+  it('reports a failed single-shot command and still reloads', async () => {
+    const { controller, recorded } = makeController()
+    failing('doc.apply')
+
+    controller.selectAll()
+    await controller.toggleSmooth(false)
+    await settle()
+
+    expect(String(recorded.errors[0])).toContain('kernel says no')
+    expect(recorded.reloads).toBeGreaterThan(0)
+  })
+})
+
+describe('EditorController glyph switching', () => {
+  it('publishes the empty selection when another glyph arrives', () => {
+    const { controller, recorded } = makeController()
+    controller.pointerDown(at(200, 300))
+    controller.pointerUp(at(200, 300))
+    expect(recorded.selections.at(-1)).toEqual(['node:0:1'])
+
+    // A freshly mounted controller starts empty, so "the selection did not
+    // change" is true locally while the store still holds the old tab's.
+    controller.setSource({ ...source(), gid: 43, glyph: 'b' })
+
+    expect(recorded.selections.at(-1)).toEqual([])
+    expect(controller.currentSelection.size).toBe(0)
+  })
+
+  it('publishes it even when this controller never had a selection', () => {
+    const { controller, recorded } = makeController()
+    controller.setSource({ ...source(), gid: 44, glyph: 'c' })
+    expect(recorded.selections.at(-1)).toEqual([])
+  })
+})
+
+describe('EditorController segment grammar', () => {
+  function curved() {
+    const made = makeController()
+    made.controller.setSource({
+      ...source(),
+      outline: makeLayerOutline(curvedLayer),
+    })
+    return made
+  }
+
+  it('converts a line segment to a curve on Alt-click', async () => {
+    const { controller, transport } = curved()
+    // The straight right edge runs from font (200, 0) to (200, 200).
+    controller.pointerDown(at(200, 200, { ...NO_MODIFIERS, alt: true }))
+    await settle()
+
+    const params = transport.calls.find((entry) => entry.method === 'doc.apply')
+      ?.params as ApplyParams
+    expect(params.command).toMatchObject({ ConvertSegment: { to: 'Curve' } })
+  })
+
+  it('leaves a curve alone on Alt and lets the drag through', async () => {
+    const { controller, transport } = curved()
+    // The cubic bulges up to y ≈ 90 between (0, 0) and (200, 0).
+    controller.pointerDown(at(100, 210, { ...NO_MODIFIERS, alt: true }))
+    await settle()
+
+    // No command: converting a curve to a curve is a no-op that would still
+    // record an undo entry and dirty the document.
+    expect(
+      transport.calls.filter((entry) => entry.method === 'doc.apply'),
+    ).toHaveLength(0)
+    expect(controller.dragging).toBe(true)
+  })
+
+  it('reshapes a curve segment on a plain drag', () => {
+    const { controller } = curved()
+    controller.pointerDown(at(100, 210))
+    controller.pointerMove(at(100, 190))
+    const contour = controller.frame().contours?.[0]
+    // Both controls of the segment move with the pointer.
+    expect(contour?.points[1]).toMatchObject({ x: 60, y: 140 })
+    expect(contour?.points[2]).toMatchObject({ x: 140, y: 140 })
   })
 })

@@ -2,13 +2,13 @@ import { useTranslation } from 'react-i18next'
 
 import { NumberField } from '../../components/NumberField'
 import {
-  commit,
   setAnchorCommand,
   setComponentCommand,
   setGuideCommand,
 } from '../../editor/pointCommands'
 import { onlyTarget } from '../../editor/selection'
 
+import { commitField } from './commitField'
 import styles from './infoBox.module.css'
 import type { InfoRowsProps } from './infoBoxProps'
 
@@ -84,7 +84,7 @@ export function InfoObjectRows({
       }>,
     ) => {
       const merged = { ...parts, ...next }
-      void commit(
+      commitField(
         target,
         setComponentCommand(target, only.index, {
           ...view.component,
@@ -97,7 +97,8 @@ export function InfoObjectRows({
           ),
         }),
         t('editor.undo.setComponent'),
-      ).then(onCommitted)
+        onCommitted,
+      )
     }
     return (
       <>
@@ -142,14 +143,15 @@ export function InfoObjectRows({
             className={styles.toggle}
             aria-pressed={view.component.auto_align}
             onClick={() =>
-              void commit(
+              commitField(
                 target,
                 setComponentCommand(target, only.index, {
                   ...view.component,
                   auto_align: !view.component.auto_align,
                 }),
                 t('editor.undo.setComponent'),
-              ).then(onCommitted)
+                onCommitted,
+              )
             }
           >
             {view.component.auto_align ? t('common.yes') : t('common.no')}
@@ -162,14 +164,15 @@ export function InfoObjectRows({
             className={styles.toggle}
             aria-pressed={view.component.use_my_metrics}
             onClick={() =>
-              void commit(
+              commitField(
                 target,
                 setComponentCommand(target, only.index, {
                   ...view.component,
                   use_my_metrics: !view.component.use_my_metrics,
                 }),
                 t('editor.undo.setComponent'),
-              ).then(onCommitted)
+                onCommitted,
+              )
             }
           >
             {view.component.use_my_metrics ? t('common.yes') : t('common.no')}
@@ -183,11 +186,12 @@ export function InfoObjectRows({
     const anchor = outline.anchors[only.index]
     if (!anchor) return null
     const write = (next: Partial<typeof anchor>) =>
-      void commit(
+      commitField(
         target,
         setAnchorCommand(target, only.index, { ...anchor, ...next }),
         t('editor.undo.setAnchor'),
-      ).then(onCommitted)
+        onCommitted,
+      )
     return (
       <>
         <label className={styles.row}>
@@ -226,14 +230,15 @@ export function InfoObjectRows({
       only.scope === 'layer' ? outline.guides[only.index] : undefined
     if (!guide) return null
     const write = (next: Partial<typeof guide>) =>
-      void commit(
+      commitField(
         target,
         setGuideCommand(target, only.scope, master, only.index, {
           ...guide,
           ...next,
         }),
         t('editor.undo.setGuide'),
-      ).then(onCommitted)
+        onCommitted,
+      )
     return (
       <>
         <NumberField

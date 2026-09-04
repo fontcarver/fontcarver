@@ -58,22 +58,53 @@ export class EditSession {
   private chain: Promise<void>
   private applied = false
   private closed = false
+  private errored = false
+  private readonly onError: (error: unknown) => void
 
   constructor(
     doc: DocId,
     label: string,
     scheduler: Scheduler = frameScheduler,
+    onError: (error: unknown) => void = () => undefined,
   ) {
     this.doc = doc
     this.label = label
     this.scheduler = scheduler
+    this.onError = onError
     this.token = call('doc.edit_begin', { doc, label })
-    this.chain = this.token.then(() => undefined)
+    this.chain = this.token
+      .then(() => undefined)
+      .catch((error: unknown) => {
+        this.onError(error)
+      })
+  }
+
+  /**
+   * Appends one kernel call to the gesture's chain.
+   *
+   * The chain never rejects: a failed call is reported and the following steps
+   * still run, because whatever else happens the gesture has to be closed — an
+   * open edit token would swallow the next gesture's undo entry.
+   */
+  private step(run: () => Promise<void>): Promise<void> {
+    this.chain = this.chain.then(run).catch((error: unknown) => {
+      this.errored = true
+      this.onError(error)
+    })
+    return this.chain
   }
 
   /** Whether at least one command reached the kernel, i.e. an undo entry exists. */
   get dirty(): boolean {
     return this.applied
+  }
+
+  /**
+   * Whether any call in this gesture failed. The document may then hold part
+   * of the gesture, so the caller has to refetch rather than trust its preview.
+   */
+  get failed(): boolean {
+    return this.errored
   }
 
   /** Resolves once `edit_begin` has answered. */
@@ -108,24 +139,22 @@ export class EditSession {
     if (build === null || this.closed) return this.chain
     const command = build()
     if (command === null) return this.chain
-    this.chain = this.chain.then(async () => {
+    return this.step(async () => {
       const token = await this.token
       await call('doc.edit_apply', { doc: this.doc, token, command })
       this.applied = true
     })
-    return this.chain
   }
 
   /** Sends everything queued and finalises the gesture into one undo entry. */
   async end(): Promise<void> {
     if (this.closed) return this.chain
-    await this.flush()
+    void this.flush()
     this.closed = true
-    this.chain = this.chain.then(async () => {
+    return this.step(async () => {
       const token = await this.token
       await call('doc.edit_end', { doc: this.doc, token })
     })
-    return this.chain
   }
 
   /**
@@ -141,19 +170,20 @@ export class EditSession {
       this.scheduler.cancel(this.frame)
       this.frame = null
     }
-    const wasDirty = this.applied
     if (!this.closed) {
       this.closed = true
-      this.chain = this.chain.then(async () => {
+      this.step(async () => {
         const token = await this.token
         await call('doc.edit_end', { doc: this.doc, token })
       })
     }
-    if (wasDirty)
-      this.chain = this.chain.then(async () => {
-        await call('doc.undo', { doc: this.doc })
-      })
-    return this.chain
+    // Whether an undo entry exists is decided *after* the calls already on the
+    // wire have answered: Escape normally arrives while an apply is in flight,
+    // and reading the flag now would conclude that nothing had been applied.
+    return this.step(async () => {
+      if (!this.applied) return
+      await call('doc.undo', { doc: this.doc })
+    })
   }
 }
 

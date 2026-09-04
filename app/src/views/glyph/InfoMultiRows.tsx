@@ -3,13 +3,14 @@ import { useTranslation } from 'react-i18next'
 
 import { NumberField } from '../../components/NumberField'
 import { boundsOf, pointAt } from '../../editor/outlineGeometry'
-import { commit, transformSelectionCommand } from '../../editor/pointCommands'
+import { transformSelectionCommand } from '../../editor/pointCommands'
 import {
   selectedIndexes,
   selectedPointRefs,
   selectionCounts,
 } from '../../editor/selection'
 
+import { commitField } from './commitField'
 import styles from './infoBox.module.css'
 import type { InfoRowsProps } from './infoBoxProps'
 
@@ -69,7 +70,7 @@ export function InfoMultiRows({
     affine: [number, number, number, number, number, number],
     label: string,
   ) =>
-    void commit(
+    commitField(
       target,
       transformSelectionCommand(
         target,
@@ -77,7 +78,8 @@ export function InfoMultiRows({
         affine,
       ),
       label,
-    ).then(onCommitted)
+      onCommitted,
+    )
 
   const translate = (dx: number, dy: number) =>
     apply([1, 0, 0, 1, dx, dy], t('editor.undo.moveSelection'))

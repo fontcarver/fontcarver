@@ -298,6 +298,35 @@ export function translatePoints(
   })
 }
 
+/**
+ * Applies a per-point translation, returning new contours.
+ *
+ * A gesture that constrains each point differently — an angle-locked segment
+ * reshape, where every handle stays on its own line — cannot be expressed as a
+ * single delta, so it carries one delta per stored index instead.
+ */
+export function translateEach(
+  contours: readonly Contour[],
+  deltas: ReadonlyMap<string, Point2>,
+): Contour[] {
+  if (deltas.size === 0) return [...contours]
+  return contours.map((contour, contourIndex) => {
+    if (
+      !contour.points.some((_, index) => deltas.has(`${contourIndex}:${index}`))
+    )
+      return contour
+    return {
+      ...contour,
+      points: contour.points.map((point, index) => {
+        const delta = deltas.get(`${contourIndex}:${index}`)
+        return delta
+          ? { ...point, x: point.x + delta.x, y: point.y + delta.y }
+          : point
+      }),
+    }
+  })
+}
+
 /** Sets one stored point's absolute position, returning new contours. */
 export function setPointPosition(
   contours: readonly Contour[],

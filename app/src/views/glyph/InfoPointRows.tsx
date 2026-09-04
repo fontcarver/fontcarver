@@ -4,7 +4,6 @@ import { NumberField } from '../../components/NumberField'
 import { handlePolar } from '../../editor/hud'
 import { nodeOfHandle, pointAt } from '../../editor/outlineGeometry'
 import {
-  commit,
   movePointsCommand,
   nextSmoothFlag,
   setPositionCommand,
@@ -12,6 +11,7 @@ import {
 } from '../../editor/pointCommands'
 import { onlyTarget } from '../../editor/selection'
 
+import { commitField } from './commitField'
 import styles from './infoBox.module.css'
 import type { InfoRowsProps } from './infoBoxProps'
 
@@ -44,11 +44,12 @@ export function InfoPointRows({
           value={point.x}
           invalidHint={t('infoBox.invalid')}
           onCommit={(x) =>
-            void commit(
+            commitField(
               target,
               setPositionCommand(target, ref, x, point.y),
               t('editor.undo.setPosition'),
-            ).then(onCommitted)
+              onCommitted,
+            )
           }
         />
         <NumberField
@@ -56,11 +57,12 @@ export function InfoPointRows({
           value={point.y}
           invalidHint={t('infoBox.invalid')}
           onCommit={(y) =>
-            void commit(
+            commitField(
               target,
               setPositionCommand(target, ref, point.x, y),
               t('editor.undo.setPosition'),
-            ).then(onCommitted)
+              onCommitted,
+            )
           }
         />
         <div className={styles.row}>
@@ -70,7 +72,7 @@ export function InfoPointRows({
             className={styles.toggle}
             aria-pressed={point.smooth}
             onClick={() =>
-              void commit(
+              commitField(
                 target,
                 smoothCommand(
                   target,
@@ -79,7 +81,8 @@ export function InfoPointRows({
                   true,
                 ),
                 t('editor.undo.toggleSmooth'),
-              ).then(onCommitted)
+                onCommitted,
+              )
             }
           >
             {point.smooth ? t('infoBox.smooth') : t('infoBox.corner')}
@@ -99,11 +102,12 @@ export function InfoPointRows({
     : { x: 0, y: 0 }
   const polar = anchor ? handlePolar(anchor, point) : { angle: 0, length: 0 }
   const move = (dx: number, dy: number) =>
-    void commit(
+    commitField(
       target,
       movePointsCommand(target, [ref], dx, dy, 'PointsOnly'),
       t('editor.undo.moveHandle'),
-    ).then(onCommitted)
+      onCommitted,
+    )
 
   return (
     <>

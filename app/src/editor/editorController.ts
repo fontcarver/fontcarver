@@ -14,6 +14,7 @@
 
 import type {
   Anchor,
+  Command,
   Contour,
   DocId,
   GlyphId,
@@ -45,6 +46,7 @@ import {
   movedPointRefs,
   translatePoints,
   type EditOutline,
+  type EditSegment,
 } from './outlineGeometry'
 import {
   commit,
@@ -225,7 +227,14 @@ export class EditorController {
     this.source = source
     this.edit = buildEditOutline(source?.outline.contours ?? [])
     this.preview = null
-    if (changedGlyph) this.setSelection(EMPTY_SELECTION)
+    if (!changedGlyph) return
+    // Published unconditionally, not through `setSelection`: a freshly mounted
+    // controller's selection is already empty, so the "nothing changed" guard
+    // would leave the *store* holding the previous tab's selection — point
+    // indexes that mean something else in this glyph.
+    this.selection = EMPTY_SELECTION
+    this.callbacks.onSelectionChange(EMPTY_SELECTION)
+    this.callbacks.repaint()
   }
 
   /** Whether a drag gesture is currently live; read by dev verification. */
@@ -412,12 +421,10 @@ export class EditorController {
     const nodes = selectedNodeRefs(this.selection)
     if (!target || nodes.length === 0) return
     const smooth = nextSmoothFlag(this.contours(), nodes)
-    await commit(
-      target,
+    await this.runCommand(
       smoothCommand(target, nodes, smooth, !keepOutline),
       this.labels.toggleSmooth,
     )
-    this.callbacks.onReload()
   }
 
   /** Deletes the selected nodes; `break` opens the contour instead. */
@@ -425,8 +432,7 @@ export class EditorController {
     const target = this.layerTarget()
     const points = selectedPointRefs(this.selection)
     if (!target || points.length === 0) return
-    await commit(
-      target,
+    await this.runCommand(
       deleteCommand(
         target,
         points,
@@ -435,7 +441,25 @@ export class EditorController {
       this.labels.deletePoints,
     )
     this.setSelection(EMPTY_SELECTION)
-    this.callbacks.onReload()
+  }
+
+  /**
+   * Applies one command as its own undo entry.
+   *
+   * A failure is reported and the view still reconciles: the kernel is the
+   * source of truth, so after anything unexpected the honest move is to refetch
+   * rather than keep drawing what we hoped had happened.
+   */
+  private async runCommand(command: Command, label: string): Promise<void> {
+    const target = this.layerTarget()
+    if (!target) return
+    try {
+      await commit(target, command, label)
+    } catch (error) {
+      this.callbacks.onError(error)
+    } finally {
+      this.callbacks.onReload()
+    }
   }
 
   /** Selects every point of the layer. */
@@ -495,6 +519,7 @@ export class EditorController {
       layer: target.layer,
       label: (count) => this.labels.nudgePoints(count),
       onEnd: () => this.closeNudge(),
+      onError: (error) => this.callbacks.onError(error),
     })
     this.nudge.nudge(points, delta, handles)
     this.publishEditing()
@@ -549,10 +574,13 @@ export class EditorController {
       const drag = this.drag
       this.drag = null
       this.preview = null
-      void drag.cancel().then(() => {
-        this.publishEditing()
-        this.callbacks.onReload()
-      })
+      void drag
+        .cancel()
+        .catch((error: unknown) => this.callbacks.onError(error))
+        .finally(() => {
+          this.publishEditing()
+          this.callbacks.onReload()
+        })
       this.callbacks.repaint()
       return
     }
@@ -625,9 +653,12 @@ export class EditorController {
   private handleSegmentShortcut(hit: Hit, modifiers: Modifiers): boolean {
     const target = this.layerTarget()
     if (!target || hit.target.kind !== 'segment') return false
-    if (modifiers.alt) {
-      void commit(
-        target,
+    const segment = this.segmentAt(hit.target.contour, hit.target.segment)
+    // Alt only converts a *line*. On a curve it means "reshape keeping the
+    // handle angles" (§4.3), and converting a curve to a curve would record an
+    // empty undo entry and dirty the document for nothing.
+    if (modifiers.alt && segment?.kind === 'line') {
+      void this.runCommand(
         convertSegmentCommand(
           target,
           hit.target.contour,
@@ -635,12 +666,11 @@ export class EditorController {
           'Curve',
         ),
         this.labels.convertSegment,
-      ).then(() => this.callbacks.onReload())
+      )
       return true
     }
     if (modifiers.shift) {
-      void commit(
-        target,
+      void this.runCommand(
         insertPointCommand(
           target,
           hit.target.contour,
@@ -648,10 +678,17 @@ export class EditorController {
           Math.min(0.999, Math.max(0.001, hit.t ?? 0.5)),
         ),
         this.labels.insertPoint,
-      ).then(() => this.callbacks.onReload())
+      )
       return true
     }
     return false
+  }
+
+  /** One geometric segment of the layer, by contour and index. */
+  private segmentAt(contour: number, index: number): EditSegment | undefined {
+    return this.edit.segments.find(
+      (candidate) => candidate.contour === contour && candidate.index === index,
+    )
   }
 
   private startDrag(hit: Hit, origin: Point2, modifiers: Modifiers): void {
@@ -674,6 +711,7 @@ export class EditorController {
           moveAnchor: this.labels.moveAnchor,
           moveComponent: this.labels.moveComponent,
         },
+        onError: (error) => this.callbacks.onError(error),
         snap: (delta, moved) => {
           const match = snapDelta(this.snapInput(), delta, moved)
           this.snap = match
@@ -728,10 +766,20 @@ export class EditorController {
     if (!drag) return
     this.drag = null
     this.snap = null
-    const changed = await drag.finish()
-    this.preview = null
-    this.publishEditing()
-    if (changed) this.callbacks.onReload()
-    else this.callbacks.repaint()
+    let changed = true
+    try {
+      changed = await drag.finish()
+    } catch (error) {
+      this.callbacks.onError(error)
+    } finally {
+      // However the gesture ended, the preview goes away, reloads resume and
+      // the canvas repaints; leaving any of those behind strands the editor.
+      this.preview = null
+      this.publishEditing()
+      // A gesture that failed part-way leaves the document in a state only the
+      // kernel knows, so it is refetched even though nothing "changed".
+      if (changed || drag.failed) this.callbacks.onReload()
+      else this.callbacks.repaint()
+    }
   }
 }

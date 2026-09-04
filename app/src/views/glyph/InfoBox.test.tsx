@@ -1,9 +1,10 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { setTransport, type ApplyParams } from '../../api'
 import { selectionOf, type Selection } from '../../editor/selection'
+import { setCommandErrorReporter } from '../../shell/commands'
 import { initialEditorState, useEditorStore } from '../../stores/editorStore'
 import {
   makeContour,
@@ -69,7 +70,10 @@ function applied(mock: MockTransport): ApplyParams | undefined {
 }
 
 beforeEach(() => useEditorStore.setState(initialEditorState()))
-afterEach(() => setTransport(undefined))
+afterEach(() => {
+  setTransport(undefined)
+  setCommandErrorReporter(() => undefined)
+})
 
 describe('InfoBox', () => {
   it('commits a node coordinate as one SetPointPosition', async () => {
@@ -209,6 +213,29 @@ describe('InfoBox', () => {
         anchor: { name: 'top', x: 300, y: 720 },
       },
     })
+  })
+
+  it('reports a refused commit and leaves the field usable', async () => {
+    const user = userEvent.setup()
+    const errors: unknown[] = []
+    setCommandErrorReporter((error) => errors.push(error))
+    setTransport(
+      createMockTransport({
+        'doc.apply': () => {
+          throw new Error('point index 1 does not exist')
+        },
+      }),
+    )
+    show(selectionOf([{ kind: 'node', contour: 0, point: 1 }]))
+
+    const field = screen.getByLabelText('X')
+    await user.clear(field)
+    await user.type(field, '600{Enter}')
+
+    await waitFor(() =>
+      expect(String(errors[0])).toContain('point index 1 does not exist'),
+    )
+    expect(field).toBeEnabled()
   })
 
   it('collapses and expands from its header', async () => {

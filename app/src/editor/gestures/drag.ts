@@ -30,6 +30,7 @@ import {
   oppositeHandle,
   pointAt,
   setPointPosition,
+  translateEach,
   translatePoints,
 } from '../outlineGeometry'
 import {
@@ -97,6 +98,8 @@ export interface DragContext {
   /** Applies snapping to a proposed delta; omitted or `null` disables it. */
   snap?: (delta: Point2, moved: readonly Point2[]) => SnapResult
   scheduler?: Scheduler
+  /** Where a failed kernel call is reported. */
+  onError?: (error: unknown) => void
 }
 
 function refKey(ref: PointRef): string {
@@ -263,6 +266,9 @@ export class DragGesture {
   private readonly movedRefs: PointRef[]
   private delta: Point2 = { x: 0, y: 0 }
   private sent: Point2 = { x: 0, y: 0 }
+  /** Per-point deltas, when the gesture constrains each point separately. */
+  private deltas: Map<string, Point2> | null = null
+  private sentDeltas = new Map<string, Point2>()
   private mirror: { handle: PointRef; node: Point2; from: Point2 } | null = null
   private snapLabel: string | null = null
 
@@ -279,6 +285,7 @@ export class DragGesture {
       context.doc,
       plan.label,
       context.scheduler ?? frameScheduler,
+      context.onError,
     )
     this.movedRefs =
       plan.handleMode === 'WithHandles'
@@ -327,6 +334,11 @@ export class DragGesture {
     return this.session.dirty
   }
 
+  /** Whether any kernel call of this gesture failed. */
+  get failed(): boolean {
+    return this.session.failed
+  }
+
   /** Moves the gesture to a new pointer position, in font units. */
   move(pointer: Point2, modifiers: Modifiers): void {
     let delta = { x: pointer.x - this.origin.x, y: pointer.y - this.origin.y }
@@ -343,6 +355,15 @@ export class DragGesture {
         angleLocked = true
       }
     }
+    // ⌥ on a segment reshapes it while every handle keeps its own angle
+    // (design spec §4.3), which means one delta per control rather than one
+    // for the gesture.
+    this.deltas =
+      this.plan.kind === 'segment' && modifiers.alt && !modifiers.mod
+        ? this.perHandleDeltas(delta)
+        : null
+    if (this.deltas) angleLocked = true
+
     this.snapLabel = null
     // Snapping would pull an angle-locked handle off its line, which is the
     // one thing Alt promised it would not do.
@@ -357,15 +378,30 @@ export class DragGesture {
     this.session.queue(() => this.command())
   }
 
+  /**
+   * The deltas that keep every control of a segment on its own handle line.
+   */
+  private perHandleDeltas(delta: Point2): Map<string, Point2> | null {
+    const deltas = new Map<string, Point2>()
+    for (const ref of this.plan.refs) {
+      const handle = pointAt(this.context.contours, ref)
+      const node = nodeOfHandle(this.context.contours, ref)
+      const nodePoint = node ? pointAt(this.context.contours, node) : null
+      if (!handle || !nodePoint) return null
+      deltas.set(
+        `${ref.contour}:${ref.point}`,
+        projectOnto(delta, nodePoint, handle),
+      )
+    }
+    return deltas.size > 0 ? deltas : null
+  }
+
   /** The optimistic geometry the canvas should draw. */
   get preview(): DragPreview {
     const { contours, anchors } = this.context
-    const moved = translatePoints(
-      contours,
-      this.movedRefs,
-      this.delta.x,
-      this.delta.y,
-    )
+    const moved = this.deltas
+      ? translateEach(contours, this.deltas)
+      : translatePoints(contours, this.movedRefs, this.delta.x, this.delta.y)
     const withMirror = this.mirror
       ? setPointPosition(
           moved,
@@ -425,6 +461,35 @@ export class DragGesture {
     return points
   }
 
+  /** One `MovePoints` per control, each with the step since its last apply. */
+  private perHandleCommand(
+    deltas: ReadonlyMap<string, Point2>,
+  ): Command | null {
+    const commands: Command[] = []
+    for (const ref of this.plan.refs) {
+      const key = `${ref.contour}:${ref.point}`
+      const total = deltas.get(key)
+      if (!total) continue
+      const sent = this.sentDeltas.get(key) ?? { x: 0, y: 0 }
+      const step = { x: total.x - sent.x, y: total.y - sent.y }
+      if (step.x === 0 && step.y === 0) continue
+      this.sentDeltas.set(key, { ...total })
+      commands.push({
+        MovePoints: {
+          glyph: this.context.glyph,
+          layer: this.context.layer,
+          points: [ref],
+          delta: [step.x, step.y],
+          handles: 'PointsOnly',
+        },
+      })
+    }
+    if (commands.length === 0) return null
+    return commands.length === 1
+      ? (commands[0] as Command)
+      : { Batch: commands }
+  }
+
   private mirrorTarget(): Point2 {
     const mirror = this.mirror
     if (!mirror) return { x: 0, y: 0 }
@@ -450,6 +515,7 @@ export class DragGesture {
    * gesture is the delta the user dragged.
    */
   private command(): Command | null {
+    if (this.deltas) return this.perHandleCommand(this.deltas)
     const step = {
       x: this.delta.x - this.sent.x,
       y: this.delta.y - this.sent.y,

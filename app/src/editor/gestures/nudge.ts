@@ -43,6 +43,8 @@ export interface NudgeContext {
    * this object rather than in response to any input.
    */
   onEnd?: () => void
+  /** Where a failed kernel call is reported. */
+  onError?: (error: unknown) => void
 }
 
 /**
@@ -89,6 +91,7 @@ export class NudgeCoalescer {
         this.context.doc,
         this.context.label(refs.length),
         this.context.scheduler ?? frameScheduler,
+        this.context.onError,
       )
     }
     this.total = { x: this.total.x + delta.x, y: this.total.y + delta.y }

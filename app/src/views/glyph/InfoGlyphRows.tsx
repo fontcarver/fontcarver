@@ -1,9 +1,10 @@
 import { useTranslation } from 'react-i18next'
 
 import { NumberField } from '../../components/NumberField'
-import { commit, setMetricsCommand } from '../../editor/pointCommands'
+import { setMetricsCommand } from '../../editor/pointCommands'
 
 import { formatUnicodes } from './glyphScene'
+import { commitField } from './commitField'
 import styles from './infoBox.module.css'
 import type { InfoRowsProps } from './infoBoxProps'
 
@@ -28,11 +29,12 @@ export function InfoGlyphRows({
   const { t } = useTranslation()
   const metrics = outline.resolved_metrics
   const write = (values: { width?: number; lsb?: number; rsb?: number }) =>
-    void commit(
+    commitField(
       target,
       setMetricsCommand(target, values),
       t('editor.undo.setMetrics'),
-    ).then(onCommitted)
+      onCommitted,
+    )
 
   return (
     <>

@@ -135,6 +135,87 @@ describe('planDrag', () => {
   })
 })
 
+// A cubic whose two controls lean in opposite directions, so an angle-locked
+// reshape has to give each of them its own delta.
+const curved = makeContour([
+  makePoint(0, 0),
+  makePoint(60, 120, 'OffCurve'),
+  makePoint(140, 120, 'OffCurve'),
+  makePoint(200, 0, 'Curve'),
+])
+
+const segmentHit: Hit = {
+  target: { kind: 'segment', contour: 0, segment: 0 },
+  point: { x: 100, y: 90 },
+  distance: 0,
+}
+
+describe('segment reshaping', () => {
+  it('moves both controls together on a plain drag', async () => {
+    const mock = transport()
+    const drag = beginDrag(
+      context({ contours: [curved] }),
+      segmentHit,
+      { x: 100, y: 90 },
+      NO_MODIFIERS,
+    )
+    await drag?.ready()
+    drag?.move({ x: 100, y: 110 }, NO_MODIFIERS)
+    await drag?.finish()
+
+    expect(applied(mock)).toEqual([
+      {
+        MovePoints: {
+          glyph: 'a',
+          layer: 'layer-1',
+          points: [
+            { contour: 0, point: 1 },
+            { contour: 0, point: 2 },
+          ],
+          delta: [0, 20],
+          handles: 'WithHandles',
+        },
+      },
+    ])
+  })
+
+  it('keeps each handle on its own line while Alt is held', async () => {
+    const mock = transport()
+    const drag = beginDrag(
+      context({ contours: [curved] }),
+      segmentHit,
+      { x: 100, y: 90 },
+      { ...NO_MODIFIERS, alt: true },
+    )
+    await drag?.ready()
+    drag?.move({ x: 100, y: 110 }, { ...NO_MODIFIERS, alt: true })
+    await drag?.finish()
+
+    // Each control is projected onto the line from its own node, so the two
+    // handles keep their angles and the curve keeps its tangents.
+    const command = applied(mock)[0]
+    expect(command && 'Batch' in command ? command.Batch.length : 0).toBe(2)
+    const steps =
+      command && 'Batch' in command
+        ? command.Batch.map((entry) =>
+            'MovePoints' in entry
+              ? [entry.MovePoints.points, entry.MovePoints.delta]
+              : null,
+          )
+        : []
+    expect(steps[0]?.[0]).toEqual([{ contour: 0, point: 1 }])
+    expect((steps[0]?.[1] as number[])[0]).toBeCloseTo(8, 3)
+    expect((steps[0]?.[1] as number[])[1]).toBeCloseTo(16, 3)
+    expect(steps[1]?.[0]).toEqual([{ contour: 0, point: 2 }])
+    expect((steps[1]?.[1] as number[])[0]).toBeCloseTo(-8, 3)
+    expect((steps[1]?.[1] as number[])[1]).toBeCloseTo(16, 3)
+
+    const preview = drag?.preview.contours[0]?.points
+    expect(preview?.[1]?.x).toBeCloseTo(68, 3)
+    expect(preview?.[2]?.x).toBeCloseTo(132, 3)
+  })
+})
+
 describe('constrainDelta', () => {
   it('locks to the nearest 0/45/90 degree direction', () => {
     expect(constrainDelta({ x: 40, y: 3 })).toEqual({
@@ -301,6 +382,72 @@ describe('DragGesture', () => {
       'doc.edit_end',
       'doc.undo',
     ])
+  })
+
+  it('undoes a cancelled gesture whose apply was still in flight', async () => {
+    // Escape normally arrives while an apply is on the wire, because applies
+    // are queued every animation frame for as long as the pointer moves.
+    let release = () => undefined as void
+    const inFlight = new Promise<void>((resolve) => {
+      release = () => resolve()
+    })
+    const mock = createMockTransport({
+      'doc.edit_begin': () => 7,
+      'doc.edit_apply': async () => {
+        await inFlight
+        return {
+          glyphs: [42],
+          font_info: false,
+          masters: false,
+          glyph_order: false,
+          metrics: false,
+          layers: false,
+          guides: false,
+        }
+      },
+      'doc.edit_end': () => null,
+      'doc.undo': () => null,
+    })
+    setTransport(mock)
+
+    const drag = beginDrag(context(), nodeHit, { x: 200, y: 0 }, NO_MODIFIERS)
+    await drag?.ready()
+    drag?.move({ x: 260, y: 0 }, NO_MODIFIERS)
+    const cancelled = drag?.cancel()
+    release()
+    await cancelled
+
+    expect(mock.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.undo',
+    ])
+  })
+
+  it('reports a failing apply instead of leaving an unhandled rejection', async () => {
+    const errors: unknown[] = []
+    setTransport(
+      createMockTransport({
+        'doc.edit_begin': () => 7,
+        'doc.edit_apply': () => {
+          throw new Error('invalid_params: stale edit token')
+        },
+        'doc.edit_end': () => null,
+      }),
+    )
+    const drag = beginDrag(
+      { ...context(), onError: (error) => errors.push(error) },
+      nodeHit,
+      { x: 200, y: 0 },
+      NO_MODIFIERS,
+    )
+    await drag?.ready()
+    drag?.move({ x: 260, y: 0 }, NO_MODIFIERS)
+    await drag?.flush()
+    // The gesture still closes cleanly, and the failure is reported.
+    expect(await drag?.finish()).toBe(false)
+    expect(String(errors[0])).toContain('stale edit token')
   })
 
   it('does not undo a cancelled gesture that never applied anything', async () => {
