@@ -332,16 +332,21 @@ export class DragGesture {
     let delta = { x: pointer.x - this.origin.x, y: pointer.y - this.origin.y }
     if (modifiers.shift) delta = this.constrain(delta)
     // Alt keeps a handle on its own line (design spec §4.3).
+    let angleLocked = false
     if (this.plan.kind === 'handle' && modifiers.alt && !modifiers.mod) {
       const handle = this.plan.refs[0]
       const node = handle ? nodeOfHandle(this.context.contours, handle) : null
       const nodePoint = node ? pointAt(this.context.contours, node) : null
       const handlePoint = handle ? pointAt(this.context.contours, handle) : null
-      if (nodePoint && handlePoint)
+      if (nodePoint && handlePoint) {
         delta = projectOnto(delta, nodePoint, handlePoint)
+        angleLocked = true
+      }
     }
     this.snapLabel = null
-    if (!modifiers.mod && this.context.snap) {
+    // Snapping would pull an angle-locked handle off its line, which is the
+    // one thing Alt promised it would not do.
+    if (!modifiers.mod && !angleLocked && this.context.snap) {
       const moved = this.movedPoints(delta)
       const snapped = this.context.snap(delta, moved)
       delta = snapped.delta

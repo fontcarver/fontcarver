@@ -291,3 +291,25 @@ describe('EditorController dragging', () => {
     expect(frame.hud).toContain('Δx 30')
   })
 })
+
+describe('EditorController modifier grammar', () => {
+  it('does not toggle the selection when Ctrl+Alt starts a mirror drag', () => {
+    const { controller } = makeController()
+    controller.pointerDown(at(200, 300))
+    controller.pointerUp(at(200, 300))
+    expect([...controller.currentSelection.keys()]).toEqual(['node:0:1'])
+
+    const mirror = { ...NO_MODIFIERS, mod: true, alt: true }
+    controller.pointerDown(at(200, 300, mirror))
+    // Ctrl alone would have removed it; Ctrl+Alt is a drag modifier.
+    expect([...controller.currentSelection.keys()]).toEqual(['node:0:1'])
+  })
+
+  it('keeps Alt from hiding handles under the pointer', () => {
+    const { controller } = makeController()
+    const alt = { ...NO_MODIFIERS, alt: true }
+    // An Alt-drag of a node still grabs the node it is pointing at.
+    controller.pointerDown(at(200, 300, alt))
+    expect([...controller.currentSelection.keys()]).toEqual(['node:0:1'])
+  })
+})

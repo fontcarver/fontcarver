@@ -7,6 +7,7 @@ import {
   type RefObject,
 } from 'react'
 
+import { recordPaint } from '../../canvas/paintStats'
 import { Viewport } from '../../canvas/Viewport'
 import { registerEditor } from '../../editor/activeEditor'
 import {
@@ -128,6 +129,9 @@ export function GlyphCanvas({
     if (!ctx) return
     const current = frame.current
     const editing = controller.frame()
+    // Dev builds time every frame so the 60 fps target of design spec §13 can
+    // be measured from the running app rather than asserted.
+    const started = import.meta.env.DEV ? performance.now() : 0
     renderGlyph(ctx, viewport, {
       scene: editing.contours
         ? {
@@ -146,6 +150,7 @@ export function GlyphCanvas({
       hud: editing.hud,
       pointerScreen: editing.pointerScreen,
     })
+    if (import.meta.env.DEV) recordPaint(performance.now() - started)
   }, [controller, viewport])
 
   useEffect(() => {
@@ -297,10 +302,11 @@ export function GlyphCanvas({
       const input = pointerInput(event)
       pointerRef.current = viewport.toFont({ x: input.x, y: input.y })
       onPointerFont(roundPoint(pointerRef.current))
+      // The controller repaints whatever the move changed; painting again
+      // here would double the work of every pointer move.
       controller.pointerMove(input)
-      draw()
     },
-    [controller, draw, onPointerFont, pointerInput, viewport],
+    [controller, onPointerFont, pointerInput, viewport],
   )
 
   const endPointer = useCallback(

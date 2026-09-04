@@ -23,7 +23,10 @@ export function selectionForClick(
   modifiers: Modifiers,
 ): Selection {
   if (!hit) return modifiers.shift || modifiers.mod ? selection : new Map()
-  if (modifiers.mod) return toggleSelection(selection, hit.target)
+  // Ctrl alone toggles; Ctrl+Alt is the mirror-handle *drag* modifier
+  // (design spec §4.3) and must not also mean "toggle this out of the set".
+  if (modifiers.mod && !modifiers.alt)
+    return toggleSelection(selection, hit.target)
   if (modifiers.shift) return extendSelection(selection, hit.target)
   // Clicking inside the selection keeps it, so a drag can move the whole set.
   if (isSelected(selection, hit.target)) return selection

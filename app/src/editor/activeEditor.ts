@@ -12,11 +12,19 @@ import type { EditorController } from './editorController'
 
 let current: EditorController | null = null
 
+declare global {
+  /** Dev-only handle used by interactive verification sessions. */
+  var __fwEditor: EditorController | null | undefined
+}
+
 /** Registers the mounted editor; the disposer only clears its own handle. */
 export function registerEditor(controller: EditorController): () => void {
   current = controller
+  if (import.meta.env.DEV) globalThis.__fwEditor = controller
   return () => {
-    if (current === controller) current = null
+    if (current !== controller) return
+    current = null
+    if (import.meta.env.DEV) globalThis.__fwEditor = null
   }
 }
 

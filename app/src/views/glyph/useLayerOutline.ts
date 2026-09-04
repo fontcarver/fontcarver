@@ -42,14 +42,16 @@ export function useLayerOutline(
   const [generation, setGeneration] = useState(0)
   const [state, setState] = useState<{
     key: string
+    identity: string
     outline: LayerOutline | null
     error: string | null
-  }>({ key: '', outline: null, error: null })
+  }>({ key: '', identity: '', outline: null, error: null })
   const editing = useEditorStore((store) => store.editing)
   const deferred = useRef(false)
 
   const layerKey = layer ?? ''
-  const key = `${doc}:${gid ?? 'none'}:${layerKey}:${generation}`
+  const identity = `${doc}:${gid ?? 'none'}:${layerKey}`
+  const key = `${identity}:${generation}`
 
   const reload = useCallback(() => setGeneration((value) => value + 1), [])
 
@@ -62,12 +64,13 @@ export function useLayerOutline(
       layer: layerKey === '' ? null : layerKey,
     })
       .then((outline) => {
-        if (!cancelled) setState({ key, outline, error: null })
+        if (!cancelled) setState({ key, identity, outline, error: null })
       })
       .catch((error: unknown) => {
         if (cancelled) return
         setState({
           key,
+          identity,
           outline: null,
           error: error instanceof Error ? error.message : String(error),
         })
@@ -75,7 +78,7 @@ export function useLayerOutline(
     return () => {
       cancelled = true
     }
-  }, [doc, gid, key, layerKey])
+  }, [doc, gid, identity, key, layerKey])
 
   useEffect(
     () =>
@@ -98,7 +101,9 @@ export function useLayerOutline(
     reload()
   }, [editing, reload])
 
-  const current = state.key === key ? state : null
+  // The outline of the same layer stays on screen while a reload is in flight:
+  // blanking it would unmount the canvas — and with it a live gesture.
+  const current = state.identity === identity ? state : null
   return {
     outline: current?.outline ?? null,
     error: current?.error ?? null,

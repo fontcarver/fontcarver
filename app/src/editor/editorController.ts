@@ -55,7 +55,6 @@ import {
   selectedNodeRefs,
   selectedPointRefs,
   selectionOf,
-  targetKey,
   unionSelection,
   type EditTarget,
   type Selection,
@@ -192,14 +191,26 @@ export class EditorController {
     this.updateCursor()
   }
 
-  /** Installs new data. Any live preview is dropped: the kernel has spoken. */
+  /**
+   * Installs new data. Any live preview is dropped: the kernel has spoken.
+   *
+   * The selection survives a reload of the same glyph — an `edit_apply` makes
+   * the view refetch, and losing the selection every frame of a drag would be
+   * absurd — and is cleared only when a different glyph arrives.
+   */
   setSource(source: EditorSource | null): void {
     const changedGlyph =
-      source?.doc !== this.source?.doc || source?.gid !== this.source?.gid
+      source !== null &&
+      (source.doc !== this.source?.doc || source.gid !== this.source?.gid)
     this.source = source
     this.edit = buildEditOutline(source?.outline.contours ?? [])
     this.preview = null
     if (changedGlyph) this.setSelection(EMPTY_SELECTION)
+  }
+
+  /** Whether a drag gesture is currently live; read by dev verification. */
+  get dragging(): boolean {
+    return this.drag !== null
   }
 
   /** The selection, for the Info box and the status bar. */
@@ -244,6 +255,11 @@ export class EditorController {
   /** Pointer went down on the canvas. */
   pointerDown(input: PointerInput): void {
     void this.endNudge()
+    // A gesture that never saw its pointer-up — a lost capture, a cancelled
+    // pointer — must not survive into the next one.
+    this.marquee = null
+    this.zoomBox = null
+    this.panning = null
     const at = { x: input.x, y: input.y }
     if (
       input.button === 1 ||
@@ -260,7 +276,7 @@ export class EditorController {
     }
     if (this.effectiveTool() !== 'select') return
 
-    const hit = this.hitAt(at, input.modifiers)
+    const hit = this.hitAt(at)
     if (hit && this.handleSegmentShortcut(hit, input.modifiers)) return
 
     const next = selectionForClick(this.selection, hit, input.modifiers)
@@ -302,14 +318,11 @@ export class EditorController {
       this.callbacks.repaint()
       return
     }
-    const hover = this.hitAt(this.pointer, input.modifiers)
-    const changed =
-      (hover?.target && this.hover?.target
-        ? targetKey(hover.target) !== targetKey(this.hover.target)
-        : hover?.target !== this.hover?.target) || hover?.t !== this.hover?.t
-    this.hover = hover
+    // Hovering repaints every move: the rulers carry a pointer marker and the
+    // insert-node ghost follows the pointer along a segment.
+    this.hover = this.hitAt(this.pointer)
     this.updateCursor(input.modifiers)
-    if (changed) this.callbacks.repaint()
+    this.callbacks.repaint()
   }
 
   /** Pointer released. */
@@ -354,7 +367,7 @@ export class EditorController {
 
   /** Double-click toggles a node between smooth and corner. */
   doubleClick(input: PointerInput): void {
-    const hit = this.hitAt({ x: input.x, y: input.y }, input.modifiers)
+    const hit = this.hitAt({ x: input.x, y: input.y })
     if (hit?.target.kind !== 'node') return
     this.setSelection(selectionOf([hit.target]))
     void this.toggleSmooth(input.modifiers.alt)
@@ -524,9 +537,13 @@ export class EditorController {
     }
   }
 
-  private hitAt(at: Point2, modifiers: Modifiers): Hit | null {
+  private hitAt(at: Point2): Hit | null {
     if (!this.source) return null
-    return hitTest(this.hitInput(), at, { ignoreHandles: modifiers.alt })
+    // Alt does *not* hide handles from the hit test: over a handle it means
+    // "keep the angle" and over a node "break the handle" (design spec §4.3).
+    // Ignoring handles is a marquee behaviour, and the marquee applies it
+    // itself.
+    return hitTest(this.hitInput(), at)
   }
 
   private selectionKeys(): ReadonlySet<string> {
