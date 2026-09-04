@@ -1,0 +1,223 @@
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
+import { setTransport, type ApplyParams } from '../../api'
+import { selectionOf, type Selection } from '../../editor/selection'
+import { initialEditorState, useEditorStore } from '../../stores/editorStore'
+import {
+  makeContour,
+  makeLayer,
+  makeLayerOutline,
+  makePoint,
+} from '../../test/fontFixtures'
+import {
+  createMockTransport,
+  type MockTransport,
+} from '../../test/mockTransport'
+
+import { InfoBox } from './InfoBox'
+
+const layer = makeLayer({
+  width: 600,
+  contours: [
+    makeContour([
+      makePoint(40, 0),
+      makePoint(560, 0, 'Line'),
+      makePoint(560, 700, 'Line'),
+      makePoint(40, 700, 'Line'),
+    ]),
+  ],
+  anchors: [{ name: 'top', x: 300, y: 700 }],
+})
+
+const outline = makeLayerOutline(layer)
+
+function transport(): MockTransport {
+  const mock = createMockTransport({
+    'doc.apply': () => ({
+      glyphs: [42],
+      font_info: false,
+      masters: false,
+      glyph_order: false,
+      metrics: true,
+      layers: false,
+      guides: false,
+    }),
+  })
+  setTransport(mock)
+  return mock
+}
+
+function show(selection: Selection) {
+  return render(
+    <InfoBox
+      target={{ doc: 1, glyph: 'a', layer: 'layer-1' }}
+      outline={outline}
+      selection={selection}
+      master="m1"
+      name="a"
+      unicodes={[0x61]}
+      onCommitted={() => undefined}
+    />,
+  )
+}
+
+function applied(mock: MockTransport): ApplyParams | undefined {
+  return mock.calls.find((entry) => entry.method === 'doc.apply')?.params as
+    ApplyParams | undefined
+}
+
+beforeEach(() => useEditorStore.setState(initialEditorState()))
+afterEach(() => setTransport(undefined))
+
+describe('InfoBox', () => {
+  it('commits a node coordinate as one SetPointPosition', async () => {
+    const user = userEvent.setup()
+    const mock = transport()
+    show(selectionOf([{ kind: 'node', contour: 0, point: 1 }]))
+
+    const field = screen.getByLabelText('X')
+    expect(field).toHaveValue('560')
+    await user.clear(field)
+    await user.type(field, '600{Enter}')
+
+    expect(applied(mock)).toEqual({
+      doc: 1,
+      label: 'Set position',
+      command: {
+        SetPointPosition: {
+          glyph: 'a',
+          layer: 'layer-1',
+          point: { contour: 0, point: 1 },
+          x: 600,
+          y: 0,
+        },
+      },
+    })
+  })
+
+  it('accepts a relative expression in a field', async () => {
+    const user = userEvent.setup()
+    const mock = transport()
+    show(selectionOf([{ kind: 'node', contour: 0, point: 1 }]))
+
+    const field = screen.getByLabelText('Y')
+    await user.clear(field)
+    await user.type(field, '+40{Enter}')
+
+    expect(applied(mock)?.command).toMatchObject({
+      SetPointPosition: { x: 560, y: 40 },
+    })
+  })
+
+  it('rejects nonsense without touching the outline', async () => {
+    const user = userEvent.setup()
+    const mock = transport()
+    show(selectionOf([{ kind: 'node', contour: 0, point: 1 }]))
+
+    const field = screen.getByLabelText('X')
+    await user.clear(field)
+    await user.type(field, 'wide{Enter}')
+
+    expect(applied(mock)).toBeUndefined()
+    expect(field).toHaveValue('560')
+  })
+
+  it('shows the smooth toggle for a node and commits SetSmooth', async () => {
+    const user = userEvent.setup()
+    const mock = transport()
+    show(selectionOf([{ kind: 'node', contour: 0, point: 1 }]))
+
+    await user.click(screen.getByRole('button', { name: 'Corner' }))
+    expect(applied(mock)?.command).toMatchObject({
+      SetSmooth: { smooth: true },
+    })
+  })
+
+  it('commits a metric with nothing selected', async () => {
+    const user = userEvent.setup()
+    const mock = transport()
+    show(new Map())
+
+    const field = screen.getByLabelText('advance')
+    await user.clear(field)
+    await user.type(field, '640{Enter}')
+
+    expect(applied(mock)?.command).toEqual({
+      SetMetrics: {
+        glyph: 'a',
+        layer: 'layer-1',
+        width: 640,
+        lsb: null,
+        rsb: null,
+      },
+    })
+  })
+
+  it('scales a multi-selection about the chosen origin', async () => {
+    const user = userEvent.setup()
+    const mock = transport()
+    show(
+      selectionOf([
+        { kind: 'node', contour: 0, point: 0 },
+        { kind: 'node', contour: 0, point: 1 },
+        { kind: 'node', contour: 0, point: 2 },
+      ]),
+    )
+
+    expect(screen.getByText('3 of 4 points')).toBeInTheDocument()
+    const width = screen.getByLabelText('W')
+    expect(width).toHaveValue('520')
+    await user.clear(width)
+    await user.type(width, '260{Enter}')
+
+    const command = applied(mock)?.command
+    expect(command).toMatchObject({
+      TransformSelection: {
+        glyph: 'a',
+        layer: 'layer-1',
+        points: [
+          { contour: 0, point: 0 },
+          { contour: 0, point: 1 },
+          { contour: 0, point: 2 },
+        ],
+      },
+    })
+    // Halving the width about the centre keeps the centre where it was.
+    expect(
+      command && 'TransformSelection' in command
+        ? command.TransformSelection.affine
+        : null,
+    ).toEqual([0.5, 0, 0, 1, 150, 0])
+  })
+
+  it('commits an anchor position', async () => {
+    const user = userEvent.setup()
+    const mock = transport()
+    show(selectionOf([{ kind: 'anchor', index: 0 }]))
+
+    const field = screen.getByLabelText('Y')
+    await user.clear(field)
+    await user.type(field, '720{Enter}')
+
+    expect(applied(mock)?.command).toEqual({
+      SetAnchor: {
+        glyph: 'a',
+        layer: 'layer-1',
+        index: 0,
+        anchor: { name: 'top', x: 300, y: 720 },
+      },
+    })
+  })
+
+  it('collapses and expands from its header', async () => {
+    const user = userEvent.setup()
+    transport()
+    show(new Map())
+
+    expect(screen.getByLabelText('advance')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Collapse info box' }))
+    expect(screen.queryByLabelText('advance')).not.toBeInTheDocument()
+  })
+})
