@@ -6,11 +6,14 @@ use kurbo::{BezPath, PathEl, Point, Rect, Shape};
 
 use crate::{
     handlers::{
-        glyphs::{build_cell, layer_master, matching_candidates, rounded_svg, sort_candidates},
+        glyphs::{
+            build_cell, glyph_classification, layer_master, matching_candidates, rounded_svg,
+            sort_candidates,
+        },
         recipe::{self, RecipeItem},
     },
-    AddGlyphsParams, AddGlyphsResult, Api, ApiError, ComponentView, FlattenedComponents,
-    GlyphIdsParams, LayerOutline, LayerOutlineParams, MetricsResolveParams,
+    AddGlyphsParams, AddGlyphsResult, Api, ApiError, ComponentView, FlattenedComponents, GlyphCell,
+    GlyphIdsParams, LayerOutline, LayerOutlineParams, MetricsResolveParams, PREVIEW_GLYPH_ID,
 };
 
 pub(crate) fn outline(api: &Api, params: LayerOutlineParams) -> Result<LayerOutline, ApiError> {
@@ -99,6 +102,14 @@ pub(crate) fn add(api: &Api, params: AddGlyphsParams) -> Result<AddGlyphsResult,
             plan_additions(document, &recipe::parse(&params.recipe))
         })
         .map_err(ApiError::from)?;
+    // A dry run answers "what would this recipe do?" from the same grammar and
+    // the same duplicate check as a real call, without applying anything.
+    if params.dry_run {
+        return Ok(AddGlyphsResult {
+            added: plan.added.iter().map(preview_cell).collect(),
+            skipped: plan.skipped,
+        });
+    }
     if !plan.commands.is_empty() {
         api.session
             .with_doc_mut(params.doc, |document| {
@@ -112,7 +123,7 @@ pub(crate) fn add(api: &Api, params: AddGlyphsParams) -> Result<AddGlyphsResult,
             let added = plan
                 .added
                 .iter()
-                .filter_map(|name| document.glyph_id(name))
+                .filter_map(|(name, _)| document.glyph_id(name))
                 .map(|gid| build_cell(document, gid, &master, false))
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(AddGlyphsResult {
@@ -125,27 +136,29 @@ pub(crate) fn add(api: &Api, params: AddGlyphsParams) -> Result<AddGlyphsResult,
 
 struct Additions {
     commands: Vec<Command>,
-    added: Vec<GlyphName>,
+    added: Vec<(GlyphName, Option<u32>)>,
     skipped: Vec<String>,
 }
 
 fn plan_additions(document: &Document, items: &[RecipeItem]) -> Additions {
     let mut commands = Vec::new();
-    let mut added: Vec<GlyphName> = Vec::new();
+    let mut added: Vec<(GlyphName, Option<u32>)> = Vec::new();
     let mut skipped = Vec::new();
     for item in items {
         match item {
             RecipeItem::Unknown(token) => skipped.push(token.clone()),
             RecipeItem::TooLarge(token) => skipped.push(format!("too-large: {token}")),
             RecipeItem::Glyph { name, unicode } => {
-                if document.font.glyph(name).is_some() || added.contains(name) {
+                if document.font.glyph(name).is_some()
+                    || added.iter().any(|(planned, _)| planned == name)
+                {
                     skipped.push(name.to_string());
                     continue;
                 }
                 let mut glyph = Glyph::new(name.clone());
                 glyph.unicodes.extend(unicode);
                 commands.push(Command::AddGlyph { glyph });
-                added.push(name.clone());
+                added.push((name.clone(), *unicode));
             }
         }
     }
@@ -153,6 +166,33 @@ fn plan_additions(document: &Document, items: &[RecipeItem]) -> Additions {
         commands,
         added,
         skipped,
+    }
+}
+
+/// Builds the cell of a glyph a dry run would create.
+///
+/// The glyph does not exist yet, so it has no session handle, no outline and no
+/// advance; only the identity a recipe determines is filled in. Callers key a
+/// preview by its name, never by its [`PREVIEW_GLYPH_ID`] handle.
+fn preview_cell((name, unicode): &(GlyphName, Option<u32>)) -> GlyphCell {
+    let mut glyph = Glyph::new(name.clone());
+    glyph.unicodes.extend(*unicode);
+    let (category, sub_category, script) = glyph_classification(&glyph);
+    GlyphCell {
+        gid: PREVIEW_GLYPH_ID,
+        name: name.to_string(),
+        unicodes: glyph.unicodes,
+        category,
+        sub_category,
+        script,
+        width: 0.0,
+        bbox: None,
+        path: None,
+        color_label: None,
+        export: glyph.export,
+        has_components: false,
+        is_empty: true,
+        generation: 0,
     }
 }
 

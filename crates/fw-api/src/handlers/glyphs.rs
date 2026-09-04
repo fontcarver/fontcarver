@@ -399,7 +399,7 @@ fn build_detail(document: &Document, gid: GlyphId) -> Result<GlyphDetail, ApiErr
     Ok(GlyphDetail { glyph, paths })
 }
 
-fn glyph_classification(glyph: &Glyph) -> (String, String, String) {
+pub(crate) fn glyph_classification(glyph: &Glyph) -> (String, String, String) {
     let first_unicode = glyph.unicodes.first().copied();
     let category = glyph.category.clone().unwrap_or_else(|| {
         first_unicode

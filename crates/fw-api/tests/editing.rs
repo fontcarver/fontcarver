@@ -323,3 +323,69 @@ fn apply_accepts_outline_commands_through_json_dispatch() {
     .expect("decode outline");
     assert_eq!(deleted.contours[0].points.len(), before - 1);
 }
+
+#[test]
+fn a_dry_run_previews_the_glyphs_a_recipe_would_create() {
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(composite_font(), None);
+    let api = Api::new(session);
+    let before = api
+        .call("doc.summary", json!({ "doc": doc }))
+        .expect("summary")["glyph_count"]
+        .clone();
+
+    let preview = api
+        .call(
+            "glyphs.add",
+            json!({ "doc": doc, "recipe": "a A-B", "dry_run": true }),
+        )
+        .expect("preview glyphs");
+
+    let added: Vec<GlyphCell> =
+        serde_json::from_value(preview["added"].clone()).expect("decode preview cells");
+    assert_eq!(
+        added
+            .iter()
+            .map(|cell| (cell.name.clone(), cell.unicodes.clone()))
+            .collect::<Vec<_>>(),
+        vec![("A".to_owned(), vec![0x41]), ("B".to_owned(), vec![0x42]),]
+    );
+    assert_eq!(preview["skipped"], json!(["a"]));
+    // Nothing was applied: the glyph count and the undo stack are untouched.
+    let summary = api
+        .call("doc.summary", json!({ "doc": doc }))
+        .expect("summary");
+    assert_eq!(summary["glyph_count"], before);
+    assert_eq!(summary["undo_label"], json!(null));
+    assert_eq!(summary["dirty"], json!(false));
+}
+
+#[test]
+fn a_dry_run_and_a_real_add_report_the_same_names() {
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(composite_font(), None);
+    let api = Api::new(session);
+
+    let preview = api
+        .call(
+            "glyphs.add",
+            json!({ "doc": doc, "recipe": "a a.sc f_i 12three U+0041", "dry_run": true }),
+        )
+        .expect("preview glyphs");
+    let applied = api
+        .call(
+            "glyphs.add",
+            json!({ "doc": doc, "recipe": "a a.sc f_i 12three U+0041" }),
+        )
+        .expect("add glyphs");
+
+    let names = |value: &serde_json::Value| -> Vec<String> {
+        serde_json::from_value::<Vec<GlyphCell>>(value["added"].clone())
+            .expect("decode cells")
+            .into_iter()
+            .map(|cell| cell.name)
+            .collect()
+    };
+    assert_eq!(names(&preview), names(&applied));
+    assert_eq!(preview["skipped"], applied["skipped"]);
+}
