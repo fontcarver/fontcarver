@@ -102,9 +102,85 @@ fn export_emits_compile_and_write_progress() {
         vec![
             ("compile".to_owned(), 0),
             ("preserve".to_owned(), 60),
+            ("write".to_owned(), 90),
             ("write".to_owned(), 100),
         ]
     );
+}
+
+#[test]
+fn a_failing_export_always_ends_with_a_terminal_progress_event() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(export_font(), None);
+    let api = Api::new(session);
+    let mut events = api.subscribe();
+
+    // A master that does not exist fails before any stage starts.
+    api.call(
+        "session.export",
+        json!({
+            "doc": doc,
+            "path": directory.path().join("Unknown.ttf"),
+            "options": { "format": "Ttf", "master": "nope" }
+        }),
+    )
+    .expect_err("unknown master");
+    let unknown = progress_stages(&mut events);
+    assert_eq!(
+        unknown
+            .last()
+            .map(|(stage, percent, _)| (stage.as_str(), *percent)),
+        Some(("failed", 100)),
+        "{unknown:?}"
+    );
+    assert!(
+        unknown
+            .last()
+            .and_then(|(_, _, message)| message.clone())
+            .is_some_and(|message| message.contains("nope")),
+        "{unknown:?}"
+    );
+
+    // A path that cannot be created fails after the compile stages ran.
+    let blocker = directory.path().join("blocker");
+    std::fs::write(&blocker, b"not a directory").expect("write the blocking file");
+    api.call(
+        "session.export",
+        json!({
+            "doc": doc,
+            "path": blocker.join("Blocked.ttf"),
+            "options": { "format": "Ttf" }
+        }),
+    )
+    .expect_err("unwritable path");
+    let blocked = progress_stages(&mut events);
+    assert_eq!(
+        blocked
+            .iter()
+            .map(|(stage, percent, _)| (stage.as_str(), *percent))
+            .collect::<Vec<_>>(),
+        vec![
+            ("compile", 0),
+            ("preserve", 60),
+            ("write", 90),
+            ("failed", 100)
+        ],
+        "{blocked:?}"
+    );
+}
+
+/// Drains the buffered progress events of one operation.
+fn progress_stages(
+    events: &mut tokio::sync::broadcast::Receiver<Event>,
+) -> Vec<(String, u8, Option<String>)> {
+    let mut stages = Vec::new();
+    while let Ok(event) = events.try_recv() {
+        if let Event::Progress(progress) = event {
+            stages.push((progress.stage, progress.percent, progress.message));
+        }
+    }
+    stages
 }
 
 #[test]

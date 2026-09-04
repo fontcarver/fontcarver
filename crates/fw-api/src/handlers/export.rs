@@ -17,7 +17,17 @@ use crate::{
 /// Per-glyph invalidation generations captured with the font.
 type Generations = HashMap<GlyphName, u64>;
 
+/// Exports one document, always ending the progress stream.
+///
+/// Every failure after the request is accepted emits a terminal `failed` event
+/// with the error message, so a progress bar in the UI never stays stuck at the
+/// stage that broke.
 pub(crate) fn export(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
+    let doc = params.doc;
+    run(api, params).inspect_err(|error| api.emit_failure(doc, error.message.clone()))
+}
+
+fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
     let started = Instant::now();
     let path = PathBuf::from(&params.path);
     let (font, generations) = snapshot(api, params.doc)?;
@@ -37,10 +47,13 @@ pub(crate) fn export(api: &Api, params: ExportParams) -> Result<ExportReport, Ap
     let mut tables = Vec::new();
     match params.options.format {
         ExportFormat::Ttf | ExportFormat::Woff | ExportFormat::Woff2 => {
-            api.emit_progress(params.doc, "compile", 0);
             let options = compile_options(&params.options, &master)?;
-            let report = fw_compile::export(&font, &generation_lookup(&generations), &options)?;
-            api.emit_progress(params.doc, "preserve", 60);
+            let report = fw_compile::export_with_progress(
+                &font,
+                &generation_lookup(&generations),
+                &options,
+                &mut |stage, percent| api.emit_progress(params.doc, stage.as_str(), percent),
+            )?;
             warnings.extend(report.warnings.iter().map(|warning| ExportWarning {
                 code: warning.code.to_owned(),
                 message: warning.message.clone(),

@@ -21,6 +21,9 @@ use crate::{error::ApiError, handlers, DocWarning, Event, ProgressEvent, Sidebar
 
 const EVENT_CAPACITY: usize = 1024;
 
+/// Stage name of the terminal event emitted when an operation fails.
+pub const FAILED_STAGE: &str = "failed";
+
 /// Method name, parameter TypeScript type, and result TypeScript type.
 pub const METHODS: &[(&str, &str, &str)] = &[
     ("session.open", "OpenParams", "DocSummary"),
@@ -166,10 +169,24 @@ impl Api {
     }
 
     pub(crate) fn emit_progress(&self, doc: DocId, stage: &str, percent: u8) {
+        self.emit(doc, stage, percent, None);
+    }
+
+    /// Publishes the terminal event of an operation that failed.
+    ///
+    /// Every long-running operation ends in either `write 100` or `failed 100`,
+    /// so a progress bar always terminates.
+    pub(crate) fn emit_failure(&self, doc: DocId, message: impl Into<String>) {
+        self.emit(doc, FAILED_STAGE, 100, Some(message.into()));
+    }
+
+    fn emit(&self, doc: DocId, stage: &str, percent: u8, message: Option<String>) {
+        // An error here only means nobody is listening.
         let _ = self.events.send(Event::Progress(ProgressEvent {
             doc,
             stage: stage.to_owned(),
             percent,
+            message,
         }));
     }
 
