@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use fw_model::{Contour, Font, GlyphName, LayerId, Point, PointKind};
 
 use crate::Error;
@@ -7,7 +9,8 @@ use super::super::{
     CurveKind, PathOp, PointRef, SegmentKind,
 };
 use super::{
-    cyclic_between, index_error, inferred_kind, on_curve_indices, repair_kinds, validate_points,
+    cyclic_between, index_error, layer_curve_kind, on_curve_indices, repair_kinds, validate_points,
+    Touched,
 };
 
 /// Appends a contour to the layer.
@@ -16,11 +19,10 @@ pub(super) fn add_contour(
     glyph: &GlyphName,
     layer: &LayerId,
     contour: &Contour,
-) -> Result<(), Error> {
-    layer_mut(font, glyph, layer)?
-        .contours
-        .push(contour.clone());
-    Ok(())
+) -> Result<Touched, Error> {
+    let contours = &mut layer_mut(font, glyph, layer)?.contours;
+    contours.push(contour.clone());
+    Ok(Touched::one(contours.len().saturating_sub(1)))
 }
 
 /// Removes the listed contours.
@@ -29,11 +31,11 @@ pub(super) fn delete_contours(
     glyph: &GlyphName,
     layer: &LayerId,
     contours: &[usize],
-) -> Result<(), Error> {
+) -> Result<Touched, Error> {
     let target = &mut layer_mut(font, glyph, layer)?.contours;
     let indices = checked_indices(contours, target.len(), "contour")?;
     remove_indices(target, &indices);
-    Ok(())
+    Ok(Touched::none())
 }
 
 /// Reverses the direction of the listed contours.
@@ -42,13 +44,13 @@ pub(super) fn reverse_contours(
     glyph: &GlyphName,
     layer: &LayerId,
     contours: &[usize],
-) -> Result<(), Error> {
+) -> Result<Touched, Error> {
     let target = &mut layer_mut(font, glyph, layer)?.contours;
     let indices = checked_indices(contours, target.len(), "contour")?;
-    for index in indices {
+    for &index in &indices {
         target[index] = fw_geom::reverse(&target[index]);
     }
-    Ok(())
+    Ok(Touched::Contours(indices.into_iter().collect()))
 }
 
 /// Splits one geometric segment and inserts the resulting on-curve point.
@@ -59,7 +61,7 @@ pub(super) fn insert(
     contour_index: usize,
     segment: usize,
     t: f64,
-) -> Result<(), Error> {
+) -> Result<Touched, Error> {
     ensure_finite(&[t], "split parameter")?;
     if !(0.0..1.0).contains(&t) || t == 0.0 {
         return Err(Error::InvalidCommand(
@@ -76,7 +78,7 @@ pub(super) fn insert(
         return Err(index_error("segment", segment, count));
     }
     *contour = fw_geom::split_segment(contour, segment, t);
-    Ok(())
+    Ok(Touched::one(contour_index))
 }
 
 /// Converts one segment between a straight line and a curve.
@@ -92,9 +94,12 @@ pub(super) fn convert(
     contour_index: usize,
     segment: usize,
     to: SegmentKind,
-) -> Result<(), Error> {
+) -> Result<Touched, Error> {
+    let quadratic = matches!(
+        layer_curve_kind(font, glyph, layer),
+        CurveKind::Quadratic { .. }
+    );
     let contours = &mut layer_mut(font, glyph, layer)?.contours;
-    let quadratic = matches!(inferred_kind(contours), CurveKind::Quadratic { .. });
     let len = contours.len();
     let contour = contours
         .get_mut(contour_index)
@@ -121,13 +126,13 @@ pub(super) fn convert(
     let (kind, inserted) = match to {
         SegmentKind::Line => {
             if controls.is_empty() {
-                return Ok(());
+                return Ok(Touched::none());
             }
             (PointKind::Line, Vec::new())
         }
         SegmentKind::Curve if quadratic => {
             if controls.len() == 1 && endpoint_kind == PointKind::QCurve {
-                return Ok(());
+                return Ok(Touched::none());
             }
             let from = contour.points[start].clone();
             let to = contour.points[end].clone();
@@ -135,7 +140,7 @@ pub(super) fn convert(
         }
         SegmentKind::Curve => {
             if controls.len() == 2 && endpoint_kind == PointKind::Curve {
-                return Ok(());
+                return Ok(Touched::none());
             }
             let from = contour.points[start].clone();
             let to = contour.points[end].clone();
@@ -164,7 +169,7 @@ pub(super) fn convert(
     }
     contour.points = rebuilt;
     repair_kinds(contour);
-    Ok(())
+    Ok(Touched::one(contour_index))
 }
 
 fn point_between(a: &Point, b: &Point, t: f64) -> Point {
@@ -182,7 +187,7 @@ pub(super) fn set_start(
     glyph: &GlyphName,
     layer: &LayerId,
     point: PointRef,
-) -> Result<(), Error> {
+) -> Result<Touched, Error> {
     let contours = &mut layer_mut(font, glyph, layer)?.contours;
     validate_points(contours, &[point])?;
     let contour = &mut contours[point.contour];
@@ -192,7 +197,7 @@ pub(super) fn set_start(
         ));
     }
     contour.points.rotate_left(point.point);
-    Ok(())
+    Ok(Touched::one(point.contour))
 }
 
 /// Joins the end of one open contour to an endpoint of another.
@@ -202,7 +207,7 @@ pub(super) fn join(
     layer: &LayerId,
     a: PointRef,
     b: PointRef,
-) -> Result<(), Error> {
+) -> Result<Touched, Error> {
     let contours = &mut layer_mut(font, glyph, layer)?.contours;
     validate_points(contours, &[a, b])?;
     if a.contour == b.contour {
@@ -241,7 +246,7 @@ pub(super) fn join(
     };
     contours.remove(second_index);
     contours[keep_index] = first;
-    Ok(())
+    Ok(Touched::one(keep_index))
 }
 
 /// Opens a closed contour, or splits an open contour into two.
@@ -250,7 +255,7 @@ pub(super) fn split(
     glyph: &GlyphName,
     layer: &LayerId,
     point: PointRef,
-) -> Result<(), Error> {
+) -> Result<Touched, Error> {
     let contours = &mut layer_mut(font, glyph, layer)?.contours;
     validate_points(contours, &[point])?;
     let contour = &mut contours[point.contour];
@@ -270,20 +275,23 @@ pub(super) fn split(
             contour.points.pop();
         }
         repair_kinds(contour);
-    } else {
-        if point.point == 0 || point.point + 1 == contour.points.len() {
-            return Err(Error::InvalidCommand(
-                "open contour split must be an interior node".to_owned(),
-            ));
-        }
-        let mut right = contour.clone();
-        right.points = right.points[point.point..].to_vec();
-        contour.points.truncate(point.point + 1);
-        repair_kinds(contour);
-        repair_kinds(&mut right);
-        contours.insert(point.contour + 1, right);
+        return Ok(Touched::one(point.contour));
     }
-    Ok(())
+    if point.point == 0 || point.point + 1 == contour.points.len() {
+        return Err(Error::InvalidCommand(
+            "open contour split must be an interior node".to_owned(),
+        ));
+    }
+    let mut right = contour.clone();
+    right.points = right.points[point.point..].to_vec();
+    contour.points.truncate(point.point + 1);
+    repair_kinds(contour);
+    repair_kinds(&mut right);
+    contours.insert(point.contour + 1, right);
+    Ok(Touched::Contours(BTreeSet::from([
+        point.contour,
+        point.contour + 1,
+    ])))
 }
 
 /// Applies one whole-layer geometry operation.
@@ -292,13 +300,14 @@ pub(super) fn path_op(
     glyph: &GlyphName,
     layer: &LayerId,
     op: &PathOp,
-) -> Result<(), Error> {
+) -> Result<Touched, Error> {
+    let layer_kind = layer_curve_kind(font, glyph, layer);
     let target = layer_mut(font, glyph, layer)?;
     let contours = &target.contours;
     let result = match op {
         PathOp::RemoveOverlap => fw_geom::remove_overlap(
             contours,
-            inferred_kind(contours).geometry(),
+            layer_kind.geometry(),
             fw_geom::DEFAULT_BOOLEAN_TOLERANCE,
         )
         .map_err(|error| Error::Geometry(error.to_string()))?,
@@ -316,12 +325,10 @@ pub(super) fn path_op(
         }
         PathOp::CanonicalStart => fw_geom::canonical_start_points(contours),
         PathOp::CanonicalOrder => fw_geom::canonical_order(contours),
-        PathOp::ExpandStroke(options) => fw_geom::expand_stroke(
-            contours,
-            &options.geometry(),
-            inferred_kind(contours).geometry(),
-        )
-        .map_err(|error| Error::Geometry(error.to_string()))?,
+        PathOp::ExpandStroke(options) => {
+            fw_geom::expand_stroke(contours, &options.geometry(), layer_kind.geometry())
+                .map_err(|error| Error::Geometry(error.to_string()))?
+        }
         PathOp::ConvertCurves(kind) => {
             if matches!(kind, CurveKind::Quadratic { max_err } if !max_err.is_finite() || *max_err <= 0.0)
             {
@@ -333,7 +340,7 @@ pub(super) fn path_op(
         }
     };
     target.contours = result;
-    Ok(())
+    Ok(Touched::Layer)
 }
 
 fn same_position(a: Option<&Point>, b: Option<&Point>) -> bool {
