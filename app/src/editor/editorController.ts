@@ -14,10 +14,10 @@
 
 import type { Anchor, Contour, DocId, GlyphId, LayerOutline } from '../api'
 import type { Point2, Viewport } from '../canvas/Viewport'
-import type { EditingOverlay } from '../views/glyph/drawEditing'
 import type { SceneMetrics } from '../views/glyph/glyphScene'
 
-import { hudText, handlePolar, stemWidth, type HudLabels } from './hud'
+import { buildFrame, type EditorFrame } from './editorFrame'
+import type { HudLabels } from './hud'
 import {
   hitTest,
   type Hit,
@@ -30,14 +30,9 @@ import {
   type DragGesture,
   type Modifiers,
 } from './gestures/drag'
-import {
-  marqueeRect,
-  marqueeSelection,
-  marqueeSize,
-  type MarqueeRect,
-} from './gestures/marquee'
+import { marqueeRect, marqueeSelection, marqueeSize } from './gestures/marquee'
 import { NudgeCoalescer, nudgeStep } from './gestures/nudge'
-import { buildEditOutline, pointAt, type EditOutline } from './outlineGeometry'
+import { buildEditOutline, type EditOutline } from './outlineGeometry'
 import {
   commit,
   convertSegmentCommand,
@@ -114,21 +109,6 @@ export interface PointerInput {
   button: number
   modifiers: Modifiers
 }
-
-/** Everything the canvas needs from the controller to paint one frame. */
-export interface EditorFrame {
-  contours: readonly Contour[] | null
-  anchors: readonly Anchor[] | null
-  selected: ReadonlySet<string>
-  overlay: EditingOverlay
-  hud: string | null
-  pointerScreen: Point2 | null
-}
-
-const EMPTY_FRAME_KEYS: ReadonlySet<string> = new Set()
-
-/** How near the pointer must come to a component before its ghosts appear. */
-const COMPONENT_GHOST_REACH = 24
 
 /** Callbacks used until the view installs its own. */
 const SILENT_CALLBACKS: EditorCallbacks = {
@@ -228,22 +208,21 @@ export class EditorController {
 
   /** The frame the canvas paints. */
   frame(): EditorFrame {
-    const overlay: EditingOverlay = {
-      marquee: this.marqueeBox(),
-      snap: this.snap?.point ?? null,
-      alignX: this.snap?.alignedX ?? null,
-      alignY: this.snap?.alignedY ?? null,
-      insertGhost: this.insertGhost(),
-      componentGhosts: this.componentGhosts(),
-    }
-    return {
-      contours: this.preview?.contours ?? null,
-      anchors: this.preview?.anchors ?? null,
-      selected: this.selectionKeys(),
-      overlay,
-      hud: this.hud(),
-      pointerScreen: this.pointer,
-    }
+    return buildFrame({
+      viewport: this.viewport,
+      labels: this.labels.hud,
+      contours: this.contours(),
+      preview: this.preview,
+      edit: this.edit,
+      selection: this.selection,
+      components: this.source?.outline.components ?? [],
+      pointer: this.pointer,
+      drag: this.drag,
+      marquee: this.marquee,
+      zoomBox: this.zoomBox,
+      snap: this.snap,
+      hover: this.hover,
+    })
   }
 
   /** Space is held: the canvas pans instead of selecting. */
@@ -544,116 +523,6 @@ export class EditorController {
     // Ignoring handles is a marquee behaviour, and the marquee applies it
     // itself.
     return hitTest(this.hitInput(), at)
-  }
-
-  private selectionKeys(): ReadonlySet<string> {
-    if (this.selection.size === 0) return EMPTY_FRAME_KEYS
-    return new Set(this.selection.keys())
-  }
-
-  private marqueeBox(): MarqueeRect | null {
-    if (this.marquee)
-      return marqueeRect(this.marquee.origin, this.marquee.current)
-    if (this.zoomBox)
-      return marqueeRect(this.zoomBox.origin, this.zoomBox.current)
-    return null
-  }
-
-  private insertGhost(): Point2 | null {
-    if (this.drag || this.marquee) return null
-    return this.hover?.target.kind === 'segment' ? this.hover.point : null
-  }
-
-  private componentGhosts(): readonly Point2[] {
-    const source = this.source
-    if (!source || !this.pointer || this.drag) return []
-    const font = this.viewport.toFont(this.pointer)
-    const reach = COMPONENT_GHOST_REACH / (this.viewport.scale || 1)
-    const ghosts: Point2[] = []
-    for (const component of source.outline.components) {
-      const box = component.bbox
-      if (!box) continue
-      const [x0, y0, x1, y1] = box
-      if (
-        font.x < x0 - reach ||
-        font.x > x1 + reach ||
-        font.y < y0 - reach ||
-        font.y > y1 + reach
-      )
-        continue
-      ghosts.push(
-        { x: x0, y: y0 },
-        { x: x1, y: y0 },
-        { x: x1, y: y1 },
-        { x: x0, y: y1 },
-      )
-    }
-    return ghosts
-  }
-
-  private hud(): string | null {
-    const labels = this.labels.hud
-    if (this.marquee || this.zoomBox) {
-      const box = this.marqueeBox()
-      if (!box) return null
-      const scale = this.viewport.scale || 1
-      const size = marqueeSize(box)
-      return hudText(
-        {
-          kind: 'marquee',
-          width: size.width / scale,
-          height: size.height / scale,
-        },
-        labels,
-      )
-    }
-    const drag = this.drag
-    if (!drag) return null
-    if (drag.plan.kind === 'handle') {
-      const handle = drag.plan.refs[0]
-      const contours = this.contours()
-      const point = handle ? pointAt(contours, handle) : null
-      const node = handle
-        ? this.edit.points.find(
-            (candidate) =>
-              candidate.onCurve &&
-              candidate.ref.contour === handle.contour &&
-              Math.abs(candidate.ref.point - handle.point) === 1,
-          )
-        : undefined
-      if (point && node) {
-        const polar = handlePolar(node, point)
-        return hudText(
-          {
-            kind: 'handle',
-            delta: drag.currentDelta,
-            angle: polar.angle,
-            length: polar.length,
-            snap: drag.snappedTo,
-          },
-          labels,
-        )
-      }
-    }
-    return hudText(
-      {
-        kind: 'move',
-        delta: drag.currentDelta,
-        stem: this.stem(),
-        snap: drag.snappedTo,
-      },
-      labels,
-    )
-  }
-
-  /** Distance between exactly two selected nodes, for the ⟂ readout. */
-  private stem(): number | null {
-    const nodes = selectedNodeRefs(this.selection)
-    if (nodes.length !== 2) return null
-    const contours = this.contours()
-    const a = nodes[0] ? pointAt(contours, nodes[0]) : null
-    const b = nodes[1] ? pointAt(contours, nodes[1]) : null
-    return a && b ? stemWidth(a, b) : null
   }
 
   private updateCursor(modifiers: Modifiers = NO_MODIFIERS): void {

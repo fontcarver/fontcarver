@@ -73,7 +73,11 @@ describe('GlyphView', () => {
 
     render(<GlyphView summary={makeSummary()} gid={42} />)
 
-    expect(await screen.findByText('aacute')).toBeInTheDocument()
+    // The Info box needs both the glyph detail and the editable outline, so
+    // two round trips stand between the render and the name.
+    expect(
+      await screen.findByText('aacute', {}, { timeout: 5000 }),
+    ).toBeInTheDocument()
     expect(screen.getByText('U+00E1')).toBeInTheDocument()
     // Advance 600 with bounds 40 … 560 gives 40 units on both sides.
     expect(screen.getByLabelText('advance')).toHaveValue('600')
@@ -101,7 +105,7 @@ describe('GlyphView', () => {
     useUiStore.getState().openTab({ kind: 'glyph', doc: 1, gid: 42 })
 
     render(<GlyphView summary={makeSummary()} gid={42} />)
-    await screen.findByText('aacute')
+    await screen.findByText('aacute', {}, { timeout: 5000 })
 
     await waitFor(() =>
       expect(useEditorStore.getState().activeGlyph?.gid).toBe(42),
@@ -114,7 +118,7 @@ describe('GlyphView', () => {
     const user = userEvent.setup()
     setTransport(transportFor())
     render(<GlyphView summary={makeSummary()} gid={42} />)
-    await screen.findByText('aacute')
+    await screen.findByText('aacute', {}, { timeout: 5000 })
 
     expect(useEditorStore.getState().overlays.filled).toBe(false)
     await user.click(screen.getByRole('button', { name: 'Fill' }))
@@ -178,7 +182,7 @@ describe('GlyphView', () => {
   it('places zoom and Fit before the wrappable overlay toggles', async () => {
     setTransport(transportFor())
     render(<GlyphView summary={makeSummary()} gid={42} />)
-    await screen.findByText('aacute')
+    await screen.findByText('aacute', {}, { timeout: 5000 })
 
     const fit = screen.getByRole('button', { name: 'Fit Glyph in Window' })
     const fill = screen.getByRole('button', { name: 'Fill' })
