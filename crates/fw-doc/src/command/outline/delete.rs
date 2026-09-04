@@ -21,11 +21,12 @@ const SPAN_SAMPLES: u32 = 32;
 
 /// Deletes stored points under one of the three deletion policies.
 ///
-/// The layer's contour list is rebuilt once: every contour without a deleted
-/// point is moved across untouched, and each contour that loses points is
-/// replaced by its rewritten form, by nothing when it is emptied, or by the
-/// open pieces [`DeleteMode::BreakContour`] leaves behind. The reported
-/// [`Touched`] indexes address that rebuilt list.
+/// Every contour that loses points is rewritten first, so a rejected deletion
+/// returns before the layer is touched at all. The layer's contour list is then
+/// rebuilt in one infallible pass: contours without a deleted point move across
+/// untouched, and a rewritten contour is replaced by its new form, by nothing
+/// when it is emptied, or by the open pieces [`DeleteMode::BreakContour`] leaves
+/// behind. The reported [`Touched`] indexes address that rebuilt list.
 pub(super) fn delete_points(
     font: &mut Font,
     glyph: &GlyphName,
@@ -43,22 +44,35 @@ pub(super) fn delete_points(
             .or_default()
             .insert(point.point);
     }
+    let mut replacements = BTreeMap::<usize, Vec<Contour>>::new();
+    for (&index, indices) in &grouped {
+        let Some(contour) = target.contours.get(index) else {
+            continue;
+        };
+        replacements.insert(
+            index,
+            match mode {
+                DeleteMode::KeepShape => keep_shape(contour, indices, kind)?.into_iter().collect(),
+                DeleteMode::Simple => simple(contour, indices).into_iter().collect(),
+                DeleteMode::BreakContour => break_at_points(contour, indices)?,
+            },
+        );
+    }
+
+    // Nothing below this point can fail, so the contour list is never left
+    // half-rebuilt: the layer is only ever seen whole.
     let source = std::mem::take(&mut target.contours);
     let mut rebuilt = Vec::with_capacity(source.len());
     let mut touched = BTreeSet::new();
     for (index, contour) in source.into_iter().enumerate() {
-        let Some(indices) = grouped.get(&index) else {
-            rebuilt.push(contour);
-            continue;
-        };
-        let replacements: Vec<Contour> = match mode {
-            DeleteMode::KeepShape => keep_shape(&contour, indices, kind)?.into_iter().collect(),
-            DeleteMode::Simple => simple(&contour, indices).into_iter().collect(),
-            DeleteMode::BreakContour => break_at_points(&contour, indices)?,
-        };
-        for replacement in replacements {
-            touched.insert(rebuilt.len());
-            rebuilt.push(replacement);
+        match replacements.remove(&index) {
+            Some(pieces) => {
+                for piece in pieces {
+                    touched.insert(rebuilt.len());
+                    rebuilt.push(piece);
+                }
+            }
+            None => rebuilt.push(contour),
         }
     }
     target.contours = rebuilt;
@@ -559,4 +573,101 @@ fn break_at_points(source: &Contour, indices: &BTreeSet<usize>) -> Result<Vec<Co
         metadata_available = false;
     }
     Ok(pieces)
+}
+
+#[cfg(test)]
+mod tests {
+    use fw_model::{Glyph, Layer};
+
+    use super::*;
+
+    /// A closed square with no curves.
+    fn square() -> Contour {
+        Contour {
+            closed: true,
+            points: [(0.0, 0.0), (100.0, 0.0), (100.0, 100.0), (0.0, 100.0)]
+                .into_iter()
+                .map(|(x, y)| Point {
+                    x,
+                    y,
+                    kind: PointKind::Line,
+                    ..Point::default()
+                })
+                .collect(),
+            ..Contour::default()
+        }
+    }
+
+    /// An open contour whose leading handles have no preceding node.
+    ///
+    /// Deleting one of those handles is the reachable `InvalidCommand` path
+    /// inside the per-contour rewrite.
+    fn headless_handles() -> Contour {
+        Contour {
+            closed: false,
+            points: vec![
+                Point {
+                    x: 10.0,
+                    y: 10.0,
+                    kind: PointKind::OffCurve,
+                    ..Point::default()
+                },
+                Point {
+                    x: 20.0,
+                    y: 30.0,
+                    kind: PointKind::OffCurve,
+                    ..Point::default()
+                },
+                Point {
+                    x: 40.0,
+                    y: 0.0,
+                    kind: PointKind::Line,
+                    ..Point::default()
+                },
+            ],
+            ..Contour::default()
+        }
+    }
+
+    fn font_with(contours: Vec<Contour>) -> (Font, GlyphName, LayerId) {
+        let mut font = Font::new_empty("Delete Test", 1_000);
+        let master = font.default_master().id.clone();
+        let mut glyph = Glyph::new("base");
+        let layer = Layer::new_master(master);
+        let id = layer.id.clone();
+        glyph.layers.push(layer);
+        font.insert_glyph(glyph).expect("the test glyph is valid");
+        let name = GlyphName::from("base");
+        if let Some(target) = font
+            .glyph_mut(&name)
+            .and_then(|glyph| glyph.layers.first_mut())
+        {
+            target.contours = contours;
+        }
+        (font, name, id)
+    }
+
+    #[test]
+    fn a_failed_deletion_leaves_the_contour_list_untouched() {
+        let (mut font, glyph, layer) = font_with(vec![square(), headless_handles()]);
+        let before = font.glyph(&glyph).expect("the glyph exists").clone();
+        let Err(error) = delete_points(
+            &mut font,
+            &glyph,
+            &layer,
+            &[PointRef {
+                contour: 1,
+                point: 0,
+            }],
+            DeleteMode::KeepShape,
+        ) else {
+            panic!("deleting a headless handle must be rejected");
+        };
+        assert!(matches!(error, Error::InvalidCommand(_)), "{error}");
+        assert_eq!(
+            font.glyph(&glyph).expect("the glyph exists"),
+            &before,
+            "a rejected deletion must not consume the contour list"
+        );
+    }
 }
