@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 
 import type { DocId, Glyph, GlyphCell, GlyphId } from '../api'
+import { EMPTY_SELECTION, type Selection } from '../editor/selection'
+import type { ToolId } from '../editor/tools/registry'
 import type { GlyphScene } from '../views/glyph/glyphScene'
 import type { GlyphOverlays } from '../views/glyph/renderGlyph'
 import { DEFAULT_OVERLAYS } from '../views/glyph/renderGlyph'
@@ -36,23 +38,61 @@ export interface EditorState {
   /** CSS pixels per font unit in the active glyph view. */
   zoom: number
   activeGlyph: ActiveGlyph | null
+  /** The tool the tool strip shows as active. */
+  tool: ToolId
+  /** A tool borrowed by holding its key; overrides `tool` while held. */
+  borrowedTool: ToolId | null
+  /** What is selected on the canvas of the active glyph tab. */
+  selection: Selection
+  /** Whether the docked Info box is expanded. */
+  infoBoxOpen: boolean
+  /** Whether snapping is on; Ctrl suspends it for the duration of a gesture. */
+  snapping: boolean
+  /**
+   * Whether an editing gesture is live. Data hooks stop reloading while it is,
+   * because every `edit_apply` emits a document event and refetching the
+   * outline mid-drag would fight the optimistic preview.
+   */
+  editing: boolean
   setOverlay: (key: keyof GlyphOverlays, value: boolean) => void
   setActiveGlyph: (glyph: ActiveGlyph | null) => void
   toggleOverlay: (key: keyof GlyphOverlays) => void
   setPointer: (pointer: FontPoint | null) => void
   setZoom: (zoom: number) => void
+  setTool: (tool: ToolId) => void
+  borrowTool: (tool: ToolId | null) => void
+  setSelection: (selection: Selection) => void
+  setInfoBoxOpen: (open: boolean) => void
+  toggleInfoBox: () => void
+  setSnapping: (snapping: boolean) => void
+  setEditing: (editing: boolean) => void
 }
 
 /** The initial, action-free part of the editor state. */
 export function initialEditorState(): Pick<
   EditorState,
-  'overlays' | 'pointer' | 'zoom' | 'activeGlyph'
+  | 'overlays'
+  | 'pointer'
+  | 'zoom'
+  | 'activeGlyph'
+  | 'tool'
+  | 'borrowedTool'
+  | 'selection'
+  | 'infoBoxOpen'
+  | 'snapping'
+  | 'editing'
 > {
   return {
     overlays: { ...DEFAULT_OVERLAYS },
     pointer: null,
     zoom: 1,
     activeGlyph: null,
+    tool: 'select',
+    borrowedTool: null,
+    selection: EMPTY_SELECTION,
+    infoBoxOpen: true,
+    snapping: true,
+    editing: false,
   }
 }
 
@@ -83,7 +123,46 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (get().zoom === zoom) return
     set({ zoom })
   },
+
+  setTool: (tool) => {
+    if (get().tool === tool) return
+    set({ tool })
+  },
+
+  borrowTool: (borrowedTool) => {
+    if (get().borrowedTool === borrowedTool) return
+    set({ borrowedTool })
+  },
+
+  setSelection: (selection) => {
+    if (get().selection === selection) return
+    set({ selection })
+  },
+
+  setInfoBoxOpen: (infoBoxOpen) => set({ infoBoxOpen }),
+
+  toggleInfoBox: () => set((state) => ({ infoBoxOpen: !state.infoBoxOpen })),
+
+  setSnapping: (snapping) => {
+    if (get().snapping === snapping) return
+    set({ snapping })
+  },
+
+  setEditing: (editing) => {
+    if (get().editing === editing) return
+    set({ editing })
+  },
 }))
+
+/** The tool actually in effect: a borrowed tool wins over the chosen one. */
+export function selectActiveTool(state: EditorState): ToolId {
+  return state.borrowedTool ?? state.tool
+}
+
+/** The tool actually in effect, outside React. */
+export function activeTool(): ToolId {
+  return selectActiveTool(useEditorStore.getState())
+}
 
 /** Whether an overlay is currently shown, outside React. */
 export function overlayEnabled(key: keyof GlyphOverlays): boolean {
