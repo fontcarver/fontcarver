@@ -98,6 +98,47 @@ describe('FontInfoPanel', () => {
     ).toHaveLength(2)
   })
 
+  it('reloads when a document event reports changed master data', async () => {
+    let view = makeFontInfoView({
+      masters: [makeMaster({ id: 'm1', name: 'Light' })],
+    })
+    const transport = createMockTransport({ 'doc.font_info': () => view })
+    setTransport(transport)
+    const user = userEvent.setup()
+    render(<FontInfoPanel summary={makeSummary()} />)
+    await screen.findByText('DejaVu Sans')
+    await user.click(screen.getByRole('tab', { name: 'Masters' }))
+    expect(
+      within(screen.getByRole('table')).getByRole('columnheader', {
+        name: 'Light',
+      }),
+    ).toBeInTheDocument()
+
+    view = makeFontInfoView({
+      masters: [makeMaster({ id: 'm1', name: 'Renamed' })],
+    })
+    transport.emit({
+      doc: 1,
+      generation: 3,
+      change: {
+        glyphs: [],
+        font_info: false,
+        masters: true,
+        glyph_order: false,
+        metrics: false,
+        layers: false,
+        guides: false,
+      },
+      undo_label: 'Edit metrics',
+      redo_label: null,
+      dirty: true,
+    })
+
+    expect(
+      await screen.findByRole('columnheader', { name: 'Renamed' }),
+    ).toBeInTheDocument()
+  })
+
   it('renders every name record, including non-default languages', async () => {
     const user = userEvent.setup()
     setTransport(transportFor())

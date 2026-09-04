@@ -164,7 +164,7 @@ export function GlyphGrid({ summary, query }: GlyphGridProps) {
     () =>
       onDocumentEvent((event) => {
         if (event.doc !== doc) return
-        invalidateFor(event.change, query, event.generation, pager)
+        invalidateFor(event.change, doc, event.generation, { query, pager })
       }),
     [doc, pager, query],
   )

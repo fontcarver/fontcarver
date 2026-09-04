@@ -1,6 +1,7 @@
-import type { Change } from '../../api'
+import type { Change, DocId } from '../../api'
 import { pathCache } from '../../canvas/pathCache'
 import { isFiltered } from '../../stores/documentStore'
+import { invalidateFontInfo } from '../../stores/fontInfoCache'
 
 import { forgetGlyphNames } from './glyphNames'
 import { forgetOrder } from './glyphOrder'
@@ -15,19 +16,39 @@ export interface InvalidationPager {
   invalidate: (gids: Iterable<number>) => void
 }
 
+/** The mounted grid, when there is one: its list identity and its pages. */
+export interface InvalidationGrid {
+  query: GlyphQuery
+  pager: InvalidationPager
+}
+
 /**
- * Invalidates every grid cache affected by a document change.
+ * Invalidates every cache affected by a document change.
  *
- * Derived orders and names are discarded whenever list membership or sorting
- * may have changed. Outline paths remain per-glyph except when glyph handles
- * themselves may have been reordered.
+ * This is the single place that reads a `Change`: each view subscribes to the
+ * kernel's document events and hands them straight here, so what an edit
+ * invalidates is decided once rather than per view. Only one tab's content is
+ * mounted at a time, hence `grid` is optional — the shared caches still have to
+ * be dropped when the Font Info tab, not the grid, is the one on screen.
+ *
+ * Font-wide and master data live in one shared response, so both `font_info`
+ * and `masters` drop it: the Font Info tab reloads and the grid's em box picks
+ * up the new vertical metrics.
+ *
+ * For the grid, derived orders and names are discarded whenever list membership
+ * or sorting may have changed. Outline paths remain per-glyph except when glyph
+ * handles themselves may have been reordered.
  */
 export function invalidateFor(
   change: Change,
-  query: GlyphQuery,
+  doc: DocId,
   generation: number,
-  pager: InvalidationPager,
+  grid?: InvalidationGrid,
 ): void {
+  if (change.font_info || change.masters) invalidateFontInfo(doc)
+  if (!grid) return
+
+  const { query, pager } = grid
   pager.setGeneration(generation)
   const fullReload = requiresFullReload(
     change,

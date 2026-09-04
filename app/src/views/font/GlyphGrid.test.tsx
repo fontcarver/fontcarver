@@ -309,6 +309,37 @@ describe('glyph grid invalidation', () => {
     ).toBeInTheDocument()
   })
 
+  it('refreshes the em box when the kernel reports changed masters', async () => {
+    const { mock } = await mountGrid()
+    await screen.findByRole('option', { name: 'A' })
+    const before = mock.calls.filter(
+      (call) => call.method === 'doc.font_info',
+    ).length
+
+    mock.emit({
+      doc: DOC,
+      generation: 5,
+      change: {
+        glyphs: [],
+        font_info: false,
+        masters: true,
+        glyph_order: false,
+        metrics: false,
+        layers: false,
+        guides: false,
+      },
+      undo_label: 'Edit metrics',
+      redo_label: null,
+      dirty: true,
+    })
+
+    await waitFor(() =>
+      expect(
+        mock.calls.filter((call) => call.method === 'doc.font_info').length,
+      ).toBeGreaterThan(before),
+    )
+  })
+
   it('reloads the whole list when the glyph order changed', async () => {
     const { mock } = await mountGrid()
     await screen.findByRole('option', { name: 'A' })
