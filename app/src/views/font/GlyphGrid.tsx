@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { call, onDocumentEvent, type DocSummary, type GlyphId } from '../../api'
 import { openGlyphTab } from '../../shell/tabActions'
 import { selectDocView, useDocumentStore } from '../../stores/documentStore'
-import { useUiStore } from '../../stores/uiStore'
+import { reportError } from '../../stores/uiStore'
 
 import { GlyphCell } from './GlyphCell'
 import { GlyphContextMenu } from './GlyphContextMenu'
@@ -112,11 +112,7 @@ export function GlyphGrid({ summary, query }: GlyphGridProps) {
           return result
         },
         onChange: bump,
-        onError: (error) =>
-          useUiStore.getState().pushToast({
-            kind: 'error',
-            message: error instanceof Error ? error.message : String(error),
-          }),
+        onError: reportError,
       }),
   )
 

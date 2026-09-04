@@ -8,6 +8,7 @@ import { selectSummary, useSessionStore } from '../stores/sessionStore'
 import {
   PANEL_BOUNDS,
   applyTheme,
+  reportError,
   selectActiveDoc,
   selectActiveTab,
   useUiStore,
@@ -42,12 +43,7 @@ export function AppShell() {
 
   useEffect(() => {
     registerBuiltinCommands()
-    setCommandErrorReporter((error) => {
-      useUiStore.getState().pushToast({
-        kind: 'error',
-        message: error instanceof Error ? error.message : String(error),
-      })
-    })
+    setCommandErrorReporter(reportError)
     const stopSession = useSessionStore.getState().start()
     const stopShortcuts = installShortcuts()
     return () => {

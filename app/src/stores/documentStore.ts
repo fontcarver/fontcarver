@@ -10,7 +10,7 @@ import {
   type SidebarCounts,
 } from '../api'
 
-import { useUiStore } from './uiStore'
+import { reportError } from './uiStore'
 
 /** What the glyph grid prints under each cell. */
 export type LabelMode = 'name' | 'unicode' | 'index'
@@ -199,10 +199,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => {
       } catch (error) {
         // A document closed mid-request fails by design; stay quiet then.
         if (!get().byDoc[doc]) return
-        useUiStore.getState().pushToast({
-          kind: 'error',
-          message: error instanceof Error ? error.message : String(error),
-        })
+        reportError(error)
       }
     },
 

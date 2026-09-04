@@ -234,7 +234,19 @@
     "about": "FontWorkshop {{version}} — kernel transport: {{kind}}",
     "copiedNames_one": "Copied {{count, number}} glyph name",
     "copiedNames_other": "Copied {{count, number}} glyph names",
-    "copyFailed": "Could not write to the clipboard"
+    "copyFailed": "Could not write to the clipboard",
+    "details": "Details"
+  },
+  "errors": {
+    "not_found": "That item is not in the document any more",
+    "invalid_params": "The kernel rejected the request as invalid",
+    "io": "A file could not be read or written",
+    "parse": "The font data could not be read",
+    "internal": "The kernel hit an internal error",
+    "geometry": "The geometry operation failed",
+    "export": "The font could not be exported",
+    "shaping": "The layout features could not be compiled",
+    "invalid_response": "The kernel returned an unexpected response"
   },
   "warning": {
     "cffHintsNotImported": "CFF outlines were imported without per-glyph stem and hint-mask data",

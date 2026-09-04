@@ -1,7 +1,13 @@
 import { create } from 'zustand'
 
 import type { DocId, GlyphId } from '../api'
-import { DEFAULT_LANGUAGE, normaliseLanguage, type Language } from '../i18n'
+import {
+  DEFAULT_LANGUAGE,
+  i18n,
+  normaliseLanguage,
+  type Language,
+} from '../i18n'
+import { errorNotice } from '../i18n/errors'
 
 /** User-selectable colour theme; `system` follows `prefers-color-scheme`. */
 export type ThemePreference = 'light' | 'dark' | 'system'
@@ -27,6 +33,8 @@ export interface Toast {
   readonly id: string
   readonly kind: 'info' | 'error'
   readonly message: string
+  /** Raw kernel wording, shown behind a "Details" disclosure. */
+  readonly details?: string
 }
 
 /** Which resizable side panel a size or visibility change refers to. */
@@ -317,6 +325,22 @@ export const useUiStore = create<UiState>((set, get) => ({
       toasts: state.toasts.filter((toast) => toast.id !== id),
     })),
 }))
+
+/**
+ * Reports a rejected kernel call as an error toast.
+ *
+ * The single place the interface turns a thrown value into a notification, so
+ * every failure gets the same treatment: a translated summary for the error
+ * code and the kernel's own wording under "Details".
+ */
+export function reportError(error: unknown): void {
+  const notice = errorNotice(error, (key, options) => i18n.t(key, options))
+  useUiStore.getState().pushToast({
+    kind: 'error',
+    message: notice.message,
+    ...(notice.details === null ? {} : { details: notice.details }),
+  })
+}
 
 /** Selector: the currently active tab, if any. */
 export function selectActiveTab(state: UiState): Tab | null {

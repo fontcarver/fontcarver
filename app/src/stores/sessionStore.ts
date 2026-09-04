@@ -9,10 +9,9 @@ import {
 } from '../api'
 import { i18n } from '../i18n'
 import { warningMessage } from '../i18n/warnings'
-import { ApiCallError } from '../transport'
 
 import { useDocumentStore } from './documentStore'
-import { activeDocId, tabId, useUiStore } from './uiStore'
+import { activeDocId, reportError, tabId, useUiStore } from './uiStore'
 
 /** File extensions the kernel accepts as native document save targets. */
 const NATIVE_EXTENSIONS = ['.fwf', '.fwf.gz']
@@ -21,13 +20,6 @@ const NATIVE_EXTENSIONS = ['.fwf', '.fwf.gz']
 export function isNativeDocumentPath(path: string | null): boolean {
   const lower = path?.toLowerCase() ?? ''
   return NATIVE_EXTENSIONS.some((extension) => lower.endsWith(extension))
-}
-
-/** Turns any thrown value into a message suitable for a toast. */
-export function errorMessage(error: unknown): string {
-  if (error instanceof ApiCallError) return error.message
-  if (error instanceof Error) return error.message
-  return String(error)
 }
 
 /** Human label for a document: its file name, family name, or "Untitled". */
@@ -60,12 +52,6 @@ export interface SessionState {
   close: (doc: DocId) => Promise<void>
   /** Closes, asking Save / Don't Save / Cancel first when the document is dirty. */
   requestClose: (doc: DocId) => Promise<void>
-}
-
-function reportError(error: unknown): void {
-  useUiStore
-    .getState()
-    .pushToast({ kind: 'error', message: errorMessage(error) })
 }
 
 function upsert(docs: DocSummary[], summary: DocSummary): DocSummary[] {
