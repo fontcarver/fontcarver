@@ -391,3 +391,138 @@ round.
    keep a one-call form. It is a thin wrapper over `plan`/`shape_planned` and copies the font
    only when the plan needs it, so it is safe as long as the caller is not holding a lock —
    which is documented on the method.
+
+---
+
+## Fix round 2
+
+Branch `p1-t5`, on top of `32c449a`, not pushed. Addresses the re-review's "New Breakage in
+the Fix Diff" items 1, 2, 3, 4, 6 and 7; item 5 (the glyph-map scan under the read lock) is
+deferred by the controller because `fw-model` is off-limits this round.
+
+| Commit | Items | Contents |
+|---|---|---|
+| `8fb49bc` | 1, 2, 3 | `fix(fw-layout)`: worker tokens, generation-monotone publishing, build claims |
+| `a7e97f1` | 4, 6, 7 | `fix(fw-api)`: exported stage names, `recovered_from` cleared on save, structural concurrency test |
+
+### Item 1 — `WorkerGuard` could clear a successor worker's flag
+
+`EntryState.worker` is now `Option<u64>` holding the live worker's token
+(`crates/fw-layout/src/shaping.rs:481`), handed out by `EntryState::take_token`
+(`shaping.rs:494`) when `schedule` spawns. `WorkerGuard` carries that token and clears the
+flag only while it still owns it (`shaping.rs:575`, `:583`), and the loop's own release is
+token-guarded too (`shaping.rs:658`). A `schedule` that slips between an exiting worker's
+release and its guard now installs a successor the guard cannot clobber, so "at most one
+worker per entry" holds again.
+
+Covering tests:
+* `crates/fw-layout/src/shaping.rs:930` `a_worker_guard_never_clears_a_successor_workers_token`
+  — drives exactly the reported window: the guard is alive, a successor takes the flag, the
+  guard drops, and the successor's token must survive.
+* `crates/fw-layout/src/shaping.rs:953` `concurrent_scheduling_never_runs_two_workers_for_one_entry`
+  — four threads scheduling for 400 ms against one entry, asserting the peak concurrent
+  worker count never exceeds one and settles at zero. The census is two `#[cfg(test)]`
+  counters on `Entry` maintained by `WorkerCensus` (`shaping.rs:592`), so it is per entry and
+  cannot be perturbed by tests running in parallel. The stress font is `Font::new_empty`,
+  which fails `FwSource::from_font`'s exported-glyph check immediately, so the worker
+  lifecycle churns without paying for real compiles.
+
+### Item 2 — publishing was not generation-monotone
+
+Both assignments now go through `EntryState::publish` (`shaping.rs:526`), which refuses a
+compile that is not strictly newer than what is already published; the worker
+(`shaping.rs:684`) and the synchronous first compile (`shaping.rs:298`) both use it, and
+`failure` is cleared only when a publish actually lands. Covering test:
+`crates/fw-layout/src/shaping.rs:995` `publishing_never_replaces_a_newer_font_with_an_older_one`
+publishes generations 5, 3, 5 and 6 in that order and asserts 6 survives and the out-of-order
+landings are rejected.
+
+### Item 3 — `plan` → clone → `schedule` was check-then-act across callers
+
+`plan` now takes a claim on the entry under the same lock in which it decides
+(`shaping.rs:229`, `:243`; `EntryState::claim`/`release_claim`/`claimed_for` at
+`shaping.rs:501`, `:510`, `:517`). A concurrent request for the same or an older generation
+sees `claimed_for` and gets `Stale` — so it copies no font — or, when nothing is cached at
+all, the new `PlanKind::Wait` (`shaping.rs:241`), which blocks on the entry's `Condvar`
+(`await_publish`, `shaping.rs:706`) until the claimant publishes rather than running a second
+full compile. `schedule` converts the claim into a pending build (`shaping.rs:346`), and
+`impl Drop for ShapePlan` (`shaping.rs:149`) releases a claim whose plan was never consumed,
+so a dropped plan cannot strand a waiter. `Error::AbandonedCompile` covers the case where the
+claimant gives up without publishing.
+
+Covering tests:
+* `crates/fw-layout/tests/shaping.rs:318` `a_claimed_rebuild_is_not_copied_by_a_concurrent_request`
+  — with a claim outstanding, a second `plan` for the same generation reports
+  `needs_font() == false`; dropping both plans makes the claim retakeable.
+* `crates/fw-layout/tests/shaping.rs:348` `a_claimed_first_compile_is_awaited_instead_of_repeated`
+  — a second first-ever request is consumed on another thread with `font: None`, so it
+  *cannot* compile; it still returns the claimant's run, non-stale and glyph-for-glyph equal.
+
+### Item 4 — the concurrency test was wall-clock in both directions
+
+`crates/fw-api/tests/shaping.rs:163` `a_shaping_compile_does_not_block_document_edits` now has
+the shaping thread report its compile's start instant over a channel and return its end
+instant. The assertion is structural: the edit must start after the compile started and
+finish before the compile finished, i.e. entirely inside the compile window. The absolute
+`edit < 500 ms` bound is gone. The only remaining wall-clock assertion is the lower bound the
+re-review called safe (`compile > 500 ms`), which just proves the window was real.
+
+### Item 6 — `recovered_from` was never cleared by `session.save`
+
+`crates/fw-api/src/handlers/session.rs:105` removes the marker once the document has been
+written, so a recovery that has been saved over its original path stops reporting as a
+recovery. Covering test: the save assertions at the end of
+`crates/fw-api/tests/export.rs` `recovery_lists_opens_and_discards_an_autosave`. Verified as a
+real regression test by reverting the four-line removal, which fails with
+`recovered_from: "/tmp/.../Recovered.fwf"` still present on the saved summary.
+
+### Item 7 — `FAILED_STAGE` was unreachable for consumers
+
+`crates/fw-api/src/lib.rs:10` re-exports `COMPILE_STAGE`, `PRESERVE_STAGE`, `WRITE_STAGE` and
+`FAILED_STAGE`. The first three are `const`-evaluated from `fw_compile::ExportStage::as_str`
+(`crates/fw-api/src/api.rs:28-34`), so the API-side names cannot drift from the ones the
+export pipeline emits; `FAILED_STAGE` (`api.rs:40`) is the terminal failure stage. The export
+handler uses `WRITE_STAGE` instead of the literal. The TS-facing strings are unchanged, and
+`crates/fw-api/tests/export.rs` pins them (`["compile", "preserve", "write", "failed"]`) so a
+rename cannot silently break the frontend.
+
+### Item 5 — deferred
+
+The `widths_for_text` scan of the glyph map under the session read lock is unchanged; closing
+it needs a reverse cmap on `fw_model::Font`, and `fw-model` is off-limits this round.
+
+### Verification
+
+```
+cargo fmt --all --check                                  # clean
+cargo clippy --workspace --all-targets -- -D warnings    # clean
+cargo test -p fw-layout -p fw-api                        # 122 passed, 0 failed
+cargo test --workspace                                   # 427 passed, 0 failed
+cargo run -p fw-api --bin gen_ts && (cd app && pnpm check && pnpm lint)
+                                                         # bindings unchanged; tsc and eslint clean
+```
+
+The workspace total moved from 422 to 427: five new tests, none removed. The generated
+TypeScript is byte-identical to round 1 — the new constants are Rust-side only and the wire
+strings did not change.
+
+### Notes for the reviewer
+
+1. **`PlanKind::Wait` blocks a caller.** A second first-ever shape now waits on the entry's
+   `Condvar` for the claimant's compile instead of running its own. It is bounded by a 300 s
+   deadline and wakes on `notify_all`, on claim release (including a dropped plan) and on
+   cancellation; giving up yields `Error::AbandonedCompile`, mapped to the `internal` API
+   code. This is the one place in the shaper where a caller can block on another caller.
+2. **The claim is a single slot holding the newest claimed generation.** A claim for an older
+   generation is silently superseded by a newer one, which is the behaviour we want (the newer
+   build subsumes the older); the loser still schedules its build and the newest pending wins.
+   It is best-effort deduplication, not mutual exclusion.
+3. **The stress test is time-boxed, not exhaustive.** `concurrent_scheduling_never_runs_two_workers_for_one_entry`
+   runs for 400 ms across four threads; it can only ever show the absence of the race in that
+   window. The deterministic guard test is the one that pins the exact reported interleaving.
+4. **`Entry` carries two `#[cfg(test)]` counters.** They exist only for the worker census and
+   compile away entirely outside tests; the alternative — a process-global counter — would
+   have been corrupted by tests running in parallel in the same binary.
+5. **Item 5 is untouched by design** (controller ruling): `widths_for_text` still scans the
+   glyph map under the session read lock. A reverse cmap on `fw_model::Font` is the fix and
+   `fw-model` was off-limits this round.
