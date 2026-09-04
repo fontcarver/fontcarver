@@ -12,6 +12,7 @@ use fw_model::{Font, GlyphName, MasterId, Tag};
 
 use crate::{
     Api, ApiError, ExportFormat, ExportOptions, ExportParams, ExportReport, ExportWarning,
+    WRITE_STAGE,
 };
 
 /// Per-glyph invalidation generations captured with the font.
@@ -66,7 +67,7 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
             write_file(&path, &report.bytes)?;
         }
         ExportFormat::Ufo => {
-            api.emit_progress(params.doc, "write", 0);
+            api.emit_progress(params.doc, WRITE_STAGE, 0);
             fw_formats::ufo::write_ufo(
                 &font,
                 &master,
@@ -75,15 +76,15 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
             )?;
         }
         ExportFormat::Designspace => {
-            api.emit_progress(params.doc, "write", 0);
+            api.emit_progress(params.doc, WRITE_STAGE, 0);
             fw_formats::ufo::write_designspace(&font, &path)?;
         }
         ExportFormat::Fwf => {
-            api.emit_progress(params.doc, "write", 0);
+            api.emit_progress(params.doc, WRITE_STAGE, 0);
             fw_doc::fwf::write(&path, &font)?;
         }
     }
-    api.emit_progress(params.doc, "write", 100);
+    api.emit_progress(params.doc, WRITE_STAGE, 100);
 
     Ok(ExportReport {
         path: params.path,

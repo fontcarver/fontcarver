@@ -102,6 +102,11 @@ pub(crate) fn save(api: &Api, params: SaveParams) -> Result<DocSummary, ApiError
     };
     api.session
         .with_doc_mut(params.doc, |document| document.save(Path::new(&path)))??;
+    // The document now *is* the file on disk, so it is no longer a recovery.
+    api.recovered
+        .lock()
+        .map_err(|_| ApiError::internal("API recovery marker lock is poisoned"))?
+        .remove(&params.doc);
     prefs::record_recent(api, path)?;
     summary_for(api, params.doc)
 }

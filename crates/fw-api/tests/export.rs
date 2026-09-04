@@ -3,7 +3,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use fw_api::{Api, Event, ExportReport, RecoveryEntry};
+use fw_api::{
+    Api, Event, ExportReport, RecoveryEntry, COMPILE_STAGE, FAILED_STAGE, PRESERVE_STAGE,
+    WRITE_STAGE,
+};
 use fw_doc::{
     autosave::{spawn, AutosaveConfig},
     Session,
@@ -100,11 +103,16 @@ fn export_emits_compile_and_write_progress() {
     assert_eq!(
         stages,
         vec![
-            ("compile".to_owned(), 0),
-            ("preserve".to_owned(), 60),
-            ("write".to_owned(), 90),
-            ("write".to_owned(), 100),
+            (COMPILE_STAGE.to_owned(), 0),
+            (PRESERVE_STAGE.to_owned(), 60),
+            (WRITE_STAGE.to_owned(), 90),
+            (WRITE_STAGE.to_owned(), 100),
         ]
+    );
+    // The exported names are part of the wire contract with the frontend.
+    assert_eq!(
+        [COMPILE_STAGE, PRESERVE_STAGE, WRITE_STAGE, FAILED_STAGE],
+        ["compile", "preserve", "write", "failed"]
     );
 }
 
@@ -131,7 +139,7 @@ fn a_failing_export_always_ends_with_a_terminal_progress_event() {
         unknown
             .last()
             .map(|(stage, percent, _)| (stage.as_str(), *percent)),
-        Some(("failed", 100)),
+        Some((FAILED_STAGE, 100)),
         "{unknown:?}"
     );
     assert!(
@@ -161,10 +169,10 @@ fn a_failing_export_always_ends_with_a_terminal_progress_event() {
             .map(|(stage, percent, _)| (stage.as_str(), *percent))
             .collect::<Vec<_>>(),
         vec![
-            ("compile", 0),
-            ("preserve", 60),
-            ("write", 90),
-            ("failed", 100)
+            (COMPILE_STAGE, 0),
+            (PRESERVE_STAGE, 60),
+            (WRITE_STAGE, 90),
+            (FAILED_STAGE, 100)
         ],
         "{blocked:?}"
     );
@@ -386,6 +394,17 @@ fn recovery_lists_opens_and_discards_an_autosave() {
             .expect("list recoverable documents"),
         json!([])
     );
+
+    // Saving the recovery over its original file ends the recovered state, so a
+    // UI banner driven by the marker does not stay up for the rest of the session.
+    let saved = api
+        .call("session.save", json!({ "doc": summary["doc"] }))
+        .expect("save the recovered document");
+    assert!(
+        saved.get("recovered_from").is_none(),
+        "a saved document is no longer a recovery: {saved}"
+    );
+    assert_eq!(saved["dirty"], json!(false));
 }
 
 fn wait_for_recoverable(api: &Api) -> Vec<RecoveryEntry> {

@@ -24,7 +24,19 @@ use crate::{error::ApiError, handlers, DocWarning, Event, ProgressEvent, Sidebar
 
 const EVENT_CAPACITY: usize = 1024;
 
+/// Stage name reported while the model is compiled into an sfnt.
+pub const COMPILE_STAGE: &str = fw_compile::ExportStage::Compile.as_str();
+
+/// Stage name reported while preserved tables are merged in.
+pub const PRESERVE_STAGE: &str = fw_compile::ExportStage::Preserve.as_str();
+
+/// Stage name reported while the output is encoded, and on successful completion.
+pub const WRITE_STAGE: &str = fw_compile::ExportStage::Write.as_str();
+
 /// Stage name of the terminal event emitted when an operation fails.
+///
+/// A [`ProgressEvent`] stream always ends in either `WRITE_STAGE` at 100 or this
+/// stage at 100, so a consumer never has to match on a string literal.
 pub const FAILED_STAGE: &str = "failed";
 
 /// Method name, parameter TypeScript type, and result TypeScript type.

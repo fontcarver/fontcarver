@@ -1,8 +1,5 @@
 use std::{
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
+    sync::Arc,
     thread,
     time::{Duration, Instant},
 };
@@ -176,25 +173,25 @@ fn a_shaping_compile_does_not_block_document_edits() {
     let api = Arc::new(Api::new(Arc::clone(&session)));
     let layer = layer_of(&session, doc, "A");
 
-    let entered = Arc::new(AtomicBool::new(false));
+    // The shaping thread reports when its compile starts and when it ends; the
+    // assertion is structural — the edit has to complete inside that window —
+    // so it does not depend on how fast this machine is.
+    let (started, compile_started) = std::sync::mpsc::channel();
     let shaping = {
         let api = Arc::clone(&api);
-        let entered = Arc::clone(&entered);
         thread::spawn(move || {
-            entered.store(true, Ordering::Release);
             let began = Instant::now();
+            started.send(began).expect("report the compile start");
             api.call("text.shape", json!({ "doc": doc, "text": "AVWA" }))
                 .expect("shape the imported font");
-            began.elapsed()
+            (began, Instant::now())
         })
     };
-    while !entered.load(Ordering::Acquire) {
-        thread::sleep(Duration::from_millis(1));
-    }
+    let compile_began = compile_started.recv().expect("the compile start instant");
     // Give the synchronous first compile time to get under way.
     thread::sleep(Duration::from_millis(250));
 
-    let began = Instant::now();
+    let edit_began = Instant::now();
     api.call(
         "doc.apply",
         json!({
@@ -204,16 +201,23 @@ fn a_shaping_compile_does_not_block_document_edits() {
         }),
     )
     .expect("apply an edit while the shaping font compiles");
-    let edit = began.elapsed();
-    let compile = shaping.join().expect("join the shaping thread");
+    let edit_ended = Instant::now();
+    let (_, compile_ended) = shaping.join().expect("join the shaping thread");
 
+    let compile = compile_ended.duration_since(compile_began);
     assert!(
         compile > Duration::from_millis(500),
         "the compile finished too quickly to prove anything: {compile:?}"
     );
     assert!(
-        edit < Duration::from_millis(500) && edit * 10 < compile,
-        "the edit waited for the shaping compile: edit {edit:?}, compile {compile:?}"
+        edit_began > compile_began,
+        "the edit started before the compile did"
+    );
+    assert!(
+        edit_ended < compile_ended,
+        "the edit did not complete while the compile was still running: \
+         edit ended {:?} after the compile started, compile took {compile:?}",
+        edit_ended.duration_since(compile_began)
     );
 }
 
