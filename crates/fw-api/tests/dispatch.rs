@@ -15,6 +15,23 @@ use sha2::{Digest, Sha256};
 
 static CONFIG_ENV_LOCK: Mutex<()> = Mutex::new(());
 
+/// Waits for the next document event on the API's forwarded event stream.
+fn next_document_event(
+    events: &mut tokio::sync::broadcast::Receiver<fw_api::Event>,
+) -> fw_api::DocumentEvent {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        match events.try_recv() {
+            Ok(fw_api::Event::Document(event)) => return event,
+            Ok(fw_api::Event::Progress(_)) => continue,
+            Err(_) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(5));
+            }
+            Err(error) => panic!("no document event arrived: {error}"),
+        }
+    }
+}
+
 #[test]
 fn font_info_includes_named_instances() {
     let mut font = Font::new_empty("Test Family", 1_000);
@@ -168,7 +185,16 @@ fn dispatches_session_open_and_reports_boundary_errors() {
             "theme": "system",
             "language": "en",
             "recent_limit": 20,
-            "autosave_seconds": 60
+            "autosave_seconds": 60,
+            "grid_size": 1.0,
+            "snap": {
+                "nodes": true,
+                "guides": true,
+                "metrics": true,
+                "grid": true,
+                "components": true
+            },
+            "nudge": [1.0, 10.0, 100.0]
         })
     );
     let updated = api
@@ -287,7 +313,16 @@ fn damaged_preferences_fall_back_and_do_not_block_opening() {
             "theme": "system",
             "language": "en",
             "recent_limit": 20,
-            "autosave_seconds": 60
+            "autosave_seconds": 60,
+            "grid_size": 1.0,
+            "snap": {
+                "nodes": true,
+                "guides": true,
+                "metrics": true,
+                "grid": true,
+                "components": true
+            },
+            "nudge": [1.0, 10.0, 100.0]
         })
     );
     let opened = api
@@ -550,7 +585,7 @@ fn dispatches_queries_commands_edits_undo_and_events() {
         )
         .expect("apply command");
     assert_eq!(change["glyphs"], json!([0]));
-    assert_eq!(events.try_recv().expect("document event").doc, doc);
+    assert_eq!(next_document_event(&mut events).doc, doc);
     assert_eq!(
         api.call("doc.sidebar", json!({ "doc": doc }))
             .expect("invalidated sidebar")["unencoded"],

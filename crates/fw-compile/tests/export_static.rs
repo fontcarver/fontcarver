@@ -2,7 +2,9 @@ mod common;
 
 use std::time::Instant;
 
-use fw_compile::{export, shaping_fingerprint, ExportFormat, ExportOptions};
+use fw_compile::{
+    export, export_with_progress, shaping_fingerprint, ExportFormat, ExportOptions, ExportStage,
+};
 use fw_model::{Font, Glyph, Layer, NamePlatform, NameRecord, Tag};
 use read_fonts::{tables::cmap::CmapSubtable, types::Tag as ReadTag, FontRef, TableProvider};
 use skrifa::MetadataProvider;
@@ -153,6 +155,36 @@ fn localized_windows_names_survive_and_mac_records_are_reported_once() {
             .count(),
         1
     );
+}
+
+#[test]
+fn german_only_names_still_get_english_defaults() {
+    let mut font = common::scratch_font();
+    font.info.family_name = "Kompilierprobe".to_owned();
+    font.info.style_name = "Fett".to_owned();
+    font.info.names = [1_u16, 2, 4, 6]
+        .into_iter()
+        .map(|name_id| NameRecord {
+            name_id,
+            language: "de".into(),
+            text: format!("Deutscher Name {name_id}"),
+            platform: NamePlatform::Windows,
+        })
+        .collect();
+
+    let report = export(&font, &|_| 0, &ExportOptions::default()).expect("export names");
+    let records = decoded_names(&report.bytes);
+
+    for name_id in [1_u16, 2, 4, 6] {
+        assert!(
+            records.contains(&(name_id, 0x0409, format!("Deutscher Name {name_id}"))),
+            "name {name_id} has no English default in {records:?}"
+        );
+        assert!(
+            records.contains(&(name_id, 0x0407, format!("Deutscher Name {name_id}"))),
+            "name {name_id} lost its German record in {records:?}"
+        );
+    }
 }
 
 #[test]
@@ -321,4 +353,48 @@ fn cmap_formats(bytes: &[u8]) -> Vec<u16> {
             },
         )
         .collect()
+}
+
+#[test]
+fn progress_reports_every_stage_that_actually_runs() {
+    let font = common::scratch_font();
+    let mut stages = Vec::new();
+    export_with_progress(
+        &font,
+        &|_| 0,
+        &ExportOptions::default(),
+        &mut |stage, percent| stages.push((stage, percent)),
+    )
+    .expect("export with progress");
+
+    assert_eq!(
+        stages,
+        vec![
+            (ExportStage::Compile, 0),
+            (ExportStage::Preserve, 60),
+            (ExportStage::Write, 90),
+        ]
+    );
+    assert_eq!(ExportStage::Compile.as_str(), "compile");
+    assert_eq!(ExportStage::Preserve.as_str(), "preserve");
+    assert_eq!(ExportStage::Write.as_str(), "write");
+}
+
+#[test]
+fn a_failing_export_stops_reporting_at_the_stage_that_failed() {
+    let font = common::scratch_font();
+    let mut stages = Vec::new();
+    let error = export_with_progress(
+        &font,
+        &|_| 0,
+        &ExportOptions {
+            master: Some(fw_model::MasterId("missing".into())),
+            ..ExportOptions::default()
+        },
+        &mut |stage, percent| stages.push((stage, percent)),
+    )
+    .expect_err("unknown master");
+
+    assert!(error.to_string().contains("missing"), "{error}");
+    assert!(stages.is_empty(), "{stages:?}");
 }

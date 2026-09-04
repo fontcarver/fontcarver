@@ -24,7 +24,12 @@ fn main() -> Result<(), Box<dyn Error>> {
             "Contour",
             "FontInfo",
             "Glyph",
+            "Guide",
+            "Layer",
+            "LayerKind",
+            "Master",
             "MasterMetrics",
+            "MetricsKeys",
         ],
     )?;
     repair_command_double_option(&output_dir.join("Command.ts"))?;
@@ -87,6 +92,28 @@ fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
     Command::export_all(config)?;
     Change::export_all(config)?;
     DocumentEvent::export_all(config)?;
+    ProgressEvent::export_all(config)?;
+    Event::export_all(config)?;
+    SnapPrefs::export_all(config)?;
+    LayerOutlineParams::export_all(config)?;
+    ComponentView::export_all(config)?;
+    LayerOutline::export_all(config)?;
+    FlattenedComponents::export_all(config)?;
+    AddGlyphsParams::export_all(config)?;
+    AddGlyphsResult::export_all(config)?;
+    GlyphIdsParams::export_all(config)?;
+    MetricsResolveParams::export_all(config)?;
+    ResolvedMetrics::export_all(config)?;
+    ShapeParams::export_all(config)?;
+    ShapedGlyph::export_all(config)?;
+    ShapedRun::export_all(config)?;
+    ExportFormat::export_all(config)?;
+    ExportOptions::export_all(config)?;
+    ExportParams::export_all(config)?;
+    ExportWarning::export_all(config)?;
+    ExportReport::export_all(config)?;
+    RecoveryEntry::export_all(config)?;
+    RecoveryParams::export_all(config)?;
     fw_model::KernPair::export_all(config)?;
     Ok(())
 }

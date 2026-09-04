@@ -22,6 +22,44 @@ pub enum ExportFormat {
     Fwf,
 }
 
+/// Share of an export that is complete when preservation starts.
+const PRESERVE_PERCENT: u8 = 60;
+
+/// Share of an export that is complete when the container is encoded.
+const WRITE_PERCENT: u8 = 90;
+
+/// A stage of the export pipeline, reported through the progress callback.
+///
+/// Stages are emitted immediately before the work they name starts, so a
+/// consumer that never sees a later stage knows where the export stopped.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExportStage {
+    /// Compiling the model into an sfnt.
+    Compile,
+    /// Merging preserved tables from the imported font.
+    Preserve,
+    /// Subsetting and encoding the output container.
+    Write,
+}
+
+impl ExportStage {
+    /// Returns the stable identifier used on the API event stream.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Compile => "compile",
+            Self::Preserve => "preserve",
+            Self::Write => "write",
+        }
+    }
+}
+
+impl std::fmt::Display for ExportStage {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
 /// Options controlling static export and preservation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExportOptions {
@@ -94,10 +132,35 @@ pub fn touched_since_import(
 }
 
 /// Compiles, preserves, subsets, and wraps a static font.
+///
+/// # Errors
+///
+/// Returns an error when the master is missing, when compilation fails, or when
+/// the output container cannot be encoded.
 pub fn export(
     font: &Font,
     glyph_generations: &dyn Fn(&GlyphName) -> u64,
     options: &ExportOptions,
+) -> Result<ExportReport, Error> {
+    export_with_progress(font, glyph_generations, options, &mut |_, _| {})
+}
+
+/// Exports `font`, reporting each pipeline stage before it starts.
+///
+/// `progress` is called with the stage and the percentage of the whole export
+/// that is complete when the stage begins. A failure stops the sequence at the
+/// stage that failed; callers that drive a progress bar must emit their own
+/// terminal event on the error path.
+///
+/// # Errors
+///
+/// Returns an error when the master is missing, when compilation fails, or when
+/// the output container cannot be encoded.
+pub fn export_with_progress(
+    font: &Font,
+    glyph_generations: &dyn Fn(&GlyphName) -> u64,
+    options: &ExportOptions,
+    progress: &mut dyn FnMut(ExportStage, u8),
 ) -> Result<ExportReport, Error> {
     let started = Instant::now();
     if options.format == ExportFormat::Fwf {
@@ -145,6 +208,7 @@ pub fn export(
         });
     }
 
+    progress(ExportStage::Compile, 0);
     let compiled = compile_static(
         font,
         master,
@@ -152,9 +216,11 @@ pub fn export(
             production_names: options.production_names,
         },
     )?;
+    progress(ExportStage::Preserve, PRESERVE_PERCENT);
     let touched = touched_since_import(font, glyph_generations);
     let (merged, preservation_warnings) = preserve_merge(&compiled, font, &touched, options)?;
     warnings.extend(preservation_warnings);
+    progress(ExportStage::Write, WRITE_PERCENT);
     let sfnt = if let Some(subset) = &options.table_subset {
         subset_tables(&merged, subset)?
     } else {

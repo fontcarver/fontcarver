@@ -16,7 +16,8 @@ mod webfont;
 
 pub use error::Error;
 pub use export::{
-    export, touched_since_import, ExportFormat, ExportOptions, ExportReport, ExportWarning,
+    export, export_with_progress, touched_since_import, ExportFormat, ExportOptions, ExportReport,
+    ExportStage, ExportWarning,
 };
 pub use preserve::preserve_merge;
 pub use shaping::shaping_fingerprint;

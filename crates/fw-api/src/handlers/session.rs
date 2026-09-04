@@ -1,12 +1,16 @@
-//! Session lifecycle handlers.
+//! Session lifecycle, import, and crash-recovery handlers.
 
-use std::{fs, path::Path};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
-use fw_doc::{DocId, Document};
+use fw_doc::{autosave, DocId, Document};
 
 use crate::{
     handlers::prefs, Api, ApiError, AxisSummary, CloseParams, DocSummary, DocWarning, EmptyParams,
-    FacesParams, MasterSummary, NewParams, OpenParams, SaveParams,
+    FacesParams, MasterSummary, NewParams, OpenParams, RecoveryEntry, RecoveryParams, SaveParams,
 };
 
 pub(crate) fn open(api: &Api, params: OpenParams) -> Result<DocSummary, ApiError> {
@@ -15,6 +19,10 @@ pub(crate) fn open(api: &Api, params: OpenParams) -> Result<DocSummary, ApiError
         (api.session.open_path(path, params.face_index)?, Vec::new())
     } else if is_binary_font_path(path) {
         open_binary(api, path, params.face_index)?
+    } else if is_ufo_path(path) {
+        (open_source(api, path, SourceKind::Ufo)?, Vec::new())
+    } else if is_designspace_path(path) {
+        (open_source(api, path, SourceKind::Designspace)?, Vec::new())
     } else {
         (api.session.open_path(path, params.face_index)?, Vec::new())
     };
@@ -41,6 +49,7 @@ pub(crate) fn new_document(api: &Api, params: NewParams) -> Result<DocSummary, A
 
 pub(crate) fn close(api: &Api, params: CloseParams) -> Result<(), ApiError> {
     api.session.close(params.doc)?;
+    api.shaper.forget(params.doc.0);
     api.sidebar_cache
         .lock()
         .map_err(|_| ApiError::internal("API sidebar cache lock is poisoned"))?
@@ -48,6 +57,10 @@ pub(crate) fn close(api: &Api, params: CloseParams) -> Result<(), ApiError> {
     api.warnings
         .lock()
         .map_err(|_| ApiError::internal("API warning cache lock is poisoned"))?
+        .remove(&params.doc);
+    api.recovered
+        .lock()
+        .map_err(|_| ApiError::internal("API recovery marker lock is poisoned"))?
         .remove(&params.doc);
     Ok(())
 }
@@ -89,12 +102,103 @@ pub(crate) fn save(api: &Api, params: SaveParams) -> Result<DocSummary, ApiError
     };
     api.session
         .with_doc_mut(params.doc, |document| document.save(Path::new(&path)))??;
+    // The document now *is* the file on disk, so it is no longer a recovery.
+    api.recovered
+        .lock()
+        .map_err(|_| ApiError::internal("API recovery marker lock is poisoned"))?
+        .remove(&params.doc);
     prefs::record_recent(api, path)?;
     summary_for(api, params.doc)
 }
 
 pub(crate) fn recent(api: &Api, _params: EmptyParams) -> Result<Vec<String>, ApiError> {
     prefs::recent(api)
+}
+
+pub(crate) fn recover_list(
+    api: &Api,
+    _params: EmptyParams,
+) -> Result<Vec<RecoveryEntry>, ApiError> {
+    Ok(autosave::list_recoverable(&api.autosave_dir()?)
+        .into_iter()
+        .map(|entry| RecoveryEntry {
+            doc_path: entry
+                .doc_path
+                .map(|path| path.to_string_lossy().into_owned()),
+            autosave_path: entry.autosave_path.to_string_lossy().into_owned(),
+            saved_at_ms: epoch_millis(entry.saved_at),
+        })
+        .collect())
+}
+
+pub(crate) fn recover(api: &Api, params: RecoveryParams) -> Result<DocSummary, ApiError> {
+    let autosave_path = PathBuf::from(&params.autosave_path);
+    let entry = recovery_entry(api, &autosave_path)?;
+    let font = fw_doc::fwf::read(&autosave_path)?;
+    let recovered_from = entry
+        .doc_path
+        .as_ref()
+        .map(|path| path.to_string_lossy().into_owned());
+    let doc = api.session.open_font(font, entry.doc_path);
+    // The snapshot is by definition newer than the document on disk.
+    api.session
+        .with_doc_mut(doc, |document| document.dirty = true)?;
+    api.warnings
+        .lock()
+        .map_err(|_| ApiError::internal("API warning cache lock is poisoned"))?
+        .insert(doc, Vec::new());
+    if let Some(recovered_from) = recovered_from {
+        api.recovered
+            .lock()
+            .map_err(|_| ApiError::internal("API recovery marker lock is poisoned"))?
+            .insert(doc, recovered_from);
+    }
+    summary_for(api, doc)
+}
+
+pub(crate) fn discard_recovery(api: &Api, params: RecoveryParams) -> Result<(), ApiError> {
+    let autosave_path = PathBuf::from(&params.autosave_path);
+    recovery_entry(api, &autosave_path)?;
+    fs::remove_file(&autosave_path).map_err(|error| {
+        ApiError::io(format!(
+            "failed to delete `{}`: {error}",
+            autosave_path.display()
+        ))
+    })
+}
+
+/// Looks a snapshot up in the recovery directory, rejecting foreign paths.
+fn recovery_entry(api: &Api, path: &Path) -> Result<autosave::RecoverableEntry, ApiError> {
+    autosave::list_recoverable(&api.autosave_dir()?)
+        .into_iter()
+        .find(|entry| entry.autosave_path == path)
+        .ok_or_else(|| {
+            ApiError::not_found(format!(
+                "`{}` is not a recoverable document",
+                path.display()
+            ))
+        })
+}
+
+fn epoch_millis(time: SystemTime) -> u64 {
+    time.duration_since(UNIX_EPOCH)
+        .ok()
+        .and_then(|since| u64::try_from(since.as_millis()).ok())
+        .unwrap_or_default()
+}
+
+#[derive(Clone, Copy, Debug)]
+enum SourceKind {
+    Ufo,
+    Designspace,
+}
+
+fn open_source(api: &Api, path: &Path, kind: SourceKind) -> Result<DocId, ApiError> {
+    let font = match kind {
+        SourceKind::Ufo => fw_formats::ufo::read_ufo(path),
+        SourceKind::Designspace => fw_formats::ufo::read_designspace(path),
+    }?;
+    Ok(api.session.open_font(font, Some(path.to_path_buf())))
 }
 
 pub(crate) fn summary_for(api: &Api, doc: DocId) -> Result<DocSummary, ApiError> {
@@ -105,12 +209,25 @@ pub(crate) fn summary_for(api: &Api, doc: DocId) -> Result<DocSummary, ApiError>
         .get(&doc)
         .cloned()
         .unwrap_or_default();
+    let recovered_from = api
+        .recovered
+        .lock()
+        .map_err(|_| ApiError::internal("API recovery marker lock is poisoned"))?
+        .get(&doc)
+        .cloned();
     api.session
-        .with_doc(doc, |document| build_summary(doc, document, warnings))
+        .with_doc(doc, |document| {
+            build_summary(doc, document, warnings, recovered_from)
+        })
         .map_err(ApiError::from)
 }
 
-fn build_summary(doc: DocId, document: &Document, warnings: Vec<DocWarning>) -> DocSummary {
+fn build_summary(
+    doc: DocId,
+    document: &Document,
+    warnings: Vec<DocWarning>,
+    recovered_from: Option<String>,
+) -> DocSummary {
     DocSummary {
         doc,
         path: document
@@ -148,6 +265,7 @@ fn build_summary(doc: DocId, document: &Document, warnings: Vec<DocWarning>) -> 
         redo_label: document.redo_label().map(str::to_owned),
         format: document_format(document),
         warnings,
+        recovered_from,
     }
 }
 
@@ -224,6 +342,20 @@ fn is_fwf_path(path: &Path) -> bool {
         .unwrap_or_default()
         .to_ascii_lowercase();
     name.ends_with(".fwf") || name.ends_with(".fwf.gz")
+}
+
+fn is_ufo_path(path: &Path) -> bool {
+    has_extension(path, "ufo")
+}
+
+fn is_designspace_path(path: &Path) -> bool {
+    has_extension(path, "designspace")
+}
+
+fn has_extension(path: &Path, expected: &str) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case(expected))
 }
 
 fn is_binary_font_path(path: &Path) -> bool {

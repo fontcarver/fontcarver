@@ -1,6 +1,6 @@
 import { createTransport, type Transport } from '../transport'
 
-import type { ApiMethods, DocumentEvent } from './generated'
+import type { ApiMethods, DocumentEvent, ProgressEvent } from './generated'
 
 let transport: Transport | undefined
 
@@ -30,5 +30,16 @@ export function call<M extends keyof ApiMethods>(
 export function onDocumentEvent(
   cb: (event: DocumentEvent) => void,
 ): () => void {
-  return getTransport().onEvent(cb)
+  return getTransport().onEvent((event) => {
+    if (event.kind === 'Document') cb(event)
+  })
+}
+
+/** Subscribes to long-running operation progress; returns an unsubscribe function. */
+export function onProgressEvent(
+  cb: (event: ProgressEvent) => void,
+): () => void {
+  return getTransport().onEvent((event) => {
+    if (event.kind === 'Progress') cb(event)
+  })
 }

@@ -24,6 +24,9 @@ pub fn run() -> Result<(), Error> {
     let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
 
     let api = Arc::new(Api::new(Arc::new(Session::new())));
+    if let Err(error) = api.start_autosave() {
+        tracing::warn!(%error, "could not start crash-recovery autosave");
+    }
     let mut events = api.subscribe();
 
     tauri::Builder::default()

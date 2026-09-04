@@ -9,6 +9,7 @@ members = [
     "crates/fw-formats",
     "crates/fw-glyphdata",
     "crates/fw-geom",
+    "crates/fw-layout",
     "crates/fw-model",
     "crates/fw-sfnt",
     "src-tauri",

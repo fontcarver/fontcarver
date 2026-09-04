@@ -128,6 +128,14 @@ pub struct DocSummary {
     pub format: String,
     /// Non-fatal diagnostics associated with opening the document.
     pub warnings: Vec<DocWarning>,
+    /// Path of the document this one was recovered from, when it was recovered.
+    ///
+    /// A recovered document keeps the original path and stays dirty, so saving
+    /// it overwrites the file the snapshot belongs to; this marker lets the UI
+    /// say so before the user does.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub recovered_from: Option<String>,
 }
 
 /// A non-fatal diagnostic associated with opening a document.
@@ -140,8 +148,45 @@ pub struct DocWarning {
     pub message: String,
 }
 
+/// Which editor objects the pointer snaps to.
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
+pub struct SnapPrefs {
+    /// Snap to outline nodes and handles.
+    #[serde(default = "yes")]
+    pub nodes: bool,
+    /// Snap to guides.
+    #[serde(default = "yes")]
+    pub guides: bool,
+    /// Snap to metrics lines and sidebearings.
+    #[serde(default = "yes")]
+    pub metrics: bool,
+    /// Snap to the editing grid.
+    #[serde(default = "yes")]
+    pub grid: bool,
+    /// Snap to component ghost nodes.
+    #[serde(default = "yes")]
+    pub components: bool,
+}
+
+const fn yes() -> bool {
+    true
+}
+
+impl Default for SnapPrefs {
+    fn default() -> Self {
+        Self {
+            nodes: true,
+            guides: true,
+            metrics: true,
+            grid: true,
+            components: true,
+        }
+    }
+}
+
 /// Persisted application preferences.
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize, TS)]
 #[ts(export)]
 pub struct Prefs {
     /// Color-theme preference.
@@ -150,8 +195,25 @@ pub struct Prefs {
     pub language: String,
     /// Maximum number of recent paths shown by the interface.
     pub recent_limit: u32,
-    /// Autosave interval in seconds.
+    /// Autosave interval in seconds; zero disables autosave.
     pub autosave_seconds: u32,
+    /// Editing grid size in font units; zero disables the grid.
+    #[serde(default = "default_grid_size")]
+    pub grid_size: f64,
+    /// Snapping targets.
+    #[serde(default)]
+    pub snap: SnapPrefs,
+    /// Nudge distances for arrow keys, in font units: plain, shift, command.
+    #[serde(default = "default_nudge")]
+    pub nudge: [f64; 3],
+}
+
+const fn default_grid_size() -> f64 {
+    1.0
+}
+
+const fn default_nudge() -> [f64; 3] {
+    [1.0, 10.0, 100.0]
 }
 
 impl Default for Prefs {
@@ -161,12 +223,15 @@ impl Default for Prefs {
             language: "en".to_owned(),
             recent_limit: 20,
             autosave_seconds: 60,
+            grid_size: default_grid_size(),
+            snap: SnapPrefs::default(),
+            nudge: default_nudge(),
         }
     }
 }
 
 /// Parameters for replacing persisted application preferences.
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize, TS)]
 #[ts(export)]
 pub struct SetPrefsParams {
     /// Complete preference value to persist.

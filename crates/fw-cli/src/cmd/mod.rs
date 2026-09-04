@@ -9,15 +9,48 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use fw_cli::Error;
 
+pub(crate) mod build;
 pub(crate) mod convert;
 pub(crate) mod glyphs;
 pub(crate) mod inspect;
+pub(crate) mod shape;
 
 pub(crate) struct OpenedDocument {
     pub(crate) session: Arc<Session>,
     pub(crate) api: Api,
     pub(crate) doc: DocId,
     pub(crate) warnings: Vec<DocWarning>,
+}
+
+/// Opens a binary font, a native document, or a UFO source into `session`.
+fn open_in(session: &Session, path: &Path, face_index: Option<u32>) -> Result<DocId, Error> {
+    let source = match source_extension(path).as_str() {
+        "ufo" => Some(fw_formats::ufo::read_ufo(path)),
+        "designspace" => Some(fw_formats::ufo::read_designspace(path)),
+        _ => None,
+    };
+    match source {
+        Some(font) => Ok(session.open_font(
+            font.map_err(|source| Error::OpenSource {
+                path: path.to_path_buf(),
+                source,
+            })?,
+            Some(path.to_path_buf()),
+        )),
+        None => session
+            .open_path(path, face_index)
+            .map_err(|source| Error::Open {
+                path: path.to_path_buf(),
+                source,
+            }),
+    }
+}
+
+fn source_extension(path: &Path) -> String {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase()
 }
 
 #[derive(Default)]
@@ -80,12 +113,7 @@ impl FontOpener for CliFontOpener {
 pub(crate) fn open_document(path: &Path, face_index: Option<u32>) -> Result<OpenedDocument, Error> {
     let opener = Arc::new(CliFontOpener::default());
     let session = Arc::new(Session::with_opener(opener.clone()));
-    let doc = session
-        .open_path(path, face_index)
-        .map_err(|source| Error::Open {
-            path: path.to_path_buf(),
-            source,
-        })?;
+    let doc = open_in(&session, path, face_index)?;
     let api = Api::new(Arc::clone(&session));
     let warnings = opener.take_warnings();
     Ok(OpenedDocument {

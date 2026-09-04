@@ -14,9 +14,9 @@ use crate::{
 
 const MAX_GLYPH_PAGE: u32 = 2_000;
 
-struct Candidate {
+pub(crate) struct Candidate {
     order: usize,
-    gid: GlyphId,
+    pub(crate) gid: GlyphId,
     name: String,
     first_unicode: Option<u32>,
     width: f64,
@@ -114,7 +114,7 @@ fn list_impl(
         .map_err(ApiError::from)?
 }
 
-fn matching_candidates(
+pub(crate) fn matching_candidates(
     document: &Document,
     master: &MasterId,
     filter: &GlyphFilter,
@@ -145,7 +145,7 @@ fn matching_candidates(
     Ok(matches)
 }
 
-fn selected_master(
+pub(crate) fn selected_master(
     document: &Document,
     requested: Option<&MasterId>,
 ) -> Result<MasterId, ApiError> {
@@ -287,7 +287,7 @@ fn parse_scalar(digits: &str) -> Option<u32> {
     char::from_u32(unicode).map(u32::from)
 }
 
-fn sort_candidates(candidates: &mut [Candidate], sort: GlyphSort) {
+pub(crate) fn sort_candidates(candidates: &mut [Candidate], sort: GlyphSort) {
     candidates.sort_by(|left, right| match sort {
         GlyphSort::Order => left.order.cmp(&right.order),
         GlyphSort::Unicode => unicode_order(left, right),
@@ -313,7 +313,7 @@ fn unicode_order(left: &Candidate, right: &Candidate) -> Ordering {
     }
 }
 
-fn build_cell(
+pub(crate) fn build_cell(
     document: &Document,
     gid: GlyphId,
     master: &MasterId,
@@ -444,7 +444,7 @@ fn flatten_detail_layer(document: &Document, layer: &Layer) -> Result<BezPath, A
     Ok(path)
 }
 
-fn layer_master(layer: &Layer) -> Option<MasterId> {
+pub(crate) fn layer_master(layer: &Layer) -> Option<MasterId> {
     match &layer.kind {
         LayerKind::Master(master)
         | LayerKind::Background(master)
@@ -455,7 +455,7 @@ fn layer_master(layer: &Layer) -> Option<MasterId> {
     }
 }
 
-fn rounded_svg(path: &BezPath) -> String {
+pub(crate) fn rounded_svg(path: &BezPath) -> String {
     let mut rounded = BezPath::new();
     for element in path.elements() {
         match *element {

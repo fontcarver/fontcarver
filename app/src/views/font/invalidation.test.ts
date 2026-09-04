@@ -29,6 +29,9 @@ function change(overrides: Partial<Change> = {}): Change {
     font_info: false,
     masters: false,
     glyph_order: false,
+    metrics: false,
+    layers: false,
+    guides: false,
     ...overrides,
   }
 }
