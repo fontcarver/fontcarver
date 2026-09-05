@@ -16,6 +16,16 @@ import { onDocumentForgotten } from './documentStore'
 const cache = new Map<DocId, FontInfoView>()
 const inFlight = new Map<DocId, Promise<FontInfoView>>()
 const invalidationListeners = new Set<(doc: DocId) => void>()
+/**
+ * Bumped every time a document's font info is dropped. A request stamps the
+ * revision it was issued for, so an answer computed before an edit is discarded
+ * instead of being written back over the state that edit produced.
+ */
+const revisions = new Map<DocId, number>()
+
+function revisionOf(doc: DocId): number {
+  return revisions.get(doc) ?? 0
+}
 
 /** The cached font info of one document, when it has already been loaded. */
 export function cachedFontInfo(doc: DocId): FontInfoView | undefined {
@@ -29,18 +39,35 @@ export function loadFontInfo(doc: DocId): Promise<FontInfoView> {
   const pending = inFlight.get(doc)
   if (pending) return pending
 
+  const issued = revisionOf(doc)
+  /** Whether this request is still the one the cache is waiting for. */
+  const current = () => revisionOf(doc) === issued
   const request = call('doc.font_info', { doc })
     .then((info) => {
-      cache.set(doc, info)
+      // An edit that landed while this was in flight already dropped the entry
+      // and started a newer request; caching now would reinstate stale data,
+      // and clearing `inFlight` would evict that newer request.
+      if (current()) {
+        cache.set(doc, info)
+        inFlight.delete(doc)
+      }
       return info
     })
-    .finally(() => inFlight.delete(doc))
+    .catch((error: unknown) => {
+      if (current()) inFlight.delete(doc)
+      throw error
+    })
   inFlight.set(doc, request)
   return request
 }
 
-/** Drops one document's cached font info so the next read refetches it. */
+/**
+ * Drops one document's cached font info so the next read refetches it, and
+ * retires whatever request is in flight for it.
+ */
 export function forgetFontInfo(doc: DocId): void {
+  revisions.set(doc, revisionOf(doc) + 1)
+  inFlight.delete(doc)
   cache.delete(doc)
 }
 
