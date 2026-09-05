@@ -20,6 +20,8 @@ import {
   extractSegments,
   lineHits,
   pathToContour,
+  signedArea,
+  NO_IDENTITY,
   type GeometricPath,
   type PathLineHit,
   type PathSegment,
@@ -38,10 +40,27 @@ function chord(from: Point2, to: Point2): PathSegment {
   return { kind: 'line', from, to, controls: [] }
 }
 
+/**
+ * How much of the original a piece is, so the largest can inherit its name.
+ *
+ * Area for a closed piece, traced length for an open one; the two are never
+ * compared against each other, because a cut yields one kind or the other.
+ */
+function pieceSize(path: GeometricPath): number {
+  if (path.closed) return Math.abs(signedArea(path))
+  let total = 0
+  for (const segment of path.segments)
+    total += Math.hypot(
+      segment.to.x - segment.from.x,
+      segment.to.y - segment.from.y,
+    )
+  return total
+}
+
 /** The open pieces an open contour falls into. */
-function cutOpen(path: GeometricPath, hits: PathLineHit[]): Contour[] {
+function cutOpen(path: GeometricPath, hits: PathLineHit[]): GeometricPath[] {
   const bounds = [0, ...hits.map((hit) => hit.u), path.segments.length]
-  const pieces: Contour[] = []
+  const pieces: GeometricPath[] = []
   for (let index = 0; index + 1 < bounds.length; index += 1) {
     const segments = extractSegments(
       path,
@@ -50,7 +69,7 @@ function cutOpen(path: GeometricPath, hits: PathLineHit[]): Contour[] {
     )
     const first = segments[0]
     if (!first) continue
-    pieces.push(pathToContour({ closed: false, start: first.from, segments }))
+    pieces.push({ closed: false, start: first.from, segments })
   }
   return pieces
 }
@@ -64,7 +83,7 @@ function cutOpen(path: GeometricPath, hits: PathLineHit[]): Contour[] {
  * contour from a cut point to the next, then jumping across that point's
  * chord, walks exactly one closed piece.
  */
-function cutClosed(path: GeometricPath, hits: PathLineHit[]): Contour[] {
+function cutClosed(path: GeometricPath, hits: PathLineHit[]): GeometricPath[] {
   const count = hits.length
   if (count < 2 || count % 2 !== 0) return []
   const byLine = hits
@@ -79,7 +98,7 @@ function cutClosed(path: GeometricPath, hits: PathLineHit[]): Contour[] {
   }
 
   const visited = new Set<number>()
-  const pieces: Contour[] = []
+  const pieces: GeometricPath[] = []
   for (let start = 0; start < count; start += 1) {
     if (visited.has(start)) continue
     const segments: PathSegment[] = []
@@ -98,7 +117,7 @@ function cutClosed(path: GeometricPath, hits: PathLineHit[]): Contour[] {
     }
     const first = segments[0]
     if (!first) continue
-    pieces.push(pathToContour({ closed: true, start: first.from, segments }))
+    pieces.push({ closed: true, start: first.from, segments })
   }
   return pieces
 }
@@ -117,8 +136,29 @@ export function cutContours(
     if (hits.length === 0) return
     const pieces = path.closed ? cutClosed(path, hits) : cutOpen(path, hits)
     if (pieces.length < 2) return
+    // The largest piece stands for the contour that was cut, so it keeps the
+    // source's name and persistent id; the rest are genuinely new contours.
+    let largest = 0
+    let best = -Infinity
+    pieces.forEach((piece, position) => {
+      const size = pieceSize(piece)
+      if (size > best) {
+        best = size
+        largest = position
+      }
+    })
     removed.push(index)
-    added.push(...pieces)
+    pieces.forEach((piece, position) =>
+      added.push(
+        pathToContour(
+          piece,
+          () => false,
+          position === largest
+            ? { name: contour.name, id: contour.id }
+            : NO_IDENTITY,
+        ),
+      ),
+    )
   })
   return { removed, added }
 }

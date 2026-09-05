@@ -81,4 +81,30 @@ describe('cutContours', () => {
     const points = cutPoints([square], { x: 100, y: -50 }, { x: 100, y: 250 })
     expect(points.map((point) => Math.round(point.y))).toEqual([0, 200])
   })
+  it('keeps the source contour identity on the largest piece', () => {
+    const named = { ...square, name: 'outer', id: 'c-1' }
+    // The cut is off centre, so one piece is clearly the larger.
+    const result = cutContours([named], { x: 40, y: -50 }, { x: 40, y: 250 })
+    expect(result.added).toHaveLength(2)
+    const identities = result.added.map((piece) => [piece.name, piece.id])
+    expect(identities).toContainEqual(['outer', 'c-1'])
+    expect(identities).toContainEqual([null, null])
+    // And it is the larger piece that inherits it.
+    const inherited = result.added.find((piece) => piece.id === 'c-1')
+    const other = result.added.find((piece) => piece.id === null)
+    const width = (piece: (typeof result.added)[number]) => {
+      const xs = piece.points.map((point) => point.x)
+      return Math.max(...xs) - Math.min(...xs)
+    }
+    expect(width(inherited as NonNullable<typeof inherited>)).toBeGreaterThan(
+      width(other as NonNullable<typeof other>),
+    )
+  })
+
+  it('leaves every point of a rebuilt contour unnumbered', () => {
+    const result = cutContours([square], { x: 100, y: -50 }, { x: 100, y: 250 })
+    for (const piece of result.added)
+      for (const point of piece.points)
+        expect(point.tt_index).toBe('Unnumbered')
+  })
 })

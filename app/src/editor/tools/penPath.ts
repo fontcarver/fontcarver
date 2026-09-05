@@ -13,6 +13,8 @@ import type { Point2 } from '../../canvas/Viewport'
 import {
   contourToPath,
   pathToContour,
+  NO_IDENTITY,
+  type ContourIdentity,
   type GeometricPath,
   type LayerCurves,
   type PathSegment,
@@ -90,19 +92,31 @@ export function penPath(
   return { closed, start: first.point, segments }
 }
 
-/** The stored contour a run of pen nodes commits as. */
+/**
+ * The stored contour a run of pen nodes commits as.
+ *
+ * `identity` carries the source contour's name and persistent id when the pen
+ * picked an existing open path up: the extended path *is* that contour, so
+ * losing its identifier would look like a delete and an add to anything that
+ * tracks contours across an edit.
+ */
 export function penContour(
   nodes: readonly PenNode[],
   closed: boolean,
   curves: LayerCurves,
+  identity: ContourIdentity = NO_IDENTITY,
 ): Contour | null {
   const path = penPath(nodes, closed, curves)
   if (!path) return null
   const count = nodes.length
-  return pathToContour(path, (index) => {
-    const node = index < 0 ? nodes[0] : nodes[(index + 1) % count]
-    return node?.smooth ?? false
-  })
+  return pathToContour(
+    path,
+    (index) => {
+      const node = index < 0 ? nodes[0] : nodes[(index + 1) % count]
+      return node?.smooth ?? false
+    },
+    identity,
+  )
 }
 
 /**

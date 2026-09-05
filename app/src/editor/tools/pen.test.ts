@@ -169,6 +169,59 @@ describe('PenTool', () => {
     ])
   })
 
+  it('keeps the extended contour name and id', () => {
+    const open = {
+      ...makeContour(
+        [makePoint(0, 0, 'Move'), makePoint(100, 0, 'Line')],
+        false,
+      ),
+      name: 'stem',
+      id: 'c-7',
+    }
+    const context = makeToolContext({ contours: [open] })
+    const pen = new PenTool()
+    click(pen, context, { x: 100, y: 0 })
+    click(pen, context, { x: 200, y: 60 })
+    const outcome = pen.keyDown(
+      { key: 'Enter', modifiers: NO_MODIFIERS, repeat: false },
+      context,
+    ) as {
+      apply?: {
+        command: {
+          Batch: [
+            unknown,
+            {
+              AddContour: {
+                contour: { name: string | null; id: string | null }
+              }
+            },
+          ]
+        }
+      }
+    }
+    const added = outcome.apply?.command.Batch[1].AddContour.contour
+    // The extended path *is* the contour that was picked up.
+    expect(added?.name).toBe('stem')
+    expect(added?.id).toBe('c-7')
+  })
+
+  it('gives a freshly drawn path no borrowed identity', () => {
+    const context = makeToolContext()
+    const pen = new PenTool()
+    click(pen, context, { x: 0, y: 0 })
+    click(pen, context, { x: 100, y: 0 })
+    const outcome = pen.keyDown(
+      { key: 'Enter', modifiers: NO_MODIFIERS, repeat: false },
+      context,
+    ) as {
+      apply?: {
+        command: { AddContour: { contour: { name: null; id: null } } }
+      }
+    }
+    expect(outcome.apply?.command.AddContour.contour.name).toBeNull()
+    expect(outcome.apply?.command.AddContour.contour.id).toBeNull()
+  })
+
   it('reverses a path picked up at its first node', () => {
     const open = makeContour(
       [makePoint(0, 0, 'Move'), makePoint(100, 0, 'Line')],

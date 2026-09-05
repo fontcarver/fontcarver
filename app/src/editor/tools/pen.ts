@@ -46,6 +46,8 @@ interface PenPress {
 /** Which stored contour the pen picked up, when it is extending one. */
 interface PenExtend {
   contour: number
+  /** The source contour's name and id, which the extended path keeps. */
+  identity: { name: string | null; id: string | null }
 }
 
 export class PenTool implements EditorTool {
@@ -82,7 +84,10 @@ export class PenTool implements EditorTool {
       const pickup = openEnd(context, hit)
       if (pickup) {
         this.nodes = nodesOfContour(pickup.contour, pickup.end)
-        this.extend = { contour: pickup.index }
+        this.extend = {
+          contour: pickup.index,
+          identity: { name: pickup.contour.name, id: pickup.contour.id },
+        }
         this.press = { origin: at, dragging: false, closing: false }
         return { handled: true }
       }
@@ -277,7 +282,7 @@ export class PenTool implements EditorTool {
     const extend = this.extend
     this.reset()
     if (!target || nodes.length < 2) return NO_OUTCOME
-    const contour = penContour(nodes, closed, context.curves)
+    const contour = penContour(nodes, closed, context.curves, extend?.identity)
     if (!contour) return NO_OUTCOME
     return {
       apply: extend

@@ -81,6 +81,15 @@ function kindOf(segment: PathSegment): PointKind {
   return segment.kind === 'quad' ? 'QCurve' : 'Curve'
 }
 
+/**
+ * One stored point of a rebuilt contour.
+ *
+ * `tt_index` is always `Unnumbered`: a cut, an extend or a fitted stroke
+ * produces points that did not exist in the source, so there is no TrueType
+ * point number to carry over, and inventing one would break the hinting that
+ * numbers it. The contour's own `name` and `id` *are* carried, by
+ * `pathToContour`'s `identity`.
+ */
 function storedPoint(point: Point2, kind: PointKind, smooth = false): Point {
   return {
     x: point.x,
@@ -92,15 +101,27 @@ function storedPoint(point: Point2, kind: PointKind, smooth = false): Point {
   }
 }
 
+/** The contour-level identity a rebuilt contour inherits from its source. */
+export interface ContourIdentity {
+  name: string | null
+  id: string | null
+}
+
+/** Nothing inherited: a contour that did not exist before. */
+export const NO_IDENTITY: ContourIdentity = { name: null, id: null }
+
 /**
  * Turns explicit segments back into the UFO point list a command takes.
  *
  * `smooth` marks the on-curve points that should keep their handles tangent;
- * it is indexed by segment, naming the point each segment ends at.
+ * it is indexed by segment, naming the point each segment ends at. `identity`
+ * is the source contour's name and persistent id, which a cut or an extend
+ * carries onto the piece that stands for the original.
  */
 export function pathToContour(
   path: GeometricPath,
   smooth: (index: number) => boolean = () => false,
+  identity: ContourIdentity = NO_IDENTITY,
 ): Contour {
   const points: Point[] = []
   const count = path.segments.length
@@ -108,8 +129,8 @@ export function pathToContour(
     return {
       closed: path.closed,
       points: [storedPoint(path.start, path.closed ? 'Line' : 'Move')],
-      name: null,
-      id: null,
+      name: identity.name,
+      id: identity.id,
     }
   if (path.closed) {
     const last = path.segments[count - 1] as PathSegment
@@ -123,7 +144,7 @@ export function pathToContour(
     if (path.closed && index === count - 1) return
     points.push(storedPoint(segment.to, kindOf(segment), smooth(index)))
   })
-  return { closed: path.closed, points, name: null, id: null }
+  return { closed: path.closed, points, name: identity.name, id: identity.id }
 }
 
 /** The point of a segment at parameter `t`. */
