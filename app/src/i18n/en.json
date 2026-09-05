@@ -488,7 +488,9 @@
     "toggleSidebar": "Toggle sidebar",
     "toggleInspector": "Toggle inspector",
     "statusBar": "Status",
-    "progress": "{{stage}}…"
+    "progress": "{{stage}}…",
+    "inspector": "Inspector",
+    "sidebar": "Sidebar"
   },
   "fontView": {
     "toolbar": "Glyph grid controls",

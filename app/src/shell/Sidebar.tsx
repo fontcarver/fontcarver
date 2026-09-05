@@ -20,7 +20,11 @@ export function Sidebar() {
       <div className={styles.panelTitle}>
         {tab?.kind === 'glyph' ? t('sidebar.glyphTitle') : t('sidebar.title')}
       </div>
-      <div className={styles.panelStack}>
+      <div
+        className={styles.panelStack}
+        role="region"
+        aria-label={t('a11y.sidebar')}
+      >
         {tab?.kind === 'glyph' ? (
           <EditSidebar doc={tab.doc} />
         ) : tab?.kind === 'fontinfo' ? (

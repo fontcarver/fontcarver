@@ -202,6 +202,36 @@ async function settle(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0))
 }
 
+describe('dragging an anchor on its own', () => {
+  it('commits the TransformSelection that carries it', async () => {
+    const { controller, transport } = makeController(createEditingTransport())
+
+    // The layer's anchor sits at (100, 260), which is canvas (100, 40).
+    controller.pointerDown(at(100, 40))
+    expect(controller.currentSelection.has('anchor:0')).toBe(true)
+    controller.pointerMove(at(130, 40))
+    controller.pointerUp(at(130, 40))
+    await settle()
+
+    const applied = transport.calls.find(
+      (entry) => entry.method === 'doc.edit_apply',
+    )?.params as { command: Record<string, unknown> } | undefined
+    expect(applied?.command).toEqual({
+      TransformSelection: {
+        glyph: 'a',
+        layer: 'layer-1',
+        points: [],
+        components: [],
+        anchors: [0],
+        affine: [1, 0, 0, 1, 30, 0],
+      },
+    })
+    expect((transport.calls[0]?.params as { label: string }).label).toBe(
+      'Move anchor',
+    )
+  })
+})
+
 describe('metric handles and ruler guides', () => {
   it('drags the right sidebearing as one coalesced SetMetrics run', async () => {
     const { controller, transport, recorded } = makeController(

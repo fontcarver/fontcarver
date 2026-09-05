@@ -50,7 +50,11 @@ export function Inspector() {
   return (
     <>
       <div className={styles.panelTitle}>{t('inspector.title')}</div>
-      <div className={styles.panelStack}>
+      <div
+        className={styles.panelStack}
+        role="region"
+        aria-label={t('a11y.inspector')}
+      >
         {tab.kind === 'glyph' ? (
           <EditInspector masters={summary.masters} />
         ) : null}

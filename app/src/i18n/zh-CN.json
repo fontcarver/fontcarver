@@ -488,7 +488,9 @@
     "toggleSidebar": "切换侧边栏",
     "toggleInspector": "切换检查器",
     "statusBar": "状态栏",
-    "progress": "{{stage}}…"
+    "progress": "{{stage}}…",
+    "inspector": "Inspector",
+    "sidebar": "Sidebar"
   },
   "fontView": {
     "toolbar": "字形网格控件",
