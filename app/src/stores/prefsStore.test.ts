@@ -1,13 +1,63 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { setTransport, type Prefs } from '../api'
-import { createMockTransport } from '../test/mockTransport'
+import { createMockTransport, type MockTransport } from '../test/mockTransport'
 
 import { DEFAULT_PREFS, initialPrefsState, usePrefsStore } from './prefsStore'
 import { initialUiState, useUiStore } from './uiStore'
 
 function stored(overrides: Partial<Prefs> = {}): Prefs {
   return { ...DEFAULT_PREFS, ...overrides }
+}
+
+/** The records `prefs.set` was called with, in the order they went out. */
+function writes(transport: MockTransport): Prefs[] {
+  return transport.calls
+    .filter((entry) => entry.method === 'prefs.set')
+    .map((entry) => (entry.params as { prefs: Prefs }).prefs)
+}
+
+/** The error toasts raised so far. */
+function errors(): string[] {
+  return useUiStore
+    .getState()
+    .toasts.filter((toast) => toast.kind === 'error')
+    .map((toast) => toast.message)
+}
+
+/**
+ * Watches for promise rejections nobody handled.
+ *
+ * The View menu calls `update` without awaiting it, so a queue that let a
+ * rejected write escape would crash the process rather than show a toast.
+ */
+function watchUnhandledRejections(): { settle: () => Promise<unknown[]> } {
+  const node = globalThis as unknown as {
+    process?: {
+      on: (
+        event: 'unhandledRejection',
+        listener: (why: unknown) => void,
+      ) => void
+      off: (
+        event: 'unhandledRejection',
+        listener: (why: unknown) => void,
+      ) => void
+    }
+  }
+  const seen: unknown[] = []
+  const record = (why: unknown): void => {
+    seen.push(why)
+  }
+  node.process?.on('unhandledRejection', record)
+  return {
+    settle: async () => {
+      // Node reports an unhandled rejection once the turn that made it ends.
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      node.process?.off('unhandledRejection', record)
+      return seen
+    },
+  }
 }
 
 beforeEach(() => {
@@ -108,7 +158,7 @@ describe('prefsStore', () => {
     })
   })
 
-  it('coalesces updates that race one unresolved first read', async () => {
+  it('reads once for two changes that race the first read', async () => {
     const saved = stored({ recent_limit: 5, autosave_seconds: 120 })
     let release = () => undefined as void
     const read = new Promise<void>((resolve) => {
@@ -130,19 +180,23 @@ describe('prefsStore', () => {
     release()
     await Promise.all([first, second])
 
-    // One read, one write, and neither patch is lost.
+    // One read — the second change builds on what the first write confirmed —
+    // then a write per change, neither of them losing the other's patch nor
+    // the stored fields.
     expect(transport.calls.map((entry) => entry.method)).toEqual([
       'prefs.get',
       'prefs.set',
+      'prefs.set',
     ])
-    expect(transport.calls[1]?.params).toEqual({
-      prefs: stored({
+    expect(writes(transport)).toEqual([
+      stored({ recent_limit: 5, autosave_seconds: 120, theme: 'dark' }),
+      stored({
         recent_limit: 5,
         autosave_seconds: 120,
         theme: 'dark',
         grid_size: 8,
       }),
-    })
+    ])
     expect(usePrefsStore.getState().prefs).toEqual(
       stored({
         recent_limit: 5,
@@ -191,16 +245,19 @@ describe('prefsStore', () => {
     const second = usePrefsStore.getState().update({ grid_size: 8 })
     await Promise.all([first, cleared, second])
 
-    // The reset discards what preceded it; the later change lands on top of
-    // the defaults rather than being swallowed by the reset's turn in the queue.
+    // One write per action, in the order the user acted in: the reset lands
+    // after the field it supersedes and before the field asked for after it,
+    // which lands on top of the defaults rather than being swallowed.
+    expect(writes(transport)).toEqual([
+      stored({ recent_limit: 5, theme: 'dark' }),
+      DEFAULT_PREFS,
+      { ...DEFAULT_PREFS, grid_size: 8 },
+    ])
     expect(saved).toEqual({ ...DEFAULT_PREFS, grid_size: 8 })
     expect(usePrefsStore.getState().prefs).toEqual({
       ...DEFAULT_PREFS,
       grid_size: 8,
     })
-    expect(
-      transport.calls.filter((entry) => entry.method === 'prefs.set'),
-    ).toHaveLength(1)
   })
 
   it('keeps a change asked for a tick after a reset', async () => {
@@ -222,10 +279,15 @@ describe('prefsStore', () => {
     const second = usePrefsStore.getState().update({ grid_size: 8 })
     await Promise.all([first, cleared, second])
 
+    expect(writes(transport)).toEqual([
+      stored({ recent_limit: 5, theme: 'dark' }),
+      DEFAULT_PREFS,
+      { ...DEFAULT_PREFS, grid_size: 8 },
+    ])
     expect(saved).toEqual({ ...DEFAULT_PREFS, grid_size: 8 })
   })
 
-  it('discards the changes a reset supersedes', async () => {
+  it('lets a reset asked for last undo the changes before it', async () => {
     let saved: Prefs = stored({ recent_limit: 5 })
     const transport = createMockTransport({
       'prefs.get': () => saved,
@@ -243,10 +305,13 @@ describe('prefsStore', () => {
       usePrefsStore.getState().reset(),
     ])
 
+    expect(writes(transport)).toEqual([
+      stored({ recent_limit: 5, theme: 'dark' }),
+      stored({ recent_limit: 5, theme: 'dark', grid_size: 8 }),
+      DEFAULT_PREFS,
+    ])
     expect(saved).toEqual(DEFAULT_PREFS)
-    expect(
-      transport.calls.filter((entry) => entry.method === 'prefs.set'),
-    ).toHaveLength(1)
+    expect(usePrefsStore.getState().prefs).toEqual(DEFAULT_PREFS)
   })
 
   it('applies a reset requested while a write is in flight', async () => {
@@ -283,10 +348,54 @@ describe('prefsStore', () => {
     release()
     await Promise.all([inFlight, cleared, after])
 
+    expect(writes(transport)).toEqual([
+      stored({ recent_limit: 5, theme: 'dark' }),
+      DEFAULT_PREFS,
+      { ...DEFAULT_PREFS, grid_size: 8 },
+    ])
     expect(saved).toEqual({ ...DEFAULT_PREFS, grid_size: 8 })
-    expect(
-      transport.calls.filter((entry) => entry.method === 'prefs.set'),
-    ).toHaveLength(2)
+    expect(usePrefsStore.getState().prefs).toEqual({
+      ...DEFAULT_PREFS,
+      grid_size: 8,
+    })
+  })
+
+  it('builds the writes after a rejected one on what the kernel really holds', async () => {
+    let saved: Prefs = stored({ recent_limit: 5 })
+    let attempts = 0
+    const transport = createMockTransport({
+      'prefs.get': () => saved,
+      'prefs.set': ({ prefs }) => {
+        attempts += 1
+        // The reset is the write the kernel drops.
+        if (attempts === 2) throw new Error('kernel unreachable')
+        saved = prefs
+        return prefs
+      },
+    })
+    setTransport(transport)
+    await usePrefsStore.getState().load()
+
+    const first = usePrefsStore.getState().update({ theme: 'dark' })
+    const cleared = usePrefsStore.getState().reset()
+    const after = usePrefsStore.getState().update({ grid_size: 8 })
+    await Promise.all([first, cleared, after])
+
+    // The dropped reset takes nothing else with it: the change after it lands
+    // on the record the kernel confirmed, which is still the first write's.
+    expect(writes(transport)).toEqual([
+      stored({ recent_limit: 5, theme: 'dark' }),
+      DEFAULT_PREFS,
+      stored({ recent_limit: 5, theme: 'dark', grid_size: 8 }),
+    ])
+    expect(saved).toEqual(
+      stored({ recent_limit: 5, theme: 'dark', grid_size: 8 }),
+    )
+    // What the interface shows is what the kernel stored, and the shell has not
+    // been left wearing the theme the failed reset asked for.
+    expect(usePrefsStore.getState().prefs).toEqual(saved)
+    expect(useUiStore.getState().theme).toBe('dark')
+    expect(errors()).toEqual(['kernel unreachable'])
   })
 
   it('refuses to write when the stored record cannot be read', async () => {
@@ -337,5 +446,30 @@ describe('prefsStore', () => {
       DEFAULT_PREFS.grid_size,
     )
     expect(useUiStore.getState().toasts.at(-1)?.kind).toBe('error')
+  })
+
+  it('reports a failed write instead of rejecting what it handed back', async () => {
+    const transport = createMockTransport({
+      'prefs.get': () => stored(),
+      'prefs.set': () => {
+        throw new Error('config directory is read-only')
+      },
+    })
+    setTransport(transport)
+    await usePrefsStore.getState().load()
+
+    const unhandled = watchUnhandledRejections()
+    // Nobody awaits these: the View menu does not either.
+    usePrefsStore.getState().update({ theme: 'dark' })
+    usePrefsStore.getState().reset()
+    await expect(
+      usePrefsStore.getState().update({ grid_size: 12 }),
+    ).resolves.toBeUndefined()
+
+    // Three failed writes, three toasts, and nothing that could crash a
+    // caller that only wanted the toast.
+    expect(await unhandled.settle()).toEqual([])
+    expect(errors()).toHaveLength(3)
+    expect(usePrefsStore.getState().prefs).toEqual(stored())
   })
 })

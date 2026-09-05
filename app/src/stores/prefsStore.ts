@@ -41,11 +41,32 @@ function applyToShell(prefs: Prefs): void {
   if (ui.language !== language) ui.setLanguage(language)
 }
 
+/**
+ * One write, captured the moment the caller asked for it.
+ *
+ * An intent says what was meant, not what to send: `prefs.set` replaces the
+ * whole record, so the record itself is built when the intent runs, out of
+ * whatever the kernel has confirmed by then.
+ */
+type Intent =
+  | { readonly kind: 'update'; readonly patch: Partial<Prefs> }
+  | { readonly kind: 'reset' }
+
 /** Persisted application preferences, shared by every view that reads them. */
 export interface PrefsState {
   prefs: Prefs
   /** Whether the kernel's values have been read at least once. */
   loaded: boolean
+  /**
+   * The record the kernel last confirmed, and the base every write is built
+   * from; `null` until a read or a write has come back.
+   *
+   * `prefs` runs ahead of this while a write is on the wire — that is what
+   * keeps the dialog responsive — and falls back to it when a write is
+   * rejected, so a dropped write leaves neither the interface nor the write
+   * after it believing something the kernel never stored.
+   */
+  confirmed: Prefs | null
   load: () => Promise<void>
   /** Applies a patch immediately and persists the complete record. */
   update: (patch: Partial<Prefs>) => Promise<void>
@@ -53,76 +74,73 @@ export interface PrefsState {
 }
 
 /** Creates the initial, action-free part of the preference state. */
-export function initialPrefsState(): Pick<PrefsState, 'prefs' | 'loaded'> {
-  return { prefs: DEFAULT_PREFS, loaded: false }
+export function initialPrefsState(): Pick<
+  PrefsState,
+  'prefs' | 'loaded' | 'confirmed'
+> {
+  return { prefs: DEFAULT_PREFS, loaded: false, confirmed: null }
 }
 
 export const usePrefsStore = create<PrefsState>((set, get) => {
   /**
-   * Writes run one at a time, in the order they were asked for.
+   * Intents run one at a time, in the order they were asked for.
    *
    * `prefs.set` replaces the whole record, so two writes that overlap would
-   * each send their own view of it and the last one on the wire would win —
-   * silently dropping the other's change.
+   * each send their own view of it and the last one on the wire would win,
+   * silently dropping the other's change. Nothing is shared between intents and
+   * none is folded into another: one call is one write. Preference edits are
+   * rare, so an order that can be reasoned about is worth more than the writes
+   * a coalescing buffer would save.
    */
   let queue: Promise<void> = Promise.resolve()
 
   /**
-   * What the next write should send, folded together at call time.
+   * The record an intent sends, built when that intent runs.
    *
-   * `merge` carries changes to lay over the kernel's own record; `replace`
-   * carries changes to lay over [`DEFAULT_PREFS`], which is what a reset means.
-   * Every call folds itself in the instant it is made, so the buffer records the
-   * order the user acted in rather than the order the queue happens to drain —
-   * a reset can only supersede what was asked for before it.
+   * `undefined` means "write nothing": an update needs the kernel's own record
+   * to lay its patch over, and before a successful read this store holds
+   * nothing but [`DEFAULT_PREFS`] — writing then would silently overwrite the
+   * stored autosave interval, recent limit, nudge steps, grid size and snapping
+   * with defaults. So an unloaded store reads first and gives up when that read
+   * fails. A reset means the defaults and needs no read at all.
    */
-  let pending:
-    | { readonly base: 'stored' | 'defaults'; readonly patch: Partial<Prefs> }
-    | undefined
-
-  const enqueue = (task: () => Promise<void>): Promise<void> => {
-    // Both handlers, so one failed write cannot stall every later one.
-    queue = queue.then(task, task)
-    return queue
+  const recordFor = async (intent: Intent): Promise<Prefs | undefined> => {
+    if (intent.kind === 'reset') return DEFAULT_PREFS
+    if (!get().confirmed) await get().load()
+    const confirmed = get().confirmed
+    return confirmed ? { ...confirmed, ...intent.patch } : undefined
   }
 
-  const persist = async (prefs: Prefs): Promise<void> => {
-    const previous = get().prefs
-    // Applying first keeps the dialog responsive; a rejected write rolls back
-    // so the interface never claims a preference the kernel did not store.
+  /** Writes one intent, reports it, and leaves the queue behind it alone. */
+  const run = async (intent: Intent): Promise<void> => {
+    const prefs = await recordFor(intent)
+    if (!prefs) return
+    // Applying first keeps the dialog responsive; a rejected write falls back
+    // to what the kernel confirmed, so the interface never claims a preference
+    // the kernel did not store and the next intent still builds on the record
+    // that is really there.
+    const confirmed = get().confirmed ?? get().prefs
     set({ prefs })
     applyToShell(prefs)
     try {
-      set({ prefs: await call('prefs.set', { prefs }), loaded: true })
+      const saved = await call('prefs.set', { prefs })
+      set({ prefs: saved, loaded: true, confirmed: saved })
+      applyToShell(saved)
     } catch (error) {
-      set({ prefs: previous })
-      applyToShell(previous)
+      set({ prefs: confirmed })
+      applyToShell(confirmed)
       useUiStore
         .getState()
         .pushToast({ kind: 'error', message: errorMessage(error) })
     }
   }
 
-  /**
-   * Writes whatever is buffered, if anything.
-   *
-   * Every queued task runs this, so the first one to reach the front does the
-   * work and the rest find an empty buffer — which is how several rapid actions
-   * become a single `prefs.set`.
-   */
-  const flush = async (): Promise<void> => {
-    const write = pending
-    pending = undefined
-    if (!write) return
-    if (write.base === 'defaults') {
-      await persist({ ...DEFAULT_PREFS, ...write.patch })
-      return
-    }
-    if (!get().loaded) {
-      await get().load()
-      if (!get().loaded) return
-    }
-    await persist({ ...get().prefs, ...write.patch })
+  const enqueue = (intent: Intent): Promise<void> => {
+    // `run` reports a failed write itself, and the chain is caught so that one
+    // rejection can neither stall the intents behind it nor surface as an
+    // unhandled rejection in a caller that did not await what it was handed.
+    queue = queue.then(() => run(intent)).catch(() => undefined)
+    return queue
   }
 
   return {
@@ -131,7 +149,7 @@ export const usePrefsStore = create<PrefsState>((set, get) => {
     load: async () => {
       try {
         const prefs = await call('prefs.get', {})
-        set({ prefs, loaded: true })
+        set({ prefs, loaded: true, confirmed: prefs })
         applyToShell(prefs)
       } catch (error) {
         useUiStore
@@ -143,36 +161,24 @@ export const usePrefsStore = create<PrefsState>((set, get) => {
     /**
      * Merges a change into the kernel's own record.
      *
-     * `prefs.set` replaces the whole record, and before a successful load this
-     * store holds nothing but [`DEFAULT_PREFS`] — writing then would silently
-     * overwrite the stored autosave interval, recent limit, nudge steps, grid
-     * size and snapping with defaults. So an unloaded store reads first, and
-     * refuses the write outright when that read fails.
-     *
-     * Changes that arrive while an earlier one is still in flight — a theme
-     * click from the View menu and a dialog field during the same start-up
-     * read, say — are merged and written together, so they cost one read and
-     * one write and neither can be lost. A change asked for after a reset lands
-     * on top of the defaults rather than being swallowed by it.
+     * The patch is captured here, at call time, and carried by an intent of its
+     * own: one call is one `prefs.set`, and the writes go out in the order the
+     * user acted in. Which record the patch lands on is decided when the write
+     * goes out — the last one the kernel confirmed — so a change made while an
+     * earlier write is still on the wire cannot be lost, a change made after a
+     * reset lands on top of the defaults, and a rejected write changes nothing
+     * about what the writes after it are built on.
      */
-    update: (patch) => {
-      pending = {
-        base: pending?.base ?? 'stored',
-        patch: { ...pending?.patch, ...patch },
-      }
-      return enqueue(flush)
-    },
+    update: (patch) => enqueue({ kind: 'update', patch: { ...patch } }),
 
     /**
      * Restores the shipped defaults, loaded or not.
      *
-     * It supersedes the changes asked for before it, and nothing else: the
-     * buffer is replaced here, at call time, so a field edited after the reset
-     * button was pressed still reaches the kernel.
+     * It supersedes the changes asked for before it in the only sense a
+     * whole-record write can: it is written after them. A field edited after
+     * the reset button was pressed is a later intent, so it lands on top of the
+     * defaults rather than being swallowed by the reset.
      */
-    reset: () => {
-      pending = { base: 'defaults', patch: {} }
-      return enqueue(flush)
-    },
+    reset: () => enqueue({ kind: 'reset' }),
   }
 })
