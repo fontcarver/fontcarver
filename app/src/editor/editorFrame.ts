@@ -51,6 +51,8 @@ export interface FrameState {
   edit: EditOutline
   selection: Selection
   components: readonly ComponentBounds[]
+  /** Ghost nodes of the layer's components, from the kernel. */
+  componentPoints: readonly Point2[]
   pointer: Point2 | null
   drag: DragGesture | null
   /** The rubber band on screen — a selection marquee or a zoom rectangle. */
@@ -69,13 +71,25 @@ function insertGhost(state: FrameState): Point2 | null {
   return state.hover?.target.kind === 'segment' ? state.hover.point : null
 }
 
-/** Faint corner nodes of any component the pointer is approaching. */
+/**
+ * Faint nodes of any component the pointer is approaching (§4.1 item 14).
+ *
+ * The kernel's flattened component points are the real thing to snap to and
+ * therefore the real thing to show; a layer whose ghosts have not arrived yet
+ * falls back to the corners of each component's bounds, which at least says
+ * "there is a component here".
+ */
 function componentGhosts(state: FrameState): readonly Point2[] {
   const { viewport, pointer } = state
   if (!pointer || state.drag) return []
   const font = viewport.toFont(pointer)
   const reach = COMPONENT_GHOST_REACH / (viewport.scale || 1)
+  const near = (x: number, y: number): boolean =>
+    Math.abs(x - font.x) <= reach && Math.abs(y - font.y) <= reach
   const ghosts: Point2[] = []
+  for (const point of state.componentPoints)
+    if (near(point.x, point.y)) ghosts.push(point)
+  if (ghosts.length > 0) return ghosts
   for (const component of state.components) {
     const box = component.bbox
     if (!box) continue

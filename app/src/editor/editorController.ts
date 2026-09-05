@@ -287,6 +287,7 @@ export class EditorController {
       edit: this.editOutline(),
       selection: this.selection,
       components: this.components(),
+      componentPoints: this.source?.componentPoints ?? [],
       pointer: this.pointer,
       drag: this.drag,
       band: this.view.band,
