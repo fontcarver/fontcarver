@@ -50,6 +50,9 @@ const labels: EditorLabels = {
   deletePoints: 'Delete points',
   insertPoint: 'Insert point',
   convertSegment: 'Convert segment',
+  setMetrics: 'Set metrics',
+  addGuide: 'Add guide',
+  metricHud: (handle, value) => `${handle} ${value}`,
   snap: {
     node: 'node',
     handle: 'handle',
@@ -198,6 +201,116 @@ async function settle(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0))
   await new Promise((resolve) => setTimeout(resolve, 0))
 }
+
+describe('metric handles and ruler guides', () => {
+  it('drags the right sidebearing as one coalesced SetMetrics run', async () => {
+    const { controller, transport, recorded } = makeController(
+      createEditingTransport(),
+    )
+
+    // The RSB line sits at x = 200 (width 600 − rsb 400); a vertical segment
+    // of the outline runs along it, and §4.2 puts the metric handle first.
+    controller.pointerDown(at(200, 250))
+    controller.pointerMove(at(240, 250))
+    controller.pointerUp(at(240, 250))
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(
+      (transport.calls[1]?.params as { command: unknown }).command,
+    ).toEqual({
+      SetMetrics: {
+        glyph: 'a',
+        layer: 'layer-1',
+        width: null,
+        lsb: null,
+        rsb: 360,
+      },
+    })
+    expect((transport.calls[0]?.params as { label: string }).label).toBe(
+      'Set metrics',
+    )
+    expect(recorded.editing).toEqual([true, false])
+    expect(recorded.errors).toEqual([])
+  })
+
+  it('leaves a node alone even when it sits on a metric line', async () => {
+    const { controller, transport } = makeController(createEditingTransport())
+
+    // The node at (200, 200) is on the RSB line; a node outranks the handle.
+    controller.pointerDown(at(200, 100))
+    controller.pointerMove(at(210, 100))
+    controller.pointerUp(at(210, 100))
+    await settle()
+
+    const applied = transport.calls.find(
+      (entry) => entry.method === 'doc.edit_apply',
+    )?.params as { command: Record<string, unknown> } | undefined
+    expect(applied && Object.keys(applied.command)).toEqual(['MovePoints'])
+  })
+
+  it('adds a layer guide dragged out of the top ruler', async () => {
+    const { controller, transport } = makeController()
+
+    controller.pointerDown(at(200, 5, { ...NO_MODIFIERS, alt: true }))
+    controller.pointerMove(at(200, 260, { ...NO_MODIFIERS, alt: true }))
+    controller.pointerUp(at(200, 260, { ...NO_MODIFIERS, alt: true }))
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual(['doc.apply'])
+    expect(transport.calls[0]?.params).toEqual({
+      doc: 1,
+      label: 'Add guide',
+      command: {
+        AddGuide: {
+          glyph: 'a',
+          layer: 'layer-1',
+          master: null,
+          guide: {
+            x: 0,
+            y: 40,
+            angle: 0,
+            name: null,
+            locked: false,
+            color: null,
+          },
+        },
+      },
+    })
+  })
+
+  it('puts a shifted ruler drag in the master scope', async () => {
+    const { controller, transport } = makeController()
+
+    const held = { ...NO_MODIFIERS, alt: true, shift: true }
+    controller.pointerDown(at(5, 200, held))
+    controller.pointerUp(at(120, 200, held))
+    await settle()
+
+    expect(transport.calls[0]?.params).toMatchObject({
+      command: {
+        AddGuide: { glyph: null, layer: null, master: 'm1' },
+      },
+    })
+  })
+
+  it('draws no guide when the rulers are hidden', async () => {
+    const { controller, transport } = makeController()
+    controller.setRulersVisible(false)
+
+    controller.pointerDown(at(200, 5, { ...NO_MODIFIERS, alt: true }))
+    controller.pointerUp(at(200, 5, { ...NO_MODIFIERS, alt: true }))
+    await settle()
+
+    expect(transport.calls.some((entry) => entry.method === 'doc.apply')).toBe(
+      false,
+    )
+  })
+})
 
 // A gesture's promise chain outlives the test that started it, and `call()`
 // reads whichever transport is installed *when it runs* — so drain the chains

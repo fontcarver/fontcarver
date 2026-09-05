@@ -42,6 +42,10 @@ export interface EditorLabels {
   deletePoints: string
   insertPoint: string
   convertSegment: string
+  setMetrics: string
+  addGuide: string
+  /** The HUD line a sidebearing drag shows: the handle's name and its value. */
+  metricHud: (handle: 'lsb' | 'rsb' | 'width', value: number) => string
   /** Names the HUD gives a snap target, already translated. */
   snap: SnapNames
   hud: HudLabels

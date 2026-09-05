@@ -138,14 +138,26 @@ export function GlyphCanvas({
     // Dev builds time every frame so the 60 fps target of design spec §13 can
     // be measured from the running app rather than asserted.
     const started = import.meta.env.DEV ? performance.now() : 0
-    renderGlyph(ctx, viewport, {
-      scene: editing.contours
+    // A live gesture draws its own geometry: the optimistic contours and
+    // anchors of a drag, and the metrics a sidebearing drag is showing.
+    const scene =
+      editing.contours || editing.metrics
         ? {
             ...current.scene,
-            contours: editing.contours,
+            contours: editing.contours ?? current.scene.contours,
             anchors: editing.anchors ?? current.scene.anchors,
+            metrics: editing.metrics
+              ? {
+                  ...current.scene.metrics,
+                  width: editing.metrics.width,
+                  lsb: editing.metrics.lsb,
+                  rsb: editing.metrics.rsb,
+                }
+              : current.scene.metrics,
           }
-        : current.scene,
+        : current.scene
+    renderGlyph(ctx, viewport, {
+      scene,
       theme: current.theme,
       labels: current.labels,
       overlays: current.overlays,
@@ -181,6 +193,10 @@ export function GlyphCanvas({
   )
   useEffect(() => controller.setTool(tool), [controller, tool])
   useEffect(() => controller.setSnapping(snapping), [controller, snapping])
+  useEffect(
+    () => controller.setRulersVisible(overlays.rulers),
+    [controller, overlays.rulers],
+  )
   useEffect(() => {
     controller.setSource(source)
     draw()

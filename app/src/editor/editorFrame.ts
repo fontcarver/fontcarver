@@ -35,6 +35,8 @@ export interface EditorFrame {
   overlay: EditingOverlay
   hud: string | null
   pointerScreen: Point2 | null
+  /** Horizontal metrics a live sidebearing drag is showing, or `null`. */
+  metrics: { width: number; lsb: number; rsb: number } | null
 }
 
 /** The gesture state a frame is built from. */
@@ -54,6 +56,17 @@ export interface FrameState {
   band: MarqueeRect | null
   snap: SnapMatch | null
   hover: Hit | null
+  /**
+   * A gesture the drag/marquee pair does not cover — a sidebearing drag, a
+   * guide pulled off a ruler — describing itself: the HUD line it wants, the
+   * metrics it is previewing and the alignment lines it is drawing.
+   */
+  aside?: {
+    hud?: string | null
+    metrics?: { width: number; lsb: number; rsb: number } | null
+    alignX?: number | null
+    alignY?: number | null
+  } | null
 }
 
 const NOTHING_SELECTED: ReadonlySet<string> = new Set()
@@ -104,6 +117,7 @@ function stem(state: FrameState): number | null {
 /** The cursor-HUD line for the gesture in progress, or `null` when idle. */
 export function frameHud(state: FrameState): string | null {
   const { labels } = state
+  if (state.aside?.hud != null) return state.aside.hud
   if (state.band) {
     const box = state.band
     const scale = state.viewport.scale || 1
@@ -157,8 +171,8 @@ export function buildFrame(state: FrameState): EditorFrame {
   const overlay: EditingOverlay = {
     marquee: state.band,
     snap: state.snap?.point ?? null,
-    alignX: state.snap?.alignedX ?? null,
-    alignY: state.snap?.alignedY ?? null,
+    alignX: state.aside?.alignX ?? state.snap?.alignedX ?? null,
+    alignY: state.aside?.alignY ?? state.snap?.alignedY ?? null,
     insertGhost: insertGhost(state),
     componentGhosts: componentGhosts(state),
   }
@@ -173,5 +187,6 @@ export function buildFrame(state: FrameState): EditorFrame {
     overlay,
     hud: frameHud(state),
     pointerScreen: state.pointer,
+    metrics: state.aside?.metrics ?? null,
   }
 }
