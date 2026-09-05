@@ -26,10 +26,10 @@ test.describe('CJK font view', () => {
   test('opens Source Han Sans and renders cells at the end of the grid', async ({
     page,
   }) => {
-    // A debug `fw-devserver` needs about 75 s to parse a 65,535-glyph OTF; a
-    // release build does it in under 3 s (docs/p0-acceptance.md). The suite
-    // runs against the debug binary, so the budget is the debug one.
-    test.setTimeout(240_000)
+    // The skip above guarantees a release kernel, which opens this font in
+    // under 3 s (docs/p0-acceptance.md); the budgets are sized for that, so a
+    // real regression fails fast instead of after minutes of waiting.
+    test.setTimeout(60_000)
     await page.goto('/')
 
     await page.getByRole('menuitem', { name: 'File', exact: true }).click()
@@ -46,7 +46,7 @@ test.describe('CJK font view', () => {
     await expect(grid).toBeVisible()
     await expect(
       page.getByRole('contentinfo').getByText('65,535 glyphs'),
-    ).toBeVisible({ timeout: 180_000 })
+    ).toBeVisible({ timeout: 20_000 })
 
     await grid.evaluate((element) => {
       const scroller = element as unknown as {
@@ -56,10 +56,9 @@ test.describe('CJK font view', () => {
       scroller.scrollTop = scroller.scrollHeight
     })
 
-    // The last page of a 65,535-glyph list carries 300 flattened outlines,
-    // which a debug kernel takes tens of seconds to produce.
+    // The last page of a 65,535-glyph list carries 300 flattened outlines.
     const lastCell = grid.locator('[role="option"][aria-posinset="65535"]')
-    await expect(lastCell).toBeVisible({ timeout: 60_000 })
+    await expect(lastCell).toBeVisible({ timeout: 10_000 })
     await expect(lastCell).toHaveAttribute('data-index', '65534')
     await expect(lastCell).toHaveAttribute('data-glyph', /.+/)
   })

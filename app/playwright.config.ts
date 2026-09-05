@@ -42,14 +42,29 @@ const fixture = 'fixtures/fonts/DejaVuSans.ttf'
 
 export default defineConfig({
   testDir: './e2e',
+  // A red CI run has to be diagnosable from the artifact alone: the default
+  // reporter writes nothing to disk, so CI gets the HTML report the workflow
+  // uploads, and one retry so `on-first-retry` can actually record a trace.
+  reporter: process.env.CI ? [['html', { open: 'never' }], ['list']] : 'list',
+  retries: process.env.CI ? 1 : 0,
+  forbidOnly: !!process.env.CI,
+  // Bounds a hung suite well below the workflow's own step timeout; the
+  // slowest spec (CJK, when it runs at all) budgets four minutes of that.
+  globalTimeout: 15 * 60 * 1000,
   use: {
     baseURL,
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
   },
   webServer: [
     {
       command: `${devserver} --port ${apiPort} --open ${fixture}`,
       cwd: repoRoot,
       url: `${apiURL}/health`,
+      // `/health` answers before any document is open, so a `fw-devserver`
+      // already running on this port without the fixture satisfies the probe
+      // and every spec then fails on a missing document. Stop a stray server
+      // before running the suite, or point `FW_API_PORT` somewhere else.
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
       stdout: 'pipe',
