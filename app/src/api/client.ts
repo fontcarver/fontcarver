@@ -26,6 +26,18 @@ export function call<M extends keyof ApiMethods>(
   return getTransport().call(method, params)
 }
 
+declare global {
+  /**
+   * Dev-only bridge to the kernel, used by the end-to-end suite and by
+   * interactive verification to set up a document — creating a font, adding a
+   * glyph, reading an outline back — where the interface has no surface for it
+   * yet. It compiles out of a production build.
+   */
+  var __fwCall: typeof call | undefined
+}
+
+if (import.meta.env.DEV) globalThis.__fwCall = call
+
 /** Subscribes to kernel document events; returns an unsubscribe function. */
 export function onDocumentEvent(
   cb: (event: DocumentEvent) => void,
