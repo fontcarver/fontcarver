@@ -15,6 +15,8 @@ import {
   registerGlyphViewCommands,
   zoomActiveGlyphView,
 } from '../views/glyph/glyphCommands'
+import { registerLayerCommands } from '../views/glyph/layerCommands'
+import { registerPathCommands } from '../views/glyph/pathCommands'
 
 import { registerCommands, type Command } from './commands'
 import { closeTab, openFontInfoTab, openGlyphTab } from './tabActions'
@@ -74,6 +76,8 @@ async function runHistory(method: 'doc.undo' | 'doc.redo'): Promise<void> {
 export function registerBuiltinCommands(): void {
   registerFontViewCommands()
   registerGlyphViewCommands()
+  registerPathCommands()
+  registerLayerCommands()
   registerCommands([
     {
       id: 'file.new',
