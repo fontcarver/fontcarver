@@ -207,6 +207,52 @@ describe('prefsStore', () => {
     )
   })
 
+  it('keeps a slow start-up read from undoing a change made while it ran', async () => {
+    let saved: Prefs = stored({ recent_limit: 5 })
+    let slow = true
+    const transport = createMockTransport({
+      'prefs.get': async () => {
+        // The kernel reads the file when the call arrives, not when it replies,
+        // and the first read of the session is the one that takes a while.
+        const record = saved
+        if (slow) {
+          slow = false
+          await new Promise((resolve) => setTimeout(resolve, 25))
+        }
+        return record
+      },
+      'prefs.set': ({ prefs }) => {
+        saved = prefs
+        return prefs
+      },
+    })
+    setTransport(transport)
+
+    // The shell's start-up read, and a View-menu theme click before it lands.
+    const startUp = usePrefsStore.getState().load()
+    const changed = usePrefsStore.getState().update({ theme: 'dark' })
+    await Promise.all([startUp, changed])
+    await usePrefsStore.getState().update({ grid_size: 8 })
+
+    // The read takes its turn in the same queue as the writes, so it lands
+    // before them instead of coming back afterwards with the record it fetched
+    // beforehand: one read, and neither change is undone by it.
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'prefs.get',
+      'prefs.set',
+      'prefs.set',
+    ])
+    expect(writes(transport)).toEqual([
+      stored({ recent_limit: 5, theme: 'dark' }),
+      stored({ recent_limit: 5, theme: 'dark', grid_size: 8 }),
+    ])
+    expect(saved).toEqual(
+      stored({ recent_limit: 5, theme: 'dark', grid_size: 8 }),
+    )
+    expect(usePrefsStore.getState().confirmed).toEqual(saved)
+    expect(usePrefsStore.getState().prefs).toEqual(saved)
+  })
+
   it('serialises writes that arrive while an earlier one is in flight', async () => {
     let saved: Prefs = stored()
     const transport = createMockTransport({
