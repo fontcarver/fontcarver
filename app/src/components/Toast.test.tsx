@@ -48,6 +48,20 @@ describe('Toast', () => {
   })
 })
 
+describe('ToastStack', () => {
+  it('shows only the three most recent notifications', () => {
+    const push = useUiStore.getState().pushToast
+    for (const message of ['one', 'two', 'three', 'four', 'five'])
+      push({ kind: 'info', message })
+
+    render(<ToastStack />)
+
+    expect(screen.getAllByRole('status')).toHaveLength(3)
+    expect(screen.getByText('five')).toBeInTheDocument()
+    expect(screen.queryByText('two')).not.toBeInTheDocument()
+  })
+})
+
 describe('reportError', () => {
   it('pushes a translated toast with the kernel wording as detail', () => {
     reportError(new ApiCallError('parse', 'unsupported table version'))
