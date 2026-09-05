@@ -62,6 +62,8 @@ export class NudgeRunner {
   private carried: readonly Contour[] | null = null
   /** Identifies the open run, so a late `onEnd` cannot close a newer one. */
   private generation = 0
+  /** The run that is closing, which the next one's `edit_begin` waits for. */
+  private closing: Promise<void> | undefined
 
   constructor(options: NudgeRunnerOptions) {
     this.options = options
@@ -77,10 +79,16 @@ export class NudgeRunner {
     const signature = `${input.handles}|${input.refs
       .map((ref) => `${ref.contour}:${ref.point}`)
       .join(',')}`
-    if (this.coalescer && signature !== this.signature) {
-      // The set changed: close the open run, keeping what it produced so the
-      // next one accumulates from there.
+    // A coalescer holds exactly one run: it is replaced when the selection
+    // changes and when the previous run has closed, so every run gets its own
+    // generation and its own gate.
+    const stale =
+      this.coalescer !== null &&
+      (!this.coalescer.active || signature !== this.signature)
+    if (stale) {
       if (this.run)
+        // Reloads were deferred for the closing run's whole length, so its
+        // result is what the next one has to accumulate from.
         this.carried = translatePoints(
           this.run.base,
           this.run.refs,
@@ -88,9 +96,7 @@ export class NudgeRunner {
           this.run.total.y,
         )
       this.run = null
-      void this.end()
-      // A fresh coalescer, so the closing one's `onEnd` carries its own
-      // generation and cannot clear the preview this press is about to draw.
+      this.closing = this.end()
       this.coalescer = null
     }
     this.signature = signature
@@ -103,6 +109,7 @@ export class NudgeRunner {
         glyph: input.target.glyph,
         layer: input.target.layer,
         label: input.label,
+        after: this.closing,
         onEnd: () => this.close(generation),
         onError: this.options.onError,
       })
@@ -132,9 +139,10 @@ export class NudgeRunner {
 
   /** Finalises the run now: one undo entry for everything nudged so far. */
   async end(): Promise<void> {
-    if (!this.coalescer?.active) return
+    const coalescer = this.coalescer
+    if (!coalescer?.active) return
     try {
-      await this.coalescer.end()
+      await coalescer.end()
     } catch (error) {
       this.options.onError(error)
     }
@@ -145,6 +153,7 @@ export class NudgeRunner {
     if (generation !== this.generation) return
     this.run = null
     this.carried = null
+    this.closing = undefined
     this.options.onEnd()
   }
 }

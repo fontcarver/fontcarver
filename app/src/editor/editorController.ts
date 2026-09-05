@@ -76,6 +76,7 @@ export class EditorController {
   private labels: EditorLabels
   private source: EditorSource | null = null
   private edit: EditOutline = buildEditOutline([])
+  private editBase: readonly Contour[] = []
 
   private selection: Selection = EMPTY_SELECTION
   private drag: DragGesture | null = null
@@ -170,6 +171,7 @@ export class EditorController {
       (source.doc !== this.source?.doc || source.gid !== this.source?.gid)
     this.source = source
     this.edit = buildEditOutline(source?.outline.contours ?? [])
+    this.editBase = source?.outline.contours ?? []
     this.setPreview(null)
     if (!changedGlyph) return
     // Published unconditionally, not through `setSelection`: a freshly mounted
@@ -211,7 +213,7 @@ export class EditorController {
       labels: this.labels.hud,
       contours: this.contours(),
       preview: this.preview,
-      edit: this.edit,
+      edit: this.editOutline(),
       selection: this.selection,
       components: this.source?.outline.components ?? [],
       pointer: this.pointer,
@@ -391,12 +393,12 @@ export class EditorController {
 
   /** Selects every point of the layer. */
   selectAll(): void {
-    this.setSelection(allTargets(this.edit))
+    this.setSelection(allTargets(this.editOutline()))
   }
 
   /** Tab and Shift+Tab walk the on-curve points in stored order. */
   cycleNodes(direction: 1 | -1): void {
-    const next = cycledSelection(this.edit, this.selection, direction)
+    const next = cycledSelection(this.editOutline(), this.selection, direction)
     if (next) this.setSelection(next)
   }
 
@@ -416,8 +418,8 @@ export class EditorController {
     this.setPreview(
       this.nudge.press({
         target,
-        contours: source.outline.contours,
-        anchors: source.outline.anchors,
+        contours: this.contours(),
+        anchors: this.anchors(),
         refs: points,
         delta: { x: direction.x * step, y: direction.y * step },
         handles: modifiers.alt ? 'PointsOnly' : 'WithHandles',
@@ -485,6 +487,23 @@ export class EditorController {
     return this.spaceHeld ? 'hand' : this.tool
   }
 
+  /**
+   * The editable index of the geometry currently on screen.
+   *
+   * It follows the optimistic preview, not just the last fetched layer: while a
+   * nudge run is open reloads are deferred, so a hit test or a drag based on the
+   * fetched outline would aim at where the points *used* to be. Rebuilt only
+   * when the geometry it indexes actually changes.
+   */
+  private editOutline(): EditOutline {
+    const contours = this.contours()
+    if (contours !== this.editBase) {
+      this.editBase = contours
+      this.edit = buildEditOutline(contours)
+    }
+    return this.edit
+  }
+
   private contours(): readonly Contour[] {
     return this.preview?.contours ?? this.source?.outline.contours ?? []
   }
@@ -505,7 +524,7 @@ export class EditorController {
 
   private hitInput(): HitTestInput {
     return {
-      outline: this.edit,
+      outline: this.editOutline(),
       anchors: this.anchors(),
       guides: this.source?.guides ?? [],
       components: this.source?.outline.components ?? [],
@@ -545,7 +564,7 @@ export class EditorController {
     const action = segmentShortcut(
       target,
       this.labels,
-      this.edit,
+      this.editOutline(),
       hit,
       modifiers,
     )
@@ -564,8 +583,8 @@ export class EditorController {
         doc: target.doc,
         glyph: target.glyph,
         layer: target.layer,
-        contours: source.outline.contours,
-        anchors: source.outline.anchors,
+        contours: this.contours(),
+        anchors: this.anchors(),
         selection: this.selection,
         after: this.closing,
         labels: {
@@ -584,7 +603,7 @@ export class EditorController {
           }
           const match = snapDelta(
             buildSnapInput({
-              outline: this.edit,
+              outline: this.editOutline(),
               source: this.source,
               selection: this.selection,
               drag: this.drag,

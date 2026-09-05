@@ -108,7 +108,11 @@ describe('NudgeCoalescer', () => {
     ).toHaveLength(2)
   })
 
-  it('closes the run when the selection changes', async () => {
+  it('holds exactly one run, whatever it is handed', async () => {
+    // Replacing a run when the selection changes is the runner's job — it also
+    // has to carry the closed run's geometry forward and gate the next
+    // `edit_begin`, neither of which the coalescer can see. One coalescer is
+    // one run, so nothing here has to notice that the set moved.
     const mock = transport()
     const nudge = coalescer()
 
@@ -120,7 +124,10 @@ describe('NudgeCoalescer', () => {
 
     expect(
       mock.calls.filter((entry) => entry.method === 'doc.edit_begin'),
-    ).toHaveLength(2)
+    ).toHaveLength(1)
+    expect(
+      mock.calls.filter((entry) => entry.method === 'doc.edit_end'),
+    ).toHaveLength(1)
   })
 
   it('sends the step since the previous apply, which sums to the run', async () => {

@@ -8,7 +8,11 @@ import {
   makeLayerOutline,
   makePoint,
 } from '../test/fontFixtures'
-import { createMockTransport, type MockTransport } from '../test/mockTransport'
+import {
+  createEditingTransport,
+  createMockTransport,
+  type MockTransport,
+} from '../test/mockTransport'
 
 import {
   EditorController,
@@ -117,18 +121,20 @@ interface Recorded {
 }
 
 /** 1 CSS pixel per font unit, font origin at canvas (0, 300). */
-function makeController(): {
+function makeController(supplied?: MockTransport): {
   controller: EditorController
   transport: MockTransport
   recorded: Recorded
 } {
-  const transport = createMockTransport({
-    'doc.apply': () => change(),
-    'doc.edit_begin': () => 5,
-    'doc.edit_apply': () => change(),
-    'doc.edit_end': () => null,
-    'doc.undo': () => null,
-  })
+  const transport =
+    supplied ??
+    createMockTransport({
+      'doc.apply': () => change(),
+      'doc.edit_begin': () => 5,
+      'doc.edit_apply': () => change(),
+      'doc.edit_end': () => null,
+      'doc.undo': () => null,
+    })
   setTransport(transport)
   installed = transport
   const viewport = new Viewport()
@@ -847,5 +853,108 @@ describe('EditorController nudge handover', () => {
     ).toHaveLength(2)
     expect(controller.frame().contours).toBeNull()
     expect(recorded.editing.at(-1)).toBe(false)
+  })
+})
+
+describe('EditorController against the kernel token rules', () => {
+  const selectNode = (controller: EditorController, point: number) =>
+    controller.setSelection(
+      new Map([[`node:0:${point}`, { kind: 'node', contour: 0, point }]]),
+    )
+
+  it('keeps a second nudge run behind the first one it closes', async () => {
+    const { controller, transport, recorded } = makeController(
+      createEditingTransport(),
+    )
+    selectNode(controller, 1)
+    controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+    // Tab to another node inside the same animation frame: the first run's
+    // apply has not left yet, and `edit_begin` finalises whatever is open.
+    selectNode(controller, 2)
+    controller.nudgeSelection({ x: 0, y: 10 }, NO_MODIFIERS)
+    await controller.endNudge()
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(recorded.errors).toEqual([])
+  })
+
+  it('keeps a drag behind the nudge run it interrupts', async () => {
+    const { controller, transport, recorded } = makeController(
+      createEditingTransport(),
+    )
+    selectNode(controller, 1)
+    controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+    controller.pointerDown(at(210, 300))
+    controller.pointerMove(at(240, 300))
+    controller.pointerUp(at(240, 300))
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(recorded.errors).toEqual([])
+  })
+
+  it('keeps a single-shot command behind the run it interrupts', async () => {
+    const { controller, transport, recorded } = makeController(
+      createEditingTransport(),
+    )
+    selectNode(controller, 1)
+    controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+    await controller.toggleSmooth(false)
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.apply',
+    ])
+    expect(recorded.errors).toEqual([])
+  })
+
+  it('does not let a late close clear the run that replaced it', async () => {
+    let release = () => undefined as void
+    const until = new Promise<void>((resolve) => {
+      release = () => resolve()
+    })
+    const { controller, recorded } = makeController(
+      createEditingTransport({ hold: { on: 'doc.edit_end', until } }),
+    )
+    selectNode(controller, 1)
+    controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+    // Close the run, then press again with the *same* selection while its
+    // `edit_end` is still in flight.
+    void controller.endNudge()
+    await settle()
+    controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+    const previewing = controller.frame().contours?.[0]?.points[1]
+    expect(previewing).toMatchObject({ x: 220, y: 0 })
+    const reloadsBefore = recorded.reloads
+
+    release()
+    await settle()
+
+    // The first run's late close must not take the second run's preview.
+    expect(controller.frame().contours?.[0]?.points[1]).toMatchObject({
+      x: 220,
+      y: 0,
+    })
+    expect(recorded.reloads).toBe(reloadsBefore)
+    await controller.endNudge()
+    await settle()
   })
 })

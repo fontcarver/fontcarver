@@ -45,6 +45,12 @@ export interface NudgeContext {
   onEnd?: () => void
   /** Where a failed kernel call is reported. */
   onError?: (error: unknown) => void
+  /**
+   * A gesture still closing, which this run's `edit_begin` waits for. The
+   * kernel finalises the open edit when a new one begins, so a run that starts
+   * while the previous one is still flushing would invalidate its last apply.
+   */
+  after?: Promise<unknown>
 }
 
 /**
@@ -58,7 +64,6 @@ export interface NudgeContext {
 export class NudgeCoalescer {
   private readonly context: NudgeContext
   private session: EditSession | null = null
-  private signature = ''
   private total: Point2 = { x: 0, y: 0 }
   private sent: Point2 = { x: 0, y: 0 }
   private refs: PointRef[] = []
@@ -74,15 +79,15 @@ export class NudgeCoalescer {
     return this.session !== null
   }
 
-  /** Adds one arrow press. */
+  /**
+   * Adds one arrow press.
+   *
+   * One coalescer holds one run: the owner replaces it when the selection
+   * changes, so nothing here has to notice that the set moved.
+   */
   nudge(refs: readonly PointRef[], delta: Point2, handles: HandleMode): void {
     if (refs.length === 0) return
-    const signature = `${handles}|${refs
-      .map((ref) => `${ref.contour}:${ref.point}`)
-      .join(',')}`
-    if (this.session && signature !== this.signature) void this.end()
     if (!this.session) {
-      this.signature = signature
       this.refs = [...refs]
       this.handles = handles
       this.total = { x: 0, y: 0 }
@@ -93,6 +98,7 @@ export class NudgeCoalescer {
         {
           scheduler: this.context.scheduler,
           onError: this.context.onError,
+          after: this.context.after,
         },
       )
     }
@@ -114,7 +120,6 @@ export class NudgeCoalescer {
     }
     const session = this.session
     this.session = null
-    this.signature = ''
     if (!session) return
     // The owner is told once the kernel has closed the run, so its optimistic
     // preview can stand until then — dropping it earlier shows one frame of
