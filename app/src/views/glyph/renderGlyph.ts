@@ -64,10 +64,28 @@ export interface RenderGlyphOptions {
   selected?: ReadonlySet<string>
   /** Transient editing feedback: marquee, snap halo, ghosts, alignment lines. */
   editing?: EditingOverlay
+  /** Index of the component the pointer is over, for the locked hatch. */
+  hoveredComponent?: number | null
+  /** Guides shown as measurement guides, keyed `scope:index`. */
+  measurementGuides?: ReadonlySet<string>
   /** Cursor-HUD text, or `null` when no gesture is running. */
   hud?: string | null
   /** Pointer position in canvas pixels, where the HUD is anchored. */
   pointerScreen?: { x: number; y: number } | null
+}
+
+/** The vertical metrics a node can sit on (design spec §4.1 item 9). */
+function verticalMetricsOf(scene: GlyphScene): number[] {
+  const { metrics } = scene
+  const values = [
+    0,
+    metrics.xHeight,
+    metrics.capHeight,
+    metrics.ascender,
+    metrics.descender,
+  ]
+  if (metrics.verticalOrigin !== null) values.push(metrics.verticalOrigin)
+  return [...new Set(values.filter((value) => Number.isFinite(value)))]
 }
 
 /** Paints one frame of the glyph editor. */
@@ -90,7 +108,18 @@ export function renderGlyph(
     )
 
   if (overlays.guides)
-    drawGuides(ctx, viewport, { guides: scene.guides, showLabels: true }, theme)
+    drawGuides(
+      ctx,
+      viewport,
+      {
+        guides: scene.guides,
+        showLabels: true,
+        selected: options.selected,
+        measurement: options.measurementGuides,
+        contours: scene.contours,
+      },
+      theme,
+    )
 
   const underlay = options.underlay ?? NO_UNDERLAY
   drawUnderlays(
@@ -110,6 +139,8 @@ export function renderGlyph(
     {
       path: options.flattened,
       components: scene.components,
+      bounds: scene.componentBounds,
+      hovered: options.hoveredComponent ?? null,
       filled: overlays.filled,
       showLabels: overlays.points,
     },
@@ -124,6 +155,7 @@ export function renderGlyph(
       filled: overlays.filled,
       showPoints: overlays.points,
       selected: options.selected,
+      verticalMetrics: verticalMetricsOf(scene),
     },
     theme,
   )

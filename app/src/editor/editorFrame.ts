@@ -37,6 +37,8 @@ export interface EditorFrame {
   pointerScreen: Point2 | null
   /** Horizontal metrics a live sidebearing drag is showing, or `null`. */
   metrics: { width: number; lsb: number; rsb: number } | null
+  /** Component the pointer is over, for the locked-component hatch. */
+  hoveredComponent: number | null
 }
 
 /** The gesture state a frame is built from. */
@@ -188,5 +190,9 @@ export function buildFrame(state: FrameState): EditorFrame {
     hud: frameHud(state),
     pointerScreen: state.pointer,
     metrics: state.aside?.metrics ?? null,
+    hoveredComponent:
+      state.hover?.target.kind === 'component'
+        ? state.hover.target.index
+        : null,
   }
 }

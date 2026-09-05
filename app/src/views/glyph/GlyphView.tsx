@@ -111,6 +111,7 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
       contours: outline.contours,
       anchors: outline.anchors,
       components: outline.components.map((view) => view.component),
+      componentBounds: outline.components.map((view) => view.bbox),
       guides: [
         ...(master?.guides ?? []).map((guide) => ({
           guide,

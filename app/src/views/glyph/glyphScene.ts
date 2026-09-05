@@ -57,6 +57,8 @@ export interface GlyphScene {
   layerName: string
   contours: readonly Contour[]
   components: readonly Component[]
+  /** Flattened bounds per component, in the same order; empty until known. */
+  componentBounds: readonly ([number, number, number, number] | null)[]
   anchors: readonly Anchor[]
   guides: readonly SceneGuide[]
   metrics: SceneMetrics
@@ -224,6 +226,9 @@ export function buildScene({
     layerName: layer?.name || master?.name || '',
     contours: layer?.contours ?? [],
     components: layer?.components ?? [],
+    // Only `glyphs.outline` resolves component bounds; the display scene has
+    // none until the editable layer arrives and replaces them.
+    componentBounds: [],
     anchors: layer?.anchors ?? [],
     guides,
     metrics: {

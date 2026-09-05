@@ -111,8 +111,17 @@ export function GlyphCanvas({
   const fittedRef = useRef('')
   const tool = useEditorStore(selectActiveTool)
   const snapping = useEditorStore((state) => state.snapping)
+  const measurementGuides = useEditorStore((state) => state.measurementGuides)
 
-  const frame = useRef({ scene, theme, labels, overlays, flattened, underlay })
+  const frame = useRef({
+    scene,
+    theme,
+    labels,
+    overlays,
+    flattened,
+    underlay,
+    measurementGuides,
+  })
   const [cursor, setCursor] = useState('default')
 
   // The controller must outlive every render: it holds the live gesture and
@@ -168,6 +177,8 @@ export function GlyphCanvas({
       editing: editing.overlay,
       hud: editing.hud,
       pointerScreen: editing.pointerScreen,
+      hoveredComponent: editing.hoveredComponent,
+      measurementGuides: current.measurementGuides,
     })
     if (import.meta.env.DEV) recordPaint(performance.now() - started)
   }, [controller, viewport])
@@ -265,9 +276,26 @@ export function GlyphCanvas({
 
   // Refresh the draw inputs and repaint whenever anything visible changes.
   useEffect(() => {
-    frame.current = { scene, theme, labels, overlays, flattened, underlay }
+    frame.current = {
+      scene,
+      theme,
+      labels,
+      overlays,
+      flattened,
+      underlay,
+      measurementGuides,
+    }
     draw()
-  }, [draw, scene, theme, labels, overlays, flattened, underlay])
+  }, [
+    draw,
+    scene,
+    theme,
+    labels,
+    overlays,
+    flattened,
+    underlay,
+    measurementGuides,
+  ])
 
   // Wheel must be a non-passive native listener: React attaches `onWheel`
   // passively at the root, where `preventDefault` is ignored.

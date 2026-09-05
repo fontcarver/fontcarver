@@ -7,17 +7,31 @@
  * the local one, following the convention every incumbent editor uses.
  */
 
+import type { Contour } from '../../api'
 import type { Viewport } from '../../canvas/Viewport'
 
 import type { SceneGuide } from './glyphScene'
 import type { GlyphTheme } from './glyphTheme'
+import { guideMeasurements } from './guideMeasure'
 
 const LABEL_FONT_SIZE = 10
+
+/** Radius of the angle knob a selected guide carries (§4.1 item 12). */
+const KNOB_RADIUS = 3
+
+/** How far along the guide the knob sits, in CSS pixels. */
+const KNOB_REACH = 48
 
 /** What `drawGuides` renders. */
 export interface GuidesData {
   guides: readonly SceneGuide[]
   showLabels: boolean
+  /** Selection keys of the selected guides (`guide:scope:index`). */
+  selected?: ReadonlySet<string>
+  /** Keys (`scope:index`) of the guides shown as measurement guides. */
+  measurement?: ReadonlySet<string>
+  /** The outline the measurement guides are measured against. */
+  contours?: readonly Contour[]
 }
 
 /** Draws the master and layer guides of a scene. */
@@ -37,8 +51,9 @@ export function drawGuides(
   ctx.textAlign = 'left'
   ctx.textBaseline = 'bottom'
 
-  for (const entry of data.guides) {
+  data.guides.forEach((entry, index) => {
     const { guide } = entry
+    const key = `${entry.scope}:${index}`
     const colour =
       entry.scope === 'master' ? theme.guideGlobal : theme.guideLocal
     const origin = viewport.toScreen({ x: guide.x, y: guide.y })
@@ -57,6 +72,40 @@ export function drawGuides(
       ctx.fillStyle = colour
       ctx.fillText(guide.name, origin.x + 4, origin.y - 3)
     }
-  }
+
+    // The angle knob: a handle a future drag can grab to rotate the guide,
+    // and meanwhile the sign that this guide is the selected one.
+    if (data.selected?.has(`guide:${key}`)) {
+      ctx.setLineDash([])
+      ctx.fillStyle = colour
+      ctx.beginPath()
+      ctx.arc(
+        origin.x + dx * KNOB_REACH,
+        origin.y + dy * KNOB_REACH,
+        KNOB_RADIUS,
+        0,
+        Math.PI * 2,
+      )
+      ctx.fill()
+      ctx.setLineDash([5, 4])
+    }
+
+    if (!data.measurement?.has(key) || !data.contours) return
+    ctx.setLineDash([])
+    ctx.fillStyle = colour
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'bottom'
+    for (const span of guideMeasurements(data.contours, guide)) {
+      const from = viewport.toScreen(span.from)
+      const to = viewport.toScreen(span.to)
+      ctx.fillText(
+        String(Math.round(span.length)),
+        (from.x + to.x) / 2,
+        (from.y + to.y) / 2 - 2,
+      )
+    }
+    ctx.textAlign = 'left'
+    ctx.setLineDash([5, 4])
+  })
   ctx.restore()
 }

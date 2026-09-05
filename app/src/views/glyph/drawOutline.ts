@@ -55,6 +55,10 @@ const START_SIZE = 7
 const OPEN_END_TICK = 6
 const DUPLICATE_RADIUS = 3
 const SELECTED_SEGMENT_WIDTH = 2
+/** A node sitting on a vertical metric wears a 7 px diamond (§4.1 item 9). */
+const METRIC_DIAMOND = 7
+/** How near a vertical metric a node counts as sitting on it, in font units. */
+const METRIC_TOLERANCE = 0.5
 
 /** Traces one contour into a path sink, mapping every point through `map`. */
 export function traceContour(
@@ -277,6 +281,11 @@ function drawDuplicates(
   }
 }
 
+/** Whether a node sits on one of the layer's vertical metrics. */
+function onVerticalMetric(y: number, metrics: readonly number[]): boolean {
+  return metrics.some((metric) => Math.abs(y - metric) <= METRIC_TOLERANCE)
+}
+
 /** Draws the on-curve and off-curve nodes of one resolved contour. */
 function drawNodes(
   ctx: CanvasRenderingContext2D,
@@ -286,6 +295,7 @@ function drawNodes(
   map: PointMap,
   theme: GlyphTheme,
   selected: ReadonlySet<string>,
+  verticalMetrics: readonly number[],
 ): void {
   const storedIndex = new Map<Point, number>()
   contour.points.forEach((point, index) => storedIndex.set(point, index))
@@ -326,6 +336,14 @@ function drawNodes(
       ctx.fillStyle = isSelected ? theme.selection : theme.nodeCorner
       drawSquare(ctx, at, CORNER_SIZE)
       if (isSelected) drawSelectedRing(ctx, at, CORNER_SIZE, false, theme)
+    }
+    // A node exactly on the baseline, the x-height, the cap height or an
+    // ascender/descender is worth seeing at a glance: it is what keeps an
+    // outline aligned, and what a nudge silently breaks.
+    if (onVerticalMetric(node.y, verticalMetrics)) {
+      ctx.strokeStyle = theme.zone
+      ctx.lineWidth = 1
+      drawDiamond(ctx, at, METRIC_DIAMOND / 2)
     }
   }
 }
@@ -372,6 +390,8 @@ export interface OutlineData {
   showPoints: boolean
   /** Selection keys (`node:c:p`, `handle:c:p`, `segment:c:s`). */
   selected?: ReadonlySet<string>
+  /** Font-space y of every vertical metric, for the diamond marker. */
+  verticalMetrics?: readonly number[]
 }
 
 const NOTHING_SELECTED: ReadonlySet<string> = new Set()
@@ -405,7 +425,16 @@ export function drawOutline(
       if (selected.size > 0)
         drawSelectedSegments(ctx, index, resolved, map, theme, selected)
       drawHandles(ctx, resolved, map, theme)
-      drawNodes(ctx, index, contour, resolved, map, theme, selected)
+      drawNodes(
+        ctx,
+        index,
+        contour,
+        resolved,
+        map,
+        theme,
+        selected,
+        data.verticalMetrics ?? [],
+      )
       drawOpenEnds(ctx, resolved, map, theme)
       drawStartMarker(ctx, resolved, map, theme)
     })

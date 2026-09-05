@@ -10,6 +10,7 @@
  */
 
 import type { Component } from '../../api'
+import { paintHatch } from '../../canvas/glyphPaint'
 import type { Viewport } from '../../canvas/Viewport'
 
 import type { GlyphTheme } from './glyphTheme'
@@ -69,10 +70,26 @@ export interface ComponentsData {
   /** Component-flattened outline of the whole layer, in font units. */
   path: Path2D | null
   components: readonly Component[]
+  /** Flattened bounds per component, in the same order. */
+  bounds?: readonly ([number, number, number, number] | null)[]
+  /** Index of the component the pointer is over, or `null`. */
+  hovered?: number | null
   /** Fill instead of stroking, matching the outline preview mode. */
   filled: boolean
   /** Draw the per-component origin markers and names. */
   showLabels: boolean
+}
+
+/**
+ * Whether a component is locked in place.
+ *
+ * An automatically aligned component takes its position from the base glyph's
+ * anchors rather than from a stored offset, so dragging it does nothing: it is
+ * the model's "locked component", and design spec §4.1 item 6 asks for a hatch
+ * over it on hover so the user knows why before they try.
+ */
+export function componentLocked(component: Component): boolean {
+  return component.auto_align
 }
 
 /** Draws the component contribution of one layer. */
@@ -97,6 +114,25 @@ export function drawComponents(
       ctx.stroke(data.path)
     }
     ctx.restore()
+  }
+
+  // The hatch marks a hovered component the pointer cannot move.
+  const hovered = data.hovered == null ? null : data.components[data.hovered]
+  const hoveredBox =
+    data.hovered == null ? null : (data.bounds?.[data.hovered] ?? null)
+  if (hovered && hoveredBox && componentLocked(hovered)) {
+    const min = viewport.toScreen({ x: hoveredBox[0], y: hoveredBox[1] })
+    const max = viewport.toScreen({ x: hoveredBox[2], y: hoveredBox[3] })
+    paintHatch(
+      ctx,
+      {
+        x: Math.min(min.x, max.x),
+        y: Math.min(min.y, max.y),
+        width: Math.abs(max.x - min.x),
+        height: Math.abs(max.y - min.y),
+      },
+      theme.component,
+    )
   }
 
   if (!data.showLabels) return

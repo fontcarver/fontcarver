@@ -49,6 +49,8 @@ export interface GlyphTheme {
   hudInk: string
   /** Duplicate nodes and audit markers. */
   warning: string
+  /** Alignment zones, and the diamond around a node on a vertical metric. */
+  zone: string
   fontFamily: string
 }
 
@@ -82,6 +84,7 @@ export const FALLBACK_GLYPH_THEME: GlyphTheme = {
   hudBackground: 'rgb(27 31 36 / 92%)',
   hudInk: '#ffffff',
   warning: '#c2413b',
+  zone: '#eadfb8',
   fontFamily: 'system-ui',
 }
 
@@ -123,6 +126,7 @@ export function readGlyphTheme(): GlyphTheme {
     hudBackground: token('--cv-hud-bg', fb.hudBackground),
     hudInk: token('--cv-hud-ink', fb.hudInk),
     warning: token('--cv-warning', fb.warning),
+    zone: token('--cv-zone', fb.zone),
     fontFamily: token('--font-ui', fb.fontFamily),
   }
 }
