@@ -6,7 +6,14 @@
  * neither should have to import the other to say what it needs.
  */
 
-import type { DocId, GlyphId, Anchor, Contour, LayerOutline } from '../api'
+import type {
+  Anchor,
+  ComponentView,
+  Contour,
+  DocId,
+  GlyphId,
+  LayerOutline,
+} from '../api'
 import type { SceneMetrics } from '../views/glyph/glyphScene'
 
 import type { Modifiers } from './gestures/drag'
@@ -14,6 +21,13 @@ import type { ScopedGuide } from './hitTest'
 import type { HudLabels } from './hud'
 import type { Selection } from './selection'
 import type { SnapNames } from './snapping'
+
+/** The geometry a live gesture is showing, before the kernel has answered. */
+export interface EditorPreview {
+  contours: readonly Contour[]
+  anchors: readonly Anchor[]
+  components: readonly ComponentView[]
+}
 
 /** Undo labels and readout words, translated by the view. */
 export interface EditorLabels {
@@ -54,12 +68,8 @@ export interface EditorCallbacks {
   onReload: () => void
   onCursorChange: (cursor: string) => void
   /** The geometry a live gesture is showing, for the panels that read numbers. */
-  onPreview: (
-    preview: {
-      contours: readonly Contour[]
-      anchors: readonly Anchor[]
-    } | null,
-  ) => void
+  onPreview: (preview: EditorPreview | null) => void
+
   /**
    * A kernel call failed. Editing must not swallow transport errors: the shell
    * turns these into a toast, the same way a failed command does.

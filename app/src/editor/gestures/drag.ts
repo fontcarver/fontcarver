@@ -15,6 +15,7 @@
 import type {
   Anchor,
   Command,
+  ComponentView,
   Contour,
   DocId,
   HandleMode,
@@ -95,6 +96,7 @@ export interface DragContext {
   layer: string
   contours: readonly Contour[]
   anchors: readonly Anchor[]
+  components: readonly ComponentView[]
   selection: Selection
   labels: DragLabels
   /** Applies snapping to a proposed delta; omitted or `null` disables it. */
@@ -264,6 +266,7 @@ function projectOnto(delta: Point2, from: Point2, to: Point2): Point2 {
 export interface DragPreview {
   contours: readonly Contour[]
   anchors: readonly Anchor[]
+  components: readonly ComponentView[]
 }
 
 /** A live drag. */
@@ -455,7 +458,7 @@ export class DragGesture {
 
   /** The optimistic geometry the canvas should draw. */
   get preview(): DragPreview {
-    const { contours, anchors } = this.context
+    const { contours, anchors, components } = this.context
     const moved = this.deltas
       ? translateEach(contours, this.deltas)
       : translatePoints(contours, this.movedRefs, this.delta.x, this.delta.y)
@@ -483,7 +486,44 @@ export class DragGesture {
                 }
               : anchor,
           )
-    return { contours: withMirror, anchors: movedAnchors }
+    // Components ride the same `TransformSelection` as the anchors, so they
+    // move in the preview under exactly the same condition. Their offsets and
+    // bounds carry the delta; the flattened ghost is one path for the whole
+    // layer and is shifted by the canvas only when every component moves.
+    const movedComponents =
+      this.deltas !== null || this.plan.components.length === 0
+        ? components
+        : components.map((view, index) =>
+            this.plan.components.includes(index)
+              ? {
+                  ...view,
+                  component: {
+                    ...view.component,
+                    transform: [
+                      view.component.transform[0],
+                      view.component.transform[1],
+                      view.component.transform[2],
+                      view.component.transform[3],
+                      view.component.transform[4] + this.delta.x,
+                      view.component.transform[5] + this.delta.y,
+                    ] as [number, number, number, number, number, number],
+                  },
+                  bbox: view.bbox
+                    ? ([
+                        view.bbox[0] + this.delta.x,
+                        view.bbox[1] + this.delta.y,
+                        view.bbox[2] + this.delta.x,
+                        view.bbox[3] + this.delta.y,
+                      ] as [number, number, number, number])
+                    : view.bbox,
+                }
+              : view,
+          )
+    return {
+      contours: withMirror,
+      anchors: movedAnchors,
+      components: movedComponents,
+    }
   }
 
   /** Sends whatever is queued right now; used by tests and by pointer-up. */

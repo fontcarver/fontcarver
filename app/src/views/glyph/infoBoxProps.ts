@@ -6,7 +6,13 @@
  * switch on the selection without each group inventing its own contract.
  */
 
-import type { Anchor, Contour, Guide, LayerOutline } from '../../api'
+import type {
+  Anchor,
+  ComponentView,
+  Contour,
+  Guide,
+  LayerOutline,
+} from '../../api'
 import type { LayerTarget } from '../../editor/pointCommands'
 import type { Selection } from '../../editor/selection'
 
@@ -16,9 +22,13 @@ import type { Selection } from '../../editor/selection'
  * The geometry is readonly because during a gesture it is the canvas's live
  * preview rather than the fetched outline, and nothing in the box mutates it.
  */
-export type ReadableOutline = Omit<LayerOutline, 'contours' | 'anchors'> & {
+export type ReadableOutline = Omit<
+  LayerOutline,
+  'contours' | 'anchors' | 'components'
+> & {
   contours: readonly Contour[]
   anchors: readonly Anchor[]
+  components: readonly ComponentView[]
 }
 
 /** What every Info box row group needs. */

@@ -8,7 +8,13 @@
  * one without the other is what left the editor stuck in an earlier round.
  */
 
-import type { Anchor, Contour, HandleMode, PointRef } from '../api'
+import type {
+  Anchor,
+  ComponentView,
+  Contour,
+  HandleMode,
+  PointRef,
+} from '../api'
 import type { Point2 } from '../canvas/Viewport'
 
 import { NudgeCoalescer } from './gestures/nudge'
@@ -21,6 +27,7 @@ export interface NudgePress {
   /** The layer as the kernel last reported it; reloads are deferred meanwhile. */
   contours: readonly Contour[]
   anchors: readonly Anchor[]
+  components: readonly ComponentView[]
   refs: readonly PointRef[]
   delta: Point2
   handles: HandleMode
@@ -32,6 +39,8 @@ export interface NudgePress {
 export interface NudgePreview {
   contours: readonly Contour[]
   anchors: readonly Anchor[]
+  /** Untouched: a nudge sends `MovePoints`, which moves no component. */
+  components: readonly ComponentView[]
 }
 
 /** What the runner reports back. */
@@ -47,6 +56,7 @@ export class NudgeRunner {
   private run: {
     base: readonly Contour[]
     anchors: readonly Anchor[]
+    components: readonly ComponentView[]
     total: Point2
     refs: PointRef[]
   } | null = null
@@ -128,12 +138,14 @@ export class NudgeRunner {
     this.run = {
       base,
       anchors: this.run?.anchors ?? input.anchors,
+      components: this.run?.components ?? input.components,
       total,
       refs: movedPointRefs(base, input.refs, input.handles),
     }
     return {
       contours: translatePoints(base, this.run.refs, total.x, total.y),
       anchors: this.run.anchors,
+      components: this.run.components,
     }
   }
 

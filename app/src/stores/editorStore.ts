@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
-import type { Anchor, Contour, DocId, Glyph, GlyphCell, GlyphId } from '../api'
+import type { DocId, Glyph, GlyphCell, GlyphId } from '../api'
+import type { EditorPreview } from '../editor/editorTypes'
 import { EMPTY_SELECTION, type Selection } from '../editor/selection'
 import type { ToolId } from '../editor/tools/registry'
 import type { GlyphScene } from '../views/glyph/glyphScene'
@@ -59,7 +60,7 @@ export interface EditorState {
    * The Info box reads it so its numbers track the drag instead of lagging on
    * the last fetched outline.
    */
-  preview: { contours: readonly Contour[]; anchors: readonly Anchor[] } | null
+  preview: EditorPreview | null
   setOverlay: (key: keyof GlyphOverlays, value: boolean) => void
   setActiveGlyph: (glyph: ActiveGlyph | null) => void
   toggleOverlay: (key: keyof GlyphOverlays) => void
@@ -72,12 +73,7 @@ export interface EditorState {
   toggleInfoBox: () => void
   setSnapping: (snapping: boolean) => void
   setEditing: (editing: boolean) => void
-  setPreview: (
-    preview: {
-      contours: readonly Contour[]
-      anchors: readonly Anchor[]
-    } | null,
-  ) => void
+  setPreview: (preview: EditorPreview | null) => void
 }
 
 /** The initial, action-free part of the editor state. */

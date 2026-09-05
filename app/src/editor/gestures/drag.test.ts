@@ -62,6 +62,7 @@ function context(overrides: Partial<DragContext> = {}): DragContext {
     layer: 'layer-1',
     contours: [contour],
     anchors: [],
+    components: [],
     selection: EMPTY_SELECTION,
     labels,
     scheduler: immediateScheduler,
@@ -384,6 +385,74 @@ describe('preview fidelity', () => {
     expect(sent(mock).some((command) => 'TransformSelection' in command)).toBe(
       false,
     )
+  })
+})
+
+describe('component preview', () => {
+  const components = [
+    {
+      component: {
+        base: 'acute',
+        transform: [1, 0, 0, 1, 40, 500] as [
+          number,
+          number,
+          number,
+          number,
+          number,
+          number,
+        ],
+        anchor: null,
+        auto_align: false,
+        use_my_metrics: false,
+        round_to_grid: false,
+        smart: null,
+        point_match: null,
+      },
+      path: 'M0 0Z',
+      bbox: [40, 500, 140, 600] as [number, number, number, number],
+    },
+  ]
+
+  it('carries a selected component, which the command moves too', async () => {
+    const mock = transport()
+    const selection = selectionOf([
+      { kind: 'node', contour: 0, point: 1 },
+      { kind: 'component', index: 0 },
+    ])
+    const drag = beginDrag(
+      context({ components, selection }),
+      nodeHit,
+      { x: 200, y: 0 },
+      NO_MODIFIERS,
+    )
+    await drag?.ready()
+    drag?.move({ x: 230, y: 10 }, NO_MODIFIERS)
+
+    const moved = drag?.preview.components[0]
+    expect(moved?.component.transform.slice(4)).toEqual([70, 510])
+    // Its bounds travel too, so the ghosts and the hit test follow it.
+    expect(moved?.bbox).toEqual([70, 510, 170, 610])
+    await drag?.finish()
+    expect(
+      applied(mock)
+        .flatMap((command) => ('Batch' in command ? command.Batch : [command]))
+        .some((command) => 'TransformSelection' in command),
+    ).toBe(true)
+  })
+
+  it('leaves an unselected component where it is', async () => {
+    transport()
+    const drag = beginDrag(
+      context({ components }),
+      nodeHit,
+      { x: 200, y: 0 },
+      NO_MODIFIERS,
+    )
+    await drag?.ready()
+    drag?.move({ x: 230, y: 10 }, NO_MODIFIERS)
+    expect(drag?.preview.components[0]?.component.transform.slice(4)).toEqual([
+      40, 500,
+    ])
   })
 })
 

@@ -20,6 +20,8 @@ import {
   type EditorSource,
   type PointerInput,
 } from './editorController'
+import { registerEditor } from './activeEditor'
+import { commitField } from '../views/glyph/commitField'
 import { NO_MODIFIERS, type Modifiers } from './gestures/drag'
 import { NUDGE_TIMEOUT } from './gestures/nudge'
 
@@ -110,6 +112,8 @@ function source(): EditorSource {
 
 /** The transport the running test installed, drained when it ends. */
 let installed: MockTransport | null = null
+/** Controllers the running test built, stopped when it ends. */
+let built: EditorController[] = []
 
 /** What the view would have been told. */
 interface Recorded {
@@ -165,6 +169,7 @@ function makeController(supplied?: MockTransport): {
     onError: (error) => recorded.errors.push(error),
   })
   controller.setSource(source())
+  built.push(controller)
   return { controller, transport, recorded }
 }
 
@@ -199,7 +204,11 @@ async function settle(): Promise<void> {
 // against their own transport, until it stops recording, before the next test
 // installs another one.
 afterEach(async () => {
-  for (let pass = 0; pass < 12; pass += 1) {
+  // Stop every gesture this test started, then drain the chains they left
+  // against their own transport, before the next test installs another one.
+  for (const controller of built) controller.dispose()
+  built = []
+  for (let pass = 0; pass < 24; pass += 1) {
     const before = installed?.calls.length ?? 0
     await settle()
     if ((installed?.calls.length ?? 0) === before) break
@@ -956,5 +965,64 @@ describe('EditorController against the kernel token rules', () => {
     expect(recorded.reloads).toBe(reloadsBefore)
     await controller.endNudge()
     await settle()
+  })
+
+  it('drops the gate once the run it was waiting for has closed', async () => {
+    const { controller, transport } = makeController(createEditingTransport())
+    selectNode(controller, 1)
+    controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+    await controller.endNudge()
+    await settle()
+    const before = transport.calls.length
+
+    // Nothing is closing, so the drag opens its edit immediately rather than
+    // queueing behind a promise that has already resolved — a gate that is
+    // never dropped would make one unanswered call block every later gesture.
+    // (This controller has no view to reload it, so the node is still drawn at
+    // the position the run started from.)
+    controller.pointerDown(at(200, 300))
+    expect(transport.calls.slice(before).map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+    ])
+    controller.pointerUp(at(200, 300))
+    await settle()
+  })
+
+  it('closes the run before an Info box commit reaches the kernel', async () => {
+    const { controller, transport, recorded } = makeController(
+      createEditingTransport(),
+    )
+    const stop = registerEditor(controller)
+    try {
+      selectNode(controller, 1)
+      controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+      // A field commit inside the same animation frame: `doc.apply` finalises
+      // the open edit, so it has to wait for the run's apply just as a drag does.
+      commitField(
+        { doc: 1, glyph: 'a', layer: 'layer-1' },
+        {
+          SetPointPosition: {
+            glyph: 'a',
+            layer: 'layer-1',
+            point: { contour: 0, point: 1 },
+            x: 220,
+            y: 0,
+          },
+        },
+        'Set position',
+        () => undefined,
+      )
+      await settle()
+
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+        'doc.edit_end',
+        'doc.apply',
+      ])
+      expect(recorded.errors).toEqual([])
+    } finally {
+      stop()
+    }
   })
 })

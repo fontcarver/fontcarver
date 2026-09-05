@@ -12,7 +12,7 @@
  * animation frame, so the outline can never lag the pointer.
  */
 
-import type { Anchor, Command, Contour } from '../api'
+import type { Anchor, Command, ComponentView, Contour } from '../api'
 import type { Point2, Viewport } from '../canvas/Viewport'
 
 import {
@@ -26,6 +26,7 @@ import {
   SILENT_CALLBACKS,
   type EditorCallbacks,
   type EditorLabels,
+  type EditorPreview,
   type EditorSource,
   type PointerInput,
 } from './editorTypes'
@@ -66,6 +67,7 @@ import { ViewGestures } from './viewGestures'
 export type {
   EditorCallbacks,
   EditorLabels,
+  EditorPreview,
   EditorSource,
   PointerInput,
 } from './editorTypes'
@@ -84,17 +86,14 @@ export class EditorController {
   private hover: Hit | null = null
   private pointer: Point2 | null = null
   private snap: SnapMatch | null = null
-  private preview: {
-    contours: readonly Contour[]
-    anchors: readonly Anchor[]
-  } | null = null
+  private preview: EditorPreview | null = null
   private readonly nudge: NudgeRunner
   private spaceHeld = false
   private tool: ToolId = 'select'
   private snapEnabled = true
   private editingPublished = false
   /** The gesture that is closing, if any; a new one begins after it. */
-  private closing: Promise<void> = Promise.resolve()
+  private closing: Promise<void> | undefined
 
   constructor(viewport: Viewport, labels: EditorLabels) {
     this.viewport = viewport
@@ -128,12 +127,7 @@ export class EditorController {
   }
 
   /** Records the optimistic geometry and tells the panels that read it. */
-  private setPreview(
-    preview: {
-      contours: readonly Contour[]
-      anchors: readonly Anchor[]
-    } | null,
-  ): void {
+  private setPreview(preview: EditorPreview | null): void {
     this.preview = preview
     this.callbacks.onPreview(preview)
   }
@@ -420,6 +414,7 @@ export class EditorController {
         target,
         contours: this.contours(),
         anchors: this.anchors(),
+        components: this.components(),
         refs: points,
         delta: { x: direction.x * step, y: direction.y * step },
         handles: modifiers.alt ? 'PointsOnly' : 'WithHandles',
@@ -444,8 +439,16 @@ export class EditorController {
    * error raised. Every new gesture waits for this first.
    */
   settle(): Promise<void> {
-    if (this.nudge.active) this.closing = this.nudge.end()
-    return this.closing
+    if (this.nudge.active) {
+      const closing = this.nudge.end().finally(() => {
+        // Only the gesture that is *still* closing should gate the next one:
+        // a gate that is never dropped would make one unanswered call block
+        // every gesture after it, not just its successor.
+        if (this.closing === closing) this.closing = undefined
+      })
+      this.closing = closing
+    }
+    return this.closing ?? Promise.resolve()
   }
 
   /**
@@ -506,6 +509,10 @@ export class EditorController {
 
   private contours(): readonly Contour[] {
     return this.preview?.contours ?? this.source?.outline.contours ?? []
+  }
+
+  private components(): readonly ComponentView[] {
+    return this.preview?.components ?? this.source?.outline.components ?? []
   }
 
   private anchors(): readonly Anchor[] {
@@ -585,6 +592,7 @@ export class EditorController {
         layer: target.layer,
         contours: this.contours(),
         anchors: this.anchors(),
+        components: this.components(),
         selection: this.selection,
         after: this.closing,
         labels: {

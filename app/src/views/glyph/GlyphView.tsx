@@ -93,6 +93,7 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
       ...baseScene,
       contours: outline.contours,
       anchors: outline.anchors,
+      components: outline.components.map((view) => view.component),
       guides: [
         ...(master?.guides ?? []).map((guide) => ({
           guide,
@@ -240,6 +241,7 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
                     ...outline,
                     contours: preview.contours,
                     anchors: preview.anchors,
+                    components: preview.components,
                   }
                 : outline
             }

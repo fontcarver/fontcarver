@@ -9,6 +9,7 @@
  */
 
 import type { Command } from '../../api'
+import { activeEditor } from '../../editor/activeEditor'
 import { commit, type LayerTarget } from '../../editor/pointCommands'
 import { reportError } from '../../shell/commands'
 
@@ -19,5 +20,11 @@ export function commitField(
   label: string,
   onCommitted: () => void,
 ): void {
-  void commit(target, command, label).catch(reportError).finally(onCommitted)
+  // `doc.apply` finalises whatever coalesced edit is open, so a field commit
+  // that lands inside an arrow-key run would invalidate that run's last apply.
+  // The editor closes the run first, exactly as a drag does.
+  void Promise.resolve(activeEditor()?.settle())
+    .then(() => commit(target, command, label))
+    .catch(reportError)
+    .finally(onCommitted)
 }

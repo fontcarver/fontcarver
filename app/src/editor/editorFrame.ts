@@ -9,7 +9,9 @@
  * tested — without driving a pointer.
  */
 
-import type { Anchor, Contour } from '../api'
+import type { Anchor, ComponentView, Contour } from '../api'
+
+import type { EditorPreview } from './editorTypes'
 import type { Point2, Viewport } from '../canvas/Viewport'
 import type { EditingOverlay } from '../views/glyph/drawEditing'
 
@@ -28,6 +30,7 @@ export const COMPONENT_GHOST_REACH = 24
 export interface EditorFrame {
   contours: readonly Contour[] | null
   anchors: readonly Anchor[] | null
+  components: readonly ComponentView[] | null
   selected: ReadonlySet<string>
   overlay: EditingOverlay
   hud: string | null
@@ -41,7 +44,7 @@ export interface FrameState {
   /** Geometry as drawn: the optimistic preview during a drag, else the layer. */
   contours: readonly Contour[]
   /** Preview geometry, or `null` when no gesture is previewing anything. */
-  preview: { contours: readonly Contour[]; anchors: readonly Anchor[] } | null
+  preview: EditorPreview | null
   edit: EditOutline
   selection: Selection
   components: readonly ComponentBounds[]
@@ -162,6 +165,7 @@ export function buildFrame(state: FrameState): EditorFrame {
   return {
     contours: state.preview?.contours ?? null,
     anchors: state.preview?.anchors ?? null,
+    components: state.preview?.components ?? null,
     selected:
       state.selection.size === 0
         ? NOTHING_SELECTED
