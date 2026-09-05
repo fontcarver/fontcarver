@@ -28,6 +28,10 @@ export interface GlyphTheme {
   handle: string
   start: string
   component: string
+  /** The background layer's outline and its 3 px point dots. */
+  backgroundLayer: string
+  /** The same glyph in the other masters. */
+  otherMaster: string
   anchor: string
   guideLocal: string
   guideGlobal: string
@@ -64,6 +68,8 @@ export const FALLBACK_GLYPH_THEME: GlyphTheme = {
   handle: '#8e96a2',
   start: '#3b6fb6',
   component: '#8e96a2',
+  backgroundLayer: '#c9a227',
+  otherMaster: '#9e7bb5',
   anchor: '#c2413b',
   guideLocal: '#3b6fb6',
   guideGlobal: '#c2413b',
@@ -103,6 +109,8 @@ export function readGlyphTheme(): GlyphTheme {
     handle: token('--cv-handle', fb.handle),
     start: token('--cv-node-corner', fb.start),
     component: token('--cv-component', fb.component),
+    backgroundLayer: token('--cv-background-layer', fb.backgroundLayer),
+    otherMaster: token('--cv-other-master', fb.otherMaster),
     anchor: token('--cv-anchor', fb.anchor),
     guideLocal: token('--cv-guide-local', fb.guideLocal),
     guideGlobal: token('--cv-guide-global', fb.guideGlobal),

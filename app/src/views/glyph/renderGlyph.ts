@@ -17,6 +17,7 @@ import { drawHud } from './drawHud'
 import { drawMetrics, type MetricLabels } from './drawMetrics'
 import { drawOutline } from './drawOutline'
 import { drawRulers } from './drawRulers'
+import { drawUnderlays, NO_UNDERLAY, type UnderlayData } from './drawUnderlays'
 import type { GlyphScene } from './glyphScene'
 import type { GlyphTheme } from './glyphTheme'
 
@@ -55,6 +56,8 @@ export interface RenderGlyphOptions {
   overlays: GlyphOverlays
   /** Component-flattened outline of the shown layer, in font units. */
   flattened: Path2D | null
+  /** The other masters and the background layer, drawn behind everything. */
+  underlay?: UnderlayData
   /** Pointer position in font units, or `null` when the pointer is away. */
   pointer: { x: number; y: number } | null
   /** Selection keys, drawn as the selection layer of the outline. */
@@ -88,6 +91,18 @@ export function renderGlyph(
 
   if (overlays.guides)
     drawGuides(ctx, viewport, { guides: scene.guides, showLabels: true }, theme)
+
+  const underlay = options.underlay ?? NO_UNDERLAY
+  drawUnderlays(
+    ctx,
+    viewport,
+    {
+      background: overlays.background ? underlay.background : null,
+      backgroundPoints: overlays.background ? underlay.backgroundPoints : [],
+      otherMasters: overlays.otherMasters ? underlay.otherMasters : [],
+    },
+    theme,
+  )
 
   drawComponents(
     ctx,

@@ -13,6 +13,7 @@ import { neighbourGid } from '../font/glyphOrder'
 import type { GlyphQuery } from '../font/glyphSelection'
 
 import { GlyphCanvas, type GlyphCanvasHandle } from './GlyphCanvas'
+import { NO_UNDERLAY, type UnderlayData } from './drawUnderlays'
 import { GlyphToolbar } from './GlyphToolbar'
 import { InfoBox } from './InfoBox'
 import { ToolPalette } from './ToolPalette'
@@ -51,6 +52,8 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
   const toggleOverlay = useEditorStore((state) => state.toggleOverlay)
   const selection = useEditorStore((state) => state.selection)
   const preview = useEditorStore((state) => state.preview)
+  const editedLayer = useEditorStore((state) => state.editedLayer)
+  const setEditedLayer = useEditorStore((state) => state.setEditedLayer)
   const setTabLabel = useUiStore((state) => state.setTabLabel)
 
   const detail = useGlyphDetail(doc, gid, masterId)
@@ -67,6 +70,12 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
     return masters.find((entry) => entry.id === wanted) ?? masters[0] ?? null
   }, [fontInfo.info, masterId])
 
+  // A layer chosen in the Layers panel belongs to the glyph it was chosen in;
+  // opening another glyph goes back to that glyph's master layer.
+  useEffect(() => {
+    setEditedLayer(null)
+  }, [doc, gid, setEditedLayer])
+
   const baseScene = useMemo(
     () =>
       detail.detail === null
@@ -77,8 +86,16 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
             master,
             masterId,
             unitsPerEm: summary.units_per_em,
+            layerId: editedLayer,
           }),
-    [detail.detail, detail.cell, master, masterId, summary.units_per_em],
+    [
+      detail.detail,
+      detail.cell,
+      editedLayer,
+      master,
+      masterId,
+      summary.units_per_em,
+    ],
   )
 
   const outlineResult = useLayerOutline(doc, gid, baseScene?.layer?.id ?? null)
@@ -125,6 +142,28 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
       return null
     }
   }, [flattenedData])
+
+  const underlay = useMemo<UnderlayData>(() => {
+    if (!scene) return NO_UNDERLAY
+    const parse = (data: string | null): Path2D | null => {
+      if (!data) return null
+      try {
+        return new Path2D(data)
+      } catch {
+        // Malformed path data must not take the whole view down.
+        return null
+      }
+    }
+    return {
+      background: parse(scene.background?.flattened ?? null),
+      backgroundPoints: (scene.background?.contours ?? []).flatMap((contour) =>
+        contour.points.map((point) => ({ x: point.x, y: point.y })),
+      ),
+      otherMasters: scene.otherMasters
+        .map(parse)
+        .filter((path): path is Path2D => path !== null),
+    }
+  }, [scene])
 
   const source = useMemo<EditorSource | null>(() => {
     if (!scene || !outline || gid === undefined) return null
@@ -230,6 +269,7 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
           labels={labels}
           overlays={overlays}
           flattened={flattened}
+          underlay={underlay}
           fitKey={`${doc}:${gid}:${masterId ?? ''}`}
           label={t('glyphView.canvasLabel', {
             name: scene.name,

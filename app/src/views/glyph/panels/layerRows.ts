@@ -92,26 +92,3 @@ export function layerLabel(
   const master = masters.find((entry) => entry.id === row.master)
   return master ? master.name : roleName
 }
-
-/** The background layer of one master, when the glyph has one. */
-export function backgroundOf(
-  layers: readonly Layer[],
-  master: string | null,
-): Layer | null {
-  if (master === null) return null
-  return (
-    layers.find(
-      (layer) => 'Background' in layer.kind && layer.kind.Background === master,
-    ) ?? null
-  )
-}
-
-/** The master layers of every *other* master, for the overlay. */
-export function otherMasterLayers(
-  layers: readonly Layer[],
-  master: string | null,
-): Layer[] {
-  return layers.filter(
-    (layer) => 'Master' in layer.kind && layer.kind.Master !== master,
-  )
-}

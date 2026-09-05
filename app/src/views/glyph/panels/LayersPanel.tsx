@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { MasterSummary } from '../../../api'
 import { useEditorStore } from '../../../stores/editorStore'
 import { commitField } from '../commitField'
+import { backgroundLayer } from '../glyphScene'
 
 import { LayerList } from './LayerList'
 import styles from './panels.module.css'
@@ -13,7 +14,6 @@ import {
   removeLayerCommand,
   swapWithBackgroundCommand,
 } from './panelCommands'
-import { backgroundOf } from './layerRows'
 
 export interface LayersPanelProps extends PanelContext {
   masters: readonly MasterSummary[]
@@ -37,7 +37,7 @@ export function LayersPanel({
   const { t } = useTranslation()
   const overlays = useEditorStore((state) => state.overlays)
   const toggleOverlay = useEditorStore((state) => state.toggleOverlay)
-  const background = backgroundOf(glyph.layers, master)
+  const background = backgroundLayer(glyph, master)
 
   const run = (
     command: Parameters<typeof commitField>[1],

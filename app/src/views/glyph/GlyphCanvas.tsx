@@ -22,6 +22,7 @@ import { selectActiveTool, useEditorStore } from '../../stores/editorStore'
 import type { Selection } from '../../editor/selection'
 
 import type { MetricLabels } from './drawMetrics'
+import type { UnderlayData } from './drawUnderlays'
 import styles from './glyphView.module.css'
 import { sceneBox, type GlyphScene } from './glyphScene'
 import type { GlyphTheme } from './glyphTheme'
@@ -44,6 +45,8 @@ export interface GlyphCanvasProps {
   overlays: GlyphOverlays
   /** Component-flattened outline of the shown layer, in font units. */
   flattened: Path2D | null
+  /** The other masters and the background layer, drawn behind the outline. */
+  underlay: UnderlayData
   /** Identity of the glyph shown; changing it refits the view. */
   fitKey: string
   label: string
@@ -90,6 +93,7 @@ export function GlyphCanvas({
   labels,
   overlays,
   flattened,
+  underlay,
   fitKey,
   label,
   source,
@@ -108,7 +112,7 @@ export function GlyphCanvas({
   const tool = useEditorStore(selectActiveTool)
   const snapping = useEditorStore((state) => state.snapping)
 
-  const frame = useRef({ scene, theme, labels, overlays, flattened })
+  const frame = useRef({ scene, theme, labels, overlays, flattened, underlay })
   const [cursor, setCursor] = useState('default')
 
   // The controller must outlive every render: it holds the live gesture and
@@ -146,6 +150,7 @@ export function GlyphCanvas({
       labels: current.labels,
       overlays: current.overlays,
       flattened: current.flattened,
+      underlay: current.underlay,
       pointer: pointerRef.current,
       selected: editing.selected,
       editing: editing.overlay,
@@ -244,9 +249,9 @@ export function GlyphCanvas({
 
   // Refresh the draw inputs and repaint whenever anything visible changes.
   useEffect(() => {
-    frame.current = { scene, theme, labels, overlays, flattened }
+    frame.current = { scene, theme, labels, overlays, flattened, underlay }
     draw()
-  }, [draw, scene, theme, labels, overlays, flattened])
+  }, [draw, scene, theme, labels, overlays, flattened, underlay])
 
   // Wheel must be a non-passive native listener: React attaches `onWheel`
   // passively at the root, where `preventDefault` is ignored.
