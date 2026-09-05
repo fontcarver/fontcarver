@@ -214,3 +214,126 @@ Unit suite: 408 tests, +22 from the base (5 error mapping, 5 toast, 5 scroll mem
    (pre-existing). It skips cleanly elsewhere, but it is not portable.
 3. The scroll memory deviates from the ruling's suggested storage location — see item 2 above for why.
 4. `fixtures/fonts/DejaVuSans.ttf` is now load-bearing for CI, not just for local runs.
+
+---
+
+## Fix round 1
+
+Review: `task-11-review.md` (Needs fixes — 2 Important, 8 Minor). Fixed: Important 1 and 2, Minor 1, 2, 3,
+4 and 8. Minor 5, 6 and 7 were deferred by the controller and left alone; the scroll-memory deviation was
+accepted. Six commits on top of `067af1b`, nothing pushed.
+
+| Commit | Subject |
+| --- | --- |
+| `d6db905` | `fix(app): discard a font-info response its invalidation overtook` |
+| `96bc4cb` | `fix(app): give transport failures their own error codes` |
+| `fe77499` | `fix(app): cap the toast stack at three and narrow it to 320 px` |
+| `6470e17` | `test(app): write a diagnosable Playwright report on CI` |
+| `056bc26` | `ci: bound the verify job and the e2e step in time` |
+| `e8ad7c5` | `docs(app): correct the invalidation entry-point docstring` |
+
+### Important 1 — stale font info could be re-cached
+
+The one-line fix the review proposed (`inFlight.delete(doc)`) is necessary but not sufficient: the
+overtaken request's own `.then` still ran `cache.set(doc, staleInfo)` on arrival, and its `.finally`
+would then have deleted the *newer* request from `inFlight`, so a third caller would have started a
+duplicate. Fixed with a per-document revision instead.
+
+- `app/src/stores/fontInfoCache.ts:20-29` — `revisions` map and `revisionOf`.
+- `app/src/stores/fontInfoCache.ts:37-63` — each request stamps the revision it was issued for and writes
+  the cache (and clears `inFlight`) only while that revision still stands; the rejection path is guarded
+  the same way.
+- `app/src/stores/fontInfoCache.ts:66-73` — `forgetFontInfo` bumps the revision and drops the in-flight
+  entry, so `invalidateFontInfo`, the `onDocumentForgotten` teardown and the tests all get the same
+  guarantee.
+
+Tests: new `app/src/stores/fontInfoCache.test.ts` (4 cases) — request sharing still works; an invalidation
+forces a second request rather than joining the pending one; a response that answers *after* its
+invalidation is never cached and the fresh one is; and the older request settling does not evict the newer
+one from `inFlight`.
+
+### Important 2 — CI failure artifact was always empty
+
+- `app/playwright.config.ts:47-58` — `reporter: process.env.CI ? [['html', { open: 'never' }], ['list']] :
+  'list'`, `use: { trace: 'on-first-retry', screenshot: 'only-on-failure' }`. Added `retries: process.env.CI
+  ? 1 : 0` as well, without which `on-first-retry` can never fire (Playwright defaults to zero retries, so
+  no first retry exists).
+- Upload paths confirmed against what Playwright actually writes: the html reporter's default
+  `outputFolder` is `playwright-report` and the default `outputDir` is `test-results`, both relative to the
+  config's directory, which is exactly `app/playwright-report` + `app/test-results` in
+  `.github/workflows/ci.yml:114-124`.
+- Verified empirically rather than by reading the config: `CI=1 … pnpm --dir app e2e` on a clean tree now
+  produces `app/playwright-report/index.html`, 520 KB.
+
+### Minor 2 — time bounds
+
+- `.github/workflows/ci.yml:12-14` — `timeout-minutes: 45` on the `verify` job.
+- `.github/workflows/ci.yml:110-112` — `timeout-minutes: 20` on the end-to-end step (≤ 30 as asked).
+- `app/playwright.config.ts:49,52` — `forbidOnly: !!process.env.CI` and `globalTimeout: 15 * 60 * 1000`.
+
+### Minor 3 — CJK budgets now match the release-kernel skip
+
+`app/e2e/cjk.spec.ts:29-32,37,49` — the debug-sized budgets and the comment that contradicted the skip are
+gone: `test.setTimeout(60_000)`, open `20_000`, last page `10_000`, sized for the release kernel the skip
+above already guarantees (< 3 s per `docs/p0-acceptance.md`). A real regression now fails in seconds
+instead of after four minutes.
+
+### Minor 4 — transport failures no longer described as file I/O
+
+`app/src/transport/HttpTransport.ts:52-66` — a request timeout raises `timeout` instead of reusing the
+kernel's `io`, and a failed fetch (unreachable kernel) is wrapped as `transport` instead of reaching the
+toast as a bare `TypeError` with no code at all. Additive on the TypeScript side only; no kernel change.
+New keys `errors.timeout` and `errors.transport` in `en.json` and `zh-CN.json` (English placeholders,
+untranslated, as ruled).
+
+Tests: `app/src/transport/HttpTransport.test.ts:78-92` (timeout code) and `:54-66` — the pre-existing
+"propagates network failures" case was rewritten rather than duplicated, since "propagate the raw error"
+is precisely the behaviour this item replaces. `app/src/i18n/errors.test.ts:47-62` now asserts a key exists
+for all 11 codes.
+
+### Minor 8 — toast stack per design §10
+
+`app/src/components/ToastStack.tsx:9-10,20` — at most the three most recent toasts render;
+`app/src/components/controls.module.css:191` — 320 px instead of 420 px.
+Test: `app/src/components/Toast.test.tsx:47-59` pushes five and asserts three render, newest kept.
+
+### Minor 1 — docstring corrected
+
+`app/src/views/font/invalidation.ts:26-33` — no longer claims to be the only place a `Change` is read; it
+now says "the single place the font view and the Font Info tab read a `Change`" and names the other
+readers (`sessionStore`, `useGlyphDetail`, `useLayerOutline`, `glyphPager`).
+
+### Verification (fix round 1)
+
+```
+$ pnpm --dir app check && pnpm --dir app test && pnpm --dir app lint \
+    && pnpm --dir app exec prettier --check .
+  Test Files  53 passed (53)
+       Tests  413 passed (413)   # +5 vs round 0: 4 font-info cache, 1 toast stack
+      Errors  1 error            # pre-existing, see below
+  Checking formatting... All matched files use Prettier code style!
+
+$ FW_API_PORT=8790 FW_UI_PORT=1423 pnpm --dir app e2e
+  1 skipped
+  8 passed (17.7s)               # exit 0, 20 s wall including kernel start-up
+
+$ CI=1 FW_API_PORT=8790 FW_UI_PORT=1423 pnpm --dir app e2e   # artifact check
+  8 passed (1.0m); app/playwright-report/index.html written, 520 KB
+```
+
+### Concerns (fix round 1)
+
+1. **The pre-existing `editSession.ts:113` unhandled rejection now reproduces on nearly every run**, so
+   `pnpm test` exits 1 despite 413/413 passing. Measured: 1 of 3 runs at `067af1b`, 3 of 3 after this
+   round. It is not a behaviour change — the escaping call is still
+   `await call('doc.edit_apply', …)` inside the unguarded `this.chain` started by `void this.flush()`
+   (`app/src/editor/editSession.ts:96,113`), reaching the real transport after its test's mock is torn
+   down. Two things made it louder: the new test file shifts worker scheduling, and Minor 4's wrapping
+   means the rejection is now a legible `ApiCallError: … transport` with a stack naming `editSession.ts:113`
+   instead of an opaque `TypeError` from undici. `app/src/editor/**` is Task 6/7's, so I did not touch it.
+   **The "Test frontend" CI step will be red until that chain gets a `.catch`** — one line, in their file.
+2. `app/src/views/font/useGlyphSelection.ts:104,131` has the same `void`-an-async-call shape and is in my
+   area; it never fired in any run, so I left it rather than widen a fix round.
+3. `retries: 1` on CI means a genuinely flaky e2e test would pass on the retry. That is the price of
+   `trace: 'on-first-retry'`; the trace and the HTML report still record the first failure, and the run is
+   marked flaky rather than green-with-no-evidence.
