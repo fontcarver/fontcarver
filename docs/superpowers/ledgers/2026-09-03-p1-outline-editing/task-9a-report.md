@@ -410,3 +410,77 @@ None this round.
    Export falls back to its own destination field rather than `PathPromptDialog`; the skip-reason
    discriminator mirrors the kernel's `is_glyph_name` rather than being told by it; `Prefs` has no
    hit-radius or tool-defaults field.
+
+---
+
+# Fix round 3
+
+Re-review: `task-9a-rereview2.md` — rounds 1–2 confirmed, one Important defect found in the write
+queue round 2 introduced. One commit on top of `8cb57dd`; no Rust touched.
+
+```
+2bc0431 fix(app): let a preference change asked for after a reset survive it
+```
+
+**`reset()` could discard an `update()` asked for after it.** Round 2's `reset` cleared the shared
+`pending` buffer when its *queued task ran*, while `update` merged into that buffer when it was
+*called*. So with a write already in flight, a `reset()` queued behind it and a further `update()`
+landing before the reset's turn came up, the reset wiped a patch that had been requested after it —
+silently, and even across a microtask boundary, exactly as the reviewer reproduced.
+
+The buffer now records what each call meant at the moment it was made
+(`app/src/stores/prefsStore.ts:79-84`): `{ base: 'stored' | 'defaults', patch }`, where `update`
+folds its patch in and keeps the current base (`:158-165`) and `reset` replaces the whole buffer with
+`{ base: 'defaults', patch: {} }` (`:173-176`) — both at call time. A single `flush` (`:113-129`)
+drains it: a `defaults` base writes `{ ...DEFAULT_PREFS, ...patch }` with no read, a `stored` base
+loads first if it must and writes `{ ...prefs, ...patch }`. Queue order therefore no longer decides
+what survives: a reset supersedes only what was asked for before it, and a change asked for after it
+lands on top of the defaults.
+
+*Tests*, all four new in `prefsStore.test.ts`:
+
+| Scenario | Test | Asserts |
+|---|---|---|
+| `update` → `reset` → `update`, back to back | `:176` | one `prefs.set`, record = defaults + the second patch, store state matches |
+| the same with a microtask between the reset and the second update | `:206` | record = defaults + the second patch (the reviewer's second reproduction) |
+| `update`, `update`, `reset` | `:228` | one `prefs.set`, record = the bare defaults, both patches discarded |
+| a reset and a further update issued while the first write is genuinely on the wire | `:252` | two `prefs.set` (the in-flight one lands, then the reset's), record = defaults + the later patch |
+
+The ten earlier preference tests pass unchanged, including "resets to the defaults even before a
+successful load" — a reset still needs no read, since the defaults replace the record outright.
+
+## Verification
+
+```
+$ pnpm --dir app check
+> tsc -b
+$ pnpm --dir app test
+ Test Files  52 passed (52)
+      Tests  400 passed (400)
+$ pnpm --dir app lint
+> eslint .
+$ pnpm --dir app exec prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+```
+
+400 tests, up from 396: +4 in `prefsStore.test.ts`. The e2e suite was not re-run — this round touched
+one store's internal buffering, with no change to markup, i18n keys or kernel call shapes, and the
+preferences spec makes one edit at a time.
+
+## i18n changes for Task 13
+
+None this round.
+
+## Concerns
+
+1. **`reset()` still supersedes the changes asked for before it** — that is the intended precedence
+   and the task brief accepts it; what is fixed is only the ordering bug where "before" was decided
+   by queue position rather than by call order.
+2. **A reset that lands between a write going out and its reply is still two writes**, and for a
+   moment the kernel holds the superseded record. Making that atomic would need a kernel-side
+   compare-and-set on `prefs.set`, which replaces the whole record by design.
+3. **Carried forward, unchanged:** the write queue is per store, not per process; Enter in Add Glyphs
+   is only reachable from the preview list; Export falls back to its own destination field rather
+   than `PathPromptDialog`; the skip-reason discriminator mirrors the kernel's `is_glyph_name`;
+   `Prefs` has no hit-radius or tool-defaults field.
