@@ -217,7 +217,6 @@ export class EditorController {
       pointer: this.pointer,
       drag: this.drag,
       band: this.view.band,
-      bandIsMarquee: this.view.bandIsMarquee,
       snap: this.snap,
       hover: this.hover,
     })

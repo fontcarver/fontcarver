@@ -50,20 +50,10 @@ export class ViewGestures {
     return this.panning !== null
   }
 
-  /** Whether a selection marquee is being dragged. */
-  get marqueeing(): boolean {
-    return this.marquee !== null
-  }
-
   /** The band to draw, from either the marquee or the zoom tool. */
   get band(): MarqueeRect | null {
     const band = this.marquee ?? this.zoomBox
     return band ? marqueeRect(band.origin, band.current) : null
-  }
-
-  /** Whether the band on screen is a selection marquee. */
-  get bandIsMarquee(): boolean {
-    return this.marquee !== null
   }
 
   /** Abandons anything in progress. */

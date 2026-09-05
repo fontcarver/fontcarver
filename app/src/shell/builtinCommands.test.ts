@@ -51,6 +51,19 @@ describe('built-in commands', () => {
     expect(unresolved).toEqual([])
   })
 
+  it('resolves the reason every disabled command gives', () => {
+    // Menus show the reason under the greyed title, so an unresolved key is
+    // just as visible there.
+    const unresolved = listCommands()
+      .map((command) => command.disabledReason)
+      .filter(
+        (reason): reason is string =>
+          reason !== undefined && i18n.t(reason) === reason,
+      )
+
+    expect(unresolved).toEqual([])
+  })
+
   it('keeps the Font and Edit tab select-all commands apart', () => {
     // Both are bound to Mod+A and both live in the Edit menu; sharing an id
     // would let the later registration silently replace the earlier one.

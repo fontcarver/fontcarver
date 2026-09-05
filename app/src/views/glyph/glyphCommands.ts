@@ -175,7 +175,7 @@ export function registerGlyphViewCommands(): void {
       menu: 'edit',
       group: 'selection',
       when: hasSelection,
-      disabledReason: 'cmd.reason.noSelection',
+      disabledReason: 'cmd.reason.noPointsSelected',
       run: () => activeEditor()?.escape(),
     },
     {
@@ -185,7 +185,7 @@ export function registerGlyphViewCommands(): void {
       group: 'selection',
       shortcut: 'Delete',
       when: hasSelection,
-      disabledReason: 'cmd.reason.noSelection',
+      disabledReason: 'cmd.reason.noPointsSelected',
       run: () => activeEditor()?.deleteSelection(false),
     },
     {
@@ -195,7 +195,7 @@ export function registerGlyphViewCommands(): void {
       group: 'selection',
       shortcut: 'Shift+Delete',
       when: hasSelection,
-      disabledReason: 'cmd.reason.noSelection',
+      disabledReason: 'cmd.reason.noPointsSelected',
       run: () => activeEditor()?.deleteSelection(true),
     },
     {
@@ -209,7 +209,7 @@ export function registerGlyphViewCommands(): void {
         if (!editor || !canvasHasFocus()) return false
         return selectionCounts(editor.currentSelection).nodes > 0
       },
-      disabledReason: 'cmd.reason.noSelection',
+      disabledReason: 'cmd.reason.noPointsSelected',
       run: () => activeEditor()?.toggleSmooth(false),
     },
     {

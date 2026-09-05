@@ -91,6 +91,7 @@
       "noDocument": "No font is open",
       "noRecent": "No recent files",
       "noSelection": "No glyphs are selected",
+      "noPointsSelected": "No points are selected",
       "nothingToUndo": "Nothing to undo",
       "nothingToRedo": "Nothing to redo",
       "oneTab": "Only one tab is open",

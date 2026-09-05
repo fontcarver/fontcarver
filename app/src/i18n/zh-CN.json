@@ -91,6 +91,7 @@
       "noDocument": "没有打开的字体",
       "noRecent": "没有最近打开的文件",
       "noSelection": "未选择任何字形",
+      "noPointsSelected": "No points are selected",
       "nothingToUndo": "没有可撤销的操作",
       "nothingToRedo": "没有可重做的操作",
       "oneTab": "只打开了一个标签页",

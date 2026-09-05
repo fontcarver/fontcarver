@@ -8,8 +8,8 @@
  * read and tested without a gesture, a transport or a canvas.
  */
 
-import type { Command, PointRef } from '../api'
-import type { Point2, Viewport } from '../canvas/Viewport'
+import type { Command } from '../api'
+import type { Viewport } from '../canvas/Viewport'
 import type { SceneMetrics } from '../views/glyph/glyphScene'
 
 import type { EditorLabels, EditorSource } from './editorTypes'
@@ -168,11 +168,3 @@ export function buildSnapInput(input: {
     exclude,
   }
 }
-
-/** The stored points a nudge or a delete acts on. */
-export function actionRefs(selection: Selection): PointRef[] {
-  return selectedPointRefs(selection)
-}
-
-/** A canvas-space point, spelled out for readability at call sites. */
-export type CanvasPoint = Point2

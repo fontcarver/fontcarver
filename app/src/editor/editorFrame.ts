@@ -49,8 +49,6 @@ export interface FrameState {
   drag: DragGesture | null
   /** The rubber band on screen — a selection marquee or a zoom rectangle. */
   band: MarqueeRect | null
-  /** Whether that band is a selection marquee rather than the zoom tool's. */
-  bandIsMarquee: boolean
   snap: SnapMatch | null
   hover: Hit | null
 }
