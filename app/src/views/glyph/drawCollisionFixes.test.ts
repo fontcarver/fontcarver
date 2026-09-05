@@ -82,7 +82,15 @@ describe('drawing collision fixes', () => {
       viewportOf(),
       {
         path: null,
-        components: [component, { ...component, base: 'acute' }],
+        components: [
+          { component, path: null, dx: 0, dy: 0 },
+          {
+            component: { ...component, base: 'acute' },
+            path: null,
+            dx: 0,
+            dy: 0,
+          },
+        ],
         filled: false,
         showLabels: true,
       },

@@ -10,7 +10,7 @@
 import type { Viewport } from '../../canvas/Viewport'
 
 import { drawAnchors } from './drawAnchors'
-import { drawComponents } from './drawComponents'
+import { drawComponents, type ComponentDraw } from './drawComponents'
 import { drawEditing, NO_OVERLAY, type EditingOverlay } from './drawEditing'
 import { drawGuides } from './drawGuides'
 import { drawHud } from './drawHud'
@@ -49,6 +49,11 @@ export interface RenderGlyphOptions {
   overlays: GlyphOverlays
   /** Component-flattened outline of the shown layer, in font units. */
   flattened: Path2D | null
+  /**
+   * The layer's components with their own paths and any preview offset. When
+   * omitted, the scene's components draw as markers over the flattened path.
+   */
+  components?: readonly ComponentDraw[]
   /** Pointer position in font units, or `null` when the pointer is away. */
   pointer: { x: number; y: number } | null
   /** Selection keys, drawn as the selection layer of the outline. */
@@ -88,7 +93,14 @@ export function renderGlyph(
     viewport,
     {
       path: options.flattened,
-      components: scene.components,
+      components:
+        options.components ??
+        scene.components.map((component) => ({
+          component,
+          path: null,
+          dx: 0,
+          dy: 0,
+        })),
       filled: overlays.filled,
       showLabels: overlays.points,
     },

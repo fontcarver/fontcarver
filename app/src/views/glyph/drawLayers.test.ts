@@ -247,7 +247,12 @@ describe('drawComponents', () => {
     drawComponents(
       recording.ctx,
       viewportOf(),
-      { path, components: [component], filled: false, showLabels: false },
+      {
+        path,
+        components: [{ component, path: null, dx: 0, dy: 0 }],
+        filled: false,
+        showLabels: false,
+      },
       FALLBACK_GLYPH_THEME,
     )
     expect(recording.calls('stroke')[0]?.args).toEqual([path])
@@ -256,13 +261,41 @@ describe('drawComponents', () => {
     )
   })
 
+  it('draws each component from its own path, offset by the preview', () => {
+    const recording = createRecordingContext()
+    const own = {} as Path2D
+    drawComponents(
+      recording.ctx,
+      viewportOf(),
+      {
+        path: {} as Path2D,
+        components: [{ component, path: own, dx: 40, dy: -10 }],
+        filled: false,
+        showLabels: false,
+      },
+      FALLBACK_GLYPH_THEME,
+    )
+    // The component's own path wins over the whole-layer fallback, and the
+    // preview offset is applied inside the font-space transform.
+    expect(recording.calls('stroke')[0]?.args).toEqual([own])
+    expect(recording.calls('translate').map((entry) => entry.args)).toEqual([
+      [100, 500],
+      [40, -10],
+    ])
+  })
+
   it('fills in preview mode and labels each component origin', () => {
     const recording = createRecordingContext()
     const path = {} as Path2D
     drawComponents(
       recording.ctx,
       viewportOf(),
-      { path, components: [component], filled: true, showLabels: true },
+      {
+        path,
+        components: [{ component, path: null, dx: 0, dy: 0 }],
+        filled: true,
+        showLabels: true,
+      },
       FALLBACK_GLYPH_THEME,
     )
     expect(recording.calls('fill')[0]?.args).toEqual([path, 'nonzero'])

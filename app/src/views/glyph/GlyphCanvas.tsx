@@ -20,7 +20,9 @@ import type { Modifiers } from '../../editor/gestures/drag'
 import { reportError } from '../../shell/commands'
 import { selectActiveTool, useEditorStore } from '../../stores/editorStore'
 import type { Selection } from '../../editor/selection'
+import type { ComponentView } from '../../api'
 
+import type { ComponentDraw } from './drawComponents'
 import type { MetricLabels } from './drawMetrics'
 import styles from './glyphView.module.css'
 import { sceneBox, type GlyphScene } from './glyphScene'
@@ -44,6 +46,8 @@ export interface GlyphCanvasProps {
   overlays: GlyphOverlays
   /** Component-flattened outline of the shown layer, in font units. */
   flattened: Path2D | null
+  /** The layer's components with their own resolved paths. */
+  componentViews: readonly ComponentView[]
   /** Identity of the glyph shown; changing it refits the view. */
   fitKey: string
   label: string
@@ -90,6 +94,7 @@ export function GlyphCanvas({
   labels,
   overlays,
   flattened,
+  componentViews,
   fitKey,
   label,
   source,
@@ -108,7 +113,18 @@ export function GlyphCanvas({
   const tool = useEditorStore(selectActiveTool)
   const snapping = useEditorStore((state) => state.snapping)
 
-  const frame = useRef({ scene, theme, labels, overlays, flattened })
+  const frame = useRef({
+    scene,
+    theme,
+    labels,
+    overlays,
+    flattened,
+    componentViews,
+  })
+  // Parsing SVG path data is the expensive part of drawing a component, and
+  // the strings only change when the kernel answers, so each one is parsed
+  // once and reused for every frame of a drag.
+  const pathCache = useRef(new Map<string, Path2D | null>())
   const [cursor, setCursor] = useState('default')
 
   // The controller must outlive every render: it holds the live gesture and
@@ -131,6 +147,11 @@ export function GlyphCanvas({
     if (!ctx) return
     const current = frame.current
     const editing = controller.frame()
+    const components = componentDraws(
+      current.componentViews,
+      editing.components,
+      pathCache.current,
+    )
     // Dev builds time every frame so the 60 fps target of design spec §13 can
     // be measured from the running app rather than asserted.
     const started = import.meta.env.DEV ? performance.now() : 0
@@ -146,6 +167,7 @@ export function GlyphCanvas({
       labels: current.labels,
       overlays: current.overlays,
       flattened: current.flattened,
+      components,
       pointer: pointerRef.current,
       selected: editing.selected,
       editing: editing.overlay,
@@ -244,9 +266,16 @@ export function GlyphCanvas({
 
   // Refresh the draw inputs and repaint whenever anything visible changes.
   useEffect(() => {
-    frame.current = { scene, theme, labels, overlays, flattened }
+    frame.current = {
+      scene,
+      theme,
+      labels,
+      overlays,
+      flattened,
+      componentViews,
+    }
     draw()
-  }, [draw, scene, theme, labels, overlays, flattened])
+  }, [draw, scene, theme, labels, overlays, flattened, componentViews])
 
   // Wheel must be a non-passive native listener: React attaches `onWheel`
   // passively at the root, where `preventDefault` is ignored.
@@ -413,6 +442,49 @@ export function GlyphCanvas({
       />
     </div>
   )
+}
+
+/**
+ * The components as this frame draws them.
+ *
+ * A gesture previews a component by moving its stored transform, so the offset
+ * against the fetched view is what the canvas has to translate its path by —
+ * the path itself is the base outline the kernel already transformed and never
+ * changes during a drag.
+ */
+function componentDraws(
+  source: readonly ComponentView[],
+  preview: readonly ComponentView[] | null,
+  cache: Map<string, Path2D | null>,
+): readonly ComponentDraw[] {
+  const shown = preview ?? source
+  return shown.map((view, index) => {
+    const base = source[index] ?? view
+    return {
+      component: view.component,
+      path: parsePath(base.path, cache),
+      dx: view.component.transform[4] - base.component.transform[4],
+      dy: view.component.transform[5] - base.component.transform[5],
+    }
+  })
+}
+
+/** A parsed path for the given data, cached; malformed data yields `null`. */
+function parsePath(
+  data: string,
+  cache: Map<string, Path2D | null>,
+): Path2D | null {
+  const cached = cache.get(data)
+  if (cached !== undefined) return cached
+  let path: Path2D | null
+  try {
+    path = new Path2D(data)
+  } catch {
+    // Malformed path data must not take the whole frame down.
+    path = null
+  }
+  cache.set(data, path)
+  return path
 }
 
 function roundPoint(point: { x: number; y: number }): {

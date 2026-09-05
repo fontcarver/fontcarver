@@ -214,6 +214,7 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
           labels={labels}
           overlays={overlays}
           flattened={flattened}
+          componentViews={outline?.components ?? []}
           fitKey={`${doc}:${gid}:${masterId ?? ''}`}
           label={t('glyphView.canvasLabel', {
             name: scene.name,
