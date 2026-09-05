@@ -343,3 +343,265 @@ are notation rather than prose, like the existing HUD symbols.
    and the shape dialog carries the numeric entry.
 
 Report written 2026-09-05.
+
+---
+
+# Fix round 1
+
+Review: `task-7-review.md` (Needs fixes — 2 Important, 11 Minor). Eight commits
+on `p1-t7` from `cbb16b1`, on top of a merge of `p1-outline-editing`
+(Task 9a's `Dialog` primitive, dialogs and prefs store; Task 11's e2e config
+with `FW_CONFIG_DIR`; Task 6/11 fixes). Not pushed.
+
+| SHA | Subject |
+| --- | --- |
+| `7711ee1` | merge: p1-outline-editing (Task 9a, Task 11 config, Task 6/11 fixes) into p1-t7 |
+| `5412b31` | fix(app): fit a pencil stroke locally instead of refitting the layer |
+| `76eecdd` | fix(app): preview a component under the whole affine, not a slide |
+| `efee248` | fix(app): free the measure's keys, clear a tool's halo and gate a live drag |
+| `30dd7d8` | fix(app): carry a contour's name and id through a cut and an extend |
+| `10719c4` | fix(app): build the shapes dialog on the shared primitive and read the curve flavour honestly |
+| `100fe9b` | chore(app): let createTool say which tools are inert, not a flag |
+| `d2f30ed` | test(e2e): draw into a font of the spec's own, through the New Font dialog |
+| `9917ab3` | fix(app): split the fitting tolerance so a quadratic stroke stays in budget |
+| `1dea9d7` | chore(app): keep the editor controller inside its line budget |
+
+## Step 0 — the merge
+
+Three conflicts, all resolved by keeping both sides:
+
+- `app/src/stores/prefsStore.ts` — Task 9a's queued, kernel-confirmed store
+  taken whole; this task's two readers (`snapSettingsOf`, `nudgeStepsOf`,
+  `prefsStore.ts:290-306`) re-applied on top and re-typed for a non-null
+  `Prefs`. `GlyphView` needed no change.
+- `app/src/i18n/{en,zh-CN}.json` — Task 9a's 137 new keys plus this task's 20,
+  merged programmatically and checked key-for-key: 683 keys, and the two
+  bundles carry exactly the same set.
+- Generated bindings were stale against Task 9a's Rust (`AddGlyphsParams`
+  gained `dry_run`), so `pnpm --dir app gen:api` was re-run.
+
+After the merge and `pnpm install --frozen-lockfile`: `tsc -b` silent,
+**76 files / 660 tests** passing, eslint and Prettier clean — before any fix.
+
+## Important
+
+**I1 — the pencil no longer refits the layer.** `PathOp::Simplify` is gone from
+the pencil entirely. A stroke is now fitted in the browser by
+`app/src/editor/curveFit.ts` (Schneider's least-squares cubic fit, 1990:
+chord-length parameterisation, a 2×2 least-squares solve for the two tangent
+magnitudes at `:161`, Newton-Raphson reparameterisation at `:121`, and a split
+at the worst sample at `:282`) behind a corner pass (`:357`) so a deliberate
+corner survives. `PencilTool.commit` calls `fitContour` (`tools/pencil.ts:152`)
+and `drawCommand` is one `AddContour` (`:169`).
+
+Two things had to be got right that the textbook version gets wrong at a
+font editor's tolerance. Schneider gates reparameterisation on `error²`, which
+never fires at one unit, so the fit split far more than it needed to; it now
+always tries (`curveFit.ts:305-315`). And acceptance is decided on the *true*
+geometric distance to the curve (`distanceToCubic`, `:222`), not the parametric
+distance at `u[i]`, which on a badly parameterised run reads far smaller than
+the curve's real deviation. On a quadratic layer the tolerance is split between
+the two fits — samples to cubics, cubics to quadratics — because their errors
+add (`CUBIC_SHARE`, `:507`); the conversion takes the larger share because its
+bound falls by eight per subdivision. That split alone took a real stroke from
+96 stored points to 42.
+
+Tests (`app/src/editor/curveFit.test.ts`, 9): **~200 noisy circle samples fit to
+under twenty stored points and stay within the one-unit tolerance**; **a
+polyline with a 90° corner keeps exactly one corner node, unsmoothed**; a
+straight run comes back as a `Line`, not a flat curve; the joins inside a run
+are smooth and the run's last node is not; a quadratic layer gets one control
+per segment and no `Curve`; a cubic is subdivided until one quadratic is inside
+the tolerance; a quadratic layer's *total* deviation stays inside the same
+budget; fewer than two distinct samples produce nothing.
+`tools/drawingTools.test.ts:38` asserts the command is **a single
+`AddContour`** — `Object.keys(command)` equals `['AddContour']` — drawn into a
+layer that already has a contour.
+
+**I2 — a rotate or scale now previews components as transformed.**
+`ComponentDraw` carries an affine instead of a `dx`/`dy` pair
+(`views/glyph/drawComponents.ts:70-80`) and `paintPath` applies it with
+`ctx.transform(...)` inside the font-space flip (`:112`), which takes the same
+`[a b c d e f]` order the kernel does. The delta is computed in the new
+`views/glyph/componentDraws.ts:48` as `previewed ∘ stored⁻¹` — the path the
+kernel returned is already under the *stored* transform — with
+`invertAffine`/`isInvertible` added to `editor/affine.ts:43`, `:54`, and a
+translation fallback for a singular stored transform.
+
+Tests (`views/glyph/componentDraws.test.ts`, 5): an unpreviewed component sits
+at the identity; a translation stays a translation; **a quarter turn puts a
+component whose origin is (100, 0) at (0, 100) — exactly where
+`points::transform_selection`'s `affine * component.transform` will put it — and
+the delta's linear part is the turn, which no `dx`/`dy` could express**; a
+singular stored transform degrades to a translation; each path is parsed once.
+`drawLayers.test.ts:288` asserts the canvas issues `transform` with the quarter
+turn rather than a `translate`.
+
+## Minor
+
+**3 — `MeasureTool` frees the keyboard.** `busy` is now true only while the
+button is down (`tools/measure.ts:67`) and `claimsKey` returns `false`
+outright (`:73`), so a measurement left on screen no longer disables
+`path.toggleSmooth`.
+
+**4 — the snap halo dies with the gesture.** `ToolHost.route` notices a tool
+that has stopped being busy and reports it (`toolHost.ts:233`, `:238`); the
+controller clears the snap match there (`editorController.ts:147`). Test:
+`editorController.test.ts` "clears the snap halo when a tool gesture ends" — a
+pen click on the square's corner shows the halo and the pointer-up removes it.
+
+**5 — a cut and an extend keep the contour's identity.** `pathToContour` takes
+a `ContourIdentity` (`pathGeometry.ts:105`); `cutContours` gives it to the
+largest piece, by area for a closed cut and by traced length for an open one
+(`cutPath.ts:49`, `:141`); the pen's extend carries the picked-up contour's
+name and id (`tools/pen.ts:89`, `:285`, `penPath.ts:107`). `tt_index` stays
+`Unnumbered` by design, and the reason is written where the points are built
+(`pathGeometry.ts:87-95`): the points did not exist in the source, so there is
+no TrueType number to carry and inventing one would break the hinting that
+numbers them. Tests: `cutPath.test.ts` (the larger piece inherits `name`/`id`,
+the other gets `null`; every rebuilt point is `Unnumbered`) and `pen.test.ts`
+(an extended path keeps `stem`/`c-7`; a fresh path borrows nothing).
+
+**6 — an arrow press closes a live drag first.** `nudgeSelection` calls
+`settle()` (`editorController.ts:525`), which closes a drag that is merely
+*open* — one that registers no gate of its own. Test:
+`editorController.test.ts` "closes a drag that is still open before the arrow
+press begins" on the token transport: pointer down, move, arrow, and the calls
+are the clean `begin·apply·end · begin·apply·end` with no `InvalidEditToken`.
+
+**7 — controller size:** accepted as-is. The fixes that touched
+`editorController.ts` are four lines of wiring, which took it to 801; two
+comment blocks were tightened to bring it back to **799**, inside the cap.
+
+**8 — the grid floor is documented.** `MIN_GRID_SPACING`
+(`views/glyph/drawTools.ts:29`) now carries the §4.1 citation and the reason:
+at "≥ 1 px spacing" a 1-unit grid paints a 0.5 px line every device pixel,
+which is a grey wash rather than a grid, so it disappears below four CSS pixels
+instead.
+
+**9 — the shapes dialog is built on the shared primitive.** `ShapeDialog.tsx`
+is now a `Dialog` (focus trap, Escape, Enter, the §9 chrome and the modal
+count) with a `committed` ref so the confirm and the focused button's own click
+cannot commit twice. Tests (`views/glyph/ShapeDialog.test.tsx`, 4): the created
+contour is the one a drag of the same box would have made; **Enter from the
+Create button applies exactly once**; Tab stays inside the dialog through eight
+presses; Escape cancels and applies nothing.
+
+**10 — `inferCurves` reads the outline first, the format last.**
+`pathGeometry.ts:406` now scans the whole layer and lets quadratic win a
+mixture (a `glyf` outline cannot hold a cubic), and only a format that names
+the outline table outright decides for a layer with no curves at all
+(`GLYF_FORMATS`, `:421`). WOFF and WOFF2 wrap either table, so they say nothing
+and the cubic default stands. Five tests in `pathGeometry.test.ts`.
+
+**11 — dead code.** `transformsWholeLayer` is gone; `ToolDefinition.live` is
+gone, and `createTool` is the single answer to "does this tool do anything"
+(`registry.test.ts` asserts it directly); the two `void` no-ops went with the
+merge and the pencil rewrite.
+
+**12 — `ToolHost.consume` repaints only for a consumed event**
+(`toolHost.ts:250-259`). The canvas offers every key to the active tool, so an
+unclaimed key press no longer repaints the editor. Test:
+`editorController.test.ts` "repaints for an event a tool consumed, not for one
+it ignored" counts repaints across an unclaimed `q` (zero) and a pen click
+(more than zero).
+
+**13 — the degenerate one-sided cubic:** accepted as-is.
+
+**Not in the review — `draw.spec.ts` had to be rewritten.** After the merge
+`Mod+N` opens the New Font dialog instead of creating a document, so the old
+spec's `glyphs.add` landed on the *fixture* font and broke two other specs. It
+now creates a document of its own through the dialog (unique family, no starter
+set), adds `A` through the shared `api()` helper from `e2e/support.ts`, and
+closes its document in a `finally`. The dev-only `globalThis.__fwCall` bridge
+was removed with it: `support.ts` covers what it existed for.
+
+## Verification
+
+```
+pnpm --dir app gen:api          → clean, no generated diff
+pnpm --dir app check            → tsc -b, silent
+pnpm --dir app test             → 77 files, 690 tests passed
+pnpm --dir app lint             → eslint, silent
+pnpm --dir app exec prettier --check .  → all matched files use Prettier style
+FW_API_PORT=8791 FW_UI_PORT=1424 pnpm --dir app e2e
+                                → 14 passed, 1 skipped (CJK, no fixture)
+```
+
+The e2e suite was run four times. Two of those runs, at a load average in the
+thirties with other checkouts building, timed out one to three of the
+*existing* Font-view and dialog specs on `toBeVisible` waits; each of them
+passes on its own and in the clean runs, and `draw.spec.ts` passed in every
+run. See concern 6.
+
+Tests: 660 after the merge → **690**, thirty added this round (9 curve fit, 5
+component draws, 4 shapes dialog, 5 `inferCurves`, 3 controller, 2 cut
+identity, 2 pen identity — less the pencil test that was rewritten rather than
+added).
+
+### Interactive checks (agent-browser, ports 8791 / 1424, both stopped afterwards)
+
+1. **Pencil into DejaVu `o`** — a 45-sample freehand stroke through the counter
+   committed as one entry `Draw`, and `glyphs.outline` shows the glyph's two
+   original contours **byte-identical to before the stroke**
+   (`JSON.stringify` equality), with the stroke added as a third contour. Under
+   the old whole-layer `Simplify` both of them would have been refitted. The
+   stroke is quadratic, because `inferCurves` reads DejaVu's own `QCurve`
+   points. `Mod+Z` left the document clean (`dirty: false`,
+   `undo_label: null`).
+2. **The tolerance split, measured in the running app** — the same stroke
+   before and after `9917ab3`: 96 stored points → **42** (23 on-curve), with the
+   originals still untouched.
+3. **Rotate on the composite `Eacute`** — nothing selected, so the whole layer
+   turns: both components (`E` and `Acute`) are drawn **rotated** by 25.8°, not
+   slid, with the origin marker at the clicked point and the HUD reading
+   `∠ 25.8°`. Escape closed and undid the gesture; the component transforms are
+   back at `[1,0,0,1,0,0]` and `[1,0,0,1,1182,373]` and the document is clean.
+
+### Screenshots
+
+`p1-tools-{pen,knife,shapes,measure,rotate}.png` are unchanged — the chrome
+they show did not move. Two were added:
+
+| File | Caption |
+| --- | --- |
+| `docs/screenshots/p1-tools-pencil.png` | A freehand stroke fitted into the counter of DejaVu `o`: smooth fitted nodes along the stroke, and the glyph's own two contours exactly as they were — one `AddContour`, undo label "Draw". |
+| `docs/screenshots/p1-tools-rotate-composite.png` | Rotating the composite `Eacute` with nothing selected: both components drawn turned by 25.8° rather than slid, the origin marker at the clicked point and the HUD reading `∠ 25.8°`. |
+
+## i18n
+
+No keys were added or changed this round; the twenty from the first round are
+unchanged and both bundles hold the same 683 keys after the merge.
+
+## Concerns
+
+1. **A quadratic layer still stores more points than a PostScript one for the
+   same stroke** — 42 against roughly a third of that — because the conversion
+   subdivides to hold the tolerance and because `pathToContour` writes an
+   explicit on-curve point between every pair of controls rather than relying
+   on TrueType's implied midpoints. Emitting consecutive off-curve points where
+   the on-curve one is their midpoint would roughly halve it; that is a change
+   to the shared point-list builder and felt like more than a fix round should
+   take on.
+2. **The corner threshold is fixed at 60°** (`CORNER_ANGLE`), measured across a
+   two-sample window. It is right for a pointer sampled every 2 CSS pixels; a
+   stylus at a much higher rate would want the window widened rather than the
+   angle changed. `Prefs` has nowhere to put either.
+3. **`fitRun` recurses with a depth cap of 24** and accepts the best fit it has
+   at the cap rather than splitting further, so a pathological stroke degrades
+   in accuracy rather than in stack depth. No stroke in testing came near it.
+4. **The e2e suite is order-sensitive on a shared kernel.** `draw.spec.ts` now
+   closes the document it creates, which is what the other specs need, but the
+   session is still global: a spec that leaves a document open changes what
+   `session.list` and the tab bar hold for everything running beside it.
+6. **The e2e suite is load-sensitive**, as the Task 6 unit suite was: under a
+   heavy parallel build the shared Vite server serves modules slowly enough
+   that a `toBeVisible` wait in an unrelated spec can expire. Both contended
+   runs failed only pre-existing specs, and both sets passed in isolation
+   immediately afterwards.
+7. **Vite would not start twice during the interactive pass** with `EMFILE`,
+   because other checkouts on this machine had exhausted the inotify instance
+   budget; `CHOKIDAR_USEPOLLING=1` worked around it. Nothing to do with this
+   change, but worth knowing before blaming the app.
+
+Fix round written 2026-09-05.
