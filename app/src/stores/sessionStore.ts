@@ -1,14 +1,9 @@
 import { create } from 'zustand'
 
-import {
-  call,
-  getTransport,
-  onDocumentEvent,
-  type DocId,
-  type DocSummary,
-} from '../api'
+import { call, onDocumentEvent, type DocId, type DocSummary } from '../api'
 import { i18n } from '../i18n'
 import { warningMessage } from '../i18n/warnings'
+import { choosePath, hasNativeFileDialog } from '../shell/nativeDialogs'
 
 import { useDocumentStore } from './documentStore'
 import { activeDocId, reportError, tabId, useUiStore } from './uiStore'
@@ -52,6 +47,10 @@ export interface SessionState {
   close: (doc: DocId) => Promise<void>
   /** Closes, asking Save / Don't Save / Cancel first when the document is dirty. */
   requestClose: (doc: DocId) => Promise<void>
+  /** Opens one crash-recovery snapshot as a dirty document in a new tab. */
+  recover: (autosavePath: string) => Promise<DocSummary | null>
+  /** Deletes one crash-recovery snapshot; resolves to whether it was removed. */
+  discardRecovery: (autosavePath: string) => Promise<boolean>
 }
 
 function upsert(docs: DocSummary[], summary: DocSummary): DocSummary[] {
@@ -170,17 +169,18 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   openDialog: async () => {
-    if (getTransport().kind === 'tauri') {
-      try {
-        const { open } = await import('@tauri-apps/plugin-dialog')
-        const selected = await open({ multiple: false, directory: false })
-        if (typeof selected === 'string') await get().open(selected)
-      } catch (error) {
-        reportError(error)
-      }
+    // No native dialog: ask for the path in the application itself, without
+    // waiting on a platform round trip that cannot happen here.
+    if (!hasNativeFileDialog()) {
+      useUiStore.getState().setPathPrompt({ mode: 'open' })
       return
     }
-    useUiStore.getState().setPathPrompt({ mode: 'open' })
+    try {
+      const choice = await choosePath({ kind: 'open' })
+      if (choice.kind === 'chosen') await get().open(choice.path)
+    } catch (error) {
+      reportError(error)
+    }
   },
 
   createDocument: async (family, unitsPerEm) => {
@@ -220,26 +220,24 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   requestSaveAs: async (doc, closeAfterSave = false) => {
-    if (getTransport().kind === 'tauri') {
-      try {
-        const { save: saveDialog } = await import('@tauri-apps/plugin-dialog')
-        const chosen = await saveDialog({
-          filters: [
-            {
-              name: i18n.t('dialog.saveAs.filter'),
-              extensions: ['fwf', 'fwf.gz'],
-            },
-          ],
-        })
-        if (typeof chosen !== 'string') return
-        const saved = await get().save(doc, chosen)
-        if (saved && closeAfterSave) await get().close(doc)
-      } catch (error) {
-        reportError(error)
-      }
+    if (!hasNativeFileDialog()) {
+      useUiStore
+        .getState()
+        .setPathPrompt({ mode: 'saveAs', doc, closeAfterSave })
       return
     }
-    useUiStore.getState().setPathPrompt({ mode: 'saveAs', doc, closeAfterSave })
+    try {
+      const choice = await choosePath({
+        kind: 'save',
+        filterName: i18n.t('dialog.saveAs.filter'),
+        extensions: ['fwf', 'fwf.gz'],
+      })
+      if (choice.kind !== 'chosen') return
+      const saved = await get().save(doc, choice.path)
+      if (saved && closeAfterSave) await get().close(doc)
+    } catch (error) {
+      reportError(error)
+    }
   },
 
   saveAndClose: async (doc) => {
@@ -273,6 +271,31 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       return
     }
     await get().close(doc)
+  },
+
+  recover: async (autosavePath) => {
+    try {
+      const summary = await call('session.recover', {
+        autosave_path: autosavePath,
+      })
+      set((state) => ({ docs: upsert(state.docs, summary) }))
+      useUiStore.getState().openTab({ kind: 'font', doc: summary.doc })
+      announceWarnings(summary)
+      return summary
+    } catch (error) {
+      reportError(error)
+      return null
+    }
+  },
+
+  discardRecovery: async (autosavePath) => {
+    try {
+      await call('session.discard_recovery', { autosave_path: autosavePath })
+      return true
+    } catch (error) {
+      reportError(error)
+      return false
+    }
   },
 }))
 

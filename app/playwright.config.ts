@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, rmSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import { defineConfig } from '@playwright/test'
@@ -37,6 +37,17 @@ const devserver =
   ].find((binary) => existsSync(binary)) ??
   'cargo run --quiet -p fw-devserver --'
 
+/**
+ * The kernel's configuration home for the run, emptied as the suite starts.
+ *
+ * Preferences and crash-recovery snapshots live under it, so the suite is given
+ * one of its own inside `target/`: a snapshot an editing spec leaves behind
+ * cannot reach the developer's own FontWorkshop, and "a clean launch" means the
+ * same thing on a machine that has run the suite before as on one that has not.
+ */
+const configDir = `${repoRoot}target/e2e-config-${apiPort}`
+rmSync(configDir, { recursive: true, force: true })
+
 /** The font every spec but the CJK one is written against. */
 const fixture = 'fixtures/fonts/DejaVuSans.ttf'
 
@@ -60,6 +71,7 @@ export default defineConfig({
     {
       command: `${devserver} --port ${apiPort} --open ${fixture}`,
       cwd: repoRoot,
+      env: { FW_CONFIG_DIR: configDir },
       url: `${apiURL}/health`,
       // `/health` answers before any document is open, so a `fw-devserver`
       // already running on this port without the fixture satisfies the probe

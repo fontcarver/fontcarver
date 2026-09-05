@@ -484,3 +484,184 @@ None this round.
    is only reachable from the preview list; Export falls back to its own destination field rather
    than `PathPromptDialog`; the skip-reason discriminator mirrors the kernel's `is_glyph_name`;
    `Prefs` has no hit-radius or tool-defaults field.
+
+---
+
+# Fix round 4
+
+Re-review: `task-9a-rereview3.md` — round 3's two reproductions confirmed fixed, but the shared
+`flush`/`pending` buffer it introduced re-opened the same class of bug: one `flush` body was reused
+as the task for every `enqueue`, so it drained whatever the module-scoped buffer happened to hold
+when it got its turn. A later call could therefore be written by an earlier call's task, and a
+rejected write in that position rolled the store back to a snapshot that no longer corresponded to
+what the surviving task assumed it was layering onto — silently undoing a `reset()`. One commit on
+top of `2bc0431`; no Rust touched.
+
+```
+2668896 fix(app): write one preference change per intent, in the order asked for
+dcd616a fix(app): read preferences in the same queue that writes them
+```
+
+## Design — a strict serial queue of intents
+
+The coalescing buffer is gone. `update`/`reset` no longer share any mutable state at all; each call
+enqueues **one intent, captured at call time**, and a single serial runner executes intents in call
+order at **one `prefs.set` per intent**. Human preference edits are rare, so an order that can be
+reasoned about is worth more than the writes a buffer would save.
+
+| Piece | Where | What it does |
+|---|---|---|
+| `Intent` | `app/src/stores/prefsStore.ts:51-53` | `{ kind: 'update', patch }` or `{ kind: 'reset' }` — what the caller meant, not what to send |
+| `confirmed: Prefs \| null` | `:69` (interface), `:77-82` (`initialPrefsState`) | the record the kernel last confirmed; the base every write is built from, and what a rejected write falls back to. It is store state, not a closure variable, so `setState(initialPrefsState())` resets it and a test can see it |
+| `queue` | `:95` | one promise chain; intents run one at a time |
+| `recordFor` | `:107-112` | builds the record **when the intent runs**: a reset is `DEFAULT_PREFS` with no read; an update is `confirmed + patch`, reading first (`load()`) when nothing is confirmed yet and writing nothing when that read fails |
+| `run` | `:115-136` | applies the record optimistically, writes it, and on success sets it as `confirmed`; on failure toasts once and puts `prefs` back to `confirmed` |
+| `enqueue` | `:138-142` | `queue = queue.then(() => run(intent)).catch(() => undefined)` — each intent gets its own task closed over its own intent, and the chain never rejects |
+| `update` / `reset` | `:172`, `:182` | `enqueue({ kind: 'update', patch: { ...patch } })` / `enqueue({ kind: 'reset' })`; the patch is copied so a caller mutating its object later cannot change a queued write |
+
+Why this closes the finding: there is no shared buffer for a task to inherit, so "which call enqueued
+this task" and "whose data this task writes" are the same thing by construction, at any timing. A
+rejected write leaves `confirmed` untouched, so the next intent still builds on the record the kernel
+really holds — the reset's effect can be lost only if the reset's *own* write is the one rejected,
+which is exactly what the toast reports. The queue never wedges: one failure is caught per link.
+
+Public API unchanged (`prefs`, `loaded`, `load`, `update`, `reset`, and the selectors the dialogs
+use), so `PreferencesDialog`, `builtinCommands` (the View menu's theme items) and `AppShell` needed
+no edits. `PrefsState` gained the `confirmed` field and `initialPrefsState()` returns it; the three
+other test files that call `initialPrefsState()` are unaffected.
+
+Behaviour that changed on purpose: a burst of N actions now costs N writes rather than one. The
+round-3 tests that pinned `toHaveLength(1)` encoded the buffer's coalescing and were rewritten to
+assert the **order of the `prefs.set` payloads** instead, which is the property that actually matters.
+
+## Tests — `app/src/stores/prefsStore.test.ts`, 16 (was 14)
+
+Helpers: `writes()` (`:14`) returns the `prefs.set` payloads in order; `errors()` (`:21`) the error
+toasts; `watchUnhandledRejections()` (`:34`) records Node's `unhandledRejection` events — verified
+against a throwaway test that it does catch a genuine one.
+
+| Scenario | Test | Asserts |
+|---|---|---|
+| two updates racing an unresolved first read (rewritten) | `:161` | `['prefs.get', 'prefs.set', 'prefs.set']` — one read, then a write per change, the second built on the first's confirmed record; neither patch nor a stored field lost |
+| `update` → `reset` → `update`, back to back (rewritten) | `:230` | payloads exactly `[stored+theme, DEFAULT_PREFS, DEFAULT_PREFS+grid]`; kernel and store both end at defaults + the second patch |
+| the same with a microtask between the reset and the second update (rewritten) | `:263` | the same payload order — timing cannot change which call a change belongs after |
+| `update`, `update`, `reset` (rewritten) | `:290` | payloads `[stored+theme, stored+theme+grid, DEFAULT_PREFS]`; final record is the bare defaults |
+| a reset and a further update issued while the first write is genuinely on the wire | `:317` | the same three payloads in order; final record is defaults + the later patch |
+| **a rejected write in the middle** (new — the finding's reproduction) | `:363` | the reset's write is dropped; the later update still lands on the confirmed record (`stored+theme+grid`, *not* stored+grid), store state equals what the kernel holds, the shell keeps the confirmed theme, and exactly one error toast |
+| **no unhandled rejections** (new) | `:451` | three failed writes issued without `await`; the promise handed back resolves, `unhandledRejection` fires zero times, three toasts, state back on the confirmed record |
+| unchanged and still passing | `:74`, `:88`, `:104`, `:127`, `:141` (`update` before load: one `prefs.get`, stored fields preserved), `:210`, `:401`, `:416`, `:433` | load/mirror, whole-record write, round trip, reset, read-before-first-write, serialised writes, unreadable record, reset before load, rollback + toast |
+
+Checked in both directions: against the round-3 store these 16 tests fail 7 (including both new
+ones); against the new store all 16 pass.
+
+## Verification
+
+```
+$ pnpm --dir app check
+> tsc -b
+$ pnpm --dir app test
+ Test Files  52 passed (52)
+      Tests  402 passed (402)
+$ pnpm --dir app lint
+> eslint .
+$ pnpm --dir app exec prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+```
+
+402 tests, up from 400: +2 net in `prefsStore.test.ts` (14 → 16; four rewritten, two added). The e2e
+suite was not re-run — this round changed one store's internal write ordering, with no change to
+markup, i18n keys or kernel call shapes, and the preferences spec makes one edit at a time and blurs
+before polling.
+
+## i18n changes for Task 13
+
+None this round.
+
+## Concerns
+
+1. **A burst of actions is now a burst of writes.** `update`, `reset`, `update` is three `prefs.set`
+   calls where round 3 sent one, and for a moment the kernel holds the superseded record. That is the
+   ruled trade — correctness over write count — and preference edits are user-paced; it would matter
+   only if something started driving `update` from a slider or a keystroke handler.
+2. **A rejected write is reported but not retried.** The intent is dropped, `confirmed` stays where
+   it was, and the toast is the whole recovery story. Intents queued behind it proceed on the real
+   record, which is the point of the fix.
+3. ~~**`load()` is not an intent.**~~ Raised here, ruled in scope, and fixed in the follow-up
+   below: reads take their turn in the same queue as the writes.
+4. **Carried forward, unchanged:** the write queue is per store, not per process; Enter in Add Glyphs
+   is only reachable from the preview list; Export falls back to its own destination field rather
+   than `PathPromptDialog`; the skip-reason discriminator mirrors the kernel's `is_glyph_name`;
+   `Prefs` has no hit-radius or tool-defaults field.
+
+## Follow-up — `load()` takes its turn in the same queue
+
+The concern raised above was real, and the reproduction is worse than "benign": with the start-up
+`prefs.get` still on the wire, a View-menu theme click ran its own read and write past it, and the
+start-up read then came back carrying the record the kernel held *before* that write and installed it
+as `confirmed`. The next change was built on it, so the theme silently reverted. Probed directly
+against `2668896` with a 25 ms first read — `['prefs.get', 'prefs.get', 'prefs.set', 'prefs.set']`,
+final record `theme: 'system', grid_size: 8`: the theme change is gone, exactly the shape of the
+finding this round set out to close, entered through the read instead of the write.
+
+Reads are now intents too, so reads and writes are totally ordered:
+
+| Piece | Where | What it does |
+|---|---|---|
+| `Intent` | `app/src/stores/prefsStore.ts:51-56` | `WriteIntent` (`update` / `reset`) plus `{ kind: 'load' }`; the queue carries both |
+| `load` | `:197` | `enqueue({ kind: 'load' })` — the action is now one line; `run` (`:164`) dispatches a load intent to `read()` before it does anything else |
+| `read` | `:133-143` | the raw `prefs.get`: the whole of a load intent, and what an update does when nothing is confirmed yet (`recordFor`, `:156-161`, calls it directly rather than re-entering the queue, which would deadlock) |
+| `confirm` | `:117-121` | the one place a confirmed record is adopted — bumps the stamp, sets `prefs`/`loaded`/`confirmed`, mirrors to the shell; used by both the read and a successful write |
+| `generation` | `:114` | stamps the confirmed record; `read` adopts what it fetched only if the stamp has not moved since the call went out |
+
+The stamp is the ruled "nothing newer has been confirmed" guard. It is honest to say it never fires
+today: the queue means a read and a write cannot overlap, so nothing can be confirmed while a read is
+in flight. It is there so that adopting a fetched record is safe on `read`'s own terms — if a future
+caller ever reads outside the queue (a retry, a kernel-pushed refresh), a stale reply still cannot
+displace a newer record. The comment at `:126-131` says exactly this rather than implying the guard
+is load-bearing today.
+
+`load()`'s signature and every call site are unchanged (`AppShell.tsx:62`, `PreferencesDialog.tsx:45`,
+and the tests that `await` it); what changed is that its promise now resolves after any intents
+already queued ahead of it.
+
+*Test:* `prefsStore.test.ts:210`, "keeps a slow start-up read from undoing a change made while it
+ran" — the mock reads the file when the call arrives and replies 25 ms later (the first read only),
+which is what makes the race real rather than a microtask artefact. A start-up `load()` and a
+`update({ theme: 'dark' })` are issued back to back, then a further `update({ grid_size: 8 })`. It
+asserts `['prefs.get', 'prefs.set', 'prefs.set']` — one read, and it lands *before* the writes — the
+`prefs.set` payloads in order (`stored+dark`, then `stored+dark+grid`), and that `confirmed`, `prefs`
+and the kernel's record all end equal. Against `2668896` it fails; against the follow-up it passes.
+
+## Verification (follow-up)
+
+```
+$ pnpm --dir app check
+> tsc -b
+$ pnpm --dir app test
+ Test Files  52 passed (52)
+      Tests  403 passed (403)
+$ pnpm --dir app lint
+> eslint .
+$ pnpm --dir app exec prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+```
+
+403 tests: +1 for the read-ordering test. `prefsStore.test.ts` is 17 tests, all passing.
+
+**One thing to know about the suite:** two DOM tests are intermittently flaky under load —
+`GlyphView.test.tsx` ("focuses the canvas on opening…") and `GlyphGrid.test.tsx` ("replaces on click,
+extends on Shift and toggles on Ctrl"). Neither file imports `prefsStore`, and the flakiness
+predates this round: 1 failure in 6 consecutive full-suite runs at `2668896` with this round's files
+reverted, versus clean runs of the same suite on the final tree. Re-running passes. Worth a separate
+look, but it is not this change.
+
+## Concerns (follow-up)
+
+1. **A queued `load()` now waits behind pending writes.** The shell's start-up read is the first
+   thing enqueued, so in practice it waits for nothing; a Preferences dialog opened during a write
+   will show the stored values a round trip later than before. That is the price of the total order.
+2. **The stamp guard is unreachable today** (see above) and therefore untested. It is three lines and
+   documented as a guard rather than a mechanism; the alternative — leaving `read` correct only
+   because of where it is called from — is what this round is fixing elsewhere.

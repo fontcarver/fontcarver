@@ -9,7 +9,8 @@
     "open": "打开",
     "save": "保存",
     "yes": "是",
-    "no": "否"
+    "no": "否",
+    "done": "Done"
   },
   "menu": {
     "file": "文件",
@@ -33,7 +34,8 @@
       "save": "保存",
       "saveAs": "另存为…",
       "close": "关闭字体",
-      "fontInfo": "字体信息"
+      "fontInfo": "字体信息",
+      "export": "Export…"
     },
     "edit": {
       "undo": "撤销",
@@ -43,6 +45,7 @@
       "selectAll": "选择所有字形",
       "selectNone": "取消全选",
       "copyGlyphNames": "复制字形名称",
+      "preferences": "Preferences…",
       "selectAllPoints": "Select All Points",
       "deselectPoints": "Deselect Points",
       "deletePoints": "Delete Selected Points",
@@ -51,7 +54,8 @@
     "glyph": {
       "open": "在新标签页中打开字形",
       "previous": "上一个字形",
-      "next": "下一个字形"
+      "next": "下一个字形",
+      "add": "Add Glyphs…"
     },
     "view": {
       "toggleSidebar": "切换侧边栏",
@@ -138,6 +142,145 @@
       "message": "“{{name}}”有未保存的更改。",
       "save": "保存",
       "discard": "不保存"
+    },
+    "newFont": {
+      "title": "New Font",
+      "family": "Family name",
+      "style": "Style name",
+      "unitsPerEm": "Units per em",
+      "custom": "Custom",
+      "customUnitsPerEm": "Custom units per em",
+      "metrics": "Metrics preset",
+      "preset": {
+        "latin": "Latin",
+        "cjk": "CJK"
+      },
+      "starter": "Starter glyphs",
+      "set": {
+        "none": "None",
+        "basicLatin": "Basic Latin",
+        "latin1": "Latin-1",
+        "gb2312": "GB 2312"
+      },
+      "starterHint": "Starter glyphs are created empty; the recipe is the same one the Add Glyphs dialog uses.",
+      "create": "Create",
+      "presetHint": {
+        "latin": "Ascender 80 %, descender −20 %, x-height 50 % and cap height 70 % of the em.",
+        "cjk": "A 1000-unit em with ascender 880 and descender −120."
+      }
+    },
+    "addGlyphs": {
+      "title": "Add Glyphs",
+      "recipe": "Recipe",
+      "recipeHint": "Ranges (A-Z, U+0041-U+005A), single names (Aacute, a.sc, f_i) and legacy repertoires (@charset:GB2312), separated by spaces or commas.",
+      "charsets": "Character sets",
+      "preview": "Glyphs to add",
+      "counting": "counting…",
+      "new_one": "{{count, number}} new",
+      "new_other": "{{count, number}} new",
+      "empty": "Nothing to add yet — type a recipe or choose a character set.",
+      "add_one": "Add {{count, number}} glyph",
+      "add_other": "Add {{count, number}} glyphs",
+      "charset": {
+        "basicLatin": "Basic Latin",
+        "latinExtA": "Latin Extended-A",
+        "latin1": "Latin-1",
+        "gb2312": "GB 2312"
+      },
+      "countFailed": "The kernel could not resolve this character set.",
+      "skip": {
+        "present_one": "{{count, number}} already present",
+        "present_other": "{{count, number}} already present",
+        "unknown_one": "{{count, number}} not understood",
+        "unknown_other": "{{count, number}} not understood",
+        "tooLarge_one": "{{count, number}} range too large",
+        "tooLarge_other": "{{count, number}} ranges too large"
+      }
+    },
+    "export": {
+      "title": "Export",
+      "format": "Format",
+      "formatName": {
+        "Ttf": "TTF",
+        "Woff": "WOFF",
+        "Woff2": "WOFF2",
+        "Ufo": "UFO",
+        "Designspace": "Designspace",
+        "Fwf": "FWF"
+      },
+      "destination": "Destination",
+      "destinationLabel": "Destination path",
+      "choose": "Choose…",
+      "pathHint": "Browser mode has no native file dialog: type a path the kernel can write.",
+      "directoryHint": "This format writes a package directory, not a single file.",
+      "master": "Master",
+      "options": "Options",
+      "option": {
+        "removeOverlap": "Remove overlap",
+        "removeOverlapHint": "Merge overlapping contours before the outlines are compiled.",
+        "keepTtInstructions": "Keep TrueType instructions",
+        "keepTtInstructionsHint": "Reuse the imported hinting for glyphs that were not edited.",
+        "preserveUntouchedTables": "Preserve untouched tables",
+        "preserveUntouchedTablesHint": "Copy imported tables the editor did not rewrite into the output.",
+        "productionNames": "Production names",
+        "productionNamesHint": "Write the production glyph names the model supplies instead of the working names."
+      },
+      "run": "Export",
+      "running": "Exporting…",
+      "again": "Export again",
+      "result": "Result",
+      "bytes": "{{count, number}} bytes",
+      "touched_one": "{{count, number}} edited glyph",
+      "touched_other": "{{count, number}} edited glyphs",
+      "timing": "{{count, number}} ms",
+      "warnings": "Warnings",
+      "noWarnings": "No warnings.",
+      "selectGlyph": "Select {{name}} in the Font view",
+      "moreGlyphs_one": "{{count, number}} more",
+      "moreGlyphs_other": "{{count, number}} more"
+    },
+    "prefs": {
+      "title": "Preferences",
+      "categories": "Preference categories",
+      "category": {
+        "general": "General",
+        "editor": "Editor",
+        "snapping": "Snapping"
+      },
+      "theme": "Theme",
+      "language": "Language",
+      "autosave": "Autosave",
+      "autosaveSeconds": "Autosave interval in seconds",
+      "autosaveHint": "Seconds between crash-recovery snapshots; zero turns autosave off.",
+      "nudge": "Nudge steps",
+      "nudgeStep": {
+        "small": "Arrow",
+        "medium": "Shift",
+        "large": "Command"
+      },
+      "nudgeHint": "Font units an arrow key moves the selection, plain, with Shift and with the command modifier.",
+      "gridSize": "Grid size",
+      "gridHint": "Editing grid in font units; zero turns the grid off.",
+      "snapTo": "Snap to",
+      "snap": {
+        "nodes": "Nodes and handles",
+        "guides": "Guides",
+        "metrics": "Metrics and sidebearings",
+        "grid": "Grid",
+        "components": "Component ghosts"
+      },
+      "reset": "Reset to defaults"
+    },
+    "recovery": {
+      "title": "Recover Documents",
+      "intro": "FontWorkshop found unsaved work from an earlier session.",
+      "untitled": "Untitled document",
+      "savedAt": "Snapshot from {{time}}",
+      "recover": "Recover",
+      "discard": "Discard",
+      "confirmDiscard": "Discard this snapshot permanently?",
+      "keep": "Keep",
+      "later": "Later"
     },
     "shape": {
       "rectangleTitle": "New rectangle",
@@ -248,6 +391,8 @@
     "copiedNames_one": "已复制 {{count, number}} 个字形名称",
     "copiedNames_other": "已复制 {{count, number}} 个字形名称",
     "copyFailed": "无法写入剪贴板",
+    "glyphsAdded_one": "Added {{count, number}} glyph",
+    "glyphsAdded_other": "Added {{count, number}} glyphs",
     "details": "Details"
   },
   "errors": {
@@ -266,7 +411,22 @@
   "warning": {
     "cffHintsNotImported": "CFF outlines were imported without per-glyph stem and hint-mask data",
     "glyphNamesSynthesized": "Glyph names were synthesized because the font had no usable glyph names.",
-    "collectionFaceOpened": "{{message}}"
+    "collectionFaceOpened": "{{message}}",
+    "hintingDropped": "TrueType instructions were dropped for glyphs that changed since import.",
+    "hintingDroppedGlyphSetChanged": "TrueType instructions were dropped because the exported glyph set or order changed.",
+    "preservationUnavailable": "Imported tables could not be preserved because the document has no import provenance.",
+    "layoutDropped": "Imported layout tables were dropped because the glyph order changed.",
+    "rawTableDropped": "Imported raw tables were dropped because the glyph order changed.",
+    "variationTablesDropped": "Imported variation tables were dropped from this static export.",
+    "tablesNotPreserved": "{{message}}",
+    "provenanceHashMismatch": "Imported tables were not preserved because the source font no longer matches its provenance record.",
+    "removeOverlapUnavailable": "Overlap removal is not available yet and was not applied.",
+    "autohintUnavailable": "Automatic hinting is not available yet and was not applied.",
+    "variationSequencesDropped": "Unicode variation sequences are not written by this exporter.",
+    "postNamesOmitted": "The font exceeds the capacity of a named post table, so glyph names were omitted.",
+    "valueClamped": "{{message}}",
+    "macNameRecordsDropped": "{{message}}",
+    "nameLanguageUnmapped": "{{message}}"
   },
   "a11y": {
     "menubar": "应用程序菜单",
@@ -276,7 +436,8 @@
     "notifications": "通知",
     "toggleSidebar": "切换侧边栏",
     "toggleInspector": "切换检查器",
-    "statusBar": "状态栏"
+    "statusBar": "状态栏",
+    "progress": "{{stage}}…"
   },
   "fontView": {
     "toolbar": "字形网格控件",
@@ -543,6 +704,18 @@
     "tablesLabel": "OpenType 表",
     "preserved": "原样保留",
     "bytes": "{{count, number}} 字节"
+  },
+  "undo": {
+    "newFont": "New font setup"
+  },
+  "progress": {
+    "compile": "Compiling",
+    "preserve": "Preserving tables",
+    "write": "Writing"
+  },
+  "banner": {
+    "recovered": "Recovered from {{path}} — saving overwrites the original.",
+    "dismiss": "Dismiss banner"
   },
   "tool": {
     "palette": "Tools",

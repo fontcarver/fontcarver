@@ -21,6 +21,9 @@
   --text-size-sm: 12px;
   --text-size-xs: 11px;
   --text-size-lg: 15px;
+  /* Dialog body and dialog title, from the design scale. */
+  --text-size-md: 14px;
+  --text-size-xl: 16px;
   --text-weight-medium: 500;
   --text-weight-strong: 600;
   --line-height: 1.45;

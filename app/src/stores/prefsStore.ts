@@ -1,51 +1,224 @@
 import { create } from 'zustand'
 
 import { call, type Prefs } from '../api'
-import { DEFAULT_SNAP_SETTINGS, type SnapSettings } from '../editor/snapping'
+import type { SnapSettings } from '../editor/snapping'
+import { normaliseLanguage } from '../i18n'
+
+import { reportError, useUiStore, type ThemePreference } from './uiStore'
 
 /**
- * The kernel's persisted preferences.
- *
- * The editor needs three of them — the grid step, which snap families are live
- * and the arrow-key steps — and the kernel publishes no prefs-changed event, so
- * they are fetched once and refreshed whenever a glyph tab mounts. A failure is
- * not fatal: the defaults below are the ones the kernel itself starts from.
+ * The preference record the kernel falls back to, mirrored here so "Reset to
+ * defaults" does not need a round trip and so a kernel that has never written a
+ * `prefs.json` and this store agree on what "default" means.
  */
-export interface PrefsState {
-  prefs: Prefs | null
-  /** Whether a load has been attempted, successfully or not. */
-  loaded: boolean
-  /** Fetches the preferences; safe to call on every mount. */
-  load: () => Promise<void>
-  /** Writes new preferences and keeps the copy in step. */
-  save: (prefs: Prefs) => Promise<void>
+export const DEFAULT_PREFS: Prefs = Object.freeze<Prefs>({
+  theme: 'system',
+  language: 'en',
+  recent_limit: 20,
+  autosave_seconds: 60,
+  grid_size: 1,
+  snap: {
+    nodes: true,
+    guides: true,
+    metrics: true,
+    grid: true,
+    components: true,
+  },
+  nudge: [1, 10, 100],
+})
+
+/** Narrows a stored theme string to the shell's own preference type. */
+function themeOf(value: string): ThemePreference {
+  return value === 'light' || value === 'dark' ? value : 'system'
 }
 
-export const usePrefsStore = create<PrefsState>((set, get) => ({
-  prefs: null,
-  loaded: false,
+/** Mirrors the two preferences the shell also owns into the UI store. */
+function applyToShell(prefs: Prefs): void {
+  const ui = useUiStore.getState()
+  const theme = themeOf(prefs.theme)
+  if (ui.theme !== theme) ui.setTheme(theme)
+  const language = normaliseLanguage(prefs.language)
+  if (ui.language !== language) ui.setLanguage(language)
+}
 
-  load: async () => {
+/**
+ * One write, captured the moment the caller asked for it.
+ *
+ * An intent says what was meant, not what to send: `prefs.set` replaces the
+ * whole record, so the record itself is built when the intent runs, out of
+ * whatever the kernel has confirmed by then.
+ */
+type WriteIntent =
+  | { readonly kind: 'update'; readonly patch: Partial<Prefs> }
+  | { readonly kind: 'reset' }
+
+/** A write, or the read that `load()` asks for; both take a turn in the queue. */
+type Intent = { readonly kind: 'load' } | WriteIntent
+
+/** Persisted application preferences, shared by every view that reads them. */
+export interface PrefsState {
+  prefs: Prefs
+  /** Whether the kernel's values have been read at least once. */
+  loaded: boolean
+  /**
+   * The record the kernel last confirmed, and the base every write is built
+   * from; `null` until a read or a write has come back.
+   *
+   * `prefs` runs ahead of this while a write is on the wire — that is what
+   * keeps the dialog responsive — and falls back to it when a write is
+   * rejected, so a dropped write leaves neither the interface nor the write
+   * after it believing something the kernel never stored.
+   */
+  confirmed: Prefs | null
+  /**
+   * Reads the kernel's record.
+   *
+   * It takes its turn in the same queue as the writes, so a slow read cannot
+   * come back after a change was written and put the record it fetched
+   * beforehand back under the next change.
+   */
+  load: () => Promise<void>
+  /** Applies a patch immediately and persists the complete record. */
+  update: (patch: Partial<Prefs>) => Promise<void>
+  reset: () => Promise<void>
+}
+
+/** Creates the initial, action-free part of the preference state. */
+export function initialPrefsState(): Pick<
+  PrefsState,
+  'prefs' | 'loaded' | 'confirmed'
+> {
+  return { prefs: DEFAULT_PREFS, loaded: false, confirmed: null }
+}
+
+export const usePrefsStore = create<PrefsState>((set, get) => {
+  /**
+   * Intents run one at a time, in the order they were asked for.
+   *
+   * `prefs.set` replaces the whole record, so two writes that overlap would
+   * each send their own view of it and the last one on the wire would win,
+   * silently dropping the other's change — and a read that overlaps a write is
+   * the same hazard one step removed, since what it fetched becomes the base
+   * the next write is built from. So reads and writes share one queue and are
+   * totally ordered. Nothing is shared between intents and none is folded into
+   * another: one call is one round trip. Preference edits are rare, so an order
+   * that can be reasoned about is worth more than the writes a coalescing
+   * buffer would save.
+   */
+  let queue: Promise<void> = Promise.resolve()
+
+  /**
+   * Stamps the record the kernel has confirmed, so a read can tell whether
+   * anything was confirmed while it was on the wire.
+   */
+  let generation = 0
+
+  /** Adopts a record the kernel confirmed, as the base and as what is shown. */
+  const confirm = (prefs: Prefs): void => {
+    generation += 1
+    set({ prefs, loaded: true, confirmed: prefs })
+    applyToShell(prefs)
+  }
+
+  /**
+   * Reads the kernel's record: the whole of a load intent, and the first thing
+   * an update does when nothing has been confirmed yet.
+   *
+   * The stamp check is what makes adopting a fetched record safe on its own
+   * terms rather than by the caller's good manners: a read only wins if nothing
+   * newer was confirmed while it was in flight. The queue means no read runs
+   * beside a write today, so it never fires — it is what keeps that true if a
+   * read is ever issued from outside the queue.
+   */
+  const read = async (): Promise<void> => {
+    const since = generation
     try {
       const prefs = await call('prefs.get', {})
-      set({ prefs, loaded: true })
-    } catch {
-      // The editor works on the defaults; a toast here would fire on every
-      // tab mount for a condition the user cannot act on.
-      set({ loaded: true })
+      if (generation !== since) return
+      confirm(prefs)
+    } catch (error) {
+      reportError(error)
     }
-  },
+  }
 
-  save: async (prefs) => {
-    const written = await call('prefs.set', { prefs })
-    set({ prefs: written, loaded: true })
-    void get
-  },
-}))
+  /**
+   * The record a write intent sends, built when that intent runs.
+   *
+   * `undefined` means "write nothing": an update needs the kernel's own record
+   * to lay its patch over, and before a successful read this store holds
+   * nothing but [`DEFAULT_PREFS`] — writing then would silently overwrite the
+   * stored autosave interval, recent limit, nudge steps, grid size and snapping
+   * with defaults. So an unloaded store reads first and gives up when that read
+   * fails. A reset means the defaults and needs no read at all.
+   */
+  const recordFor = async (intent: WriteIntent): Promise<Prefs | undefined> => {
+    if (intent.kind === 'reset') return DEFAULT_PREFS
+    if (!get().confirmed) await read()
+    const confirmed = get().confirmed
+    return confirmed ? { ...confirmed, ...intent.patch } : undefined
+  }
 
-/** The snap settings of the current preferences, or the defaults. */
-export function snapSettingsOf(prefs: Prefs | null): SnapSettings {
-  if (!prefs) return DEFAULT_SNAP_SETTINGS
+  /** Runs one intent, reports it, and leaves the queue behind it alone. */
+  const run = async (intent: Intent): Promise<void> => {
+    if (intent.kind === 'load') return read()
+    const prefs = await recordFor(intent)
+    if (!prefs) return
+    // Applying first keeps the dialog responsive; a rejected write falls back
+    // to what the kernel confirmed, so the interface never claims a preference
+    // the kernel did not store and the next intent still builds on the record
+    // that is really there.
+    const confirmed = get().confirmed ?? get().prefs
+    set({ prefs })
+    applyToShell(prefs)
+    try {
+      confirm(await call('prefs.set', { prefs }))
+    } catch (error) {
+      set({ prefs: confirmed })
+      applyToShell(confirmed)
+      reportError(error)
+    }
+  }
+
+  const enqueue = (intent: Intent): Promise<void> => {
+    // `run` reports a failed round trip itself, and the chain is caught so that
+    // one rejection can neither stall the intents behind it nor surface as an
+    // unhandled rejection in a caller that did not await what it was handed.
+    queue = queue.then(() => run(intent)).catch(() => undefined)
+    return queue
+  }
+
+  return {
+    ...initialPrefsState(),
+
+    load: () => enqueue({ kind: 'load' }),
+
+    /**
+     * Merges a change into the kernel's own record.
+     *
+     * The patch is captured here, at call time, and carried by an intent of its
+     * own: one call is one `prefs.set`, and the writes go out in the order the
+     * user acted in. Which record the patch lands on is decided when the write
+     * goes out — the last one the kernel confirmed — so a change made while an
+     * earlier write or the start-up read is still on the wire cannot be lost, a
+     * change made after a reset lands on top of the defaults, and a rejected
+     * write changes nothing about what the writes after it are built on.
+     */
+    update: (patch) => enqueue({ kind: 'update', patch: { ...patch } }),
+
+    /**
+     * Restores the shipped defaults, loaded or not.
+     *
+     * It supersedes the changes asked for before it in the only sense a
+     * whole-record write can: it is written after them. A field edited after
+     * the reset button was pressed is a later intent, so it lands on top of the
+     * defaults rather than being swallowed by the reset.
+     */
+    reset: () => enqueue({ kind: 'reset' }),
+  }
+})
+
+/** The snap settings the editor works from, read off one preference record. */
+export function snapSettingsOf(prefs: Prefs): SnapSettings {
   return {
     nodes: prefs.snap.nodes,
     guides: prefs.snap.guides,
@@ -56,7 +229,7 @@ export function snapSettingsOf(prefs: Prefs | null): SnapSettings {
   }
 }
 
-/** The arrow-key steps of the current preferences: plain, Shift, Ctrl. */
-export function nudgeStepsOf(prefs: Prefs | null): [number, number, number] {
-  return prefs ? prefs.nudge : [1, 10, 100]
+/** The arrow-key distances of one preference record: plain, Shift, Ctrl. */
+export function nudgeStepsOf(prefs: Prefs): [number, number, number] {
+  return prefs.nudge
 }

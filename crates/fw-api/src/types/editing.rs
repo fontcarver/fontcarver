@@ -70,6 +70,14 @@ pub struct FlattenedComponents {
     pub points: Vec<[f64; 2]>,
 }
 
+/// Session handle reported for a glyph a dry run only previewed.
+///
+/// A previewed glyph does not exist in the document, so it has no handle. The
+/// sentinel is deliberately outside the range any session allocates, so a caller
+/// that forwards a preview cell to a glyph-scoped method gets a clean
+/// "does not exist" error instead of acting on an unrelated glyph.
+pub const PREVIEW_GLYPH_ID: GlyphId = GlyphId(u32::MAX);
+
 /// Parameters for creating glyphs from a recipe.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
 #[ts(export)]
@@ -81,6 +89,15 @@ pub struct AddGlyphsParams {
     /// Master used for the returned cells, or the default master.
     #[serde(default)]
     pub master: Option<MasterId>,
+    /// Preview the recipe instead of applying it.
+    ///
+    /// A dry run resolves the recipe against the document and reports exactly
+    /// what a real call would create and skip, without touching the document or
+    /// its undo stack. The previewed glyphs do not exist yet, so their cells
+    /// carry [`PREVIEW_GLYPH_ID`](crate::PREVIEW_GLYPH_ID) instead of a session
+    /// handle and no geometry; callers identify a preview by its name.
+    #[serde(default)]
+    pub dry_run: bool,
 }
 
 /// Result of one `glyphs.add` recipe.
