@@ -188,7 +188,7 @@
   right: var(--space-4);
   bottom: calc(var(--statusbar-height) + var(--space-3));
   display: flex;
-  width: min(420px, calc(100vw - var(--space-5)));
+  width: min(320px, calc(100vw - var(--space-5)));
   flex-direction: column;
   gap: var(--space-2);
 }
@@ -209,10 +209,33 @@
   background: var(--color-danger-soft);
 }
 
-.toastMessage {
+.toastBody {
+  display: flex;
+  min-width: 0;
   flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.toastMessage {
   overflow-wrap: anywhere;
   font-size: var(--text-size-sm);
+}
+
+.toastDetails > summary {
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+}
+
+.toastDetailText {
+  margin: var(--space-1) 0 0;
+  max-height: 8rem;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-xs);
 }
 
 .pane {
@@ -273,4 +296,61 @@
   font-family: var(--font-mono);
   font-size: var(--text-size-xs);
   font-variant-numeric: tabular-nums;
+}
+
+/* Numeric fields (design spec §7): tabular, right-aligned, shake on invalid. */
+
+.numberInput {
+  width: 100%;
+  min-width: 0;
+  height: var(--control-height);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--text-size-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.numberInput:focus-visible {
+  border-color: var(--color-border-strong);
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -1px;
+}
+
+.numberInput:disabled {
+  background: var(--color-surface);
+  color: var(--color-text-faint);
+}
+
+.fieldInvalid .numberInput {
+  border-color: var(--color-danger);
+}
+
+.fieldInvalid {
+  animation: field-shake 120ms ease;
+}
+
+@keyframes field-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-2px);
+  }
+
+  75% {
+    transform: translateX(2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fieldInvalid {
+    animation: none;
+  }
 }

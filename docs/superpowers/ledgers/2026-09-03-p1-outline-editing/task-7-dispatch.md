@@ -2,7 +2,7 @@
 
 Where it fits: second of four P1 UI tasks for FontWorkshop (Tauri 2 font editor: Rust kernel + React 19/TypeScript/Zustand UI). Task 6 delivered the editor core (selection, hit testing, the `doc.edit_begin/apply/end` gesture protocol, Select/Hand/Zoom, tool strip with tap/hold borrow, Info box, HUD, snapping to nodes/handles/anchors/guides/metrics with alignment lines). This task makes the remaining tools real and completes snapping.
 
-Worktree: /home/chen/githubprojects/pixelfonts/fontworkshop/.worktrees/p1-t7 (branch p1-t7, base BASE_COMMIT). Ports for this worktree: kernel dev server 8791, Vite 1424 (never 8787–8790 / 1420–1423).
+Worktree: /home/chen/githubprojects/pixelfonts/fontworkshop/.worktrees/p1-t7 (branch p1-t7, base b811ed2). Ports for this worktree: kernel dev server 8791, Vite 1424 (never 8787–8790 / 1420–1423).
 
 ## Read first
 1. `.superpowers/sdd/2026-09-03-p1-outline-editing/task-7-brief.md` (absolute: /home/chen/githubprojects/pixelfonts/fontworkshop/.superpowers/sdd/2026-09-03-p1-outline-editing/task-7-brief.md) — read this first — it is your requirements.
@@ -25,6 +25,13 @@ Worktree: /home/chen/githubprojects/pixelfonts/fontworkshop/.worktrees/p1-t7 (br
 12. **e2e** `app/e2e/draw.spec.ts`: new font (`session.new`) → open a glyph (add `A` via `glyphs.add` if needed) → pen-draw a triangle by three clicks and a click on the first node → `glyphs.outline` reports one closed contour with 3 points. Use the self-contained Playwright web servers if Task 11 has merged into your base (check `app/playwright.config.ts`); otherwise start `fw-devserver` on 8791 yourself for the run and note it.
 13. **i18n**: keys in `en.json`; the same keys in `zh-CN.json` with English placeholders; list them in the report (Task 13 translates). Do not translate.
 14. Files ≤ 450 lines for new modules (800 hard cap). No Rust changes. Do not touch `app/src/views/font/**`, the shell or the Info box beyond adding rows the new tools need (shapes/rotate/scale origin fields are optional).
+
+
+## Carried from Task 6 (REQUIRED in this task; see task-6-rereview3.md "New Breakage" for probes and file:line)
+A. **Gate coverage for every gesture close.** The nudge gate only covers a close the nudge runner starts itself. An arrow press one kernel round trip after a settle-/endNudge-/drag-driven close (and drag→drag: `pointerDown` overwrites a live drag whose `edit_end` never ran) still sends `edit_begin` ahead of the previous gesture's pending `edit_apply` → `InvalidEditToken`, a dropped apply and a preview that stands ahead of the document. Fix: thread `after: this.closing` into `NudgePress`, set `this.closing` in `finishDrag` (and on any drag replacement) exactly as `settle()` does, and make every tool's pointer-down go through the same gate. Regression tests on the token-checking mock transport (`app/src/test/mockTransport.ts` `createEditingTransport`) for: settle-close → arrow, pointer-up → arrow, drag → drag, tool switch mid-run.
+B. **Component preview on the canvas.** `EditorFrame.components` (preview offsets under the transform regime) has no canvas consumer: `GlyphCanvas` draws components from the fetched scene, so a dragged component moves in the Info box but not on screen; `hitInput()`/`frame()` also use the source components. Draw the per-component paths from the preview (LayerOutline already carries per-component data — stop relying on the single flattened path for the ghost), and feed the hit test/frame the previewed components.
+C. **Split `gestures/drag.ts` (751 lines, three delta regimes)** into ≤ 450-line modules (e.g. `drag/plan.ts`, `drag/deltas.ts`, `drag/preview.ts`, `drag/commands.ts`) with no behaviour change — the existing drag tests must pass unchanged.
+D. Trivial, do if touching the code anyway: `editOutline()` rebuild twice per pointer move (identity check misses on fresh arrays — cache per preview object); mock `doc.undo` should finalise the active edit like the kernel; the idle-timer close clears `carried` while its reload is in flight; `closeNudge` mid-drag clears the drag preview for one frame.
 
 ## Verification (all must pass before reporting)
 ```

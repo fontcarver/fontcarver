@@ -7,7 +7,7 @@ import { choosePath, hasNativeFileDialog } from '../shell/nativeDialogs'
 import { ApiCallError } from '../transport'
 
 import { useDocumentStore } from './documentStore'
-import { activeDocId, tabId, useUiStore } from './uiStore'
+import { activeDocId, reportError, tabId, useUiStore } from './uiStore'
 
 /** File extensions the kernel accepts as native document save targets. */
 const NATIVE_EXTENSIONS = ['.fwf', '.fwf.gz']
@@ -16,13 +16,6 @@ const NATIVE_EXTENSIONS = ['.fwf', '.fwf.gz']
 export function isNativeDocumentPath(path: string | null): boolean {
   const lower = path?.toLowerCase() ?? ''
   return NATIVE_EXTENSIONS.some((extension) => lower.endsWith(extension))
-}
-
-/** Turns any thrown value into a message suitable for a toast. */
-export function errorMessage(error: unknown): string {
-  if (error instanceof ApiCallError) return error.message
-  if (error instanceof Error) return error.message
-  return String(error)
 }
 
 /** Human label for a document: its file name, family name, or "Untitled". */
@@ -59,12 +52,6 @@ export interface SessionState {
   recover: (autosavePath: string) => Promise<DocSummary | null>
   /** Deletes one crash-recovery snapshot; resolves to whether it was removed. */
   discardRecovery: (autosavePath: string) => Promise<boolean>
-}
-
-function reportError(error: unknown): void {
-  useUiStore
-    .getState()
-    .pushToast({ kind: 'error', message: errorMessage(error) })
 }
 
 function upsert(docs: DocSummary[], summary: DocSummary): DocSummary[] {
@@ -116,6 +103,17 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     return onDocumentEvent((event) => {
       useDocumentStore.getState().noteGeneration(event.doc, event.generation)
+      // A fresh edit always clears the redo stack, so a new undo label with no
+      // redo label behind it is an action that just happened: the status bar
+      // flashes it (design spec §10). Undo and redo flash from their commands,
+      // which know which entry they moved.
+      const previous = get().docs.find((doc) => doc.doc === event.doc)
+      if (
+        event.redo_label === null &&
+        event.undo_label !== null &&
+        event.undo_label !== previous?.undo_label
+      )
+        useUiStore.getState().flashUndoLabel(event.undo_label)
       set((state) => ({
         docs: state.docs.map((doc) =>
           doc.doc === event.doc

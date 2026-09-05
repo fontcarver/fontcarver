@@ -1,10 +1,11 @@
 /**
  * Colours and type used by the glyph-editor drawing modules.
  *
- * Canvas cannot read CSS variables, so the design tokens are resolved once per
- * theme from the document element and handed to the draw functions as plain
- * strings. The fallback palette keeps the renderer working in tests and on the
- * very first paint, before the shell has written `data-theme`.
+ * Canvas cannot read CSS variables, so the design tokens (`--cv-*`, design
+ * spec §2.1) are resolved once per theme from the document element and handed
+ * to the draw functions as plain strings. The fallback palette keeps the
+ * renderer working in tests and on the very first paint, before the shell has
+ * written `data-theme`.
  */
 
 import { useEffect, useState } from 'react'
@@ -33,31 +34,48 @@ export interface GlyphTheme {
   rulerBackground: string
   rulerLine: string
   rulerLabel: string
+  /** Selected nodes, handles, segments and the marquee fill. */
+  selection: string
+  /** The 1 px inner ring drawn inside a selected node. */
+  selectionInk: string
+  /** Marquee outline, snap halo and alignment lines. */
+  accent: string
+  /** Cursor HUD pill background and its text. */
+  hudBackground: string
+  hudInk: string
+  /** Duplicate nodes and audit markers. */
+  warning: string
   fontFamily: string
 }
 
 /** Colours used when the tokens cannot be read (tests, first paint). */
 export const FALLBACK_GLYPH_THEME: GlyphTheme = {
   background: '#ffffff',
-  fill: '#17171a',
-  outline: '#3f3f47',
-  metric: '#b9b9c0',
-  metricStrong: '#8d8d96',
-  metricLabel: '#6b6b74',
+  fill: '#1b1f24',
+  outline: '#1b1f24',
+  metric: '#b8bec7',
+  metricStrong: '#7a828e',
+  metricLabel: '#7a828e',
   sidebearing: '#9ab0c8',
-  nodeCorner: '#2f5f9e',
-  nodeSmooth: '#2c7a4b',
+  nodeCorner: '#3b6fb6',
+  nodeSmooth: '#2e8b57',
   nodeImplied: '#2f7f8f',
-  nodeOffCurve: '#7b7b85',
-  handle: '#a8a8b2',
-  start: '#2f5f9e',
-  component: '#9a9aa4',
-  anchor: '#a3417c',
-  guideLocal: '#3a6ea5',
-  guideGlobal: '#a33a35',
-  rulerBackground: '#ededf0',
-  rulerLine: '#cfcfd3',
-  rulerLabel: '#6b6b74',
+  nodeOffCurve: '#8e96a2',
+  handle: '#8e96a2',
+  start: '#3b6fb6',
+  component: '#8e96a2',
+  anchor: '#c2413b',
+  guideLocal: '#3b6fb6',
+  guideGlobal: '#c2413b',
+  rulerBackground: '#f8f9fa',
+  rulerLine: '#d9dde3',
+  rulerLabel: '#7a828e',
+  selection: '#2b5fa8',
+  selectionInk: '#ffffff',
+  accent: '#3b6fb6',
+  hudBackground: 'rgb(27 31 36 / 92%)',
+  hudInk: '#ffffff',
+  warning: '#c2413b',
   fontFamily: 'system-ui',
 }
 
@@ -71,26 +89,32 @@ export function readGlyphTheme(): GlyphTheme {
     style.getPropertyValue(name).trim() || fallback
   const fb = FALLBACK_GLYPH_THEME
   return {
-    background: token('--color-canvas', fb.background),
-    fill: token('--color-glyph-fill', fb.fill),
-    outline: token('--color-glyph-outline', fb.outline),
-    metric: token('--color-glyph-metric', fb.metric),
-    metricStrong: token('--color-glyph-metric-strong', fb.metricStrong),
-    metricLabel: token('--color-text-faint', fb.metricLabel),
-    sidebearing: token('--color-glyph-sidebearing', fb.sidebearing),
-    nodeCorner: token('--color-glyph-node-corner', fb.nodeCorner),
-    nodeSmooth: token('--color-glyph-node-smooth', fb.nodeSmooth),
-    nodeImplied: token('--color-glyph-node-implied', fb.nodeImplied),
-    nodeOffCurve: token('--color-glyph-node-offcurve', fb.nodeOffCurve),
-    handle: token('--color-glyph-handle', fb.handle),
-    start: token('--color-glyph-start', fb.start),
-    component: token('--color-glyph-component', fb.component),
-    anchor: token('--color-glyph-anchor', fb.anchor),
-    guideLocal: token('--color-glyph-guide-local', fb.guideLocal),
-    guideGlobal: token('--color-glyph-guide-global', fb.guideGlobal),
-    rulerBackground: token('--color-glyph-ruler', fb.rulerBackground),
+    background: token('--cv-bg', fb.background),
+    fill: token('--cv-ink', fb.fill),
+    outline: token('--cv-ink', fb.outline),
+    metric: token('--cv-metric', fb.metric),
+    metricStrong: token('--cv-metric-label', fb.metricStrong),
+    metricLabel: token('--cv-metric-label', fb.metricLabel),
+    sidebearing: token('--cv-sidebearing', fb.sidebearing),
+    nodeCorner: token('--cv-node-corner', fb.nodeCorner),
+    nodeSmooth: token('--cv-node-smooth', fb.nodeSmooth),
+    nodeImplied: token('--cv-node-implied', fb.nodeImplied),
+    nodeOffCurve: token('--cv-handle', fb.nodeOffCurve),
+    handle: token('--cv-handle', fb.handle),
+    start: token('--cv-node-corner', fb.start),
+    component: token('--cv-component', fb.component),
+    anchor: token('--cv-anchor', fb.anchor),
+    guideLocal: token('--cv-guide-local', fb.guideLocal),
+    guideGlobal: token('--cv-guide-global', fb.guideGlobal),
+    rulerBackground: token('--cv-ruler', fb.rulerBackground),
     rulerLine: token('--color-border', fb.rulerLine),
-    rulerLabel: token('--color-text-faint', fb.rulerLabel),
+    rulerLabel: token('--cv-metric-label', fb.rulerLabel),
+    selection: token('--cv-selection', fb.selection),
+    selectionInk: token('--cv-selection-ink', fb.selectionInk),
+    accent: token('--color-accent', fb.accent),
+    hudBackground: token('--cv-hud-bg', fb.hudBackground),
+    hudInk: token('--cv-hud-ink', fb.hudInk),
+    warning: token('--cv-warning', fb.warning),
     fontFamily: token('--font-ui', fb.fontFamily),
   }
 }

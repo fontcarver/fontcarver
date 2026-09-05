@@ -1,7 +1,13 @@
 import { create } from 'zustand'
 
 import type { DocId, GlyphId, RecoveryEntry } from '../api'
-import { DEFAULT_LANGUAGE, normaliseLanguage, type Language } from '../i18n'
+import {
+  DEFAULT_LANGUAGE,
+  i18n,
+  normaliseLanguage,
+  type Language,
+} from '../i18n'
+import { errorNotice } from '../i18n/errors'
 
 /** User-selectable colour theme; `system` follows `prefers-color-scheme`. */
 export type ThemePreference = 'light' | 'dark' | 'system'
@@ -27,6 +33,8 @@ export interface Toast {
   readonly id: string
   readonly kind: 'info' | 'error'
   readonly message: string
+  /** Raw kernel wording, shown behind a "Details" disclosure. */
+  readonly details?: string
 }
 
 /** Which resizable side panel a size or visibility change refers to. */
@@ -63,6 +71,9 @@ export const PANEL_BOUNDS: Record<PanelId, { min: number; max: number }> = {
   sidebar: { min: 200, max: 400 },
   inspector: { min: 240, max: 420 },
 }
+
+/** How long the status bar shows the last undo label (design spec §10). */
+export const UNDO_FLASH_MS = 1500
 
 const STORAGE_KEY = 'fontworkshop.ui'
 
@@ -171,6 +182,12 @@ export interface UiState extends PersistedUi {
   /** Documents whose "recovered from…" banner the user has dismissed. */
   dismissedRecoveries: readonly DocId[]
   toasts: Toast[]
+  /**
+   * Label of the edit that just happened, shown in the status bar for a moment
+   * (design spec §10) so an action that changed nothing visible still says
+   * what it did.
+   */
+  undoFlash: string | null
   setTheme: (theme: ThemePreference) => void
   setLanguage: (language: Language) => void
   setPanelVisible: (panel: PanelId, visible: boolean) => void
@@ -191,6 +208,7 @@ export interface UiState extends PersistedUi {
   dismissRecoveryBanner: (doc: DocId) => void
   pushToast: (toast: Omit<Toast, 'id'>) => string
   dismissToast: (id: string) => void
+  flashUndoLabel: (label: string | null) => void
 }
 
 function persistedOf(state: UiState): PersistedUi {
@@ -225,6 +243,7 @@ export function initialUiState(): Omit<
   | 'dismissRecoveryBanner'
   | 'pushToast'
   | 'dismissToast'
+  | 'flashUndoLabel'
 > {
   return {
     ...readPersisted(),
@@ -237,8 +256,11 @@ export function initialUiState(): Omit<
     modalCount: 0,
     dismissedRecoveries: [],
     toasts: [],
+    undoFlash: null,
   }
 }
+
+let undoFlashTimer: ReturnType<typeof setTimeout> | undefined
 
 export const useUiStore = create<UiState>((set, get) => ({
   ...initialUiState(),
@@ -374,7 +396,36 @@ export const useUiStore = create<UiState>((set, get) => ({
     set((state) => ({
       toasts: state.toasts.filter((toast) => toast.id !== id),
     })),
+
+  flashUndoLabel: (label) => {
+    if (undoFlashTimer !== undefined) clearTimeout(undoFlashTimer)
+    if (!label) {
+      set({ undoFlash: null })
+      return
+    }
+    set({ undoFlash: label })
+    undoFlashTimer = setTimeout(() => {
+      undoFlashTimer = undefined
+      set({ undoFlash: null })
+    }, UNDO_FLASH_MS)
+  },
 }))
+
+/**
+ * Reports a rejected kernel call as an error toast.
+ *
+ * The single place the interface turns a thrown value into a notification, so
+ * every failure gets the same treatment: a translated summary for the error
+ * code and the kernel's own wording under "Details".
+ */
+export function reportError(error: unknown): void {
+  const notice = errorNotice(error, (key, options) => i18n.t(key, options))
+  useUiStore.getState().pushToast({
+    kind: 'error',
+    message: notice.message,
+    ...(notice.details === null ? {} : { details: notice.details }),
+  })
+}
 
 /** Selector: the currently active tab, if any. */
 export function selectActiveTab(state: UiState): Tab | null {

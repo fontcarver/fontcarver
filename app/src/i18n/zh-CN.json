@@ -45,7 +45,11 @@
       "selectAll": "选择所有字形",
       "selectNone": "取消全选",
       "copyGlyphNames": "复制字形名称",
-      "preferences": "Preferences…"
+      "preferences": "Preferences…",
+      "selectAllPoints": "Select All Points",
+      "deselectPoints": "Deselect Points",
+      "deletePoints": "Delete Selected Points",
+      "deletePointsBreak": "Delete and Open Path"
     },
     "glyph": {
       "open": "在新标签页中打开字形",
@@ -71,7 +75,9 @@
         "anchors": "显示锚点",
         "guides": "显示参考线",
         "rulers": "显示标尺"
-      }
+      },
+      "toggleInfoBox": "Show Info Box",
+      "toggleSnapping": "Snapping"
     },
     "window": {
       "nextTab": "下一个标签页",
@@ -89,6 +95,7 @@
       "noDocument": "没有打开的字体",
       "noRecent": "没有最近打开的文件",
       "noSelection": "未选择任何字形",
+      "noPointsSelected": "No points are selected",
       "nothingToUndo": "没有可撤销的操作",
       "nothingToRedo": "没有可重做的操作",
       "oneTab": "只打开了一个标签页",
@@ -96,6 +103,9 @@
       "themeActive": "已是当前主题",
       "noFontTab": "当前标签页不是字体标签页",
       "noGlyphTab": "当前标签页不是字形标签页"
+    },
+    "path": {
+      "toggleSmooth": "Toggle Smooth/Corner"
     }
   },
   "palette": {
@@ -346,7 +356,11 @@
     "ofTotal": "共 {{total, number}} 个",
     "coordinates": "{{x, number}}, {{y, number}}",
     "noCoordinates": "—, —",
-    "zoom": "{{size}} px/em"
+    "zoom": "{{size}} px/em",
+    "selectionPoints_one": "{{count}} point selected",
+    "selectionPoints_other": "{{count}} points selected",
+    "snapOn": "snap on",
+    "snapOff": "snap off"
   },
   "theme": {
     "label": "主题",
@@ -369,7 +383,21 @@
     "copiedNames_other": "已复制 {{count, number}} 个字形名称",
     "copyFailed": "无法写入剪贴板",
     "glyphsAdded_one": "Added {{count, number}} glyph",
-    "glyphsAdded_other": "Added {{count, number}} glyphs"
+    "glyphsAdded_other": "Added {{count, number}} glyphs",
+    "details": "Details"
+  },
+  "errors": {
+    "not_found": "That item is not in the document any more",
+    "invalid_params": "The kernel rejected the request as invalid",
+    "io": "A file could not be read or written",
+    "parse": "The font data could not be read",
+    "internal": "The kernel hit an internal error",
+    "geometry": "The geometry operation failed",
+    "export": "The font could not be exported",
+    "shaping": "The layout features could not be compiled",
+    "invalid_response": "The kernel returned an unexpected response",
+    "timeout": "The kernel did not answer in time",
+    "transport": "The interface could not reach the kernel"
   },
   "warning": {
     "cffHintsNotImported": "CFF outlines were imported without per-glyph stem and hint-mask data",
@@ -679,5 +707,115 @@
   "banner": {
     "recovered": "Recovered from {{path}} — saving overwrites the original.",
     "dismiss": "Dismiss banner"
+  },
+  "tool": {
+    "palette": "Tools",
+    "select": "Select",
+    "pen": "Pen",
+    "pencil": "Pencil",
+    "knife": "Knife",
+    "rectangle": "Rectangle",
+    "ellipse": "Ellipse",
+    "measure": "Measure",
+    "rotate": "Rotate",
+    "scale": "Scale",
+    "zoom": "Zoom",
+    "hand": "Hand",
+    "text": "Text"
+  },
+  "editor": {
+    "undo": {
+      "movePoints_one": "Move 1 point",
+      "movePoints_other": "Move {{count}} points",
+      "moveHandle": "Move handle",
+      "moveHandles_one": "Move 1 handle",
+      "moveHandles_other": "Move {{count}} handles",
+      "reshapeSegment": "Reshape segment",
+      "moveAnchor": "Move anchor",
+      "moveComponent": "Move component",
+      "moveSelection": "Move selection",
+      "nudgePoints_one": "Nudge 1 point",
+      "nudgePoints_other": "Nudge {{count}} points",
+      "toggleSmooth": "Toggle smooth",
+      "deletePoints": "Delete points",
+      "insertPoint": "Insert point",
+      "convertSegment": "Convert segment",
+      "setPosition": "Set position",
+      "setMetrics": "Set metrics",
+      "setAnchor": "Set anchor",
+      "setGuide": "Set guide",
+      "setComponent": "Set component",
+      "transform": "Transform selection"
+    },
+    "hud": {
+      "deltaX": "Δx",
+      "deltaY": "Δy",
+      "angle": "∠",
+      "length": "ℓ",
+      "width": "w",
+      "height": "h",
+      "stem": "⟂"
+    },
+    "a11y": {
+      "selection_one": "{{count}} item selected",
+      "selection_other": "{{count}} items selected"
+    },
+    "snap": {
+      "node": "node",
+      "handle": "handle",
+      "guide": "guide"
+    }
+  },
+  "infoBox": {
+    "label": "Info box",
+    "toggle": "Collapse info box",
+    "invalid": "Enter a number, or an expression such as +10 or *2",
+    "title": {
+      "glyph": "Glyph",
+      "node": "Node",
+      "handle": "Handle",
+      "multi": "Selection",
+      "component": "Component",
+      "anchor": "Anchor",
+      "guide": "Guide",
+      "segment": "Segment"
+    },
+    "x": "X",
+    "y": "Y",
+    "width": "W",
+    "height": "H",
+    "deltaX": "ΔX",
+    "deltaY": "ΔY",
+    "length": "Length",
+    "angle": "Angle",
+    "type": "Type",
+    "corner": "Corner",
+    "smooth": "Smooth",
+    "curve": "Curve",
+    "onCurve": "On-curve",
+    "name": "Name",
+    "unicode": "Unicode",
+    "base": "Base glyph",
+    "scaleX": "Scale X %",
+    "scaleY": "Scale Y %",
+    "rotation": "Rotation",
+    "autoAlign": "Auto-align",
+    "useMyMetrics": "Use my metrics",
+    "origin": "Origin",
+    "originPoint": {
+      "0": "Top left",
+      "1": "Top centre",
+      "2": "Top right",
+      "3": "Middle left",
+      "4": "Centre",
+      "5": "Middle right",
+      "6": "Bottom left",
+      "7": "Bottom centre",
+      "8": "Bottom right"
+    },
+    "proportional": "Proportional",
+    "locked": "Locked",
+    "unlocked": "Free",
+    "count": "{{selected, number}} of {{total, number}} points"
   }
 }

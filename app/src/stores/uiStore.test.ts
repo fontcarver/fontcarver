@@ -10,6 +10,7 @@ import {
   systemTheme,
   tabId,
   useUiStore,
+  UNDO_FLASH_MS,
 } from './uiStore'
 
 interface FakeMediaQuery {
@@ -188,5 +189,36 @@ describe('uiStore toasts', () => {
 
     useUiStore.getState().dismissToast(id)
     expect(useUiStore.getState().toasts).toHaveLength(0)
+  })
+})
+
+describe('undo label flash', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('shows the label of the last edit for 1.5 s', () => {
+    useUiStore.getState().flashUndoLabel('Move 3 points')
+    expect(useUiStore.getState().undoFlash).toBe('Move 3 points')
+
+    vi.advanceTimersByTime(UNDO_FLASH_MS - 1)
+    expect(useUiStore.getState().undoFlash).toBe('Move 3 points')
+    vi.advanceTimersByTime(2)
+    expect(useUiStore.getState().undoFlash).toBeNull()
+  })
+
+  it('restarts the window when another edit lands', () => {
+    useUiStore.getState().flashUndoLabel('Move 3 points')
+    vi.advanceTimersByTime(1_000)
+    useUiStore.getState().flashUndoLabel('Nudge 1 point')
+
+    vi.advanceTimersByTime(1_000)
+    expect(useUiStore.getState().undoFlash).toBe('Nudge 1 point')
+    vi.advanceTimersByTime(600)
+    expect(useUiStore.getState().undoFlash).toBeNull()
+  })
+
+  it('ignores an empty label', () => {
+    useUiStore.getState().flashUndoLabel(null)
+    expect(useUiStore.getState().undoFlash).toBeNull()
   })
 })

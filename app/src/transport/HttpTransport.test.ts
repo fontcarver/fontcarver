@@ -51,12 +51,18 @@ describe('HttpTransport.call', () => {
     })
   })
 
-  it('propagates network failures', async () => {
-    const failure = new TypeError('network unavailable')
-    vi.spyOn(globalThis, 'fetch').mockRejectedValue(failure)
+  it('reports an unreachable kernel as a transport ApiCallError', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(
+      new TypeError('network unavailable'),
+    )
     const transport = new HttpTransport('http://localhost:8787')
 
-    await expect(transport.call('session.list', {})).rejects.toBe(failure)
+    // Wrapped, not rethrown: the code is what the interface translates, and
+    // "could not reach the kernel" is not a file error.
+    await expect(transport.call('session.list', {})).rejects.toMatchObject({
+      code: 'transport',
+      message: 'network unavailable',
+    })
   })
 
   it('turns a non-JSON HTTP error into an internal ApiCallError', async () => {
@@ -75,7 +81,7 @@ describe('HttpTransport.call', () => {
     expect(error.message).toContain('HTTP 502')
   })
 
-  it('times out a hung request with an io ApiCallError', async () => {
+  it('times out a hung request with a timeout ApiCallError', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => {
       return new Promise((_resolve, reject) => {
         init?.signal?.addEventListener('abort', () =>
@@ -88,7 +94,7 @@ describe('HttpTransport.call', () => {
     })
 
     await expect(transport.call('session.list', {})).rejects.toMatchObject({
-      code: 'io',
+      code: 'timeout',
     })
   })
 })
