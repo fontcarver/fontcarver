@@ -16,9 +16,14 @@ translation never on Fable). Run `scripts/sdd-snapshot.sh` after every merge.
   `task-reviewer-prompt.md` / `re-review-prompt.md` (see earlier dispatches in the ledger for the exact shape).
 
 ## 1. P1 — remaining steps (in order)
-- [ ] **T7 fix round 1** (Opus, live agent in p1-t7): pencil = local cubic fit + one `AddContour`; full-affine component
-      preview; minors 3,4,5,6,9,10,11,12 (task-7-review.md). Then `review-package <plan> 7711ee1 <head>` → Opus scoped
-      re-review → if clean: verify (`cargo`/`pnpm` blocks + e2e on 8791/1424) → `git merge --no-ff p1-t7` into P1 → snapshot.
+- [x] **T7** complete and merged (5bbd934). Deferred T7 minors → do as a small "T7 minor round" (Opus, worktree from the
+      P1 head, then Sonnet re-review, merge): (1) `gestureEnded`/`setTool` must repaint; (2) `finishDrag`'s finally must not
+      wipe a nudge preview started during a live drag (guard like `closeNudge`); (3) split `curveFit.ts` (538 lines) into
+      fit / corners / quadratic conversion; (4) ShapeDialog Enter commits stale field values — mirror the four values in a
+      ref; (5) the synchronous fit costs 100–330 ms on pointer-up — cheaper `distanceToCubic` (Newton per sample, fewer
+      re-measures) or run it after the first paint; (6) make the fit tolerance zoom-aware (sampling step × factor) until a
+      Prefs field exists; also: tool keys should respect `modalCount`; `ttc` with CFF faces inferred quadratic; verify
+      Zoom/Hand against §5. Reviewer notes: task-7-rereview1.md.
 - [ ] **T8** (Opus, live agent in p1-t8): finish per task-8-dispatch.md → `review-package <plan> 449a390 <head>` → Opus task
       review (incl. 7 screenshots) → fix rounds → merge P1 into p1-t8 (expect a conflict in `editorController.ts` with T7;
       the implementer resolves) → verify → merge into P1 → snapshot.
