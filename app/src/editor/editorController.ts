@@ -21,7 +21,7 @@ import {
   cycledSelection,
   segmentShortcut,
 } from './editorActions'
-import { buildFrame, type EditorFrame, type FrameState } from './editorFrame'
+import { buildFrame, type EditorFrame } from './editorFrame'
 import {
   SILENT_CALLBACKS,
   type EditorCallbacks,
@@ -63,16 +63,7 @@ import { HAND_CURSOR, HAND_DRAGGING_CURSOR } from './tools/hand'
 
 import { toolById, type ToolId } from './tools/registry'
 import { ViewGestures } from './viewGestures'
-import {
-  METRIC_CURSOR,
-  MetricsDrag,
-  metricsHit,
-  type MetricHandle,
-} from '../views/glyph/metricsHandles'
-import {
-  RulerGuideDrag,
-  shouldStartRulerGuide,
-} from '../views/glyph/rulerGuides'
+import { AsideGestures } from './asideGestures'
 
 export type {
   EditorCallbacks,
@@ -81,6 +72,16 @@ export type {
   EditorSource,
   PointerInput,
 } from './editorTypes'
+
+/**
+ * Whether a hit outranks a metric line (design spec §4.2 precedence): nodes,
+ * handles, anchors and guides do; a segment or a component does not, and
+ * neither does empty canvas.
+ */
+function outranksMetrics(hit: Hit | null): boolean {
+  if (!hit) return false
+  return hit.target.kind !== 'segment' && hit.target.kind !== 'component'
+}
 
 export class EditorController {
   private readonly viewport: Viewport
@@ -98,8 +99,8 @@ export class EditorController {
   private snap: SnapMatch | null = null
   private preview: EditorPreview | null = null
   private readonly nudge: NudgeRunner
-  private metricsDrag: MetricsDrag | null = null
-  private rulerDrag: RulerGuideDrag | null = null
+  /** Sidebearing drags and guides pulled off a ruler. */
+  private readonly aside: AsideGestures
   private rulersVisible = true
   private spaceHeld = false
   private tool: ToolId = 'select'
@@ -114,6 +115,19 @@ export class EditorController {
     this.nudge = new NudgeRunner({
       onEnd: () => this.closeNudge(),
       onError: (error) => this.callbacks.onError(error),
+    })
+    this.aside = new AsideGestures({
+      viewport,
+      source: () => this.source,
+      target: () => this.layerTarget(),
+      labels: () => this.labels,
+      rulersVisible: () => this.rulersVisible,
+      after: () => this.closing,
+      settle: () => this.settle(),
+      onError: (error) => this.callbacks.onError(error),
+      onReload: () => this.callbacks.onReload(),
+      repaint: () => this.callbacks.repaint(),
+      publishEditing: () => this.publishEditing(),
     })
   }
 
@@ -134,7 +148,7 @@ export class EditorController {
    */
   private publishEditing(): void {
     const editing =
-      this.drag !== null || this.nudge.active || this.metricsDrag !== null
+      this.drag !== null || this.nudge.active || this.aside.editing
     if (editing === this.editingPublished) return
     this.editingPublished = editing
     this.callbacks.onEditingChange(editing)
@@ -237,26 +251,8 @@ export class EditorController {
       band: this.view.band,
       snap: this.snap,
       hover: this.hover,
-      aside: this.aside(),
+      aside: this.aside.frame(),
     })
-  }
-
-  /** What the sidebearing and ruler gestures contribute to the frame. */
-  private aside(): FrameState['aside'] {
-    if (this.metricsDrag)
-      return {
-        hud: this.labels.metricHud(
-          this.metricsDrag.handle,
-          this.metricsDrag.value,
-        ),
-        metrics: this.metricsDrag.preview,
-      }
-    if (this.rulerDrag)
-      return {
-        alignX: this.rulerDrag.previewX,
-        alignY: this.rulerDrag.previewY,
-      }
-    return null
   }
 
   /** Space is held: the canvas pans instead of selecting. */
@@ -287,20 +283,9 @@ export class EditorController {
     }
     if (this.effectiveTool() !== 'select') return
 
-    if (this.startRulerGuide(at, input.modifiers)) return
-
     const hit = this.hitAt(at)
     if (hit && this.handleSegmentShortcut(hit, input.modifiers)) return
-    // A metric line is grabbable where nothing better is: §4.2 puts nodes,
-    // handles, anchors and guides ahead of it, and a segment or a component
-    // behind it — the sidebearing runs the height of the canvas, so it would
-    // otherwise be unreachable wherever it crosses the outline.
-    if (
-      (!hit ||
-        hit.target.kind === 'segment' ||
-        hit.target.kind === 'component') &&
-      this.startMetricsDrag(at, input.modifiers)
-    )
+    if (this.aside.pointerDown(at, input.modifiers, outranksMetrics(hit)))
       return
 
     this.setSelection(selectionForClick(this.selection, hit, input.modifiers))
@@ -323,19 +308,7 @@ export class EditorController {
       this.callbacks.repaint()
       return
     }
-    if (this.metricsDrag) {
-      this.metricsDrag.move(
-        this.viewport.toFont(this.pointer).x,
-        input.modifiers.shift,
-      )
-      this.callbacks.repaint()
-      return
-    }
-    if (this.rulerDrag) {
-      this.rulerDrag.move(this.viewport.toFont(this.pointer))
-      this.callbacks.repaint()
-      return
-    }
+    if (this.aside.pointerMove(this.pointer, input.modifiers)) return
     if (this.drag) {
       this.drag.move(this.viewport.toFont(this.pointer), input.modifiers)
       this.setPreview(this.drag.preview)
@@ -351,14 +324,7 @@ export class EditorController {
 
   /** Pointer released. */
   pointerUp(input: PointerInput): void {
-    if (this.metricsDrag) {
-      void this.finishMetricsDrag()
-      return
-    }
-    if (this.rulerDrag) {
-      void this.finishRulerGuide()
-      return
-    }
+    if (this.aside.pointerUp()) return
     if (this.view.endPan()) {
       this.updateCursor(input.modifiers)
       return
@@ -406,11 +372,9 @@ export class EditorController {
   /** Ends whatever gesture is running; called when the view unmounts. */
   dispose(): void {
     void this.drag?.cancel()
-    void this.metricsDrag?.cancel()
+    this.aside.dispose()
     void this.nudge.end()
     this.drag = null
-    this.metricsDrag = null
-    this.rulerDrag = null
   }
 
   /** Toggles smooth on the selected nodes; Alt keeps the outline unchanged. */
@@ -542,24 +506,7 @@ export class EditorController {
 
   /** Escape: cancel a live drag, or clear the selection. */
   escape(): void {
-    if (this.rulerDrag) {
-      this.rulerDrag = null
-      this.callbacks.repaint()
-      return
-    }
-    if (this.metricsDrag) {
-      const gesture = this.metricsDrag
-      this.metricsDrag = null
-      void gesture
-        .cancel()
-        .catch((error: unknown) => this.callbacks.onError(error))
-        .finally(() => {
-          this.publishEditing()
-          this.callbacks.onReload()
-        })
-      this.callbacks.repaint()
-      return
-    }
+    if (this.aside.escape()) return
     if (this.drag) {
       const drag = this.drag
       this.drag = null
@@ -653,8 +600,8 @@ export class EditorController {
       )
     if (tool !== 'select')
       return this.callbacks.onCursorChange(toolById(tool).cursor)
-    if (!this.hover && this.metricHandleAt(this.pointer))
-      return this.callbacks.onCursorChange(METRIC_CURSOR)
+    const metric = this.hover ? null : this.aside.cursorAt(this.pointer)
+    if (metric) return this.callbacks.onCursorChange(metric)
     this.callbacks.onCursorChange(cursorForHover(this.hover, modifiers))
   }
 
@@ -676,93 +623,6 @@ export class EditorController {
     if (!action) return false
     void this.runCommand(action.command, action.label)
     return true
-  }
-
-  /** The metric handle under a canvas point, if the source knows its metrics. */
-  private metricHandleAt(at: Point2 | null): MetricHandle | null {
-    if (!at || !this.source) return null
-    return metricsHit(this.source.metrics, this.viewport, at)
-  }
-
-  /** Starts a sidebearing or advance drag; reports whether it took the event. */
-  private startMetricsDrag(at: Point2, modifiers: Modifiers): boolean {
-    const target = this.layerTarget()
-    const source = this.source
-    const handle = this.metricHandleAt(at)
-    if (!target || !source || !handle) return false
-    this.metricsDrag = new MetricsDrag({
-      doc: target.doc,
-      glyph: target.glyph,
-      layer: target.layer,
-      handle,
-      origin: this.viewport.toFont(at).x,
-      start: {
-        width: source.outline.width,
-        lsb: source.outline.lsb,
-        rsb: source.outline.rsb,
-      },
-      label: this.labels.setMetrics,
-      after: this.closing,
-      onError: (error) => this.callbacks.onError(error),
-    })
-    void modifiers
-    this.publishEditing()
-    this.callbacks.repaint()
-    return true
-  }
-
-  private async finishMetricsDrag(): Promise<void> {
-    const gesture = this.metricsDrag
-    if (!gesture) return
-    this.metricsDrag = null
-    let changed = true
-    try {
-      changed = await gesture.finish()
-    } catch (error) {
-      this.callbacks.onError(error)
-    } finally {
-      this.publishEditing()
-      if (changed || gesture.failed) this.callbacks.onReload()
-      else this.callbacks.repaint()
-    }
-  }
-
-  /** Starts a guide dragged out of a ruler; reports whether it took the event. */
-  private startRulerGuide(at: Point2, modifiers: Modifiers): boolean {
-    const target = this.layerTarget()
-    const source = this.source
-    const axis = shouldStartRulerGuide(at, modifiers, this.rulersVisible)
-    if (!target || !source || !axis) return false
-    this.rulerDrag = new RulerGuideDrag(
-      {
-        doc: target.doc,
-        glyph: target.glyph,
-        layer: target.layer,
-        master: source.master,
-        // ⇧ puts the guide in the master's global list, ⌥ alone in this layer's.
-        scope: modifiers.shift ? 'master' : 'layer',
-        axis,
-        label: this.labels.addGuide,
-      },
-      this.viewport.toFont(at),
-    )
-    this.callbacks.repaint()
-    return true
-  }
-
-  private async finishRulerGuide(): Promise<void> {
-    const gesture = this.rulerDrag
-    if (!gesture) return
-    this.rulerDrag = null
-    await this.settle()
-    try {
-      await gesture.finish()
-    } catch (error) {
-      this.callbacks.onError(error)
-    } finally {
-      this.callbacks.onReload()
-      this.callbacks.repaint()
-    }
   }
 
   private startDrag(hit: Hit, origin: Point2, modifiers: Modifiers): void {
