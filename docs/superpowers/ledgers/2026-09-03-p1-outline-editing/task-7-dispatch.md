@@ -26,6 +26,13 @@ Worktree: /home/chen/githubprojects/pixelfonts/fontworkshop/.worktrees/p1-t7 (br
 13. **i18n**: keys in `en.json`; the same keys in `zh-CN.json` with English placeholders; list them in the report (Task 13 translates). Do not translate.
 14. Files ≤ 450 lines for new modules (800 hard cap). No Rust changes. Do not touch `app/src/views/font/**`, the shell or the Info box beyond adding rows the new tools need (shapes/rotate/scale origin fields are optional).
 
+
+## Carried from Task 6 (REQUIRED in this task; see task-6-rereview3.md "New Breakage" for probes and file:line)
+A. **Gate coverage for every gesture close.** The nudge gate only covers a close the nudge runner starts itself. An arrow press one kernel round trip after a settle-/endNudge-/drag-driven close (and drag→drag: `pointerDown` overwrites a live drag whose `edit_end` never ran) still sends `edit_begin` ahead of the previous gesture's pending `edit_apply` → `InvalidEditToken`, a dropped apply and a preview that stands ahead of the document. Fix: thread `after: this.closing` into `NudgePress`, set `this.closing` in `finishDrag` (and on any drag replacement) exactly as `settle()` does, and make every tool's pointer-down go through the same gate. Regression tests on the token-checking mock transport (`app/src/test/mockTransport.ts` `createEditingTransport`) for: settle-close → arrow, pointer-up → arrow, drag → drag, tool switch mid-run.
+B. **Component preview on the canvas.** `EditorFrame.components` (preview offsets under the transform regime) has no canvas consumer: `GlyphCanvas` draws components from the fetched scene, so a dragged component moves in the Info box but not on screen; `hitInput()`/`frame()` also use the source components. Draw the per-component paths from the preview (LayerOutline already carries per-component data — stop relying on the single flattened path for the ghost), and feed the hit test/frame the previewed components.
+C. **Split `gestures/drag.ts` (751 lines, three delta regimes)** into ≤ 450-line modules (e.g. `drag/plan.ts`, `drag/deltas.ts`, `drag/preview.ts`, `drag/commands.ts`) with no behaviour change — the existing drag tests must pass unchanged.
+D. Trivial, do if touching the code anyway: `editOutline()` rebuild twice per pointer move (identity check misses on fresh arrays — cache per preview object); mock `doc.undo` should finalise the active edit like the kernel; the idle-timer close clears `carried` while its reload is in flight; `closeNudge` mid-drag clears the drag preview for one frame.
+
 ## Verification (all must pass before reporting)
 ```
 pnpm --dir app gen:api
