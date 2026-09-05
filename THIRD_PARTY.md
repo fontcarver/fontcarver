@@ -228,13 +228,13 @@ Apache-2.0 licensing and are treated as `MIT OR Apache-2.0`.
 ### 3.2 npm packages
 
 Surveyed 2026-09-04 with `pnpm --dir app licenses list --json` over the `app`
-workspace (production and development): **257 packages**.
+workspace (production and development): **258 packages**.
 
 | License | Packages |
 | --- | ---: |
 | MIT | 208 |
 | Apache-2.0 | 19 |
-| ISC | 11 |
+| ISC | 12 |
 | BSD-2-Clause | 8 |
 | Apache-2.0 OR MIT | 3 |
 | BSD-3-Clause | 3 |

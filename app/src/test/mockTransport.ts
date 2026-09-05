@@ -1,5 +1,5 @@
 import type { ApiMethods, DocSummary, DocumentEvent, Event } from '../api'
-import type { Transport } from '../transport'
+import { ApiCallError, type Transport } from '../transport'
 
 /** One recorded API call. */
 export interface RecordedCall {
@@ -42,7 +42,8 @@ export function createMockTransport(
       return () => listeners.delete(cb)
     },
     emit(event) {
-      const wrapped: Event = 'kind' in event ? event : { kind: 'Document', ...event }
+      const wrapped: Event =
+        'kind' in event ? event : { kind: 'Document', ...event }
       for (const listener of [...listeners]) listener(wrapped)
     },
   }
@@ -66,4 +67,77 @@ export function makeSummary(overrides: Partial<DocSummary> = {}): DocSummary {
     warnings: [],
     ...overrides,
   }
+}
+
+/** An empty `Change`, which most editing calls answer with. */
+export function noChange(glyphs: number[] = []) {
+  return {
+    glyphs,
+    font_info: false,
+    masters: false,
+    glyph_order: false,
+    metrics: false,
+    layers: false,
+    guides: false,
+  }
+}
+
+/** Extra behaviour for the editing transport. */
+export interface EditingTransportOptions {
+  /** Held open until resolved; lets a test observe an in-flight call. */
+  hold?: { on: 'doc.edit_apply' | 'doc.edit_end'; until: Promise<void> }
+  /** Makes `doc.edit_begin` reject, to exercise the failure paths. */
+  failBegin?: () => Error
+}
+
+/**
+ * A transport that models the kernel's edit-token rules.
+ *
+ * `Document::begin_edit` finalises whatever edit is open, and an
+ * `apply_in_edit` against a token that is no longer active fails with
+ * `InvalidEditToken` (`crates/fw-doc/src/document.rs`). A mock that answers
+ * every call cheerfully cannot see a gesture jumping the queue, which is
+ * exactly the ordering these tests are about — so this one keeps the active
+ * token and refuses a stale one the way the kernel does.
+ */
+export function createEditingTransport(
+  options: EditingTransportOptions = {},
+): MockTransport {
+  let nextToken = 101
+  let active: number | null = null
+
+  const invalidToken = () =>
+    new ApiCallError('invalid_params', 'InvalidEditToken')
+
+  const hold = async (on: 'doc.edit_apply' | 'doc.edit_end') => {
+    if (options.hold?.on === on) await options.hold.until
+  }
+
+  return createMockTransport({
+    'doc.edit_begin': () => {
+      if (options.failBegin) throw options.failBegin()
+      // Beginning an edit finalises the one that was open.
+      active = nextToken
+      nextToken += 1
+      return active
+    },
+    'doc.edit_apply': async (params) => {
+      await hold('doc.edit_apply')
+      if (params.token !== active) throw invalidToken()
+      return noChange([42])
+    },
+    'doc.edit_end': async (params) => {
+      await hold('doc.edit_end')
+      // Ending a stale token is a silent no-op in the kernel.
+      if (params.token === active) active = null
+      return null
+    },
+    // A single-shot command finalises the active edit too.
+    'doc.apply': () => {
+      active = null
+      return noChange([42])
+    },
+    'doc.undo': () => noChange([42]),
+    'doc.redo': () => noChange([42]),
+  })
 }

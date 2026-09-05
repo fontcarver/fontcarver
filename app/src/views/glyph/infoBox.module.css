@@ -1,0 +1,148 @@
+/* The docked Info box at the bottom left of the canvas (design spec §6.1). */
+
+.box {
+  position: absolute;
+  z-index: 2;
+  bottom: var(--space-2);
+  left: calc(36px + var(--space-2));
+  width: 260px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-popover);
+  font-size: var(--text-size-sm);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.box[data-open='false'] .header {
+  border-bottom: none;
+}
+
+.title {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+  font-weight: var(--text-weight-strong);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.collapse {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+.collapse:hover {
+  background: var(--color-hover);
+}
+
+.rows {
+  display: grid;
+  padding: var(--space-2);
+  gap: var(--space-1);
+}
+
+.row {
+  display: grid;
+  align-items: center;
+  gap: var(--space-2);
+  grid-template-columns: 84px 1fr;
+  min-height: var(--control-height);
+}
+
+.rowLabel {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowValue {
+  overflow: hidden;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.textInput {
+  width: 100%;
+  min-width: 0;
+  height: var(--control-height);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--text-size-sm);
+}
+
+.toggle {
+  height: var(--control-height);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-size: var(--text-size-sm);
+  cursor: default;
+}
+
+.toggle[aria-pressed='true'] {
+  border-color: transparent;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.badge {
+  justify-self: start;
+  padding: 1px var(--space-1);
+  border-radius: 3px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: var(--text-size-xs);
+}
+
+.origin {
+  display: grid;
+  width: 46px;
+  gap: 2px;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.originDot {
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 2px;
+  background: var(--color-surface);
+  cursor: default;
+}
+
+.originDotActive {
+  border-color: transparent;
+  background: var(--color-accent);
+}
+
+.count {
+  margin: 0;
+  color: var(--color-text-faint);
+  font-size: var(--text-size-xs);
+  font-variant-numeric: tabular-nums;
+}

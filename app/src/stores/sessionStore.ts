@@ -117,6 +117,17 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     return onDocumentEvent((event) => {
       useDocumentStore.getState().noteGeneration(event.doc, event.generation)
+      // A fresh edit always clears the redo stack, so a new undo label with no
+      // redo label behind it is an action that just happened: the status bar
+      // flashes it (design spec §10). Undo and redo flash from their commands,
+      // which know which entry they moved.
+      const previous = get().docs.find((doc) => doc.doc === event.doc)
+      if (
+        event.redo_label === null &&
+        event.undo_label !== null &&
+        event.undo_label !== previous?.undo_label
+      )
+        useUiStore.getState().flashUndoLabel(event.undo_label)
       set((state) => ({
         docs: state.docs.map((doc) =>
           doc.doc === event.doc

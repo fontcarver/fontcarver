@@ -29,3 +29,33 @@
 .statusNumeric {
   font-variant-numeric: tabular-nums;
 }
+
+/*
+ * The last undo label, shown for a moment after an edit (design spec §10).
+ * It fades in rather than appearing, so a run of edits reads as one changing
+ * value instead of a flicker.
+ */
+.statusFlash {
+  overflow: hidden;
+  max-width: 30ch;
+  color: var(--color-accent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  animation: status-flash-in 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes status-flash-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .statusFlash {
+    animation: none;
+  }
+}

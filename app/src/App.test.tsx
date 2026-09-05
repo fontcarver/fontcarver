@@ -65,7 +65,7 @@ describe('App shell', () => {
     render(<App />)
     const menubar = await screen.findByRole('menubar')
 
-    await user.click(within(menubar).getByRole('menuitem', { name: 'Path' }))
+    await user.click(within(menubar).getByRole('menuitem', { name: 'Layer' }))
 
     const item = screen.getByRole('menuitem', {
       name: 'Arrives in a later phase',

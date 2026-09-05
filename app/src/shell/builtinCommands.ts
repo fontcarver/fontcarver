@@ -57,7 +57,13 @@ function themeCommand(theme: ThemePreference): Command {
 async function runHistory(method: 'doc.undo' | 'doc.redo'): Promise<void> {
   const doc = activeDoc()
   if (doc === null) return
+  // The label of the entry about to move: after the call it has swapped
+  // stacks, and the status bar wants to name what just happened (§10).
+  const summary = activeSummary()
+  const moved =
+    method === 'doc.undo' ? summary?.undo_label : summary?.redo_label
   await call(method, { doc })
+  useUiStore.getState().flashUndoLabel(moved ?? null)
   await useSessionStore.getState().refreshSummary(doc)
 }
 
