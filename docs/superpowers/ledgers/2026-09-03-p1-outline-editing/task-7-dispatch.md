@@ -2,7 +2,7 @@
 
 Where it fits: second of four P1 UI tasks for FontWorkshop (Tauri 2 font editor: Rust kernel + React 19/TypeScript/Zustand UI). Task 6 delivered the editor core (selection, hit testing, the `doc.edit_begin/apply/end` gesture protocol, Select/Hand/Zoom, tool strip with tap/hold borrow, Info box, HUD, snapping to nodes/handles/anchors/guides/metrics with alignment lines). This task makes the remaining tools real and completes snapping.
 
-Worktree: /home/chen/githubprojects/pixelfonts/fontworkshop/.worktrees/p1-t7 (branch p1-t7, base BASE_COMMIT). Ports for this worktree: kernel dev server 8791, Vite 1424 (never 8787–8790 / 1420–1423).
+Worktree: /home/chen/githubprojects/pixelfonts/fontworkshop/.worktrees/p1-t7 (branch p1-t7, base b811ed2). Ports for this worktree: kernel dev server 8791, Vite 1424 (never 8787–8790 / 1420–1423).
 
 ## Read first
 1. `.superpowers/sdd/2026-09-03-p1-outline-editing/task-7-brief.md` (absolute: /home/chen/githubprojects/pixelfonts/fontworkshop/.superpowers/sdd/2026-09-03-p1-outline-editing/task-7-brief.md) — read this first — it is your requirements.
