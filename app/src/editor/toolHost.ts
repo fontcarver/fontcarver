@@ -98,6 +98,8 @@ export interface ToolHostCallbacks {
   /** A gesture the next one must wait for. */
   setClosing: (closing: Promise<unknown>) => void
   openDialog: (request: ShapeDialogRequest) => void
+  /** A tool gesture finished, so its transient feedback can be cleared. */
+  gestureEnded: () => void
   repaint: () => void
 }
 
@@ -228,8 +230,12 @@ export class ToolHost {
   ): boolean {
     const tool = this.tool
     if (!tool) return false
+    const wasBusy = tool.busy
     const outcome = run(tool, this.context())
     this.consume(outcome)
+    // A gesture that has just finished leaves transient feedback behind — the
+    // snap halo it latched onto — which nothing else would clear.
+    if (wasBusy && !tool.busy) this.callbacks.gestureEnded()
     return outcome.handled === true
   }
 
@@ -243,6 +249,15 @@ export class ToolHost {
     if (outcome.dialog) this.callbacks.openDialog(outcome.dialog)
     if (outcome.apply)
       this.callbacks.apply(outcome.apply.command, outcome.apply.label)
-    this.callbacks.repaint()
+    // An event no tool claimed changed nothing: repainting for every key press
+    // the canvas merely *offered* would put the whole editor on the key path.
+    if (
+      outcome.handled === true ||
+      outcome.apply !== undefined ||
+      outcome.selection !== undefined ||
+      outcome.preview !== undefined ||
+      outcome.dialog !== undefined
+    )
+      this.callbacks.repaint()
   }
 }

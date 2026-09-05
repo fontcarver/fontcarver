@@ -63,20 +63,29 @@ export class MeasureTool implements EditorTool {
 
   private from: Point2 | null = null
   private to: Point2 | null = null
+  /** Whether the button is down; the measurement outlives the gesture. */
+  private dragging = false
 
   get busy(): boolean {
-    return this.from !== null && this.to !== null
+    return this.dragging
+  }
+
+  claimsKey(): boolean {
+    // The measurement stays on screen after the button comes up, but it owns
+    // no key: leaving it displayed must not disable Enter or Escape.
+    return false
   }
 
   pointerDown(pointer: ToolPointer, context: ToolContext): ToolOutcome {
     if (pointer.button !== 0) return NO_OUTCOME
     this.from = context.snap(pointer.font, pointer.modifiers.mod).point
     this.to = this.from
+    this.dragging = true
     return { handled: true }
   }
 
   pointerMove(pointer: ToolPointer, context: ToolContext): ToolOutcome {
-    if (!this.from) return NO_OUTCOME
+    if (!this.from || !this.dragging) return NO_OUTCOME
     const at = context.snap(pointer.font, pointer.modifiers.mod).point
     this.to = pointer.modifiers.shift ? constrainVector(this.from, at) : at
     return { handled: true }
@@ -86,12 +95,15 @@ export class MeasureTool implements EditorTool {
     if (!this.from) return NO_OUTCOME
     // The measurement stays on screen after the button comes up, so the
     // numbers can be read; the next press starts a new one.
-    return this.pointerMove(pointer, context)
+    const outcome = this.pointerMove(pointer, context)
+    this.dragging = false
+    return { ...outcome, handled: true }
   }
 
   finish(): ToolOutcome {
     this.from = null
     this.to = null
+    this.dragging = false
     return NO_OUTCOME
   }
 

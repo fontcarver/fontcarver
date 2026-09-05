@@ -1214,3 +1214,71 @@ describe('EditorController drawing tools', () => {
     expect(params.label).toBe('Draw path')
   })
 })
+
+describe('EditorController nudging beside a drag', () => {
+  it('closes a drag that is still open before the arrow press begins', async () => {
+    const { controller, transport, recorded } = makeController(
+      createEditingTransport(),
+    )
+    // Pointer still down: the drag has an open edit and no gate of its own.
+    controller.pointerDown(at(200, 300))
+    controller.pointerMove(at(230, 300))
+    controller.nudgeSelection({ x: 0, y: 10 }, NO_MODIFIERS)
+    await controller.endNudge()
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(recorded.errors).toEqual([])
+    expect(controller.dragging).toBe(false)
+  })
+})
+
+describe('EditorController tool feedback', () => {
+  it('clears the snap halo when a tool gesture ends', () => {
+    const { controller } = makeController()
+    controller.setTool('pen')
+    // The node lands on the square's corner, which the snap latches onto.
+    controller.pointerDown(at(202, 302))
+    expect(controller.frame().overlay.snap).not.toBeNull()
+    controller.pointerUp(at(202, 302))
+    expect(controller.frame().overlay.snap).toBeNull()
+  })
+
+  it('repaints for an event a tool consumed, not for one it ignored', () => {
+    const { controller } = makeController()
+    let repaints = 0
+    controller.setCallbacks({
+      repaint: () => {
+        repaints += 1
+      },
+      onSelectionChange: () => undefined,
+      onEditingChange: () => undefined,
+      onZoomChange: () => undefined,
+      onReload: () => undefined,
+      onCursorChange: () => undefined,
+      onPreview: () => undefined,
+      onShapeDialog: () => undefined,
+      onError: () => undefined,
+    })
+    controller.setTool('pen')
+
+    // A key no tool claims is not a reason to repaint the whole editor: the
+    // canvas offers every key to the active tool.
+    repaints = 0
+    expect(
+      controller.toolKey({ key: 'q', modifiers: NO_MODIFIERS, repeat: false }),
+    ).toBe(false)
+    expect(repaints).toBe(0)
+
+    // A click the pen consumed is.
+    controller.pointerDown(at(300, 100))
+    expect(repaints).toBeGreaterThan(0)
+  })
+})

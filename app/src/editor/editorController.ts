@@ -144,6 +144,7 @@ export class EditorController {
         },
         setClosing: (closing) => void this.gate(closing),
         openDialog: (request) => this.callbacks.onShapeDialog(request),
+        gestureEnded: () => this.snapping.clear(),
         repaint: () => this.callbacks.repaint(),
       },
     )
@@ -518,6 +519,10 @@ export class EditorController {
     const source = this.source
     const points = selectedPointRefs(this.selection)
     if (!target || !source || points.length === 0) return
+    // A drag that is merely *open* registers no gate of its own, so the run
+    // has to close it first or its own `edit_begin` finalises the drag's edit
+    // and the drag's queued apply comes back `InvalidEditToken`.
+    void this.settle()
     const step = nudgeStep(modifiers, this.nudgeSteps)
     this.setPreview(
       this.nudge.press({

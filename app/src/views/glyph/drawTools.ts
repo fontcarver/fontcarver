@@ -17,15 +17,22 @@ import type { GlyphTheme } from './glyphTheme'
 const MARK_RADIUS = 2.5
 /** The cross drawn at a rotate or scale origin, in CSS pixels. */
 const ORIGIN_SIZE = 7
-/** Grid lines closer together than this on screen are not drawn. */
+/**
+ * Grid lines closer together than this on screen are not drawn.
+ *
+ * §4.1 item 1 says "≥ 1 px spacing on screen", which on a modern display is a
+ * solid wash rather than a grid: a 1-unit grid at a readable zoom would paint
+ * a 0.5 px line every device pixel. Four CSS pixels is the point at which the
+ * lines still read as lines, so the grid disappears below it instead of
+ * greying the canvas out.
+ */
 export const MIN_GRID_SPACING = 4
 
 /**
  * Draws the editing grid.
  *
- * The step is a preference in font units; at low zoom it is skipped rather
- * than drawn as a solid wash, which is what "≥ 1 px spacing on screen" asks
- * for in practice on a modern display.
+ * The step is a preference in font units; below `MIN_GRID_SPACING` on screen
+ * it is skipped rather than drawn as a solid wash.
  */
 export function drawGrid(
   ctx: CanvasRenderingContext2D,

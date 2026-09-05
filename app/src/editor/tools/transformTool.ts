@@ -20,11 +20,7 @@ import {
   type TransformContext,
 } from '../gestures/transform'
 import { boundsOf, movedPointRefs } from '../outlineGeometry'
-import {
-  selectedIndexes,
-  selectedPointRefs,
-  type Selection,
-} from '../selection'
+import { selectedIndexes, selectedPointRefs } from '../selection'
 
 import type { ToolId } from './registry'
 import {
@@ -245,13 +241,4 @@ function layerBox(context: ToolContext): FontBox | null {
         { x: view.bbox[2], y: view.bbox[3] },
       )
   return boundsOf(points)
-}
-
-/** Whether a selection names anything a transform would move. */
-export function transformsWholeLayer(selection: Selection): boolean {
-  return (
-    selectedPointRefs(selection).length === 0 &&
-    selectedIndexes(selection, 'anchor').length === 0 &&
-    selectedIndexes(selection, 'component').length === 0
-  )
 }
