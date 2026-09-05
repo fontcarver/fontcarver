@@ -24,9 +24,13 @@ translation never on Fable). Run `scripts/sdd-snapshot.sh` after every merge.
       re-measures) or run it after the first paint; (6) make the fit tolerance zoom-aware (sampling step × factor) until a
       Prefs field exists; also: tool keys should respect `modalCount`; `ttc` with CFF faces inferred quadratic; verify
       Zoom/Hand against §5. Reviewer notes: task-7-rereview1.md.
-- [ ] **T8** (Opus, live agent in p1-t8): finish per task-8-dispatch.md → `review-package <plan> 449a390 <head>` → Opus task
-      review (incl. 7 screenshots) → fix rounds → merge P1 into p1-t8 (expect a conflict in `editorController.ts` with T7;
-      the implementer resolves) → verify → merge into P1 → snapshot.
+- [ ] **T8 review** — implementation is DONE (p1-t8 @ 3b1bd4b, 11 commits, Vitest 699, e2e 15/1 skipped; report
+      task-8-report.md lists ten kernel-driven ruling adjustments and five interactive-pass fixes). Review package is ready:
+      `.superpowers/sdd/2026-09-03-p1-outline-editing/review-449a390..3b1bd4b.diff`. Dispatch an Opus task review (brief +
+      task-8-dispatch.md + report + the 7 screenshots `docs/screenshots/p1-panels-*.png`, `p1-edit-sidebar.png`,
+      `p1-metrics-handles.png`), fix rounds on the implementer, then merge P1 into p1-t8 (expect an `editorController.ts`
+      conflict with T7 — the implementer resolves), verify (Vitest + e2e; note the shared-kernel e2e flake under parallel
+      workers: run with `--workers=1` or add one kernel per worker to the Task 11 harness), merge into P1, snapshot.
 - [ ] **T9b Text tab + preview strip**: `git worktree add .worktrees/p1-t9b -b p1-t9b <P1 head>`; fill `BASE_COMMIT` in
       task-9b-dispatch.md; ports 8794/1427; Opus implementer → review → fix rounds → merge → snapshot.
 - [ ] **T12 acceptance** (Fable-led, measurements by Opus agents where needed): write `docs/p1-acceptance.md` per
