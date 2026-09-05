@@ -1,6 +1,14 @@
 import { create } from 'zustand'
 
-import type { DocId, Glyph, GlyphCell, GlyphId } from '../api'
+import type {
+  DocId,
+  Glyph,
+  GlyphCell,
+  GlyphId,
+  Guide,
+  LayerOutline,
+  MasterId,
+} from '../api'
 import type { EditorPreview } from '../editor/editorTypes'
 import { EMPTY_SELECTION, type Selection } from '../editor/selection'
 import type { ToolId } from '../editor/tools/registry'
@@ -18,6 +26,14 @@ export interface ActiveGlyph {
   glyph: Glyph
   scene: GlyphScene
   cell: GlyphCell | null
+  /** The editable layer, once `glyphs.outline` has answered. */
+  outline: LayerOutline | null
+  /** Master the shown layer belongs to. */
+  master: MasterId | null
+  /** That master's own guides: the "global" scope of the Guides panel. */
+  masterGuides: readonly Guide[]
+  /** Refetches the layer; every panel command reconciles through it. */
+  reload: () => void
 }
 
 /** A pointer position in font units. */
@@ -61,6 +77,20 @@ export interface EditorState {
    * the last fetched outline.
    */
   preview: EditorPreview | null
+  /**
+   * The layer the Layers panel put on the canvas, or `null` for the master
+   * layer of the selected master. Cleared whenever a different glyph opens,
+   * because a layer id means nothing in another glyph.
+   */
+  editedLayer: string | null
+  /**
+   * Guides shown as measurement guides, keyed `scope:index`.
+   *
+   * The model has no measurement flag (`fw_model::Guide` is position, angle,
+   * name, lock and colour), and this task adds no kernel field, so the choice
+   * lives for the session only and is deliberately not persisted.
+   */
+  measurementGuides: ReadonlySet<string>
   setOverlay: (key: keyof GlyphOverlays, value: boolean) => void
   setActiveGlyph: (glyph: ActiveGlyph | null) => void
   toggleOverlay: (key: keyof GlyphOverlays) => void
@@ -74,6 +104,8 @@ export interface EditorState {
   setSnapping: (snapping: boolean) => void
   setEditing: (editing: boolean) => void
   setPreview: (preview: EditorPreview | null) => void
+  setEditedLayer: (layer: string | null) => void
+  toggleMeasurementGuide: (key: string) => void
 }
 
 /** The initial, action-free part of the editor state. */
@@ -90,6 +122,8 @@ export function initialEditorState(): Pick<
   | 'snapping'
   | 'editing'
   | 'preview'
+  | 'editedLayer'
+  | 'measurementGuides'
 > {
   return {
     overlays: { ...DEFAULT_OVERLAYS },
@@ -103,6 +137,8 @@ export function initialEditorState(): Pick<
     snapping: true,
     editing: false,
     preview: null,
+    editedLayer: null,
+    measurementGuides: new Set(),
   }
 }
 
@@ -167,6 +203,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (get().preview === preview) return
     set({ preview })
   },
+
+  setEditedLayer: (editedLayer) => {
+    if (get().editedLayer === editedLayer) return
+    set({ editedLayer })
+  },
+
+  toggleMeasurementGuide: (key) =>
+    set((state) => {
+      const next = new Set(state.measurementGuides)
+      if (!next.delete(key)) next.add(key)
+      return { measurementGuides: next }
+    }),
 }))
 
 /** The tool actually in effect: a borrowed tool wins over the chosen one. */

@@ -65,6 +65,8 @@ export type DialogState =
   | { readonly kind: 'export'; readonly doc: DocId }
   | { readonly kind: 'preferences' }
   | { readonly kind: 'recovery'; readonly entries: readonly RecoveryEntry[] }
+  | { readonly kind: 'simplify' }
+  | { readonly kind: 'expandStroke' }
 
 /** Inclusive pixel bounds of the resizable panels. */
 export const PANEL_BOUNDS: Record<PanelId, { min: number; max: number }> = {
@@ -82,6 +84,13 @@ interface PersistedUi {
   language: Language
   panels: { sidebar: boolean; inspector: boolean }
   sizes: { sidebar: number; inspector: number }
+  /**
+   * Open/closed state of the Edit tab's inspector accordion, keyed by section
+   * id (design spec §7: "each remembers open/closed state"). A section with no
+   * entry uses its own default, so a new panel can ship open without having to
+   * migrate everyone's stored record.
+   */
+  sections: Record<string, boolean>
 }
 
 const DEFAULT_PERSISTED: PersistedUi = {
@@ -89,6 +98,16 @@ const DEFAULT_PERSISTED: PersistedUi = {
   language: DEFAULT_LANGUAGE,
   panels: { sidebar: true, inspector: true },
   sizes: { sidebar: 240, inspector: 300 },
+  sections: {},
+}
+
+/** Keeps only the boolean entries of a stored section record. */
+function readSections(value: unknown): Record<string, boolean> {
+  if (typeof value !== 'object' || value === null) return {}
+  const sections: Record<string, boolean> = {}
+  for (const [key, open] of Object.entries(value))
+    if (typeof open === 'boolean') sections[key] = open
+  return sections
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -124,6 +143,7 @@ function readPersisted(): PersistedUi {
           PANEL_BOUNDS.inspector.max,
         ),
       },
+      sections: readSections(parsed.sections),
     }
   } catch {
     return DEFAULT_PERSISTED
@@ -193,6 +213,8 @@ export interface UiState extends PersistedUi {
   setPanelVisible: (panel: PanelId, visible: boolean) => void
   togglePanel: (panel: PanelId) => void
   setPanelSize: (panel: PanelId, size: number) => void
+  setSection: (id: string, open: boolean) => void
+  toggleSection: (id: string, fallback: boolean) => void
   openTab: (tab: Omit<Tab, 'id'>) => string
   setTabLabel: (id: string, label: string) => void
   setActiveTab: (id: string) => void
@@ -217,6 +239,7 @@ function persistedOf(state: UiState): PersistedUi {
     language: state.language,
     panels: state.panels,
     sizes: state.sizes,
+    sections: state.sections,
   }
 }
 
@@ -228,6 +251,8 @@ export function initialUiState(): Omit<
   | 'setPanelVisible'
   | 'togglePanel'
   | 'setPanelSize'
+  | 'setSection'
+  | 'toggleSection'
   | 'openTab'
   | 'setTabLabel'
   | 'setActiveTab'
@@ -283,6 +308,15 @@ export const useUiStore = create<UiState>((set, get) => ({
 
   togglePanel: (panel) => {
     get().setPanelVisible(panel, !get().panels[panel])
+  },
+
+  setSection: (id, open) => {
+    set((state) => ({ sections: { ...state.sections, [id]: open } }))
+    writePersisted(persistedOf(get()))
+  },
+
+  toggleSection: (id, fallback) => {
+    get().setSection(id, !(get().sections[id] ?? fallback))
   },
 
   setPanelSize: (panel, size) => {

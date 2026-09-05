@@ -157,10 +157,26 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
       glyph: detail.detail.glyph,
       scene,
       cell: detail.cell,
+      outline,
+      master: masterId,
+      masterGuides: master?.guides ?? [],
+      reload: outlineResult.reload,
     })
     setTabLabel(tabId('glyph', doc, gid), scene.name)
     return () => setActiveGlyph(null)
-  }, [detail.cell, detail.detail, doc, gid, scene, setActiveGlyph, setTabLabel])
+  }, [
+    detail.cell,
+    detail.detail,
+    doc,
+    gid,
+    master,
+    masterId,
+    outline,
+    outlineResult.reload,
+    scene,
+    setActiveGlyph,
+    setTabLabel,
+  ])
 
   useEffect(() => () => setPointer(null), [setPointer])
 

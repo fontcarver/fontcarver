@@ -29,6 +29,10 @@ export interface GlyphOverlays {
   anchors: boolean
   guides: boolean
   rulers: boolean
+  /** The glyph's background layer for this master (design spec §4.1 item 5). */
+  background: boolean
+  /** The same glyph in every other master (design spec §4.1 item 4). */
+  otherMasters: boolean
 }
 
 /** Every overlay on, which is the default for a read-only glyph tab. */
@@ -39,6 +43,8 @@ export const DEFAULT_OVERLAYS: GlyphOverlays = {
   anchors: true,
   guides: true,
   rulers: true,
+  background: true,
+  otherMasters: false,
 }
 
 /** Everything one frame needs. */

@@ -55,7 +55,9 @@
       "open": "在新标签页中打开字形",
       "previous": "上一个字形",
       "next": "下一个字形",
-      "add": "Add Glyphs…"
+      "add": "Add Glyphs…",
+      "duplicate": "Duplicate Glyph",
+      "decomposeAll": "Decompose All Components"
     },
     "view": {
       "toggleSidebar": "切换侧边栏",
@@ -74,7 +76,9 @@
         "metrics": "显示度量线",
         "anchors": "显示锚点",
         "guides": "显示参考线",
-        "rulers": "显示标尺"
+        "rulers": "显示标尺",
+        "background": "Show Background Layer",
+        "otherMasters": "Show Other Masters"
       },
       "toggleInfoBox": "Show Info Box",
       "toggleSnapping": "Snapping"
@@ -102,10 +106,34 @@
       "noTab": "没有打开的标签页",
       "themeActive": "已是当前主题",
       "noFontTab": "当前标签页不是字体标签页",
-      "noGlyphTab": "当前标签页不是字形标签页"
+      "noGlyphTab": "当前标签页不是字形标签页",
+      "noGlyphLayer": "The Edit tab has no layer loaded",
+      "noStartPoint": "Select one on-curve node",
+      "noJoin": "Select the open ends of two contours",
+      "noBreak": "Select an on-curve node to open the contour"
     },
     "path": {
-      "toggleSmooth": "Toggle Smooth/Corner"
+      "toggleSmooth": "Toggle Smooth/Corner",
+      "removeOverlap": "Remove Overlap",
+      "correctDirection": "Correct Direction",
+      "addExtrema": "Add Extremes",
+      "addInflections": "Add Inflections",
+      "simplify": "Simplify…",
+      "roundToGrid": "Round to Grid",
+      "reverse": "Reverse Contours",
+      "setStartPoint": "Set Start Point",
+      "tidy": "Tidy Paths",
+      "expandStroke": "Expand Stroke…",
+      "convertCubic": "Convert to Cubic",
+      "convertQuadratic": "Convert to Quadratic",
+      "join": "Join Contours",
+      "break": "Break Contour"
+    },
+    "layer": {
+      "addBackground": "Add Background",
+      "copyToBackground": "Copy to Background",
+      "swapWithBackground": "Swap with Background",
+      "addBackup": "Add Backup"
     }
   },
   "palette": {
@@ -281,6 +309,37 @@
       "confirmDiscard": "Discard this snapshot permanently?",
       "keep": "Keep",
       "later": "Later"
+    },
+    "simplify": {
+      "title": "Simplify",
+      "error": "Maximum error",
+      "errorHint": "Font units the refitted outline may deviate by.",
+      "ignoreSlopes": "Ignore slopes",
+      "ignoreExtrema": "Remove extrema",
+      "smoothCurves": "Mark refits smooth",
+      "forceLines": "Curves close to lines become lines",
+      "nearlyHvLines": "Straighten nearly horizontal and vertical lines",
+      "startAtExtrema": "Start contours at an extremum",
+      "run": "Simplify"
+    },
+    "expandStroke": {
+      "title": "Expand Stroke",
+      "width": "Width",
+      "nib": "Pen",
+      "nibRound": "Round",
+      "nibRect": "Rectangular",
+      "cap": "Cap",
+      "join": "Join",
+      "capButt": "Butt",
+      "capSquare": "Square",
+      "capRound": "Round",
+      "joinBevel": "Bevel",
+      "joinMiter": "Miter",
+      "joinRound": "Round",
+      "miterLimit": "Miter limit",
+      "removeInternal": "Remove the inner ring",
+      "removeExternal": "Remove the outer ring",
+      "run": "Expand"
     }
   },
   "document": {
@@ -472,7 +531,9 @@
       "metrics": "度量线",
       "anchors": "锚点",
       "guides": "参考线",
-      "rulers": "标尺"
+      "rulers": "标尺",
+      "background": "Background",
+      "otherMasters": "Masters"
     },
     "metric": {
       "baseline": "基线",
@@ -745,7 +806,56 @@
       "setAnchor": "Set anchor",
       "setGuide": "Set guide",
       "setComponent": "Set component",
-      "transform": "Transform selection"
+      "transform": "Transform selection",
+      "renameGlyph": "Rename glyph",
+      "setUnicodes": "Set Unicode",
+      "setGlyphExport": "Set export flag",
+      "setColorLabel": "Set colour label",
+      "setGlyphTags": "Set tags",
+      "setGlyphNote": "Set note",
+      "setMetricsKeys": "Set metrics keys",
+      "addLayer": "Add layer",
+      "removeLayer": "Delete layer",
+      "copyToBackground": "Copy to background",
+      "swapWithBackground": "Swap with background",
+      "addBackup": "Add backup layer",
+      "addComponent": "Add component",
+      "removeComponents": "Delete component",
+      "reorderComponents": "Reorder components",
+      "decompose": "Decompose components",
+      "addAnchor": "Add anchor",
+      "removeAnchor": "Delete anchor",
+      "addGuide": "Add guide",
+      "removeGuide": "Delete guide",
+      "setSidebearing": "Set sidebearing",
+      "setWidth": "Set width",
+      "flipH": "Flip horizontally",
+      "flipV": "Flip vertically",
+      "duplicateGlyph": "Duplicate glyph",
+      "removeOverlap": "Remove overlap",
+      "correctDirection": "Correct direction",
+      "addExtrema": "Add extremes",
+      "addInflections": "Add inflections",
+      "simplify": "Simplify",
+      "roundToGrid": "Round to grid",
+      "tidy": "Tidy paths",
+      "expandStroke": "Expand stroke",
+      "convertCubic": "Convert to cubic",
+      "convertQuadratic": "Convert to quadratic",
+      "reverseContours": "Reverse contours",
+      "setStartPoint": "Set start point",
+      "joinContours": "Join contours",
+      "breakContour": "Break contour",
+      "align": {
+        "left": "Align left",
+        "centerH": "Align centres",
+        "right": "Align right",
+        "top": "Align top",
+        "middle": "Align middles",
+        "bottom": "Align bottom",
+        "distributeH": "Distribute horizontally",
+        "distributeV": "Distribute vertically"
+      }
     },
     "hud": {
       "deltaX": "Δx",
@@ -817,5 +927,85 @@
     "locked": "Locked",
     "unlocked": "Free",
     "count": "{{selected, number}} of {{total, number}} points"
+  },
+  "panel": {
+    "glyph": {
+      "addUnicode": "Add a Unicode value",
+      "removeUnicode": "Remove {{value}}",
+      "noColor": "No colour label",
+      "tagsPlaceholder": "comma, separated"
+    },
+    "metrics": {
+      "key": "{{metric}} key",
+      "resolved": "Resolved LSB / width / RSB",
+      "outOfSync": "out of sync",
+      "apply": "Apply resolved"
+    },
+    "layers": {
+      "remove": "Delete layer {{name}}",
+      "addBackground": "Add background",
+      "copyToBackground": "Copy to background",
+      "swapWithBackground": "Swap with background",
+      "addBackup": "Add backup",
+      "showBackground": "Show background",
+      "showOtherMasters": "Show other masters"
+    },
+    "components": {
+      "add": "Add component…",
+      "search": "Search for a base glyph",
+      "decomposeAll": "Decompose all",
+      "openBase": "Open {{name}}",
+      "decompose": "Decompose {{name}}",
+      "remove": "Delete {{name}}",
+      "moveUp": "Move {{name}} up",
+      "moveDown": "Move {{name}} down"
+    },
+    "anchors": {
+      "add": "Add anchor",
+      "remove": "Delete anchor {{name}}",
+      "suggestion": "Anchor name to add",
+      "hint": "Select a row to move the anchor on the canvas."
+    },
+    "guides": {
+      "title": "Guides",
+      "local": "This glyph",
+      "global": "This master",
+      "none": "No guides.",
+      "unnamed": "{{x}}, {{y}}",
+      "lock": "Lock guide",
+      "measurement": "Measurement guide",
+      "remove": "Delete guide",
+      "addHorizontal": "Add horizontal",
+      "addVertical": "Add vertical",
+      "rulerHint": "⌥-drag from a ruler to place a guide; hold ⇧ for the master."
+    },
+    "transform": {
+      "title": "Transform",
+      "dx": "Move X",
+      "dy": "Move Y",
+      "skewX": "Skew X",
+      "skewY": "Skew Y",
+      "apply": "Apply",
+      "flipH": "Flip H",
+      "flipV": "Flip V",
+      "alignGroup": "Align and distribute",
+      "wholeLayer": "Nothing selected — the whole layer is transformed.",
+      "selection": "{{count, number}} points selected.",
+      "align": {
+        "left": "Align left",
+        "centerH": "Align horizontal centres",
+        "right": "Align right",
+        "top": "Align top",
+        "middle": "Align vertical centres",
+        "bottom": "Align bottom",
+        "distributeH": "Distribute horizontally",
+        "distributeV": "Distribute vertically"
+      }
+    },
+    "sidebar": {
+      "layers": "Layers",
+      "glyphs": "Glyphs",
+      "filterHint": "The Font tab's current filter."
+    }
   }
 }
