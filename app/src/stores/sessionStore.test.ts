@@ -280,3 +280,61 @@ describe('sessionStore events', () => {
     stop()
   })
 })
+
+describe('undo label flash', () => {
+  it('flashes the label of an edit the kernel reports', () => {
+    const transport = createMockTransport({})
+    setTransport(transport)
+    useSessionStore.setState({ docs: [makeSummary()] })
+    const stop = useSessionStore.getState().start()
+
+    transport.emit({
+      doc: 1,
+      generation: 2,
+      dirty: true,
+      undo_label: 'Move 3 points',
+      redo_label: null,
+      change: {
+        glyphs: [1],
+        font_info: false,
+        masters: false,
+        glyph_order: false,
+        metrics: false,
+        layers: false,
+        guides: false,
+      },
+    })
+
+    expect(useUiStore.getState().undoFlash).toBe('Move 3 points')
+    stop()
+  })
+
+  it('says nothing when an event only replays the label it already had', () => {
+    const transport = createMockTransport({})
+    setTransport(transport)
+    useSessionStore.setState({
+      docs: [makeSummary({ undo_label: 'Move 3 points' })],
+    })
+    const stop = useSessionStore.getState().start()
+
+    transport.emit({
+      doc: 1,
+      generation: 3,
+      dirty: true,
+      undo_label: 'Move 3 points',
+      redo_label: null,
+      change: {
+        glyphs: [1],
+        font_info: false,
+        masters: false,
+        glyph_order: false,
+        metrics: false,
+        layers: false,
+        guides: false,
+      },
+    })
+
+    expect(useUiStore.getState().undoFlash).toBeNull()
+    stop()
+  })
+})

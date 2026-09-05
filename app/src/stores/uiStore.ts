@@ -51,6 +51,9 @@ export const PANEL_BOUNDS: Record<PanelId, { min: number; max: number }> = {
   inspector: { min: 240, max: 420 },
 }
 
+/** How long the status bar shows the last undo label (design spec §10). */
+export const UNDO_FLASH_MS = 1500
+
 const STORAGE_KEY = 'fontworkshop.ui'
 
 interface PersistedUi {
@@ -147,6 +150,12 @@ export interface UiState extends PersistedUi {
   pathPrompt: PathPrompt | null
   closePrompt: ClosePrompt | null
   toasts: Toast[]
+  /**
+   * Label of the edit that just happened, shown in the status bar for a moment
+   * (design spec §10) so an action that changed nothing visible still says
+   * what it did.
+   */
+  undoFlash: string | null
   setTheme: (theme: ThemePreference) => void
   setLanguage: (language: Language) => void
   setPanelVisible: (panel: PanelId, visible: boolean) => void
@@ -163,6 +172,7 @@ export interface UiState extends PersistedUi {
   setClosePrompt: (prompt: ClosePrompt | null) => void
   pushToast: (toast: Omit<Toast, 'id'>) => string
   dismissToast: (id: string) => void
+  flashUndoLabel: (label: string | null) => void
 }
 
 function persistedOf(state: UiState): PersistedUi {
@@ -193,6 +203,7 @@ export function initialUiState(): Omit<
   | 'setClosePrompt'
   | 'pushToast'
   | 'dismissToast'
+  | 'flashUndoLabel'
 > {
   return {
     ...readPersisted(),
@@ -202,8 +213,11 @@ export function initialUiState(): Omit<
     pathPrompt: null,
     closePrompt: null,
     toasts: [],
+    undoFlash: null,
   }
 }
+
+let undoFlashTimer: ReturnType<typeof setTimeout> | undefined
 
 export const useUiStore = create<UiState>((set, get) => ({
   ...initialUiState(),
@@ -316,6 +330,19 @@ export const useUiStore = create<UiState>((set, get) => ({
     set((state) => ({
       toasts: state.toasts.filter((toast) => toast.id !== id),
     })),
+
+  flashUndoLabel: (label) => {
+    if (undoFlashTimer !== undefined) clearTimeout(undoFlashTimer)
+    if (!label) {
+      set({ undoFlash: null })
+      return
+    }
+    set({ undoFlash: label })
+    undoFlashTimer = setTimeout(() => {
+      undoFlashTimer = undefined
+      set({ undoFlash: null })
+    }, UNDO_FLASH_MS)
+  },
 }))
 
 /** Selector: the currently active tab, if any. */

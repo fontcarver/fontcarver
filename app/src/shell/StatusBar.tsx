@@ -23,6 +23,7 @@ export function StatusBar() {
   const pointer = useEditorStore((state) => state.pointer)
   const zoom = useEditorStore((state) => state.zoom)
   const activeGlyph = useEditorStore((state) => state.activeGlyph)
+  const undoFlash = useUiStore((state) => state.undoFlash)
   const selection = useEditorStore((state) => state.selection)
   const snapping = useEditorStore((state) => state.snapping)
   const onGlyphTab = tab?.kind === 'glyph'
@@ -54,6 +55,9 @@ export function StatusBar() {
           <span className={summary.dirty ? styles.statusDirty : undefined}>
             {summary.dirty ? t('status.dirty') : t('status.clean')}
           </span>
+          {undoFlash ? (
+            <span className={styles.statusFlash}>{undoFlash}</span>
+          ) : null}
           {summary.warnings.length > 0 ? (
             <span>
               {t('status.warnings', { count: summary.warnings.length })}
