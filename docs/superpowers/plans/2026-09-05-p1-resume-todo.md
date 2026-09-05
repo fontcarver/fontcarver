@@ -15,6 +15,15 @@ translation never on Fable). Run `scripts/sdd-snapshot.sh` after every merge.
 - Review packages: `scripts/review-package` from the superpowers SDD skill; reviewer prompts follow
   `task-reviewer-prompt.md` / `re-review-prompt.md` (see earlier dispatches in the ledger for the exact shape).
 
+## 0a. Rename (done 2026-09-05, after the pause)
+- Product is now **Font Cutter** (`fontcutter`, fontcutter.com): commits f6c5ade (product) and a166c23 (internals: crates
+  `fc-*`, CLI `fontcutter`, desktop binary `fontcutter-desktop`, `fc:event`, `FC_API_PORT`/`FC_UI_PORT`/`FC_DEV_PROXY`/
+  `FC_CONFIG_DIR`/`VITE_FC_API`, document extension `.fcf`; `.fwf` and the old `"fontworkshop"` format tag are still read).
+- **T8 merge implication**: `.worktrees/p1-t8` predates the rename — when merging P1 into p1-t8, apply the same renames to its
+  app-side references (`fw:event`, `FW_*`, `.fwf`, "FontWorkshop" strings) before verifying. Remove `.worktrees/p1-t7`.
+- Open for the user: desktop binary name; fixture fonts' baked-in "FontWorkshop" family strings (left as is); repo directory
+  name still `fontworkshop`; port 1420 is occupied on this machine (use 1428+ for e2e).
+
 ## 1. P1 — remaining steps (in order)
 - [x] **T7** complete and merged (5bbd934). Deferred T7 minors → do as a small "T7 minor round" (Opus, worktree from the
       P1 head, then Sonnet re-review, merge): (1) `gestureEnded`/`setTool` must repaint; (2) `finishDrag`'s finally must not
