@@ -10,6 +10,9 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    # The whole job builds the Rust workspace twice over (clippy, then tests);
+    # this bounds a hang well under GitHub's six-hour default.
+    timeout-minutes: 45
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -105,6 +108,7 @@ jobs:
 
       - name: Run end-to-end tests
         working-directory: app
+        timeout-minutes: 20
         run: pnpm e2e
 
       - name: Upload the Playwright report
