@@ -687,6 +687,9 @@ export class EditorController {
     }
   }
 
+  /** Everything the hit test looks at. Alt does not hide handles here: over a
+   * handle it means "keep the angle" and over a node "break the handle"
+   * (§4.3); ignoring handles is a marquee behaviour the marquee applies. */
   private hitInput(): HitTestInput {
     return {
       outline: this.editOutline(),
@@ -699,12 +702,7 @@ export class EditorController {
   }
 
   private hitAt(at: Point2): Hit | null {
-    if (!this.source) return null
-    // Alt does *not* hide handles from the hit test: over a handle it means
-    // "keep the angle" and over a node "break the handle" (design spec §4.3).
-    // Ignoring handles is a marquee behaviour, and the marquee applies it
-    // itself.
-    return hitTest(this.hitInput(), at)
+    return this.source ? hitTest(this.hitInput(), at) : null
   }
 
   private updateCursor(modifiers: Modifiers = NO_MODIFIERS): void {
