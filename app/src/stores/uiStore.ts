@@ -160,6 +160,14 @@ export interface UiState extends PersistedUi {
   pathPrompt: PathPrompt | null
   closePrompt: ClosePrompt | null
   dialog: DialogState | null
+  /**
+   * How many modal dialogs are on screen.
+   *
+   * The shared `Dialog` primitive counts itself in and out, so the global
+   * shortcut dispatcher can leave the keyboard to the dialog instead of, say,
+   * closing the document behind it.
+   */
+  modalCount: number
   /** Documents whose "recovered from…" banner the user has dismissed. */
   dismissedRecoveries: readonly DocId[]
   toasts: Toast[]
@@ -178,6 +186,8 @@ export interface UiState extends PersistedUi {
   setPathPrompt: (prompt: PathPrompt | null) => void
   setClosePrompt: (prompt: ClosePrompt | null) => void
   setDialog: (dialog: DialogState | null) => void
+  openModal: () => void
+  closeModal: () => void
   dismissRecoveryBanner: (doc: DocId) => void
   pushToast: (toast: Omit<Toast, 'id'>) => string
   dismissToast: (id: string) => void
@@ -210,6 +220,8 @@ export function initialUiState(): Omit<
   | 'setPathPrompt'
   | 'setClosePrompt'
   | 'setDialog'
+  | 'openModal'
+  | 'closeModal'
   | 'dismissRecoveryBanner'
   | 'pushToast'
   | 'dismissToast'
@@ -222,6 +234,7 @@ export function initialUiState(): Omit<
     pathPrompt: null,
     closePrompt: null,
     dialog: null,
+    modalCount: 0,
     dismissedRecoveries: [],
     toasts: [],
   }
@@ -299,12 +312,21 @@ export const useUiStore = create<UiState>((set, get) => ({
 
   closeTabsForDoc: (doc) => {
     set((state) => {
+      // A closed document takes its dismissed-banner marker with it, so the
+      // list cannot grow for the lifetime of the session.
+      const dismissedRecoveries = state.dismissedRecoveries.filter(
+        (entry) => entry !== doc,
+      )
       const tabs = state.tabs.filter((tab) => tab.doc !== doc)
-      if (tabs.length === state.tabs.length) return state
+      if (tabs.length === state.tabs.length)
+        return dismissedRecoveries.length === state.dismissedRecoveries.length
+          ? state
+          : { ...state, dismissedRecoveries }
       const activeSurvives = tabs.some((tab) => tab.id === state.activeTab)
       return {
         ...state,
         tabs,
+        dismissedRecoveries,
         activeTab: activeSurvives
           ? state.activeTab
           : (tabs[tabs.length - 1]?.id ?? null),
@@ -329,6 +351,11 @@ export const useUiStore = create<UiState>((set, get) => ({
   setClosePrompt: (closePrompt) => set({ closePrompt }),
 
   setDialog: (dialog) => set({ dialog }),
+
+  openModal: () => set((state) => ({ modalCount: state.modalCount + 1 })),
+
+  closeModal: () =>
+    set((state) => ({ modalCount: Math.max(0, state.modalCount - 1) })),
 
   dismissRecoveryBanner: (doc) =>
     set((state) =>

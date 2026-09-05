@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 
 import styles from '../shell/dialog.module.css'
+import { useUiStore } from '../stores/uiStore'
 
 /** Dialog widths from the design spec: 480, 560 and 640 pixels. */
 export type DialogSize = 'sm' | 'md' | 'lg'
@@ -33,9 +34,11 @@ export interface DialogProps {
 
 /**
  * The modal primitive every FontWorkshop dialog is built from: 6 px radius,
- * 24 px padding, a 16/600 title, Escape cancels, Enter confirms and Tab is
- * trapped inside. Focus moves to the first control on open and returns to the
- * element that had it when the dialog closes.
+ * 24 px padding, a 16/600 title over a 14 px body (the chrome lives with the
+ * width classes in `shell/dialog.module.css`), Escape cancels, Enter confirms
+ * and Tab is trapped inside. Focus moves to the first control on open and
+ * returns to the element that had it when the dialog closes. While it is
+ * mounted it counts itself as a modal, so global shortcuts stay out of its way.
  */
 export function Dialog({
   title,
@@ -49,6 +52,12 @@ export function Dialog({
 }: DialogProps) {
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const ui = useUiStore.getState()
+    ui.openModal()
+    return ui.closeModal
+  }, [])
 
   useEffect(() => {
     const dialog = dialogRef.current

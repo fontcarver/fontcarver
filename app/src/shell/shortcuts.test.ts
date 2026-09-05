@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { initialUiState, useUiStore } from '../stores/uiStore'
+
 import { registerCommand, resetCommands } from './commands'
 import {
   commandForEvent,
@@ -148,5 +150,67 @@ describe('commandForEvent', () => {
     })
 
     expect(commandForEvent(event, false)).toBe('test.undo')
+  })
+})
+
+describe('shortcuts under a modal dialog', () => {
+  afterEach(() => {
+    useUiStore.setState(initialUiState())
+  })
+
+  function bind(run: () => void): () => void {
+    registerCommand({ id: 'test.close', title: 'x', shortcut: 'Mod+W', run })
+    return installShortcuts(window)
+  }
+
+  function pressModW(): void {
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'w',
+        code: 'KeyW',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+  }
+
+  it('leaves the keyboard to a dialog while one is on screen', () => {
+    const run = vi.fn()
+    const stop = bind(run)
+
+    useUiStore.getState().openModal()
+    pressModW()
+    expect(run).not.toHaveBeenCalled()
+
+    useUiStore.getState().closeModal()
+    pressModW()
+    expect(run).toHaveBeenCalledTimes(1)
+
+    stop()
+  })
+
+  it('never swallows Escape, which the dialog itself handles', () => {
+    const run = vi.fn()
+    registerCommand({
+      id: 'test.escape',
+      title: 'x',
+      shortcut: 'Escape',
+      run,
+    })
+    const stop = installShortcuts(window)
+    useUiStore.getState().openModal()
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Escape',
+        code: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+
+    expect(run).toHaveBeenCalledTimes(1)
+    stop()
   })
 })
