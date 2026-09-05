@@ -7,10 +7,11 @@ Opus implements/reviews; Sonnet only for small re-reviews; Codex paused until th
 translation never on Fable). Run `scripts/sdd-snapshot.sh` after every merge.
 
 ## 0. Where things stand
-- Branch `p1-outline-editing` (from `main`): Tasks 1, 2 (+ minor round), 3, 4, 5, 6, 9a, 10, 11 merged and verified
+- Branch `p1-outline-editing` (from `main`): Tasks 1, 2 (+ minor round), 3, 4, 5, 6, 7, 9a, 10, 11 merged and verified
   (Rust 438 tests, Vitest 575, e2e 13 passed / 1 skipped).
-- Worktrees: `.worktrees/p1-t7` (T7 tools; fix round 1 in progress after merging P1 at 7711ee1),
-  `.worktrees/p1-t8` (T8 panels/menus; implementation in progress, base 449a390).
+- Repository now lives at `/home/chen/githubprojects/pixelfonts/fontcutter` (moved 2026-09-05; Claude project data and
+  worktrees migrated). Worktree: `.worktrees/p1-t8` (T8 panels/menus, DONE but unreviewed, base 449a390).
+- T7 is merged (5bbd934). No agents are running; P1 is paused by the user.
 - Dispatch files ready: `task-9b-dispatch.md` (Text tab; fill `BASE_COMMIT`), `task-7-dispatch.md`, `task-8-dispatch.md`.
 - Review packages: `scripts/review-package` from the superpowers SDD skill; reviewer prompts follow
   `task-reviewer-prompt.md` / `re-review-prompt.md` (see earlier dispatches in the ledger for the exact shape).
@@ -88,7 +89,29 @@ translation never on Fable). Run `scripts/sdd-snapshot.sh` after every merge.
   compare/merge, autotrace, scripting API, plugins, remaining formats, installers (deb/AppImage/dmg/msi), docs.
   Exit: research doc §12 parity checklist green for Must/Should-have.
 
+## 6. Decisions for the user (nothing proceeds on these until you say so)
+- [ ] Desktop binary name: the Tauri shell builds `fontcutter-desktop` because the CLI owns `fontcutter`. Keep, or pick another
+      name (e.g. CLI `fontcutter`, shell `Font Cutter.app`/`fontcutter-app`)?
+- [ ] Test fixture fonts still carry "FontWorkshop" family names inside the binaries (rebuilding changes committed hashes).
+      Recommendation: leave them.
+- [ ] Git history still contains the three old GPL/AFPL fixture fonts (removed in 3acdc1c). Rewrite history before the repo
+      goes public, or accept? (Rewrite is destructive; needs your explicit go.)
+- [ ] Merge `p1-outline-editing` into `main` when P1 is finished (the finishing step asks; it is your call).
+- [ ] Codex: currently paused (all seats on Claude). Say when to re-enable it (kernel implementation, fix rounds, T13 translation
+      + QA go back to Codex sol xhigh under the original split).
+- [ ] Repository URL / hosting for fontcutter.com (Cargo/package `repository` fields are unset).
+
+## 7. Environment notes (this machine)
+- Port 1420 is held by another Vite server ("One True PDF"); run the main tree's e2e with `FC_UI_PORT=1428` (or higher) and
+  `FC_API_PORT=8787`; worktrees use 8788+/1421+ pairs as recorded in their dispatch files.
+- Before running anything in the main tree after a merge: `pnpm --dir app install --frozen-lockfile` and
+  `pnpm --dir app gen:api` (generated bindings are gitignored and go stale), and delete any stale `target/release/fc-devserver`
+  (Playwright prefers the release binary).
+- Resume this Claude session from the new directory: `claude`, then
+  `/resume` (fallback: `claude --resume f0187d23-6841-4655-bad5-89d6bc891ebe`).
+
 ## 5. Rules to keep
+- Product name Font Cutter (`fontcutter`, fontcutter.com); crates `fc-*`, CLI `fontcutter`, `.fcf` documents.
 - Docs/comments in English; reply to the user in their language.
 - License MIT OR Apache-2.0; only 3-clause-BSD FontForge files may be adapted (attribution in THIRD_PARTY.md); no copyleft deps.
 - Every task: written dispatch with rulings, report file, review package, cross-review; ≤ 5 fix rounds then adjudicate.
