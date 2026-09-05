@@ -173,6 +173,82 @@ export function nearestOnSegment(
   return best
 }
 
+/** Roots of `a t² + b t + c` that lie strictly inside 0 … 1. */
+function rootsInSpan(a: number, b: number, c: number): number[] {
+  const inside = (t: number): boolean => t > 1e-6 && t < 1 - 1e-6
+  if (Math.abs(a) < 1e-12) {
+    if (Math.abs(b) < 1e-12) return []
+    const t = -c / b
+    return inside(t) ? [t] : []
+  }
+  const discriminant = b * b - 4 * a * c
+  if (discriminant < 0) return []
+  const root = Math.sqrt(discriminant)
+  return [(-b + root) / (2 * a), (-b - root) / (2 * a)].filter(inside)
+}
+
+function cross(a: Point2, b: Point2): number {
+  return a.x * b.y - a.y * b.x
+}
+
+/**
+ * The parameters worth inserting a node at: the horizontal and vertical
+ * extrema of the segment, plus a cubic's inflection.
+ *
+ * Design spec §4.3 puts a ⇧+click "at the nearest extremum/inflection" because
+ * those are the points a curve wants a node at — an outline with nodes on its
+ * extrema interpolates, hints and rasterises predictably, and one placed
+ * anywhere else usually has to be moved there afterwards.
+ */
+export function splitCandidates(segment: EditSegment): number[] {
+  const { from, to, controls } = segment
+  const found: number[] = []
+  if (segment.kind === 'quad') {
+    const control = controls[0]
+    if (!control) return []
+    // B'(t) = 0 for each axis of a quadratic is linear in t.
+    for (const axis of ['x', 'y'] as const) {
+      const denominator = from[axis] - 2 * control[axis] + to[axis]
+      if (Math.abs(denominator) < 1e-12) continue
+      const t = (from[axis] - control[axis]) / denominator
+      if (t > 1e-6 && t < 1 - 1e-6) found.push(t)
+    }
+  } else if (segment.kind === 'cubic') {
+    const c1 = controls[0]
+    const c2 = controls[1]
+    if (!c1 || !c2) return []
+    // Power basis: B(t) = from + 3At + 3Bt² + Ct³.
+    const a = { x: c1.x - from.x, y: c1.y - from.y }
+    const b = {
+      x: c2.x - 2 * c1.x + from.x,
+      y: c2.y - 2 * c1.y + from.y,
+    }
+    const c = {
+      x: to.x - 3 * c2.x + 3 * c1.x - from.x,
+      y: to.y - 3 * c2.y + 3 * c1.y - from.y,
+    }
+    for (const axis of ['x', 'y'] as const)
+      found.push(...rootsInSpan(c[axis], 2 * b[axis], a[axis]))
+    // Inflection: B'(t) × B''(t) = 0 reduces to (B×C)t² + (A×C)t + (A×B).
+    found.push(...rootsInSpan(cross(b, c), cross(a, c), cross(a, b)))
+  }
+  return [...new Set(found.map((t) => Math.round(t * 1e6) / 1e6))].sort(
+    (x, y) => x - y,
+  )
+}
+
+/**
+ * The parameter a ⇧+click should insert at: the candidate nearest the click,
+ * or the click itself on a segment that has none (a straight line).
+ */
+export function nearestSplitParameter(segment: EditSegment, t: number): number {
+  const candidates = splitCandidates(segment)
+  if (candidates.length === 0) return t
+  return candidates.reduce((best, candidate) =>
+    Math.abs(candidate - t) < Math.abs(best - t) ? candidate : best,
+  )
+}
+
 /** Bounding box of the listed font-space points, or `null` when empty. */
 export function boundsOf(points: readonly Point2[]): FontBox | null {
   if (points.length === 0) return null

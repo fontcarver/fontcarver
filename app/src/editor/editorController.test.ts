@@ -540,3 +540,45 @@ describe('EditorController segment grammar', () => {
     expect(contour?.points[2]).toMatchObject({ x: 140, y: 140 })
   })
 })
+
+describe('EditorController insert-on-segment', () => {
+  it('inserts at the nearest extremum rather than under the pointer', async () => {
+    const { controller, transport } = makeController()
+    controller.setSource({
+      ...source(),
+      outline: makeLayerOutline(curvedLayer),
+    })
+    // Click on the arch at about a quarter along it — font (48, 67.5), which
+    // is canvas (48, 232.5). Its only extremum is the apex, t = 0.5.
+    controller.pointerDown(at(48, 233, { ...NO_MODIFIERS, shift: true }))
+    await settle()
+
+    const params = transport.calls.find((entry) => entry.method === 'doc.apply')
+      ?.params as ApplyParams
+    expect(params.command).toEqual({
+      InsertPointOnSegment: {
+        glyph: 'a',
+        layer: 'layer-1',
+        contour: 0,
+        segment: 0,
+        t: 0.5,
+      },
+    })
+  })
+
+  it('inserts where the pointer is on a straight segment', async () => {
+    const { controller, transport } = makeController()
+    // The square's bottom edge from (0, 0) to (200, 0), clicked at a quarter.
+    controller.pointerDown(at(50, 300, { ...NO_MODIFIERS, shift: true }))
+    await settle()
+
+    const params = transport.calls.find((entry) => entry.method === 'doc.apply')
+      ?.params as ApplyParams
+    const command = params.command
+    expect(
+      command && 'InsertPointOnSegment' in command
+        ? command.InsertPointOnSegment.t
+        : 0,
+    ).toBeCloseTo(0.25, 2)
+  })
+})

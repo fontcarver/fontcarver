@@ -44,6 +44,7 @@ import { NudgeCoalescer, nudgeStep } from './gestures/nudge'
 import {
   buildEditOutline,
   movedPointRefs,
+  nearestSplitParameter,
   translatePoints,
   type EditOutline,
   type EditSegment,
@@ -666,12 +667,16 @@ export class EditorController {
       return true
     }
     if (modifiers.shift) {
+      // §4.3: the node lands on the nearest extremum or inflection, not
+      // wherever the pointer happened to be.
+      const clicked = Math.min(0.999, Math.max(0.001, hit.t ?? 0.5))
+      const t = segment ? nearestSplitParameter(segment, clicked) : clicked
       void this.runCommand(
         insertPointCommand(
           target,
           hit.target.contour,
           hit.target.segment,
-          Math.min(0.999, Math.max(0.001, hit.t ?? 0.5)),
+          Math.min(0.999, Math.max(0.001, t)),
         ),
         this.labels.insertPoint,
       )
