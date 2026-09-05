@@ -329,3 +329,84 @@ the grouped skip counts ("50 new · 1 not understood") and the per-reason charse
    deliberately not done, since the dispatch allowed exactly one additive Rust change.
 4. **`Prefs` still has no hit-radius or tool-defaults field**, so those parts of §9's Editor category
    remain unimplementable; the review noted tool defaults, and it is recorded here for Task 13.
+
+---
+
+# Fix round 2
+
+Re-review: `task-9a-rereview1.md` — every finding of round 1 verdicted ADDRESSED, with two Minor
+defects the fix itself introduced plus one test nit. One commit on top of `232a0c7`; no Rust touched.
+
+```
+8cb57dd fix(app): clamp preference numbers to both bounds and never lose a queued change
+```
+
+**1 — `NumberField`'s clamp let a value below `min` through when no `max` was given.**
+`Math.min(max ?? parsed, …)` fell back to the *raw* value, undoing the `min` clamp, so a typed `-5`
+committed as `-5` for grid size and all three nudge steps (the fields with a minimum and no maximum)
+and reached `prefs.set` unvalidated. Both bounds are now independent —
+`Math.min(max ?? +Infinity, Math.max(min ?? -Infinity, parsed))` — at
+`app/src/dialogs/NumberField.tsx:44-47`.
+*Tests:* `NumberField.test.tsx:27` and the three that follow cover min-only (`-5 → 0`, `8 → 8`),
+max-only (`50 → 10`, `-50 → -50`), both (`50 → 10`, `-5 → 0`, `4 → 4`) and neither
+(`-5 → -5`, `9999 → 9999`), plus the existing guard that an emptied box reports nothing.
+
+**2 — `prefsStore.update` could lose a patch when two updates raced an unresolved first read.**
+Writes now run through one queue and changes that arrive while an earlier one is still in flight are
+merged into it: `queue`/`pending`/`enqueue` at `app/src/stores/prefsStore.ts:62-78`, `update` at
+`:125-140`, `reset` at `:142-146` (it clears anything queued, since "the defaults" supersedes them).
+Two updates started before the start-up read resolves therefore cost one `prefs.get` and one
+`prefs.set` carrying both patches, and no ordering of two writes can drop one.
+*Tests:* `prefsStore.test.ts:111` (two updates against a gated `prefs.get`: exactly
+`['prefs.get', 'prefs.set']`, the written record carries both patches and the stored
+`recent_limit`/`autosave_seconds`), `:156` (two concurrent updates after a load leave both applied on
+disk). The seven earlier preference tests still pass unchanged.
+
+**3 (nit) — the chrome assertions read the first matching rule in the stylesheet.** The test now
+parses `dialog.module.css` into rules keyed by their split selector list and looks each one up by
+selector (`Dialog.test.tsx:32-58`), so `.dialogSm .dialogHeader` and `.dialogHeader` can no longer be
+confused by reordering. A companion assertion (`:79`) pins the one thing the flat parse relies on —
+that the stylesheet stays free of at-rules.
+
+**Also swept up:** the re-review noted that round 1's report claimed test coverage for m9
+(`dismissedRecoveries` pruning) that did not exist. It does now — `uiStore.test.ts:142` dismisses two
+banners, checks a repeat dismissal does not double-count, closes one document and asserts only the
+other marker survives.
+
+## Verification
+
+```
+$ pnpm --dir app check
+> tsc -b
+$ pnpm --dir app test
+ Test Files  52 passed (52)
+      Tests  396 passed (396)
+$ pnpm --dir app lint
+> eslint .
+$ pnpm --dir app exec prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+```
+
+396 tests, up from 387: +5 `NumberField`, +2 `prefsStore`, +1 `Dialog`, +1 `uiStore`. The e2e suite
+was not re-run — this round changed no dialog markup, no i18n key and no kernel call shape, and the
+only behavioural change the specs could see (a number field's clamp) is asserted at unit level; the
+preferences spec already blurs before polling, which is unchanged.
+
+## i18n changes for Task 13
+
+None this round.
+
+## Concerns
+
+1. **`reset()` still writes before a successful load,** by design — "Reset to defaults" means the
+   defaults whether or not the stored record could be read. It now also discards queued patches,
+   which is the right precedence but worth knowing if a field edit and a reset are ever issued
+   together.
+2. **The write queue is per store, not per process.** Two tabs of the same kernel could still
+   interleave whole-record writes; that is a kernel-level concern (`prefs.set` replaces the record)
+   and out of scope here.
+3. **Carried forward, unchanged:** Enter in Add Glyphs is only reachable from the preview list;
+   Export falls back to its own destination field rather than `PathPromptDialog`; the skip-reason
+   discriminator mirrors the kernel's `is_glyph_name` rather than being told by it; `Prefs` has no
+   hit-radius or tool-defaults field.
