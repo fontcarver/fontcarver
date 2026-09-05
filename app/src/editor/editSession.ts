@@ -75,6 +75,8 @@ export class EditSession {
   private applied = false
   private closed = false
   private errored = false
+  private warned = false
+  private firstError: unknown = null
   private readonly onError: (error: unknown) => void
 
   constructor(doc: DocId, label: string, options: EditSessionOptions = {}) {
@@ -89,10 +91,13 @@ export class EditSession {
           () => call('doc.edit_begin', { doc, label }),
         )
       : call('doc.edit_begin', { doc, label })
+    // Through `report`, not `onError`: a failed `edit_begin` rejects the token
+    // that every later step awaits, so without marking the gesture failed here
+    // the first of those steps would report the same error a second time.
     this.chain = this.token
       .then(() => undefined)
       .catch((error: unknown) => {
-        this.onError(error)
+        this.report(error)
       })
   }
 
@@ -117,9 +122,18 @@ export class EditSession {
    * kernel has lost would otherwise raise one toast per queued call.
    */
   private report(error: unknown): void {
-    const first = !this.errored
-    this.errored = true
-    if (first) this.onError(error)
+    if (!this.errored) {
+      this.errored = true
+      this.firstError = error
+      this.onError(error)
+      return
+    }
+    // The usual repeat is the same rejected token surfacing in every queued
+    // step, which is not worth a second toast. A genuinely different failure
+    // still deserves a trace, once.
+    if (error === this.firstError || this.warned) return
+    this.warned = true
+    console.warn('editing gesture failed again after the first error:', error)
   }
 
   /** Whether at least one command reached the kernel, i.e. an undo entry exists. */

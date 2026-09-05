@@ -480,6 +480,8 @@ describe('EditorController error handling', () => {
     expect(recorded.editing.at(-1)).toBe(false)
     expect(controller.frame().contours).toBeNull()
     expect(recorded.reloads).toBeGreaterThan(0)
+    // One failure, one toast — however many calls the gesture had queued.
+    expect(recorded.errors).toHaveLength(1)
     expect(String(recorded.errors[0])).toContain('kernel says no')
   })
 
@@ -491,6 +493,7 @@ describe('EditorController error handling', () => {
     await controller.toggleSmooth(false)
     await settle()
 
+    expect(recorded.errors).toHaveLength(1)
     expect(String(recorded.errors[0])).toContain('kernel says no')
     expect(recorded.reloads).toBeGreaterThan(0)
   })

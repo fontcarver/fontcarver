@@ -618,6 +618,7 @@ describe('DragGesture', () => {
     await drag?.flush()
     // The gesture still closes cleanly, and the failure is reported.
     expect(await drag?.finish()).toBe(false)
+    expect(errors).toHaveLength(1)
     expect(String(errors[0])).toContain('stale edit token')
   })
 
