@@ -134,7 +134,7 @@ export function PreferencesDialog() {
                   ))}
                 </select>
               </label>
-              <div className={styles.row}>
+              <div className={`${styles.row} ${styles.rowTop}`}>
                 <span className={styles.rowLabel}>
                   {t('dialog.prefs.autosave')}
                 </span>
@@ -165,7 +165,7 @@ export function PreferencesDialog() {
 
           {category === 'editor' ? (
             <>
-              <div className={styles.row}>
+              <div className={`${styles.row} ${styles.rowTop}`}>
                 <span className={styles.rowLabel}>
                   {t('dialog.prefs.nudge')}
                 </span>
@@ -193,7 +193,7 @@ export function PreferencesDialog() {
                   </span>
                 </div>
               </div>
-              <div className={styles.row}>
+              <div className={`${styles.row} ${styles.rowTop}`}>
                 <span className={styles.rowLabel}>
                   {t('dialog.prefs.gridSize')}
                 </span>

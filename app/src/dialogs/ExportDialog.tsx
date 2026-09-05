@@ -196,7 +196,7 @@ export function ExportDialog({ summary }: ExportDialogProps) {
           ))}
         </div>
 
-        <div className={styles.row}>
+        <div className={`${styles.row} ${styles.rowTop}`}>
           <span className={styles.rowLabel}>
             {t('dialog.export.destination')}
           </span>

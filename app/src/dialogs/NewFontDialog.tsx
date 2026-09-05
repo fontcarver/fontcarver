@@ -145,23 +145,28 @@ export function NewFontDialog() {
             ) : null}
           </div>
         </div>
-        <div className={styles.row}>
+        <div className={`${styles.row} ${styles.rowTop}`}>
           <span className={styles.rowLabel}>{t('dialog.newFont.metrics')}</span>
-          <div className={styles.choices}>
-            {PRESETS.map((value) => (
-              <label key={value} className={styles.choice}>
-                <input
-                  type="radio"
-                  name="metrics-preset"
-                  checked={preset === value}
-                  onChange={() => choosePreset(value)}
-                />
-                {t(`dialog.newFont.preset.${value}`)}
-              </label>
-            ))}
+          <div className={styles.rowStack}>
+            <div className={styles.choices}>
+              {PRESETS.map((value) => (
+                <label key={value} className={styles.choice}>
+                  <input
+                    type="radio"
+                    name="metrics-preset"
+                    checked={preset === value}
+                    onChange={() => choosePreset(value)}
+                  />
+                  {t(`dialog.newFont.preset.${value}`)}
+                </label>
+              ))}
+            </div>
+            <p className={styles.hint}>
+              {t(`dialog.newFont.presetHint.${preset}`)}
+            </p>
           </div>
         </div>
-        <div className={styles.row}>
+        <div className={`${styles.row} ${styles.rowTop}`}>
           <span className={styles.rowLabel}>{t('dialog.newFont.starter')}</span>
           <div className={styles.rowStack}>
             <div className={styles.choices}>

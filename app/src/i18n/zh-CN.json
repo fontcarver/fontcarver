@@ -155,7 +155,11 @@
         "gb2312": "GB 2312"
       },
       "starterHint": "Starter glyphs are created empty; the recipe is the same one the Add Glyphs dialog uses.",
-      "create": "Create"
+      "create": "Create",
+      "presetHint": {
+        "latin": "Ascender 80 %, descender −20 %, x-height 50 % and cap height 70 % of the em.",
+        "cjk": "A 1000-unit em with ascender 880 and descender −120."
+      }
     },
     "addGlyphs": {
       "title": "Add Glyphs",

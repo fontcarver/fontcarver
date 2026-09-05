@@ -17,6 +17,15 @@
   grid-template-columns: 132px minmax(0, 1fr);
 }
 
+/* Rows whose control is a stack keep their label on the first line. */
+.rowTop {
+  align-items: start;
+}
+
+.rowTop .rowLabel {
+  padding-top: 6px;
+}
+
 .rowLabel {
   color: var(--color-text-muted);
   font-size: var(--text-size-sm);
