@@ -5,6 +5,8 @@
  * and Control everywhere else, so one string serves every platform.
  */
 
+import { useUiStore } from '../stores/uiStore'
+
 import { listCommands, runCommand } from './commands'
 
 /** A shortcut broken into modifier flags and a normalised key. */
@@ -180,8 +182,22 @@ export function commandForEvent(
 }
 
 /**
+ * Whether a modal dialog currently owns the keyboard.
+ *
+ * Escape is exempt: it is the way out of every dialog, and no dialog would ever
+ * want the dispatcher to swallow it.
+ */
+function claimedByModal(event: KeyboardEvent): boolean {
+  if (normaliseKey(event.key) === 'escape') return false
+  return useUiStore.getState().modalCount > 0
+}
+
+/**
  * Binds every registered shortcut on the given target. Returns a disposer.
  * Bindings are resolved per event, so commands registered later are honoured.
+ *
+ * While a modal dialog is on screen the dispatcher stands down: `Mod+W` behind
+ * an open Export dialog must not close the document the dialog is exporting.
  */
 export function installShortcuts(
   target: Pick<Window, 'addEventListener' | 'removeEventListener'> = window,
@@ -189,6 +205,7 @@ export function installShortcuts(
   const mac = isMacPlatform()
   const handler = (event: Event): void => {
     if (!(event instanceof KeyboardEvent) || event.repeat) return
+    if (claimedByModal(event)) return
     const id = commandForEvent(event, mac)
     if (!id) return
     event.preventDefault()

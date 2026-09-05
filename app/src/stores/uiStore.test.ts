@@ -140,6 +140,21 @@ describe('uiStore tabs', () => {
     expect(useUiStore.getState().activeTab).toBe(tabId('font', 2))
   })
 
+  it('drops a closed document’s dismissed recovery banner', () => {
+    const ui = useUiStore.getState()
+    ui.openTab({ kind: 'font', doc: 1 })
+    ui.openTab({ kind: 'font', doc: 2 })
+    ui.dismissRecoveryBanner(1)
+    ui.dismissRecoveryBanner(2)
+    // Dismissing twice must not double-count either.
+    ui.dismissRecoveryBanner(1)
+    expect(useUiStore.getState().dismissedRecoveries).toEqual([1, 2])
+
+    useUiStore.getState().closeTabsForDoc(1)
+
+    expect(useUiStore.getState().dismissedRecoveries).toEqual([2])
+  })
+
   it('derives the active document from the active tab', () => {
     expect(selectActiveDoc(useUiStore.getState())).toBeNull()
 

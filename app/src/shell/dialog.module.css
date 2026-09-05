@@ -99,3 +99,58 @@
 .recentItem:hover {
   background: var(--color-hover);
 }
+
+/*
+ * Dialog widths from the design spec: 480 (New Font), 560 (Add Glyphs, Export)
+ * and 640 (Preferences, Recovery). They are classes rather than an inline
+ * width so no component has to carry a style object for chrome.
+ */
+.dialogSm {
+  width: min(480px, calc(100vw - var(--space-5)));
+}
+
+.dialogMd {
+  width: min(560px, calc(100vw - var(--space-5)));
+}
+
+.dialogLg {
+  width: min(640px, calc(100vw - var(--space-5)));
+}
+
+/*
+ * Chrome of the shared `Dialog` primitive: 24 px padding, a 16/600 title and a
+ * 14 px body, per the design spec. It is scoped to the primitive's own width
+ * classes rather than applied to `.dialog`, so the P0 path prompt, close prompt
+ * and command palette keep the denser chrome they were built with.
+ */
+.dialogSm .dialogHeader,
+.dialogMd .dialogHeader,
+.dialogLg .dialogHeader {
+  padding: var(--space-5) var(--space-5) 0;
+}
+
+.dialogSm .dialogTitle,
+.dialogMd .dialogTitle,
+.dialogLg .dialogTitle {
+  font-size: var(--text-size-xl);
+  font-weight: var(--text-weight-strong);
+}
+
+.dialogSm .dialogBody,
+.dialogMd .dialogBody,
+.dialogLg .dialogBody {
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--text-size-md);
+}
+
+.dialogSm .dialogFooter,
+.dialogMd .dialogFooter,
+.dialogLg .dialogFooter {
+  padding: var(--space-3) var(--space-5) var(--space-5);
+}
+
+/* Bodies that can outgrow the viewport scroll instead of pushing the footer off. */
+.dialogScroll {
+  max-height: calc(100vh - 30vh);
+  overflow-y: auto;
+}

@@ -51,7 +51,9 @@ test.describe('font view', () => {
 
     const status = page.getByRole('contentinfo')
     await expect(status.getByText('of 6,253')).toBeVisible()
-    const shown = await status.getByText(/glyphs?$/).innerText()
+    // Matched whole: the bar also flashes the label of an edit that just
+    // happened, which another spec's document event can put here too.
+    const shown = await status.getByText(/^[\d,]+ glyphs?$/).innerText()
     const count = Number(shown.replace(/[^\d]/g, ''))
     expect(count).toBeGreaterThan(0)
     expect(count).toBeLessThan(6253)

@@ -1,6 +1,7 @@
 /* The application frame: rows of chrome around a three-column workspace. */
 
 .shell {
+  position: relative;
   display: grid;
   height: 100vh;
   background: var(--color-app);
@@ -28,4 +29,51 @@
   flex-direction: column;
   overflow: hidden;
   background: var(--color-canvas);
+}
+
+/*
+ * Busy feedback for long operations: a 2 px accent line pinned under the tab
+ * bar. It is positioned out of flow so an idle shell has no reserved gutter and
+ * the grid rows below never shift when an export starts.
+ */
+.progressLine {
+  position: absolute;
+  z-index: 2;
+  top: calc(var(--menubar-height) + var(--tabbar-height));
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: var(--color-accent-soft);
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--color-accent);
+  transition: width var(--duration-fast) linear;
+}
+
+/* A recovered document keeps the original path, so it says so before saving. */
+.banner {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-warning-soft);
+  color: var(--color-text);
+  font-size: var(--text-size-sm);
+}
+
+.bannerText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progressFill {
+    transition: none;
+  }
 }
