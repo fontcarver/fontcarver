@@ -365,7 +365,8 @@
     "collapse": "Collapse {{section}}",
     "expand": "Expand {{section}}",
     "glyphNote": "Glyph filters apply to the Font tab; switch to it to change the glyph list.",
-    "fontInfoNote": "Font Info has no filters; switch to the Font tab to filter glyphs."
+    "fontInfoNote": "Font Info has no filters; switch to the Font tab to filter glyphs.",
+    "glyphTitle": "Glyph"
   },
   "inspector": {
     "title": "Inspector",
@@ -1004,7 +1005,7 @@
     },
     "sidebar": {
       "layers": "Layers",
-      "glyphs": "Glyphs",
+      "glyphs": "Glyph list",
       "filterHint": "The Font tab's current filter."
     }
   }

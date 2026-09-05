@@ -365,7 +365,8 @@
     "collapse": "折叠{{section}}",
     "expand": "展开{{section}}",
     "glyphNote": "字形筛选器作用于字体标签页；请切换到该标签页以更改字形列表。",
-    "fontInfoNote": "字体信息没有筛选器；请切换到字体标签页以筛选字形。"
+    "fontInfoNote": "字体信息没有筛选器；请切换到字体标签页以筛选字形。",
+    "glyphTitle": "Glyph"
   },
   "inspector": {
     "title": "检查器",
@@ -1004,7 +1005,7 @@
     },
     "sidebar": {
       "layers": "Layers",
-      "glyphs": "Glyphs",
+      "glyphs": "Glyph list",
       "filterHint": "The Font tab's current filter."
     }
   }
