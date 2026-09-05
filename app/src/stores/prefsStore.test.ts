@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { setTransport, type Prefs } from '../api'
+import { i18n } from '../i18n'
 import { createMockTransport, type MockTransport } from '../test/mockTransport'
+import { ApiCallError } from '../transport'
 
 import { DEFAULT_PREFS, initialPrefsState, usePrefsStore } from './prefsStore'
 import { initialUiState, useUiStore } from './uiStore'
@@ -17,12 +19,20 @@ function writes(transport: MockTransport): Prefs[] {
     .map((entry) => (entry.params as { prefs: Prefs }).prefs)
 }
 
-/** The error toasts raised so far. */
+/** The summaries of the error toasts raised so far. */
 function errors(): string[] {
   return useUiStore
     .getState()
     .toasts.filter((toast) => toast.kind === 'error')
     .map((toast) => toast.message)
+}
+
+/** The kernel wording each error toast carries under "Details". */
+function errorDetails(): (string | undefined)[] {
+  return useUiStore
+    .getState()
+    .toasts.filter((toast) => toast.kind === 'error')
+    .map((toast) => toast.details)
 }
 
 /**
@@ -414,7 +424,7 @@ describe('prefsStore', () => {
       'prefs.set': ({ prefs }) => {
         attempts += 1
         // The reset is the write the kernel drops.
-        if (attempts === 2) throw new Error('kernel unreachable')
+        if (attempts === 2) throw new ApiCallError('io', 'kernel unreachable')
         saved = prefs
         return prefs
       },
@@ -441,13 +451,17 @@ describe('prefsStore', () => {
     // been left wearing the theme the failed reset asked for.
     expect(usePrefsStore.getState().prefs).toEqual(saved)
     expect(useUiStore.getState().theme).toBe('dark')
-    expect(errors()).toEqual(['kernel unreachable'])
+    // The failure reaches the user through the shared reporter: the summary is
+    // the one the error code maps to, with the kernel's wording under "Details".
+    expect(errors()).toEqual([i18n.t('errors.io')])
+    expect(errors()).not.toContain('kernel unreachable')
+    expect(errorDetails()).toEqual(['kernel unreachable'])
   })
 
   it('refuses to write when the stored record cannot be read', async () => {
     const transport = createMockTransport({
       'prefs.get': () => {
-        throw new Error('config directory is unreadable')
+        throw new ApiCallError('io', 'config directory is unreadable')
       },
     })
     setTransport(transport)
@@ -456,7 +470,11 @@ describe('prefsStore', () => {
 
     expect(transport.calls.map((entry) => entry.method)).toEqual(['prefs.get'])
     expect(usePrefsStore.getState().prefs.theme).toBe(DEFAULT_PREFS.theme)
-    expect(useUiStore.getState().toasts.at(-1)?.kind).toBe('error')
+    expect(useUiStore.getState().toasts.at(-1)).toMatchObject({
+      kind: 'error',
+      message: i18n.t('errors.io'),
+      details: 'config directory is unreadable',
+    })
   })
 
   it('resets to the defaults even before a successful load', async () => {
@@ -480,7 +498,7 @@ describe('prefsStore', () => {
     const transport = createMockTransport({
       'prefs.get': () => stored(),
       'prefs.set': () => {
-        throw new Error('config directory is read-only')
+        throw new ApiCallError('io', 'config directory is read-only')
       },
     })
     setTransport(transport)
@@ -491,7 +509,11 @@ describe('prefsStore', () => {
     expect(usePrefsStore.getState().prefs.grid_size).toBe(
       DEFAULT_PREFS.grid_size,
     )
-    expect(useUiStore.getState().toasts.at(-1)?.kind).toBe('error')
+    expect(useUiStore.getState().toasts.at(-1)).toMatchObject({
+      kind: 'error',
+      message: i18n.t('errors.io'),
+      details: 'config directory is read-only',
+    })
   })
 
   it('reports a failed write instead of rejecting what it handed back', async () => {
@@ -515,7 +537,9 @@ describe('prefsStore', () => {
     // Three failed writes, three toasts, and nothing that could crash a
     // caller that only wanted the toast.
     expect(await unhandled.settle()).toEqual([])
-    expect(errors()).toHaveLength(3)
+    // A failure with no kernel code of its own stays readable as it is.
+    expect(errors()).toEqual(Array(3).fill('config directory is read-only'))
+    expect(errorDetails()).toEqual([undefined, undefined, undefined])
     expect(usePrefsStore.getState().prefs).toEqual(stored())
   })
 })

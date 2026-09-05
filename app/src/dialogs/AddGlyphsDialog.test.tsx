@@ -3,10 +3,12 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { setTransport, type AddGlyphsParams } from '../api'
+import { i18n } from '../i18n'
 import { initialSessionState, useSessionStore } from '../stores/sessionStore'
 import { initialUiState, useUiStore } from '../stores/uiStore'
 import { cellFor } from '../test/glyphFixtures'
 import { createMockTransport, makeSummary } from '../test/mockTransport'
+import { ApiCallError } from '../transport'
 
 import { AddGlyphsDialog } from './AddGlyphsDialog'
 
@@ -49,6 +51,13 @@ function setup() {
 
 const addCalls = (transport: ReturnType<typeof setup>) =>
   transport.calls.filter((entry) => entry.method === 'glyphs.add')
+
+/** The most recent error toast, if the dialog raised one. */
+const lastError = () =>
+  useUiStore
+    .getState()
+    .toasts.filter((toast) => toast.kind === 'error')
+    .at(-1)
 
 beforeEach(() => {
   localStorage.clear()
@@ -177,6 +186,60 @@ describe('AddGlyphsDialog', () => {
     await user.click(await screen.findByRole('button', { name: /Latin-1/ }))
 
     expect(screen.getByLabelText('Recipe')).toHaveValue('U+0020-U+00FF')
+  })
+
+  it('reports a rejected dry run by its kernel error code', async () => {
+    const user = userEvent.setup()
+    const raw = 'unexpected token `bogus`'
+    const transport = createMockTransport({
+      'glyphs.add': ({ recipe }) => {
+        if (recipe === 'bogus') throw new ApiCallError('invalid_params', raw)
+        return resolve(recipe)
+      },
+    })
+    setTransport(transport)
+    useSessionStore.setState({ docs: [makeSummary({ doc: 1 })] })
+    useUiStore.getState().setDialog({ kind: 'addGlyphs', doc: 1 })
+    render(<AddGlyphsDialog doc={1} />)
+
+    await user.type(screen.getByLabelText('Recipe'), 'bogus')
+
+    // The shared reporter's toast: the summary its code maps to, and the
+    // kernel's own wording kept under "Details" rather than shown raw.
+    await waitFor(() => expect(lastError()).toBeDefined())
+    expect(lastError()?.message).toBe(i18n.t('errors.invalid_params'))
+    expect(lastError()?.message).not.toBe(raw)
+    expect(lastError()?.details).toBe(raw)
+    // The dialog stays open on the recipe that failed.
+    expect(useUiStore.getState().dialog).not.toBeNull()
+  })
+
+  it('reports a rejected add by its kernel error code', async () => {
+    const user = userEvent.setup()
+    const raw = 'glyph order is locked'
+    const transport = createMockTransport({
+      'glyphs.add': ({ recipe, dry_run: dryRun }) => {
+        if (!dryRun) throw new ApiCallError('internal', raw)
+        return resolve(recipe)
+      },
+    })
+    setTransport(transport)
+    useSessionStore.setState({ docs: [makeSummary({ doc: 1 })] })
+    useUiStore.getState().setDialog({ kind: 'addGlyphs', doc: 1 })
+    render(<AddGlyphsDialog doc={1} />)
+
+    await user.type(screen.getByLabelText('Recipe'), 'A-C')
+    await user.click(
+      await screen.findByRole('button', { name: 'Add 3 glyphs' }),
+    )
+
+    await waitFor(() => expect(lastError()).toBeDefined())
+    expect(lastError()?.message).toBe(i18n.t('errors.internal'))
+    expect(lastError()?.message).not.toBe(raw)
+    expect(lastError()?.details).toBe(raw)
+    // A failed add leaves the dialog open and the button usable again.
+    expect(useUiStore.getState().dialog).not.toBeNull()
+    expect(screen.getByRole('button', { name: 'Add 3 glyphs' })).toBeEnabled()
   })
 
   it('keeps Add disabled while the recipe adds nothing', async () => {

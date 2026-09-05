@@ -1,14 +1,16 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { setTransport, type ExportParams, type ExportReport } from '../api'
+import { i18n } from '../i18n'
 import { initialDocumentState, useDocumentStore } from '../stores/documentStore'
 import { initialProgressState, useProgressStore } from '../stores/progressStore'
 import { initialSessionState, useSessionStore } from '../stores/sessionStore'
 import { initialUiState, useUiStore } from '../stores/uiStore'
 import { cellFor } from '../test/glyphFixtures'
 import { createMockTransport, makeSummary } from '../test/mockTransport'
+import { ApiCallError } from '../transport'
 
 import { ExportDialog } from './ExportDialog'
 
@@ -214,11 +216,12 @@ describe('ExportDialog', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('reports a failed export in the dialog', async () => {
+  it('reports a failed export by its kernel error code', async () => {
     const user = userEvent.setup()
+    const raw = 'failed to write `/fonts/DejaVuSans.ttf`'
     const transport = createMockTransport({
       'session.export': () => {
-        throw new Error('failed to write `/fonts/DejaVuSans.ttf`')
+        throw new ApiCallError('export', raw)
       },
     })
     setTransport(transport)
@@ -228,8 +231,31 @@ describe('ExportDialog', () => {
 
     await user.click(screen.getByRole('button', { name: 'Export' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'failed to write `/fonts/DejaVuSans.ttf`',
-    )
+    // The summary the code maps to, with the kernel's own wording kept behind
+    // the same "Details" disclosure the toasts use.
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(i18n.t('errors.export'))
+    expect(within(alert).getByText(raw)).not.toBeVisible()
+    await user.click(within(alert).getByText('Details'))
+    expect(within(alert).getByText(raw)).toBeVisible()
+  })
+
+  it('keeps a failure the catalogue cannot translate readable', async () => {
+    const user = userEvent.setup()
+    const transport = createMockTransport({
+      'session.export': () => {
+        throw new Error('the kernel went away')
+      },
+    })
+    setTransport(transport)
+    const summary = makeSummary()
+    useSessionStore.setState({ docs: [summary] })
+    render(<ExportDialog summary={summary} />)
+
+    await user.click(screen.getByRole('button', { name: 'Export' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('the kernel went away')
+    expect(within(alert).queryByText('Details')).not.toBeInTheDocument()
   })
 })

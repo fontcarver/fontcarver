@@ -10,11 +10,11 @@ import {
 } from '../api'
 import { Button } from '../components/Button'
 import { Dialog } from '../components/Dialog'
+import { errorNotice, type ErrorNotice } from '../i18n/errors'
 import { warningMessage } from '../i18n/warnings'
 import { useDocumentStore } from '../stores/documentStore'
 import { useProgressStore } from '../stores/progressStore'
 import { hasNativeFileDialog } from '../shell/nativeDialogs'
-import { errorMessage } from '../stores/sessionStore'
 import { tabId, useUiStore } from '../stores/uiStore'
 
 import styles from './dialogs.module.css'
@@ -100,9 +100,15 @@ export function ExportDialog({ summary }: ExportDialogProps) {
   })
   const [busy, setBusy] = useState(false)
   const [report, setReport] = useState<ExportReport | null>(null)
-  const [failure, setFailure] = useState<string | null>(null)
+  const [failure, setFailure] = useState<ErrorNotice | null>(null)
 
   const close = () => setDialog(null)
+
+  // The dialog reports its own failures in place rather than as a toast, so it
+  // renders what the shared reporter would have shown: the translated summary
+  // for the kernel's error code, with the kernel's own wording under "Details".
+  const noticeFor = (error: unknown): ErrorNotice =>
+    errorNotice(error, (key, options) => t(key, options))
 
   const chooseFormat = (next: ExportFormat) => {
     setFormat(next)
@@ -121,7 +127,7 @@ export function ExportDialog({ summary }: ExportDialogProps) {
       .then((chosen) => {
         if (chosen) setPath(chosen)
       })
-      .catch((error: unknown) => setFailure(errorMessage(error)))
+      .catch((error: unknown) => setFailure(noticeFor(error)))
   }
 
   const run = () => {
@@ -148,7 +154,7 @@ export function ExportDialog({ summary }: ExportDialogProps) {
       options: exportOptions,
     })
       .then(setReport)
-      .catch((error: unknown) => setFailure(errorMessage(error)))
+      .catch((error: unknown) => setFailure(noticeFor(error)))
       .finally(() => {
         useProgressStore.getState().clear(summary.doc)
         setBusy(false)
@@ -289,9 +295,17 @@ export function ExportDialog({ summary }: ExportDialogProps) {
         ) : null}
 
         {failure ? (
-          <p role="alert" className={styles.error}>
-            {failure}
-          </p>
+          <div role="alert" className={styles.error}>
+            <p className={styles.errorMessage}>{failure.message}</p>
+            {failure.details === null ? null : (
+              <details>
+                <summary className={styles.errorSummary}>
+                  {t('toast.details')}
+                </summary>
+                <p className={styles.errorDetail}>{failure.details}</p>
+              </details>
+            )}
+          </div>
         ) : null}
 
         {report ? (

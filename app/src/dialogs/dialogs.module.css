@@ -87,6 +87,24 @@
   font-size: var(--text-size-sm);
 }
 
+.errorMessage {
+  margin: 0;
+}
+
+.errorSummary {
+  cursor: pointer;
+  font-size: var(--text-size-xs);
+}
+
+.errorDetail {
+  margin: var(--space-1) 0 0;
+  max-height: 8rem;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--text-size-xs);
+}
+
 .section {
   display: flex;
   flex-direction: column;

@@ -3,8 +3,7 @@ import { create } from 'zustand'
 import { call, type Prefs } from '../api'
 import { normaliseLanguage } from '../i18n'
 
-import { errorMessage } from './sessionStore'
-import { useUiStore, type ThemePreference } from './uiStore'
+import { reportError, useUiStore, type ThemePreference } from './uiStore'
 
 /**
  * The preference record the kernel falls back to, mirrored here so "Reset to
@@ -137,9 +136,7 @@ export const usePrefsStore = create<PrefsState>((set, get) => {
       if (generation !== since) return
       confirm(prefs)
     } catch (error) {
-      useUiStore
-        .getState()
-        .pushToast({ kind: 'error', message: errorMessage(error) })
+      reportError(error)
     }
   }
 
@@ -177,9 +174,7 @@ export const usePrefsStore = create<PrefsState>((set, get) => {
     } catch (error) {
       set({ prefs: confirmed })
       applyToShell(confirmed)
-      useUiStore
-        .getState()
-        .pushToast({ kind: 'error', message: errorMessage(error) })
+      reportError(error)
     }
   }
 

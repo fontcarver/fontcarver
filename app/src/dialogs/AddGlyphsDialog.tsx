@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next'
 import type { AddGlyphsResult, DocId, GlyphCell } from '../api'
 import { Button } from '../components/Button'
 import { Dialog } from '../components/Dialog'
-import { errorMessage, useSessionStore } from '../stores/sessionStore'
-import { useUiStore } from '../stores/uiStore'
+import { useSessionStore } from '../stores/sessionStore'
+import { reportError, useUiStore } from '../stores/uiStore'
 
 import {
   CHARSETS,
@@ -73,9 +73,7 @@ export function AddGlyphsDialog({ doc }: AddGlyphsDialogProps) {
         .catch((error: unknown) => {
           if (!live) return
           setLatest({ recipe: trimmed, result: EMPTY })
-          useUiStore
-            .getState()
-            .pushToast({ kind: 'error', message: errorMessage(error) })
+          reportError(error)
         })
     }, PREVIEW_DEBOUNCE_MS)
     return () => {
@@ -132,9 +130,7 @@ export function AddGlyphsDialog({ doc }: AddGlyphsDialogProps) {
       })
       .catch((error: unknown) => {
         setBusy(false)
-        useUiStore
-          .getState()
-          .pushToast({ kind: 'error', message: errorMessage(error) })
+        reportError(error)
       })
   }
 

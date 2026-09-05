@@ -4,7 +4,6 @@ import { call, onDocumentEvent, type DocId, type DocSummary } from '../api'
 import { i18n } from '../i18n'
 import { warningMessage } from '../i18n/warnings'
 import { choosePath, hasNativeFileDialog } from '../shell/nativeDialogs'
-import { ApiCallError } from '../transport'
 
 import { useDocumentStore } from './documentStore'
 import { activeDocId, reportError, tabId, useUiStore } from './uiStore'
