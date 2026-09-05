@@ -12,140 +12,63 @@
  * animation frame, so the outline can never lag the pointer.
  */
 
-import type {
-  Anchor,
-  Command,
-  Contour,
-  DocId,
-  GlyphId,
-  HandleMode,
-  LayerOutline,
-  PointRef,
-} from '../api'
+import type { Anchor, Command, Contour } from '../api'
 import type { Point2, Viewport } from '../canvas/Viewport'
-import type { SceneMetrics } from '../views/glyph/glyphScene'
 
-import { buildFrame, type EditorFrame } from './editorFrame'
-import type { HudLabels } from './hud'
 import {
-  hitTest,
-  type Hit,
-  type HitTestInput,
-  type ScopedGuide,
-} from './hitTest'
+  allTargets,
+  buildSnapInput,
+  cycledSelection,
+  segmentShortcut,
+} from './editorActions'
+import { buildFrame, type EditorFrame } from './editorFrame'
+import {
+  SILENT_CALLBACKS,
+  type EditorCallbacks,
+  type EditorLabels,
+  type EditorSource,
+  type PointerInput,
+} from './editorTypes'
+import { hitTest, type Hit, type HitTestInput } from './hitTest'
 import {
   beginDrag,
   NO_MODIFIERS,
   type DragGesture,
   type Modifiers,
 } from './gestures/drag'
-import { marqueeRect, marqueeSelection, marqueeSize } from './gestures/marquee'
-import { NudgeCoalescer, nudgeStep } from './gestures/nudge'
-import {
-  buildEditOutline,
-  movedPointRefs,
-  nearestSplitParameter,
-  translatePoints,
-  type EditOutline,
-  type EditSegment,
-} from './outlineGeometry'
+import { marqueeSelection } from './gestures/marquee'
+import { nudgeStep } from './gestures/nudge'
+import { NudgeRunner } from './nudgeRun'
+import { buildEditOutline, type EditOutline } from './outlineGeometry'
 import {
   commit,
-  convertSegmentCommand,
   deleteCommand,
-  insertPointCommand,
   nextSmoothFlag,
   smoothCommand,
   type LayerTarget,
 } from './pointCommands'
-import { snapDelta, type SnapMatch, type SnapNames } from './snapping'
+import { snapDelta, type SnapMatch } from './snapping'
 import {
   EMPTY_SELECTION,
-  onlyTarget,
   sameSelection,
+  selectionOf,
   selectedNodeRefs,
   selectedPointRefs,
-  selectionOf,
   unionSelection,
-  type EditTarget,
   type Selection,
 } from './selection'
 import { cursorForHover, selectionForClick } from './tools/select'
 import { HAND_CURSOR, HAND_DRAGGING_CURSOR } from './tools/hand'
-import { ZOOM_MARQUEE_MIN, zoomAt, zoomToRect } from './tools/zoom'
+
 import { toolById, type ToolId } from './tools/registry'
+import { ViewGestures } from './viewGestures'
 
-/** Undo labels and readout words, translated by the view. */
-export interface EditorLabels {
-  movePoints: (count: number) => string
-  moveHandles: (count: number) => string
-  moveHandle: string
-  reshapeSegment: string
-  moveAnchor: string
-  moveComponent: string
-  nudgePoints: (count: number) => string
-  toggleSmooth: string
-  deletePoints: string
-  insertPoint: string
-  convertSegment: string
-  /** Names the HUD gives a snap target, already translated. */
-  snap: SnapNames
-  hud: HudLabels
-}
-
-/** The glyph and layer being edited. */
-export interface EditorSource {
-  doc: DocId
-  gid: GlyphId
-  glyph: string
-  outline: LayerOutline
-  guides: readonly ScopedGuide[]
-  metrics: SceneMetrics
-  master: string | null
-}
-
-/** What the controller reports back to React. */
-export interface EditorCallbacks {
-  repaint: () => void
-  onSelectionChange: (selection: Selection) => void
-  onEditingChange: (editing: boolean) => void
-  onZoomChange: (scale: number) => void
-  /** A gesture finished: refetch the outline and reconcile. */
-  onReload: () => void
-  onCursorChange: (cursor: string) => void
-  /** The geometry a live gesture is showing, for the panels that read numbers. */
-  onPreview: (
-    preview: {
-      contours: readonly Contour[]
-      anchors: readonly Anchor[]
-    } | null,
-  ) => void
-  /**
-   * A kernel call failed. Editing must not swallow transport errors: the shell
-   * turns these into a toast, the same way a failed command does.
-   */
-  onError: (error: unknown) => void
-}
-
-/** A pointer event, normalised to canvas space. */
-export interface PointerInput {
-  x: number
-  y: number
-  button: number
-  modifiers: Modifiers
-}
-
-/** Callbacks used until the view installs its own. */
-const SILENT_CALLBACKS: EditorCallbacks = {
-  repaint: () => undefined,
-  onSelectionChange: () => undefined,
-  onEditingChange: () => undefined,
-  onZoomChange: () => undefined,
-  onReload: () => undefined,
-  onCursorChange: () => undefined,
-  onPreview: () => undefined,
-  onError: () => undefined,
-}
+export type {
+  EditorCallbacks,
+  EditorLabels,
+  EditorSource,
+  PointerInput,
+} from './editorTypes'
 
 export class EditorController {
   private readonly viewport: Viewport
@@ -156,14 +79,7 @@ export class EditorController {
 
   private selection: Selection = EMPTY_SELECTION
   private drag: DragGesture | null = null
-  private marquee: {
-    origin: Point2
-    current: Point2
-    additive: boolean
-    ignoreHandles: boolean
-  } | null = null
-  private zoomBox: { origin: Point2; current: Point2 } | null = null
-  private panning: { x: number; y: number } | null = null
+  private readonly view = new ViewGestures()
   private hover: Hit | null = null
   private pointer: Point2 | null = null
   private snap: SnapMatch | null = null
@@ -171,13 +87,7 @@ export class EditorController {
     contours: readonly Contour[]
     anchors: readonly Anchor[]
   } | null = null
-  private nudge: NudgeCoalescer | null = null
-  private nudgeRun: {
-    base: readonly Contour[]
-    total: Point2
-    refs: PointRef[]
-    anchors: readonly Anchor[]
-  } | null = null
+  private readonly nudge: NudgeRunner
   private spaceHeld = false
   private tool: ToolId = 'select'
   private snapEnabled = true
@@ -186,6 +96,10 @@ export class EditorController {
   constructor(viewport: Viewport, labels: EditorLabels) {
     this.viewport = viewport
     this.labels = labels
+    this.nudge = new NudgeRunner({
+      onEnd: () => this.closeNudge(),
+      onError: (error) => this.callbacks.onError(error),
+    })
   }
 
   /**
@@ -204,7 +118,7 @@ export class EditorController {
    * data hooks rely on this flag to know when it is safe to reload.
    */
   private publishEditing(): void {
-    const editing = this.drag !== null || this.nudge?.active === true
+    const editing = this.drag !== null || this.nudge.active
     if (editing === this.editingPublished) return
     this.editingPublished = editing
     this.callbacks.onEditingChange(editing)
@@ -264,6 +178,11 @@ export class EditorController {
     this.callbacks.repaint()
   }
 
+  /** The pan/zoom transform, exposed for tests and dev verification. */
+  get viewportForTest(): Viewport {
+    return this.viewport
+  }
+
   /** Whether a drag gesture is currently live; read by dev verification. */
   get dragging(): boolean {
     return this.drag !== null
@@ -294,8 +213,8 @@ export class EditorController {
       components: this.source?.outline.components ?? [],
       pointer: this.pointer,
       drag: this.drag,
-      marquee: this.marquee,
-      zoomBox: this.zoomBox,
+      band: this.view.band,
+      bandIsMarquee: this.view.bandIsMarquee,
       snap: this.snap,
       hover: this.hover,
     })
@@ -312,21 +231,19 @@ export class EditorController {
     void this.endNudge()
     // A gesture that never saw its pointer-up — a lost capture, a cancelled
     // pointer — must not survive into the next one.
-    this.marquee = null
-    this.zoomBox = null
-    this.panning = null
+    this.view.reset()
     const at = { x: input.x, y: input.y }
     if (
       input.button === 1 ||
       this.spaceHeld ||
       this.effectiveTool() === 'hand'
     ) {
-      this.panning = at
+      this.view.beginPan(at)
       this.callbacks.onCursorChange(HAND_DRAGGING_CURSOR)
       return
     }
     if (this.effectiveTool() === 'zoom') {
-      this.zoomBox = { origin: at, current: at }
+      this.view.beginZoom(at)
       return
     }
     if (this.effectiveTool() !== 'select') return
@@ -334,18 +251,14 @@ export class EditorController {
     const hit = this.hitAt(at)
     if (hit && this.handleSegmentShortcut(hit, input.modifiers)) return
 
-    const next = selectionForClick(this.selection, hit, input.modifiers)
-    this.setSelection(next)
-
+    this.setSelection(selectionForClick(this.selection, hit, input.modifiers))
     if (!hit) {
-      this.marquee = {
-        origin: at,
-        current: at,
+      this.view.beginMarquee(at, {
         additive: input.modifiers.shift || input.modifiers.mod,
         // Both halves of one gesture read the same moment: Alt decided when
         // the band was started, not whatever is held when it is released.
         ignoreHandles: input.modifiers.alt,
-      }
+      })
       return
     }
     this.startDrag(hit, this.viewport.toFont(at), input.modifiers)
@@ -354,25 +267,13 @@ export class EditorController {
   /** Pointer moved over the canvas. */
   pointerMove(input: PointerInput): void {
     this.pointer = { x: input.x, y: input.y }
-    if (this.panning) {
-      this.viewport.pan(input.x - this.panning.x, input.y - this.panning.y)
-      this.panning = { x: input.x, y: input.y }
-      this.callbacks.repaint()
-      return
-    }
-    if (this.zoomBox) {
-      this.zoomBox = { ...this.zoomBox, current: { x: input.x, y: input.y } }
+    if (this.view.move(this.viewport, this.pointer)) {
       this.callbacks.repaint()
       return
     }
     if (this.drag) {
       this.drag.move(this.viewport.toFont(this.pointer), input.modifiers)
       this.setPreview(this.drag.preview)
-      this.callbacks.repaint()
-      return
-    }
-    if (this.marquee) {
-      this.marquee = { ...this.marquee, current: { x: input.x, y: input.y } }
       this.callbacks.repaint()
       return
     }
@@ -385,31 +286,23 @@ export class EditorController {
 
   /** Pointer released. */
   pointerUp(input: PointerInput): void {
-    if (this.panning) {
-      this.panning = null
+    if (this.view.endPan()) {
       this.updateCursor(input.modifiers)
       return
     }
-    if (this.zoomBox) {
-      const rect = marqueeRect(this.zoomBox.origin, this.zoomBox.current)
-      const size = marqueeSize(rect)
-      if (size.width < ZOOM_MARQUEE_MIN && size.height < ZOOM_MARQUEE_MIN)
-        zoomAt(this.viewport, this.zoomBox.origin, input.modifiers.alt)
-      else zoomToRect(this.viewport, rect)
-      this.zoomBox = null
+    if (this.view.endZoom(this.viewport, input.modifiers.alt)) {
       this.callbacks.onZoomChange(this.viewport.scale)
       this.callbacks.repaint()
       return
     }
-    if (this.marquee) {
-      const rect = marqueeRect(this.marquee.origin, this.marquee.current)
-      const found = marqueeSelection(this.hitInput(), rect, {
-        ignoreHandles: this.marquee.ignoreHandles,
+    const marquee = this.view.endMarquee()
+    if (marquee) {
+      const found = marqueeSelection(this.hitInput(), marquee.rect, {
+        ignoreHandles: marquee.ignoreHandles,
       })
       this.setSelection(
-        this.marquee.additive ? unionSelection(this.selection, found) : found,
+        marquee.additive ? unionSelection(this.selection, found) : found,
       )
-      this.marquee = null
       this.callbacks.repaint()
       return
     }
@@ -440,9 +333,8 @@ export class EditorController {
   /** Ends whatever gesture is running; called when the view unmounts. */
   dispose(): void {
     void this.drag?.cancel()
-    void this.nudge?.end()
+    void this.nudge.end()
     this.drag = null
-    this.nudge = null
   }
 
   /** Toggles smooth on the selected nodes; Alt keeps the outline unchanged. */
@@ -494,38 +386,13 @@ export class EditorController {
 
   /** Selects every point of the layer. */
   selectAll(): void {
-    const targets: EditTarget[] = this.edit.points.map((point) =>
-      point.onCurve
-        ? { kind: 'node', contour: point.ref.contour, point: point.ref.point }
-        : {
-            kind: 'handle',
-            contour: point.ref.contour,
-            point: point.ref.point,
-          },
-    )
-    this.setSelection(selectionOf(targets))
+    this.setSelection(allTargets(this.edit))
   }
 
   /** Tab and Shift+Tab walk the on-curve points in stored order. */
   cycleNodes(direction: 1 | -1): void {
-    const nodes = this.edit.points.filter((point) => point.onCurve)
-    if (nodes.length === 0) return
-    const current = onlyTarget(this.selection)
-    const index =
-      current && current.kind === 'node'
-        ? nodes.findIndex(
-            (node) =>
-              node.ref.contour === current.contour &&
-              node.ref.point === current.point,
-          )
-        : -1
-    const next = nodes[(index + direction + nodes.length * 2) % nodes.length]
-    if (!next) return
-    this.setSelection(
-      selectionOf([
-        { kind: 'node', contour: next.ref.contour, point: next.ref.point },
-      ]),
-    )
+    const next = cycledSelection(this.edit, this.selection, direction)
+    if (next) this.setSelection(next)
   }
 
   /**
@@ -541,49 +408,24 @@ export class EditorController {
     const points = selectedPointRefs(this.selection)
     if (!target || !source || points.length === 0) return
     const step = nudgeStep(modifiers)
-    const delta = { x: direction.x * step, y: direction.y * step }
-    const handles: HandleMode = modifiers.alt ? 'PointsOnly' : 'WithHandles'
-    this.nudge ??= new NudgeCoalescer({
-      doc: target.doc,
-      glyph: target.glyph,
-      layer: target.layer,
-      label: (count) => this.labels.nudgePoints(count),
-      onEnd: () => this.closeNudge(),
-      onError: (error) => this.callbacks.onError(error),
-    })
-    this.nudge.nudge(points, delta, handles)
+    this.setPreview(
+      this.nudge.press({
+        target,
+        contours: source.outline.contours,
+        anchors: source.outline.anchors,
+        refs: points,
+        delta: { x: direction.x * step, y: direction.y * step },
+        handles: modifiers.alt ? 'PointsOnly' : 'WithHandles',
+        label: (count) => this.labels.nudgePoints(count),
+      }),
+    )
     this.publishEditing()
-
-    // Accumulate against the layer as the kernel last reported it: reloads are
-    // deferred for the length of the run, so that geometry stays put.
-    const base = this.nudgeRun?.base ?? source.outline.contours
-    const total = this.nudgeRun
-      ? {
-          x: this.nudgeRun.total.x + delta.x,
-          y: this.nudgeRun.total.y + delta.y,
-        }
-      : delta
-    this.nudgeRun = {
-      base,
-      total,
-      refs: movedPointRefs(base, points, handles),
-      anchors: source.outline.anchors,
-    }
-    this.setPreview({
-      contours: translatePoints(base, this.nudgeRun.refs, total.x, total.y),
-      anchors: this.nudgeRun.anchors,
-    })
     this.callbacks.repaint()
   }
 
   /** Finalises a run of nudges: one undo entry, then a reload. */
-  async endNudge(): Promise<void> {
-    if (!this.nudge?.active) return
-    try {
-      await this.nudge.end()
-    } catch (error) {
-      this.callbacks.onError(error)
-    }
+  endNudge(): Promise<void> {
+    return this.nudge.end()
   }
 
   /**
@@ -591,7 +433,6 @@ export class EditorController {
    * preview is handed back to the layer and reloads resume.
    */
   private closeNudge(): void {
-    this.nudgeRun = null
     this.setPreview(null)
     this.publishEditing()
     this.callbacks.onReload()
@@ -614,8 +455,8 @@ export class EditorController {
       this.callbacks.repaint()
       return
     }
-    if (this.marquee) {
-      this.marquee = null
+    if (this.view.active) {
+      this.view.reset()
       this.callbacks.repaint()
       return
     }
@@ -668,7 +509,7 @@ export class EditorController {
     const tool = this.effectiveTool()
     if (tool === 'hand')
       return this.callbacks.onCursorChange(
-        this.panning ? HAND_DRAGGING_CURSOR : HAND_CURSOR,
+        this.view.panningNow ? HAND_DRAGGING_CURSOR : HAND_CURSOR,
       )
     if (tool !== 'select')
       return this.callbacks.onCursorChange(toolById(tool).cursor)
@@ -682,47 +523,17 @@ export class EditorController {
    */
   private handleSegmentShortcut(hit: Hit, modifiers: Modifiers): boolean {
     const target = this.layerTarget()
-    if (!target || hit.target.kind !== 'segment') return false
-    const segment = this.segmentAt(hit.target.contour, hit.target.segment)
-    // Alt only converts a *line*. On a curve it means "reshape keeping the
-    // handle angles" (§4.3), and converting a curve to a curve would record an
-    // empty undo entry and dirty the document for nothing.
-    if (modifiers.alt && segment?.kind === 'line') {
-      void this.runCommand(
-        convertSegmentCommand(
-          target,
-          hit.target.contour,
-          hit.target.segment,
-          'Curve',
-        ),
-        this.labels.convertSegment,
-      )
-      return true
-    }
-    if (modifiers.shift) {
-      // §4.3: the node lands on the nearest extremum or inflection, not
-      // wherever the pointer happened to be.
-      const clicked = Math.min(0.999, Math.max(0.001, hit.t ?? 0.5))
-      const t = segment ? nearestSplitParameter(segment, clicked) : clicked
-      void this.runCommand(
-        insertPointCommand(
-          target,
-          hit.target.contour,
-          hit.target.segment,
-          Math.min(0.999, Math.max(0.001, t)),
-        ),
-        this.labels.insertPoint,
-      )
-      return true
-    }
-    return false
-  }
-
-  /** One geometric segment of the layer, by contour and index. */
-  private segmentAt(contour: number, index: number): EditSegment | undefined {
-    return this.edit.segments.find(
-      (candidate) => candidate.contour === contour && candidate.index === index,
+    if (!target) return false
+    const action = segmentShortcut(
+      target,
+      this.labels,
+      this.edit,
+      hit,
+      modifiers,
     )
+    if (!action) return false
+    void this.runCommand(action.command, action.label)
+    return true
   }
 
   private startDrag(hit: Hit, origin: Point2, modifiers: Modifiers): void {
@@ -752,7 +563,18 @@ export class EditorController {
             this.snap = null
             return { delta, label: null }
           }
-          const match = snapDelta(this.snapInput(), delta, moved)
+          const match = snapDelta(
+            buildSnapInput({
+              outline: this.edit,
+              source: this.source,
+              selection: this.selection,
+              drag: this.drag,
+              labels: this.labels,
+              viewport: this.viewport,
+            }),
+            delta,
+            moved,
+          )
           this.snap = match
           return { delta: match.delta, label: match.label }
         },
@@ -764,40 +586,6 @@ export class EditorController {
     if (!drag) return
     this.drag = drag
     this.publishEditing()
-  }
-
-  private snapInput() {
-    const source = this.source
-    const exclude = new Set(
-      selectedPointRefs(this.selection).map(
-        (ref) => `${ref.contour}:${ref.point}`,
-      ),
-    )
-    for (const ref of this.drag?.plan.refs ?? [])
-      exclude.add(`${ref.contour}:${ref.point}`)
-    return {
-      outline: this.edit,
-      anchors: source?.outline.anchors ?? [],
-      guides: source?.guides ?? [],
-      metrics:
-        source?.metrics ??
-        ({
-          upem: 1000,
-          ascender: 800,
-          descender: -200,
-          xHeight: 500,
-          capHeight: 700,
-          italicAngle: 0,
-          width: 0,
-          lsb: null,
-          rsb: null,
-          verticalOrigin: null,
-          verticalWidth: null,
-        } satisfies SceneMetrics),
-      names: this.labels.snap,
-      viewport: this.viewport,
-      exclude,
-    }
   }
 
   private async finishDrag(): Promise<void> {

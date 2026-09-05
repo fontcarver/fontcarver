@@ -14,7 +14,7 @@ import type { Point2, Viewport } from '../canvas/Viewport'
 import type { EditingOverlay } from '../views/glyph/drawEditing'
 
 import type { DragGesture } from './gestures/drag'
-import { marqueeRect, marqueeSize, type MarqueeRect } from './gestures/marquee'
+import { marqueeSize, type MarqueeRect } from './gestures/marquee'
 import type { ComponentBounds, Hit } from './hitTest'
 import { handlePolar, hudText, stemWidth, type HudLabels } from './hud'
 import { nodeOfHandle, pointAt, type EditOutline } from './outlineGeometry'
@@ -34,12 +34,6 @@ export interface EditorFrame {
   pointerScreen: Point2 | null
 }
 
-/** A rubber-band rectangle in progress, in canvas space. */
-export interface Band {
-  origin: Point2
-  current: Point2
-}
-
 /** The gesture state a frame is built from. */
 export interface FrameState {
   viewport: Viewport
@@ -53,23 +47,19 @@ export interface FrameState {
   components: readonly ComponentBounds[]
   pointer: Point2 | null
   drag: DragGesture | null
-  marquee: Band | null
-  zoomBox: Band | null
+  /** The rubber band on screen — a selection marquee or a zoom rectangle. */
+  band: MarqueeRect | null
+  /** Whether that band is a selection marquee rather than the zoom tool's. */
+  bandIsMarquee: boolean
   snap: SnapMatch | null
   hover: Hit | null
 }
 
 const NOTHING_SELECTED: ReadonlySet<string> = new Set()
 
-/** The marquee or zoom rectangle currently being dragged, in canvas space. */
-export function bandRect(state: FrameState): MarqueeRect | null {
-  const band = state.marquee ?? state.zoomBox
-  return band ? marqueeRect(band.origin, band.current) : null
-}
-
 /** The ghost node shown where a click would insert a point on a segment. */
 function insertGhost(state: FrameState): Point2 | null {
-  if (state.drag || state.marquee) return null
+  if (state.drag || state.band) return null
   return state.hover?.target.kind === 'segment' ? state.hover.point : null
 }
 
@@ -113,9 +103,8 @@ function stem(state: FrameState): number | null {
 /** The cursor-HUD line for the gesture in progress, or `null` when idle. */
 export function frameHud(state: FrameState): string | null {
   const { labels } = state
-  if (state.marquee || state.zoomBox) {
-    const box = bandRect(state)
-    if (!box) return null
+  if (state.band) {
+    const box = state.band
     const scale = state.viewport.scale || 1
     const size = marqueeSize(box)
     return hudText(
@@ -165,7 +154,7 @@ export function frameHud(state: FrameState): string | null {
 /** Builds the whole frame description for one paint. */
 export function buildFrame(state: FrameState): EditorFrame {
   const overlay: EditingOverlay = {
-    marquee: bandRect(state),
+    marquee: state.band,
     snap: state.snap?.point ?? null,
     alignX: state.snap?.alignedX ?? null,
     alignY: state.snap?.alignedY ?? null,

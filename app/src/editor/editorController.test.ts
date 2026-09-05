@@ -632,3 +632,73 @@ describe('EditorController snapping', () => {
     })
   })
 })
+
+describe('EditorController view gestures', () => {
+  it('pans with the middle button whatever the tool', () => {
+    const { controller } = makeController()
+    controller.pointerDown({ ...at(100, 100), button: 1 })
+    controller.pointerMove({ ...at(140, 130), button: 1 })
+    controller.pointerUp({ ...at(140, 130), button: 1 })
+
+    expect(controller.viewportForTest.offset).toEqual({ x: 40, y: 330 })
+  })
+
+  it('pans with Space held, and stops when it is released', () => {
+    const { controller } = makeController()
+    controller.setSpaceHeld(true)
+    controller.pointerDown(at(100, 100))
+    controller.pointerMove(at(90, 120))
+    controller.pointerUp(at(90, 120))
+    expect(controller.viewportForTest.offset).toEqual({ x: -10, y: 320 })
+
+    controller.setSpaceHeld(false)
+    // The pan moved the glyph with it: node (200, 0) now sits at (190, 320).
+    controller.pointerDown(at(190, 320))
+    expect([...controller.currentSelection.keys()]).toEqual(['node:0:1'])
+  })
+
+  it('zooms in on a click and out with Alt', () => {
+    const { controller } = makeController()
+    controller.setTool('zoom')
+    const before = controller.viewportForTest.scale
+
+    controller.pointerDown(at(200, 200))
+    controller.pointerUp(at(200, 200))
+    expect(controller.viewportForTest.scale).toBeCloseTo(before * 1.15, 6)
+
+    controller.pointerDown(at(200, 200, { ...NO_MODIFIERS, alt: true }))
+    controller.pointerUp(at(200, 200, { ...NO_MODIFIERS, alt: true }))
+    expect(controller.viewportForTest.scale).toBeCloseTo(before, 6)
+  })
+
+  it('zooms to a dragged rectangle', () => {
+    const { controller } = makeController()
+    controller.setTool('zoom')
+
+    controller.pointerDown(at(100, 100))
+    controller.pointerMove(at(300, 260))
+    // The band is drawn while it is dragged.
+    expect(controller.frame().overlay.marquee).toEqual({
+      x0: 100,
+      y0: 100,
+      x1: 300,
+      y1: 260,
+    })
+    controller.pointerUp(at(300, 260))
+
+    // 200 × 160 canvas pixels framed in a 400 × 400 canvas: about twice.
+    expect(controller.viewportForTest.scale).toBeGreaterThan(1.9)
+    expect(controller.frame().overlay.marquee).toBeNull()
+  })
+
+  it('drops a band that never saw its pointer-up', () => {
+    const { controller } = makeController()
+    controller.pointerDown(at(380, 20))
+    controller.pointerMove(at(300, 100))
+    // A lost capture leaves the band open; the next press must not inherit it.
+    controller.pointerDown(at(200, 300))
+    controller.pointerUp(at(200, 300))
+
+    expect([...controller.currentSelection.keys()]).toEqual(['node:0:1'])
+  })
+})
