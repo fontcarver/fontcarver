@@ -225,7 +225,9 @@
       "timing": "{{count, number}} ms",
       "warnings": "Warnings",
       "noWarnings": "No warnings.",
-      "selectGlyph": "Select {{name}} in the Font view"
+      "selectGlyph": "Select {{name}} in the Font view",
+      "moreGlyphs_one": "{{count, number}} more",
+      "moreGlyphs_other": "{{count, number}} more"
     },
     "prefs": {
       "title": "Preferences",

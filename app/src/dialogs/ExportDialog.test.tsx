@@ -187,6 +187,33 @@ describe('ExportDialog', () => {
     expect(transport.calls.at(-1)?.method).toBe('glyphs.search')
   })
 
+  it('caps the chips of a warning that names thousands of glyphs', async () => {
+    const user = userEvent.setup()
+    const names = Array.from({ length: 120 }, (_, index) => `g${index}`)
+    setup(
+      makeSummary(),
+      makeReport({
+        warnings: [
+          {
+            code: 'hinting-dropped',
+            message: `TrueType instructions were dropped because these glyphs changed: ${names.join(', ')}`,
+          },
+        ],
+      }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Export' }))
+
+    await screen.findByRole('button', { name: 'g0' })
+    expect(screen.getAllByTitle(/^Select g\d+ in the Font view$/)).toHaveLength(
+      50,
+    )
+    expect(screen.getByText('70 more')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'g119' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('reports a failed export in the dialog', async () => {
     const user = userEvent.setup()
     const transport = createMockTransport({

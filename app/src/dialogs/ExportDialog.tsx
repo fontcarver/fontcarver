@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -13,6 +13,7 @@ import { Dialog } from '../components/Dialog'
 import { warningMessage } from '../i18n/warnings'
 import { useDocumentStore } from '../stores/documentStore'
 import { useProgressStore } from '../stores/progressStore'
+import { hasNativeFileDialog } from '../shell/nativeDialogs'
 import { errorMessage } from '../stores/sessionStore'
 import { tabId, useUiStore } from '../stores/uiStore'
 
@@ -22,7 +23,6 @@ import {
   SFNT_FORMATS,
   chooseExportPath,
   formatsFor,
-  hasNativeFileDialog,
   suggestPath,
   warningGlyphNames,
 } from './exportFormats'
@@ -36,6 +36,15 @@ const OPTION_FIELDS = [
 ] as const
 
 type OptionField = (typeof OPTION_FIELDS)[number]
+
+/**
+ * How many affected glyphs a warning shows as chips.
+ *
+ * `hinting-dropped` names every touched glyph, which on a heavily edited font is
+ * thousands of them; the rest are summarised rather than rendered as thousands
+ * of buttons in a modal.
+ */
+const MAX_CHIPS = 50
 
 const OPTION_KEYS: Record<OptionField, string> = {
   remove_overlap: 'removeOverlap',
@@ -147,6 +156,15 @@ export function ExportDialog({ summary }: ExportDialogProps) {
   }
 
   const showOptions = SFNT_FORMATS.includes(format)
+  // Parsed once per report rather than twice per warning on every render.
+  const warnings = useMemo(
+    () =>
+      (report?.warnings ?? []).map((warning) => ({
+        warning,
+        names: warningGlyphNames(warning),
+      })),
+    [report],
+  )
 
   return (
     <Dialog
@@ -296,10 +314,10 @@ export function ExportDialog({ summary }: ExportDialogProps) {
             <h3 className={styles.sectionTitle}>
               {t('dialog.export.warnings')}
             </h3>
-            {report.warnings.length === 0 ? (
+            {warnings.length === 0 ? (
               <p className={styles.hint}>{t('dialog.export.noWarnings')}</p>
             ) : (
-              report.warnings.map((warning) => (
+              warnings.map(({ warning, names }) => (
                 <div
                   key={warning.code + warning.message}
                   className={styles.warningItem}
@@ -309,9 +327,9 @@ export function ExportDialog({ summary }: ExportDialogProps) {
                       translation ? t(key, translation) : t(key),
                     )}
                   </span>
-                  {warningGlyphNames(warning).length > 0 ? (
+                  {names.length > 0 ? (
                     <div className={styles.chips}>
-                      {warningGlyphNames(warning).map((name) => (
+                      {names.slice(0, MAX_CHIPS).map((name) => (
                         <button
                           key={name}
                           type="button"
@@ -322,6 +340,13 @@ export function ExportDialog({ summary }: ExportDialogProps) {
                           {name}
                         </button>
                       ))}
+                      {names.length > MAX_CHIPS ? (
+                        <span className={styles.hint}>
+                          {t('dialog.export.moreGlyphs', {
+                            count: names.length - MAX_CHIPS,
+                          })}
+                        </span>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>

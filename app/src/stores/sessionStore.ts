@@ -1,14 +1,9 @@
 import { create } from 'zustand'
 
-import {
-  call,
-  getTransport,
-  onDocumentEvent,
-  type DocId,
-  type DocSummary,
-} from '../api'
+import { call, onDocumentEvent, type DocId, type DocSummary } from '../api'
 import { i18n } from '../i18n'
 import { warningMessage } from '../i18n/warnings'
+import { choosePath, hasNativeFileDialog } from '../shell/nativeDialogs'
 import { ApiCallError } from '../transport'
 
 import { useDocumentStore } from './documentStore'
@@ -177,17 +172,18 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   openDialog: async () => {
-    if (getTransport().kind === 'tauri') {
-      try {
-        const { open } = await import('@tauri-apps/plugin-dialog')
-        const selected = await open({ multiple: false, directory: false })
-        if (typeof selected === 'string') await get().open(selected)
-      } catch (error) {
-        reportError(error)
-      }
+    // No native dialog: ask for the path in the application itself, without
+    // waiting on a platform round trip that cannot happen here.
+    if (!hasNativeFileDialog()) {
+      useUiStore.getState().setPathPrompt({ mode: 'open' })
       return
     }
-    useUiStore.getState().setPathPrompt({ mode: 'open' })
+    try {
+      const choice = await choosePath({ kind: 'open' })
+      if (choice.kind === 'chosen') await get().open(choice.path)
+    } catch (error) {
+      reportError(error)
+    }
   },
 
   createDocument: async (family, unitsPerEm) => {
@@ -227,26 +223,24 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   requestSaveAs: async (doc, closeAfterSave = false) => {
-    if (getTransport().kind === 'tauri') {
-      try {
-        const { save: saveDialog } = await import('@tauri-apps/plugin-dialog')
-        const chosen = await saveDialog({
-          filters: [
-            {
-              name: i18n.t('dialog.saveAs.filter'),
-              extensions: ['fwf', 'fwf.gz'],
-            },
-          ],
-        })
-        if (typeof chosen !== 'string') return
-        const saved = await get().save(doc, chosen)
-        if (saved && closeAfterSave) await get().close(doc)
-      } catch (error) {
-        reportError(error)
-      }
+    if (!hasNativeFileDialog()) {
+      useUiStore
+        .getState()
+        .setPathPrompt({ mode: 'saveAs', doc, closeAfterSave })
       return
     }
-    useUiStore.getState().setPathPrompt({ mode: 'saveAs', doc, closeAfterSave })
+    try {
+      const choice = await choosePath({
+        kind: 'save',
+        filterName: i18n.t('dialog.saveAs.filter'),
+        extensions: ['fwf', 'fwf.gz'],
+      })
+      if (choice.kind !== 'chosen') return
+      const saved = await get().save(doc, choice.path)
+      if (saved && closeAfterSave) await get().close(doc)
+    } catch (error) {
+      reportError(error)
+    }
   },
 
   saveAndClose: async (doc) => {

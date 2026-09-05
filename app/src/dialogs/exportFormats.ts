@@ -1,9 +1,5 @@
-import {
-  getTransport,
-  type DocSummary,
-  type ExportFormat,
-  type ExportWarning,
-} from '../api'
+import type { DocSummary, ExportFormat, ExportWarning } from '../api'
+import { choosePath } from '../shell/nativeDialogs'
 
 /** File-name extension each container format is written with. */
 export const FORMAT_EXTENSIONS: Record<ExportFormat, string> = {
@@ -84,29 +80,20 @@ export function warningGlyphNames(warning: ExportWarning): string[] {
 }
 
 /**
- * Asks the platform for a destination path.
- *
- * This is the abstraction the shell already uses for Save: under Tauri the
- * native save dialog runs, and everywhere else there is none, so the caller
- * keeps the typed path in the dialog's own field.
+ * Asks the platform for a destination, through the same helper Open and Save As
+ * use. Returns `null` when the user cancelled or the platform has no native
+ * dialog; the dialog's own destination field is the fallback in that case.
  */
 export async function chooseExportPath(
   suggested: string,
   filterName: string,
   format: ExportFormat,
 ): Promise<string | null> {
-  if (getTransport().kind !== 'tauri') return null
-  const { save } = await import('@tauri-apps/plugin-dialog')
-  const chosen = await save({
+  const choice = await choosePath({
+    kind: 'save',
+    filterName,
+    extensions: [FORMAT_EXTENSIONS[format].slice(1)],
     defaultPath: suggested,
-    filters: [
-      { name: filterName, extensions: [FORMAT_EXTENSIONS[format].slice(1)] },
-    ],
   })
-  return typeof chosen === 'string' ? chosen : null
-}
-
-/** Whether the platform can offer a file picker for the destination. */
-export function hasNativeFileDialog(): boolean {
-  return getTransport().kind === 'tauri'
+  return choice.kind === 'chosen' ? choice.path : null
 }
