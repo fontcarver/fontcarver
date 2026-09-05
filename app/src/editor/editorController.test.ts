@@ -34,6 +34,7 @@ const layer = makeLayer({
 
 const labels: EditorLabels = {
   movePoints: (count) => `Move ${count} points`,
+  moveHandles: (count) => `Move ${count} handles`,
   moveHandle: 'Move handle',
   reshapeSegment: 'Reshape segment',
   moveAnchor: 'Move anchor',

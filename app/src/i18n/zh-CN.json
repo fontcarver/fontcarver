@@ -539,6 +539,8 @@
       "movePoints_one": "Move 1 point",
       "movePoints_other": "Move {{count}} points",
       "moveHandle": "Move handle",
+      "moveHandles_one": "Move 1 handle",
+      "moveHandles_other": "Move {{count}} handles",
       "reshapeSegment": "Reshape segment",
       "moveAnchor": "Move anchor",
       "moveComponent": "Move component",

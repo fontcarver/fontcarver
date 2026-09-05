@@ -29,6 +29,7 @@ const contour = makeContour([
 
 const labels = {
   movePoints: (count: number) => `Move ${count} points`,
+  moveHandles: (count: number) => `Move ${count} handles`,
   moveHandle: 'Move handle',
   reshapeSegment: 'Reshape segment',
   moveAnchor: 'Move anchor',
@@ -105,6 +106,29 @@ describe('planDrag', () => {
     const selection = selectionOf([{ kind: 'node', contour: 0, point: 4 }])
     const plan = planDrag(context({ selection }), nodeHit, NO_MODIFIERS)
     expect(plan?.refs).toEqual([{ contour: 0, point: 1 }])
+    expect(plan?.label).toBe('Move 1 points')
+  })
+
+  it('names a handles-only move for what it is', () => {
+    // Counting nodes would label a marquee of handles "Move 0 points".
+    const selection = selectionOf([
+      { kind: 'handle', contour: 0, point: 3 },
+      { kind: 'node', contour: 0, point: 1 },
+    ])
+    expect(
+      planDrag(context({ selection }), handleHit, NO_MODIFIERS)?.label,
+    ).toBe('Move handle')
+
+    const handlesOnly = selectionOf([{ kind: 'handle', contour: 0, point: 3 }])
+    const plan = planDrag(
+      context({ selection: handlesOnly }),
+      {
+        target: { kind: 'node', contour: 0, point: 1 },
+        point: { x: 200, y: 0 },
+        distance: 0,
+      },
+      NO_MODIFIERS,
+    )
     expect(plan?.label).toBe('Move 1 points')
   })
 

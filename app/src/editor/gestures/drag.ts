@@ -72,6 +72,8 @@ export interface DragPlan {
  * modules stay free of i18n wiring. */
 export interface DragLabels {
   movePoints: (count: number) => string
+  /** Used when the moved set is handles only. */
+  moveHandles: (count: number) => string
   moveHandle: string
   reshapeSegment: string
   moveAnchor: string
@@ -146,7 +148,10 @@ export function planDrag(
       // the node keeps its handles while the neighbours' handles scale.
       handleMode:
         modifiers.alt && !modifiers.mod ? 'PointsOnly' : 'WithHandles',
-      label: labels.movePoints(Math.max(nodes, refs.length ? nodes : 1)),
+      // A selection of handles alone is named for what it is: counting nodes
+      // would label it "Move 0 points".
+      label:
+        nodes > 0 ? labels.movePoints(nodes) : labels.moveHandles(refs.length),
     }
   }
 

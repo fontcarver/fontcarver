@@ -17,7 +17,7 @@ import type { DragGesture } from './gestures/drag'
 import { marqueeRect, marqueeSize, type MarqueeRect } from './gestures/marquee'
 import type { ComponentBounds, Hit } from './hitTest'
 import { handlePolar, hudText, stemWidth, type HudLabels } from './hud'
-import { pointAt, type EditOutline } from './outlineGeometry'
+import { nodeOfHandle, pointAt, type EditOutline } from './outlineGeometry'
 import { selectedNodeRefs, type Selection } from './selection'
 import type { SnapMatch } from './snapping'
 
@@ -132,15 +132,11 @@ export function frameHud(state: FrameState): string | null {
   if (drag.plan.kind === 'handle') {
     const handle = drag.plan.refs[0]
     const point = handle ? pointAt(state.contours, handle) : null
-    // The node a handle belongs to is its on-curve neighbour in stored order.
-    const node = handle
-      ? state.edit.points.find(
-          (candidate) =>
-            candidate.onCurve &&
-            candidate.ref.contour === handle.contour &&
-            Math.abs(candidate.ref.point - handle.point) === 1,
-        )
-      : undefined
+    // `nodeOfHandle` walks the contour, so it also finds the node across a
+    // wrap-around; comparing stored indexes would miss it and drop the HUD
+    // back to Δx/Δy where §6.2 asks for ∠/ℓ.
+    const nodeRef = handle ? nodeOfHandle(state.contours, handle) : null
+    const node = nodeRef ? pointAt(state.contours, nodeRef) : null
     if (point && node) {
       const polar = handlePolar(node, point)
       return hudText(

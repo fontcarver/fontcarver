@@ -18,6 +18,7 @@ export function useEditorLabels(): EditorLabels {
   return useMemo<EditorLabels>(
     () => ({
       movePoints: (count) => t('editor.undo.movePoints', { count }),
+      moveHandles: (count) => t('editor.undo.moveHandles', { count }),
       moveHandle: t('editor.undo.moveHandle'),
       reshapeSegment: t('editor.undo.reshapeSegment'),
       moveAnchor: t('editor.undo.moveAnchor'),

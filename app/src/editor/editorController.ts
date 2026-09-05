@@ -78,6 +78,7 @@ import { toolById, type ToolId } from './tools/registry'
 /** Undo labels and readout words, translated by the view. */
 export interface EditorLabels {
   movePoints: (count: number) => string
+  moveHandles: (count: number) => string
   moveHandle: string
   reshapeSegment: string
   moveAnchor: string
@@ -151,6 +152,7 @@ export class EditorController {
     origin: Point2
     current: Point2
     additive: boolean
+    ignoreHandles: boolean
   } | null = null
   private zoomBox: { origin: Point2; current: Point2 } | null = null
   private panning: { x: number; y: number } | null = null
@@ -312,6 +314,9 @@ export class EditorController {
         origin: at,
         current: at,
         additive: input.modifiers.shift || input.modifiers.mod,
+        // Both halves of one gesture read the same moment: Alt decided when
+        // the band was started, not whatever is held when it is released.
+        ignoreHandles: input.modifiers.alt,
       }
       return
     }
@@ -371,7 +376,7 @@ export class EditorController {
     if (this.marquee) {
       const rect = marqueeRect(this.marquee.origin, this.marquee.current)
       const found = marqueeSelection(this.hitInput(), rect, {
-        ignoreHandles: input.modifiers.alt,
+        ignoreHandles: this.marquee.ignoreHandles,
       })
       this.setSelection(
         this.marquee.additive ? unionSelection(this.selection, found) : found,
@@ -707,6 +712,7 @@ export class EditorController {
         selection: this.selection,
         labels: {
           movePoints: (count) => this.labels.movePoints(count),
+          moveHandles: (count) => this.labels.moveHandles(count),
           moveHandle: this.labels.moveHandle,
           reshapeSegment: this.labels.reshapeSegment,
           moveAnchor: this.labels.moveAnchor,
