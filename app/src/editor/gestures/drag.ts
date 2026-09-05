@@ -467,8 +467,12 @@ export class DragGesture {
           this.mirrorTarget().y,
         )
       : moved
+    // Anchors and components ride the gesture's single `TransformSelection`,
+    // which a per-point regime does not send: previewing them moving would
+    // promise something the gesture never applies, and they would snap back on
+    // the reload that follows it.
     const movedAnchors =
-      this.plan.anchors.length === 0
+      this.deltas !== null || this.plan.anchors.length === 0
         ? anchors
         : anchors.map((anchor, index) =>
             this.plan.anchors.includes(index)

@@ -116,11 +116,12 @@ export class NudgeCoalescer {
     this.session = null
     this.signature = ''
     if (!session) return
-    // The owner is told synchronously, before the round trip: it has to drop
-    // its optimistic preview and re-enable reloads whether or not the kernel
-    // answers, and a run started meanwhile must not be closed by this one.
-    this.context.onEnd?.()
+    // The owner is told once the kernel has closed the run, so its optimistic
+    // preview can stand until then — dropping it earlier shows one frame of
+    // pre-nudge geometry while the refetch is still in flight. A run started
+    // in the meantime is protected by the owner, which ignores a late end.
     await session.end()
+    this.context.onEnd?.()
   }
 
   private restartTimer(): void {

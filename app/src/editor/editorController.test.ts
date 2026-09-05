@@ -760,3 +760,89 @@ describe('EditorController gesture handover', () => {
     expect(recorded.errors).toEqual([])
   })
 })
+
+describe('EditorController nudge handover', () => {
+  it('keeps the preview until the kernel has closed the run', async () => {
+    let release = () => undefined as void
+    const held = new Promise<void>((resolve) => {
+      release = () => resolve()
+    })
+    const mock = createMockTransport({
+      'doc.edit_begin': () => 5,
+      'doc.edit_apply': () => change(),
+      'doc.edit_end': async () => {
+        await held
+        return null
+      },
+    })
+    const { controller, recorded } = makeController()
+    setTransport(mock)
+    installed = mock
+    controller.setSelection(
+      new Map([['node:0:1', { kind: 'node', contour: 0, point: 1 }]]),
+    )
+    controller.nudgeSelection({ x: 5, y: 0 }, NO_MODIFIERS)
+    const moved = controller.frame().contours?.[0]?.points[1]
+    expect(moved).toMatchObject({ x: 205, y: 0 })
+
+    const ending = controller.endNudge()
+    await settle()
+    // The drag path holds its preview until `edit_end` resolves; the nudge
+    // path must not blink back to the pre-nudge geometry before then.
+    expect(controller.frame().contours?.[0]?.points[1]).toMatchObject({
+      x: 205,
+      y: 0,
+    })
+    const reloadsBefore = recorded.reloads
+
+    release()
+    await ending
+    await settle()
+    expect(controller.frame().contours).toBeNull()
+    expect(recorded.reloads).toBeGreaterThan(reloadsBefore)
+  })
+
+  it('carries a closed run forward when the selection changes mid-run', async () => {
+    const { controller } = makeController()
+    controller.setSelection(
+      new Map([['node:0:1', { kind: 'node', contour: 0, point: 1 }]]),
+    )
+    controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+
+    // Tab to another node inside the 500 ms window: the first run closes, but
+    // its reload cannot have landed yet, so the second run has to accumulate
+    // from what the first one produced rather than from the stale outline.
+    controller.setSelection(
+      new Map([['node:0:2', { kind: 'node', contour: 0, point: 2 }]]),
+    )
+    controller.nudgeSelection({ x: 0, y: 10 }, NO_MODIFIERS)
+
+    const points = controller.frame().contours?.[0]?.points
+    expect(points?.[1]).toMatchObject({ x: 210, y: 0 })
+    expect(points?.[2]).toMatchObject({ x: 200, y: 210 })
+    await controller.endNudge()
+    await settle()
+  })
+
+  it('still closes the second run when the first one interrupted it', async () => {
+    const { controller, transport, recorded } = makeController()
+    controller.setSelection(
+      new Map([['node:0:1', { kind: 'node', contour: 0, point: 1 }]]),
+    )
+    controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+    controller.setSelection(
+      new Map([['node:0:2', { kind: 'node', contour: 0, point: 2 }]]),
+    )
+    controller.nudgeSelection({ x: 0, y: 10 }, NO_MODIFIERS)
+    await controller.endNudge()
+    await settle()
+
+    // Two runs, two undo entries, and the preview handed back at the end of
+    // the second — the first run's late `onEnd` must not have taken it.
+    expect(
+      transport.calls.filter((entry) => entry.method === 'doc.edit_end'),
+    ).toHaveLength(2)
+    expect(controller.frame().contours).toBeNull()
+    expect(recorded.editing.at(-1)).toBe(false)
+  })
+})

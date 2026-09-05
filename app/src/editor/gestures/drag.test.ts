@@ -326,6 +326,67 @@ describe('proportional nudge', () => {
   })
 })
 
+describe('preview fidelity', () => {
+  const anchors = [{ name: 'top', x: 100, y: 300 }]
+
+  /** Every command sent, with any batch flattened. */
+  const sent = (mock: MockTransport): Command[] =>
+    applied(mock).flatMap((command) =>
+      'Batch' in command ? command.Batch : [command],
+    )
+
+  it('moves an anchor with a plain drag, which the command does too', async () => {
+    const mock = transport()
+    const selection = selectionOf([
+      { kind: 'node', contour: 0, point: 1 },
+      { kind: 'anchor', index: 0 },
+    ])
+    const drag = beginDrag(
+      context({ anchors, selection }),
+      nodeHit,
+      { x: 200, y: 0 },
+      NO_MODIFIERS,
+    )
+    await drag?.ready()
+    drag?.move({ x: 220, y: 0 }, NO_MODIFIERS)
+    expect(drag?.preview.anchors[0]).toMatchObject({ x: 120, y: 300 })
+    await drag?.finish()
+    expect(sent(mock).some((command) => 'TransformSelection' in command)).toBe(
+      true,
+    )
+  })
+
+  it('leaves the anchor alone when the command cannot carry it', async () => {
+    const mock = transport()
+    const nudge = { ...NO_MODIFIERS, mod: true, alt: true }
+    const selection = selectionOf([
+      { kind: 'node', contour: 0, point: 3 },
+      { kind: 'anchor', index: 0 },
+    ])
+    const drag = beginDrag(
+      context({ contours: [curved], anchors, selection }),
+      {
+        target: { kind: 'node', contour: 0, point: 3 },
+        point: { x: 200, y: 0 },
+        distance: 0,
+      },
+      { x: 200, y: 0 },
+      nudge,
+    )
+    await drag?.ready()
+    drag?.move({ x: 300, y: 0 }, nudge)
+
+    // A proportional nudge sends one MovePoints per point and no
+    // TransformSelection, so previewing a moved anchor would promise something
+    // the gesture does not deliver — it would snap back on the reload.
+    expect(drag?.preview.anchors[0]).toMatchObject({ x: 100, y: 300 })
+    await drag?.finish()
+    expect(sent(mock).some((command) => 'TransformSelection' in command)).toBe(
+      false,
+    )
+  })
+})
+
 describe('constrainDelta', () => {
   it('locks to the nearest 0/45/90 degree direction', () => {
     expect(constrainDelta({ x: 40, y: 3 })).toEqual({

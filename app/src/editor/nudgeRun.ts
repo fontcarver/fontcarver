@@ -50,6 +50,18 @@ export class NudgeRunner {
     total: Point2
     refs: PointRef[]
   } | null = null
+  private signature = ''
+  /**
+   * What a run that closed on a selection change left behind.
+   *
+   * Reloads are deferred for a run's whole length, so the outline the next
+   * press is handed is the one fetched *before* the previous run. Its result is
+   * carried forward as the next run's base until the reload lands, or the
+   * points the earlier run moved would draw back at their old positions.
+   */
+  private carried: readonly Contour[] | null = null
+  /** Identifies the open run, so a late `onEnd` cannot close a newer one. */
+  private generation = 0
 
   constructor(options: NudgeRunnerOptions) {
     this.options = options
@@ -62,19 +74,44 @@ export class NudgeRunner {
 
   /** Applies one press and returns the geometry to draw. */
   press(input: NudgePress): NudgePreview {
-    this.coalescer ??= new NudgeCoalescer({
-      doc: input.target.doc,
-      glyph: input.target.glyph,
-      layer: input.target.layer,
-      label: input.label,
-      onEnd: () => this.close(),
-      onError: this.options.onError,
-    })
+    const signature = `${input.handles}|${input.refs
+      .map((ref) => `${ref.contour}:${ref.point}`)
+      .join(',')}`
+    if (this.coalescer && signature !== this.signature) {
+      // The set changed: close the open run, keeping what it produced so the
+      // next one accumulates from there.
+      if (this.run)
+        this.carried = translatePoints(
+          this.run.base,
+          this.run.refs,
+          this.run.total.x,
+          this.run.total.y,
+        )
+      this.run = null
+      void this.end()
+      // A fresh coalescer, so the closing one's `onEnd` carries its own
+      // generation and cannot clear the preview this press is about to draw.
+      this.coalescer = null
+    }
+    this.signature = signature
+
+    if (!this.coalescer) {
+      this.generation += 1
+      const generation = this.generation
+      this.coalescer = new NudgeCoalescer({
+        doc: input.target.doc,
+        glyph: input.target.glyph,
+        layer: input.target.layer,
+        label: input.label,
+        onEnd: () => this.close(generation),
+        onError: this.options.onError,
+      })
+    }
     this.coalescer.nudge(input.refs, input.delta, input.handles)
 
     // Accumulate against the layer the run started from: reloads are deferred
     // for its whole length, so that geometry stays put.
-    const base = this.run?.base ?? input.contours
+    const base = this.run?.base ?? this.carried ?? input.contours
     const total = this.run
       ? {
           x: this.run.total.x + input.delta.x,
@@ -103,8 +140,11 @@ export class NudgeRunner {
     }
   }
 
-  private close(): void {
+  private close(generation: number): void {
+    // A run started while this one was closing owns the preview now.
+    if (generation !== this.generation) return
     this.run = null
+    this.carried = null
     this.options.onEnd()
   }
 }
