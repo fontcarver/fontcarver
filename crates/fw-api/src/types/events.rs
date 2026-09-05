@@ -16,9 +16,18 @@ pub struct ProgressEvent {
     pub stage: String,
     /// Completion of the whole operation from 0 to 100.
     pub percent: u8,
+    /// Failure detail, present on the terminal `failed` stage.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub message: Option<String>,
 }
 
 /// Everything the kernel pushes to subscribed frontends.
+///
+/// Document and progress events are ordered within their own kind but not
+/// against each other: progress is published directly by the operation while
+/// document events cross a forwarder thread, so a progress event can be
+/// delivered before a document event that happened first.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
 #[serde(tag = "kind")]
 #[ts(export)]

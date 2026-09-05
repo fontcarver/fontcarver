@@ -179,6 +179,23 @@ fn add_skips_existing_names_and_reports_unknown_items() {
 }
 
 #[test]
+fn an_oversized_range_is_skipped_instead_of_expanded() {
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(composite_font(), None);
+    let api = Api::new(session);
+
+    let result = api
+        .call(
+            "glyphs.add",
+            json!({ "doc": doc, "recipe": "U+0000-U+10FFFF" }),
+        )
+        .expect("add glyphs");
+
+    assert_eq!(result["added"], json!([]));
+    assert_eq!(result["skipped"], json!(["too-large: U+0000-U+10FFFF"]));
+}
+
+#[test]
 fn ids_returns_every_match_in_the_requested_order() {
     let (api, doc) = dejavu();
 
@@ -282,4 +299,27 @@ fn apply_accepts_outline_commands_through_json_dispatch() {
         "the moved point is missing: {:?}",
         outline.contours[0].points
     );
+
+    let before = outline.contours[0].points.len();
+    api.call(
+        "doc.apply",
+        json!({
+            "doc": doc,
+            "command": { "DeletePoints": {
+                "glyph": "a",
+                "layer": layer,
+                "points": [{ "contour": 0, "point": 0 }],
+                "mode": "Simple"
+            }},
+            "label": "Delete nodes"
+        }),
+    )
+    .expect("delete points in Simple mode through raw JSON");
+
+    let deleted: LayerOutline = serde_json::from_value(
+        api.call("glyphs.outline", json!({ "doc": doc, "gid": gid }))
+            .expect("read outline"),
+    )
+    .expect("decode outline");
+    assert_eq!(deleted.contours[0].points.len(), before - 1);
 }

@@ -1,4 +1,10 @@
-use fw_model::{Contour, Font, GlyphName, LayerId, Point, PointKind};
+use std::collections::BTreeSet;
+
+use fw_model::{
+    query::{declared_curve_format, CurveFormat},
+    Anchor, Component, Contour, Font, GlyphName, Layer, LayerId, LayerKind, MasterId, Point,
+    PointKind,
+};
 
 use crate::Error;
 
@@ -8,34 +14,181 @@ mod delete;
 mod points;
 mod segments;
 
+/// The contours an outline operation may have changed.
+///
+/// Indexes address the layer's contour list *after* the operation ran, so an
+/// operation that adds or removes contours reports where its results ended up.
+pub(super) enum Touched {
+    /// Only these contours were written.
+    Contours(BTreeSet<usize>),
+    /// The whole contour list was rebuilt.
+    Layer,
+}
+
+impl Touched {
+    /// Nothing that could be malformed was written.
+    fn none() -> Self {
+        Self::Contours(BTreeSet::new())
+    }
+
+    /// One contour, addressed by index.
+    fn one(index: usize) -> Self {
+        Self::Contours(BTreeSet::from([index]))
+    }
+
+    /// Every contour the listed points belong to.
+    fn of_points(points: &[PointRef]) -> Self {
+        Self::Contours(points.iter().map(|point| point.contour).collect())
+    }
+}
+
+/// The layer state an outline command may overwrite, captured before it runs.
+enum Restore {
+    /// Individual contours, components and anchors at stable indexes.
+    ///
+    /// Only commands that rewrite points in place — never adding, removing or
+    /// reordering a contour, component or anchor — are captured this way.
+    Parts {
+        /// Captured contours and where they sit.
+        contours: Vec<(usize, Contour)>,
+        /// Captured components and where they sit.
+        components: Vec<(usize, Component)>,
+        /// Captured anchors and where they sit.
+        anchors: Vec<(usize, Anchor)>,
+    },
+    /// The whole layer, for commands that restructure or rebuild it.
+    Layer(Box<Layer>),
+}
+
+impl Restore {
+    /// Captures everything `command` is able to overwrite in `target`.
+    fn capture(target: &Layer, command: &Command) -> Self {
+        match command {
+            Command::MovePoints { points, .. } | Command::SetSmooth { points, .. } => {
+                Self::contours(target, points.iter().map(|point| point.contour))
+            }
+            Command::SetPointPosition { point, .. } | Command::SetStartPoint { point, .. } => {
+                Self::contours(target, [point.contour])
+            }
+            Command::InsertPointOnSegment { contour, .. }
+            | Command::ConvertSegment { contour, .. } => Self::contours(target, [*contour]),
+            Command::ReverseContours { contours, .. } => {
+                Self::contours(target, contours.iter().copied())
+            }
+            Command::TransformSelection {
+                points,
+                components,
+                anchors,
+                ..
+            } if !(points.is_empty() && components.is_empty() && anchors.is_empty()) => {
+                Self::Parts {
+                    contours: pick(&target.contours, points.iter().map(|point| point.contour)),
+                    components: pick(&target.components, components.iter().copied()),
+                    anchors: pick(&target.anchors, anchors.iter().copied()),
+                }
+            }
+            _ => Self::Layer(Box::new(target.clone())),
+        }
+    }
+
+    /// Captures only the listed contours.
+    fn contours(target: &Layer, indices: impl IntoIterator<Item = usize>) -> Self {
+        Self::Parts {
+            contours: pick(&target.contours, indices),
+            components: Vec::new(),
+            anchors: Vec::new(),
+        }
+    }
+
+    /// Puts the captured state back.
+    fn apply_to(self, target: &mut Layer) {
+        match self {
+            Self::Layer(layer) => *target = *layer,
+            Self::Parts {
+                contours,
+                components,
+                anchors,
+            } => {
+                put_back(&mut target.contours, contours);
+                put_back(&mut target.components, components);
+                put_back(&mut target.anchors, anchors);
+            }
+        }
+    }
+}
+
+/// Clones the values at the listed indexes, skipping indexes out of range.
+fn pick<T: Clone>(values: &[T], indices: impl IntoIterator<Item = usize>) -> Vec<(usize, T)> {
+    let mut chosen: Vec<usize> = indices.into_iter().collect();
+    chosen.sort_unstable();
+    chosen.dedup();
+    chosen
+        .into_iter()
+        .filter_map(|index| values.get(index).map(|value| (index, value.clone())))
+        .collect()
+}
+
+/// Writes captured values back to the indexes they came from.
+fn put_back<T>(values: &mut [T], captured: Vec<(usize, T)>) {
+    for (index, value) in captured {
+        if let Some(slot) = values.get_mut(index) {
+            *slot = value;
+        }
+    }
+}
+
 /// Applies one outline command and rejects any malformed result.
 ///
-/// The command's layer is captured before the operation and restored when the
-/// operation fails or leaves a contour that `Contour::try_to_bezpath` rejects,
-/// so a failed outline command never changes the document.
+/// Whatever the command can overwrite is captured before the operation and put
+/// back when the operation fails or leaves one of the contours it touched in a
+/// state that `Contour::try_to_bezpath` rejects, so a failed outline command
+/// never changes the document. A command that only rewrites existing points,
+/// components and anchors in place captures exactly the parts it names; a
+/// command that adds, removes or rebuilds contours captures the whole layer.
+/// Either way a rejected `TransformSelection` restores its component transforms
+/// and anchor positions along with the contours. This capture is not the whole
+/// cost of an edit: `Document::apply_command` snapshots the glyph for undo
+/// around every command, preview frames included.
+///
+/// Only the contours an operation reports touching are checked. A layer may
+/// already hold a contour the model tolerates but the path builder rejects (an
+/// import can produce one), and such a contour must not block editing of the
+/// contours around it.
 pub(super) fn apply(font: &mut Font, command: &Command) -> Result<(), Error> {
     let Some((glyph, layer)) = target(command) else {
         return Err(Error::Internal(
             "non-outline command routed to outline handler".to_owned(),
         ));
     };
-    let restore = layer_mut(font, glyph, layer)?.contours.clone();
-    let outcome = dispatch(font, command).and_then(|()| validate(font, glyph, layer));
+    let restore = Restore::capture(layer_mut(font, glyph, layer)?, command);
+    let outcome =
+        dispatch(font, command).and_then(|touched| validate(font, glyph, layer, &touched));
     if outcome.is_err() {
         if let Ok(target) = layer_mut(font, glyph, layer) {
-            target.contours = restore;
+            restore.apply_to(target);
         }
     }
     outcome
 }
 
-fn validate(font: &mut Font, glyph: &GlyphName, layer: &LayerId) -> Result<(), Error> {
+fn validate(
+    font: &mut Font,
+    glyph: &GlyphName,
+    layer: &LayerId,
+    touched: &Touched,
+) -> Result<(), Error> {
     let target = layer_mut(font, glyph, layer)?;
-    match target
-        .contours
-        .iter()
-        .find_map(|contour| contour.try_to_bezpath().err())
-    {
+    let malformed = match touched {
+        Touched::Layer => target
+            .contours
+            .iter()
+            .find_map(|contour| contour.try_to_bezpath().err()),
+        Touched::Contours(indices) => indices
+            .iter()
+            .filter_map(|&index| target.contours.get(index))
+            .find_map(|contour| contour.try_to_bezpath().err()),
+    };
+    match malformed {
         Some(error) => Err(Error::InvalidCommand(format!(
             "the command would leave a malformed contour: {error}"
         ))),
@@ -63,7 +216,7 @@ fn target(command: &Command) -> Option<(&GlyphName, &LayerId)> {
     }
 }
 
-fn dispatch(font: &mut Font, command: &Command) -> Result<(), Error> {
+fn dispatch(font: &mut Font, command: &Command) -> Result<Touched, Error> {
     match command {
         Command::MovePoints {
             glyph,
@@ -159,9 +312,89 @@ fn validate_points(contours: &[Contour], points: &[PointRef]) -> Result<(), Erro
     Ok(())
 }
 
+/// Maximum cubic-to-quadratic approximation error used for generated handles.
+const QUADRATIC_MAX_ERR: f64 = 0.1;
+
+/// What one layer's own outlines say about their curve family.
+enum LayerCurves {
+    /// No curved segment at all, so the outlines say nothing.
+    Ambiguous,
+    /// Every curved segment is quadratic.
+    Quadratic,
+    /// Every curved segment is cubic.
+    Cubic,
+    /// Both families are present.
+    Mixed,
+}
+
+/// The curve kind an operation on one layer should produce.
+///
+/// The font's declared format — which [`fw_model::query::declared_curve_format`]
+/// reads from what an import preserved — decides, because a layer holding only
+/// straight segments says nothing about the family the font is drawn in. The one
+/// exception is a layer whose curves *uniformly* contradict the declaration: the
+/// declaration is import provenance and does not follow a
+/// [`PathOp::ConvertCurves`](super::PathOp::ConvertCurves) the user ran, so an
+/// imported TrueType glyph converted to cubic keeps receiving cubic handles. A
+/// layer mixing both families follows the declaration, and a document that
+/// declares nothing falls back to [`inferred_kind`].
+fn layer_curve_kind(font: &Font, glyph: &GlyphName, layer: &LayerId) -> CurveKind {
+    let target = font.glyph(glyph).and_then(|glyph| glyph.layer(layer));
+    let contours = target.map_or(&[][..], |layer| layer.contours.as_slice());
+    let master = target.and_then(layer_master);
+    let quadratic = CurveKind::Quadratic {
+        max_err: QUADRATIC_MAX_ERR,
+    };
+    match declared_curve_format(font, master.as_ref()) {
+        None => inferred_kind(contours),
+        Some(CurveFormat::Quadratic) => match layer_curves(contours) {
+            LayerCurves::Cubic => CurveKind::Cubic,
+            _ => quadratic,
+        },
+        Some(CurveFormat::Cubic) => match layer_curves(contours) {
+            LayerCurves::Quadratic => quadratic,
+            _ => CurveKind::Cubic,
+        },
+    }
+}
+
+/// Reads the curve families present in a layer's stored point kinds.
+fn layer_curves(contours: &[Contour]) -> LayerCurves {
+    let mut quadratic = false;
+    let mut cubic = false;
+    for point in contours.iter().flat_map(|contour| &contour.points) {
+        match point.kind {
+            PointKind::QCurve => quadratic = true,
+            PointKind::Curve => cubic = true,
+            _ => {}
+        }
+    }
+    match (quadratic, cubic) {
+        (false, false) => LayerCurves::Ambiguous,
+        (true, false) => LayerCurves::Quadratic,
+        (false, true) => LayerCurves::Cubic,
+        (true, true) => LayerCurves::Mixed,
+    }
+}
+
+/// The master a layer belongs to, when it belongs to one.
+fn layer_master(layer: &Layer) -> Option<MasterId> {
+    match &layer.kind {
+        LayerKind::Master(master)
+        | LayerKind::Background(master)
+        | LayerKind::Brace { master, .. }
+        | LayerKind::Bracket { master, .. } => Some(master.clone()),
+        LayerKind::Backup { of, .. } => Some(of.clone()),
+        LayerKind::Custom(_) => None,
+    }
+}
+
+/// The curve kind a layer's own outlines suggest.
 fn inferred_kind(contours: &[Contour]) -> CurveKind {
     if contours.iter().any(Contour::is_quadratic) {
-        CurveKind::Quadratic { max_err: 0.1 }
+        CurveKind::Quadratic {
+            max_err: QUADRATIC_MAX_ERR,
+        }
     } else {
         CurveKind::Cubic
     }

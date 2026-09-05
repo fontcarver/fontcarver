@@ -58,6 +58,10 @@ pub(crate) fn close(api: &Api, params: CloseParams) -> Result<(), ApiError> {
         .lock()
         .map_err(|_| ApiError::internal("API warning cache lock is poisoned"))?
         .remove(&params.doc);
+    api.recovered
+        .lock()
+        .map_err(|_| ApiError::internal("API recovery marker lock is poisoned"))?
+        .remove(&params.doc);
     Ok(())
 }
 
@@ -98,6 +102,11 @@ pub(crate) fn save(api: &Api, params: SaveParams) -> Result<DocSummary, ApiError
     };
     api.session
         .with_doc_mut(params.doc, |document| document.save(Path::new(&path)))??;
+    // The document now *is* the file on disk, so it is no longer a recovery.
+    api.recovered
+        .lock()
+        .map_err(|_| ApiError::internal("API recovery marker lock is poisoned"))?
+        .remove(&params.doc);
     prefs::record_recent(api, path)?;
     summary_for(api, params.doc)
 }
@@ -126,6 +135,10 @@ pub(crate) fn recover(api: &Api, params: RecoveryParams) -> Result<DocSummary, A
     let autosave_path = PathBuf::from(&params.autosave_path);
     let entry = recovery_entry(api, &autosave_path)?;
     let font = fw_doc::fwf::read(&autosave_path)?;
+    let recovered_from = entry
+        .doc_path
+        .as_ref()
+        .map(|path| path.to_string_lossy().into_owned());
     let doc = api.session.open_font(font, entry.doc_path);
     // The snapshot is by definition newer than the document on disk.
     api.session
@@ -134,6 +147,12 @@ pub(crate) fn recover(api: &Api, params: RecoveryParams) -> Result<DocSummary, A
         .lock()
         .map_err(|_| ApiError::internal("API warning cache lock is poisoned"))?
         .insert(doc, Vec::new());
+    if let Some(recovered_from) = recovered_from {
+        api.recovered
+            .lock()
+            .map_err(|_| ApiError::internal("API recovery marker lock is poisoned"))?
+            .insert(doc, recovered_from);
+    }
     summary_for(api, doc)
 }
 
@@ -190,12 +209,25 @@ pub(crate) fn summary_for(api: &Api, doc: DocId) -> Result<DocSummary, ApiError>
         .get(&doc)
         .cloned()
         .unwrap_or_default();
+    let recovered_from = api
+        .recovered
+        .lock()
+        .map_err(|_| ApiError::internal("API recovery marker lock is poisoned"))?
+        .get(&doc)
+        .cloned();
     api.session
-        .with_doc(doc, |document| build_summary(doc, document, warnings))
+        .with_doc(doc, |document| {
+            build_summary(doc, document, warnings, recovered_from)
+        })
         .map_err(ApiError::from)
 }
 
-fn build_summary(doc: DocId, document: &Document, warnings: Vec<DocWarning>) -> DocSummary {
+fn build_summary(
+    doc: DocId,
+    document: &Document,
+    warnings: Vec<DocWarning>,
+    recovered_from: Option<String>,
+) -> DocSummary {
     DocSummary {
         doc,
         path: document
@@ -233,6 +265,7 @@ fn build_summary(doc: DocId, document: &Document, warnings: Vec<DocWarning>) -> 
         redo_label: document.redo_label().map(str::to_owned),
         format: document_format(document),
         warnings,
+        recovered_from,
     }
 }
 

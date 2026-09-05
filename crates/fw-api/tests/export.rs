@@ -3,7 +3,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use fw_api::{Api, Event, ExportReport, RecoveryEntry};
+use fw_api::{
+    Api, Event, ExportReport, RecoveryEntry, COMPILE_STAGE, FAILED_STAGE, PRESERVE_STAGE,
+    WRITE_STAGE,
+};
 use fw_doc::{
     autosave::{spawn, AutosaveConfig},
     Session,
@@ -100,11 +103,92 @@ fn export_emits_compile_and_write_progress() {
     assert_eq!(
         stages,
         vec![
-            ("compile".to_owned(), 0),
-            ("preserve".to_owned(), 60),
-            ("write".to_owned(), 100),
+            (COMPILE_STAGE.to_owned(), 0),
+            (PRESERVE_STAGE.to_owned(), 60),
+            (WRITE_STAGE.to_owned(), 90),
+            (WRITE_STAGE.to_owned(), 100),
         ]
     );
+    // The exported names are part of the wire contract with the frontend.
+    assert_eq!(
+        [COMPILE_STAGE, PRESERVE_STAGE, WRITE_STAGE, FAILED_STAGE],
+        ["compile", "preserve", "write", "failed"]
+    );
+}
+
+#[test]
+fn a_failing_export_always_ends_with_a_terminal_progress_event() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(export_font(), None);
+    let api = Api::new(session);
+    let mut events = api.subscribe();
+
+    // A master that does not exist fails before any stage starts.
+    api.call(
+        "session.export",
+        json!({
+            "doc": doc,
+            "path": directory.path().join("Unknown.ttf"),
+            "options": { "format": "Ttf", "master": "nope" }
+        }),
+    )
+    .expect_err("unknown master");
+    let unknown = progress_stages(&mut events);
+    assert_eq!(
+        unknown
+            .last()
+            .map(|(stage, percent, _)| (stage.as_str(), *percent)),
+        Some((FAILED_STAGE, 100)),
+        "{unknown:?}"
+    );
+    assert!(
+        unknown
+            .last()
+            .and_then(|(_, _, message)| message.clone())
+            .is_some_and(|message| message.contains("nope")),
+        "{unknown:?}"
+    );
+
+    // A path that cannot be created fails after the compile stages ran.
+    let blocker = directory.path().join("blocker");
+    std::fs::write(&blocker, b"not a directory").expect("write the blocking file");
+    api.call(
+        "session.export",
+        json!({
+            "doc": doc,
+            "path": blocker.join("Blocked.ttf"),
+            "options": { "format": "Ttf" }
+        }),
+    )
+    .expect_err("unwritable path");
+    let blocked = progress_stages(&mut events);
+    assert_eq!(
+        blocked
+            .iter()
+            .map(|(stage, percent, _)| (stage.as_str(), *percent))
+            .collect::<Vec<_>>(),
+        vec![
+            (COMPILE_STAGE, 0),
+            (PRESERVE_STAGE, 60),
+            (WRITE_STAGE, 90),
+            (FAILED_STAGE, 100)
+        ],
+        "{blocked:?}"
+    );
+}
+
+/// Drains the buffered progress events of one operation.
+fn progress_stages(
+    events: &mut tokio::sync::broadcast::Receiver<Event>,
+) -> Vec<(String, u8, Option<String>)> {
+    let mut stages = Vec::new();
+    while let Ok(event) = events.try_recv() {
+        if let Event::Progress(progress) = event {
+            stages.push((progress.stage, progress.percent, progress.message));
+        }
+    }
+    stages
 }
 
 #[test]
@@ -148,6 +232,70 @@ fn layer_of(session: &Session, doc: fw_doc::DocId, glyph: &str) -> String {
                 .expect("master layer")
         })
         .expect("open document")
+}
+
+#[test]
+fn exporting_an_untouched_import_preserves_its_raw_tables() {
+    use read_fonts::{FontRef, TableProvider as _};
+
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let path = directory.path().join("Preserved.ttf");
+    let source = fw_fixtures::path("DejaVuSansMin.woff2");
+    let api = Api::new(Arc::new(Session::new()));
+    api.configure_config_dir(directory.path().join("config"))
+        .expect("configure the config directory");
+    let summary = api
+        .call("session.open", json!({ "path": source }))
+        .expect("open the imported font");
+    let doc = summary["doc"].clone();
+
+    let report: ExportReport = serde_json::from_value(
+        api.call(
+            "session.export",
+            json!({ "doc": doc, "path": path, "options": { "format": "Ttf" } }),
+        )
+        .expect("export ttf"),
+    )
+    .expect("decode export report");
+
+    assert_eq!(report.touched_glyphs, 0);
+    assert!(
+        !report
+            .warnings
+            .iter()
+            .any(|warning| warning.code.starts_with("hinting-dropped")),
+        "an untouched import must keep its hinting: {:?}",
+        report.warnings
+    );
+
+    let imported = fw_sfnt::read_path(&source, &fw_sfnt::ReadOptions::default())
+        .expect("read the fixture")
+        .fonts
+        .remove(0);
+    let original = imported
+        .extra
+        .source
+        .as_ref()
+        .and_then(|source| source.original_bytes.clone())
+        .expect("imported source bytes");
+    let written = std::fs::read(&path).expect("read the exported font");
+    let input = FontRef::new(&original).expect("parse the imported sfnt");
+    let output = FontRef::new(&written).expect("parse the exported font");
+    for tag in [*b"glyf", *b"loca", *b"maxp", *b"fpgm", *b"prep", *b"cvt "] {
+        let tag = read_fonts::types::Tag::new(&tag);
+        assert_eq!(
+            output.table_data(tag).map(|data| data.as_bytes().to_vec()),
+            input.table_data(tag).map(|data| data.as_bytes().to_vec()),
+            "{tag} was not preserved verbatim"
+        );
+    }
+    for (tag, expected) in &imported.extra.raw_tables {
+        let actual = output
+            .table_data(read_fonts::types::Tag::new(&tag.0))
+            .unwrap_or_else(|| panic!("missing preserved {tag}"));
+        assert_eq!(actual.as_bytes(), expected, "raw table {tag} changed");
+    }
+    assert!(output.glyf().is_ok());
 }
 
 #[test]
@@ -222,6 +370,18 @@ fn recovery_lists_opens_and_discards_an_autosave() {
     assert_eq!(summary["family_name"], "Export Test");
     assert_eq!(summary["path"], json!(document_path.to_str()));
     assert_eq!(summary["dirty"], json!(true));
+    assert_eq!(
+        summary["recovered_from"],
+        json!(document_path.to_str()),
+        "a recovered document must be marked as such"
+    );
+    let opened = api
+        .call("doc.summary", json!({ "doc": doc }))
+        .expect("summary of the normally opened document");
+    assert!(
+        opened.get("recovered_from").is_none(),
+        "a normally opened document must not be marked as recovered: {opened}"
+    );
 
     api.call(
         "session.discard_recovery",
@@ -234,6 +394,17 @@ fn recovery_lists_opens_and_discards_an_autosave() {
             .expect("list recoverable documents"),
         json!([])
     );
+
+    // Saving the recovery over its original file ends the recovered state, so a
+    // UI banner driven by the marker does not stay up for the rest of the session.
+    let saved = api
+        .call("session.save", json!({ "doc": summary["doc"] }))
+        .expect("save the recovered document");
+    assert!(
+        saved.get("recovered_from").is_none(),
+        "a saved document is no longer a recovery: {saved}"
+    );
+    assert_eq!(saved["dirty"], json!(false));
 }
 
 fn wait_for_recoverable(api: &Api) -> Vec<RecoveryEntry> {

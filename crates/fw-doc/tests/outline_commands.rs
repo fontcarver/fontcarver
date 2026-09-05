@@ -735,3 +735,330 @@ fn a_malformed_contour_is_rejected_and_leaves_the_layer_unchanged() {
         })
         .unwrap();
 }
+
+/// A font whose provenance declares TrueType (quadratic) outlines.
+fn quadratic_font() -> fw_model::Font {
+    let mut font = test_font();
+    font.extra.source = Some(fw_model::SourceProvenance {
+        format: "sfnt".to_owned(),
+        table_tags: vec![fw_model::Tag(*b"head"), fw_model::Tag(*b"glyf")],
+        ..fw_model::SourceProvenance::default()
+    });
+    font
+}
+
+#[test]
+fn a_quadratic_font_gets_quadratic_handles_on_a_straight_glyph() {
+    let session = Session::new();
+    let id = session.open_font(quadratic_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let glyph = GlyphName::from("base");
+            let layer = doc.font.glyph(&glyph).unwrap().layers[0].id.clone();
+            assert!(
+                doc.font.glyph(&glyph).unwrap().layers[0].contours[0]
+                    .points
+                    .iter()
+                    .all(|point| point.kind == PointKind::Line),
+                "the fixture glyph holds no curve to infer a kind from"
+            );
+            doc.apply(
+                Command::ConvertSegment {
+                    glyph: glyph.clone(),
+                    layer,
+                    contour: 0,
+                    segment: 0,
+                    to: SegmentKind::Curve,
+                },
+                "Curve",
+            )
+            .unwrap();
+            let contour = &doc.font.glyph(&glyph).unwrap().layers[0].contours[0];
+            assert_eq!(contour.points.len(), 5, "one control point is inserted");
+            assert!(
+                !contour
+                    .points
+                    .iter()
+                    .any(|point| point.kind == PointKind::Curve),
+                "a TrueType font must not receive cubic handles"
+            );
+            assert_eq!(contour.points[1].kind, PointKind::OffCurve);
+            assert_eq!((contour.points[1].x, contour.points[1].y), (50.0, 0.0));
+            assert_eq!(contour.points[2].kind, PointKind::QCurve);
+            contour.try_to_bezpath().unwrap();
+        })
+        .unwrap();
+}
+
+#[test]
+fn a_font_without_a_declaration_still_infers_the_kind_from_the_outlines() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let glyph = GlyphName::from("base");
+            let layer = doc.font.glyph(&glyph).unwrap().layers[0].id.clone();
+            doc.apply(
+                Command::ConvertSegment {
+                    glyph: glyph.clone(),
+                    layer,
+                    contour: 0,
+                    segment: 0,
+                    to: SegmentKind::Curve,
+                },
+                "Curve",
+            )
+            .unwrap();
+            let contour = &doc.font.glyph(&glyph).unwrap().layers[0].contours[0];
+            assert_eq!(contour.points.len(), 6, "two handles are inserted");
+            assert_eq!(contour.points[3].kind, PointKind::Curve);
+            contour.try_to_bezpath().unwrap();
+        })
+        .unwrap();
+}
+
+/// An open contour whose cubic endpoint is preceded by a single handle.
+fn malformed_contour() -> Contour {
+    Contour {
+        closed: false,
+        points: vec![
+            Point {
+                x: 0.0,
+                y: 0.0,
+                kind: PointKind::Move,
+                ..Point::default()
+            },
+            Point {
+                x: 10.0,
+                y: 10.0,
+                kind: PointKind::OffCurve,
+                ..Point::default()
+            },
+            Point {
+                x: 20.0,
+                y: 0.0,
+                kind: PointKind::Curve,
+                ..Point::default()
+            },
+        ],
+        ..Contour::default()
+    }
+}
+
+#[test]
+fn a_pre_existing_malformed_contour_does_not_block_edits_on_other_contours() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let glyph = GlyphName::from("base");
+            let layer = doc.font.glyph(&glyph).unwrap().layers[0].id.clone();
+            doc.font.glyph_mut(&glyph).unwrap().layers[0]
+                .contours
+                .push(malformed_contour());
+
+            doc.apply(
+                Command::MovePoints {
+                    glyph: glyph.clone(),
+                    layer: layer.clone(),
+                    points: vec![PointRef {
+                        contour: 0,
+                        point: 1,
+                    }],
+                    delta: (5.0, 7.0),
+                    handles: HandleMode::PointsOnly,
+                },
+                "Move",
+            )
+            .expect("an untouched malformed contour must not block the edit");
+            let contours = &doc.font.glyph(&glyph).unwrap().layers[0].contours;
+            assert_eq!(
+                (contours[0].points[1].x, contours[0].points[1].y),
+                (105.0, 7.0)
+            );
+            assert_eq!(contours.len(), 2, "the malformed contour is left alone");
+
+            let before = doc.font.glyph(&glyph).unwrap().clone();
+            let error = doc
+                .apply(
+                    Command::AddContour {
+                        glyph: glyph.clone(),
+                        layer,
+                        contour: malformed_contour(),
+                    },
+                    "Add malformed contour",
+                )
+                .unwrap_err();
+            assert!(matches!(error, Error::InvalidCommand(_)), "{error}");
+            assert_eq!(
+                doc.font.glyph(&glyph).unwrap(),
+                &before,
+                "a command that malforms the contour it touches is still rejected"
+            );
+        })
+        .unwrap();
+}
+
+#[test]
+fn a_rejected_transform_restores_components_and_anchors_too() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let glyph = GlyphName::from("base");
+            let layer = doc.font.glyph(&glyph).unwrap().layers[0].id.clone();
+            {
+                let target = &mut doc.font.glyph_mut(&glyph).unwrap().layers[0];
+                target.contours.push(malformed_contour());
+                target.components.push(fw_model::Component {
+                    base: GlyphName::from("composite"),
+                    ..fw_model::Component::default()
+                });
+                target.anchors.push(fw_model::Anchor {
+                    name: "top".to_owned(),
+                    x: 40.0,
+                    y: 60.0,
+                });
+            }
+            let before = doc.font.glyph(&glyph).unwrap().clone();
+
+            let error = doc
+                .apply(
+                    Command::TransformSelection {
+                        glyph: glyph.clone(),
+                        layer: layer.clone(),
+                        points: vec![PointRef {
+                            contour: 1,
+                            point: 0,
+                        }],
+                        components: vec![0],
+                        anchors: vec![0],
+                        affine: Affine::translate((11.0, 13.0)).as_coeffs(),
+                    },
+                    "Transform",
+                )
+                .unwrap_err();
+            assert!(matches!(error, Error::InvalidCommand(_)), "{error}");
+            assert_eq!(
+                doc.font.glyph(&glyph).unwrap(),
+                &before,
+                "components and anchors are restored with the contours"
+            );
+
+            let error = doc
+                .apply(
+                    Command::TransformSelection {
+                        glyph: glyph.clone(),
+                        layer,
+                        points: Vec::new(),
+                        components: Vec::new(),
+                        anchors: Vec::new(),
+                        affine: Affine::scale(2.0).as_coeffs(),
+                    },
+                    "Transform everything",
+                )
+                .unwrap_err();
+            assert!(matches!(error, Error::InvalidCommand(_)), "{error}");
+            assert_eq!(
+                doc.font.glyph(&glyph).unwrap(),
+                &before,
+                "a whole-layer transform restores the whole layer"
+            );
+        })
+        .unwrap();
+}
+
+#[test]
+fn a_layer_converted_to_cubic_outranks_the_import_declaration() {
+    let session = Session::new();
+    let id = session.open_font(quadratic_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let glyph = GlyphName::from("base");
+            let layer = doc.font.glyph(&glyph).unwrap().layers[0].id.clone();
+            doc.font.glyph_mut(&glyph).unwrap().layers[0].contours = vec![quadratic_triangle()];
+
+            doc.apply(
+                Command::PathOp {
+                    glyph: glyph.clone(),
+                    layer: layer.clone(),
+                    op: PathOp::ConvertCurves(CurveKind::Cubic),
+                },
+                "To cubic",
+            )
+            .unwrap();
+            let contour = &doc.font.glyph(&glyph).unwrap().layers[0].contours[0];
+            assert!(
+                contour
+                    .points
+                    .iter()
+                    .any(|point| point.kind == PointKind::Curve)
+                    && !contour.is_quadratic(),
+                "the layer is uniformly cubic after the conversion"
+            );
+
+            doc.apply(
+                Command::ConvertSegment {
+                    glyph: glyph.clone(),
+                    layer: layer.clone(),
+                    contour: 0,
+                    segment: 0,
+                    to: SegmentKind::Line,
+                },
+                "Line",
+            )
+            .unwrap();
+            doc.apply(
+                Command::ConvertSegment {
+                    glyph: glyph.clone(),
+                    layer,
+                    contour: 0,
+                    segment: 0,
+                    to: SegmentKind::Curve,
+                },
+                "Curve",
+            )
+            .unwrap();
+            let contour = &doc.font.glyph(&glyph).unwrap().layers[0].contours[0];
+            assert!(
+                !contour.is_quadratic(),
+                "outlines the user converted to cubic outrank the import declaration"
+            );
+            assert_eq!(contour.points[1].kind, PointKind::OffCurve);
+            assert_eq!(contour.points[2].kind, PointKind::OffCurve);
+            assert_eq!(contour.points[3].kind, PointKind::Curve);
+            contour.try_to_bezpath().unwrap();
+        })
+        .unwrap();
+}
+
+#[test]
+fn cubic_outlines_without_a_declaration_stay_cubic() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let glyph = GlyphName::from("base");
+            let layer = doc.font.glyph(&glyph).unwrap().layers[0].id.clone();
+            doc.font.glyph_mut(&glyph).unwrap().layers[0]
+                .contours
+                .push(cubic_contour());
+
+            doc.apply(
+                Command::ConvertSegment {
+                    glyph: glyph.clone(),
+                    layer,
+                    contour: 0,
+                    segment: 0,
+                    to: SegmentKind::Curve,
+                },
+                "Curve",
+            )
+            .unwrap();
+            let contour = &doc.font.glyph(&glyph).unwrap().layers[0].contours[0];
+            assert_eq!(contour.points.len(), 6, "two handles are inserted");
+            assert_eq!(contour.points[3].kind, PointKind::Curve);
+            contour.try_to_bezpath().unwrap();
+        })
+        .unwrap();
+}

@@ -136,6 +136,7 @@ fn plan_additions(document: &Document, items: &[RecipeItem]) -> Additions {
     for item in items {
         match item {
             RecipeItem::Unknown(token) => skipped.push(token.clone()),
+            RecipeItem::TooLarge(token) => skipped.push(format!("too-large: {token}")),
             RecipeItem::Glyph { name, unicode } => {
                 if document.font.glyph(name).is_some() || added.contains(name) {
                     skipped.push(name.to_string());

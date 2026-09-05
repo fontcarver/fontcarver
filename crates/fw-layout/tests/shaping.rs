@@ -1,6 +1,10 @@
-use std::time::{Duration, Instant};
+use std::{
+    sync::Arc,
+    thread,
+    time::{Duration, Instant},
+};
 
-use fw_layout::{FontKey, ShapeRequest, Shaper};
+use fw_layout::{widths_for_text, FontKey, ShapeRequest, ShapedRun, Shaper};
 use fw_model::{Contour, FeatureBlock, Font, Glyph, Layer, MasterId};
 use kurbo::BezPath;
 
@@ -199,4 +203,180 @@ fn forget_drops_the_cached_font_of_one_document() {
     shaper.forget(key.doc);
 
     assert!(!shaper.is_current(&key, 7));
+}
+
+/// Polls `attempt` until it yields a run or the deadline passes.
+fn wait_for(mut attempt: impl FnMut() -> Option<ShapedRun>) -> ShapedRun {
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        if let Some(run) = attempt() {
+            return run;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "the shaper never reached the expected state"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
+#[test]
+fn a_scheduled_rebuild_is_not_copied_again_for_the_same_generation() {
+    let font = ligature_font();
+    // A long debounce keeps the scheduled builds pending for the whole test.
+    let shaper = Shaper::with_debounce(Duration::from_secs(30));
+    let key = key(&font);
+    let widths = widths_for_text(&font, &key.master, "f");
+    shaper
+        .shape(&font, &key, 1, &request("f"))
+        .expect("compile the first shaping font");
+
+    let first = shaper.plan(&key, 2);
+    assert!(
+        first.needs_font(),
+        "a new generation must schedule a rebuild"
+    );
+    let run = shaper
+        .shape_planned(first, Some(font.clone()), &widths, &request("f"))
+        .expect("stale shape");
+    assert!(run.stale, "{run:?}");
+
+    assert!(
+        !shaper.plan(&key, 2).needs_font(),
+        "a pending build for the same generation must not copy the font again"
+    );
+
+    let newer = shaper.plan(&key, 3);
+    assert!(
+        newer.needs_font(),
+        "a generation nothing is building for must schedule a rebuild"
+    );
+    shaper
+        .shape_planned(newer, Some(font.clone()), &widths, &request("f"))
+        .expect("stale shape at the newer generation");
+    assert!(
+        !shaper.plan(&key, 2).needs_font(),
+        "a pending build for a newer generation must not copy the font again"
+    );
+}
+
+#[test]
+fn a_cached_generation_never_copies_the_font() {
+    let font = ligature_font();
+    let shaper = Shaper::new();
+    let key = key(&font);
+    shaper
+        .shape(&font, &key, 4, &request("f"))
+        .expect("compile the first shaping font");
+
+    assert!(!shaper.plan(&key, 4).needs_font());
+}
+
+#[test]
+fn a_failed_rebuild_is_reported_and_retried_on_the_next_generation() {
+    let mut font = ligature_font();
+    let shaper = Shaper::with_debounce(Duration::from_millis(10));
+    let key = key(&font);
+    shaper
+        .shape(&font, &key, 1, &request("f"))
+        .expect("compile the first shaping font");
+
+    font.features.features[0].code = "this is not valid feature code".to_owned();
+    shaper
+        .shape(&font, &key, 2, &request("f"))
+        .expect("serve the stale font while the rebuild fails");
+
+    let failed = wait_for(|| {
+        let run = shaper
+            .shape(&font, &key, 2, &request("f"))
+            .expect("shape while the rebuild fails");
+        run.warnings
+            .iter()
+            .any(|warning| warning.starts_with("compile-failed"))
+            .then_some(run)
+    });
+    assert!(failed.stale, "{failed:?}");
+
+    font.features.features[0].code = "sub f i by f_i;".to_owned();
+    shaper
+        .shape(&font, &key, 3, &request("f"))
+        .expect("shape after repairing the feature source");
+    let fresh = wait_for(|| {
+        shaper.is_current(&key, 3).then(|| {
+            shaper
+                .shape(&font, &key, 3, &request("fi"))
+                .expect("shape with the rebuilt font")
+        })
+    });
+
+    assert!(!fresh.stale, "{fresh:?}");
+    assert!(fresh.warnings.is_empty(), "{:?}", fresh.warnings);
+    assert_eq!(fresh.names, vec![Some("f_i".to_owned())]);
+}
+
+#[test]
+fn a_claimed_rebuild_is_not_copied_by_a_concurrent_request() {
+    let font = ligature_font();
+    // A long debounce keeps the claim and the pending build alive for the test.
+    let shaper = Shaper::with_debounce(Duration::from_secs(30));
+    let key = key(&font);
+    shaper
+        .shape(&font, &key, 1, &request("f"))
+        .expect("compile the first shaping font");
+
+    let claimant = shaper.plan(&key, 2);
+    assert!(
+        claimant.needs_font(),
+        "the first stale request must rebuild"
+    );
+    let concurrent = shaper.plan(&key, 2);
+    assert!(
+        !concurrent.needs_font(),
+        "a claimed rebuild must not copy the font a second time"
+    );
+
+    // An unconsumed plan releases its claim, so the build is not lost.
+    drop(claimant);
+    drop(concurrent);
+    assert!(
+        shaper.plan(&key, 2).needs_font(),
+        "a released claim must be retakeable"
+    );
+}
+
+#[test]
+fn a_claimed_first_compile_is_awaited_instead_of_repeated() {
+    let font = ligature_font();
+    let shaper = Arc::new(Shaper::new());
+    let key = key(&font);
+    let widths = widths_for_text(&font, &key.master, "fi");
+
+    let claimant = shaper.plan(&key, 1);
+    assert!(claimant.needs_font(), "the first compile must be claimed");
+    let waiting = shaper.plan(&key, 1);
+    assert!(
+        !waiting.needs_font(),
+        "a claimed first compile must not be repeated"
+    );
+
+    let waiter = {
+        let shaper = Arc::clone(&shaper);
+        let widths = widths.clone();
+        // No font is handed over, so the waiter cannot compile: it can only
+        // succeed by waiting for the claimant's result.
+        thread::spawn(move || shaper.shape_planned(waiting, None, &widths, &request("fi")))
+    };
+    thread::sleep(Duration::from_millis(50));
+    let claimed = shaper
+        .shape_planned(claimant, Some(font.clone()), &widths, &request("fi"))
+        .expect("the claimed first compile");
+    let waited = waiter
+        .join()
+        .expect("join the waiting thread")
+        .expect("the waiting request");
+
+    assert!(!claimed.stale, "{claimed:?}");
+    assert!(!waited.stale, "{waited:?}");
+    assert_eq!(waited.names, claimed.names);
+    assert_eq!(waited.glyphs, claimed.glyphs);
 }

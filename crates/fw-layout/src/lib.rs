@@ -11,4 +11,7 @@ mod error;
 mod shaping;
 
 pub use error::Error;
-pub use shaping::{FontKey, ShapeRequest, ShapedGlyph, ShapedRun, Shaper, DEFAULT_DEBOUNCE};
+pub use shaping::{
+    widths_for_text, FontKey, ModelWidths, ShapePlan, ShapeRequest, ShapedGlyph, ShapedRun, Shaper,
+    COMPILE_FAILED, DEFAULT_DEBOUNCE,
+};

@@ -121,6 +121,9 @@ impl From<fw_layout::Error> for ApiError {
             fw_layout::Error::MissingMaster(_) => Self::not_found(message),
             fw_layout::Error::Compile(error) => Self::from(error),
             fw_layout::Error::Parse(_) => Self::new("shaping", message),
+            fw_layout::Error::MissingFont | fw_layout::Error::AbandonedCompile => {
+                Self::internal(message)
+            }
         }
     }
 }
