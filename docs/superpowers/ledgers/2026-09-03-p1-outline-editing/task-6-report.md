@@ -578,3 +578,134 @@ a placeholder.
 4. **The undo flash suppresses a repeat of the same label**, so two identical
    consecutive actions flash once; and during a coalesced drag its 1.5 s window
    starts at the first apply rather than at pointer-up.
+
+
+---
+
+# Fix round 3
+
+Re-review: `task-6-rereview2.md` — finding 5 left open, five Minor items and one
+trivial one listed under New Breakage. Three commits on `p1-t6` from `3007a90`;
+not pushed. Every citation below was read out of the worktree at the commit that
+follows, not from memory.
+
+| SHA | Subject |
+| --- | --- |
+| `fca83b8` | fix(app): report one failure per gesture, whichever call failed |
+| `78e3bda` | fix(app): keep every nudge run behind the one it replaces |
+| `63efbe6` | fix(app): gate the Info box commit and let the gate expire |
+
+**1 — finding 5, one report per gesture.** The constructor's catch goes through
+`report()` (`app/src/editor/editSession.ts:100`), which sets `errored` and so
+makes `failed` (`:148`) true after a begin failure, as its doc comment always
+claimed; a later failure for a *different* reason is warned once to the console
+rather than stacked on the toast already showing (`:124-140`). Tests:
+`app/src/editor/editSession.test.ts` — the reviewer's PROBE A (a rejecting
+`doc.edit_begin`, one queue and one `end()`) now counts exactly one reporter
+call, a second unrelated failure produces one `console.warn` and no second
+report, and a clean gesture reports nothing. The two existing rejecting-apply
+tests assert the count as well (`editorController.test.ts:486-516`,
+`gestures/drag.test.ts` "reports a failing apply…").
+
+**2 — a late close clearing a newer run's preview.** A coalescer now holds
+exactly one run: `NudgeRunner.press` replaces it whenever the selection changes
+*or* the previous run has closed (`app/src/editor/nudgeRun.ts:95-105`), so every
+run gets its own generation and the guard in `close` (`:163-170`) covers the
+same-selection case the old code missed. Test:
+`editorController.test.ts:938` — with `edit_end` held open, a second press
+previews x = 220 and still previews it after the first run's close lands, with
+no reload requested mid-run (PROBE G).
+
+**3 — a new nudge run was not gated.** `NudgeCoalescer` takes the same `after`
+gate a drag uses (`gestures/nudge.ts:53-59`, `:105`), and the runner passes the
+closing run's promise into the replacement (`nudgeRun.ts:122`). Tests use a
+transport that models the kernel's token rules — `edit_begin` finalises the open
+edit and a stale `edit_apply` comes back `InvalidEditToken`
+(`app/src/test/mockTransport.ts:103-166`) — so a gesture jumping the queue is
+visible: `editorController.test.ts:874` (PROBE B, Tab-then-arrow), `:898` (a
+drag interrupting a run), `:920` (a single-shot command).
+
+**4 — a drag and the hit test based on the pre-nudge outline.** Both now index
+the geometry on screen: `editOutline()` rebuilds from `contours()` only when
+that changes (`editorController.ts:501-512`) and the drag takes
+`contours: this.contours()` (`:593`). PROBE H is the test at `:898`, which could
+not even find the node to drag before the fix.
+
+**5 — the Info box commit was not gated.** `commitField` closes the open run
+through the mounted editor before its `doc.apply`
+(`app/src/views/glyph/commitField.ts:26-28`). Test:
+`editorController.test.ts:991` (PROBE E2) — the sequence is
+`edit_begin · edit_apply · edit_end · apply` with no error.
+
+**6 — the gate never expired.** `settle()` stores the closing promise only while
+a run is closing and drops it when it resolves
+(`editorController.ts:441-452`). Test: `editorController.test.ts:970` — with
+nothing closing, a drag issues its `edit_begin` synchronously rather than
+queueing behind an already-resolved promise.
+
+**7 — components were never previewed.** They ride the same
+`TransformSelection` as the anchors, so they move in the preview under exactly
+that condition: offsets and bounds carry the delta
+(`gestures/drag.ts:493-524`), and the preview flows through
+`EditorPreview` (`editor/editorTypes.ts`) to the store, the Info box and the
+canvas's component markers (`views/glyph/GlyphView.tsx`). Tests:
+`gestures/drag.test.ts` "component preview" — a selected component's transform
+and bbox carry the delta and a `TransformSelection` is sent; an unselected one
+stays put.
+
+**Signature in one place.** `NudgeCoalescer`'s own signature branch is gone
+(`gestures/nudge.ts:88-96` no longer compares one); the runner builds the
+signature (`nudgeRun.ts:89-91`) because only it can carry the closed run's
+geometry forward and gate the replacement. The coalescer's contract test says so
+(`gestures/nudge.test.ts` "holds exactly one run, whatever it is handed").
+
+## Verification
+
+```
+> fontworkshop-app@0.1.0 check /home/chen/.../p1-t6/app
+> tsc -b
+
+> fontworkshop-app@0.1.0 lint /home/chen/.../p1-t6/app
+> eslint .
+
+Checking formatting...
+All matched files use Prettier code style!
+```
+
+```
+ Test Files  51 passed (51)
+      Tests  449 passed (449)
+   Start at  04:37:49
+   Duration  26.78s (transform 6.48s, setup 30.89s, collect 33.10s, tests 44.63s, environment 86.20s, prepare 16.07s)
+```
+
+Eleven tests added this round (438 → 449), including a new
+`src/editor/editSession.test.ts`. One earlier run of the same suite failed five
+tests at a load average of 130 while other builds saturated the machine; the run
+pasted above is the same command minutes later. The controller tests now also
+dispose every controller they build before draining its transport
+(`editorController.test.ts:118-130`), which removed an intermittent
+cross-test leak the longer gated chains had started to expose.
+
+## Concerns
+
+1. **The component ghost still lags its markers.** The flattened component path
+   is one path for the whole layer, so a preview can move a component's origin
+   marker, its bounds and the Info box numbers but not the filled ghost, which
+   catches up on the post-gesture reload. Drawing the per-component paths that
+   `LayerOutline` already carries would close it, and is more than this round's
+   "small".
+2. **The per-point regimes move neither anchors nor components**, in the preview
+   and in the document alike — parity was restored downwards. Ctrl+Alt-dragging
+   a node with an anchor also selected therefore leaves the anchor behind. That
+   is the design call the re-review asked to confirm; it is consistent, but a
+   proportional nudge arguably should carry the anchors.
+3. **`gestures/drag.ts` is 751 lines** with three delta regimes. Inside the
+   dispatch's 800, and the obvious next split.
+4. **A drag that never sees its pointer-up still leaks its session.**
+   `pointerDown` resets the view gestures but overwrites a live drag, whose
+   `edit_end` then never runs; harmless today because the kernel no-ops
+   `end_edit` on a stale token, and now doubly so because the replacement is
+   gated, but it is the one gesture-to-gesture path with no explicit close.
+5. **Suite timing remains load-sensitive**, as in round 1: green and fast on an
+   idle machine, and this round produced one contended failing run at load 130.
