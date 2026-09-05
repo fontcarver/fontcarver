@@ -52,6 +52,8 @@ describe('errorNotice', () => {
       'export',
       'shaping',
       'invalid_response',
+      'timeout',
+      'transport',
     ]
     for (const code of codes)
       expect(

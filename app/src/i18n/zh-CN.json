@@ -246,7 +246,9 @@
     "geometry": "The geometry operation failed",
     "export": "The font could not be exported",
     "shaping": "The layout features could not be compiled",
-    "invalid_response": "The kernel returned an unexpected response"
+    "invalid_response": "The kernel returned an unexpected response",
+    "timeout": "The kernel did not answer in time",
+    "transport": "The interface could not reach the kernel"
   },
   "warning": {
     "cffHintsNotImported": "CFF outlines were imported without per-glyph stem and hint-mask data",

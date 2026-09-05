@@ -50,13 +50,18 @@ export class HttpTransport implements Transport {
         signal,
       })
     } catch (error) {
+      // Neither is a file error: the kernel never got the request. They carry
+      // their own codes so the interface can say so rather than blaming disk.
       if (signal.aborted) {
         throw new ApiCallError(
-          'io',
+          'timeout',
           `API request timed out after ${this.timeoutMs} ms`,
         )
       }
-      throw error
+      throw new ApiCallError(
+        'transport',
+        error instanceof Error ? error.message : String(error),
+      )
     }
 
     if (!response.ok) {
