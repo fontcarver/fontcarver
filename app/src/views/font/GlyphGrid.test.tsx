@@ -15,6 +15,7 @@ import { glyphPage, stubGridViewport } from '../../test/glyphFixtures'
 import { createMockTransport, makeSummary } from '../../test/mockTransport'
 
 import { FontView } from './FontView'
+import { resetScrollMemory } from './scrollMemory'
 
 const TOTAL = 600
 const SUMMARY = makeSummary({ glyph_count: TOTAL })
@@ -69,6 +70,7 @@ function cellAt(index: number): HTMLElement {
 
 beforeEach(() => {
   localStorage.clear()
+  resetScrollMemory()
   names = (index) =>
     index < 26 ? String.fromCharCode(65 + index) : `g${index}`
   restoreViewport = stubGridViewport()
@@ -307,6 +309,71 @@ describe('glyph grid invalidation', () => {
     expect(
       await screen.findByRole('option', { name: 'C.alt' }, { timeout: 2_000 }),
     ).toBeInTheDocument()
+  })
+
+  it('keeps the scroll position across a full reload', async () => {
+    const { mock, grid } = await mountGrid()
+    await screen.findByRole('option', { name: 'A' })
+
+    // Ten rows down a 72 px pitch, the way a user leaves the top of the list.
+    grid.scrollTop = 720
+    fireEvent.scroll(grid)
+    await waitFor(() => expect(cellAt(160)).toBeInTheDocument())
+
+    names = (index) => `z${index}`
+    mock.emit({
+      doc: DOC,
+      generation: 12,
+      change: {
+        glyphs: [],
+        font_info: false,
+        masters: false,
+        glyph_order: true,
+        metrics: false,
+        layers: false,
+        guides: false,
+      },
+      undo_label: 'Reorder glyphs',
+      redo_label: null,
+      dirty: true,
+    })
+    // A browser clamps the offset while the reloading list has no height.
+    grid.scrollTop = 0
+    fireEvent.scroll(grid)
+
+    await waitFor(() => expect(grid.scrollTop).toBe(720))
+    expect(await screen.findByRole('option', { name: 'z160' })).toBeVisible()
+  })
+
+  it('refreshes the em box when the kernel reports changed masters', async () => {
+    const { mock } = await mountGrid()
+    await screen.findByRole('option', { name: 'A' })
+    const before = mock.calls.filter(
+      (call) => call.method === 'doc.font_info',
+    ).length
+
+    mock.emit({
+      doc: DOC,
+      generation: 5,
+      change: {
+        glyphs: [],
+        font_info: false,
+        masters: true,
+        glyph_order: false,
+        metrics: false,
+        layers: false,
+        guides: false,
+      },
+      undo_label: 'Edit metrics',
+      redo_label: null,
+      dirty: true,
+    })
+
+    await waitFor(() =>
+      expect(
+        mock.calls.filter((call) => call.method === 'doc.font_info').length,
+      ).toBeGreaterThan(before),
+    )
   })
 
   it('reloads the whole list when the glyph order changed', async () => {

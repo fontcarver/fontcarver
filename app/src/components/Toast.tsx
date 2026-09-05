@@ -14,7 +14,12 @@ export interface ToastProps {
   onDismiss: (id: string) => void
 }
 
-/** One non-blocking notification. */
+/**
+ * One non-blocking notification.
+ *
+ * A failure the kernel reported by code shows a translated summary; its own
+ * wording sits under a collapsed "Details" disclosure, per the design's §10.
+ */
 export function Toast({ toast, onDismiss }: ToastProps) {
   const { t } = useTranslation()
   const { id, kind } = toast
@@ -30,7 +35,15 @@ export function Toast({ toast, onDismiss }: ToastProps) {
 
   return (
     <div className={className} role={kind === 'error' ? 'alert' : 'status'}>
-      <span className={styles.toastMessage}>{toast.message}</span>
+      <div className={styles.toastBody}>
+        <span className={styles.toastMessage}>{toast.message}</span>
+        {toast.details === undefined ? null : (
+          <details className={styles.toastDetails}>
+            <summary>{t('toast.details')}</summary>
+            <p className={styles.toastDetailText}>{toast.details}</p>
+          </details>
+        )}
+      </div>
       <IconButton label={t('toast.dismiss')} onClick={() => onDismiss(id)}>
         ✕
       </IconButton>

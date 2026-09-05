@@ -5,6 +5,7 @@ import { onDocumentEvent, type DocSummary } from '../../api'
 import { Toolbar } from '../../components/Toolbar'
 import type { WarningTranslationOptions } from '../../i18n/warnings'
 import { useFontInfo } from '../../stores/fontInfoCache'
+import { invalidateFor } from '../font/invalidation'
 
 import { AxesTable } from './AxesTable'
 import styles from './fontInfo.module.css'
@@ -42,14 +43,16 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
   const { t } = useTranslation()
   const [section, setSection] = useState<SectionId>('font')
   const [query, setQuery] = useState('')
-  const [reloadToken, setReloadToken] = useState(0)
-  const { info, error, loading } = useFontInfo(summary.doc, reloadToken)
+  const { info, error, loading } = useFontInfo(summary.doc)
 
+  // The panel is the only view mounted while it is the active tab, so it is
+  // the one that has to hand document events to the shared invalidation; the
+  // reload itself comes back through the font-info cache.
   useEffect(
     () =>
       onDocumentEvent((event) => {
-        if (event.doc === summary.doc && event.change.font_info)
-          setReloadToken((value) => value + 1)
+        if (event.doc === summary.doc)
+          invalidateFor(event.change, event.doc, event.generation)
       }),
     [summary.doc],
   )

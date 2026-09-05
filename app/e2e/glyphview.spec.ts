@@ -23,10 +23,10 @@ test.describe('glyph view', () => {
       page.getByRole('img', { name: /^Glyph A, U\+0041$/ }),
     ).toBeVisible()
 
-    // The corner readout carries the identity and the horizontal metrics.
-    const hud = page.getByLabel('Glyph readout')
-    await expect(hud).toContainText('U+0041')
-    await expect(hud).toContainText('1401')
+    // The Info box carries the identity and the horizontal metrics.
+    const info = page.getByRole('region', { name: 'Info box' })
+    await expect(info).toContainText('U+0041')
+    await expect(info.getByLabel('advance')).toHaveValue('1401')
 
     // The inspector follows the glyph without a second request.
     await expect(page.getByText('Bounds')).toBeVisible()

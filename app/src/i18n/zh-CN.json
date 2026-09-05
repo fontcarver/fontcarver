@@ -238,7 +238,21 @@
     "about": "FontWorkshop {{version}}——内核传输：{{kind}}",
     "copiedNames_one": "已复制 {{count, number}} 个字形名称",
     "copiedNames_other": "已复制 {{count, number}} 个字形名称",
-    "copyFailed": "无法写入剪贴板"
+    "copyFailed": "无法写入剪贴板",
+    "details": "Details"
+  },
+  "errors": {
+    "not_found": "That item is not in the document any more",
+    "invalid_params": "The kernel rejected the request as invalid",
+    "io": "A file could not be read or written",
+    "parse": "The font data could not be read",
+    "internal": "The kernel hit an internal error",
+    "geometry": "The geometry operation failed",
+    "export": "The font could not be exported",
+    "shaping": "The layout features could not be compiled",
+    "invalid_response": "The kernel returned an unexpected response",
+    "timeout": "The kernel did not answer in time",
+    "transport": "The interface could not reach the kernel"
   },
   "warning": {
     "cffHintsNotImported": "CFF outlines were imported without per-glyph stem and hint-mask data",
