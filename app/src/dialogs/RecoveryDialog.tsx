@@ -37,18 +37,52 @@ export function RecoveryDialog({ entries }: RecoveryDialogProps) {
     if (rest.length === 0) close()
   }
 
+  const recoverEntry = (entry: RecoveryEntry) => {
+    void recover(entry.autosave_path).then((summary) => {
+      if (summary) drop(entry)
+    })
+  }
+
+  /**
+   * Enter recovers the row the keyboard is on; with none, it means "Later".
+   *
+   * The row is read from the focused element rather than tracked in state, so
+   * it is always the one the user can actually see the focus ring on.
+   */
+  const confirm = () => {
+    const active = document.activeElement
+    const row =
+      active instanceof HTMLElement
+        ? active.closest<HTMLElement>('[data-autosave]')
+        : null
+    const entry = remaining.find(
+      (candidate) => candidate.autosave_path === row?.dataset.autosave,
+    )
+    if (entry) recoverEntry(entry)
+    else close()
+  }
+
   return (
     <Dialog
       title={t('dialog.recovery.title')}
       size="lg"
       scrollBody
       onCancel={close}
+      onConfirm={confirm}
       footer={<Button onClick={close}>{t('dialog.recovery.later')}</Button>}
     >
       <p className={styles.hint}>{t('dialog.recovery.intro')}</p>
       <div className={styles.list}>
         {remaining.map((entry) => (
-          <div key={entry.autosave_path} className={styles.recoveryRow}>
+          <div
+            key={entry.autosave_path}
+            // Focusable so the keyboard can pick a row for Enter to recover.
+            role="group"
+            tabIndex={0}
+            data-autosave={entry.autosave_path}
+            aria-label={entry.doc_path ?? t('dialog.recovery.untitled')}
+            className={styles.recoveryRow}
+          >
             <span className={styles.recoveryText}>
               <span
                 className={styles.recoveryPath}
@@ -87,14 +121,7 @@ export function RecoveryDialog({ entries }: RecoveryDialogProps) {
                 <Button onClick={() => setConfirming(entry.autosave_path)}>
                   {t('dialog.recovery.discard')}
                 </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    void recover(entry.autosave_path).then((summary) => {
-                      if (summary) drop(entry)
-                    })
-                  }}
-                >
+                <Button variant="primary" onClick={() => recoverEntry(entry)}>
                   {t('dialog.recovery.recover')}
                 </Button>
               </span>

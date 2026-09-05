@@ -9,6 +9,7 @@ import { usePrefsStore } from '../stores/prefsStore'
 import { useUiStore, type ThemePreference } from '../stores/uiStore'
 
 import styles from './dialogs.module.css'
+import { NumberField } from './NumberField'
 
 /** Left-hand rail of the dialog, in the order the design spec lists it. */
 const CATEGORIES = ['general', 'editor', 'snapping'] as const
@@ -58,6 +59,7 @@ export function PreferencesDialog() {
       size="lg"
       scrollBody
       onCancel={close}
+      onConfirm={close}
       footerSpread
       footer={
         <>
@@ -139,20 +141,13 @@ export function PreferencesDialog() {
                   {t('dialog.prefs.autosave')}
                 </span>
                 <div className={styles.rowStack}>
-                  <input
-                    type="number"
+                  <NumberField
+                    label={t('dialog.prefs.autosaveSeconds')}
                     min={0}
                     max={3600}
-                    aria-label={t('dialog.prefs.autosaveSeconds')}
-                    className={styles.number}
                     value={prefs.autosave_seconds}
-                    onChange={(event) =>
-                      void update({
-                        autosave_seconds: Math.max(
-                          0,
-                          Math.round(Number(event.target.value)),
-                        ),
-                      })
+                    onCommit={(seconds) =>
+                      void update({ autosave_seconds: Math.round(seconds) })
                     }
                   />
                   <span className={styles.hint}>
@@ -172,20 +167,17 @@ export function PreferencesDialog() {
                 <div className={styles.rowStack}>
                   <div className={styles.nudgeRow}>
                     {NUDGE_STEPS.map((step, index) => (
-                      <label key={step} className={styles.nudgeField}>
+                      <div key={step} className={styles.nudgeField}>
                         <span className={styles.nudgeLabel}>
                           {t(`dialog.prefs.nudgeStep.${step}`)}
                         </span>
-                        <input
-                          type="number"
+                        <NumberField
+                          label={t(`dialog.prefs.nudgeStep.${step}`)}
                           min={0}
-                          className={styles.number}
                           value={prefs.nudge[index]}
-                          onChange={(event) =>
-                            setNudge(index, Number(event.target.value))
-                          }
+                          onCommit={(units) => setNudge(index, units)}
                         />
-                      </label>
+                      </div>
                     ))}
                   </div>
                   <span className={styles.hint}>
@@ -198,18 +190,12 @@ export function PreferencesDialog() {
                   {t('dialog.prefs.gridSize')}
                 </span>
                 <div className={styles.rowStack}>
-                  <input
-                    type="number"
+                  <NumberField
+                    label={t('dialog.prefs.gridSize')}
                     min={0}
                     step={1}
-                    aria-label={t('dialog.prefs.gridSize')}
-                    className={styles.number}
                     value={prefs.grid_size}
-                    onChange={(event) =>
-                      void update({
-                        grid_size: Math.max(0, Number(event.target.value)),
-                      })
-                    }
+                    onCommit={(size) => void update({ grid_size: size })}
                   />
                   <span className={styles.hint}>
                     {t('dialog.prefs.gridHint')}

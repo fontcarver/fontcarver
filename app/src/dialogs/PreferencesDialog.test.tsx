@@ -86,9 +86,10 @@ describe('PreferencesDialog', () => {
     const grid = screen.getByLabelText('Grid size')
     await user.clear(grid)
     await user.type(grid, '8')
-    await waitFor(() => expect(lastPrefs(transport)?.grid_size).toBe(8))
 
+    // Leaving the field commits it.
     await user.click(screen.getByRole('tab', { name: 'Snapping' }))
+    await waitFor(() => expect(lastPrefs(transport)?.grid_size).toBe(8))
     await user.click(screen.getByRole('checkbox', { name: 'Guides' }))
 
     await waitFor(() => expect(lastPrefs(transport)?.snap.guides).toBe(false))
@@ -99,6 +100,53 @@ describe('PreferencesDialog', () => {
     await usePrefsStore.getState().load()
     expect(usePrefsStore.getState().prefs.grid_size).toBe(8)
     expect(usePrefsStore.getState().prefs.snap.guides).toBe(false)
+  })
+
+  it('writes a number field once, when it is committed', async () => {
+    const user = userEvent.setup()
+    const transport = setup()
+    await waitFor(() => expect(usePrefsStore.getState().loaded).toBe(true))
+
+    await user.click(screen.getByRole('tab', { name: 'Editor' }))
+    const grid = screen.getByLabelText('Grid size')
+    await user.clear(grid)
+    await user.type(grid, '16')
+
+    // Clearing the field must not persist an intermediate zero.
+    expect(
+      transport.calls.filter((entry) => entry.method === 'prefs.set'),
+    ).toHaveLength(0)
+
+    await user.tab()
+    await waitFor(() => expect(lastPrefs(transport)?.grid_size).toBe(16))
+    expect(
+      transport.calls.filter((entry) => entry.method === 'prefs.set'),
+    ).toHaveLength(1)
+  })
+
+  it('commits a number field on Enter without closing the dialog', async () => {
+    const user = userEvent.setup()
+    const transport = setup()
+    await waitFor(() => expect(usePrefsStore.getState().loaded).toBe(true))
+
+    await user.click(screen.getByRole('tab', { name: 'Editor' }))
+    const grid = screen.getByLabelText('Grid size')
+    await user.clear(grid)
+    await user.type(grid, '4{Enter}')
+
+    await waitFor(() => expect(lastPrefs(transport)?.grid_size).toBe(4))
+    expect(useUiStore.getState().dialog).toEqual({ kind: 'preferences' })
+  })
+
+  it('closes on Enter from a control that does not own the key', async () => {
+    const user = userEvent.setup()
+    setup()
+    await waitFor(() => expect(usePrefsStore.getState().loaded).toBe(true))
+
+    screen.getByLabelText('Theme').focus()
+    await user.keyboard('{Enter}')
+
+    expect(useUiStore.getState().dialog).toBeNull()
   })
 
   it('restores the defaults', async () => {

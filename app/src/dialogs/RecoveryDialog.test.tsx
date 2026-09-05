@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -98,6 +98,44 @@ describe('RecoveryDialog', () => {
     expect(transport.calls[0]).toEqual({
       method: 'session.discard_recovery',
       params: { autosave_path: '/state/autosave/1.fwf' },
+    })
+  })
+
+  it('recovers the row the keyboard is on when Enter is pressed', async () => {
+    const user = userEvent.setup()
+    const transport = setup()
+
+    // Rows are focusable so the keyboard can pick one; Enter then recovers it.
+    screen.getAllByRole('group')[1]?.focus()
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => expect(transport.calls).toHaveLength(1))
+    expect(transport.calls[0]).toEqual({
+      method: 'session.recover',
+      params: { autosave_path: '/state/autosave/2.fwf' },
+    })
+  })
+
+  it('closes on Enter when no row has the keyboard', () => {
+    const transport = setup()
+
+    // The dialog puts the keyboard on the first row; take it off again.
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Enter' })
+
+    expect(transport.calls).toHaveLength(0)
+    expect(useUiStore.getState().dialog).toBeNull()
+  })
+
+  it('recovers the first row when the dialog opens on it', async () => {
+    const user = userEvent.setup()
+    const transport = setup()
+
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => expect(transport.calls).toHaveLength(1))
+    expect(transport.calls[0]?.params).toEqual({
+      autosave_path: '/state/autosave/1.fwf',
     })
   })
 
