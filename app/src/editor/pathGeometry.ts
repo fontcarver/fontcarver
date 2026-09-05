@@ -393,20 +393,29 @@ export function normaliseBox(a: Point2, b: Point2): FontBox {
 /**
  * The curve flavour a layer is drawn in.
  *
- * `LayerOutline` does not carry the font's declared curve kind, so it is read
- * off the outlines themselves: a quadratic on-curve point means TrueType, an
- * explicit cubic means PostScript. A layer with no curves at all — an empty
- * glyph, a rectangle — says nothing, and then the document's own format
- * decides, defaulting to quadratic for a TrueType source.
+ * `LayerOutline` does not carry the font's declared curve kind, so the layer's
+ * own points decide: a quadratic on-curve point means the outlines are
+ * TrueType, an explicit cubic means PostScript. Quadratic wins a
+ * (malformed) mixture, because a `glyf` outline cannot hold a cubic at all.
+ *
+ * Only a layer with no curves at all — an empty glyph, a rectangle — falls
+ * back to the document's format, and only when that format names the outline
+ * table outright: `.woff`/`.woff2` wrap either `glyf` or `CFF`, so they say
+ * nothing and the cubic default stands.
  */
 export function inferCurves(
   contours: readonly Contour[],
   format: string,
 ): LayerCurves {
+  let cubic = false
   for (const contour of contours)
     for (const point of contour.points) {
       if (point.kind === 'QCurve') return 'quadratic'
-      if (point.kind === 'Curve') return 'cubic'
+      if (point.kind === 'Curve') cubic = true
     }
-  return /truetype|ttf|ttc|woff/i.test(format) ? 'quadratic' : 'cubic'
+  if (cubic) return 'cubic'
+  return GLYF_FORMATS.test(format.trim()) ? 'quadratic' : 'cubic'
 }
+
+/** Document formats that imply a `glyf` outline table. */
+const GLYF_FORMATS = /^(truetype|ttf|ttc)$/i

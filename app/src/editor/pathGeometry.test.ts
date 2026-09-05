@@ -9,6 +9,7 @@ import {
   normaliseBox,
   pathOfSegments,
   pathToContour,
+  inferCurves,
   reversePath,
   segmentPointAt,
   signedArea,
@@ -178,5 +179,45 @@ describe('helpers', () => {
 
   it('rejects an empty segment run', () => {
     expect(pathOfSegments([], true)).toBeNull()
+  })
+})
+
+describe('inferCurves', () => {
+  const quad = makeContour([
+    makePoint(0, 0),
+    makePoint(50, 100, 'OffCurve'),
+    makePoint(100, 0, 'QCurve'),
+  ])
+  const cubic = makeContour([
+    makePoint(0, 0),
+    makePoint(20, 100, 'OffCurve'),
+    makePoint(80, 100, 'OffCurve'),
+    makePoint(100, 0, 'Curve'),
+  ])
+
+  it('reads the flavour off the layer, whatever the format says', () => {
+    expect(inferCurves([quad], 'otf')).toBe('quadratic')
+    expect(inferCurves([cubic], 'ttf')).toBe('cubic')
+  })
+
+  it('prefers quadratic in a mixture, whichever comes first', () => {
+    expect(inferCurves([cubic, quad], 'fwf')).toBe('quadratic')
+    expect(inferCurves([quad, cubic], 'fwf')).toBe('quadratic')
+  })
+
+  it('falls back to the format only for a layer with no curves', () => {
+    expect(inferCurves([square], 'ttf')).toBe('quadratic')
+    expect(inferCurves([square], 'TrueType')).toBe('quadratic')
+    expect(inferCurves([], 'ttc')).toBe('quadratic')
+    expect(inferCurves([square], 'otf')).toBe('cubic')
+    expect(inferCurves([square], 'fwf')).toBe('cubic')
+  })
+
+  it('treats a WOFF wrapper as saying nothing about the outlines', () => {
+    // WOFF and WOFF2 wrap `glyf` and `CFF` alike, so neither implies a
+    // flavour; the cubic default stands until a curve says otherwise.
+    expect(inferCurves([square], 'woff')).toBe('cubic')
+    expect(inferCurves([square], 'woff2')).toBe('cubic')
+    expect(inferCurves([quad], 'woff2')).toBe('quadratic')
   })
 })
