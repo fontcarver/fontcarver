@@ -19,32 +19,39 @@ const square = makeContour([
   makePoint(0, 200, 'Line'),
 ])
 
-interface BatchCommand {
-  Batch: [
-    { AddContour: { contour: { points: { x: number; y: number }[] } } },
-    { PathOp: { op: { Simplify: { error: number } } } },
-  ]
+interface AddCommand {
+  AddContour: {
+    contour: {
+      closed: boolean
+      points: { x: number; y: number; kind: string }[]
+    }
+  }
 }
 
 describe('PencilTool', () => {
-  it('commits a polyline and a simplify pass as one undo entry', () => {
-    const context = makeToolContext()
+  it('commits one AddContour and nothing else', () => {
+    const context = makeToolContext({
+      // A second contour the stroke must not disturb: the old whole-layer
+      // `PathOp::Simplify` would have refitted it too.
+      contours: [square],
+    })
     const pencil = new PencilTool()
-    pencil.pointerDown(toolPointer(context, { x: 0, y: 0 }), context)
+    pencil.pointerDown(toolPointer(context, { x: 0, y: 400 }), context)
     for (let step = 1; step <= 5; step += 1)
       pencil.pointerMove(
-        toolPointer(context, { x: step * 20, y: step * 5 }),
+        toolPointer(context, { x: step * 20, y: 400 + step * 5 }),
         context,
       )
     const outcome = pencil.pointerUp(
-      toolPointer(context, { x: 100, y: 25 }),
+      toolPointer(context, { x: 100, y: 425 }),
       context,
-    ) as { apply?: { label: string; command: BatchCommand } }
+    ) as { apply?: { label: string; command: AddCommand } }
 
     expect(outcome.apply?.label).toBe('Draw')
-    const batch = outcome.apply?.command.Batch
-    expect(batch?.[0].AddContour.contour.points).toHaveLength(6)
-    expect(batch?.[1].PathOp.op.Simplify.error).toBe(1)
+    expect(Object.keys(outcome.apply?.command ?? {})).toEqual(['AddContour'])
+    expect(
+      outcome.apply?.command.AddContour.contour.points.length,
+    ).toBeGreaterThan(1)
   })
 
   it('drops samples closer together than two pixels', () => {
@@ -57,12 +64,11 @@ describe('PencilTool', () => {
     const outcome = pencil.pointerUp(
       toolPointer(context, { x: 40, y: 0 }),
       context,
-    ) as { apply?: { command: BatchCommand } }
+    ) as { apply?: { command: AddCommand } }
 
+    // Two samples, so one straight segment from end to end.
     expect(
-      outcome.apply?.command.Batch[0].AddContour.contour.points.map(
-        (point) => point.x,
-      ),
+      outcome.apply?.command.AddContour.contour.points.map((point) => point.x),
     ).toEqual([0, 40])
   })
 
@@ -76,13 +82,11 @@ describe('PencilTool', () => {
     const outcome = pencil.pointerUp(
       toolPointer(context, { x: 120, y: 30 }, shift),
       context,
-    ) as { apply?: { command: BatchCommand } }
+    ) as { apply?: { command: AddCommand } }
 
     // One straight span: the free end was replaced, never appended to.
     expect(
-      outcome.apply?.command.Batch[0].AddContour.contour.points.map(
-        (point) => point.x,
-      ),
+      outcome.apply?.command.AddContour.contour.points.map((point) => point.x),
     ).toEqual([0, 120])
   })
 
@@ -100,13 +104,13 @@ describe('PencilTool', () => {
     const outcome = pencil.pointerUp(
       toolPointer(context, { x: 1, y: 1 }),
       context,
-    ) as { apply?: { command: BatchCommand } }
-    const contour = outcome.apply?.command.Batch[0].AddContour.contour as {
-      closed: boolean
-      points: unknown[]
-    }
-    expect(contour.closed).toBe(true)
-    expect(contour.points).toHaveLength(4)
+    ) as { apply?: { command: AddCommand } }
+    const contour = outcome.apply?.command.AddContour.contour
+    expect(contour?.closed).toBe(true)
+    // A square drawn freehand keeps its four corners.
+    expect(
+      contour?.points.filter((point) => point.kind !== 'OffCurve'),
+    ).toHaveLength(4)
   })
 
   it('sends nothing for a stroke of one sample', () => {

@@ -1,11 +1,11 @@
 /**
  * The Pencil tool (design spec §5).
  *
- * The stroke is sampled locally while the pointer moves and committed once, as
- * a polyline plus a simplify pass: `Batch([AddContour, PathOp::Simplify])`,
- * which the kernel coalesces into one undo entry called "Draw". Fitting the
- * curve in the kernel rather than the browser keeps one implementation of
- * `fw-geom`'s simplifier as the only one in the product.
+ * The stroke is sampled locally while the pointer moves, fitted to cubics by
+ * `curveFit.ts` and committed as one `AddContour` called "Draw". The fit is
+ * local because the kernel's only whole-path simplifier rewrites *every*
+ * contour of the layer, so a stroke drawn into a glyph that already has
+ * outlines would silently refit those too.
  *
  * Shift holds the stroke straight: while it is down the newest sample replaces
  * the previous one instead of being appended, so the span from the last corner
@@ -14,7 +14,8 @@
 
 import type { Command, Contour } from '../../api'
 import type { Point2 } from '../../canvas/Viewport'
-import type { SimplifyOptions } from '../../api'
+
+import { DEFAULT_FIT_ERROR, fitContour } from '../curveFit'
 
 import type { LayerTarget } from '../pointCommands'
 
@@ -37,27 +38,12 @@ export const PENCIL_SAMPLE_SPACING = 2
 export const PENCIL_CLOSE_DISTANCE = 10
 
 /**
- * How far the simplifier may move the fitted curve, in font units.
+ * How far the fitted curve may stray from a sample, in font units.
  *
- * `Prefs` has no simplify tolerance of its own, so this is the ruling's
+ * `Prefs` has no fitting tolerance of its own, so this is the ruling's
  * fallback of one unit.
  */
-export const PENCIL_SIMPLIFY_ERROR = 1
-
-/** The simplify pass a freehand stroke is fitted with. */
-export function pencilSimplifyOptions(error: number): SimplifyOptions {
-  return {
-    error,
-    ignore_slopes: false,
-    // Extrema are left alone: the op runs over the whole layer, and adding
-    // nodes to contours the user did not draw would be a surprise.
-    ignore_extrema: true,
-    smooth_curves: true,
-    force_lines: true,
-    nearly_hv_lines: false,
-    start_at_extrema: false,
-  }
-}
+export const PENCIL_FIT_ERROR = DEFAULT_FIT_ERROR
 
 /** The polyline contour a run of samples describes. */
 export function polylineContour(
@@ -133,10 +119,11 @@ export class PencilTool implements EditorTool {
     return this.commit(context)
   }
 
-  overlay(context: ToolContext): ToolOverlay {
+  overlay(): ToolOverlay {
+    // The raw samples, not the fit: the stroke has to follow the pointer
+    // exactly, and the fit is what the release commits.
     const contour = polylineContour(this.samples, false)
     if (!contour) return NO_TOOL_OVERLAY
-    void context
     return { ...NO_TOOL_OVERLAY, contours: [contour] }
   }
 
@@ -160,9 +147,13 @@ export class PencilTool implements EditorTool {
       samples.length > 2 &&
       Math.hypot(last.x - first.x, last.y - first.y) * scale <
         PENCIL_CLOSE_DISTANCE
-    const contour = polylineContour(
-      closed ? samples.slice(0, -1) : samples,
+    // A closed stroke is fitted through its own start, so the last segment
+    // really ends where the contour begins rather than near it.
+    const contour = fitContour(
+      closed ? [...samples, first] : samples,
       closed,
+      context.curves,
+      PENCIL_FIT_ERROR,
     )
     if (!contour) return NO_OUTCOME
     return {
@@ -174,18 +165,7 @@ export class PencilTool implements EditorTool {
   }
 }
 
-/** The polyline and the simplify pass that fits it, as one undo entry. */
+/** The fitted stroke, as one undo entry that touches nothing else. */
 export function drawCommand(target: LayerTarget, contour: Contour): Command {
-  return {
-    Batch: [
-      addContour(target, contour),
-      {
-        PathOp: {
-          glyph: target.glyph,
-          layer: target.layer,
-          op: { Simplify: pencilSimplifyOptions(PENCIL_SIMPLIFY_ERROR) },
-        },
-      },
-    ],
-  }
+  return addContour(target, contour)
 }
