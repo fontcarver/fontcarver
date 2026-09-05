@@ -158,6 +158,52 @@ describe('NewFontDialog', () => {
     expect(transport.calls).toHaveLength(0)
   })
 
+  it('closes the half-made document when a later call fails', async () => {
+    const user = userEvent.setup()
+    const created = makeSummary({ doc: 4, path: null, glyph_count: 0 })
+    let attempts = 0
+    const transport = createMockTransport({
+      'session.new': () => {
+        attempts += 1
+        return { ...created, doc: 3 + attempts }
+      },
+      'doc.font_info': () => makeFontInfoView(),
+      'doc.apply': () => {
+        throw new Error('master `m1` does not exist')
+      },
+      'session.close': () => null,
+    })
+    setTransport(transport)
+    useUiStore.getState().setDialog({ kind: 'newFont' })
+    render(<NewFontDialog />)
+
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+
+    await waitFor(() =>
+      expect(
+        transport.calls.some((entry) => entry.method === 'session.close'),
+      ).toBe(true),
+    )
+    expect(
+      transport.calls.find((entry) => entry.method === 'session.close')?.params,
+    ).toEqual({ doc: 4 })
+    // The dialog stays open with the error, and nothing of the failed attempt
+    // is left behind: no document, no tab.
+    expect(useUiStore.getState().dialog).toEqual({ kind: 'newFont' })
+    expect(useUiStore.getState().tabs).toEqual([])
+    expect(useSessionStore.getState().docs).toEqual([])
+    expect(useUiStore.getState().toasts.at(-1)?.kind).toBe('error')
+
+    // Retrying mints exactly one more document, not a second orphan.
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+    await waitFor(() =>
+      expect(
+        transport.calls.filter((entry) => entry.method === 'session.close'),
+      ).toHaveLength(2),
+    )
+    expect(useSessionStore.getState().docs).toEqual([])
+  })
+
   it('closes on Escape without touching the kernel', async () => {
     const user = userEvent.setup()
     const transport = setup()

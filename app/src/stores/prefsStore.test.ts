@@ -88,6 +88,58 @@ describe('prefsStore', () => {
     expect(transport.calls.at(-1)?.params).toEqual({ prefs: DEFAULT_PREFS })
   })
 
+  it('reads the stored record before its first write', async () => {
+    const saved = stored({ recent_limit: 5, autosave_seconds: 120 })
+    const transport = createMockTransport({
+      'prefs.get': () => saved,
+      'prefs.set': ({ prefs }) => prefs,
+    })
+    setTransport(transport)
+
+    // The View menu can change the theme before any dialog has loaded prefs.
+    await usePrefsStore.getState().update({ theme: 'dark' })
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'prefs.get',
+      'prefs.set',
+    ])
+    expect(transport.calls[1]?.params).toEqual({
+      prefs: stored({ recent_limit: 5, autosave_seconds: 120, theme: 'dark' }),
+    })
+  })
+
+  it('refuses to write when the stored record cannot be read', async () => {
+    const transport = createMockTransport({
+      'prefs.get': () => {
+        throw new Error('config directory is unreadable')
+      },
+    })
+    setTransport(transport)
+
+    await usePrefsStore.getState().update({ theme: 'dark' })
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual(['prefs.get'])
+    expect(usePrefsStore.getState().prefs.theme).toBe(DEFAULT_PREFS.theme)
+    expect(useUiStore.getState().toasts.at(-1)?.kind).toBe('error')
+  })
+
+  it('resets to the defaults even before a successful load', async () => {
+    const transport = createMockTransport({
+      'prefs.get': () => {
+        throw new Error('config directory is unreadable')
+      },
+      'prefs.set': ({ prefs }) => prefs,
+    })
+    setTransport(transport)
+
+    await usePrefsStore.getState().reset()
+
+    expect(transport.calls.at(-1)).toEqual({
+      method: 'prefs.set',
+      params: { prefs: DEFAULT_PREFS },
+    })
+  })
+
   it('keeps the last good values and reports a failed write', async () => {
     const transport = createMockTransport({
       'prefs.get': () => stored(),

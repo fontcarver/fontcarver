@@ -90,8 +90,24 @@ export const usePrefsStore = create<PrefsState>((set, get) => {
       }
     },
 
-    update: (patch) => persist({ ...get().prefs, ...patch }),
+    /**
+     * Merges a change into the kernel's own record.
+     *
+     * `prefs.set` replaces the whole record, and before a successful load this
+     * store holds nothing but [`DEFAULT_PREFS`] — writing then would silently
+     * overwrite the stored autosave interval, recent limit, nudge steps, grid
+     * size and snapping with defaults. So an unloaded store reads first, and
+     * refuses the write outright when that read fails.
+     */
+    update: async (patch) => {
+      if (!get().loaded) {
+        await get().load()
+        if (!get().loaded) return
+      }
+      await persist({ ...get().prefs, ...patch })
+    },
 
+    // Reset is the one write that means "the defaults", loaded or not.
     reset: () => persist({ ...DEFAULT_PREFS }),
   }
 })

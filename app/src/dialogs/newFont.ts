@@ -73,6 +73,10 @@ export function metricsFor(
  * Three kernel calls, in order: `session.new` mints the document, one
  * `doc.apply` batch writes the style name and the metrics preset as a single
  * undo step, and `glyphs.add` fills the starter repertoire from its recipe.
+ *
+ * The document only exists once all of that succeeded: a failure after
+ * `session.new` closes it again and rethrows, so a half-initialised font never
+ * survives in a tab and pressing Create again does not mint a second one.
  */
 export async function createFont(
   form: NewFontForm,
@@ -80,6 +84,19 @@ export async function createFont(
   const session = useSessionStore.getState()
   const summary = await session.createDocument(form.family, form.unitsPerEm)
   if (!summary) return null
+  try {
+    return await setUpDocument(summary, form)
+  } catch (error) {
+    await useSessionStore.getState().close(summary.doc)
+    throw error
+  }
+}
+
+/** Writes the style, the metrics preset and the starter glyphs of a new font. */
+async function setUpDocument(
+  summary: DocSummary,
+  form: NewFontForm,
+): Promise<DocSummary> {
   const doc = summary.doc
 
   const view = await call('doc.font_info', { doc })
