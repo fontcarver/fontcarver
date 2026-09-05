@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '../components/Button'
 import { useSessionStore } from '../stores/sessionStore'
 
+import { runCommand } from './commands'
 import styles from './EmptyState.module.css'
 
 /** Shown in the content area while no document is open. */
@@ -11,7 +12,6 @@ export function EmptyState() {
   const recent = useSessionStore((state) => state.recent)
   const openDialog = useSessionStore((state) => state.openDialog)
   const open = useSessionStore((state) => state.open)
-  const createDocument = useSessionStore((state) => state.createDocument)
 
   return (
     <div className={styles.empty}>
@@ -22,7 +22,7 @@ export function EmptyState() {
           <Button variant="primary" large onClick={() => void openDialog()}>
             {t('empty.open')}
           </Button>
-          <Button large onClick={() => void createDocument()}>
+          <Button large onClick={() => runCommand('file.new')}>
             {t('empty.new')}
           </Button>
         </div>

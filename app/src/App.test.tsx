@@ -6,6 +6,11 @@ import { setTransport } from './api'
 import { App } from './App'
 import { resetCommands } from './shell/commands'
 import { initialDocumentState, useDocumentStore } from './stores/documentStore'
+import {
+  DEFAULT_PREFS,
+  initialPrefsState,
+  usePrefsStore,
+} from './stores/prefsStore'
 import { initialSessionState, useSessionStore } from './stores/sessionStore'
 import { forgetFontInfo } from './stores/fontInfoCache'
 import { initialUiState, useUiStore } from './stores/uiStore'
@@ -16,6 +21,9 @@ function emptySession() {
   return createMockTransport({
     'session.list': () => [],
     'session.recent': () => ['/fonts/DejaVuSans.ttf'],
+    'session.recover_list': () => [],
+    'prefs.get': () => DEFAULT_PREFS,
+    'prefs.set': ({ prefs }) => prefs,
   })
 }
 
@@ -27,6 +35,7 @@ beforeEach(() => {
   useUiStore.setState(initialUiState())
   useSessionStore.setState(initialSessionState())
   useDocumentStore.setState(initialDocumentState())
+  usePrefsStore.setState(initialPrefsState())
 })
 
 afterEach(() => {

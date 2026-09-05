@@ -1,6 +1,7 @@
 import { call, getTransport, type DocId, type GlyphId } from '../api'
 import { i18n } from '../i18n'
 import { useDocumentStore } from '../stores/documentStore'
+import { usePrefsStore } from '../stores/prefsStore'
 import { activeSummary, useSessionStore } from '../stores/sessionStore'
 import {
   activeDocId,
@@ -50,7 +51,9 @@ function themeCommand(theme: ThemePreference): Command {
     group: 'theme',
     when: () => useUiStore.getState().theme !== theme,
     disabledReason: 'cmd.reason.themeActive',
-    run: () => useUiStore.getState().setTheme(theme),
+    // Through the preference store so the menu and the Preferences dialog
+    // write the same record; it mirrors the choice into the shell itself.
+    run: () => usePrefsStore.getState().update({ theme }),
   }
 }
 
@@ -72,11 +75,7 @@ export function registerBuiltinCommands(): void {
       menu: 'file',
       group: 'open',
       shortcut: 'Mod+N',
-      run: () =>
-        useSessionStore
-          .getState()
-          .createDocument()
-          .then(() => undefined),
+      run: () => useUiStore.getState().setDialog({ kind: 'newFont' }),
     },
     {
       id: 'file.open',
@@ -142,6 +141,20 @@ export function registerBuiltinCommands(): void {
       },
     },
     {
+      id: 'file.export',
+      title: 'cmd.file.export',
+      menu: 'file',
+      group: 'export',
+      shortcut: 'Mod+E',
+      when: hasDocument,
+      disabledReason: 'cmd.reason.noDocument',
+      run: () => {
+        const doc = activeDoc()
+        if (doc !== null)
+          useUiStore.getState().setDialog({ kind: 'export', doc })
+      },
+    },
+    {
       id: 'file.close',
       title: 'cmd.file.close',
       menu: 'file',
@@ -191,6 +204,28 @@ export function registerBuiltinCommands(): void {
         if (doc !== null && gid !== undefined)
           openGlyphTab(doc, gid, glyphName(doc, gid))
       },
+    },
+    {
+      id: 'glyph.add',
+      title: 'cmd.glyph.add',
+      menu: 'glyph',
+      group: 'glyph',
+      shortcut: 'Mod+Shift+G',
+      when: hasDocument,
+      disabledReason: 'cmd.reason.noDocument',
+      run: () => {
+        const doc = activeDoc()
+        if (doc !== null)
+          useUiStore.getState().setDialog({ kind: 'addGlyphs', doc })
+      },
+    },
+    {
+      id: 'edit.preferences',
+      title: 'cmd.edit.preferences',
+      menu: 'edit',
+      group: 'prefs',
+      shortcut: 'Mod+,',
+      run: () => useUiStore.getState().setDialog({ kind: 'preferences' }),
     },
     {
       id: 'view.toggleSidebar',

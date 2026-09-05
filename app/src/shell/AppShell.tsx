@@ -3,7 +3,11 @@ import { useTranslation } from 'react-i18next'
 
 import { SplitPane } from '../components/SplitPane'
 import { ToastStack } from '../components/ToastStack'
+import { DialogHost } from '../dialogs/DialogHost'
+import { checkForRecovery } from '../dialogs/recovery'
 import { i18n } from '../i18n'
+import { usePrefsStore } from '../stores/prefsStore'
+import { useProgressStore } from '../stores/progressStore'
 import { selectSummary, useSessionStore } from '../stores/sessionStore'
 import {
   PANEL_BOUNDS,
@@ -22,6 +26,8 @@ import { EmptyState } from './EmptyState'
 import { Inspector } from './Inspector'
 import { MenuBar } from './MenuBar'
 import { PathPromptDialog } from './PathPromptDialog'
+import { ProgressLine } from './ProgressLine'
+import { RecoveredBanner } from './RecoveredBanner'
 import { Sidebar } from './Sidebar'
 import { installShortcuts } from './shortcuts'
 import { StatusBar } from './StatusBar'
@@ -49,9 +55,15 @@ export function AppShell() {
       })
     })
     const stopSession = useSessionStore.getState().start()
+    const stopProgress = useProgressStore.getState().start()
     const stopShortcuts = installShortcuts()
+    // The kernel owns the preferences, so they are read before the first paint
+    // of anything that depends on them; a crash-recovery listing follows.
+    void usePrefsStore.getState().load()
+    void checkForRecovery()
     return () => {
       stopSession()
+      stopProgress()
       stopShortcuts()
     }
   }, [])
@@ -74,6 +86,7 @@ export function AppShell() {
     <div className={styles.shell}>
       <MenuBar />
       <TabBar />
+      <ProgressLine />
       <div className={styles.workspace}>
         {summary && panels.sidebar ? (
           <SplitPane
@@ -88,6 +101,7 @@ export function AppShell() {
           </SplitPane>
         ) : null}
         <main className={styles.content}>
+          {summary ? <RecoveredBanner summary={summary} /> : null}
           {summary && activeTab ? (
             <TabContent summary={summary} tab={activeTab} />
           ) : (
@@ -111,6 +125,7 @@ export function AppShell() {
       <CommandPalette />
       <PathPromptDialog />
       <CloseDocumentDialog />
+      <DialogHost />
       <ToastStack />
     </div>
   )
