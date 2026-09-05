@@ -132,8 +132,8 @@
     "saveAs": {
       "title": "Save As",
       "label": "Document path",
-      "placeholder": "/path/to/font.fwf",
-      "hint": "Font Cutter documents are saved as .fwf or .fwf.gz.",
+      "placeholder": "/path/to/font.fcf",
+      "hint": "Font Cutter documents are saved as .fcf or .fcf.gz.",
       "confirm": "Save",
       "filter": "Font Cutter document"
     },
@@ -206,7 +206,7 @@
         "Woff2": "WOFF2",
         "Ufo": "UFO",
         "Designspace": "Designspace",
-        "Fwf": "FWF"
+        "Fcf": "FCF"
       },
       "destination": "Destination",
       "destinationLabel": "Destination path",

@@ -6,16 +6,16 @@ import { defineConfig } from '@playwright/test'
 /**
  * The end-to-end suite is self-contained: it starts the kernel development
  * server and Vite itself, so `pnpm e2e` needs nothing but
- * `cargo build -p fw-devserver` and `pnpm install`.
+ * `cargo build -p fc-devserver` and `pnpm install`.
  *
  * Both ports are configurable so a second checkout (or a parallel agent) can
  * run the suite without fighting over the defaults. The UI is served the kernel
- * through Vite's proxy (`FW_DEV_PROXY`) and told to call its own origin
- * (`VITE_FW_API`), which keeps the traffic same-origin whatever port is in use
- * — `fw-devserver` only allows the default UI origin across origins.
+ * through Vite's proxy (`FC_DEV_PROXY`) and told to call its own origin
+ * (`VITE_FC_API`), which keeps the traffic same-origin whatever port is in use
+ * — `fc-devserver` only allows the default UI origin across origins.
  */
-const apiPort = process.env.FW_API_PORT ?? '8787'
-const uiPort = process.env.FW_UI_PORT ?? '1420'
+const apiPort = process.env.FC_API_PORT ?? '8787'
+const uiPort = process.env.FC_UI_PORT ?? '1420'
 // Both servers bind the IPv4 loopback, and `localhost` resolves to `::1`
 // first on some runners, so every URL here names the address explicitly.
 const baseURL = `http://127.0.0.1:${uiPort}`
@@ -32,10 +32,10 @@ const repoRoot = fileURLToPath(new URL('..', import.meta.url))
  */
 const devserver =
   [
-    `${repoRoot}target/release/fw-devserver`,
-    `${repoRoot}target/debug/fw-devserver`,
+    `${repoRoot}target/release/fc-devserver`,
+    `${repoRoot}target/debug/fc-devserver`,
   ].find((binary) => existsSync(binary)) ??
-  'cargo run --quiet -p fw-devserver --'
+  'cargo run --quiet -p fc-devserver --'
 
 /**
  * The kernel's configuration home for the run, emptied as the suite starts.
@@ -71,12 +71,12 @@ export default defineConfig({
     {
       command: `${devserver} --port ${apiPort} --open ${fixture}`,
       cwd: repoRoot,
-      env: { FW_CONFIG_DIR: configDir },
+      env: { FC_CONFIG_DIR: configDir },
       url: `${apiURL}/health`,
-      // `/health` answers before any document is open, so a `fw-devserver`
+      // `/health` answers before any document is open, so a `fc-devserver`
       // already running on this port without the fixture satisfies the probe
       // and every spec then fails on a missing document. Stop a stray server
-      // before running the suite, or point `FW_API_PORT` somewhere else.
+      // before running the suite, or point `FC_API_PORT` somewhere else.
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
       stdout: 'pipe',
@@ -85,7 +85,7 @@ export default defineConfig({
     {
       command: `pnpm exec vite --port ${uiPort} --strictPort`,
       url: baseURL,
-      env: { FW_DEV_PROXY: apiURL, VITE_FW_API: baseURL },
+      env: { FC_DEV_PROXY: apiURL, VITE_FC_API: baseURL },
       reuseExistingServer: !process.env.CI,
     },
   ],

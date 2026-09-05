@@ -39,26 +39,26 @@ Out of scope for v1: collaborative editing, cloud sync, mobile.
 │  │         BitmapEditor, FontInfo, Features (CodeMirror), Preview, Layers …      │
 │  └─ transport: Transport interface → TauriTransport | HttpTransport (dev/test)  │
 └───────────────▲──────────────────────────────────────────────────▲──────────────┘
-                │ invoke / events (typed by fw-api)                 │ WebSocket (dev)
+                │ invoke / events (typed by fc-api)                 │ WebSocket (dev)
 ┌───────────────┴─────────────────┐                  ┌─────────────┴──────────────┐
-│ src-tauri  (thin shell)          │                  │ fw-devserver (axum)         │
+│ src-tauri  (thin shell)          │                  │ fc-devserver (axum)         │
 └───────────────┬─────────────────┘                  └─────────────┬──────────────┘
                 └──────────────────────┬──────────────────────────┘
                                        ▼
-                     fw-api  (request/response types, session facade)
+                     fc-api  (request/response types, session facade)
                                        ▼
-   fw-doc   documents, command bus, undo timeline, dirty tracking, autosave, .fwf
+   fc-doc   documents, command bus, undo timeline, dirty tracking, autosave, .fcf
       │
-      ├─ fw-model     the font document model (pure data + invariants + queries)
-      ├─ fw-geom      kurbo geometry, booleans (flo_curves), stroke, simplify, snapping helpers
-      ├─ fw-glyphdata glyph naming/categories/decompositions/Unihan subset
-      ├─ fw-layout    FEA ⇄ model, layout tables ⇄ model, kerning/anchor feature generation, shaping (harfrust)
-      ├─ fw-sfnt      TTF/OTF/TTC/WOFF/WOFF2 read + write, CFF/CFF2 writer, bitmap tables, table preservation
-      ├─ fw-formats   UFO, Glyphs, SFD, Type1, SVG, BDF/PCF/FNT/FON/PSF, AFM/PFM, TTX
-      ├─ fw-compile   export pipeline: fontc Source impl, patch/preserve merge, post-processing, hinting hooks
-      ├─ fw-raster    thumbnails, strike generation, hinted previews (skrifa + tiny-skia)
-      └─ fw-hint      PS hints (blues/stems), TT instruction asm/disasm, ttfautohint integration
-   fw-cli   headless binary (open/convert/build/inspect/validate) sharing everything above
+      ├─ fc-model     the font document model (pure data + invariants + queries)
+      ├─ fc-geom      kurbo geometry, booleans (flo_curves), stroke, simplify, snapping helpers
+      ├─ fc-glyphdata glyph naming/categories/decompositions/Unihan subset
+      ├─ fc-layout    FEA ⇄ model, layout tables ⇄ model, kerning/anchor feature generation, shaping (harfrust)
+      ├─ fc-sfnt      TTF/OTF/TTC/WOFF/WOFF2 read + write, CFF/CFF2 writer, bitmap tables, table preservation
+      ├─ fc-formats   UFO, Glyphs, SFD, Type1, SVG, BDF/PCF/FNT/FON/PSF, AFM/PFM, TTX
+      ├─ fc-compile   export pipeline: fontc Source impl, patch/preserve merge, post-processing, hinting hooks
+      ├─ fc-raster    thumbnails, strike generation, hinted previews (skrifa + tiny-skia)
+      └─ fc-hint      PS hints (blues/stems), TT instruction asm/disasm, ttfautohint integration
+   fc-cli   headless binary (open/convert/build/inspect/validate) sharing everything above
 ```
 
 Principles:
@@ -66,11 +66,11 @@ Principles:
 - **The kernel owns the document.** The UI holds a view model for the glyph(s) being edited and applies edits optimistically during drags, but every committed change is a kernel command. The kernel is the single source of truth for undo.
 - **One model, many formats.** Every reader produces the same `Font` model; every writer consumes it. Format-specific data that the model cannot represent is kept in `Font::extra` (raw tables, opaque lib data) so it survives round trips.
 - **Small crates, clean interfaces.** Each crate has a documented public API and its own tests. Implementation can be delegated per crate.
-- **Derived data is never stored in the model.** Caches (flattened components, bounding boxes, thumbnails, dependents index) live in `fw-doc` and are invalidated by generation counters.
+- **Derived data is never stored in the model.** Caches (flattened components, bounding boxes, thumbnails, dependents index) live in `fc-doc` and are invalidated by generation counters.
 
 ---
 
-## 3. The document model (`fw-model`)
+## 3. The document model (`fc-model`)
 
 Design lineage: UFO 3 + designspace semantics for contours/masters/kerning, Glyphs concepts for masters/instances/layers/categories, FontForge extras for bitmaps/hints/unknown tables/CID. Point-list contours (UFO style) are used because they represent cubic and quadratic contours with one type and preserve TrueType implied points.
 
@@ -135,32 +135,32 @@ pub struct BitmapStrike { pub ppem: u16, pub depth: u8, pub ascent: i16, pub des
 pub struct BitmapGlyph { pub bitmap: Bitmap /* origin, w, h, depth, rows */, pub advance: i16, pub vertical_advance: Option<i16>, pub refs: Vec<BitmapRef> }
 ```
 
-Invariants enforced by `fw-model` constructors/setters (never by the UI):
+Invariants enforced by `fc-model` constructors/setters (never by the UI):
 
 - Glyph names are unique, glyph order is stable, every glyph has exactly one layer per master.
 - Contour point sequences are well-formed for their curve kind (cubic: at most two off-curves between on-curves; quadratic: any number, implied points allowed).
 - Components never form cycles (checked on insert).
 - Kerning groups referenced by kerning pairs exist.
 
-Queries (`fw-model::query`): flattened outline for a layer (components resolved), bounding boxes, dependents of a glyph, glyphs by Unicode/name/category/script, interpolation compatibility between masters, metrics-key resolution.
+Queries (`fc-model::query`): flattened outline for a layer (components resolved), bounding boxes, dependents of a glyph, glyphs by Unicode/name/category/script, interpolation compatibility between masters, metrics-key resolution.
 
 Identity: glyphs are addressed by `GlyphName` externally and by a stable `GlyphId` (u32 handle) inside a session so renames do not invalidate UI state.
 
 ---
 
-## 4. Documents, commands and undo (`fw-doc`)
+## 4. Documents, commands and undo (`fc-doc`)
 
 - `Session` holds open `Document`s. A `Document` wraps a `Font`, its file provenance (path, format, original bytes for preservation), a `generation: u64`, per-glyph generations, and derived caches.
 - All mutation goes through `Command`s (`enum Command { Glyph(GlyphCommand), Font(FontCommand), Kerning(...), Features(...), Bitmap(...), Batch(Vec<Command>) }`). `Document::apply(cmd) -> Result<Change>` returns what changed so the UI can invalidate precisely.
 - **Undo** is a document-level timeline of `UndoEntry { label, before: Snapshot, after: Snapshot, glyphs_touched }`. Snapshots are `Arc<Glyph>`/`Arc<Layer>` clones with structural sharing (a glyph command clones only that glyph). Interactive drags coalesce: the UI sends `begin_edit / update_edit / end_edit`; one undo entry results. Undo depth is unlimited by default, bounded by a memory budget.
-- Autosave every N seconds to `<datadir>/<sha1>.autosave.fwf`, where `sha1` hashes the source document path; unsaved documents use their session `DocId` as the filename stem. Restore the snapshot on the next launch after a crash.
+- Autosave every N seconds to `<datadir>/<sha1>.autosave.fcf`, where `sha1` hashes the source document path; unsaved documents use their session `DocId` as the filename stem. Restore the snapshot on the next launch after a crash.
 - Change notifications: `DocumentEvent { doc, generation, glyphs: Vec<GlyphId>, scope: bitflags }` are broadcast to the UI.
 
 ---
 
-## 5. Native file format `.fwf`
+## 5. Native file format `.fcf`
 
-Single UTF-8 JSON file with deterministic key and glyph order. The envelope and font-level objects use 2-space indentation; each direct entry in `font.glyphs` stores its complete glyph as compact JSON on one physical line. This keeps `git diff` focused per glyph without the size and I/O cost of expanding every contour point across separate lines, and avoids a directory package. Schema versioned (`"format": "fontcutter", "version": 1`; the pre-rename tag `"fontworkshop"` is still accepted on read). Binary payloads (bitmaps, raw tables, images) are base64. Files above ~50 MB may optionally be written as `.fwf.gz` (transparent on read). A directory-package variant is deferred until measured need.
+Single UTF-8 JSON file with deterministic key and glyph order. The envelope and font-level objects use 2-space indentation; each direct entry in `font.glyphs` stores its complete glyph as compact JSON on one physical line. This keeps `git diff` focused per glyph without the size and I/O cost of expanding every contour point across separate lines, and avoids a directory package. Schema versioned (`"format": "fontcutter", "version": 1`; the pre-rename tag `"fontworkshop"` is still accepted on read). Binary payloads (bitmaps, raw tables, images) are base64. Files above ~50 MB may optionally be written as `.fcf.gz` (transparent on read). A directory-package variant is deferred until measured need.
 
 Every other format is import/export. UFO/designspace and Glyphs exports are "lossless for what those formats can express" and use `lib`/`userData` for Font Cutter extras.
 
@@ -168,7 +168,7 @@ Every other format is import/export. UFO/designspace and Glyphs exports are "los
 
 ## 6. File I/O
 
-### 6.1 Format registry (`fw-formats`, `fw-sfnt`)
+### 6.1 Format registry (`fc-formats`, `fc-sfnt`)
 
 `trait FontReader { fn sniff(bytes, path) -> Confidence; fn read(&self, src, opts) -> Result<Vec<Font>> }` and `trait FontWriter { fn write(&self, font, opts, sink) -> Result<()> }`. Detection uses magic bytes first, extension second (same order as FontForge's `_ReadSplineFont`). Compressed inputs (`.gz`, `.zip` containing one font/UFO) are handled transparently.
 
@@ -197,7 +197,7 @@ Every other format is import/export. UFO/designspace and Glyphs exports are "los
 5. Bitmap tables → `BitmapStrike`s. `MATH` → `MathTable`. `COLR/CPAL` → `ColorData`. `SVG ` → per-glyph SVG documents (kept raw, editable as text).
 6. Every table not listed above → `extra.raw_tables` (DSIG is dropped deliberately).
 
-### 6.3 Layout tables ⇄ FEA (`fw-layout`)
+### 6.3 Layout tables ⇄ FEA (`fc-layout`)
 
 - `LayoutImport` holds owned write-fonts `Gsub`/`Gpos`/`Gdef`/`Base` tables plus a **decompiled FEA rendering** produced by our decompiler (lookup-by-lookup, with class synthesis for PairPos format 2 and ChainContext format 2, names like `lookup_gsub_3`). The decompiler is validated by recompiling with fea-rs and comparing shaping on a corpus.
 - The user sees the font's features in the Features panel as editable FEA. Until they edit, export uses the raw tables (lossless). Once they edit and the FEA compiles, export uses the compiled result (`Features::source_of_truth = Fea`). "Revert to original tables" is one click.
@@ -205,19 +205,19 @@ Every other format is import/export. UFO/designspace and Glyphs exports are "los
 - Automatic features from glyph names (`.sc`→`smcp`, `.ss01`→`ss01`, `_` ligatures→`liga`/`dlig`, `.case`, `.locl` conventions, `vert`/`vrt2` from `.vert`) are generated into an "Automatic" prefix the user can freeze and edit.
 - Shaping preview everywhere uses harfrust on a font compiled from the current document (incremental: recompile only when features/kerning/glyph set change; outline edits update glyph shapes without a re-shape).
 
-### 6.4 Export pipeline (`fw-compile`)
+### 6.4 Export pipeline (`fc-compile`)
 
 Single pipeline, user chooses targets in one dialog (like Glyphs Export): format (TTF / OTF-CFF / variable TTF / variable OTF-CFF2 / WOFF / WOFF2 / UFO / Glyphs / SFD / Type1 / BDF / PCF / FON / OTB / SVG), instances or masters, options (remove overlap, autohint, keep TT instructions, subroutinize, production names, preserve untouched original tables, table subset).
 
-1. **Compile** via our `fontir::source::Source` implementation (`FwSource`) feeding fontc `generate_font`, producing glyf/loca or (for CFF targets) glyf which we then replace by **our CFF/CFF2 writer** output from the same IR (CFF writer accepts cubic outlines, PS hints, FDArray/FDSelect for CID, optional subroutinization).
+1. **Compile** via our `fontir::source::Source` implementation (`FcSource`) feeding fontc `generate_font`, producing glyf/loca or (for CFF targets) glyf which we then replace by **our CFF/CFF2 writer** output from the same IR (CFF writer accepts cubic outlines, PS hints, FDArray/FDSelect for CID, optional subroutinization).
 2. **Merge** with preserved data: raw unknown tables, original layout tables if features untouched, per-glyph TT instructions + cvt/fpgm/prep if the glyph's outline generation matches import, MATH, bitmap tables, VORG.
-3. **Post-process**: autohint (PS blues/stems from `fw-hint`; TrueType via external `ttfautohint` if installed, else skip with a notice), `kern` legacy table (option), `DSIG` dummy (option), TTC assembly, WOFF/WOFF2 wrapping, validation report (our checks + a shaping smoke test with harfrust).
+3. **Post-process**: autohint (PS blues/stems from `fc-hint`; TrueType via external `ttfautohint` if installed, else skip with a notice), `kern` legacy table (option), `DSIG` dummy (option), TTC assembly, WOFF/WOFF2 wrapping, validation report (our checks + a shaping smoke test with harfrust).
 
-A headless `fw build` CLI command runs the same pipeline for batch/CI use.
+A headless `fontcutter build` CLI command runs the same pipeline for batch/CI use.
 
 ---
 
-## 7. Geometry (`fw-geom`)
+## 7. Geometry (`fc-geom`)
 
 Built on kurbo. Public operations, each with a documented tolerance and unit tests against FontForge's fixture SFDs (`fontforge/tests/fonts/*Bugs.sfd`, `StrokeTests.sfd`, `AddExtrema*.sfd`):
 
@@ -230,7 +230,7 @@ Built on kurbo. Public operations, each with a documented tolerance and unit tes
 
 ---
 
-## 8. Rendering and bitmaps (`fw-raster`)
+## 8. Rendering and bitmaps (`fc-raster`)
 
 - Thumbnails and text previews: skrifa outline extraction from either the compiled font or directly from model layers (our own pen), rasterised with tiny-skia. Thumbnail cache keyed by (glyph generation, size, master).
 - Hinted previews and "grid fit" view: skrifa `HintingInstance` with `Engine::Interpreter` (TT bytecode, PS hints) or `Engine::Auto`. Provides device-space outlines for the editor overlay and pixel bitmaps for the waterfall.
@@ -239,24 +239,24 @@ Built on kurbo. Public operations, each with a documented tolerance and unit tes
 
 ---
 
-## 9. Glyph data (`fw-glyphdata`)
+## 9. Glyph data (`fc-glyphdata`)
 
 A compiled database (generated at build time from AGLFN, Unicode UCD via `icu_properties`, Glyphs' GlyphData conventions re-expressed, and a Unihan subset: kRSUnicode radical/stroke, kTotalStrokes, kMandarin pinyin, kIICore/GB2312/Big5/JIS levels) giving: name ↔ Unicode, category/sub-category, script, default anchors, decomposition recipes, sort keys. Used for "Add glyphs" recipes, automatic naming, sidebar filters (Categories / Scripts / Languages / Unicode blocks / CJK charsets / radical / stroke count / pinyin), and composite building.
 
 ---
 
-## 10. Hinting (`fw-hint`)
+## 10. Hinting (`fc-hint`)
 
 - PS: blue zones and StdHW/StdVW/StemSnap computation (port of FontForge `FindBlues`/`FigureStems`), stem hint detection (port of `stemdb` core, staged), hint masks; hints stored on layers and written into CFF/Type1.
 - TT: instruction assembler/disassembler (FontForge opcode table), instruction editor with disassembly view, cvt/fpgm/prep editing; instructions preserved for untouched glyphs; autoinstruct via external `ttfautohint` (auto-detected on PATH; downloadable via a help link). A stepping debugger on skrifa's interpreter is a stretch goal.
 
 ---
 
-## 11. API layer (`fw-api`) and transports
+## 11. API layer (`fc-api`) and transports
 
 All UI ↔ kernel traffic is a typed request/response set defined once in Rust with `serde` and exported to TypeScript (`ts-rs`) so both sides share types. Categories: session (open/save/close/recent), document queries (glyph list pages, glyph detail, previews), commands (mutations, batch), edit sessions (begin/update/end for drags), export, shaping, search, preferences, plus a `Subscribe` stream for `DocumentEvent`s.
 
-Transports: Tauri `invoke` + `emit` (production), and `fw-devserver` (axum HTTP + WebSocket, same JSON payloads) for running the UI in a normal browser during development and for end-to-end tests with agent-browser. Large payloads (thumbnails, flattened paths) are compact JSON arrays; binary channels are added only if measured necessary.
+Transports: Tauri `invoke` + `emit` (production), and `fc-devserver` (axum HTTP + WebSocket, same JSON payloads) for running the UI in a normal browser during development and for end-to-end tests with agent-browser. Large payloads (thumbnails, flattened paths) are compact JSON arrays; binary channels are added only if measured necessary.
 
 Performance budgets: opening a 65k-glyph CJK OTF < 3 s; font view scroll at 60 fps with 300 visible cells; glyph edit round trip (command → event → repaint) < 16 ms; export of a 65k-glyph static TTF < 20 s.
 
@@ -287,7 +287,7 @@ Undo/redo everywhere (Ctrl/Cmd+Z / Shift+Z), with labels in the Edit menu.
 
 ### 12.4 Spacing & kerning
 
-Kerning is group-based (`@MMK_L_x`/`@MMK_R_x` semantics, side-aware for RTL), with pair exceptions. Kerning panel: pairs list with filters, group manager, "kern in context" text strings (word lists), conflict/overlap report, auto-kern and auto-space suggestions from `fw-geom` spacing, vertical kerning for CJK. Metrics keys (`=H`, `=|n`, `=n+10`) with live resolution and "out of sync" warnings.
+Kerning is group-based (`@MMK_L_x`/`@MMK_R_x` semantics, side-aware for RTL), with pair exceptions. Kerning panel: pairs list with filters, group manager, "kern in context" text strings (word lists), conflict/overlap report, auto-kern and auto-space suggestions from `fc-geom` spacing, vertical kerning for CJK. Metrics keys (`=H`, `=|n`, `=n+10`) with live resolution and "out of sync" warnings.
 
 ### 12.5 Features
 
@@ -318,8 +318,8 @@ Find & fix problems (all FontForge checks reorganised into categories with "fix"
 ## 13. Testing strategy
 
 - Rust: unit tests per crate; golden round-trip tests over a fixture corpus (`fixtures/`: FontForge test fonts, DejaVu, Noto samples, Source Han Sans OTF/VF from `~/githubprojects/pixelfonts/SourceHanSanOTF`, bitmap fonts from sibling projects); property tests for geometry (`proptest`); shaping-equivalence tests (harfrust before/after) for layout round trips; fuzz targets for parsers (`cargo fuzz`, optional).
-- CLI smoke tests: `fw convert`, `fw build`, `fw inspect` on the corpus in CI.
-- Frontend: vitest unit tests for stores/utilities; component tests; e2e with agent-browser against `fw-devserver` (scripted: open font, edit, export, assert on file) — this is also how Opus agents verify UI work with screenshots.
+- CLI smoke tests: `fontcutter convert`, `fontcutter build`, `fontcutter inspect` on the corpus in CI.
+- Frontend: vitest unit tests for stores/utilities; component tests; e2e with agent-browser against `fc-devserver` (scripted: open font, edit, export, assert on file) — this is also how Opus agents verify UI work with screenshots.
 - Performance tests with a 65k-glyph font as a gate for P0.
 
 ---
@@ -330,8 +330,8 @@ Each phase ends in a usable application. Detailed task plans are written per pha
 
 | Phase | Scope | Exit criteria |
 |---|---|---|
-| **P0 Foundation** | workspace + conventions; `fw-model`, `fw-doc`, `fw-api`, `fw-sfnt` read (TTF/OTF/TTC/WOFF/WOFF2, variable metadata, bitmaps raw), `.fwf` save/load, `fw-devserver`, `fw-cli inspect/convert`; app shell with Font view (virtual grid, sidebar filters, search), read-only Glyph view, Font Info (read), i18n scaffold, theming | Source Han Sans OTF opens < 3 s, grid scrolls smoothly, save/reopen `.fwf` round-trips, CLI converts TTF → FWF → inspect with equal glyph count; binary TTF export moves to P1 `fw-compile` |
-| **P1 Outline editing & export** | glyph editor with full tool set, undo, snapping, guides, components, anchors, layers, metrics editing, transform/path ops (`fw-geom`), fontc-based export (TTF static) with table preservation, UFO/designspace import/export, text-tab with harfrust preview, command palette, preferences | "Open commercial TTF, edit 3 glyphs, export" yields a font whose untouched tables/hinting are preserved; "draw a new Latin font from scratch and export" works end to end |
+| **P0 Foundation** | workspace + conventions; `fc-model`, `fc-doc`, `fc-api`, `fc-sfnt` read (TTF/OTF/TTC/WOFF/WOFF2, variable metadata, bitmaps raw), `.fcf` save/load, `fc-devserver`, `fc-cli inspect/convert`; app shell with Font view (virtual grid, sidebar filters, search), read-only Glyph view, Font Info (read), i18n scaffold, theming | Source Han Sans OTF opens < 3 s, grid scrolls smoothly, save/reopen `.fcf` round-trips, CLI converts TTF → FCF → inspect with equal glyph count; binary TTF export moves to P1 `fc-compile` |
+| **P1 Outline editing & export** | glyph editor with full tool set, undo, snapping, guides, components, anchors, layers, metrics editing, transform/path ops (`fc-geom`), fontc-based export (TTF static) with table preservation, UFO/designspace import/export, text-tab with harfrust preview, command palette, preferences | "Open commercial TTF, edit 3 glyphs, export" yields a font whose untouched tables/hinting are preserved; "draw a new Latin font from scratch and export" works end to end |
 | **P2 Spacing, kerning, features, CFF** | kerning groups/panel/text-tab kerning, metrics keys, FEA editor with diagnostics, layout decompiler, automatic features, OTF/CFF export (our CFF writer), Glyphs import/export, SFD import/export, Type 1 read/write, Find problems v1 | professional Latin workflow complete; Glyphs/UFO/SFD round trips pass corpus tests |
 | **P3 Bitmap fonts** | strikes model + editor, BDF/PCF/FNT/FON/PSF/OTB/EBDT/CBDT/sbix read/write, rasterise/trace, waterfall | replaces bitmap-font-viewer; CJK BDF workflow complete |
 | **P4 Variable & CJK pro** | axes/masters/instances UI, interpolation preview, compatibility fixer, brace/bracket layers, variable export (gvar/CFF2), smart components, vertical metrics/`vert`/`vkrn`, Unihan filters & batch tools, CID export | variable Latin + CJK font from masters exports and installs |

@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use fw_api::Api;
-use fw_doc::Session;
+use fc_api::Api;
+use fc_doc::Session;
 use tauri::Emitter;
 use tokio::sync::broadcast::error::RecvError;
 use tracing_subscriber::EnvFilter;
@@ -38,7 +38,7 @@ pub fn run() -> Result<(), Error> {
             drop(std::thread::spawn(move || loop {
                 match events.blocking_recv() {
                     Ok(event) => {
-                        if let Err(error) = app_handle.emit("fw:event", &event) {
+                        if let Err(error) = app_handle.emit("fc:event", &event) {
                             tracing::warn!(%error, "failed to emit document event");
                             break;
                         }

@@ -88,16 +88,16 @@ These files name FontForge in comments to say which behaviour they match. They
 contain no FontForge code; the implementations are written on `kurbo` and the rest
 of the Rust font stack.
 
-- `crates/fw-geom/src/edit.rs:14` — `SimplifyOptions` documents the FontForge-
+- `crates/fc-geom/src/edit.rs:14` — `SimplifyOptions` documents the FontForge-
   compatible flag set (ignore slopes / ignore extrema / smooth curves / force
   lines / nearly-hv lines / start at extrema) around `kurbo::simplify::simplify_bezpath`.
-- `crates/fw-geom/src/edit.rs:66` — `simplify()` describes those flags; the
+- `crates/fc-geom/src/edit.rs:66` — `simplify()` describes those flags; the
   fitting core is kurbo's.
-- `crates/fw-geom/src/edit.rs:213` — `add_extrema()` notes that its 0.01-unit
+- `crates/fc-geom/src/edit.rs:213` — `add_extrema()` notes that its 0.01-unit
   endpoint tolerance matches FontForge's tolerant `ForceEndPointExtrema` policy.
   Naming the policy is description; the extrema are computed with
   `kurbo::ParamCurveExtrema`.
-- `crates/fw-fixtures/src/lib.rs:26,34` — the `"fontforge-tests"` key resolves to
+- `crates/fc-fixtures/src/lib.rs:26,34` — the `"fontforge-tests"` key resolves to
   `<workspace>/fontforge/tests/fonts` in the (gitignored, uncommitted) reference
   checkout, so tests can opt into a broader font corpus when it happens to be
   present locally. It is a path lookup, returning `None` when absent; nothing is
@@ -136,7 +136,7 @@ commands, sizes, and hashes are in `fixtures/README.md`.
 
 ### 2.2 Optional, not committed
 
-`fw_fixtures::external` resolves two fixtures only if they exist on the local
+`fc_fixtures::external` resolves two fixtures only if they exist on the local
 machine, and dependent tests skip when they do not:
 
 - `source-han-sans-sc-otf` → Source Han Sans SC Regular, **SIL Open Font License
@@ -208,7 +208,7 @@ chosen directly by Font Cutter:
 | `cssparser-macros` | 0.6.1 | via `cssparser` |
 | `dtoa-short` | 0.3.5 | via `cssparser` |
 | `selectors` | 0.36.1 | `dom_query` → `tauri-utils` → `tauri` / `tauri-build` / `wry` |
-| `option-ext` | 0.2.0 | `dirs-sys` → `dirs` → `fw-api`, and `dirs` → `tauri` / `tauri-build` / `tray-icon` / `wry` |
+| `option-ext` | 0.2.0 | `dirs-sys` → `dirs` → `fc-api`, and `dirs` → `tauri` / `tauri-build` / `tray-icon` / `wry` |
 
 #### LGPL mention
 

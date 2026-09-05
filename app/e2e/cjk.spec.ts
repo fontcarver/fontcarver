@@ -13,14 +13,14 @@ const SOURCE_HAN =
  * rather than on behaviour.
  */
 const RELEASE_KERNEL = fileURLToPath(
-  new URL('../../target/release/fw-devserver', import.meta.url),
+  new URL('../../target/release/fc-devserver', import.meta.url),
 )
 
 test.describe('CJK font view', () => {
   test.skip(!existsSync(SOURCE_HAN), `missing external fixture: ${SOURCE_HAN}`)
   test.skip(
     !existsSync(RELEASE_KERNEL),
-    'needs a release fw-devserver: cargo build --release -p fw-devserver',
+    'needs a release fc-devserver: cargo build --release -p fc-devserver',
   )
 
   test('opens Source Han Sans and renders cells at the end of the grid', async ({

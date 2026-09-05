@@ -101,7 +101,7 @@ all.**
 5. **The reference checkout is never shipped.** `fontforge/` is a local research
    checkout, listed in `.gitignore`, never committed, and not part of any build or
    release artifact. Tests that want its broader font corpus reach it through
-   `fw_fixtures::external("fontforge-tests")`, which returns `None` when the
+   `fc_fixtures::external("fontforge-tests")`, which returns `None` when the
    checkout is absent so those tests skip cleanly.
 
 "Reference, not translation" means exactly this: FontForge tells us *what* a

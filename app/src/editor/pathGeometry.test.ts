@@ -201,8 +201,8 @@ describe('inferCurves', () => {
   })
 
   it('prefers quadratic in a mixture, whichever comes first', () => {
-    expect(inferCurves([cubic, quad], 'fwf')).toBe('quadratic')
-    expect(inferCurves([quad, cubic], 'fwf')).toBe('quadratic')
+    expect(inferCurves([cubic, quad], 'fcf')).toBe('quadratic')
+    expect(inferCurves([quad, cubic], 'fcf')).toBe('quadratic')
   })
 
   it('falls back to the format only for a layer with no curves', () => {
@@ -210,7 +210,7 @@ describe('inferCurves', () => {
     expect(inferCurves([square], 'TrueType')).toBe('quadratic')
     expect(inferCurves([], 'ttc')).toBe('quadratic')
     expect(inferCurves([square], 'otf')).toBe('cubic')
-    expect(inferCurves([square], 'fwf')).toBe('cubic')
+    expect(inferCurves([square], 'fcf')).toBe('cubic')
   })
 
   it('treats a WOFF wrapper as saying nothing about the outlines', () => {

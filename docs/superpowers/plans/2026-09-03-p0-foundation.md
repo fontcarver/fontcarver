@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Each task below is sized for one autonomous implementation run (Codex gpt-5.6-sol xhigh for Rust, Opus for UI). Tasks list exact interfaces and acceptance tests; implementers write the code within those interfaces and must follow `CONVENTIONS.md`.
 
-**Goal:** A running Font Cutter that opens any sfnt font (TTF/OTF/TTC/WOFF/WOFF2, including 65k-glyph CJK fonts) into the document model, shows it in a fast virtualised Font view with sidebar filters and search, shows a read-only glyph view and Font Info, saves/reloads the native `.fwf` format, and exposes the kernel through a Tauri transport, a dev HTTP/WebSocket server and a CLI.
+**Goal:** A running Font Cutter that opens any sfnt font (TTF/OTF/TTC/WOFF/WOFF2, including 65k-glyph CJK fonts) into the document model, shows it in a fast virtualised Font view with sidebar filters and search, shows a read-only glyph view and Font Info, saves/reloads the native `.fcf` format, and exposes the kernel through a Tauri transport, a dev HTTP/WebSocket server and a CLI.
 
-**Architecture:** Rust workspace of small crates (`fw-model` → `fw-sfnt`/`fw-doc`/`fw-glyphdata` → `fw-api` → `fw-devserver`/`src-tauri`/`fw-cli`) and a React 19 + TypeScript app talking to the kernel through a single `api_call(method, params)` dispatch plus an event stream. The kernel owns documents and undo; the UI renders from query results.
+**Architecture:** Rust workspace of small crates (`fc-model` → `fc-sfnt`/`fc-doc`/`fc-glyphdata` → `fc-api` → `fc-devserver`/`src-tauri`/`fc-cli`) and a React 19 + TypeScript app talking to the kernel through a single `api_call(method, params)` dispatch plus an event stream. The kernel owns documents and undo; the UI renders from query results.
 
 **Tech Stack:** Rust 1.94 stable, read-fonts 0.43 / skrifa 0.46 / write-fonts 0.52, kurbo 0.13, serde/serde_json, smol_str, indexmap, uuid, ts-rs, axum + tokio (dev server), tauri 2.11 (+ plugin-dialog, plugin-fs), clap (CLI); pnpm, Vite 7, React 19, TypeScript 5.9, Zustand, i18next, Vitest, Playwright.
 
@@ -16,7 +16,7 @@
 - Crate names and directories exactly as in `CONVENTIONS.md` § Repository layout.
 - All model coordinates `f64`, y-up font units; `kurbo::Point`/`Affine` for geometry; `GlyphName` newtype over `SmolStr`.
 - Serialization with `serde`; unknown fields tolerated (`deny_unknown_fields` off); every optional field `#[serde(default)]`.
-- Performance gates (Task 12): open Source Han Sans SC OTF (65,535 glyphs) < 3 s release; glyph-list page of 300 cells < 30 ms after warm-up; `.fwf` save+load of that font < 6 s.
+- Performance gates (Task 12): open Source Han Sans SC OTF (65,535 glyphs) < 3 s release; glyph-list page of 300 cells < 30 ms after warm-up; `.fcf` save+load of that font < 6 s.
 - Frontend: TypeScript strict, no default exports, all strings through `t()`, CSS Modules + `tokens.css`, kernel access only via `app/src/transport/`.
 - Commits: Conventional Commits; each task ends with its own commits.
 - Large fixtures are never committed; `fixtures/README.md` lists external paths. Source Han Sans OTFs live at `/home/chen/githubprojects/pixelfonts/SourceHanSanOTF/` (tests skip if absent). FontForge fixtures at `fontforge/tests/fonts/` (skip if absent).
@@ -32,23 +32,23 @@ rust-toolchain.toml              channel = "1.94.0"
 CONVENTIONS.md                   (exists)
 fixtures/README.md               external fixture paths
 fixtures/fonts/                  small committed fonts (< 2 MB each): see Task 1
-crates/fw-fixtures/              tiny helper crate: fixture path resolution + skip helpers
-crates/fw-model/                 src/lib.rs, ids.rs, font.rs, info.rs, master.rs, glyph.rs, layer.rs, contour.rs,
+crates/fc-fixtures/              tiny helper crate: fixture path resolution + skip helpers
+crates/fc-model/                 src/lib.rs, ids.rs, font.rs, info.rs, master.rs, glyph.rs, layer.rs, contour.rs,
                                  component.rs, anchor.rs, guide.rs, kerning.rs, features.rs, bitmap.rs, extra.rs,
                                  query/{mod.rs, flatten.rs, bbox.rs, dependents.rs, lookup.rs}, validate.rs, error.rs
-crates/fw-glyphdata/             src/lib.rs, aglfn.rs (generated table), unicode.rs, category.rs, names.rs
-crates/fw-sfnt/                  src/lib.rs, error.rs, read/{mod.rs, container.rs, glyf.rs, cff.rs, metrics.rs,
+crates/fc-glyphdata/             src/lib.rs, aglfn.rs (generated table), unicode.rs, category.rs, names.rs
+crates/fc-sfnt/                  src/lib.rs, error.rs, read/{mod.rs, container.rs, glyf.rs, cff.rs, metrics.rs,
                                  names.rs, cmap.rs, os2.rs, post.rs, vertical.rs, hinting.rs, variations.rs,
                                  bitmaps.rs, raw.rs}
-crates/fw-doc/                   src/lib.rs, session.rs, document.rs, command.rs, undo.rs, cache.rs,
-                                 fwf/{mod.rs, schema.md, write.rs, read.rs}, autosave.rs, error.rs
-crates/fw-api/                   src/lib.rs, types/{mod.rs, session.rs, glyphs.rs, font.rs, commands.rs, events.rs},
+crates/fc-doc/                   src/lib.rs, session.rs, document.rs, command.rs, undo.rs, cache.rs,
+                                 fcf/{mod.rs, schema.md, write.rs, read.rs}, autosave.rs, error.rs
+crates/fc-api/                   src/lib.rs, types/{mod.rs, session.rs, glyphs.rs, font.rs, commands.rs, events.rs},
                                  api.rs (facade + dispatch), error.rs, bin/gen_ts.rs
-crates/fw-devserver/             src/main.rs, server.rs
-crates/fw-cli/                   src/main.rs, cmd/{inspect.rs, convert.rs}
+crates/fc-devserver/             src/main.rs, server.rs
+crates/fc-cli/                   src/main.rs, cmd/{inspect.rs, convert.rs}
 src-tauri/                       Cargo.toml, tauri.conf.json, capabilities/default.json, build.rs, src/{main.rs, lib.rs, commands.rs}, icons/
 app/                             package.json, vite.config.ts, tsconfig*.json, index.html, e2e/, src/…
-scripts/dev.sh                   starts fw-devserver + vite for browser development
+scripts/dev.sh                   starts fc-devserver + vite for browser development
 ```
 
 ---
@@ -56,31 +56,31 @@ scripts/dev.sh                   starts fw-devserver + vite for browser developm
 ### Task 1: Workspace scaffold, fixtures and CI
 
 **Files:**
-- Create: `Cargo.toml`, `rust-toolchain.toml`, `.github/workflows/ci.yml`, `fixtures/README.md`, `fixtures/fonts/*`, `crates/fw-fixtures/{Cargo.toml,src/lib.rs}`, one `Cargo.toml` + `src/lib.rs` for each of `fw-model fw-glyphdata fw-sfnt fw-doc fw-api fw-devserver fw-cli` (empty crate with `//!` doc and an `Error` enum), `src-tauri/*` (Tauri 2 shell that compiles and opens a window showing the Vite app), `app/*` (Vite React TS scaffold with pnpm, ESLint, Prettier, Vitest), `scripts/dev.sh`, `package.json` (root, workspace scripts), `pnpm-workspace.yaml`.
+- Create: `Cargo.toml`, `rust-toolchain.toml`, `.github/workflows/ci.yml`, `fixtures/README.md`, `fixtures/fonts/*`, `crates/fc-fixtures/{Cargo.toml,src/lib.rs}`, one `Cargo.toml` + `src/lib.rs` for each of `fc-model fc-glyphdata fc-sfnt fc-doc fc-api fc-devserver fc-cli` (empty crate with `//!` doc and an `Error` enum), `src-tauri/*` (Tauri 2 shell that compiles and opens a window showing the Vite app), `app/*` (Vite React TS scaffold with pnpm, ESLint, Prettier, Vitest), `scripts/dev.sh`, `package.json` (root, workspace scripts), `pnpm-workspace.yaml`.
 - Modify: `.gitignore` (add `app/node_modules`, `src-tauri/target`, `src-tauri/gen`).
 
 **Interfaces:**
-- Produces: `fw_fixtures::path(name: &str) -> PathBuf` (resolves `fixtures/fonts/<name>` relative to workspace root), `fw_fixtures::external(key: &str) -> Option<PathBuf>` where keys `"source-han-sans-sc-otf"` → `/home/chen/githubprojects/pixelfonts/SourceHanSanOTF/OTF/SimplifiedChinese/SourceHanSansSC-Regular.otf` (verify the real path when implementing; list what exists under that directory and pick the SC Regular static OTF), `"fontforge-tests"` → `<workspace>/fontforge/tests/fonts`; returns `None` when the file is missing. Macro `skip_unless_external!(key)` that `return`s from a test with an `eprintln!` when absent.
+- Produces: `fc_fixtures::path(name: &str) -> PathBuf` (resolves `fixtures/fonts/<name>` relative to workspace root), `fc_fixtures::external(key: &str) -> Option<PathBuf>` where keys `"source-han-sans-sc-otf"` → `/home/chen/githubprojects/pixelfonts/SourceHanSanOTF/OTF/SimplifiedChinese/SourceHanSansSC-Regular.otf` (verify the real path when implementing; list what exists under that directory and pick the SC Regular static OTF), `"fontforge-tests"` → `<workspace>/fontforge/tests/fonts`; returns `None` when the file is missing. Macro `skip_unless_external!(key)` that `return`s from a test with an `eprintln!` when absent.
 - Fixtures to commit (all freely licensed, each < 2 MB): download `DejaVuSans.ttf` (from the system `/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf` if present, else fonts-dejavu release), `NotoSans-Regular.ttf` (Google Fonts GitHub `ofl/notosans` static), `NotoSansSC-Regular.otf` is too large — do **not** commit; instead commit `fontforge/tests/fonts/test1012.otf`, `CantarellMin.woff2` and `NotoSerifTibetan-Regular.ttf` copies (they are test fixtures in FontForge's repo, GPL/OFL; record source and license in `fixtures/README.md`). Also produce `fixtures/fonts/DejaVuSans.woff` by wrapping the TTF (write a tiny throwaway script; the woff is committed). If `DejaVuSans.ttf` exceeds 2 MB use `DejaVuSansMono.ttf` instead.
 - Workspace `[workspace.dependencies]` pins: `read-fonts = { version = "0.43", features = ["experimental_traverse"] }`, `write-fonts = { version = "0.52", features = ["read"] }`, `skrifa = "0.46"`, `font-types = "0.12"`, `kurbo = { version = "0.13", features = ["serde"] }`, `serde = { version = "1", features = ["derive"] }`, `serde_json = { version = "1", features = ["preserve_order"] }`, `smol_str = { version = "0.3", features = ["serde"] }`, `indexmap = { version = "2", features = ["serde"] }`, `uuid = { version = "1", features = ["v4"] }`, `thiserror = "2"`, `tracing = "0.1"`, `tracing-subscriber = "0.3"`, `ts-rs = { version = "10", features = ["serde-compat", "no-serde-warnings"] }` (check the latest ts-rs major on crates.io and use it), `tokio = { version = "1", features = ["full"] }`, `axum = { version = "0.8", features = ["ws"] }`, `clap = { version = "4", features = ["derive"] }`, `anyhow = "1"`, `flate2 = "1"`, `woff2-patched = "0.4"`, `wuff = "0.2"`, `criterion = "0.5"`, `tauri = "2"`, `tauri-build = "2"`, `tauri-plugin-dialog = "2"`, `tauri-plugin-fs = "2"`. Verify each resolves; if a version is wrong, use the latest compatible and note it in the commit message.
-- `app/package.json` scripts: `dev`, `build`, `check` (tsc -b), `lint` (eslint .), `format`, `test` (vitest run), `e2e` (playwright test), `gen:api` (`cargo run -p fw-api --bin gen_ts`), `tauri`. Dependencies: react, react-dom, zustand, i18next, react-i18next, @tauri-apps/api, @tauri-apps/plugin-dialog, @tauri-apps/plugin-fs; dev: vite, @vitejs/plugin-react, typescript, vitest, jsdom, @testing-library/react, eslint + typescript-eslint + eslint-plugin-react-hooks, prettier, @playwright/test, @tauri-apps/cli.
+- `app/package.json` scripts: `dev`, `build`, `check` (tsc -b), `lint` (eslint .), `format`, `test` (vitest run), `e2e` (playwright test), `gen:api` (`cargo run -p fc-api --bin gen_ts`), `tauri`. Dependencies: react, react-dom, zustand, i18next, react-i18next, @tauri-apps/api, @tauri-apps/plugin-dialog, @tauri-apps/plugin-fs; dev: vite, @vitejs/plugin-react, typescript, vitest, jsdom, @testing-library/react, eslint + typescript-eslint + eslint-plugin-react-hooks, prettier, @playwright/test, @tauri-apps/cli.
 - `src-tauri/tauri.conf.json`: identifier `com.fontcutter.app`, productName `Font Cutter`, window 1400×900 min 1000×700, `devUrl` `http://localhost:1420`, `frontendDist` `../app/dist`, `beforeDevCommand` `pnpm --dir ../app dev`, `beforeBuildCommand` `pnpm --dir ../app build`. Capabilities: `core:default`, `dialog:default`, `fs:default`.
 
 - [ ] **Step 1: Create the Cargo workspace and empty crates.** Each crate's `lib.rs` has a crate-level doc comment and `pub mod error;` with `#[derive(Debug, thiserror::Error)] pub enum Error {}` placeholder variants removed later — declare at least one variant `#[error("internal error: {0}")] Internal(String)` so the enum is non-empty.
-- [ ] **Step 2: Create `crates/fw-fixtures`** with the functions above and a test that `path("DejaVuSans.ttf")` exists.
+- [ ] **Step 2: Create `crates/fc-fixtures`** with the functions above and a test that `path("DejaVuSans.ttf")` exists.
 - [ ] **Step 3: Create the fixtures** as listed and `fixtures/README.md` (file, size, source URL, license, sha256).
 - [ ] **Step 4: Scaffold `app/`** (`pnpm create vite app --template react-ts` equivalent, then add the scripts, ESLint flat config, Prettier config, Vitest config with jsdom, Playwright config pointing at `http://localhost:1420`, an `App.tsx` that renders the text "Font Cutter" and a Vitest test asserting it renders).
 - [ ] **Step 5: Scaffold `src-tauri/`** (Tauri 2 library crate `fontcutter` with `lib.rs` `run()` registering dialog + fs plugins; `main.rs` calls `fontcutter_lib::run()`; icons generated with `pnpm tauri icon` from a simple placeholder PNG you create with Python/PIL or copy from the Tauri template).
 - [ ] **Step 6: Write `.github/workflows/ci.yml`** running on ubuntu-latest: install rust 1.94 + Tauri Linux deps (`libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev`), pnpm 10, then `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `pnpm install --frozen-lockfile`, `pnpm check`, `pnpm lint`, `pnpm test`, `pnpm build`.
-- [ ] **Step 7: `scripts/dev.sh`** runs `cargo run -p fw-devserver -- --port 8787` and `pnpm --dir app dev` concurrently (use a trap to kill both).
+- [ ] **Step 7: `scripts/dev.sh`** runs `cargo run -p fc-devserver -- --port 8787` and `pnpm --dir app dev` concurrently (use a trap to kill both).
 - [ ] **Step 8: Verify** `cargo check --workspace`, `cargo test --workspace`, `cd app && pnpm install && pnpm check && pnpm lint && pnpm test && pnpm build`, `cargo build -p fontcutter` all succeed. Commit as `chore: scaffold workspace, app, tauri shell, fixtures, CI`.
 
 ---
 
-### Task 2: `fw-model` — the document model
+### Task 2: `fc-model` — the document model
 
 **Files:**
-- Create: everything under `crates/fw-model/src/` listed in the file structure; tests in `crates/fw-model/tests/{invariants.rs, flatten.rs, serde_roundtrip.rs}`.
+- Create: everything under `crates/fc-model/src/` listed in the file structure; tests in `crates/fc-model/tests/{invariants.rs, flatten.rs, serde_roundtrip.rs}`.
 
 **Interfaces (produced; exact):**
 
@@ -88,7 +88,7 @@ scripts/dev.sh                   starts fw-devserver + vite for browser developm
 // ids.rs
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)] pub struct GlyphName(pub SmolStr);          // Display, From<&str>, From<String>, Deref<Target=str>
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)] pub struct GlyphId(pub u32); // session handle, not persisted in .fwf
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)] pub struct GlyphId(pub u32); // session handle, not persisted in .fcf
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)] #[serde(transparent)] pub struct MasterId(pub SmolStr);
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)] #[serde(transparent)] pub struct LayerId(pub SmolStr);
 impl MasterId { pub fn new() -> Self /* uuid v4 simple */ } impl LayerId { pub fn new() -> Self }
@@ -236,14 +236,14 @@ pub fn validate(font: &Font) -> Vec<Issue>;                                     
 
 - [ ] **Step 1: Write failing tests** in `tests/invariants.rs`: `insert_glyph` rejects duplicates; `insert_glyph` adds a layer for every master; `rename_glyph` updates component bases and kerning pairs and group members; `add_master` adds layers to all glyphs; `Contour::to_bezpath` on a quadratic contour `[(0,0,Line),(50,100,OffCurve),(150,100,OffCurve),(200,0,Line)]` produces two quads with an implied on-curve at (100,100); cubic contour round-trips through `from_bezpath`; `flatten_layer` applies component transforms and detects a cycle A→B→A; `validate` reports a dangling component; serde round-trip of a `Font` with every field populated is equal (`PartialEq` derive on all model types).
 - [ ] **Step 2: Implement** all files. Keep each file focused (see file structure). `Kerning` serialises as `Vec<KernPair { left, right, value }>`; `Extra.raw_tables` values serialise as base64 strings (`serde_with` or a small custom module).
-- [ ] **Step 3: Run** `cargo test -p fw-model`, `cargo clippy -p fw-model --all-targets -- -D warnings`; fix until green.
-- [ ] **Step 4: Commit** `feat(fw-model): document model with invariants, queries and serde`.
+- [ ] **Step 3: Run** `cargo test -p fc-model`, `cargo clippy -p fc-model --all-targets -- -D warnings`; fix until green.
+- [ ] **Step 4: Commit** `feat(fc-model): document model with invariants, queries and serde`.
 
 ---
 
-### Task 3: `fw-glyphdata` — Unicode, names and categories
+### Task 3: `fc-glyphdata` — Unicode, names and categories
 
-**Files:** `crates/fw-glyphdata/src/{lib.rs, aglfn.rs, unicode.rs, category.rs, names.rs}`, `crates/fw-glyphdata/build.rs` (generates `aglfn.rs` from a vendored `aglfn.txt` in `crates/fw-glyphdata/data/`; vendor the file from https://github.com/adobe-type-tools/agl-aglfn, BSD licence noted), tests in `crates/fw-glyphdata/tests/names.rs`.
+**Files:** `crates/fc-glyphdata/src/{lib.rs, aglfn.rs, unicode.rs, category.rs, names.rs}`, `crates/fc-glyphdata/build.rs` (generates `aglfn.rs` from a vendored `aglfn.txt` in `crates/fc-glyphdata/data/`; vendor the file from https://github.com/adobe-type-tools/agl-aglfn, BSD licence noted), tests in `crates/fc-glyphdata/tests/names.rs`.
 
 **Interfaces:**
 ```rust
@@ -259,18 +259,18 @@ pub fn cjk_charset_membership(cp: u32) -> CjkCharsets;       // bitflags GB2312 
 ```
 - [ ] **Step 1: Tests**: `unicode_for_name("A") == Some(0x41)`, `"uni4E00" → 0x4E00`, `"u1F600" → 0x1F600`, `"a.sc" → 0x61`, `"f_i" → None`; `name_for_unicode(0x4E00) == "uni4E00"`, `(0x41) == "A"`, `(0x1F600) == "u1F600"`; `category(0x41) == Letter`, `sub_category(0x41) == "Uppercase"`, `block_name(0x4E00) == "CJK Unified Ideographs"`, `script(0x4E00) == "Hani"`, `is_cjk_ideograph(0x4E00)`.
 - [ ] **Step 2: Implement** with `icu_properties` 2.x (`props::GeneralCategory`, `props::Script`, `props::Block` if available; otherwise vendor `Blocks.txt` and generate). Use `icu_properties = "2"` in workspace deps.
-- [ ] **Step 3:** `cargo test -p fw-glyphdata`, clippy clean, commit `feat(fw-glyphdata): AGLFN names, Unicode properties, categories`.
+- [ ] **Step 3:** `cargo test -p fc-glyphdata`, clippy clean, commit `feat(fc-glyphdata): AGLFN names, Unicode properties, categories`.
 
 ---
 
-### Task 4: `fw-sfnt` — read sfnt containers into the model
+### Task 4: `fc-sfnt` — read sfnt containers into the model
 
-**Files:** `crates/fw-sfnt/src/{lib.rs, error.rs, read/mod.rs, read/container.rs, read/glyf.rs, read/cff.rs, read/metrics.rs, read/names.rs, read/cmap.rs, read/os2.rs, read/post.rs, read/vertical.rs, read/hinting.rs, read/variations.rs, read/bitmaps.rs, read/raw.rs}`, tests `crates/fw-sfnt/tests/{read_ttf.rs, read_otf.rs, read_containers.rs, read_cjk.rs}`, bench `crates/fw-sfnt/benches/open.rs` (criterion, optional).
+**Files:** `crates/fc-sfnt/src/{lib.rs, error.rs, read/mod.rs, read/container.rs, read/glyf.rs, read/cff.rs, read/metrics.rs, read/names.rs, read/cmap.rs, read/os2.rs, read/post.rs, read/vertical.rs, read/hinting.rs, read/variations.rs, read/bitmaps.rs, read/raw.rs}`, tests `crates/fc-sfnt/tests/{read_ttf.rs, read_otf.rs, read_containers.rs, read_cjk.rs}`, bench `crates/fc-sfnt/benches/open.rs` (criterion, optional).
 
 **Interfaces:**
 ```rust
 pub struct ReadOptions { pub font_index: Option<u32> /* TTC face; None = all faces */, pub keep_original_bytes: bool /* default true */, pub decode_bitmaps: bool /* P0: false → strikes left raw */ }
-pub struct ReadOutcome { pub fonts: Vec<fw_model::Font>, pub warnings: Vec<Warning> }
+pub struct ReadOutcome { pub fonts: Vec<fc_model::Font>, pub warnings: Vec<Warning> }
 pub struct Warning { pub code: &'static str, pub message: String }
 pub fn sniff(bytes: &[u8]) -> Option<Container>;             // enum Container { Sfnt, Ttc, Woff, Woff2 } by magic (00010000/OTTO/true/ttcf/wOFF/wOF2)
 pub fn read_bytes(bytes: &[u8], opts: &ReadOptions) -> Result<ReadOutcome, Error>;   // WOFF/WOFF2 are decompressed to sfnt bytes first (wuff or woff2-patched), then parsed
@@ -287,20 +287,20 @@ Behaviour:
 - **Raw preservation**: every table not consumed (and also `GSUB GPOS GDEF BASE MATH JSTF STAT COLR CPAL SVG EBDT EBLC CBDT CBLC sbix EBSC hdmx VDMX LTSH PCLT meta DSIG kern VORG` in P0) is stored in `extra.raw_tables` **except** `DSIG` (dropped). `extra.source` records path, format (`"ttf"|"otf"|"ttc"|"woff"|"woff2"`), sha256, table tags, and `original_bytes` when `keep_original_bytes`.
 - Malformed fonts return `Err(Error::Parse { table, reason })`, never panic; fuzz-ish test feeds truncated copies of every fixture at 10 cut points and asserts no panic.
 
-- [ ] **Step 1: Tests** (write first, using `fw_fixtures`):
+- [ ] **Step 1: Tests** (write first, using `fc_fixtures`):
   - `read_ttf.rs`: DejaVuSans.ttf → glyph count equals `maxp.numGlyphs`; glyph `A` has unicode 0x41, width equals `hmtx` advance; `A`'s contour points all have `tt_index = Index(_)`; composite `Aacute` (if composite in the fixture; else `agrave` in NotoSans) has two components with translation transforms; `info.family_name == "DejaVu Sans"`; `raw_tables` contains `GSUB` and `GPOS` and not `glyf`/`hmtx`/`DSIG`; `masters[0].tt.prep` non-empty; `extra.source.sha256` is 64 hex chars.
   - `read_otf.rs`: `test1012.otf` → contours are cubic (no `QCurve`), names come from CFF charset; a CID OTF (Source Han Sans, external) → `cid.is_some()`, registry `Adobe`, ordering `Identity`.
   - `read_containers.rs`: `DejaVuSans.woff` and `CantarellMin.woff2` → same glyph count as their TTF (for woff compare to DejaVuSans.ttf); TTC: build a two-face TTC fixture at test time is not possible in P0, so test `face_count` on any `.ttc` found in `/usr/share/fonts` (skip if none) and assert `read_bytes` with `font_index: None` returns that many fonts.
   - `read_cjk.rs` (skips without external): Source Han Sans SC OTF opens in < 3 s in release (`cargo test --release`; the test measures with `Instant` and asserts `< 3s` only when `cfg!(not(debug_assertions))`), glyph count 65535, `glyph_for_unicode(0x4E00)` is some, `cid` present.
   - Robustness: truncation test described above over all fixture files.
 - [ ] **Step 2: Implement** using read-fonts (`FontRef::from_index`, `TableProvider`, `table_directory` for tags, `table_data(tag)` for raw bytes), skrifa for outlines/metrics (`OutlineGlyphCollection`, `DrawSettings::unhinted`, and a custom `OutlinePen` collecting points). For `glyf` real point indices, read `glyf` directly with read-fonts `Glyf`/`SimpleGlyph::points()` rather than skrifa, so `tt_index` and on/off flags are exact. Names: map Windows LCID and Mac language IDs to BCP47 (vendor a small table).
-- [ ] **Step 3:** `cargo test -p fw-sfnt` (debug) and `cargo test -p fw-sfnt --release` (for the timing test), clippy clean, commit `feat(fw-sfnt): read TTF/OTF/TTC/WOFF/WOFF2 into the document model`.
+- [ ] **Step 3:** `cargo test -p fc-sfnt` (debug) and `cargo test -p fc-sfnt --release` (for the timing test), clippy clean, commit `feat(fc-sfnt): read TTF/OTF/TTC/WOFF/WOFF2 into the document model`.
 
 ---
 
-### Task 5: `fw-doc` — session, documents, commands, undo, `.fwf`
+### Task 5: `fc-doc` — session, documents, commands, undo, `.fcf`
 
-**Files:** `crates/fw-doc/src/{lib.rs, error.rs, session.rs, document.rs, command.rs, undo.rs, cache.rs, autosave.rs, fwf/mod.rs, fwf/schema.md, fwf/write.rs, fwf/read.rs}`, tests `crates/fw-doc/tests/{commands_undo.rs, fwf_roundtrip.rs, session.rs}`.
+**Files:** `crates/fc-doc/src/{lib.rs, error.rs, session.rs, document.rs, command.rs, undo.rs, cache.rs, autosave.rs, fcf/mod.rs, fcf/schema.md, fcf/write.rs, fcf/read.rs}`, tests `crates/fc-doc/tests/{commands_undo.rs, fcf_roundtrip.rs, session.rs}`.
 
 **Interfaces:**
 ```rust
@@ -308,7 +308,7 @@ pub struct Session { .. }                                    // Send + Sync; wra
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)] pub struct DocId(pub u32);
 impl Session {
     pub fn new() -> Session;
-    pub fn open_path(&self, path: &Path, face_index: Option<u32>) -> Result<DocId, Error>;   // dispatches: .fwf → fwf::read; sfnt/woff → fw_sfnt::read_path; (later: other formats)
+    pub fn open_path(&self, path: &Path, face_index: Option<u32>) -> Result<DocId, Error>;   // dispatches: .fcf → fcf::read; sfnt/woff → fc_sfnt::read_path; (later: other formats)
     pub fn open_font(&self, font: Font, provenance: Option<PathBuf>) -> DocId;
     pub fn new_document(&self, family: &str, units_per_em: u16) -> DocId;
     pub fn close(&self, id: DocId) -> Result<(), Error>;
@@ -328,7 +328,7 @@ impl Document {
     pub fn undo(&mut self) -> Result<Option<Change>, Error>;  pub fn redo(&mut self) -> Result<Option<Change>, Error>;
     pub fn undo_label(&self) -> Option<&str>;  pub fn redo_label(&self) -> Option<&str>;
     pub fn flattened_path(&self, id: GlyphId, master: &MasterId) -> Result<std::sync::Arc<kurbo::BezPath>, Error>;   // cached by (id, glyph_generation, dependents' generations)
-    pub fn save(&mut self, path: &Path) -> Result<(), Error>;   // .fwf; sets path, dirty=false
+    pub fn save(&mut self, path: &Path) -> Result<(), Error>;   // .fcf; sets path, dirty=false
 }
 pub enum Command {
     AddGlyph { glyph: Glyph }, RemoveGlyphs { names: Vec<GlyphName> }, RenameGlyph { from: GlyphName, to: GlyphName },
@@ -341,19 +341,19 @@ pub enum Command {
 pub struct Change { pub glyphs: Vec<GlyphId>, pub font_info: bool, pub masters: bool, pub glyph_order: bool }
 pub struct DocumentEvent { pub doc: DocId, pub generation: u64, pub change: Change, pub undo_label: Option<String>, pub redo_label: Option<String>, pub dirty: bool }
 ```
-`.fwf` format (`fwf/schema.md` documents it): `{"format":"fontcutter","version":1,"font":<Font serde>}` written with `serde_json` pretty printer, 2-space indent, `preserve_order` so glyph order is stable, `f64` written without trailing `.0` noise (use `ryu`/default serde is fine). Reading accepts `version` ≤ 1 and unknown fields. A `.fwf.gz` path is gzip-wrapped.
+`.fcf` format (`fcf/schema.md` documents it): `{"format":"fontcutter","version":1,"font":<Font serde>}` written with `serde_json` pretty printer, 2-space indent, `preserve_order` so glyph order is stable, `f64` written without trailing `.0` noise (use `ryu`/default serde is fine). Reading accepts `version` ≤ 1 and unknown fields. A `.fcf.gz` path is gzip-wrapped.
 
 Undo: `UndoStack { entries: Vec<UndoEntry>, cursor: usize, memory_budget: usize (default 512 MiB, oldest dropped) }`; `UndoEntry { label, inverse: Vec<Snapshot>, forward: Vec<Snapshot> }` where `Snapshot` is `Glyph(GlyphName, Option<Arc<Glyph>>)` (None = did not exist) or `FontInfo(Arc<FontInfo>)`, `Master(MasterId, Arc<Master>)`, `GlyphOrder(Vec<GlyphName>)`. Applying a command captures before/after snapshots for touched items only.
 
-- [ ] **Step 1: Tests**: apply `SetWidth` then `undo` restores width and `dirty` toggles appropriately; `begin_edit`/`apply_in_edit` ×10/`end_edit` produces exactly one undo entry; `RenameGlyph` undo restores component references; `RemoveGlyphs` undo restores glyph order position; `flattened_path` cache invalidates when a component base changes (generation bump of dependents); `.fwf` round trip on DejaVuSans (open via `fw_sfnt`, save, read back → `font == original.font` with `original_bytes` ignored); `Session::open_path` on `.fwf` and `.ttf`; events are emitted on apply/undo with correct `change.glyphs`.
-- [ ] **Step 2: Implement.** Keep `command.rs` (definitions + application to `Font`), `undo.rs` (stack), `document.rs` (glue) separate. Autosave: `autosave::spawn(session, interval)` writes `<path>.autosave.fwf` (or `~/.local/share/fontcutter/autosave/<docid>.fwf` when unsaved) for dirty documents every `interval` (default 60 s); `autosave::list_recoverable()`.
-- [ ] **Step 3:** `cargo test -p fw-doc`, clippy clean, commit `feat(fw-doc): session, commands, coalescing undo, .fwf format, autosave`.
+- [ ] **Step 1: Tests**: apply `SetWidth` then `undo` restores width and `dirty` toggles appropriately; `begin_edit`/`apply_in_edit` ×10/`end_edit` produces exactly one undo entry; `RenameGlyph` undo restores component references; `RemoveGlyphs` undo restores glyph order position; `flattened_path` cache invalidates when a component base changes (generation bump of dependents); `.fcf` round trip on DejaVuSans (open via `fc_sfnt`, save, read back → `font == original.font` with `original_bytes` ignored); `Session::open_path` on `.fcf` and `.ttf`; events are emitted on apply/undo with correct `change.glyphs`.
+- [ ] **Step 2: Implement.** Keep `command.rs` (definitions + application to `Font`), `undo.rs` (stack), `document.rs` (glue) separate. Autosave: `autosave::spawn(session, interval)` writes `<path>.autosave.fcf` (or `~/.local/share/fontcutter/autosave/<docid>.fcf` when unsaved) for dirty documents every `interval` (default 60 s); `autosave::list_recoverable()`.
+- [ ] **Step 3:** `cargo test -p fc-doc`, clippy clean, commit `feat(fc-doc): session, commands, coalescing undo, .fcf format, autosave`.
 
 ---
 
-### Task 6: `fw-api` — typed API, dispatch and TypeScript generation
+### Task 6: `fc-api` — typed API, dispatch and TypeScript generation
 
-**Files:** `crates/fw-api/src/{lib.rs, error.rs, api.rs, types/mod.rs, types/session.rs, types/glyphs.rs, types/font.rs, types/commands.rs, types/events.rs}`, `crates/fw-api/src/bin/gen_ts.rs`, tests `crates/fw-api/tests/{dispatch.rs, glyph_list.rs}`; generated output dir `app/src/api/generated/` (gitignored, regenerated by `pnpm gen:api`; commit a `.gitkeep` and document the command in `app/README.md`).
+**Files:** `crates/fc-api/src/{lib.rs, error.rs, api.rs, types/mod.rs, types/session.rs, types/glyphs.rs, types/font.rs, types/commands.rs, types/events.rs}`, `crates/fc-api/src/bin/gen_ts.rs`, tests `crates/fc-api/tests/{dispatch.rs, glyph_list.rs}`; generated output dir `app/src/api/generated/` (gitignored, regenerated by `pnpm gen:api`; commit a `.gitkeep` and document the command in `app/README.md`).
 
 **Interfaces:**
 ```rust
@@ -376,7 +376,7 @@ Methods (`method` string → params type → result type; all types `#[derive(Se
 | `session.save` | `{ doc, path: Option<String> }` | `DocSummary` |
 | `session.recent` | `{}` | `Vec<String>` (persisted in `dirs::config_dir()/fontcutter/recent.json`, max 20) |
 | `doc.summary` | `{ doc }` | `DocSummary { doc, path, dirty, family_name, style_name, units_per_em, glyph_count, masters: Vec<MasterSummary{id,name}>, axes: Vec<AxisSummary>, undo_label, redo_label, format: String, warnings: Vec<String> }` |
-| `doc.font_info` | `{ doc }` | `FontInfoView { info: FontInfo, masters: Vec<Master> }` (model types re-exported with TS derive via `#[ts]` on model types — add `ts-rs` derives to `fw-model` types behind a `ts` feature) |
+| `doc.font_info` | `{ doc }` | `FontInfoView { info: FontInfo, masters: Vec<Master> }` (model types re-exported with TS derive via `#[ts]` on model types — add `ts-rs` derives to `fc-model` types behind a `ts` feature) |
 | `doc.sidebar` | `{ doc }` | `SidebarCounts { categories: Vec<(String,u32)>, scripts: Vec<(String,u32)>, blocks: Vec<(String,u32)>, unencoded: u32, total: u32, color_labels: Vec<(u8,u32)> }` |
 | `glyphs.list` | `GlyphListParams { doc, master: Option<MasterId>, filter: GlyphFilter, sort: GlyphSort /* Order | Unicode | Name | Width */, offset: u32, limit: u32 (≤ 2000), include_paths: bool }` | `GlyphListResult { total: u32, items: Vec<GlyphCell> }` |
 | `glyphs.cell` | `{ doc, gid, master }` | `GlyphCell { gid: GlyphId, name: String, unicodes: Vec<u32>, width: f64, bbox: Option<[f64;4]>, path: Option<String> /* SVG path d in font units, y-up, components flattened */, color_label: Option<u8>, export: bool, has_components: bool, is_empty: bool, generation: u64 }` |
@@ -386,24 +386,24 @@ Methods (`method` string → params type → result type; all types `#[derive(Se
 | `doc.edit_begin` / `doc.edit_apply` / `doc.edit_end` | `{ doc, label }` / `{ doc, token, command }` / `{ doc, token }` | `EditTokenId` / `Change` / `null` |
 | `doc.undo` / `doc.redo` | `{ doc }` | `Option<Change>` |
 | `prefs.get` / `prefs.set` | `{}` / `{ prefs: Prefs }` | `Prefs { theme: String, language: String, recent_limit: u32, autosave_seconds: u32 }` persisted as JSON in the config dir |
-`GlyphFilter { query: Option<String>, categories: Vec<String>, scripts: Vec<String>, blocks: Vec<String>, unencoded_only: bool, color_labels: Vec<u8>, tags: Vec<String>, unicode_ranges: Vec<[u32;2]>, has_components: Option<bool>, changed_only: bool }` — all conditions AND-ed; `query` matches name substring, `U+XXXX`, or a literal character. Categories/scripts/blocks come from `fw-glyphdata` on the glyph's first unicode (unencoded glyphs count as `"Unencoded"`).
+`GlyphFilter { query: Option<String>, categories: Vec<String>, scripts: Vec<String>, blocks: Vec<String>, unencoded_only: bool, color_labels: Vec<u8>, tags: Vec<String>, unicode_ranges: Vec<[u32;2]>, has_components: Option<bool>, changed_only: bool }` — all conditions AND-ed; `query` matches name substring, `U+XXXX`, or a literal character. Categories/scripts/blocks come from `fc-glyphdata` on the glyph's first unicode (unencoded glyphs count as `"Unencoded"`).
 
 `gen_ts` binary: runs `ts-rs` export for every `#[ts(export)]` type into `app/src/api/generated/` and writes `index.ts` re-exporting all, plus `methods.ts` containing a typed `ApiMethods` interface mapping method names to `{ params, result }` (generate from a static list in Rust so TS and Rust stay in sync).
 
 - [ ] **Step 1: Tests**: `dispatch.rs` — `call("session.open", {path: DejaVuSans})` returns a summary with correct glyph count; `call("nope", {})` → `ApiError{code:"not_found"}`; invalid params → `invalid_params`. `glyph_list.rs` — filter by `categories:["Letter"]` on DejaVu returns only letters; `sort: Unicode` is ascending; `include_paths` produces a non-empty `path` for `A` that starts with `M`; paging `offset/limit` is consistent with `total`; `glyphs.search` for `"U+0041"` returns `A`.
 - [ ] **Step 2: Implement.** Paths: build from `Document::flattened_path` with `kurbo::BezPath::to_svg()`. Sidebar counts computed once per document generation and cached.
-- [ ] **Step 3:** `cargo test -p fw-api`, `cargo run -p fw-api --bin gen_ts` produces `.ts` files that `tsc` accepts (add a `pnpm check` run to the test instructions), commit `feat(fw-api): typed API dispatch, glyph listing/filtering, TS type generation`.
+- [ ] **Step 3:** `cargo test -p fc-api`, `cargo run -p fc-api --bin gen_ts` produces `.ts` files that `tsc` accepts (add a `pnpm check` run to the test instructions), commit `feat(fc-api): typed API dispatch, glyph listing/filtering, TS type generation`.
 
 ---
 
-### Task 7: `fw-devserver` and `src-tauri` wiring
+### Task 7: `fc-devserver` and `src-tauri` wiring
 
-**Files:** `crates/fw-devserver/src/{main.rs, server.rs}`, `src-tauri/src/{lib.rs, commands.rs}`, `src-tauri/capabilities/default.json`, `app/src/transport/{Transport.ts, TauriTransport.ts, HttpTransport.ts, index.ts}` (the TS side of this task is small and mechanical, so it stays here), test `crates/fw-devserver/tests/http.rs`.
+**Files:** `crates/fc-devserver/src/{main.rs, server.rs}`, `src-tauri/src/{lib.rs, commands.rs}`, `src-tauri/capabilities/default.json`, `app/src/transport/{Transport.ts, TauriTransport.ts, HttpTransport.ts, index.ts}` (the TS side of this task is small and mechanical, so it stays here), test `crates/fc-devserver/tests/http.rs`.
 
 **Interfaces:**
 - Dev server: `POST /api/<method>` with JSON body → `200 {result}` or `400/404/500 {error: ApiError}`; `GET /events` WebSocket streaming `DocumentEvent` JSON; `GET /health` → `{"ok":true}`. CLI flags `--port` (default 8787), `--open <path>` (opens a font at start for e2e), CORS allow `http://localhost:1420`.
-- Tauri: single command `#[tauri::command] fn api_call(method: String, params: serde_json::Value, state: State<Arc<Api>>) -> Result<serde_json::Value, ApiError>`; events forwarded with `app.emit("fw:event", event)` from a task subscribed to `Api::subscribe`. Native file dialogs are used from the frontend via plugin-dialog (the kernel receives paths).
-- TS: `interface Transport { call<M extends keyof ApiMethods>(method: M, params: ApiMethods[M]['params']): Promise<ApiMethods[M]['result']>; onEvent(cb: (e: DocumentEvent) => void): () => void; kind: 'tauri' | 'http' }`; `createTransport()` picks Tauri when `window.__TAURI_INTERNALS__` exists, else HTTP with base URL from `import.meta.env.VITE_FW_API ?? 'http://localhost:8787'`.
+- Tauri: single command `#[tauri::command] fn api_call(method: String, params: serde_json::Value, state: State<Arc<Api>>) -> Result<serde_json::Value, ApiError>`; events forwarded with `app.emit("fc:event", event)` from a task subscribed to `Api::subscribe`. Native file dialogs are used from the frontend via plugin-dialog (the kernel receives paths).
+- TS: `interface Transport { call<M extends keyof ApiMethods>(method: M, params: ApiMethods[M]['params']): Promise<ApiMethods[M]['result']>; onEvent(cb: (e: DocumentEvent) => void): () => void; kind: 'tauri' | 'http' }`; `createTransport()` picks Tauri when `window.__TAURI_INTERNALS__` exists, else HTTP with base URL from `import.meta.env.VITE_FC_API ?? 'http://localhost:8787'`.
 
 - [ ] **Step 1: Tests**: `http.rs` spins the server on a random port, `POST /api/session.open` with DejaVu, asserts glyph count; `POST /api/nope` → 404 with `code:"not_found"`; WebSocket receives an event after `doc.apply SetWidth`.
 - [ ] **Step 2: Implement** both transports; `pnpm check` passes with the generated types.
@@ -411,18 +411,18 @@ Methods (`method` string → params type → result type; all types `#[derive(Se
 
 ---
 
-### Task 8: `fw-cli`
+### Task 8: `fc-cli`
 
-**Files:** `crates/fw-cli/src/{main.rs, cmd/inspect.rs, cmd/convert.rs}`, tests `crates/fw-cli/tests/cli.rs` (use `assert_cmd`).
+**Files:** `crates/fc-cli/src/{main.rs, cmd/inspect.rs, cmd/convert.rs}`, tests `crates/fc-cli/tests/cli.rs` (use `assert_cmd`).
 
-**Interfaces:** binary name `fw`.
-- `fw inspect <font> [--face N] [--json]`: prints family/style/upem/glyph count/masters/axes/tables (tag + length + preserved?) and warnings; `--json` emits the `DocSummary` plus table list.
-- `fw convert <in> <out.fwf|out.fwf.gz>`: opens any supported input, writes `.fwf`. (Export to binary formats arrives with `fw-compile` in P1; `fw convert x.fwf y.ttf` must fail with a clear "not yet supported" message.)
-- `fw glyphs <font> [--filter cat=Letter] [--limit N]`: lists glyph name, unicodes, width.
+**Interfaces:** binary name `fontcutter`.
+- `fontcutter inspect <font> [--face N] [--json]`: prints family/style/upem/glyph count/masters/axes/tables (tag + length + preserved?) and warnings; `--json` emits the `DocSummary` plus table list.
+- `fontcutter convert <in> <out.fcf|out.fcf.gz>`: opens any supported input, writes `.fcf`. (Export to binary formats arrives with `fc-compile` in P1; `fontcutter convert x.fcf y.ttf` must fail with a clear "not yet supported" message.)
+- `fontcutter glyphs <font> [--filter cat=Letter] [--limit N]`: lists glyph name, unicodes, width.
 
-- [ ] **Step 1: Tests**: `fw inspect DejaVuSans.ttf` exit 0 and stdout contains `DejaVu Sans`; `fw convert DejaVuSans.ttf out.fwf` then `fw inspect out.fwf --json` reports the same glyph count; unsupported output extension exits 2 with the message.
-- [ ] **Step 2: Implement** with clap derive; reuse `fw_doc::Session`.
-- [ ] **Step 3:** Commit `feat(fw-cli): inspect, convert, glyphs commands`.
+- [ ] **Step 1: Tests**: `fontcutter inspect DejaVuSans.ttf` exit 0 and stdout contains `DejaVu Sans`; `fontcutter convert DejaVuSans.ttf out.fcf` then `fontcutter inspect out.fcf --json` reports the same glyph count; unsupported output extension exits 2 with the message.
+- [ ] **Step 2: Implement** with clap derive; reuse `fc_doc::Session`.
+- [ ] **Step 3:** Commit `feat(fc-cli): inspect, convert, glyphs commands`.
 
 ---
 
@@ -481,9 +481,9 @@ Methods (`method` string → params type → result type; all types `#[derive(Se
 
 ### Task 12: Integration, performance gates and P0 acceptance
 
-**Files:** `crates/fw-sfnt/benches/open.rs` (criterion), `scripts/perf-open.sh`, `app/e2e/cjk.spec.ts` (skips when the external font is missing), `docs/p0-acceptance.md`.
+**Files:** `crates/fc-sfnt/benches/open.rs` (criterion), `scripts/perf-open.sh`, `app/e2e/cjk.spec.ts` (skips when the external font is missing), `docs/p0-acceptance.md`.
 
-- [ ] **Step 1:** Run the full acceptance list and record results in `docs/p0-acceptance.md` with commands and timings: (a) `cargo test --workspace --release`; (b) `fw inspect` on every fixture and Source Han Sans; (c) `fw convert SourceHanSansSC-Regular.otf shs.fwf` then `fw inspect shs.fwf` — same glyph count, timings for save/load < 6 s; (d) e2e suite green; (e) Tauri app: `cargo tauri dev` opens, `Mod+O` opens a font via native dialog, grid renders, glyph tab opens, Font Info opens, `Mod+S` writes `.fwf`, reopening restores.
+- [ ] **Step 1:** Run the full acceptance list and record results in `docs/p0-acceptance.md` with commands and timings: (a) `cargo test --workspace --release`; (b) `fontcutter inspect` on every fixture and Source Han Sans; (c) `fontcutter convert SourceHanSansSC-Regular.otf shs.fcf` then `fontcutter inspect shs.fcf` — same glyph count, timings for save/load < 6 s; (d) e2e suite green; (e) Tauri app: `cargo tauri dev` opens, `Mod+O` opens a font via native dialog, grid renders, glyph tab opens, Font Info opens, `Mod+S` writes `.fcf`, reopening restores.
 - [ ] **Step 2:** Fix whatever fails; commit `test: P0 acceptance and performance gates`.
 
 ---
@@ -501,11 +501,11 @@ Methods (`method` string → params type → result type; all types `#[derive(Se
 
 ```
 T1 scaffold
- └─ T2 fw-model
-     ├─ T3 fw-glyphdata      (parallel with T4/T5)
-     ├─ T4 fw-sfnt read      (parallel)
-     └─ T5 fw-doc            (parallel)
-         └─ T6 fw-api (needs T3,T4,T5)
+ └─ T2 fc-model
+     ├─ T3 fc-glyphdata      (parallel with T4/T5)
+     ├─ T4 fc-sfnt read      (parallel)
+     └─ T5 fc-doc            (parallel)
+         └─ T6 fc-api (needs T3,T4,T5)
              ├─ T7 devserver + tauri + transport
              ├─ T8 cli
              └─ T9 app shell ── T10 font view ── T11 glyph view/font info ── T12 acceptance ── T13 zh-CN
@@ -515,5 +515,5 @@ Delegation: T1–T8 → Codex (gpt-5.6-sol, xhigh) via `scripts/codex-task.sh`, 
 
 ## Self-review notes
 
-- Spec coverage for the P0 row of §14: model ✔ (T2), doc/undo ✔ (T5), api ✔ (T6), sfnt read ✔ (T4), `.fwf` ✔ (T5), devserver ✔ (T7), CLI ✔ (T8), shell + Font view + read-only Glyph view + Font Info + i18n + theming ✔ (T9–T11, T13), performance gates ✔ (T12). Bitmap strikes are read raw only (spec 6.2 step 5 decoding is deferred to P3 — stated in T4). Glyph data sidebar categories ✔ (T3 + T6 `doc.sidebar`).
+- Spec coverage for the P0 row of §14: model ✔ (T2), doc/undo ✔ (T5), api ✔ (T6), sfnt read ✔ (T4), `.fcf` ✔ (T5), devserver ✔ (T7), CLI ✔ (T8), shell + Font view + read-only Glyph view + Font Info + i18n + theming ✔ (T9–T11, T13), performance gates ✔ (T12). Bitmap strikes are read raw only (spec 6.2 step 5 decoding is deferred to P3 — stated in T4). Glyph data sidebar categories ✔ (T3 + T6 `doc.sidebar`).
 - Names used consistently: `Session`, `Document`, `Command`, `Change`, `DocumentEvent`, `GlyphCell`, `GlyphFilter`, `DocSummary`, `SidebarCounts`, `Transport`, `ApiMethods`, `flattened_path`, `Contour::to_bezpath`.

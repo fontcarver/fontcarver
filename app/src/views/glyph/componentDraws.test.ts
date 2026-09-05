@@ -53,7 +53,7 @@ describe('componentDraws', () => {
 
   it('places a quarter turn where the kernel will put it', () => {
     // The kernel composes `affine * component.transform`
-    // (`crates/fw-doc/src/command/outline/points.rs`), which is what the
+    // (`crates/fc-doc/src/command/outline/points.rs`), which is what the
     // gesture previews; the canvas has to draw the *difference* against the
     // path the kernel already rendered under the stored transform.
     const stored: [number, number, number, number, number, number] = [

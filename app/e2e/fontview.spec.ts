@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 /**
- * Runs against `fw-devserver --open fixtures/fonts/DejaVuSans.ttf` plus the
+ * Runs against `fc-devserver --open fixtures/fonts/DejaVuSans.ttf` plus the
  * Vite dev server. DejaVu Sans has 6,253 glyphs, 3,245 of them in the Letter
  * category, which is what the counts below are checked against.
  */

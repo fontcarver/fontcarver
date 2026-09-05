@@ -1,0 +1,31 @@
+[package]
+name = "fc-api"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+dirs = "6"
+fc-compile = { path = "../fc-compile" }
+fc-doc = { path = "../fc-doc" }
+fc-formats = { path = "../fc-formats" }
+fc-glyphdata = { path = "../fc-glyphdata" }
+fc-layout = { path = "../fc-layout" }
+fc-model = { path = "../fc-model", features = ["ts"] }
+fc-sfnt = { path = "../fc-sfnt" }
+kurbo.workspace = true
+read-fonts.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { version = "1", features = ["sync"], default-features = false }
+tracing.workspace = true
+ts-rs.workspace = true
+
+[dev-dependencies]
+fc-fixtures = { path = "../fc-fixtures" }
+kurbo.workspace = true
+sha2.workspace = true
+tempfile.workspace = true

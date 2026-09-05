@@ -95,7 +95,7 @@ describe('sessionStore.open', () => {
 })
 
 describe('sessionStore.save', () => {
-  it('prompts for a path when the document is not a native .fwf', async () => {
+  it('prompts for a path when the document is not a native .fcf', async () => {
     const transport = createMockTransport({})
     setTransport(transport)
     useSessionStore.setState({ docs: [makeSummary()] })
@@ -111,15 +111,30 @@ describe('sessionStore.save', () => {
     })
   })
 
-  it('saves straight away once the document has a .fwf path', async () => {
-    const saved = makeSummary({ path: '/docs/dejavu.fwf', dirty: false })
+  it('treats a pre-rename .fwf path as a native save target', async () => {
+    const saved = makeSummary({ path: '/docs/legacy.fwf', dirty: false })
     const transport = createMockTransport({
       'session.save': () => saved,
       'session.recent': () => [],
     })
     setTransport(transport)
     useSessionStore.setState({
-      docs: [makeSummary({ path: '/docs/dejavu.fwf', dirty: true })],
+      docs: [makeSummary({ path: '/docs/legacy.fwf', dirty: true })],
+    })
+
+    expect(await useSessionStore.getState().save(1)).toBe(true)
+    expect(useUiStore.getState().pathPrompt).toBeNull()
+  })
+
+  it('saves straight away once the document has a .fcf path', async () => {
+    const saved = makeSummary({ path: '/docs/dejavu.fcf', dirty: false })
+    const transport = createMockTransport({
+      'session.save': () => saved,
+      'session.recent': () => [],
+    })
+    setTransport(transport)
+    useSessionStore.setState({
+      docs: [makeSummary({ path: '/docs/dejavu.fcf', dirty: true })],
     })
 
     expect(await useSessionStore.getState().save(1)).toBe(true)
@@ -138,7 +153,7 @@ describe('sessionStore.save', () => {
         },
       }),
     )
-    useSessionStore.setState({ docs: [makeSummary({ path: '/docs/a.fwf' })] })
+    useSessionStore.setState({ docs: [makeSummary({ path: '/docs/a.fcf' })] })
 
     expect(await useSessionStore.getState().save(1)).toBe(false)
     expect(useUiStore.getState().toasts[0]).toMatchObject({
@@ -188,15 +203,15 @@ describe('sessionStore dirty close', () => {
     expect(useSessionStore.getState().docs).toHaveLength(1)
   })
 
-  it('saves and then closes when the document already has a .fwf path', async () => {
+  it('saves and then closes when the document already has a .fcf path', async () => {
     const transport = createMockTransport({
-      'session.save': () => makeSummary({ path: '/docs/a.fwf', dirty: false }),
+      'session.save': () => makeSummary({ path: '/docs/a.fcf', dirty: false }),
       'session.close': () => null,
       'session.recent': () => [],
     })
     setTransport(transport)
     useSessionStore.setState({
-      docs: [makeSummary({ path: '/docs/a.fwf', dirty: true })],
+      docs: [makeSummary({ path: '/docs/a.fcf', dirty: true })],
     })
 
     await useSessionStore.getState().saveAndClose(1)
@@ -217,7 +232,7 @@ describe('sessionStore dirty close', () => {
     })
     setTransport(transport)
     useSessionStore.setState({
-      docs: [makeSummary({ path: '/docs/a.fwf', dirty: true })],
+      docs: [makeSummary({ path: '/docs/a.fcf', dirty: true })],
     })
 
     await useSessionStore.getState().saveAndClose(1)

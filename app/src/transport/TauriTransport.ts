@@ -39,7 +39,7 @@ export class TauriTransport implements Transport {
   onEvent(cb: (event: Event) => void): () => void {
     let active = true
     let unlisten: UnlistenFn | undefined
-    void listen<Event>('fw:event', ({ payload }) => cb(payload)).then(
+    void listen<Event>('fc:event', ({ payload }) => cb(payload)).then(
       (stopListening) => {
         if (active) unlisten = stopListening
         else stopListening()

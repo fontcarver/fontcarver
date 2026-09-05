@@ -7,6 +7,13 @@ homepage.workspace = true
 rust-version.workspace = true
 description = "The thin Tauri shell for Font Cutter"
 
+# The CLI in `fc-cli` owns the `fontcutter` binary name, so the desktop
+# shell names its own binary explicitly; bundles are still "Font Cutter"
+# via `productName` in `tauri.conf.json`.
+[[bin]]
+name = "fontcutter-desktop"
+path = "src/main.rs"
+
 [lib]
 name = "fontcutter_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
@@ -15,8 +22,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build.workspace = true
 
 [dependencies]
-fw-api = { path = "../crates/fw-api" }
-fw-doc = { path = "../crates/fw-doc" }
+fc-api = { path = "../crates/fc-api" }
+fc-doc = { path = "../crates/fc-doc" }
 serde_json.workspace = true
 tauri.workspace = true
 tauri-plugin-dialog.workspace = true

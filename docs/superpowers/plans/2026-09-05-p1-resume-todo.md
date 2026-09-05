@@ -48,16 +48,16 @@ translation never on Fable). Run `scripts/sdd-snapshot.sh` after every merge.
 
 ## 2. Kernel backlog (schedule as the first P2 kernel round)
 - Contour-scoped `PathOp` (additive `contours: Option<Vec<usize>>`) — pencil/knife/menu ops on a selection.
-- Apply `remove_overlap` in export (fw-compile calls fw_geom per touched glyph) instead of only reporting.
+- Apply `remove_overlap` in export (fc-compile calls fc_geom per touched glyph) instead of only reporting.
 - Structured `ExportWarning.glyphs` (UI parses message text today); structured `AddGlyphsResult.skipped` reasons.
 - `Event::Prefs` on `prefs.set` (UI re-reads prefs on tab mount today); additive `Prefs` fields: hit/snap distances,
   simplify tolerance, tool defaults.
-- fw-layout: reverse cmap for `widths_for_text` (full glyph-map scan under the read lock); `catch_unwind` around the
+- fc-layout: reverse cmap for `widths_for_text` (full glyph-map scan under the read lock); `catch_unwind` around the
   synchronous first compile; `Wait`er diagnostics (compile-failed vs AbandonedCompile); no rebuild for an older generation.
-- fw-doc: `declared_curve_format` for mixed-curve layers; `delete_points`/`inferred_kind` residuals are done.
-- Content-hash touched-glyph net when `.fwf` re-links original sources; gasp raw overwrite vs model edits; format-4 cmap
+- fc-doc: `declared_curve_format` for mixed-curve layers; `delete_points`/`inferred_kind` residuals are done.
+- Content-hash touched-glyph net when `.fcf` re-links original sources; gasp raw overwrite vs model edits; format-4 cmap
   truncation warning; asymmetric language tables; per-master guide identifiers; CSP only enforced in production builds.
-- Playwright: detect a stale `fw-devserver` binary (mtime vs sources) or default to `cargo run` locally.
+- Playwright: detect a stale `fc-devserver` binary (mtime vs sources) or default to `cargo run` locally.
 
 ## 3. UI backlog (final-review triage list)
 - Component filled ghost lags markers during a drag (needs per-component preview paths — partly done in T7).

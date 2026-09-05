@@ -9,6 +9,6 @@ export { ApiCallError, type Transport } from './Transport'
 export function createTransport(): Transport {
   if ('__TAURI_INTERNALS__' in window) return new TauriTransport()
   return new HttpTransport(
-    import.meta.env.VITE_FW_API ?? 'http://localhost:8787',
+    import.meta.env.VITE_FC_API ?? 'http://localhost:8787',
   )
 }

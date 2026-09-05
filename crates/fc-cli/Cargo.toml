@@ -1,0 +1,29 @@
+[package]
+name = "fc-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "fontcutter"
+path = "src/main.rs"
+
+[dependencies]
+clap.workspace = true
+fc-api = { path = "../fc-api" }
+fc-doc = { path = "../fc-doc" }
+# UFO and designspace sources are opened directly, like binary fonts.
+fc-formats = { path = "../fc-formats" }
+fc-model = { path = "../fc-model" }
+fc-sfnt = { path = "../fc-sfnt" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+assert_cmd.workspace = true
+fc-fixtures = { path = "../fc-fixtures" }
+predicates.workspace = true
+tempfile.workspace = true

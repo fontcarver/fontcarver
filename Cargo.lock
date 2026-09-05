@@ -1255,6 +1255,216 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
+name = "fc-api"
+version = "0.1.0"
+dependencies = [
+ "dirs",
+ "fc-compile",
+ "fc-doc",
+ "fc-fixtures",
+ "fc-formats",
+ "fc-glyphdata",
+ "fc-layout",
+ "fc-model",
+ "fc-sfnt",
+ "kurbo",
+ "read-fonts",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror 2.0.20",
+ "tokio",
+ "tracing",
+ "ts-rs",
+]
+
+[[package]]
+name = "fc-cli"
+version = "0.1.0"
+dependencies = [
+ "assert_cmd",
+ "clap",
+ "fc-api",
+ "fc-doc",
+ "fc-fixtures",
+ "fc-formats",
+ "fc-model",
+ "fc-sfnt",
+ "predicates",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.20",
+]
+
+[[package]]
+name = "fc-compile"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "criterion",
+ "fc-fixtures",
+ "fc-model",
+ "fc-sfnt",
+ "flate2",
+ "fontc",
+ "fontdrasil",
+ "fontir",
+ "harfrust",
+ "kurbo",
+ "read-fonts",
+ "serde_json",
+ "sha2",
+ "skrifa",
+ "thiserror 2.0.20",
+ "tracing",
+ "woofwoof",
+ "write-fonts",
+ "wuff",
+]
+
+[[package]]
+name = "fc-devserver"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "clap",
+ "fc-api",
+ "fc-doc",
+ "fc-fixtures",
+ "futures-util",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.20",
+ "tokio",
+ "tokio-tungstenite",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "fc-doc"
+version = "0.1.0"
+dependencies = [
+ "fc-fixtures",
+ "fc-geom",
+ "fc-model",
+ "fc-sfnt",
+ "flate2",
+ "kurbo",
+ "serde",
+ "serde_json",
+ "sha1",
+ "thiserror 2.0.20",
+ "tokio",
+ "tracing",
+ "ts-rs",
+]
+
+[[package]]
+name = "fc-fixtures"
+version = "0.1.0"
+dependencies = [
+ "norad",
+ "plist",
+ "tempfile",
+ "thiserror 2.0.20",
+]
+
+[[package]]
+name = "fc-formats"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "fc-fixtures",
+ "fc-model",
+ "fc-sfnt",
+ "kurbo",
+ "norad",
+ "plist",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.20",
+ "tracing",
+ "walkdir",
+]
+
+[[package]]
+name = "fc-geom"
+version = "0.1.0"
+dependencies = [
+ "fc-fixtures",
+ "fc-model",
+ "fc-sfnt",
+ "flo_curves",
+ "i_overlay",
+ "kurbo",
+ "proptest",
+ "thiserror 2.0.20",
+ "tracing",
+]
+
+[[package]]
+name = "fc-glyphdata"
+version = "0.1.0"
+dependencies = [
+ "icu_properties",
+]
+
+[[package]]
+name = "fc-layout"
+version = "0.1.0"
+dependencies = [
+ "fc-compile",
+ "fc-fixtures",
+ "fc-model",
+ "fc-sfnt",
+ "harfrust",
+ "kurbo",
+ "read-fonts",
+ "serde",
+ "thiserror 2.0.20",
+ "tracing",
+ "ts-rs",
+]
+
+[[package]]
+name = "fc-model"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "indexmap 2.14.1",
+ "kurbo",
+ "serde",
+ "serde_json",
+ "smol_str",
+ "thiserror 2.0.20",
+ "ts-rs",
+ "uuid",
+]
+
+[[package]]
+name = "fc-sfnt"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "fc-fixtures",
+ "fc-model",
+ "kurbo",
+ "read-fonts",
+ "sha2",
+ "skrifa",
+ "thiserror 2.0.20",
+ "write-fonts",
+ "wuff",
+]
+
+[[package]]
 name = "fdeflate"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1406,8 +1616,8 @@ dependencies = [
 name = "fontcutter"
 version = "0.1.0"
 dependencies = [
- "fw-api",
- "fw-doc",
+ "fc-api",
+ "fc-doc",
  "serde_json",
  "tauri",
  "tauri-build",
@@ -1581,216 +1791,6 @@ dependencies = [
  "memchr",
  "pin-project-lite",
  "slab",
-]
-
-[[package]]
-name = "fw-api"
-version = "0.1.0"
-dependencies = [
- "dirs",
- "fw-compile",
- "fw-doc",
- "fw-fixtures",
- "fw-formats",
- "fw-glyphdata",
- "fw-layout",
- "fw-model",
- "fw-sfnt",
- "kurbo",
- "read-fonts",
- "serde",
- "serde_json",
- "sha2",
- "tempfile",
- "thiserror 2.0.20",
- "tokio",
- "tracing",
- "ts-rs",
-]
-
-[[package]]
-name = "fw-cli"
-version = "0.1.0"
-dependencies = [
- "assert_cmd",
- "clap",
- "fw-api",
- "fw-doc",
- "fw-fixtures",
- "fw-formats",
- "fw-model",
- "fw-sfnt",
- "predicates",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.20",
-]
-
-[[package]]
-name = "fw-compile"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "criterion",
- "flate2",
- "fontc",
- "fontdrasil",
- "fontir",
- "fw-fixtures",
- "fw-model",
- "fw-sfnt",
- "harfrust",
- "kurbo",
- "read-fonts",
- "serde_json",
- "sha2",
- "skrifa",
- "thiserror 2.0.20",
- "tracing",
- "woofwoof",
- "write-fonts",
- "wuff",
-]
-
-[[package]]
-name = "fw-devserver"
-version = "0.1.0"
-dependencies = [
- "axum",
- "clap",
- "futures-util",
- "fw-api",
- "fw-doc",
- "fw-fixtures",
- "reqwest",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.20",
- "tokio",
- "tokio-tungstenite",
- "tower-http",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "fw-doc"
-version = "0.1.0"
-dependencies = [
- "flate2",
- "fw-fixtures",
- "fw-geom",
- "fw-model",
- "fw-sfnt",
- "kurbo",
- "serde",
- "serde_json",
- "sha1",
- "thiserror 2.0.20",
- "tokio",
- "tracing",
- "ts-rs",
-]
-
-[[package]]
-name = "fw-fixtures"
-version = "0.1.0"
-dependencies = [
- "norad",
- "plist",
- "tempfile",
- "thiserror 2.0.20",
-]
-
-[[package]]
-name = "fw-formats"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "fw-fixtures",
- "fw-model",
- "fw-sfnt",
- "kurbo",
- "norad",
- "plist",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.20",
- "tracing",
- "walkdir",
-]
-
-[[package]]
-name = "fw-geom"
-version = "0.1.0"
-dependencies = [
- "flo_curves",
- "fw-fixtures",
- "fw-model",
- "fw-sfnt",
- "i_overlay",
- "kurbo",
- "proptest",
- "thiserror 2.0.20",
- "tracing",
-]
-
-[[package]]
-name = "fw-glyphdata"
-version = "0.1.0"
-dependencies = [
- "icu_properties",
-]
-
-[[package]]
-name = "fw-layout"
-version = "0.1.0"
-dependencies = [
- "fw-compile",
- "fw-fixtures",
- "fw-model",
- "fw-sfnt",
- "harfrust",
- "kurbo",
- "read-fonts",
- "serde",
- "thiserror 2.0.20",
- "tracing",
- "ts-rs",
-]
-
-[[package]]
-name = "fw-model"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "indexmap 2.14.1",
- "kurbo",
- "serde",
- "serde_json",
- "smol_str",
- "thiserror 2.0.20",
- "ts-rs",
- "uuid",
-]
-
-[[package]]
-name = "fw-sfnt"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "fw-fixtures",
- "fw-model",
- "kurbo",
- "read-fonts",
- "sha2",
- "skrifa",
- "thiserror 2.0.20",
- "write-fonts",
- "wuff",
 ]
 
 [[package]]

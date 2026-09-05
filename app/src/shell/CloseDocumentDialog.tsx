@@ -13,7 +13,7 @@ import styles from './dialog.module.css'
 /**
  * Save / Don't Save / Cancel prompt shown when a dirty document is closed.
  * Saving closes the document only once the kernel reports the write succeeded,
- * asking for a `.fwf` path first when the document has none.
+ * asking for a `.fcf` path first when the document has none.
  */
 export function CloseDocumentDialog() {
   const { t } = useTranslation()

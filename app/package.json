@@ -13,7 +13,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "e2e": "playwright test",
-    "gen:api": "cargo run -p fw-api --bin gen_ts",
+    "gen:api": "cargo run -p fc-api --bin gen_ts",
     "tauri": "TAURI_APP_PATH=../src-tauri TAURI_FRONTEND_PATH=. tauri"
   },
   "dependencies": {

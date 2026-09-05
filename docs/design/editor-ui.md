@@ -186,7 +186,7 @@ Field behaviour: text fields select all on focus; numbers accept expressions (`+
 All dialogs: 6 px radius, 24 px padding, title 16/600, body 14, primary button right-aligned, Esc cancels, Enter confirms, keyboard-trapped.
 - **New Font** (480 px): family name, style name, units per em (1000 / 2048 / custom), metrics preset (Latin default, CJK 1000 em with 880/−120), starter glyph set (none / Basic Latin / Latin-1 / GB 2312), "Create".
 - **Add Glyphs** (560 px): recipe text area with syntax help, charset picker (list with counts and "already present" badges), preview list of names to be added (virtualised), "Add N glyphs".
-- **Export** (560 px): format tabs (TTF / WOFF / WOFF2 / UFO / FWF), destination path with "Choose…", options as checkboxes (remove overlap, keep TrueType instructions, preserve untouched tables, production names) with a one-line explanation each, master/instance picker, "Export"; result view lists warnings (`hinting-dropped` etc.) with the affected glyphs as clickable chips and "Reveal in folder".
+- **Export** (560 px): format tabs (TTF / WOFF / WOFF2 / UFO / FCF), destination path with "Choose…", options as checkboxes (remove overlap, keep TrueType instructions, preserve untouched tables, production names) with a one-line explanation each, master/instance picker, "Export"; result view lists warnings (`hinting-dropped` etc.) with the affected glyphs as clickable chips and "Reveal in folder".
 - **Preferences** (640 px, left categories: General / Editor / Snapping / Shortcuts (P2)): theme, language, autosave interval, nudge steps, hit/snap distances, grid size, tool defaults.
 - **Recovery** (on launch): list of recoverable documents with timestamps, "Recover" / "Discard" per row.
 

@@ -12,13 +12,13 @@ import { RecoveryDialog } from './RecoveryDialog'
 
 const ENTRIES: RecoveryEntry[] = [
   {
-    doc_path: '/fonts/Workshop.fwf',
-    autosave_path: '/state/autosave/1.fwf',
+    doc_path: '/fonts/Workshop.fcf',
+    autosave_path: '/state/autosave/1.fcf',
     saved_at_ms: 1_700_000_000_000,
   },
   {
     doc_path: null,
-    autosave_path: '/state/autosave/2.fwf',
+    autosave_path: '/state/autosave/2.fcf',
     saved_at_ms: 1_700_000_060_000,
   },
 ]
@@ -28,9 +28,9 @@ function setup() {
     'session.recover': () =>
       makeSummary({
         doc: 3,
-        path: '/fonts/Workshop.fwf',
+        path: '/fonts/Workshop.fcf',
         dirty: true,
-        recovered_from: '/fonts/Workshop.fwf',
+        recovered_from: '/fonts/Workshop.fcf',
       }),
     'session.discard_recovery': () => null,
   })
@@ -54,7 +54,7 @@ describe('RecoveryDialog', () => {
   it('lists every snapshot with its original path', () => {
     setup()
 
-    expect(screen.getByText('/fonts/Workshop.fwf')).toBeInTheDocument()
+    expect(screen.getByText('/fonts/Workshop.fcf')).toBeInTheDocument()
     expect(screen.getByText('Untitled document')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Recover' })).toHaveLength(2)
   })
@@ -68,10 +68,10 @@ describe('RecoveryDialog', () => {
     await waitFor(() => expect(useSessionStore.getState().docs).toHaveLength(1))
     expect(transport.calls[0]).toEqual({
       method: 'session.recover',
-      params: { autosave_path: '/state/autosave/1.fwf' },
+      params: { autosave_path: '/state/autosave/1.fcf' },
     })
     expect(useSessionStore.getState().docs[0]?.recovered_from).toBe(
-      '/fonts/Workshop.fwf',
+      '/fonts/Workshop.fcf',
     )
     expect(useUiStore.getState().tabs.map((tab) => tab.id)).toEqual(['font:3'])
   })
@@ -97,7 +97,7 @@ describe('RecoveryDialog', () => {
     await waitFor(() => expect(transport.calls).toHaveLength(1))
     expect(transport.calls[0]).toEqual({
       method: 'session.discard_recovery',
-      params: { autosave_path: '/state/autosave/1.fwf' },
+      params: { autosave_path: '/state/autosave/1.fcf' },
     })
   })
 
@@ -112,7 +112,7 @@ describe('RecoveryDialog', () => {
     await waitFor(() => expect(transport.calls).toHaveLength(1))
     expect(transport.calls[0]).toEqual({
       method: 'session.recover',
-      params: { autosave_path: '/state/autosave/2.fwf' },
+      params: { autosave_path: '/state/autosave/2.fcf' },
     })
   })
 
@@ -135,7 +135,7 @@ describe('RecoveryDialog', () => {
 
     await waitFor(() => expect(transport.calls).toHaveLength(1))
     expect(transport.calls[0]?.params).toEqual({
-      autosave_path: '/state/autosave/1.fwf',
+      autosave_path: '/state/autosave/1.fcf',
     })
   })
 

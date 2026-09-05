@@ -132,8 +132,8 @@
     "saveAs": {
       "title": "另存为",
       "label": "文档路径",
-      "placeholder": "/path/to/font.fwf",
-      "hint": "Font Cutter 文档以 .fwf 或 .fwf.gz 格式保存。",
+      "placeholder": "/path/to/font.fcf",
+      "hint": "Font Cutter 文档以 .fcf 或 .fcf.gz 格式保存。",
       "confirm": "保存",
       "filter": "Font Cutter 文档"
     },
@@ -206,7 +206,7 @@
         "Woff2": "WOFF2",
         "Ufo": "UFO",
         "Designspace": "Designspace",
-        "Fwf": "FWF"
+        "Fcf": "FCF"
       },
       "destination": "Destination",
       "destinationLabel": "Destination path",

@@ -45,7 +45,7 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-
 
       - name: Generate frontend API bindings
-        run: cargo run -p fw-api --bin gen_ts
+        run: cargo run -p fc-api --bin gen_ts
 
       - name: Install pnpm 10
         uses: pnpm/action-setup@v4
@@ -89,11 +89,11 @@ jobs:
         working-directory: app
         run: pnpm build
 
-      # The end-to-end suite starts `fw-devserver` and Vite itself, so the only
+      # The end-to-end suite starts `fc-devserver` and Vite itself, so the only
       # thing CI has to provide is the built binary and a browser. The CJK spec
       # skips: its corpus is a multi-megabyte font kept outside the repository.
       - name: Build the kernel development server
-        run: cargo build -p fw-devserver
+        run: cargo build -p fc-devserver
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4

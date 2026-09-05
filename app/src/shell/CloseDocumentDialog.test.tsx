@@ -11,7 +11,7 @@ import { CloseDocumentDialog } from './CloseDocumentDialog'
 
 function setup(summary = makeSummary({ dirty: true })) {
   const transport = createMockTransport({
-    'session.save': () => makeSummary({ path: '/docs/a.fwf', dirty: false }),
+    'session.save': () => makeSummary({ path: '/docs/a.fcf', dirty: false }),
     'session.close': () => null,
     'session.recent': () => [],
   })
@@ -71,7 +71,7 @@ describe('CloseDocumentDialog', () => {
 
   it('saves and then closes when Save is chosen', async () => {
     const user = userEvent.setup()
-    const transport = setup(makeSummary({ path: '/docs/a.fwf', dirty: true }))
+    const transport = setup(makeSummary({ path: '/docs/a.fcf', dirty: true }))
 
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
