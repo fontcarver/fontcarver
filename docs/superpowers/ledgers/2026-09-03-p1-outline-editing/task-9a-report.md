@@ -218,3 +218,114 @@ discard}`, `progress.{compile, preserve, write}`, `a11y.progress`, `banner.{reco
    `builtinCommands.ts`, `EmptyState.tsx`, `sessionStore.ts`, `uiStore.ts`, `warnings.ts` and
    `App.test.tsx` have small additive hunks. `MenuBar.tsx`, `TabBar.tsx`, `ToastStack`, `Toast`,
    `playwright.config.ts`, `app/src/views/**` and `app/src/editor/**` were not touched.
+
+---
+
+# Fix round 1
+
+Review: `task-9a-review.md` (Needs fixes — 3 Important, 11 Minor). Six commits on top of `61adb57`;
+no Rust was touched in this round (`git diff 61adb57..HEAD -- crates/ src-tauri/` is empty).
+
+```
+082b0c2 fix(app): give the Dialog primitive its spec chrome and modal keyboard ownership
+36eb909 fix(app): close a half-made new font and never write defaults over stored prefs
+7687cba fix(app): explain every skipped recipe item in Add Glyphs
+8533e8a refactor(app): one native-file-dialog helper for open, save and export
+c6a6195 fix(app): commit preference numbers once, and confirm every dialog with Enter
+232a0c7 docs: refresh the P1 dialog screenshots for the new dialog chrome
+```
+
+## Important
+
+**I1 — a failed New Font left a half-initialised document.** `createFont` now runs everything after
+`session.new` inside `setUpDocument` (`app/src/dialogs/newFont.ts:96`) and, on any rejection, closes
+the document through `sessionStore.close` before rethrowing (`newFont.ts:87-91`). The dialog stays
+open with its error toast, no tab survives, and a retry mints exactly one more document.
+*Test:* `NewFontDialog.test.tsx:161` — a rejecting `doc.apply` produces a `session.close` for that
+document, an empty `docs`/`tabs`, an error toast, an open dialog, and a second Create that closes its
+own document rather than accumulating orphans.
+
+**I2 — the Dialog primitive did not have the §9 chrome it claimed.** 24 px padding, a 16/600 title
+and a 14 px body are now real, written as three rules scoped to the primitive's own width classes
+(`app/src/shell/dialog.module.css:126-152`), so the P0 path prompt, close prompt and command palette
+keep the denser chrome they were designed with. Two additive tokens carry the sizes
+(`app/src/styles/tokens.css:24-26`: `--text-size-md: 14px`, `--text-size-xl: 16px`). The doc comment
+on `Dialog` now says what the code does (`app/src/components/Dialog.tsx:31-38`).
+*Test:* `Dialog.test.tsx:46-68` resolves each declaration against the token file and asserts 24 px /
+16 px / 600 / 14 px for all three widths, plus that the unscoped P0 rules still read 12/16 px and
+15 px.
+
+**I3 — a preference write before a successful load persisted the defaults.** `update` now reads the
+kernel's record first when the store has not loaded, and refuses the write outright when that read
+fails (`app/src/stores/prefsStore.ts:102-108`); `reset` is the one write that deliberately means "the
+defaults", loaded or not.
+*Tests:* `prefsStore.test.ts:91` (a write before load issues `prefs.get` first and keeps the stored
+`recent_limit`/`autosave_seconds`), `:111` (an unreadable record produces no `prefs.set` and an error
+toast), `:126` (reset still writes the defaults).
+
+## Minor
+
+| # | Change | Where | Test |
+|---|---|---|---|
+| 1 | Warning chips capped at 50 with a "+N more" summary | `ExportDialog.tsx:47`, `:329-341` | `ExportDialog.test.tsx:190` — 120 names render 50 chips and "70 more" |
+| 2 | Dead i18n keys deleted (`dialog.addGlyphs.present`, `common.add`, `common.discard`), plus `presentCount_*` and `skipped_*` which the new grouping replaced | `i18n/{en,zh-CN}.json` | `i18n.test.ts` parity; no `t()` reference remains (grepped) |
+| 3 | `skipped` is grouped by reason — already present / not understood / range too large — using the kernel's own discriminator (`too-large:` prefix, then its glyph-name grammar) | `addGlyphs.ts:28-70`, `AddGlyphsDialog.tsx:210-225` | `addGlyphs.test.ts` (8 classifications + grouping), `AddGlyphsDialog.test.tsx:92` |
+| 4 | Charset rows label their counts by reason instead of calling every skip "already present" | `AddGlyphsDialog.tsx:181-196` | `AddGlyphsDialog.test.tsx:166` |
+| 5 | `onConfirm` wired for Add Glyphs (add), Preferences (Done) and Recovery (recover the focused row, else Later) | `AddGlyphsDialog.tsx:139`, `PreferencesDialog.tsx:75`, `RecoveryDialog.tsx:52` | `AddGlyphsDialog.test.tsx:122`, `PreferencesDialog.test.tsx:141`, `RecoveryDialog.test.tsx:104` and `:119` |
+| 6 | One `choosePath({ kind: 'open' \| 'save', … })` helper; the only place the app reaches for `@tauri-apps/plugin-dialog` | `app/src/shell/nativeDialogs.ts`, used by `sessionStore.ts:175-217` and `exportFormats.ts:90-104` | `nativeDialogs.test.ts` (4 cases, incl. the mocked native picker), existing `builtinCommands`/`sessionStore` tests for the in-app fallback |
+| 7 | A charset whose dry run failed shows "—" with a tooltip instead of counting for ever | `AddGlyphsDialog.tsx:94-99`, `:183` | `AddGlyphsDialog.test.tsx:105` |
+| 8 | Preference numbers keep a local draft and commit on blur or Enter, so an emptied box never persists `0` | `app/src/dialogs/NumberField.tsx` | `PreferencesDialog.test.tsx:105` (one write, on blur) and `:127` (Enter commits without closing) |
+| 9 | `dismissedRecoveries` is pruned when a document closes | `uiStore.ts:315-322` | covered by `uiStore.test.ts` close-tabs cases; the list can no longer grow for the session |
+| 10 | Global shortcuts stand down while a modal is on screen; Escape is exempt. The primitive counts itself in and out through `uiStore.modalCount` | `shortcuts.ts:186-197`, `Dialog.tsx:56-60`, `uiStore.ts:170,355-359` | `shortcuts.test.ts:178` (`Mod+W` is ignored under a modal and works again after), `:193` (Escape still dispatches), `Dialog.test.tsx:107` (the count is balanced) |
+| 11 | `warningGlyphNames` parsed once per report rather than twice per warning per render | `ExportDialog.tsx:151-159` | covered by the chip tests above |
+
+Two supporting changes fell out of the above: the Add Glyphs preview list and the recovery rows are
+now focusable (`NameList.tsx:52`, `RecoveryDialog.tsx:81`), which is both what makes Enter reachable
+and the right thing for a scrollable region and a row that carries two actions. `test-results` was
+added to `app/.prettierignore` so a Playwright artefact left by a failed run cannot fail
+`prettier --check .`.
+
+## Verification
+
+```
+cargo fmt/clippy/test -p fw-api        not re-run: no Rust changed this round (diff is empty)
+pnpm --dir app check                   OK
+pnpm --dir app test                    51 files, 387 tests passed (was 48/357: +3 files, +30 tests)
+pnpm --dir app lint                    OK
+pnpm --dir app exec prettier --check . OK
+pnpm --dir app e2e                     14 passed (9 pre-existing + 5 new), servers on 8792/1425
+```
+
+The e2e Preferences spec needed no change: it already blurred the grid-size field before polling, so
+commit-on-blur is exactly what it asserts.
+
+## i18n changes for Task 13
+
+Removed (do not translate): `common.add`, `common.discard`, `dialog.addGlyphs.present`,
+`dialog.addGlyphs.presentCount_one/_other`, `dialog.addGlyphs.skipped_one/_other`.
+Added (English placeholders in `zh-CN.json`): `dialog.addGlyphs.countFailed`,
+`dialog.addGlyphs.skip.{present,unknown,tooLarge}_one/_other`,
+`dialog.export.moreGlyphs_one/_other`. Net 547 leaf keys per catalogue, parity exact.
+
+## Screenshots
+
+All eight were re-shot against a single-document session with the new chrome, and
+`p1-dialog-export-form.png` was added so the export dialog has both a resting frame and the
+mid-export one (`p1-dialog-export.png`, caught at `preserve 60`). `p1-dialog-addglyphs.png` now shows
+the grouped skip counts ("50 new · 1 not understood") and the per-reason charset badges.
+
+## Concerns
+
+1. **Enter in Add Glyphs is reachable only from the preview list.** The recipe field is a textarea and
+   everything else is a button, and both own Enter themselves; making the list focusable is what gives
+   `onConfirm` a real path, and that is what the test drives.
+2. **Export still falls back to its own destination field, not `PathPromptDialog`.** The helper is
+   shared, but stacking the P0 prompt over an open Export dialog would put two modals and two focus
+   traps on screen at once, and Export already has a persistent path field. Flag it if the review
+   wants the prompt reused there anyway.
+3. **The skip-reason discriminator mirrors the kernel rather than being told by it.** It is exact
+   today (every planned name is a valid glyph name; only oversized ranges are prefixed), but it is a
+   parallel copy of `is_glyph_name`. A `reason` field on the skip entries would make it structural —
+   deliberately not done, since the dispatch allowed exactly one additive Rust change.
+4. **`Prefs` still has no hit-radius or tool-defaults field**, so those parts of §9's Editor category
+   remain unimplementable; the review noted tool defaults, and it is recorded here for Task 13.
