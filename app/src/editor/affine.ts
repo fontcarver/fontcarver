@@ -39,6 +39,29 @@ export function composeAffine(a: Affine, b: Affine): Affine {
   ]
 }
 
+/** Whether a transform can be undone; a zero scale cannot. */
+export function isInvertible(affine: Affine): boolean {
+  const det = affine[0] * affine[3] - affine[1] * affine[2]
+  return Number.isFinite(det) && Math.abs(det) > 1e-12
+}
+
+/**
+ * The inverse, or the identity when the transform is singular.
+ *
+ * A degenerate component transform (a zero scale) cannot be undone; returning
+ * the identity keeps the caller drawing something rather than `NaN`.
+ */
+export function invertAffine(affine: Affine): Affine {
+  if (!isInvertible(affine)) return IDENTITY
+  const [a, b, c, d, e, f] = affine
+  const det = a * d - b * c
+  const ia = d / det
+  const ib = -b / det
+  const ic = -c / det
+  const id = a / det
+  return [ia, ib, ic, id, -(ia * e + ic * f), -(ib * e + id * f)]
+}
+
 /** Wraps a linear transform so it happens about `origin`. */
 export function about(origin: Point2, linear: Affine): Affine {
   const [a, b, c, d] = linear

@@ -10,6 +10,7 @@
 import type { Viewport } from '../../canvas/Viewport'
 
 import { drawAnchors } from './drawAnchors'
+import { IDENTITY } from '../../editor/affine'
 import { drawComponents, type ComponentDraw } from './drawComponents'
 import { drawEditing, NO_OVERLAY, type EditingOverlay } from './drawEditing'
 import { drawGuides } from './drawGuides'
@@ -106,8 +107,7 @@ export function renderGlyph(
         scene.components.map((component) => ({
           component,
           path: null,
-          dx: 0,
-          dy: 0,
+          transform: IDENTITY,
         })),
       filled: overlays.filled,
       showLabels: overlays.points,

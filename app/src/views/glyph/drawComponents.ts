@@ -11,6 +11,7 @@
 
 import type { Component } from '../../api'
 import type { Viewport } from '../../canvas/Viewport'
+import { IDENTITY, type Affine } from '../../editor/affine'
 
 import type { GlyphTheme } from './glyphTheme'
 
@@ -70,9 +71,13 @@ export interface ComponentDraw {
   component: Component
   /** The component's own flattened path, in font units, or `null`. */
   path: Path2D | null
-  /** Preview offset applied on top of `path`, in font units. */
-  dx: number
-  dy: number
+  /**
+   * The transform a live gesture is previewing, in font space, on top of the
+   * path — which the kernel already produced under the *stored* transform. A
+   * rotate or a scale is a full affine, so a `dx`/`dy` pair would draw a turn
+   * as a slide.
+   */
+  transform: Affine
 }
 
 /** What `drawComponents` renders. */
@@ -90,19 +95,21 @@ export interface ComponentsData {
   showLabels: boolean
 }
 
-/** Draws one path in the component colour, offset by a preview delta. */
+/** Draws one path in the component colour, under a preview transform. */
 function paintPath(
   ctx: CanvasRenderingContext2D,
   viewport: Viewport,
   path: Path2D,
-  offset: { dx: number; dy: number },
+  transform: Affine,
   filled: boolean,
   theme: GlyphTheme,
 ): void {
   ctx.save()
   ctx.translate(viewport.offset.x, viewport.offset.y)
   ctx.scale(viewport.scale, -viewport.scale)
-  ctx.translate(offset.dx, offset.dy)
+  // Canvas takes the same `[a b c d e f]` order the kernel does, and the
+  // transform composes in font space, inside the y-up flip above.
+  ctx.transform(...transform)
   if (filled) {
     ctx.fillStyle = theme.component
     ctx.fill(path, 'nonzero')
@@ -126,9 +133,16 @@ export function drawComponents(
   const own = data.components.filter((entry) => entry.path !== null)
   if (own.length > 0)
     for (const entry of own)
-      paintPath(ctx, viewport, entry.path as Path2D, entry, data.filled, theme)
+      paintPath(
+        ctx,
+        viewport,
+        entry.path as Path2D,
+        entry.transform,
+        data.filled,
+        theme,
+      )
   else if (data.path)
-    paintPath(ctx, viewport, data.path, { dx: 0, dy: 0 }, data.filled, theme)
+    paintPath(ctx, viewport, data.path, IDENTITY, data.filled, theme)
 
   if (!data.showLabels) return
 

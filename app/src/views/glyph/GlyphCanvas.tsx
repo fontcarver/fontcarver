@@ -24,7 +24,7 @@ import type { ComponentView } from '../../api'
 import type { SnapSettings } from '../../editor/snapping'
 import type { ShapeDialogRequest } from '../../editor/tools/toolTypes'
 
-import type { ComponentDraw } from './drawComponents'
+import { componentDraws, type PathCache } from './componentDraws'
 import type { MetricLabels } from './drawMetrics'
 import styles from './glyphView.module.css'
 import { sceneBox, type GlyphScene } from './glyphScene'
@@ -135,7 +135,7 @@ export function GlyphCanvas({
   // Parsing SVG path data is the expensive part of drawing a component, and
   // the strings only change when the kernel answers, so each one is parsed
   // once and reused for every frame of a drag.
-  const pathCache = useRef(new Map<string, Path2D | null>())
+  const pathCache = useRef<PathCache>(new Map())
   const [cursor, setCursor] = useState('default')
 
   // The controller must outlive every render: it holds the live gesture and
@@ -478,49 +478,6 @@ export function GlyphCanvas({
       />
     </div>
   )
-}
-
-/**
- * The components as this frame draws them.
- *
- * A gesture previews a component by moving its stored transform, so the offset
- * against the fetched view is what the canvas has to translate its path by —
- * the path itself is the base outline the kernel already transformed and never
- * changes during a drag.
- */
-function componentDraws(
-  source: readonly ComponentView[],
-  preview: readonly ComponentView[] | null,
-  cache: Map<string, Path2D | null>,
-): readonly ComponentDraw[] {
-  const shown = preview ?? source
-  return shown.map((view, index) => {
-    const base = source[index] ?? view
-    return {
-      component: view.component,
-      path: parsePath(base.path, cache),
-      dx: view.component.transform[4] - base.component.transform[4],
-      dy: view.component.transform[5] - base.component.transform[5],
-    }
-  })
-}
-
-/** A parsed path for the given data, cached; malformed data yields `null`. */
-function parsePath(
-  data: string,
-  cache: Map<string, Path2D | null>,
-): Path2D | null {
-  const cached = cache.get(data)
-  if (cached !== undefined) return cached
-  let path: Path2D | null
-  try {
-    path = new Path2D(data)
-  } catch {
-    // Malformed path data must not take the whole frame down.
-    path = null
-  }
-  cache.set(data, path)
-  return path
 }
 
 function roundPoint(point: { x: number; y: number }): {
