@@ -4,7 +4,7 @@ import type { Layer, MasterSummary } from '../../../api'
 import { useEditorStore } from '../../../stores/editorStore'
 
 import styles from './panels.module.css'
-import { layerLabel, layerRows, type LayerRow } from './layerRows'
+import { layerDetail, layerLabel, layerRows, type LayerRow } from './layerRows'
 
 export interface LayerListProps {
   layers: readonly Layer[]
@@ -43,6 +43,7 @@ export function LayerList({
       {rows.map((row) => {
         const active = row.layer.id === current
         const role = t(`glyphInspector.layerKind.${row.kindKey}`)
+        const detail = layerDetail(row, masters, role, timeLabel)
         return (
           <div
             key={row.layer.id}
@@ -56,13 +57,11 @@ export function LayerList({
               }`}
               aria-current={active}
               onClick={() => setEditedLayer(row.layer.id)}
-              title={row.time === null ? role : timeLabel(row.time)}
+              title={`${role} · ${detail}`}
             >
               {layerLabel(row, masters, role)}
             </button>
-            <span className={styles.rowMeta}>
-              {row.time === null ? role : timeLabel(row.time)}
-            </span>
+            <span className={styles.rowMeta}>{detail}</span>
             {rowActions?.(row)}
           </div>
         )

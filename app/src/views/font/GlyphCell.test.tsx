@@ -86,6 +86,23 @@ describe('GlyphCell', () => {
     expect(canvas.width).toBe(0)
   })
 
+  it('repaints a cell whose page was invalidated and came back', () => {
+    // An edit that invalidates the page cache blanks the cell for a frame:
+    // the canvas unmounts, and its ref cleanup must not null the handle the
+    // *replacement* canvas has already installed, or the cell that comes back
+    // never paints again.
+    const { container, rerender } = render(<GlyphCell {...props(cellFor(6))} />)
+    const first = canvasIn(container)
+    expect(first.width).toBe(128)
+
+    rerender(<GlyphCell {...props(undefined)} />)
+    rerender(<GlyphCell {...props(cellFor(6))} />)
+
+    const second = canvasIn(container)
+    expect(second.width).toBe(128)
+    expect(second.height).toBe(128)
+  })
+
   it('keeps the canvas across a repaint', () => {
     const { container, rerender } = render(<GlyphCell {...props(cellFor(5))} />)
     const canvas = canvasIn(container)

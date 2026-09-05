@@ -22,6 +22,12 @@ export interface EditGlyphListProps {
   summary: DocSummary
   /** The glyph the Edit tab is showing, which the list marks and scrolls to. */
   gid: GlyphId
+  /**
+   * The filtered, sorted list to show. Like the Font view's grid, this
+   * component is mounted under a key derived from the query, so the page cache
+   * inside it always belongs to the list on screen.
+   */
+  query: GlyphQuery
 }
 
 /**
@@ -33,21 +39,11 @@ export interface EditGlyphListProps {
  * rather than opening another one, which is what keeps a long editing session
  * to a single Edit tab.
  */
-export function EditGlyphList({ summary, gid }: EditGlyphListProps) {
+export function EditGlyphList({ summary, gid, query }: EditGlyphListProps) {
   const { t } = useTranslation()
   const doc = summary.doc
   const view = useDocumentStore(selectDocView(doc))
   const containerRef = useRef<HTMLDivElement>(null)
-
-  const query = useMemo<GlyphQuery>(
-    () => ({
-      doc,
-      master: view.master ?? summary.masters[0]?.id ?? null,
-      filter: view.filter,
-      sort: view.sort,
-    }),
-    [doc, summary.masters, view.filter, view.master, view.sort],
-  )
 
   const { pager, version, total } = useGridPager({ doc, query })
   const theme = useCellTheme()

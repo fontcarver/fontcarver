@@ -35,6 +35,12 @@ test.describe('glyph view', () => {
   test('steps to the next glyph in the current order', async ({ page }) => {
     await page.goto('/')
     const grid = page.getByRole('listbox', { name: 'Glyphs' })
+    // Wait for the cell before double-clicking it, as the spec above does: the
+    // grid's focus bookkeeping runs on the pointer-down, and a cell whose page
+    // is still in flight is a placeholder that carries no glyph to open.
+    await expect(
+      grid.getByRole('option', { name: 'A', exact: true }),
+    ).toBeVisible()
     await grid.getByRole('option', { name: 'A', exact: true }).dblclick()
     await expect(
       page.getByRole('tab', { name: 'A', exact: true }),

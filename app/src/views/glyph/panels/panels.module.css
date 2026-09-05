@@ -170,6 +170,7 @@
 
 .listRow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-1);
   min-height: var(--row-height);
@@ -217,11 +218,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* The fields of an expanded row take a line of their own under it. */
 .rowFields {
   display: grid;
+  width: 100%;
+  flex-basis: 100%;
   gap: var(--space-1);
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  padding: 0 var(--space-1) var(--space-1) var(--space-3);
+  padding: var(--space-1) var(--space-1) var(--space-2) var(--space-3);
+}
+
+.rowFields .field,
+.rowFields label {
+  grid-template-columns: minmax(28px, auto) 1fr;
 }
 
 .empty {

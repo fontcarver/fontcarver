@@ -82,13 +82,36 @@ export function layerRows(layers: readonly Layer[]): LayerRow[] {
   )
 }
 
-/** The name a row shows: the layer's own, else the master's, else the role. */
+/**
+ * What a row is called.
+ *
+ * A master layer is known by its own name (or its master's, since imported
+ * fonts leave layers unnamed). A background or a backup is known by its role:
+ * `CopyLayer` carries the source layer's name across, so three rows would
+ * otherwise all read "Book" and only the second column would tell them apart.
+ */
 export function layerLabel(
   row: LayerRow,
   masters: readonly MasterSummary[],
   roleName: string,
 ): string {
+  if (row.group === 'background' || row.group === 'backup') return roleName
   if (row.layer.name) return row.layer.name
   const master = masters.find((entry) => entry.id === row.master)
   return master ? master.name : roleName
+}
+
+/** What a row's second column shows: its master, its timestamp or its role. */
+export function layerDetail(
+  row: LayerRow,
+  masters: readonly MasterSummary[],
+  roleName: string,
+  time: (seconds: number) => string,
+): string {
+  if (row.time !== null) return time(row.time)
+  // A background says which master it belongs to, because that is the thing
+  // it is a background *of*; every other row says what it is.
+  if (row.group === 'background')
+    return masters.find((entry) => entry.id === row.master)?.name ?? roleName
+  return roleName
 }

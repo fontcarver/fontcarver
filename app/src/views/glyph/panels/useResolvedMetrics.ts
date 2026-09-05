@@ -9,7 +9,7 @@
  * own copy until that answers.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import {
   call,
@@ -20,6 +20,7 @@ import {
   type MetricsKeys,
   type ResolvedMetrics,
 } from '../../../api'
+import { useEditorStore } from '../../../stores/editorStore'
 
 /** The resolved metrics of one glyph, refreshed on every document change. */
 export function useResolvedMetrics(
@@ -31,6 +32,8 @@ export function useResolvedMetrics(
 ): ResolvedMetrics {
   const [resolved, setResolved] = useState<ResolvedMetrics | null>(null)
   const [generation, setGeneration] = useState(0)
+  const editing = useEditorStore((state) => state.editing)
+  const deferred = useRef(false)
   // A formula names other glyphs, so the request has to be reissued whenever
   // any of them could have moved; the signature keeps it to real changes.
   const signature = `${doc}:${gid}:${master ?? ''}:${keys.left ?? ''}:${
@@ -60,10 +63,24 @@ export function useResolvedMetrics(
       onDocumentEvent((event) => {
         if (event.doc !== doc) return
         if (!event.change.metrics && !event.change.glyphs.includes(gid)) return
+        // A sidebearing drag applies once per animation frame, so the kernel
+        // already holds geometry the fetched layer deliberately does not.
+        // Resolving against that would flash "out of sync" for the length of
+        // the drag; the answer that matters is the one after it ends.
+        if (useEditorStore.getState().editing) {
+          deferred.current = true
+          return
+        }
         setGeneration((value) => value + 1)
       }),
     [doc, gid],
   )
+
+  useEffect(() => {
+    if (editing || !deferred.current) return
+    deferred.current = false
+    setGeneration((value) => value + 1)
+  }, [editing])
 
   return resolved ?? fallback
 }

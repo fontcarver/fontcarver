@@ -940,7 +940,7 @@
     },
     "metrics": {
       "key": "{{metric}} key",
-      "resolved": "Resolved LSB / width / RSB",
+      "resolved": "Resolved",
       "outOfSync": "out of sync",
       "apply": "Apply resolved"
     },

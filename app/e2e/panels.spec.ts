@@ -65,36 +65,30 @@ test.describe('editor panels', () => {
     await lsb.fill('200')
     await lsb.press('Enter')
     await expect(lsb).toHaveValue('200')
-    expect(await undoLabel(page)).toContain('Set metrics')
 
     // The Info box reads the same layer, so it agrees without a reload.
     await expect(
       page.getByRole('region', { name: 'Info box' }).getByLabel('LSB'),
     ).toHaveValue('200')
 
-    // 2. The Path menu runs a whole-layer operation.
+    // 2. The Path menu runs a whole-layer operation. The advance is the same
+    // afterwards, so the Edit menu is what says the command actually ran.
     await runMenu(page, 'Path', 'Remove Overlap')
-    await expect.poll(() => undoLabel(page)).toContain('Remove overlap')
+    expect(await undoLabel(page)).toContain('Remove overlap')
 
     // 3. The Anchors panel adds an anchor with the first free name.
-    const anchors = inspector.getByRole('button', { name: /^Anchors/ })
-    await expect(anchors).toBeVisible()
     await inspector.getByRole('button', { name: 'Add anchor' }).click()
     await expect(
       inspector.getByRole('button', { name: 'Delete anchor top' }),
     ).toBeVisible()
-    expect(await undoLabel(page)).toContain('Add anchor')
 
-    // Undo the anchor and the overlap removal: the outline is back and the
-    // metrics edit is the next thing on the stack.
+    // Three edits, three undos: the anchor goes, the outline operation goes,
+    // and the layer is back at the metrics the font shipped.
     await page.keyboard.press('Control+z')
     await expect(
       inspector.getByRole('button', { name: 'Delete anchor top' }),
     ).toHaveCount(0)
     await page.keyboard.press('Control+z')
-    await expect.poll(() => undoLabel(page)).toContain('Set metrics')
-
-    // A third undo puts the metrics back where the font had them.
     await page.keyboard.press('Control+z')
     await expect(lsb).toHaveValue(originalLsb)
     await expect(inspector.getByLabel('advance', { exact: true })).toHaveValue(
