@@ -534,9 +534,7 @@
       "metrics": "Metrics",
       "anchors": "Anchors",
       "guides": "Guides",
-      "rulers": "Rulers",
-      "background": "Background",
-      "otherMasters": "Masters"
+      "rulers": "Rulers"
     },
     "metric": {
       "baseline": "baseline",
@@ -830,8 +828,6 @@
       "removeAnchor": "Delete anchor",
       "addGuide": "Add guide",
       "removeGuide": "Delete guide",
-      "setSidebearing": "Set sidebearing",
-      "setWidth": "Set width",
       "flipH": "Flip horizontally",
       "flipV": "Flip vertically",
       "duplicateGlyph": "Duplicate glyph",

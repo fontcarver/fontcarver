@@ -534,9 +534,7 @@
       "metrics": "度量线",
       "anchors": "锚点",
       "guides": "参考线",
-      "rulers": "标尺",
-      "background": "Background",
-      "otherMasters": "Masters"
+      "rulers": "标尺"
     },
     "metric": {
       "baseline": "基线",
@@ -830,8 +828,6 @@
       "removeAnchor": "Delete anchor",
       "addGuide": "Add guide",
       "removeGuide": "Delete guide",
-      "setSidebearing": "Set sidebearing",
-      "setWidth": "Set width",
       "flipH": "Flip horizontally",
       "flipV": "Flip vertically",
       "duplicateGlyph": "Duplicate glyph",
