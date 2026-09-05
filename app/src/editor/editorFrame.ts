@@ -22,6 +22,7 @@ import { handlePolar, hudText, stemWidth, type HudLabels } from './hud'
 import { nodeOfHandle, pointAt, type EditOutline } from './outlineGeometry'
 import { selectedNodeRefs, type Selection } from './selection'
 import type { SnapMatch } from './snapping'
+import { NO_TOOL_OVERLAY, type ToolOverlay } from './tools/toolTypes'
 
 /** How near the pointer must come to a component before its ghosts appear. */
 export const COMPONENT_GHOST_REACH = 24
@@ -33,6 +34,8 @@ export interface EditorFrame {
   components: readonly ComponentView[] | null
   selected: ReadonlySet<string>
   overlay: EditingOverlay
+  /** Transient geometry the active drawing tool wants drawn. */
+  tool: ToolOverlay
   hud: string | null
   pointerScreen: Point2 | null
 }
@@ -48,12 +51,16 @@ export interface FrameState {
   edit: EditOutline
   selection: Selection
   components: readonly ComponentBounds[]
+  /** Ghost nodes of the layer's components, from the kernel. */
+  componentPoints: readonly Point2[]
   pointer: Point2 | null
   drag: DragGesture | null
   /** The rubber band on screen — a selection marquee or a zoom rectangle. */
   band: MarqueeRect | null
   snap: SnapMatch | null
   hover: Hit | null
+  /** What the active drawing tool wants drawn, if any. */
+  tool?: ToolOverlay
 }
 
 const NOTHING_SELECTED: ReadonlySet<string> = new Set()
@@ -64,13 +71,25 @@ function insertGhost(state: FrameState): Point2 | null {
   return state.hover?.target.kind === 'segment' ? state.hover.point : null
 }
 
-/** Faint corner nodes of any component the pointer is approaching. */
+/**
+ * Faint nodes of any component the pointer is approaching (§4.1 item 14).
+ *
+ * The kernel's flattened component points are the real thing to snap to and
+ * therefore the real thing to show; a layer whose ghosts have not arrived yet
+ * falls back to the corners of each component's bounds, which at least says
+ * "there is a component here".
+ */
 function componentGhosts(state: FrameState): readonly Point2[] {
   const { viewport, pointer } = state
   if (!pointer || state.drag) return []
   const font = viewport.toFont(pointer)
   const reach = COMPONENT_GHOST_REACH / (viewport.scale || 1)
+  const near = (x: number, y: number): boolean =>
+    Math.abs(x - font.x) <= reach && Math.abs(y - font.y) <= reach
   const ghosts: Point2[] = []
+  for (const point of state.componentPoints)
+    if (near(point.x, point.y)) ghosts.push(point)
+  if (ghosts.length > 0) return ghosts
   for (const component of state.components) {
     const box = component.bbox
     if (!box) continue
@@ -162,16 +181,19 @@ export function buildFrame(state: FrameState): EditorFrame {
     insertGhost: insertGhost(state),
     componentGhosts: componentGhosts(state),
   }
+  const tool = state.tool ?? NO_TOOL_OVERLAY
   return {
     contours: state.preview?.contours ?? null,
     anchors: state.preview?.anchors ?? null,
     components: state.preview?.components ?? null,
+    tool,
     selected:
       state.selection.size === 0
         ? NOTHING_SELECTED
         : new Set(state.selection.keys()),
     overlay,
-    hud: frameHud(state),
+    // A tool's own readout wins: while it is drawing, the drag HUD is idle.
+    hud: tool.hud ?? frameHud(state),
     pointerScreen: state.pointer,
   }
 }

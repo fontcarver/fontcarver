@@ -20,7 +20,11 @@ import type { Modifiers } from '../../editor/gestures/drag'
 import { reportError } from '../../shell/commands'
 import { selectActiveTool, useEditorStore } from '../../stores/editorStore'
 import type { Selection } from '../../editor/selection'
+import type { ComponentView } from '../../api'
+import type { SnapSettings } from '../../editor/snapping'
+import type { ShapeDialogRequest } from '../../editor/tools/toolTypes'
 
+import { componentDraws, type PathCache } from './componentDraws'
 import type { MetricLabels } from './drawMetrics'
 import styles from './glyphView.module.css'
 import { sceneBox, type GlyphScene } from './glyphScene'
@@ -44,6 +48,8 @@ export interface GlyphCanvasProps {
   overlays: GlyphOverlays
   /** Component-flattened outline of the shown layer, in font units. */
   flattened: Path2D | null
+  /** The layer's components with their own resolved paths. */
+  componentViews: readonly ComponentView[]
   /** Identity of the glyph shown; changing it refits the view. */
   fitKey: string
   label: string
@@ -51,6 +57,12 @@ export interface GlyphCanvasProps {
   source: EditorSource | null
   /** Translated undo labels and readout words. */
   editorLabels: EditorLabels
+  /** Which snap families are live, and how coarse the grid is. */
+  snapSettings: SnapSettings
+  /** Arrow-key distances from the preferences: plain, Shift, Ctrl. */
+  nudgeSteps: readonly [number, number, number]
+  /** A shape tool was clicked rather than dragged. */
+  onShapeDialog: (request: ShapeDialogRequest) => void
   /** Reports the pointer position in font units, or `null` when it leaves. */
   onPointerFont: (point: { x: number; y: number } | null) => void
   /** Reports the zoom after every viewport change. */
@@ -90,10 +102,14 @@ export function GlyphCanvas({
   labels,
   overlays,
   flattened,
+  componentViews,
   fitKey,
   label,
   source,
   editorLabels,
+  snapSettings,
+  nudgeSteps,
+  onShapeDialog,
   onPointerFont,
   onZoomChange,
   onToggleFilled,
@@ -108,7 +124,18 @@ export function GlyphCanvas({
   const tool = useEditorStore(selectActiveTool)
   const snapping = useEditorStore((state) => state.snapping)
 
-  const frame = useRef({ scene, theme, labels, overlays, flattened })
+  const frame = useRef({
+    scene,
+    theme,
+    labels,
+    overlays,
+    flattened,
+    componentViews,
+  })
+  // Parsing SVG path data is the expensive part of drawing a component, and
+  // the strings only change when the kernel answers, so each one is parsed
+  // once and reused for every frame of a drag.
+  const pathCache = useRef<PathCache>(new Map())
   const [cursor, setCursor] = useState('default')
 
   // The controller must outlive every render: it holds the live gesture and
@@ -131,6 +158,11 @@ export function GlyphCanvas({
     if (!ctx) return
     const current = frame.current
     const editing = controller.frame()
+    const components = componentDraws(
+      current.componentViews,
+      editing.components,
+      pathCache.current,
+    )
     // Dev builds time every frame so the 60 fps target of design spec §13 can
     // be measured from the running app rather than asserted.
     const started = import.meta.env.DEV ? performance.now() : 0
@@ -146,9 +178,12 @@ export function GlyphCanvas({
       labels: current.labels,
       overlays: current.overlays,
       flattened: current.flattened,
+      components,
       pointer: pointerRef.current,
       selected: editing.selected,
       editing: editing.overlay,
+      tool: editing.tool,
+      grid: controller.gridSize,
       hud: editing.hud,
       pointerScreen: editing.pointerScreen,
     })
@@ -166,9 +201,10 @@ export function GlyphCanvas({
       onReload,
       onCursorChange: setCursor,
       onPreview: (preview) => useEditorStore.getState().setPreview(preview),
+      onShapeDialog,
       onError: reportError,
     })
-  }, [controller, draw, onReload, onZoomChange])
+  }, [controller, draw, onReload, onShapeDialog, onZoomChange])
 
   useEffect(
     () => controller.setLabels(editorLabels),
@@ -176,6 +212,14 @@ export function GlyphCanvas({
   )
   useEffect(() => controller.setTool(tool), [controller, tool])
   useEffect(() => controller.setSnapping(snapping), [controller, snapping])
+  useEffect(() => {
+    controller.setSnapSettings(snapSettings)
+    draw()
+  }, [controller, draw, snapSettings])
+  useEffect(
+    () => controller.setNudgeSteps(nudgeSteps),
+    [controller, nudgeSteps],
+  )
   useEffect(() => {
     controller.setSource(source)
     draw()
@@ -244,9 +288,16 @@ export function GlyphCanvas({
 
   // Refresh the draw inputs and repaint whenever anything visible changes.
   useEffect(() => {
-    frame.current = { scene, theme, labels, overlays, flattened }
+    frame.current = {
+      scene,
+      theme,
+      labels,
+      overlays,
+      flattened,
+      componentViews,
+    }
     draw()
-  }, [draw, scene, theme, labels, overlays, flattened])
+  }, [draw, scene, theme, labels, overlays, flattened, componentViews])
 
   // Wheel must be a non-passive native listener: React attaches `onWheel`
   // passively at the root, where `preventDefault` is ignored.
@@ -352,6 +403,20 @@ export function GlyphCanvas({
       if (direction) {
         event.preventDefault()
         controller.nudgeSelection(direction, modifiers)
+        return
+      }
+      // The active tool is offered the key first: Enter finishes a pen path
+      // and Escape abandons one, and neither should reach the editor's own
+      // Escape or the command registry while a path is being drawn.
+      if (
+        controller.toolKey({
+          key: event.key,
+          modifiers,
+          repeat: event.repeat,
+        })
+      ) {
+        event.preventDefault()
+        event.stopPropagation()
         return
       }
       if (event.key === 'Escape') {

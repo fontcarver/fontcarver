@@ -4,7 +4,12 @@ import { Viewport } from '../canvas/Viewport'
 import { makeContour, makePoint } from '../test/fontFixtures'
 
 import { buildEditOutline } from './outlineGeometry'
-import { snapDelta, SNAP_DISTANCE, type SnapInput } from './snapping'
+import {
+  DEFAULT_SNAP_SETTINGS,
+  snapDelta,
+  SNAP_DISTANCE,
+  type SnapInput,
+} from './snapping'
 
 const contour = makeContour([
   makePoint(0, 0),
@@ -50,12 +55,17 @@ function input(overrides: Partial<SnapInput> = {}): SnapInput {
       node: 'NODE',
       handle: 'HANDLE',
       guide: 'GUIDE',
+      anchor: 'ANCHOR',
+      grid: 'GRID',
+      component: 'COMPONENT',
       baseline: 'baseline',
       xHeight: 'x-height',
       capHeight: 'cap height',
       ascender: 'ascender',
       descender: 'descender',
     },
+    componentPoints: [],
+    settings: { ...DEFAULT_SNAP_SETTINGS, nodes: true },
     viewport,
     exclude: new Set(['0:2']),
     ...overrides,
@@ -125,5 +135,97 @@ describe('snapDelta', () => {
     const match = snapDelta(input(), { x: 7, y: 9 }, [{ x: 320, y: 333 }])
     expect(match.delta).toEqual({ x: 7, y: 9 })
     expect(match.label).toBeNull()
+  })
+  it('snaps to a component ghost node when the pref is on', () => {
+    const match = snapDelta(
+      input({ componentPoints: [{ x: 400, y: 400 }] }),
+      { x: 0, y: 0 },
+      [{ x: 402, y: 398 }],
+    )
+    expect(match.point).toEqual({ x: 400, y: 400 })
+    expect(match.label).toBe('COMPONENT')
+  })
+
+  it('ignores component ghosts when the pref is off', () => {
+    const match = snapDelta(
+      input({
+        componentPoints: [{ x: 400, y: 400 }],
+        settings: { ...DEFAULT_SNAP_SETTINGS, components: false },
+      }),
+      { x: 0, y: 0 },
+      [{ x: 402, y: 398 }],
+    )
+    expect(match.point).toBeNull()
+  })
+
+  it('snaps each axis to the grid when the grid is on', () => {
+    const match = snapDelta(
+      input({
+        settings: {
+          ...DEFAULT_SNAP_SETTINGS,
+          nodes: false,
+          metrics: false,
+          grid: true,
+          gridSize: 50,
+        },
+      }),
+      { x: 0, y: 0 },
+      [{ x: 302, y: 348 }],
+    )
+    expect(match.delta.x).toBeCloseTo(-2, 6)
+    expect(match.delta.y).toBeCloseTo(2, 6)
+    expect(match.label).toBe('GRID')
+  })
+
+  it('leaves the grid alone when its step is zero', () => {
+    const match = snapDelta(
+      input({
+        settings: {
+          ...DEFAULT_SNAP_SETTINGS,
+          nodes: false,
+          metrics: false,
+          grid: true,
+          gridSize: 0,
+        },
+      }),
+      { x: 0, y: 0 },
+      [{ x: 302, y: 348 }],
+    )
+    expect(match.point).toBeNull()
+  })
+
+  it('resolves node > handle > anchor > guide > metric > grid > alignment', () => {
+    // Everything is within reach of (100, 500) at once; the winner names the
+    // family that outranks the rest.
+    const settings = {
+      ...DEFAULT_SNAP_SETTINGS,
+      grid: true,
+      gridSize: 100,
+    }
+    const near = { x: 300, y: 252 }
+    const guided = input({ settings })
+    // Guide at y = 250 beats the metric lines and the grid.
+    expect(snapDelta(guided, { x: 0, y: 0 }, [near]).label).toBe('mid')
+    // With guides off the metric line at 250 is out of reach, so the grid at
+    // y = 300 is still too far and only the grid's x = 300 matches.
+    const noGuides = input({
+      settings: { ...settings, guides: false },
+    })
+    const gridOnly = snapDelta(noGuides, { x: 0, y: 0 }, [near])
+    expect(gridOnly.label).toBe('GRID')
+    expect(gridOnly.delta.x).toBeCloseTo(0, 6)
+    // A node beats every axis target, both axes at once.
+    const nodeWins = snapDelta(guided, { x: 0, y: 0 }, [{ x: 98, y: 2 }])
+    expect(nodeWins.label).toBe('NODE')
+    expect(nodeWins.point).toEqual({ x: 100, y: 0 })
+  })
+
+  it('ignores nodes and alignment lines when the node pref is off', () => {
+    const off = input({
+      settings: { ...DEFAULT_SNAP_SETTINGS, nodes: false },
+    })
+    const match = snapDelta(off, { x: 0, y: 0 }, [{ x: 98, y: 320 }])
+    expect(match.alignedX).toBeNull()
+    expect(match.point).toBeNull()
   })
 })

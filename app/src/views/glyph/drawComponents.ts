@@ -11,6 +11,7 @@
 
 import type { Component } from '../../api'
 import type { Viewport } from '../../canvas/Viewport'
+import { IDENTITY, type Affine } from '../../editor/affine'
 
 import type { GlyphTheme } from './glyphTheme'
 
@@ -64,15 +65,60 @@ function labelPosition(
   }
 }
 
+/** One component as the canvas draws it. */
+export interface ComponentDraw {
+  /** The stored reference, moved when a gesture is previewing it. */
+  component: Component
+  /** The component's own flattened path, in font units, or `null`. */
+  path: Path2D | null
+  /**
+   * The transform a live gesture is previewing, in font space, on top of the
+   * path — which the kernel already produced under the *stored* transform. A
+   * rotate or a scale is a full affine, so a `dx`/`dy` pair would draw a turn
+   * as a slide.
+   */
+  transform: Affine
+}
+
 /** What `drawComponents` renders. */
 export interface ComponentsData {
-  /** Component-flattened outline of the whole layer, in font units. */
+  /**
+   * Component-flattened outline of the whole layer, used only until the
+   * per-component paths have arrived: one path for the layer cannot show a
+   * single dragged component moving.
+   */
   path: Path2D | null
-  components: readonly Component[]
+  components: readonly ComponentDraw[]
   /** Fill instead of stroking, matching the outline preview mode. */
   filled: boolean
   /** Draw the per-component origin markers and names. */
   showLabels: boolean
+}
+
+/** Draws one path in the component colour, under a preview transform. */
+function paintPath(
+  ctx: CanvasRenderingContext2D,
+  viewport: Viewport,
+  path: Path2D,
+  transform: Affine,
+  filled: boolean,
+  theme: GlyphTheme,
+): void {
+  ctx.save()
+  ctx.translate(viewport.offset.x, viewport.offset.y)
+  ctx.scale(viewport.scale, -viewport.scale)
+  // Canvas takes the same `[a b c d e f]` order the kernel does, and the
+  // transform composes in font space, inside the y-up flip above.
+  ctx.transform(...transform)
+  if (filled) {
+    ctx.fillStyle = theme.component
+    ctx.fill(path, 'nonzero')
+  } else {
+    ctx.strokeStyle = theme.component
+    ctx.lineWidth = 1 / viewport.scale
+    ctx.stroke(path)
+  }
+  ctx.restore()
 }
 
 /** Draws the component contribution of one layer. */
@@ -84,20 +130,19 @@ export function drawComponents(
 ): void {
   if (data.components.length === 0) return
 
-  if (data.path) {
-    ctx.save()
-    ctx.translate(viewport.offset.x, viewport.offset.y)
-    ctx.scale(viewport.scale, -viewport.scale)
-    if (data.filled) {
-      ctx.fillStyle = theme.component
-      ctx.fill(data.path, 'nonzero')
-    } else {
-      ctx.strokeStyle = theme.component
-      ctx.lineWidth = 1 / viewport.scale
-      ctx.stroke(data.path)
-    }
-    ctx.restore()
-  }
+  const own = data.components.filter((entry) => entry.path !== null)
+  if (own.length > 0)
+    for (const entry of own)
+      paintPath(
+        ctx,
+        viewport,
+        entry.path as Path2D,
+        entry.transform,
+        data.filled,
+        theme,
+      )
+  else if (data.path)
+    paintPath(ctx, viewport, data.path, IDENTITY, data.filled, theme)
 
   if (!data.showLabels) return
 
@@ -109,7 +154,7 @@ export function drawComponents(
   ctx.textAlign = 'left'
   ctx.textBaseline = 'bottom'
   const labels: LabelBox[] = []
-  for (const component of data.components) {
+  for (const { component } of data.components) {
     const origin = viewport.toScreen({
       x: component.transform[4],
       y: component.transform[5],

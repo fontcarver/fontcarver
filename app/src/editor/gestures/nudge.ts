@@ -17,14 +17,17 @@ import type { Modifiers } from './drag'
 /** Idle time after which a run of nudges becomes one undo entry, in ms. */
 export const NUDGE_TIMEOUT = 500
 
-/** Nudge distances in font units, design spec §4.3. */
-export const NUDGE_STEPS = { normal: 1, shift: 10, mod: 100 } as const
+/** Nudge distances in font units, design spec §4.3; `prefs.nudge` overrides. */
+export const NUDGE_STEPS: readonly [number, number, number] = [1, 10, 100]
 
 /** The distance one arrow press moves the selection. */
-export function nudgeStep(modifiers: Modifiers): number {
-  if (modifiers.mod) return NUDGE_STEPS.mod
-  if (modifiers.shift) return NUDGE_STEPS.shift
-  return NUDGE_STEPS.normal
+export function nudgeStep(
+  modifiers: Modifiers,
+  steps: readonly [number, number, number] = NUDGE_STEPS,
+): number {
+  if (modifiers.mod) return steps[2]
+  if (modifiers.shift) return steps[1]
+  return steps[0]
 }
 
 /** What a nudge run needs to know. */

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { createTool } from '../toolHost'
+
 import { HOLD_BORROW_MS, TOOLS, toolById, toolForKey } from './registry'
 
 describe('tool registry', () => {
@@ -20,12 +22,16 @@ describe('tool registry', () => {
     ])
   })
 
-  it('marks Select, Zoom and Hand as the tools that work in this phase', () => {
-    expect(TOOLS.filter((tool) => tool.live).map((tool) => tool.id)).toEqual([
-      'select',
-      'zoom',
-      'hand',
-    ])
+  it('builds a state machine for every tool but Text', () => {
+    expect(
+      TOOLS.filter((tool) => createTool(tool.id) === null).map(
+        (tool) => tool.id,
+      ),
+    ).toEqual(['select', 'zoom', 'hand', 'text'])
+    // Select, Zoom and Hand are the controller's own gestures; Text alone has
+    // no behaviour at all yet.
+    expect(createTool('text')).toBeNull()
+    expect(createTool('pen')).not.toBeNull()
   })
 
   it('maps the keyboard, with Shift+F reaching the ellipse', () => {

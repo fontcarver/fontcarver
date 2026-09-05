@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { Viewport } from '../../canvas/Viewport'
+import { IDENTITY } from '../../editor/affine'
 import { createRecordingContext } from '../../test/recordingContext'
 import {
   makeCell,
@@ -247,7 +248,12 @@ describe('drawComponents', () => {
     drawComponents(
       recording.ctx,
       viewportOf(),
-      { path, components: [component], filled: false, showLabels: false },
+      {
+        path,
+        components: [{ component, path: null, transform: IDENTITY }],
+        filled: false,
+        showLabels: false,
+      },
       FALLBACK_GLYPH_THEME,
     )
     expect(recording.calls('stroke')[0]?.args).toEqual([path])
@@ -256,13 +262,65 @@ describe('drawComponents', () => {
     )
   })
 
+  it('draws each component from its own path, offset by the preview', () => {
+    const recording = createRecordingContext()
+    const own = {} as Path2D
+    drawComponents(
+      recording.ctx,
+      viewportOf(),
+      {
+        path: {} as Path2D,
+        components: [
+          { component, path: own, transform: [1, 0, 0, 1, 40, -10] },
+        ],
+        filled: false,
+        showLabels: false,
+      },
+      FALLBACK_GLYPH_THEME,
+    )
+    // The component's own path wins over the whole-layer fallback, and the
+    // preview transform is applied inside the font-space transform.
+    expect(recording.calls('stroke')[0]?.args).toEqual([own])
+    expect(recording.calls('translate').map((entry) => entry.args)).toEqual([
+      [100, 500],
+    ])
+    expect(recording.calls('transform')[0]?.args).toEqual([1, 0, 0, 1, 40, -10])
+  })
+
+  it('draws a previewed rotation as a rotation, not as a slide', () => {
+    const recording = createRecordingContext()
+    const own = {} as Path2D
+    // A quarter turn about the origin: the linear part is not the identity,
+    // which a `dx`/`dy` offset could never express.
+    const quarter: [number, number, number, number, number, number] = [
+      0, 1, -1, 0, 0, 0,
+    ]
+    drawComponents(
+      recording.ctx,
+      viewportOf(),
+      {
+        path: null,
+        components: [{ component, path: own, transform: quarter }],
+        filled: false,
+        showLabels: false,
+      },
+      FALLBACK_GLYPH_THEME,
+    )
+    expect(recording.calls('transform')[0]?.args).toEqual(quarter)
+  })
+
   it('fills in preview mode and labels each component origin', () => {
     const recording = createRecordingContext()
     const path = {} as Path2D
     drawComponents(
       recording.ctx,
       viewportOf(),
-      { path, components: [component], filled: true, showLabels: true },
+      {
+        path,
+        components: [{ component, path: null, transform: IDENTITY }],
+        filled: true,
+        showLabels: true,
+      },
       FALLBACK_GLYPH_THEME,
     )
     expect(recording.calls('fill')[0]?.args).toEqual([path, 'nonzero'])

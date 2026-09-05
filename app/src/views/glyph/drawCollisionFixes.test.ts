@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { Viewport } from '../../canvas/Viewport'
+import { IDENTITY } from '../../editor/affine'
 import { makeCell, makeGlyphDetail, makeMaster } from '../../test/fontFixtures'
 import { createRecordingContext } from '../../test/recordingContext'
 
@@ -82,7 +83,14 @@ describe('drawing collision fixes', () => {
       viewportOf(),
       {
         path: null,
-        components: [component, { ...component, base: 'acute' }],
+        components: [
+          { component, path: null, transform: IDENTITY },
+          {
+            component: { ...component, base: 'acute' },
+            path: null,
+            transform: IDENTITY,
+          },
+        ],
         filled: false,
         showLabels: true,
       },

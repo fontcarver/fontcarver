@@ -1,0 +1,7 @@
+/* The four numeric fields of the shapes dialog, two to a row (design spec §9). */
+
+.fields {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: 1fr 1fr;
+}

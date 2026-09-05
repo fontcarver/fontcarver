@@ -137,7 +137,11 @@ export function createEditingTransport(
       active = null
       return noChange([42])
     },
-    'doc.undo': () => noChange([42]),
+    // `Document::undo` finalises the active edit before it walks the stack.
+    'doc.undo': () => {
+      active = null
+      return noChange([42])
+    },
     'doc.redo': () => noChange([42]),
   })
 }
