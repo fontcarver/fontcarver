@@ -106,6 +106,7 @@ export function GlyphCanvas({
   const pointerRef = useRef<{ x: number; y: number } | null>(null)
   const fittedRef = useRef('')
   const tool = useEditorStore(selectActiveTool)
+  const snapping = useEditorStore((state) => state.snapping)
 
   const frame = useRef({ scene, theme, labels, overlays, flattened })
   const [cursor, setCursor] = useState('default')
@@ -164,6 +165,7 @@ export function GlyphCanvas({
       onZoomChange,
       onReload,
       onCursorChange: setCursor,
+      onPreview: (preview) => useEditorStore.getState().setPreview(preview),
       onError: reportError,
     })
   }, [controller, draw, onReload, onZoomChange])
@@ -173,6 +175,7 @@ export function GlyphCanvas({
     [controller, editorLabels],
   )
   useEffect(() => controller.setTool(tool), [controller, tool])
+  useEffect(() => controller.setSnapping(snapping), [controller, snapping])
   useEffect(() => {
     controller.setSource(source)
     draw()

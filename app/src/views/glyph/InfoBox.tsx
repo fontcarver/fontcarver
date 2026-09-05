@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
-import type { LayerOutline } from '../../api'
+import type { Guide } from '../../api'
 import type { LayerTarget } from '../../editor/pointCommands'
 import { selectionCounts, type Selection } from '../../editor/selection'
 import { useEditorStore } from '../../stores/editorStore'
@@ -9,13 +9,15 @@ import { InfoGlyphRows } from './InfoGlyphRows'
 import { InfoMultiRows } from './InfoMultiRows'
 import { InfoObjectRows } from './InfoObjectRows'
 import { InfoPointRows } from './InfoPointRows'
+import type { ReadableOutline } from './infoBoxProps'
 import styles from './infoBox.module.css'
 
 export interface InfoBoxProps {
   target: LayerTarget
-  outline: LayerOutline
+  outline: ReadableOutline
   selection: Selection
   master: string | null
+  masterGuides: readonly Guide[]
   name: string
   unicodes: readonly number[]
   onCommitted: () => void

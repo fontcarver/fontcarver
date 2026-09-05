@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-import type { DocId, Glyph, GlyphCell, GlyphId } from '../api'
+import type { Anchor, Contour, DocId, Glyph, GlyphCell, GlyphId } from '../api'
 import { EMPTY_SELECTION, type Selection } from '../editor/selection'
 import type { ToolId } from '../editor/tools/registry'
 import type { GlyphScene } from '../views/glyph/glyphScene'
@@ -54,6 +54,12 @@ export interface EditorState {
    * outline mid-drag would fight the optimistic preview.
    */
   editing: boolean
+  /**
+   * The geometry a live gesture is showing, or `null` when none is running.
+   * The Info box reads it so its numbers track the drag instead of lagging on
+   * the last fetched outline.
+   */
+  preview: { contours: readonly Contour[]; anchors: readonly Anchor[] } | null
   setOverlay: (key: keyof GlyphOverlays, value: boolean) => void
   setActiveGlyph: (glyph: ActiveGlyph | null) => void
   toggleOverlay: (key: keyof GlyphOverlays) => void
@@ -66,6 +72,12 @@ export interface EditorState {
   toggleInfoBox: () => void
   setSnapping: (snapping: boolean) => void
   setEditing: (editing: boolean) => void
+  setPreview: (
+    preview: {
+      contours: readonly Contour[]
+      anchors: readonly Anchor[]
+    } | null,
+  ) => void
 }
 
 /** The initial, action-free part of the editor state. */
@@ -81,6 +93,7 @@ export function initialEditorState(): Pick<
   | 'infoBoxOpen'
   | 'snapping'
   | 'editing'
+  | 'preview'
 > {
   return {
     overlays: { ...DEFAULT_OVERLAYS },
@@ -93,6 +106,7 @@ export function initialEditorState(): Pick<
     infoBoxOpen: true,
     snapping: true,
     editing: false,
+    preview: null,
   }
 }
 
@@ -151,6 +165,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setEditing: (editing) => {
     if (get().editing === editing) return
     set({ editing })
+  },
+
+  setPreview: (preview) => {
+    if (get().preview === preview) return
+    set({ preview })
   },
 }))
 

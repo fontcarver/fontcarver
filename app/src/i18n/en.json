@@ -72,7 +72,8 @@
         "guides": "Show Guides",
         "rulers": "Show Rulers"
       },
-      "toggleInfoBox": "Show Info Box"
+      "toggleInfoBox": "Show Info Box",
+      "toggleSnapping": "Snapping"
     },
     "window": {
       "nextTab": "Next Tab",

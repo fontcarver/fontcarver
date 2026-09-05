@@ -53,9 +53,20 @@ export function InfoMultiRows({
     0,
   )
 
-  const positions = points
+  // Everything the transform will move counts towards the box, or the numbers
+  // would describe a different selection from the one that is about to change.
+  const positions: { x: number; y: number }[] = points
     .map((ref) => pointAt(outline.contours, ref))
     .filter((point): point is NonNullable<typeof point> => point !== null)
+  for (const index of anchors) {
+    const anchor = outline.anchors[index]
+    if (anchor) positions.push({ x: anchor.x, y: anchor.y })
+  }
+  for (const index of components) {
+    const bbox = outline.components[index]?.bbox
+    if (!bbox) continue
+    positions.push({ x: bbox[0], y: bbox[1] }, { x: bbox[2], y: bbox[3] })
+  }
   const box = boundsOf(positions)
   if (!box) return null
   const width = box.x1 - box.x0

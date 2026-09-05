@@ -34,6 +34,10 @@ const layer = makeLayer({
 
 const outline = makeLayerOutline(layer)
 
+const masterGuides = [
+  { x: 0, y: 500, angle: 0, name: 'x-height', locked: false, color: null },
+]
+
 function transport(): MockTransport {
   const mock = createMockTransport({
     'doc.apply': () => ({
@@ -57,6 +61,7 @@ function show(selection: Selection) {
       outline={outline}
       selection={selection}
       master="m1"
+      masterGuides={masterGuides}
       name="a"
       unicodes={[0x61]}
       onCommitted={() => undefined}
@@ -236,6 +241,49 @@ describe('InfoBox', () => {
       expect(String(errors[0])).toContain('point index 1 does not exist'),
     )
     expect(field).toBeEnabled()
+  })
+
+  it('edits a master guide, which the canvas can select too', async () => {
+    const user = userEvent.setup()
+    const mock = transport()
+    show(selectionOf([{ kind: 'guide', index: 0, scope: 'master' }]))
+
+    const field = screen.getByLabelText('Y')
+    expect(field).toHaveValue('500')
+    await user.clear(field)
+    await user.type(field, '520{Enter}')
+
+    expect(applied(mock)?.command).toEqual({
+      SetGuide: {
+        glyph: null,
+        layer: null,
+        master: 'm1',
+        index: 0,
+        guide: {
+          x: 0,
+          y: 520,
+          angle: 0,
+          name: 'x-height',
+          locked: false,
+          color: null,
+        },
+      },
+    })
+  })
+
+  it('includes a selected anchor in the multi-selection box', () => {
+    transport()
+    show(
+      selectionOf([
+        { kind: 'node', contour: 0, point: 0 },
+        { kind: 'node', contour: 0, point: 1 },
+        { kind: 'anchor', index: 0 },
+      ]),
+    )
+
+    // The anchor sits at (300, 700), above the two nodes on the baseline, so
+    // the box has to reach it — the transform is going to move it.
+    expect(screen.getByLabelText('H')).toHaveValue('700')
   })
 
   it('collapses and expands from its header', async () => {

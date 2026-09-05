@@ -213,6 +213,18 @@ export function registerGlyphViewCommands(): void {
       run: () => activeEditor()?.toggleSmooth(false),
     },
     {
+      id: 'view.toggleSnapping',
+      title: 'cmd.view.toggleSnapping',
+      menu: 'view',
+      group: 'panels',
+      when: onGlyphTab,
+      disabledReason: 'cmd.reason.noGlyphTab',
+      run: () => {
+        const store = useEditorStore.getState()
+        store.setSnapping(!store.snapping)
+      },
+    },
+    {
       id: 'view.toggleInfoBox',
       title: 'cmd.view.toggleInfoBox',
       menu: 'view',

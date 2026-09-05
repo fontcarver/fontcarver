@@ -110,6 +110,7 @@ interface Recorded {
   editing: boolean[]
   reloads: number
   errors: unknown[]
+  previews: (number | null)[]
 }
 
 /** 1 CSS pixel per font unit, font origin at canvas (0, 300). */
@@ -136,6 +137,7 @@ function makeController(): {
     editing: [],
     reloads: 0,
     errors: [],
+    previews: [],
   }
   controller.setCallbacks({
     repaint: () => undefined,
@@ -147,6 +149,9 @@ function makeController(): {
       recorded.reloads += 1
     },
     onCursorChange: () => undefined,
+    onPreview: (preview) => {
+      recorded.previews.push(preview === null ? null : preview.contours.length)
+    },
     onError: (error) => recorded.errors.push(error),
   })
   controller.setSource(source())
@@ -179,7 +184,13 @@ async function settle(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0))
 }
 
-afterEach(() => setTransport(undefined))
+// A gesture's promise chain outlives the test that started it, and `call()`
+// reads whichever transport is installed *when it runs* — so let the chains
+// finish against their own transport before the next test swaps it out.
+afterEach(async () => {
+  await settle()
+  setTransport(undefined)
+})
 
 describe('EditorController selection', () => {
   it('selects the node under the pointer and clears on empty canvas', () => {
@@ -581,5 +592,43 @@ describe('EditorController insert-on-segment', () => {
         ? command.InsertPointOnSegment.t
         : 0,
     ).toBeCloseTo(0.25, 2)
+  })
+})
+
+describe('EditorController preview publishing', () => {
+  it('publishes the live geometry so the panels can read it', async () => {
+    const { controller, recorded } = makeController()
+    controller.pointerDown(at(200, 300))
+    controller.pointerMove(at(230, 280))
+    // The Info box reads this instead of the last fetched outline, which is
+    // deferred for the length of the gesture.
+    expect(recorded.previews.at(-1)).toBe(1)
+
+    controller.pointerUp(at(230, 280))
+    await settle()
+    expect(recorded.previews.at(-1)).toBeNull()
+  })
+})
+
+describe('EditorController snapping', () => {
+  it('stops snapping when the preference is off', () => {
+    const { controller } = makeController()
+    // Drag node 0 to within snapping distance of node 1 at font (200, 0).
+    const drop = at(197, 300)
+    controller.pointerDown(at(0, 300))
+    controller.pointerMove(drop)
+    expect(controller.frame().contours?.[0]?.points[0]).toMatchObject({
+      x: 200,
+      y: 0,
+    })
+
+    const off = makeController()
+    off.controller.setSnapping(false)
+    off.controller.pointerDown(at(0, 300))
+    off.controller.pointerMove(drop)
+    expect(off.controller.frame().contours?.[0]?.points[0]).toMatchObject({
+      x: 197,
+      y: 0,
+    })
   })
 })

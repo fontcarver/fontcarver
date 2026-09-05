@@ -50,6 +50,7 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
   const setActiveGlyph = useEditorStore((state) => state.setActiveGlyph)
   const toggleOverlay = useEditorStore((state) => state.toggleOverlay)
   const selection = useEditorStore((state) => state.selection)
+  const preview = useEditorStore((state) => state.preview)
   const setTabLabel = useUiStore((state) => state.setTabLabel)
 
   const detail = useGlyphDetail(doc, gid, masterId)
@@ -231,9 +232,20 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
         {outline ? (
           <InfoBox
             target={{ doc, glyph: scene.name, layer: outline.layer }}
-            outline={outline}
+            // While a gesture runs the fetched outline is deliberately stale,
+            // so the box reads the geometry the canvas is drawing.
+            outline={
+              preview
+                ? {
+                    ...outline,
+                    contours: preview.contours,
+                    anchors: preview.anchors,
+                  }
+                : outline
+            }
             selection={selection}
             master={masterId}
+            masterGuides={master?.guides ?? []}
             name={scene.name}
             unicodes={scene.unicodes}
             onCommitted={outlineResult.reload}

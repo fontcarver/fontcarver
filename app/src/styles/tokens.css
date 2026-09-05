@@ -72,6 +72,8 @@
   --color-warning-soft: #f7ecd7;
   --color-focus-ring: #3a6ea5;
   --color-overlay: rgb(28 28 32 / 32%);
+  /* Popover and dialog elevation, design spec §2.3. */
+  --shadow-popover: 0 8px 24px rgb(0 0 0 / 18%);
 
   /* Glyph editor canvas (design spec §2.1). Canvas cannot read CSS variables,
      so these are resolved once per theme and handed to the drawing modules as
@@ -126,6 +128,7 @@
   --color-warning-soft: #3a2f1c;
   --color-focus-ring: #78a6de;
   --color-overlay: rgb(0 0 0 / 48%);
+  --shadow-popover: 0 8px 24px rgb(0 0 0 / 45%);
 
   /* Glyph editor canvas (dark, design spec §2.1). */
   --cv-bg: #1a1d21;

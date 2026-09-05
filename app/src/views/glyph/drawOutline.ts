@@ -232,6 +232,32 @@ function drawOpenEnds(
   ctx.stroke()
 }
 
+/**
+ * Positions occupied by more than one point.
+ *
+ * Cached per contour list: it only changes when the outline does, and a drag
+ * repaints sixty times a second over the same one.
+ */
+const duplicateCache = new WeakMap<object, Point2[]>()
+
+function duplicatePositions(contours: readonly Contour[]): Point2[] {
+  const cached = duplicateCache.get(contours)
+  if (cached) return cached
+  const seen = new Map<string, { at: Point2; count: number }>()
+  for (const contour of contours)
+    for (const point of contour.points) {
+      const key = `${point.x}:${point.y}`
+      const entry = seen.get(key)
+      if (entry) entry.count += 1
+      else seen.set(key, { at: { x: point.x, y: point.y }, count: 1 })
+    }
+  const found = [...seen.values()]
+    .filter((entry) => entry.count > 1)
+    .map((entry) => entry.at)
+  duplicateCache.set(contours, found)
+  return found
+}
+
 /** Red rings around nodes that sit on top of another node. */
 function drawDuplicates(
   ctx: CanvasRenderingContext2D,
@@ -239,19 +265,12 @@ function drawDuplicates(
   map: PointMap,
   theme: GlyphTheme,
 ): void {
-  const seen = new Map<string, number>()
-  for (const contour of contours)
-    for (const point of contour.points) {
-      const key = `${point.x}:${point.y}`
-      seen.set(key, (seen.get(key) ?? 0) + 1)
-    }
-  const duplicates = [...seen.entries()].filter(([, count]) => count > 1)
+  const duplicates = duplicatePositions(contours)
   if (duplicates.length === 0) return
   ctx.strokeStyle = theme.warning
   ctx.lineWidth = 1
-  for (const [key] of duplicates) {
-    const [x = '0', y = '0'] = key.split(':')
-    const at = map({ x: Number(x), y: Number(y) })
+  for (const position of duplicates) {
+    const at = map(position)
     ctx.beginPath()
     ctx.arc(at.x, at.y, DUPLICATE_RADIUS, 0, Math.PI * 2)
     ctx.stroke()

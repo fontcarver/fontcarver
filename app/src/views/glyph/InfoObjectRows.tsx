@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { NumberField } from '../../components/NumberField'
@@ -11,6 +12,47 @@ import { onlyTarget } from '../../editor/selection'
 import { commitField } from './commitField'
 import styles from './infoBox.module.css'
 import type { InfoRowsProps } from './infoBoxProps'
+
+/**
+ * The anchor's name, following the model.
+ *
+ * An uncontrolled field keeps whatever was typed into it, so an anchor renamed
+ * from the canvas or by an undo would leave a stale name on screen.
+ */
+function AnchorName({
+  value,
+  label,
+  onCommit,
+}: {
+  value: string
+  label: string
+  onCommit: (name: string) => void
+}) {
+  const [text, setText] = useState(value)
+  const [shown, setShown] = useState(value)
+  // React's documented way to follow a prop without an effect: notice during
+  // render that the model moved and adopt it.
+  if (value !== shown) {
+    setShown(value)
+    setText(value)
+  }
+  return (
+    <input
+      className={styles.textInput}
+      value={text}
+      aria-label={label}
+      onChange={(event) => setText(event.currentTarget.value)}
+      onBlur={(event) => onCommit(event.currentTarget.value.trim())}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur()
+        if (event.key === 'Escape') {
+          setText(value)
+          event.currentTarget.blur()
+        }
+      }}
+    />
+  )
+}
 
 /** Decomposes a component transform into offset, scale and rotation. */
 function decompose(transform: readonly number[]): {
@@ -65,6 +107,7 @@ export function InfoObjectRows({
   outline,
   selection,
   master,
+  masterGuides,
   onCommitted,
 }: InfoRowsProps) {
   const { t } = useTranslation()
@@ -196,16 +239,11 @@ export function InfoObjectRows({
       <>
         <label className={styles.row}>
           <span className={styles.rowLabel}>{t('infoBox.name')}</span>
-          <input
-            className={styles.textInput}
-            defaultValue={anchor.name}
-            aria-label={t('infoBox.name')}
-            onBlur={(event) => {
-              const name = event.currentTarget.value.trim()
+          <AnchorName
+            value={anchor.name}
+            label={t('infoBox.name')}
+            onCommit={(name) => {
               if (name && name !== anchor.name) write({ name })
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') event.currentTarget.blur()
             }}
           />
         </label>
@@ -227,7 +265,9 @@ export function InfoObjectRows({
 
   if (only?.kind === 'guide') {
     const guide =
-      only.scope === 'layer' ? outline.guides[only.index] : undefined
+      only.scope === 'layer'
+        ? outline.guides[only.index]
+        : masterGuides[only.index]
     if (!guide) return null
     const write = (next: Partial<typeof guide>) =>
       commitField(

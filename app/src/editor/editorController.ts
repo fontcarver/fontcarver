@@ -113,6 +113,13 @@ export interface EditorCallbacks {
   /** A gesture finished: refetch the outline and reconcile. */
   onReload: () => void
   onCursorChange: (cursor: string) => void
+  /** The geometry a live gesture is showing, for the panels that read numbers. */
+  onPreview: (
+    preview: {
+      contours: readonly Contour[]
+      anchors: readonly Anchor[]
+    } | null,
+  ) => void
   /**
    * A kernel call failed. Editing must not swallow transport errors: the shell
    * turns these into a toast, the same way a failed command does.
@@ -136,6 +143,7 @@ const SILENT_CALLBACKS: EditorCallbacks = {
   onZoomChange: () => undefined,
   onReload: () => undefined,
   onCursorChange: () => undefined,
+  onPreview: () => undefined,
   onError: () => undefined,
 }
 
@@ -172,6 +180,7 @@ export class EditorController {
   } | null = null
   private spaceHeld = false
   private tool: ToolId = 'select'
+  private snapEnabled = true
   private editingPublished = false
 
   constructor(viewport: Viewport, labels: EditorLabels) {
@@ -201,9 +210,28 @@ export class EditorController {
     this.callbacks.onEditingChange(editing)
   }
 
+  /** Records the optimistic geometry and tells the panels that read it. */
+  private setPreview(
+    preview: {
+      contours: readonly Contour[]
+      anchors: readonly Anchor[]
+    } | null,
+  ): void {
+    this.preview = preview
+    this.callbacks.onPreview(preview)
+  }
+
   /** Replaces the translated strings after a language change. */
   setLabels(labels: EditorLabels): void {
     this.labels = labels
+  }
+
+  /**
+   * Whether snapping is on. Ctrl suspends it for one gesture (§4.2); this is
+   * the standing preference behind that, which the status bar reports.
+   */
+  setSnapping(enabled: boolean): void {
+    this.snapEnabled = enabled
   }
 
   /** Which tool the strip currently has active (or borrowed). */
@@ -225,7 +253,7 @@ export class EditorController {
       (source.doc !== this.source?.doc || source.gid !== this.source?.gid)
     this.source = source
     this.edit = buildEditOutline(source?.outline.contours ?? [])
-    this.preview = null
+    this.setPreview(null)
     if (!changedGlyph) return
     // Published unconditionally, not through `setSelection`: a freshly mounted
     // controller's selection is already empty, so the "nothing changed" guard
@@ -339,7 +367,7 @@ export class EditorController {
     }
     if (this.drag) {
       this.drag.move(this.viewport.toFont(this.pointer), input.modifiers)
-      this.preview = this.drag.preview
+      this.setPreview(this.drag.preview)
       this.callbacks.repaint()
       return
     }
@@ -541,10 +569,10 @@ export class EditorController {
       refs: movedPointRefs(base, points, handles),
       anchors: source.outline.anchors,
     }
-    this.preview = {
+    this.setPreview({
       contours: translatePoints(base, this.nudgeRun.refs, total.x, total.y),
       anchors: this.nudgeRun.anchors,
-    }
+    })
     this.callbacks.repaint()
   }
 
@@ -564,7 +592,7 @@ export class EditorController {
    */
   private closeNudge(): void {
     this.nudgeRun = null
-    this.preview = null
+    this.setPreview(null)
     this.publishEditing()
     this.callbacks.onReload()
     this.callbacks.repaint()
@@ -575,7 +603,7 @@ export class EditorController {
     if (this.drag) {
       const drag = this.drag
       this.drag = null
-      this.preview = null
+      this.setPreview(null)
       void drag
         .cancel()
         .catch((error: unknown) => this.callbacks.onError(error))
@@ -720,6 +748,10 @@ export class EditorController {
         },
         onError: (error) => this.callbacks.onError(error),
         snap: (delta, moved) => {
+          if (!this.snapEnabled) {
+            this.snap = null
+            return { delta, label: null }
+          }
           const match = snapDelta(this.snapInput(), delta, moved)
           this.snap = match
           return { delta: match.delta, label: match.label }
@@ -781,7 +813,7 @@ export class EditorController {
     } finally {
       // However the gesture ended, the preview goes away, reloads resume and
       // the canvas repaints; leaving any of those behind strands the editor.
-      this.preview = null
+      this.setPreview(null)
       this.publishEditing()
       // A gesture that failed part-way leaves the document in a state only the
       // kernel knows, so it is refetched even though nothing "changed".

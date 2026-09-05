@@ -72,7 +72,8 @@
         "guides": "显示参考线",
         "rulers": "显示标尺"
       },
-      "toggleInfoBox": "Show Info Box"
+      "toggleInfoBox": "Show Info Box",
+      "toggleSnapping": "Snapping"
     },
     "window": {
       "nextTab": "下一个标签页",
