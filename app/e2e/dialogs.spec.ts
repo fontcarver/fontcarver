@@ -24,11 +24,16 @@ interface Prefs {
   nudge: [number, number, number]
 }
 
-/** Reads the glyph count out of the status bar. */
+/**
+ * Reads the glyph count out of the status bar.
+ *
+ * The count is matched whole: the bar also flashes the label of the edit that
+ * just happened, and "Add glyphs" would otherwise be a second match.
+ */
 async function glyphCount(page: Page): Promise<number> {
   const text = await page
     .getByRole('contentinfo')
-    .getByText(/glyphs?$/)
+    .getByText(/^[\d,]+ glyphs?$/)
     .innerText()
   return Number(text.replace(/[^\d]/g, ''))
 }
