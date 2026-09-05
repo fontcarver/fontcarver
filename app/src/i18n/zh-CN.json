@@ -171,7 +171,15 @@
       "skipped_other": "{{count, number}} skipped",
       "empty": "Nothing to add yet — type a recipe or choose a character set.",
       "add_one": "Add {{count, number}} glyph",
-      "add_other": "Add {{count, number}} glyphs"
+      "add_other": "Add {{count, number}} glyphs",
+      "charset": {
+        "basicLatin": "Basic Latin",
+        "latinExtA": "Latin Extended-A",
+        "latin1": "Latin-1",
+        "gb2312": "GB 2312"
+      },
+      "presentCount_one": "{{count, number}} already present",
+      "presentCount_other": "{{count, number}} already present"
     },
     "export": {
       "title": "Export",
@@ -353,7 +361,9 @@
     "about": "FontWorkshop {{version}}——内核传输：{{kind}}",
     "copiedNames_one": "已复制 {{count, number}} 个字形名称",
     "copiedNames_other": "已复制 {{count, number}} 个字形名称",
-    "copyFailed": "无法写入剪贴板"
+    "copyFailed": "无法写入剪贴板",
+    "glyphsAdded_one": "Added {{count, number}} glyph",
+    "glyphsAdded_other": "Added {{count, number}} glyphs"
   },
   "warning": {
     "cffHintsNotImported": "CFF outlines were imported without per-glyph stem and hint-mask data",
