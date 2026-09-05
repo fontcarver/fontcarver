@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-import type { DocId, GlyphId } from '../api'
+import type { DocId, GlyphId, RecoveryEntry } from '../api'
 import { DEFAULT_LANGUAGE, normaliseLanguage, type Language } from '../i18n'
 
 /** User-selectable colour theme; `system` follows `prefers-color-scheme`. */
@@ -44,6 +44,19 @@ export interface PathPrompt {
 export interface ClosePrompt {
   readonly doc: DocId
 }
+
+/**
+ * Which modal dialog is open, together with what it needs to render.
+ *
+ * One slot holds at most one dialog: the shell is modal, so opening a second
+ * dialog replaces the first rather than stacking two focus traps.
+ */
+export type DialogState =
+  | { readonly kind: 'newFont' }
+  | { readonly kind: 'addGlyphs'; readonly doc: DocId }
+  | { readonly kind: 'export'; readonly doc: DocId }
+  | { readonly kind: 'preferences' }
+  | { readonly kind: 'recovery'; readonly entries: readonly RecoveryEntry[] }
 
 /** Inclusive pixel bounds of the resizable panels. */
 export const PANEL_BOUNDS: Record<PanelId, { min: number; max: number }> = {
@@ -146,6 +159,9 @@ export interface UiState extends PersistedUi {
   paletteOpen: boolean
   pathPrompt: PathPrompt | null
   closePrompt: ClosePrompt | null
+  dialog: DialogState | null
+  /** Documents whose "recovered from…" banner the user has dismissed. */
+  dismissedRecoveries: readonly DocId[]
   toasts: Toast[]
   setTheme: (theme: ThemePreference) => void
   setLanguage: (language: Language) => void
@@ -161,6 +177,8 @@ export interface UiState extends PersistedUi {
   setPaletteOpen: (open: boolean) => void
   setPathPrompt: (prompt: PathPrompt | null) => void
   setClosePrompt: (prompt: ClosePrompt | null) => void
+  setDialog: (dialog: DialogState | null) => void
+  dismissRecoveryBanner: (doc: DocId) => void
   pushToast: (toast: Omit<Toast, 'id'>) => string
   dismissToast: (id: string) => void
 }
@@ -191,6 +209,8 @@ export function initialUiState(): Omit<
   | 'setPaletteOpen'
   | 'setPathPrompt'
   | 'setClosePrompt'
+  | 'setDialog'
+  | 'dismissRecoveryBanner'
   | 'pushToast'
   | 'dismissToast'
 > {
@@ -201,6 +221,8 @@ export function initialUiState(): Omit<
     paletteOpen: false,
     pathPrompt: null,
     closePrompt: null,
+    dialog: null,
+    dismissedRecoveries: [],
     toasts: [],
   }
 }
@@ -305,6 +327,15 @@ export const useUiStore = create<UiState>((set, get) => ({
   setPathPrompt: (pathPrompt) => set({ pathPrompt }),
 
   setClosePrompt: (closePrompt) => set({ closePrompt }),
+
+  setDialog: (dialog) => set({ dialog }),
+
+  dismissRecoveryBanner: (doc) =>
+    set((state) =>
+      state.dismissedRecoveries.includes(doc)
+        ? state
+        : { dismissedRecoveries: [...state.dismissedRecoveries, doc] },
+    ),
 
   pushToast: (toast) => {
     const id = `toast-${++toastCounter}`

@@ -42,7 +42,8 @@ export function createMockTransport(
       return () => listeners.delete(cb)
     },
     emit(event) {
-      const wrapped: Event = 'kind' in event ? event : { kind: 'Document', ...event }
+      const wrapped: Event =
+        'kind' in event ? event : { kind: 'Document', ...event }
       for (const listener of [...listeners]) listener(wrapped)
     },
   }
