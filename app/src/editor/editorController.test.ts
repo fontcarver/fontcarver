@@ -104,6 +104,9 @@ function source(): EditorSource {
   }
 }
 
+/** The transport the running test installed, drained when it ends. */
+let installed: MockTransport | null = null
+
 /** What the view would have been told. */
 interface Recorded {
   selections: string[][]
@@ -127,6 +130,7 @@ function makeController(): {
     'doc.undo': () => null,
   })
   setTransport(transport)
+  installed = transport
   const viewport = new Viewport()
   viewport.setSize(400, 400, 1)
   viewport.scale = 1
@@ -185,10 +189,16 @@ async function settle(): Promise<void> {
 }
 
 // A gesture's promise chain outlives the test that started it, and `call()`
-// reads whichever transport is installed *when it runs* — so let the chains
-// finish against their own transport before the next test swaps it out.
+// reads whichever transport is installed *when it runs* — so drain the chains
+// against their own transport, until it stops recording, before the next test
+// installs another one.
 afterEach(async () => {
-  await settle()
+  for (let pass = 0; pass < 12; pass += 1) {
+    const before = installed?.calls.length ?? 0
+    await settle()
+    if ((installed?.calls.length ?? 0) === before) break
+  }
+  installed = null
   setTransport(undefined)
 })
 
@@ -454,6 +464,7 @@ describe('EditorController error handling', () => {
       'doc.undo': () => null,
     })
     setTransport(mock)
+    installed = mock
     return mock
   }
 
@@ -700,5 +711,52 @@ describe('EditorController view gestures', () => {
     controller.pointerUp(at(200, 300))
 
     expect([...controller.currentSelection.keys()]).toEqual(['node:0:1'])
+  })
+})
+
+describe('EditorController gesture handover', () => {
+  it('closes an open nudge run before the next gesture opens its own', async () => {
+    const { controller, transport, recorded } = makeController()
+    controller.setSelection(
+      new Map([['node:0:1', { kind: 'node', contour: 0, point: 1 }]]),
+    )
+    controller.nudgeSelection({ x: 1, y: 0 }, NO_MODIFIERS)
+
+    // A pointer-down inside the same animation frame: the run's apply is still
+    // queued. `edit_begin` finalises the active edit in the kernel, so it must
+    // not overtake that apply — the arrow press would come back
+    // InvalidEditToken and raise a toast.
+    controller.pointerDown(at(200, 300))
+    controller.pointerMove(at(230, 300))
+    controller.pointerUp(at(230, 300))
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(recorded.errors).toEqual([])
+  })
+
+  it('closes it before a single-shot command too', async () => {
+    const { controller, transport, recorded } = makeController()
+    controller.setSelection(
+      new Map([['node:0:1', { kind: 'node', contour: 0, point: 1 }]]),
+    )
+    controller.nudgeSelection({ x: 0, y: 1 }, NO_MODIFIERS)
+    await controller.toggleSmooth(false)
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.apply',
+    ])
+    expect(recorded.errors).toEqual([])
   })
 })

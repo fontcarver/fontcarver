@@ -47,6 +47,22 @@ export const immediateScheduler: Scheduler = {
  * Every kernel call is chained onto the previous one so the transport sees the
  * protocol in order even though callers are synchronous pointer handlers.
  */
+/** Everything optional about a gesture's session. */
+export interface EditSessionOptions {
+  scheduler?: Scheduler
+  onError?: (error: unknown) => void
+  /**
+   * A gate `edit_begin` waits for.
+   *
+   * The kernel finalises whatever edit is open when a new one begins, so a
+   * gesture that starts while another is still closing would invalidate the
+   * older gesture's last, still-queued apply. Handing the previous gesture's
+   * completion in here keeps the two in order without making the pointer
+   * handler asynchronous.
+   */
+  after?: Promise<unknown>
+}
+
 export class EditSession {
   readonly doc: DocId
   readonly label: string
@@ -61,17 +77,18 @@ export class EditSession {
   private errored = false
   private readonly onError: (error: unknown) => void
 
-  constructor(
-    doc: DocId,
-    label: string,
-    scheduler: Scheduler = frameScheduler,
-    onError: (error: unknown) => void = () => undefined,
-  ) {
+  constructor(doc: DocId, label: string, options: EditSessionOptions = {}) {
     this.doc = doc
     this.label = label
-    this.scheduler = scheduler
-    this.onError = onError
-    this.token = call('doc.edit_begin', { doc, label })
+    this.scheduler = options.scheduler ?? frameScheduler
+    this.onError = options.onError ?? (() => undefined)
+    const gate = options.after
+    this.token = gate
+      ? gate.then(
+          () => call('doc.edit_begin', { doc, label }),
+          () => call('doc.edit_begin', { doc, label }),
+        )
+      : call('doc.edit_begin', { doc, label })
     this.chain = this.token
       .then(() => undefined)
       .catch((error: unknown) => {
@@ -88,10 +105,21 @@ export class EditSession {
    */
   private step(run: () => Promise<void>): Promise<void> {
     this.chain = this.chain.then(run).catch((error: unknown) => {
-      this.errored = true
-      this.onError(error)
+      this.report(error)
     })
     return this.chain
+  }
+
+  /**
+   * Reports the first failure of the gesture and swallows the rest.
+   *
+   * Every later step re-awaits the same rejected token, so a document the
+   * kernel has lost would otherwise raise one toast per queued call.
+   */
+  private report(error: unknown): void {
+    const first = !this.errored
+    this.errored = true
+    if (first) this.onError(error)
   }
 
   /** Whether at least one command reached the kernel, i.e. an undo entry exists. */

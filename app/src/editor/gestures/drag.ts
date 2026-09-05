@@ -21,7 +21,7 @@ import type {
   PointRef,
 } from '../../api'
 import type { Point2 } from '../../canvas/Viewport'
-import { EditSession, frameScheduler, type Scheduler } from '../editSession'
+import { EditSession, type Scheduler } from '../editSession'
 import type { Hit } from '../hitTest'
 import {
   buildEditOutline,
@@ -102,6 +102,8 @@ export interface DragContext {
   scheduler?: Scheduler
   /** Where a failed kernel call is reported. */
   onError?: (error: unknown) => void
+  /** A gesture still closing, which this one's `edit_begin` waits for. */
+  after?: Promise<unknown>
 }
 
 function refKey(ref: PointRef): string {
@@ -291,12 +293,11 @@ export class DragGesture {
     this.context = context
     this.plan = plan
     this.origin = origin
-    this.session = new EditSession(
-      context.doc,
-      plan.label,
-      context.scheduler ?? frameScheduler,
-      context.onError,
-    )
+    this.session = new EditSession(context.doc, plan.label, {
+      scheduler: context.scheduler,
+      onError: context.onError,
+      after: context.after,
+    })
     this.movedRefs =
       plan.handleMode === 'WithHandles'
         ? uniqueRefs([

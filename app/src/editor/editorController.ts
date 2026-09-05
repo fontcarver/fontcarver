@@ -92,6 +92,8 @@ export class EditorController {
   private tool: ToolId = 'select'
   private snapEnabled = true
   private editingPublished = false
+  /** The gesture that is closing, if any; a new one begins after it. */
+  private closing: Promise<void> = Promise.resolve()
 
   constructor(viewport: Viewport, labels: EditorLabels) {
     this.viewport = viewport
@@ -150,6 +152,7 @@ export class EditorController {
 
   /** Which tool the strip currently has active (or borrowed). */
   setTool(tool: ToolId): void {
+    void this.settle()
     this.tool = tool
     this.updateCursor()
   }
@@ -228,7 +231,7 @@ export class EditorController {
 
   /** Pointer went down on the canvas. */
   pointerDown(input: PointerInput): void {
-    void this.endNudge()
+    void this.settle()
     // A gesture that never saw its pointer-up — a lost capture, a cancelled
     // pointer — must not survive into the next one.
     this.view.reset()
@@ -375,6 +378,9 @@ export class EditorController {
   private async runCommand(command: Command, label: string): Promise<void> {
     const target = this.layerTarget()
     if (!target) return
+    // `doc.apply` finalises the active edit, so an open run has to be closed
+    // before it rather than by it.
+    await this.settle()
     try {
       await commit(target, command, label)
     } catch (error) {
@@ -425,7 +431,20 @@ export class EditorController {
 
   /** Finalises a run of nudges: one undo entry, then a reload. */
   endNudge(): Promise<void> {
-    return this.nudge.end()
+    return this.settle()
+  }
+
+  /**
+   * Closes any coalesced run that is still open and reports when it is done.
+   *
+   * `doc.edit_begin` and `doc.apply` both finalise the active edit in the
+   * kernel, so a gesture that starts while a nudge run is still flushing would
+   * invalidate that run's last apply — the arrow press would be dropped and an
+   * error raised. Every new gesture waits for this first.
+   */
+  settle(): Promise<void> {
+    if (this.nudge.active) this.closing = this.nudge.end()
+    return this.closing
   }
 
   /**
@@ -549,6 +568,7 @@ export class EditorController {
         contours: source.outline.contours,
         anchors: source.outline.anchors,
         selection: this.selection,
+        after: this.closing,
         labels: {
           movePoints: (count) => this.labels.movePoints(count),
           moveHandles: (count) => this.labels.moveHandles(count),

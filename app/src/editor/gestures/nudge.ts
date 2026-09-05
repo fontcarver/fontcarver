@@ -10,7 +10,7 @@
 
 import type { Command, DocId, HandleMode, PointRef } from '../../api'
 import type { Point2 } from '../../canvas/Viewport'
-import { EditSession, frameScheduler, type Scheduler } from '../editSession'
+import { EditSession, type Scheduler } from '../editSession'
 
 import type { Modifiers } from './drag'
 
@@ -90,8 +90,10 @@ export class NudgeCoalescer {
       this.session = new EditSession(
         this.context.doc,
         this.context.label(refs.length),
-        this.context.scheduler ?? frameScheduler,
-        this.context.onError,
+        {
+          scheduler: this.context.scheduler,
+          onError: this.context.onError,
+        },
       )
     }
     this.total = { x: this.total.x + delta.x, y: this.total.y + delta.y }
