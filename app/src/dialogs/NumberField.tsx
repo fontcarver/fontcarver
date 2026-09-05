@@ -39,7 +39,12 @@ export function NumberField({
     if (draft === null) return
     const parsed = Number(draft)
     if (draft.trim() === '' || !Number.isFinite(parsed)) return
-    const clamped = Math.min(max ?? parsed, Math.max(min ?? parsed, parsed))
+    // Both bounds are optional and independent: falling back to `parsed` in
+    // either place would hand the raw value back and undo the other clamp.
+    const clamped = Math.min(
+      max ?? Number.POSITIVE_INFINITY,
+      Math.max(min ?? Number.NEGATIVE_INFINITY, parsed),
+    )
     if (clamped !== value) onCommit(clamped)
   }
 

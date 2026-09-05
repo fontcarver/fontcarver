@@ -108,6 +108,71 @@ describe('prefsStore', () => {
     })
   })
 
+  it('coalesces updates that race one unresolved first read', async () => {
+    const saved = stored({ recent_limit: 5, autosave_seconds: 120 })
+    let release = () => undefined as void
+    const read = new Promise<void>((resolve) => {
+      release = () => resolve()
+    })
+    const transport = createMockTransport({
+      'prefs.get': async () => {
+        await read
+        return saved
+      },
+      'prefs.set': ({ prefs }) => prefs,
+    })
+    setTransport(transport)
+
+    // A View-menu theme click and a dialog field, both before the start-up
+    // read has come back.
+    const first = usePrefsStore.getState().update({ theme: 'dark' })
+    const second = usePrefsStore.getState().update({ grid_size: 8 })
+    release()
+    await Promise.all([first, second])
+
+    // One read, one write, and neither patch is lost.
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'prefs.get',
+      'prefs.set',
+    ])
+    expect(transport.calls[1]?.params).toEqual({
+      prefs: stored({
+        recent_limit: 5,
+        autosave_seconds: 120,
+        theme: 'dark',
+        grid_size: 8,
+      }),
+    })
+    expect(usePrefsStore.getState().prefs).toEqual(
+      stored({
+        recent_limit: 5,
+        autosave_seconds: 120,
+        theme: 'dark',
+        grid_size: 8,
+      }),
+    )
+  })
+
+  it('serialises writes that arrive while an earlier one is in flight', async () => {
+    let saved: Prefs = stored()
+    const transport = createMockTransport({
+      'prefs.get': () => saved,
+      'prefs.set': ({ prefs }) => {
+        saved = prefs
+        return prefs
+      },
+    })
+    setTransport(transport)
+    await usePrefsStore.getState().load()
+
+    await Promise.all([
+      usePrefsStore.getState().update({ theme: 'dark' }),
+      usePrefsStore.getState().update({ grid_size: 8 }),
+    ])
+
+    expect(saved).toEqual(stored({ theme: 'dark', grid_size: 8 }))
+  })
+
   it('refuses to write when the stored record cannot be read', async () => {
     const transport = createMockTransport({
       'prefs.get': () => {

@@ -22,14 +22,31 @@ function resolveTokens(value: string): string {
   })
 }
 
+/**
+ * Every rule of the dialog stylesheet, by the selectors it is written for.
+ *
+ * Rules are looked up by selector rather than by where they sit in the file, so
+ * reordering the stylesheet cannot silently point an assertion at a different
+ * rule. The stylesheet has no at-rules, which this flat parse relies on.
+ */
+const RULES = [
+  ...DIALOG_CSS.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(
+    /([^{}]+)\{([^}]*)\}/g,
+  ),
+].map(([, selectors = '', body = '']) => ({
+  selectors: selectors
+    .split(',')
+    .map((one) => one.trim().replace(/\s+/g, ' '))
+    .filter((one) => one.length > 0),
+  body,
+}))
+
 /** One declaration of one rule of the dialog stylesheet, with tokens resolved. */
 function declaration(selector: string, property: string): string {
-  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  // Tolerates a grouped selector: `.dialogSm .x, .dialogMd .x { … }`.
-  const rule = new RegExp(`${escaped}[^{}]*\\{([^}]*)\\}`).exec(DIALOG_CSS)
+  const rule = RULES.find((candidate) => candidate.selectors.includes(selector))
   expect(rule, `rule ${selector} exists`).toBeTruthy()
   const found = new RegExp(`(?:^|;)\\s*${property}:\\s*([^;]+)`).exec(
-    rule?.[1] ?? '',
+    rule?.body ?? '',
   )
   expect(found, `${selector} declares ${property}`).toBeTruthy()
   return resolveTokens((found?.[1] ?? '').trim())
@@ -58,6 +75,10 @@ describe('Dialog chrome', () => {
       expect(declaration(`${size} .dialogTitle`, 'font-weight')).toBe('600')
     },
   )
+
+  it('parses the stylesheet flatly, which needs it to stay at-rule free', () => {
+    expect(DIALOG_CSS).not.toMatch(/@[a-z-]+/)
+  })
 
   it('leaves the P0 prompts on their own chrome', () => {
     expect(declaration('.dialogHeader', 'padding')).toBe('12px 16px 0')

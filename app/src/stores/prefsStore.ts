@@ -58,6 +58,24 @@ export function initialPrefsState(): Pick<PrefsState, 'prefs' | 'loaded'> {
 }
 
 export const usePrefsStore = create<PrefsState>((set, get) => {
+  /**
+   * Writes run one at a time, in the order they were asked for.
+   *
+   * `prefs.set` replaces the whole record, so two writes that overlap would
+   * each send their own view of it and the last one on the wire would win —
+   * silently dropping the other's change.
+   */
+  let queue: Promise<void> = Promise.resolve()
+
+  /** Changes asked for but not yet written, merged in arrival order. */
+  let pending: Partial<Prefs> | undefined
+
+  const enqueue = (task: () => Promise<void>): Promise<void> => {
+    // Both handlers, so one failed write cannot stall every later one.
+    queue = queue.then(task, task)
+    return queue
+  }
+
   const persist = async (prefs: Prefs): Promise<void> => {
     const previous = get().prefs
     // Applying first keeps the dialog responsive; a rejected write rolls back
@@ -98,16 +116,33 @@ export const usePrefsStore = create<PrefsState>((set, get) => {
      * overwrite the stored autosave interval, recent limit, nudge steps, grid
      * size and snapping with defaults. So an unloaded store reads first, and
      * refuses the write outright when that read fails.
+     *
+     * Changes that arrive while an earlier one is still in flight — a theme
+     * click from the View menu and a dialog field during the same start-up
+     * read, say — are merged and written together, so they cost one read and
+     * one write and neither can be lost.
      */
-    update: async (patch) => {
-      if (!get().loaded) {
-        await get().load()
-        if (!get().loaded) return
-      }
-      await persist({ ...get().prefs, ...patch })
+    update: (patch) => {
+      pending = { ...pending, ...patch }
+      return enqueue(async () => {
+        const merged = pending
+        pending = undefined
+        // An earlier task in this queue already wrote these changes.
+        if (!merged) return
+        if (!get().loaded) {
+          await get().load()
+          if (!get().loaded) return
+        }
+        await persist({ ...get().prefs, ...merged })
+      })
     },
 
-    // Reset is the one write that means "the defaults", loaded or not.
-    reset: () => persist({ ...DEFAULT_PREFS }),
+    // Reset is the one write that means "the defaults", loaded or not, and it
+    // supersedes anything still queued.
+    reset: () =>
+      enqueue(async () => {
+        pending = undefined
+        await persist({ ...DEFAULT_PREFS })
+      }),
   }
 })
