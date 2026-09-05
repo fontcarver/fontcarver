@@ -67,8 +67,18 @@ export const usePrefsStore = create<PrefsState>((set, get) => {
    */
   let queue: Promise<void> = Promise.resolve()
 
-  /** Changes asked for but not yet written, merged in arrival order. */
-  let pending: Partial<Prefs> | undefined
+  /**
+   * What the next write should send, folded together at call time.
+   *
+   * `merge` carries changes to lay over the kernel's own record; `replace`
+   * carries changes to lay over [`DEFAULT_PREFS`], which is what a reset means.
+   * Every call folds itself in the instant it is made, so the buffer records the
+   * order the user acted in rather than the order the queue happens to drain —
+   * a reset can only supersede what was asked for before it.
+   */
+  let pending:
+    | { readonly base: 'stored' | 'defaults'; readonly patch: Partial<Prefs> }
+    | undefined
 
   const enqueue = (task: () => Promise<void>): Promise<void> => {
     // Both handlers, so one failed write cannot stall every later one.
@@ -91,6 +101,28 @@ export const usePrefsStore = create<PrefsState>((set, get) => {
         .getState()
         .pushToast({ kind: 'error', message: errorMessage(error) })
     }
+  }
+
+  /**
+   * Writes whatever is buffered, if anything.
+   *
+   * Every queued task runs this, so the first one to reach the front does the
+   * work and the rest find an empty buffer — which is how several rapid actions
+   * become a single `prefs.set`.
+   */
+  const flush = async (): Promise<void> => {
+    const write = pending
+    pending = undefined
+    if (!write) return
+    if (write.base === 'defaults') {
+      await persist({ ...DEFAULT_PREFS, ...write.patch })
+      return
+    }
+    if (!get().loaded) {
+      await get().load()
+      if (!get().loaded) return
+    }
+    await persist({ ...get().prefs, ...write.patch })
   }
 
   return {
@@ -120,29 +152,27 @@ export const usePrefsStore = create<PrefsState>((set, get) => {
      * Changes that arrive while an earlier one is still in flight — a theme
      * click from the View menu and a dialog field during the same start-up
      * read, say — are merged and written together, so they cost one read and
-     * one write and neither can be lost.
+     * one write and neither can be lost. A change asked for after a reset lands
+     * on top of the defaults rather than being swallowed by it.
      */
     update: (patch) => {
-      pending = { ...pending, ...patch }
-      return enqueue(async () => {
-        const merged = pending
-        pending = undefined
-        // An earlier task in this queue already wrote these changes.
-        if (!merged) return
-        if (!get().loaded) {
-          await get().load()
-          if (!get().loaded) return
-        }
-        await persist({ ...get().prefs, ...merged })
-      })
+      pending = {
+        base: pending?.base ?? 'stored',
+        patch: { ...pending?.patch, ...patch },
+      }
+      return enqueue(flush)
     },
 
-    // Reset is the one write that means "the defaults", loaded or not, and it
-    // supersedes anything still queued.
-    reset: () =>
-      enqueue(async () => {
-        pending = undefined
-        await persist({ ...DEFAULT_PREFS })
-      }),
+    /**
+     * Restores the shipped defaults, loaded or not.
+     *
+     * It supersedes the changes asked for before it, and nothing else: the
+     * buffer is replaced here, at call time, so a field edited after the reset
+     * button was pressed still reaches the kernel.
+     */
+    reset: () => {
+      pending = { base: 'defaults', patch: {} }
+      return enqueue(flush)
+    },
   }
 })
