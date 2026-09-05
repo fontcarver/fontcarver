@@ -20,11 +20,9 @@ describe('tool registry', () => {
     ])
   })
 
-  it('marks Select, Zoom and Hand as the tools that work in this phase', () => {
-    expect(TOOLS.filter((tool) => tool.live).map((tool) => tool.id)).toEqual([
-      'select',
-      'zoom',
-      'hand',
+  it('marks every tool but Text as live', () => {
+    expect(TOOLS.filter((tool) => !tool.live).map((tool) => tool.id)).toEqual([
+      'text',
     ])
   })
 

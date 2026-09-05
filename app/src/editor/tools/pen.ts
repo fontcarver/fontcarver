@@ -175,6 +175,12 @@ export class PenTool implements EditorTool {
     return NO_OUTCOME
   }
 
+  claimsKey(key: string): boolean {
+    // A path in progress owns both keys: Enter finishes it and Escape either
+    // finishes or abandons it, and neither may reach the command registry.
+    return (key === 'Enter' || key === 'Escape') && this.nodes.length > 0
+  }
+
   setSpaceHeld(held: boolean): ToolOutcome {
     this.spaceHeld = held
     return { handled: this.press !== null }

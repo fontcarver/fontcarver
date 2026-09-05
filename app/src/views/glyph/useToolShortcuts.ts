@@ -10,7 +10,11 @@
 
 import { useEffect, useRef } from 'react'
 
-import { HOLD_BORROW_MS, toolForKey } from '../../editor/tools/registry'
+import {
+  HOLD_BORROW_MS,
+  toolForKey,
+  type ToolId,
+} from '../../editor/tools/registry'
 import { isEditableTarget } from '../../shell/shortcuts'
 import { useEditorStore } from '../../stores/editorStore'
 
@@ -18,6 +22,7 @@ import { useEditorStore } from '../../stores/editorStore'
 export function useToolShortcuts(enabled: boolean): void {
   const pending = useRef<{
     key: string
+    tool: ToolId
     timer: number
     borrowed: boolean
   } | null>(null)
@@ -44,17 +49,22 @@ export function useToolShortcuts(enabled: boolean): void {
         pending.current = { ...pending.current, borrowed: true }
         store().borrowTool(tool)
       }, HOLD_BORROW_MS) as unknown as number
-      pending.current = { key: event.key.toLowerCase(), timer, borrowed: false }
+      pending.current = {
+        key: event.key.toLowerCase(),
+        tool,
+        timer,
+        borrowed: false,
+      }
     }
 
     const onKeyUp = (event: KeyboardEvent) => {
       const held = pending.current
       if (!held || held.key !== event.key.toLowerCase()) return
       clear()
-      const tool = toolForKey(event.key, event.shiftKey)
-      if (!tool) return
+      // The tool is the one the press resolved to: releasing ⇧ before F must
+      // not turn a borrowed Ellipse into a Rectangle.
       if (held.borrowed) store().borrowTool(null)
-      else store().setTool(tool)
+      else store().setTool(held.tool)
     }
 
     window.addEventListener('keydown', onKeyDown)

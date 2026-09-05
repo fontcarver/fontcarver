@@ -1,10 +1,10 @@
 /**
  * The tool strip (design spec §5).
  *
- * Every tool in the table is registered from the start so the strip, the
- * tooltips and the keyboard map are complete and stable; Select, Hand and Zoom
- * are implemented here, the drawing tools become live in P1 T7 and are inert
- * until then (they set their cursor and do nothing else).
+ * Every tool in the table is registered so the strip, the tooltips and the
+ * keyboard map are complete and stable. All of them are live except Text,
+ * which registers its key and its cursor and stays inert until the Text tab
+ * arrives.
  *
  * Tap/hold: a tap switches tool, holding the key for 200 ms borrows the tool
  * until the key is released, which the strip shows with a dotted outline.
@@ -53,7 +53,7 @@ export interface ToolDefinition {
   icon: LucideIcon
   /** CSS cursor while the tool is active. */
   cursor: string
-  /** Whether the tool does anything yet; the rest arrive with P1 T7. */
+  /** Whether the tool does anything yet; only Text is still inert. */
   live: boolean
   /** Visual grouping in the strip, separated by a hairline. */
   group: 'select' | 'draw' | 'shape' | 'transform' | 'view'
@@ -81,7 +81,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     labelKey: 'tool.pen',
     icon: PenTool,
     cursor: 'crosshair',
-    live: false,
+    live: true,
     group: 'draw',
   },
   {
@@ -91,7 +91,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     labelKey: 'tool.pencil',
     icon: Pencil,
     cursor: 'crosshair',
-    live: false,
+    live: true,
     group: 'draw',
   },
   {
@@ -101,7 +101,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     labelKey: 'tool.knife',
     icon: Scissors,
     cursor: 'crosshair',
-    live: false,
+    live: true,
     group: 'draw',
   },
   {
@@ -111,7 +111,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     labelKey: 'tool.rectangle',
     icon: Square,
     cursor: 'crosshair',
-    live: false,
+    live: true,
     group: 'shape',
   },
   {
@@ -121,7 +121,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     labelKey: 'tool.ellipse',
     icon: Circle,
     cursor: 'crosshair',
-    live: false,
+    live: true,
     group: 'shape',
   },
   {
@@ -131,7 +131,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     labelKey: 'tool.measure',
     icon: Ruler,
     cursor: 'crosshair',
-    live: false,
+    live: true,
     group: 'transform',
   },
   {
@@ -141,7 +141,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     labelKey: 'tool.rotate',
     icon: RotateCw,
     cursor: 'crosshair',
-    live: false,
+    live: true,
     group: 'transform',
   },
   {
@@ -151,7 +151,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     labelKey: 'tool.scale',
     icon: Scaling,
     cursor: 'crosshair',
-    live: false,
+    live: true,
     group: 'transform',
   },
   {

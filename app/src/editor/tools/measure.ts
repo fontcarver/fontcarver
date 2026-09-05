@@ -82,10 +82,11 @@ export class MeasureTool implements EditorTool {
     return { handled: true }
   }
 
-  pointerUp(): ToolOutcome {
+  pointerUp(pointer: ToolPointer, context: ToolContext): ToolOutcome {
+    if (!this.from) return NO_OUTCOME
     // The measurement stays on screen after the button comes up, so the
     // numbers can be read; the next press starts a new one.
-    return { handled: this.from !== null }
+    return this.pointerMove(pointer, context)
   }
 
   finish(): ToolOutcome {

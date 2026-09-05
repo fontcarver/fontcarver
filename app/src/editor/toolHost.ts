@@ -192,9 +192,9 @@ export class ToolHost {
 
   /** Whether the active tool would consume this key. */
   claimsKey(key: string): boolean {
-    if (!this.tool) return false
-    if (key === 'Enter' || key === 'Escape') return this.tool.busy || this.pen()
-    return false
+    const tool = this.tool
+    if (!tool) return false
+    return tool.claimsKey?.(key) ?? tool.busy
   }
 
   /** Transient geometry the active tool wants drawn. */
@@ -215,10 +215,6 @@ export class ToolHost {
   dispose(): void {
     this.finishCurrent()
     this.tool = null
-  }
-
-  private pen(): boolean {
-    return this.tool?.id === 'pen'
   }
 
   private finishCurrent(): void {

@@ -13,6 +13,7 @@ import type { Anchor, Command, ComponentView, Contour } from '../../api'
 import type { Point2, Viewport } from '../../canvas/Viewport'
 
 import type { EditorPreview } from '../editorTypes'
+import type { Scheduler } from '../editSession'
 import type { Modifiers } from '../gestures/drag'
 import type { Hit } from '../hitTest'
 import type { HudLabels } from '../hud'
@@ -87,6 +88,8 @@ export interface ToolContext {
   ) => { command: Command; label: string } | null
   /** A gesture the editor is still closing, which a new one waits for. */
   after: Promise<unknown> | undefined
+  /** How a tool's applies are deferred; tests step frames by hand. */
+  scheduler?: Scheduler
   /** Where a failed kernel call is reported. */
   onError: (error: unknown) => void
 }
@@ -158,6 +161,12 @@ export interface EditorTool {
   pointerMove(pointer: ToolPointer, context: ToolContext): ToolOutcome
   pointerUp(pointer: ToolPointer, context: ToolContext): ToolOutcome
   keyDown?(key: ToolKey, context: ToolContext): ToolOutcome
+  /**
+   * Whether this key would be consumed. The command registry asks before it
+   * claims a shortcut, so Enter finishes a pen path rather than toggling the
+   * smoothness of a node that happens to be selected.
+   */
+  claimsKey?(key: string): boolean
   keyUp?(key: ToolKey, context: ToolContext): ToolOutcome
   /** The pointer left the canvas. */
   pointerLeave?(context: ToolContext): ToolOutcome

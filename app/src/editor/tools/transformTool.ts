@@ -67,9 +67,14 @@ export abstract class TransformTool implements EditorTool {
     return this.origin ?? defaultOrigin(context)
   }
 
-  pointerDown(pointer: ToolPointer): ToolOutcome {
+  pointerDown(pointer: ToolPointer, context: ToolContext): ToolOutcome {
     if (pointer.button !== 0) return NO_OUTCOME
-    this.press = { at: pointer.font, dragging: false }
+    // The press is snapped once, here: a click names the origin and a drag
+    // measures from it, and both should start from the same point.
+    this.press = {
+      at: context.snap(pointer.font, pointer.modifiers.mod).point,
+      dragging: false,
+    }
     return { handled: true }
   }
 
@@ -95,13 +100,13 @@ export abstract class TransformTool implements EditorTool {
     return { preview: gesture.preview, editing: true, handled: true }
   }
 
-  pointerUp(pointer: ToolPointer, context: ToolContext): ToolOutcome {
+  pointerUp(): ToolOutcome {
     const press = this.press
     this.press = null
     if (!press) return NO_OUTCOME
     if (!press.dragging) {
       // A click, not a drag: it names the point the next drag turns about.
-      this.origin = context.snap(press.at, pointer.modifiers.mod).point
+      this.origin = press.at
       return { handled: true }
     }
     return { ...this.close(), handled: true }
@@ -124,6 +129,10 @@ export abstract class TransformTool implements EditorTool {
     if (this.origin === null) return NO_OUTCOME
     this.origin = null
     return { handled: true }
+  }
+
+  claimsKey(key: string): boolean {
+    return key === 'Escape' && (this.gesture !== null || this.origin !== null)
   }
 
   finish(): ToolOutcome {
@@ -182,6 +191,7 @@ export abstract class TransformTool implements EditorTool {
       anchorIndexes: anchors,
       componentIndexes: components,
       origin: this.originIn(context),
+      scheduler: context.scheduler,
       label:
         this.kind === 'rotate' ? context.labels.rotate : context.labels.scale,
       onError: context.onError,

@@ -1,6 +1,7 @@
 import type { Contour } from '../api'
 import type { Point2 } from '../canvas/Viewport'
 import { Viewport } from '../canvas/Viewport'
+import { immediateScheduler } from '../editor/editSession'
 import { hitTest } from '../editor/hitTest'
 import { buildEditOutline } from '../editor/outlineGeometry'
 import { EMPTY_SELECTION } from '../editor/selection'
@@ -97,6 +98,9 @@ export function makeToolContext(options: ToolContextOptions = {}): ToolContext {
       ),
     segmentShortcut: () => null,
     after: undefined,
+    // Applies land the moment they are queued, so a test steps the protocol
+    // itself rather than waiting on an animation frame.
+    scheduler: immediateScheduler,
     onError: () => undefined,
   }
 }

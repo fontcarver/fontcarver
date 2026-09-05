@@ -1122,3 +1122,95 @@ describe('EditorController against the kernel token rules', () => {
     expect(recorded.errors).toEqual([])
   })
 })
+
+describe('EditorController drawing tools', () => {
+  /** Font (x, y) maps to canvas (x, 300 − y) in this fixture. */
+  const clickAt = (controller: EditorController, x: number, y: number) => {
+    controller.pointerDown(at(x, 300 - y))
+    controller.pointerUp(at(x, 300 - y))
+  }
+
+  it('routes the pen and applies one AddContour for a closed triangle', async () => {
+    const { controller, transport } = makeController()
+    controller.setTool('pen')
+    clickAt(controller, 300, 0)
+    clickAt(controller, 400, 0)
+    clickAt(controller, 350, 100)
+    clickAt(controller, 300, 0)
+    await settle()
+
+    const applies = transport.calls.filter(
+      (entry) => entry.method === 'doc.apply',
+    )
+    expect(applies).toHaveLength(1)
+    const params = applies[0]?.params as ApplyParams
+    const command = params.command as {
+      AddContour: { contour: { closed: boolean; points: unknown[] } }
+    }
+    expect(command.AddContour.contour.closed).toBe(true)
+    expect(command.AddContour.contour.points).toHaveLength(3)
+  })
+
+  it('shows the path being drawn in the frame it hands the canvas', () => {
+    const { controller } = makeController()
+    controller.setTool('pen')
+    clickAt(controller, 300, 0)
+    clickAt(controller, 400, 0)
+    controller.pointerMove(at(400, 200))
+    const frame = controller.frame()
+    expect(frame.tool.contours).toHaveLength(1)
+    expect(frame.tool.marks.length).toBeGreaterThan(0)
+  })
+
+  it('offers Enter and Escape to the tool before the editor sees them', () => {
+    const { controller } = makeController()
+    controller.setTool('pen')
+    expect(controller.claimsKey('Enter')).toBe(false)
+    clickAt(controller, 300, 0)
+    clickAt(controller, 400, 0)
+    expect(controller.claimsKey('Enter')).toBe(true)
+    expect(
+      controller.toolKey({
+        key: 'Enter',
+        modifiers: NO_MODIFIERS,
+        repeat: false,
+      }),
+    ).toBe(true)
+    expect(controller.claimsKey('Enter')).toBe(false)
+  })
+
+  it('asks the view for the numeric dialog when a shape tool is clicked', () => {
+    const dialogs: unknown[] = []
+    const { controller } = makeController()
+    controller.setCallbacks({
+      repaint: () => undefined,
+      onSelectionChange: () => undefined,
+      onEditingChange: () => undefined,
+      onZoomChange: () => undefined,
+      onReload: () => undefined,
+      onCursorChange: () => undefined,
+      onPreview: () => undefined,
+      onShapeDialog: (request) => dialogs.push(request),
+      onError: () => undefined,
+    })
+    controller.setTool('rectangle')
+    clickAt(controller, 40, 60)
+    expect(dialogs).toEqual([{ kind: 'rectangle', at: { x: 40, y: 60 } }])
+  })
+
+  it('commits an open path when the tool is switched away', async () => {
+    const { controller, transport } = makeController()
+    controller.setTool('pen')
+    clickAt(controller, 300, 0)
+    clickAt(controller, 400, 0)
+    controller.setTool('select')
+    await settle()
+
+    const applies = transport.calls.filter(
+      (entry) => entry.method === 'doc.apply',
+    )
+    expect(applies).toHaveLength(1)
+    const params = applies[0]?.params as ApplyParams
+    expect(params.label).toBe('Draw path')
+  })
+})
