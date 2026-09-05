@@ -471,3 +471,110 @@ nothing was translated here.
 4. **M4's live Info box re-renders the panel each animation frame** during a
    drag. Measured paint stayed inside budget in the interactive pass, but it is
    new per-frame React work that a future performance pass may want to throttle.
+
+---
+
+# Fix round 2
+
+Re-review: `task-6-rereview1.md` — all findings verdicted ADDRESSED, with five
+Minor items and one trivial one introduced by the fix diff. Three commits on
+`p1-t6` from `a7bf0c6`; not pushed.
+
+| SHA | Subject |
+| --- | --- |
+| `22c934d` | fix(app): let a new gesture wait for the run it interrupts |
+| `29ee33d` | fix(app): keep a nudge's preview honest across its handover |
+| `3007a90` | chore(app): drop dead code and name the right noun in a disabled reason |
+
+**1 — `edit_begin` overtaking an open run's queued `edit_apply`.** `EditSession`
+takes an `after` gate its `edit_begin` resolves behind
+(`app/src/editor/editSession.ts:54-70`, `:85-95`), and the controller closes any
+open run before a new gesture: `settle()` (`editorController.ts:406-420`) is
+called by `pointerDown` (`:246`), by `runCommand` before a `doc.apply` that
+would finalise the run itself (`:395-398`) and by `setTool` (`:139`); the drag
+passes the closing promise as its gate (`:640`). The pointer path stays
+synchronous, so the optimistic preview is unaffected. Tests:
+`editorController.test.ts:701-750` — arrow then immediate pointer-down gives
+`edit_apply · edit_end · edit_begin · edit_apply · edit_end` with no error, and
+the same for a single-shot command.
+
+**2 — previewing anchor and component moves the command never sends.** The
+per-point regimes (proportional nudge, angle-locked segment reshape) emit one
+`MovePoints` per point and no `TransformSelection`, so the preview no longer
+translates anchors under them (`gestures/drag.ts:471-489`). Tests:
+`gestures/drag.test.ts:330-390` — a plain drag moves the anchor *and* sends the
+`TransformSelection` that carries it; a Ctrl+Alt nudge leaves it where it is and
+sends none.
+
+**3 — the preview dropped before the kernel settled.** `NudgeCoalescer.end`
+awaits `session.end()` before reporting (`gestures/nudge.ts:112-127`), so the
+nudge hands over exactly as `finishDrag` does. Test:
+`editorController.test.ts:753-793` holds `edit_end` open, checks the preview
+still stands, releases it and checks the preview is handed back and a reload
+requested.
+
+**4 — a run re-basing on stale contours.** A run closed by a selection change
+carries its result forward as the next run's base, until the reload lands
+(`nudgeRun.ts:47-60`, `:76-99`); a generation guard stops a late close from
+taking a newer run's preview (`:120-127`). Tests:
+`editorController.test.ts:795-840` — arrow, Tab, arrow leaves *both* points
+moved, and the second run still closes with its own `edit_end`.
+
+**5 — one toast per chained step.** `EditSession.report` passes on the first
+failure of a gesture and swallows the rest (`editSession.ts:97-107`), since every
+later step re-awaits the same rejected token. Covered by the existing rejecting
+`edit_apply` tests, which assert a single reported error.
+
+**6 — dead code.** `FrameState.bandIsMarquee`, `ViewGestures.marqueeing`,
+`actionRefs` and `CanvasPoint` are gone; `grep` over `app/src` finds no
+remaining references.
+
+**Wrong-noun key.** The four point commands now give
+`cmd.reason.noPointsSelected` — "No points are selected"
+(`views/glyph/glyphCommands.ts:178`, `:188`, `:198`, `:212`; key in both
+bundles, English placeholder in `zh-CN.json`). A new test resolves the disabled
+reason of every registered command the way the title test already does
+(`shell/builtinCommands.test.ts:52-63`).
+
+## Verification
+
+```
+pnpm --dir app check   → tsc -b, silent
+pnpm --dir app test    → 50 files, 438 tests passed (7.5 s)
+pnpm --dir app lint    → eslint, silent
+pnpm --dir app exec prettier --check .  → all matched files use Prettier style
+```
+
+Eight tests added this round (430 → 438).
+
+### Interactive confirmation of finding 1
+
+Finding 1 was the one that reached the user as a toast, so it was checked in the
+running app (kernel 8789, UI 1422, both stopped afterwards): select a node,
+press ArrowRight, and start a drag inside the same animation frame. Result — no
+toast, and the node ends at x = 1054.93 = 930 + 1 (the nudge) + 123.93 (the
+40 px drag at 0.32275 px/unit), so **both** edits landed rather than the arrow
+press being dropped. Undoing twice walks back through `Nudge 1 point` (x = 931)
+to a clean document at x = 930, confirming two separate entries.
+
+## New i18n key (1) — for Task 13
+
+`cmd.reason.noPointsSelected`. `zh-CN.json` carries it with the English text as
+a placeholder.
+
+## Concerns
+
+1. **`gestures/drag.ts` is 706 lines** and now carries three delta regimes (one
+   delta, per-handle angle lock, proportional nudge). Inside the dispatch's 800
+   but the natural next split, as the re-review's out-of-scope note says.
+2. **The live Info box is still not memoised** — `onPreview` writes the store on
+   every pointer move and re-renders the row group. Bounded (≤ ~12
+   `NumberField`s plus an O(selected) bbox) and measured inside budget, but a
+   `React.memo` on that path is the obvious follow-up.
+3. **`handlesOfNode` expands handles for an off-curve ref**, while the kernel
+   skips off-curve selections; the nudge preview inherits this through
+   `movedPointRefs`. Divergent only for a handle inside a quadratic run, and
+   pre-existing.
+4. **The undo flash suppresses a repeat of the same label**, so two identical
+   consecutive actions flash once; and during a coalesced drag its 1.5 s window
+   starts at the first apply rather than at pointer-up.
