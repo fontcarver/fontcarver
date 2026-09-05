@@ -25,11 +25,14 @@ export interface InvalidationGrid {
 /**
  * Invalidates every cache affected by a document change.
  *
- * This is the single place that reads a `Change`: each view subscribes to the
- * kernel's document events and hands them straight here, so what an edit
- * invalidates is decided once rather than per view. Only one tab's content is
- * mounted at a time, hence `grid` is optional — the shared caches still have to
- * be dropped when the Font Info tab, not the grid, is the one on screen.
+ * This is the single place the font view and the Font Info tab read a `Change`:
+ * both subscribe to the kernel's document events and hand them straight here,
+ * so what an edit invalidates is decided once rather than per view. Only one
+ * tab's content is mounted at a time, hence `grid` is optional — the shared
+ * caches still have to be dropped when the Font Info tab, not the grid, is the
+ * one on screen. Other subscribers still read `Change` for their own state:
+ * `sessionStore` for the document summary, `useGlyphDetail` and
+ * `useLayerOutline` for the glyph tab, `glyphPager` for the list shape.
  *
  * Font-wide and master data live in one shared response, so both `font_info`
  * and `masters` drop it: the Font Info tab reloads and the grid's em box picks
