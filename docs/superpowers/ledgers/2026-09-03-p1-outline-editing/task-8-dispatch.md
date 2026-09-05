@@ -2,7 +2,7 @@
 
 Where it fits: third of the P1 UI tasks for FontWorkshop (Tauri 2 font editor: Rust kernel + React 19/TypeScript/Zustand UI). Task 6 delivered the editor core (selection store, gesture protocol, Info box, HUD); Task 9a the dialogs (Add Glyphs dialog exists — the Glyph menu's "Add Glyphs…" opens it); Task 11 the invalidation/toast infrastructure. Task 7 (tools) runs in parallel in another worktree and owns `app/src/editor/tools/**`, `app/src/editor/gestures/**`, `snapping.ts`, `cursors.ts`, `ToolPalette.tsx` — do not touch those; you own `app/src/views/glyph/panels/**`, the Edit-tab sidebar, `metricsHandles.ts`, the Path/Glyph/Layer menus in `builtinCommands.ts`, and small additive hooks in the controller for the sidebearing handles and anchor/guide dragging.
 
-Worktree: /home/chen/githubprojects/pixelfonts/fontworkshop/.worktrees/p1-t8 (branch p1-t8, base BASE_COMMIT). Ports for this worktree: kernel dev server 8793, Vite 1426 (never 8787–8792 / 1420–1425).
+Worktree: /home/chen/githubprojects/pixelfonts/fontworkshop/.worktrees/p1-t8 (branch p1-t8, base 449a390). Ports for this worktree: kernel dev server 8793, Vite 1426 (never 8787–8792 / 1420–1425).
 
 ## Read first
 1. `.superpowers/sdd/2026-09-03-p1-outline-editing/task-8-brief.md` (absolute: /home/chen/githubprojects/pixelfonts/fontworkshop/.superpowers/sdd/2026-09-03-p1-outline-editing/task-8-brief.md) — read this first — it is your requirements.
