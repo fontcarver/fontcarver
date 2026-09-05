@@ -1025,4 +1025,92 @@ describe('EditorController against the kernel token rules', () => {
       stop()
     }
   })
+  it('keeps an arrow press behind a run closed by endNudge', async () => {
+    const { controller, transport, recorded } = makeController(
+      createEditingTransport(),
+    )
+    selectNode(controller, 1)
+    controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+    // The close the runner did *not* start itself: one round trip later the
+    // replacement run used to overtake the first run's queued apply.
+    void controller.endNudge()
+    controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+    await controller.endNudge()
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(recorded.errors).toEqual([])
+  })
+
+  it('keeps an arrow press behind the drag a pointer-up closed', async () => {
+    const { controller, transport, recorded } = makeController(
+      createEditingTransport(),
+    )
+    controller.pointerDown(at(200, 300))
+    controller.pointerMove(at(230, 300))
+    controller.pointerUp(at(230, 300))
+    // Same tick as the pointer-up, so the drag's `edit_end` is still queued.
+    controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+    await controller.endNudge()
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(recorded.errors).toEqual([])
+  })
+
+  it('closes a drag that never saw its pointer-up before the next one', async () => {
+    const { controller, transport, recorded } = makeController(
+      createEditingTransport(),
+    )
+    controller.pointerDown(at(200, 300))
+    controller.pointerMove(at(230, 300))
+    // A lost pointer capture: the second gesture starts with the first still
+    // open, and its `edit_begin` would otherwise invalidate the queued apply.
+    controller.pointerDown(at(230, 300))
+    controller.pointerMove(at(260, 300))
+    controller.pointerUp(at(260, 300))
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(recorded.errors).toEqual([])
+  })
+
+  it('closes the drag a tool switch interrupts', async () => {
+    const { controller, transport, recorded } = makeController(
+      createEditingTransport(),
+    )
+    controller.pointerDown(at(200, 300))
+    controller.pointerMove(at(230, 300))
+    controller.setTool('hand')
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(controller.dragging).toBe(false)
+    expect(recorded.errors).toEqual([])
+  })
 })

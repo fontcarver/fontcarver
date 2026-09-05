@@ -79,6 +79,7 @@ export class EditorController {
   private source: EditorSource | null = null
   private edit: EditOutline = buildEditOutline([])
   private editBase: readonly Contour[] = []
+  private readonly editCache = new WeakMap<readonly Contour[], EditOutline>()
 
   private selection: Selection = EMPTY_SELECTION
   private drag: DragGesture | null = null
@@ -164,6 +165,7 @@ export class EditorController {
       source !== null &&
       (source.doc !== this.source?.doc || source.gid !== this.source?.gid)
     this.source = source
+    this.nudge.reloaded()
     this.edit = buildEditOutline(source?.outline.contours ?? [])
     this.editBase = source?.outline.contours ?? []
     this.setPreview(null)
@@ -209,7 +211,7 @@ export class EditorController {
       preview: this.preview,
       edit: this.editOutline(),
       selection: this.selection,
-      components: this.source?.outline.components ?? [],
+      components: this.components(),
       pointer: this.pointer,
       drag: this.drag,
       band: this.view.band,
@@ -304,7 +306,7 @@ export class EditorController {
       this.callbacks.repaint()
       return
     }
-    void this.finishDrag()
+    void this.settle()
   }
 
   /** Pointer left the canvas. */
@@ -419,6 +421,9 @@ export class EditorController {
         delta: { x: direction.x * step, y: direction.y * step },
         handles: modifiers.alt ? 'PointsOnly' : 'WithHandles',
         label: (count) => this.labels.nudgePoints(count),
+        // A press that lands one round trip after a settle-, pointer-up- or
+        // tool-switch-driven close must not overtake that close's last apply.
+        after: this.closing,
       }),
     )
     this.publishEditing()
@@ -431,23 +436,38 @@ export class EditorController {
   }
 
   /**
-   * Closes any coalesced run that is still open and reports when it is done.
+   * Records the gesture that is closing, so the next one begins behind it.
+   *
+   * Only the gesture that is *still* closing should gate the next one: a gate
+   * that is never dropped would make one unanswered call block every gesture
+   * after it, not just its successor.
+   */
+  private gate(closing: Promise<unknown>): Promise<void> {
+    const tracked = closing
+      .then(
+        () => undefined,
+        () => undefined,
+      )
+      .finally(() => {
+        if (this.closing === tracked) this.closing = undefined
+      })
+    this.closing = tracked
+    return tracked
+  }
+
+  /**
+   * Closes whatever gesture is still open and reports when it is done.
    *
    * `doc.edit_begin` and `doc.apply` both finalise the active edit in the
-   * kernel, so a gesture that starts while a nudge run is still flushing would
-   * invalidate that run's last apply — the arrow press would be dropped and an
-   * error raised. Every new gesture waits for this first.
+   * kernel, so a gesture that starts while an earlier one is still flushing
+   * would invalidate that gesture's last apply — the arrow press or the last
+   * frame of the drag would be dropped and an error raised. Every new gesture,
+   * whichever tool it belongs to, waits for this first; a drag counts, because
+   * a pointer-down that never saw its pointer-up leaves one open.
    */
   settle(): Promise<void> {
-    if (this.nudge.active) {
-      const closing = this.nudge.end().finally(() => {
-        // Only the gesture that is *still* closing should gate the next one:
-        // a gate that is never dropped would make one unanswered call block
-        // every gesture after it, not just its successor.
-        if (this.closing === closing) this.closing = undefined
-      })
-      this.closing = closing
-    }
+    if (this.drag) return this.gate(this.finishDrag())
+    if (this.nudge.active) return this.gate(this.nudge.end())
     return this.closing ?? Promise.resolve()
   }
 
@@ -456,6 +476,13 @@ export class EditorController {
    * preview is handed back to the layer and reloads resume.
    */
   private closeNudge(): void {
+    // A drag that started while the run was closing owns the preview now:
+    // clearing it here would blank the dragged geometry for one frame and
+    // request a reload the drag has deliberately deferred.
+    if (this.drag) {
+      this.publishEditing()
+      return
+    }
     this.setPreview(null)
     this.publishEditing()
     this.callbacks.onReload()
@@ -468,13 +495,15 @@ export class EditorController {
       const drag = this.drag
       this.drag = null
       this.setPreview(null)
-      void drag
-        .cancel()
-        .catch((error: unknown) => this.callbacks.onError(error))
-        .finally(() => {
-          this.publishEditing()
-          this.callbacks.onReload()
-        })
+      void this.gate(
+        drag
+          .cancel()
+          .catch((error: unknown) => this.callbacks.onError(error))
+          .finally(() => {
+            this.publishEditing()
+            this.callbacks.onReload()
+          }),
+      )
       this.callbacks.repaint()
       return
     }
@@ -500,11 +529,19 @@ export class EditorController {
    */
   private editOutline(): EditOutline {
     const contours = this.contours()
-    if (contours !== this.editBase) {
-      this.editBase = contours
-      this.edit = buildEditOutline(contours)
-    }
-    return this.edit
+    if (contours === this.editBase) return this.edit
+    // Two callers index the same geometry within one pointer move (the snap
+    // callback before the preview is replaced, the frame after it), and a
+    // gesture allocates a fresh contour array every move, so the identity
+    // check alone rebuilds the whole index twice per move. The cache is keyed
+    // on the array itself and is weak, so it costs nothing once a preview is
+    // dropped.
+    const cached = this.editCache.get(contours)
+    const outline = cached ?? buildEditOutline(contours)
+    if (!cached) this.editCache.set(contours, outline)
+    this.editBase = contours
+    this.edit = outline
+    return outline
   }
 
   private contours(): readonly Contour[] {
@@ -534,7 +571,7 @@ export class EditorController {
       outline: this.editOutline(),
       anchors: this.anchors(),
       guides: this.source?.guides ?? [],
-      components: this.source?.outline.components ?? [],
+      components: this.components(),
       viewport: this.viewport,
       selection: this.selection,
     }
