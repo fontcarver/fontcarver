@@ -10,9 +10,7 @@
     "save": "Save",
     "yes": "Yes",
     "no": "No",
-    "add": "Add",
-    "done": "Done",
-    "discard": "Discard"
+    "done": "Done"
   },
   "menu": {
     "file": "File",
@@ -167,12 +165,9 @@
       "recipeHint": "Ranges (A-Z, U+0041-U+005A), single names (Aacute, a.sc, f_i) and legacy repertoires (@charset:GB2312), separated by spaces or commas.",
       "charsets": "Character sets",
       "preview": "Glyphs to add",
-      "present": "already present",
       "counting": "counting…",
       "new_one": "{{count, number}} new",
       "new_other": "{{count, number}} new",
-      "skipped_one": "{{count, number}} skipped",
-      "skipped_other": "{{count, number}} skipped",
       "empty": "Nothing to add yet — type a recipe or choose a character set.",
       "add_one": "Add {{count, number}} glyph",
       "add_other": "Add {{count, number}} glyphs",
@@ -182,8 +177,15 @@
         "latin1": "Latin-1",
         "gb2312": "GB 2312"
       },
-      "presentCount_one": "{{count, number}} already present",
-      "presentCount_other": "{{count, number}} already present"
+      "countFailed": "The kernel could not resolve this character set.",
+      "skip": {
+        "present_one": "{{count, number}} already present",
+        "present_other": "{{count, number}} already present",
+        "unknown_one": "{{count, number}} not understood",
+        "unknown_other": "{{count, number}} not understood",
+        "tooLarge_one": "{{count, number}} range too large",
+        "tooLarge_other": "{{count, number}} ranges too large"
+      }
     },
     "export": {
       "title": "Export",

@@ -48,6 +48,8 @@ export function NameList({ cells, label, empty }: NameListProps) {
   return (
     <div
       ref={viewportRef}
+      // A scrollable region is only reachable by keyboard when it is focusable.
+      tabIndex={0}
       role="list"
       aria-label={label}
       className={styles.preview}

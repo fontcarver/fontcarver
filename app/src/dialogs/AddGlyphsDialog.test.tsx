@@ -24,11 +24,14 @@ function resolve(recipe: string) {
         out.push(String.fromCharCode(code))
       return out
     })
+  const skipped = names.filter(
+    (name) => name === 'a' || !/^[A-Za-z_.][A-Za-z0-9_.]*$/.test(name),
+  )
   return {
     added: names
-      .filter((name) => name !== 'a')
+      .filter((name) => !skipped.includes(name))
       .map((name, index) => cellFor(index, { name })),
-    skipped: names.filter((name) => name === 'a'),
+    skipped,
   }
 }
 
@@ -83,7 +86,61 @@ describe('AddGlyphsDialog', () => {
     const list = await screen.findByRole('list', { name: 'Glyphs to add' })
     expect(within(list).getAllByRole('listitem')).toHaveLength(3)
     expect(screen.getByText('3 new')).toBeInTheDocument()
-    expect(screen.getByText('1 skipped')).toBeInTheDocument()
+    expect(screen.getByText('1 already present')).toBeInTheDocument()
+  })
+
+  it('says why each item was skipped', async () => {
+    const user = userEvent.setup()
+    setup()
+
+    await user.type(
+      screen.getByLabelText('Recipe'),
+      'a 12three too-large-marker',
+    )
+
+    expect(await screen.findByText('1 already present')).toBeInTheDocument()
+    expect(screen.getByText('2 not understood')).toBeInTheDocument()
+  })
+
+  it('stops counting a character set the kernel could not resolve', async () => {
+    const transport = createMockTransport({
+      'glyphs.add': ({ recipe }) => {
+        if (recipe.startsWith('@charset:'))
+          throw new Error('unknown character set')
+        return resolve(recipe)
+      },
+    })
+    setTransport(transport)
+    useSessionStore.setState({ docs: [makeSummary({ doc: 1 })] })
+    render(<AddGlyphsDialog doc={1} />)
+
+    const row = await screen.findByRole('button', { name: /GB 2312/ })
+    await waitFor(() => expect(row).toHaveTextContent('—'))
+    expect(row).not.toHaveTextContent('counting')
+  })
+
+  it('confirms with Enter from outside the recipe field', async () => {
+    const user = userEvent.setup()
+    const transport = setup()
+
+    await user.type(screen.getByLabelText('Recipe'), 'A-C')
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Add 3 glyphs' }),
+      ).toBeEnabled(),
+    )
+    // The recipe field and the buttons own Enter themselves; the preview list
+    // is the one focusable control in the dialog that does not.
+    screen.getByRole('list', { name: 'Glyphs to add' }).focus()
+    await user.keyboard('{Enter}')
+
+    await waitFor(() =>
+      expect(
+        addCalls(transport).some(
+          (entry) => (entry.params as AddGlyphsParams).dry_run === false,
+        ),
+      ).toBe(true),
+    )
   })
 
   it('applies the same recipe without the dry-run flag', async () => {

@@ -11,6 +11,7 @@ import {
   CHARSETS,
   PREVIEW_DEBOUNCE_MS,
   applyRecipe,
+  groupSkips,
   previewRecipe,
 } from './addGlyphs'
 import styles from './dialogs.module.css'
@@ -18,16 +19,23 @@ import { NameList } from './NameList'
 
 const EMPTY: AddGlyphsResult = { added: [], skipped: [] }
 
+/** How many skipped tokens a reason's tooltip names before it stops. */
+const SKIP_SAMPLE = 20
+
 /** The last dry run that came back, together with the recipe it answered. */
 interface Preview {
   readonly recipe: string
   readonly result: AddGlyphsResult
 }
 
-/** Counts one charset row shows once its dry run has come back. */
+/**
+ * What one charset row shows once its dry run has come back: how many glyphs it
+ * would add, and how many of its items were skipped for each reason. A row
+ * whose dry run failed carries `null` instead, so it stops saying "counting…".
+ */
 interface CharsetCounts {
   readonly added: number
-  readonly present: number
+  readonly skipped: ReturnType<typeof groupSkips>
 }
 
 export interface AddGlyphsDialogProps {
@@ -46,7 +54,7 @@ export function AddGlyphsDialog({ doc }: AddGlyphsDialogProps) {
   const [recipe, setRecipe] = useState('')
   const [latest, setLatest] = useState<Preview | null>(null)
   const [busy, setBusy] = useState(false)
-  const [counts, setCounts] = useState<Record<string, CharsetCounts>>({})
+  const [counts, setCounts] = useState<Record<string, CharsetCounts | null>>({})
 
   const trimmed = recipe.trim()
   // Derived rather than stored: the preview belongs to exactly one recipe, so
@@ -89,12 +97,14 @@ export function AddGlyphsDialog({ doc }: AddGlyphsDialogProps) {
             ...current,
             [charset.id]: {
               added: result.added.length,
-              present: result.skipped.length,
+              skipped: groupSkips(result.skipped),
             },
           }))
         } catch {
-          // A repertoire the kernel cannot expand simply shows no counts.
+          // A repertoire the kernel cannot expand shows no counts rather than
+          // counting for ever.
           if (!live) return
+          setCounts((current) => ({ ...current, [charset.id]: null }))
         }
       }
     })()
@@ -106,6 +116,7 @@ export function AddGlyphsDialog({ doc }: AddGlyphsDialogProps) {
   const close = () => setDialog(null)
   const cells: readonly GlyphCell[] = preview.added
   const canAdd = !busy && !pending && cells.length > 0
+  const skipGroups = groupSkips(preview.skipped)
 
   const add = () => {
     if (!canAdd) return
@@ -132,6 +143,7 @@ export function AddGlyphsDialog({ doc }: AddGlyphsDialogProps) {
       title={t('dialog.addGlyphs.title')}
       size="md"
       onCancel={close}
+      onConfirm={add}
       footer={
         <>
           <Button onClick={close}>{t('common.cancel')}</Button>
@@ -179,21 +191,23 @@ export function AddGlyphsDialog({ doc }: AddGlyphsDialogProps) {
                 >
                   <span>{t(`dialog.addGlyphs.charset.${charset.id}`)}</span>
                   <span className={styles.listCounts}>
-                    {count ? (
+                    {count === undefined ? (
+                      <span>{t('dialog.addGlyphs.counting')}</span>
+                    ) : count === null ? (
+                      <span title={t('dialog.addGlyphs.countFailed')}>—</span>
+                    ) : (
                       <>
                         <span>
                           {t('dialog.addGlyphs.new', { count: count.added })}
                         </span>
-                        {count.present > 0 ? (
-                          <span className={styles.badge}>
-                            {t('dialog.addGlyphs.presentCount', {
-                              count: count.present,
+                        {count.skipped.map((group) => (
+                          <span key={group.reason} className={styles.badge}>
+                            {t(`dialog.addGlyphs.skip.${group.reason}`, {
+                              count: group.items.length,
                             })}
                           </span>
-                        ) : null}
+                        ))}
                       </>
-                    ) : (
-                      <span>{t('dialog.addGlyphs.counting')}</span>
                     )}
                   </span>
                 </button>
@@ -208,9 +222,17 @@ export function AddGlyphsDialog({ doc }: AddGlyphsDialogProps) {
           </h3>
           <div className={styles.counts}>
             <span>{t('dialog.addGlyphs.new', { count: cells.length })}</span>
-            <span>
-              {t('dialog.addGlyphs.skipped', { count: preview.skipped.length })}
-            </span>
+            {skipGroups.map((group) => (
+              <span
+                key={group.reason}
+                // The first few tokens explain the count without a second list.
+                title={group.items.slice(0, SKIP_SAMPLE).join(' ')}
+              >
+                {t(`dialog.addGlyphs.skip.${group.reason}`, {
+                  count: group.items.length,
+                })}
+              </span>
+            ))}
           </div>
           <NameList
             cells={cells}

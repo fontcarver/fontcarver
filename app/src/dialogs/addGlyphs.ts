@@ -26,6 +26,44 @@ export const CHARSETS: readonly CharsetOption[] = [
   { id: 'gb2312', recipe: STARTER_RECIPES.gb2312 },
 ]
 
+/** Why the kernel skipped one item of a recipe. */
+export type SkipReason = 'present' | 'unknown' | 'tooLarge'
+
+/** Order the reasons are reported in: the common one first. */
+const SKIP_ORDER: readonly SkipReason[] = ['present', 'unknown', 'tooLarge']
+
+const TOO_LARGE_PREFIX = 'too-large: '
+
+/** The kernel's own glyph-name grammar, which decides `Unknown` from a duplicate. */
+const GLYPH_NAME = /^[A-Za-z_.][A-Za-z0-9_.]*$/
+
+/**
+ * Classifies one entry of `AddGlyphsResult.skipped`.
+ *
+ * The kernel prefixes only the oversized ranges; the other two reasons are told
+ * apart by the same rule it used itself. Every item it planned to create has a
+ * valid glyph name, so a bare name in the skip list is a glyph that already
+ * exists, and anything else is a token the recipe grammar could not read.
+ */
+export function classifySkip(entry: string): SkipReason {
+  if (entry.startsWith(TOO_LARGE_PREFIX)) return 'tooLarge'
+  return GLYPH_NAME.test(entry) ? 'present' : 'unknown'
+}
+
+/** One reason and the skipped items that carry it. */
+export interface SkipGroup {
+  readonly reason: SkipReason
+  readonly items: readonly string[]
+}
+
+/** Groups a skip list by reason, dropping reasons nothing was skipped for. */
+export function groupSkips(skipped: readonly string[]): SkipGroup[] {
+  return SKIP_ORDER.map((reason) => ({
+    reason,
+    items: skipped.filter((entry) => classifySkip(entry) === reason),
+  })).filter((group) => group.items.length > 0)
+}
+
 /**
  * Resolves a recipe without applying it.
  *
