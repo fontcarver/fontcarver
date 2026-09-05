@@ -273,3 +273,201 @@ are notation rather than prose; Task 13 should probably leave them as they are.
    T8's subject.
 
 Report written 2026-09-05.
+
+---
+
+# Fix round 1
+
+Review: `task-6-review.md` (Needs fixes — 8 Important, 3 spec gaps, 14 Minor).
+Rulings: `task-6-fix1-dispatch.md` items 1–12; item 13 deferred and not touched.
+Nine commits on `p1-t6` from `2433b2b`; not pushed.
+
+| SHA | Subject |
+| --- | --- |
+| `72285f1` | fix(app): stop the Edit tab's select-all replacing the Font view's |
+| `3dbfa76` | fix(app): make an arrow-key nudge visible and close its run |
+| `2eeb85a` | fix(app): recover from kernel failures and honour the segment grammar |
+| `237b1a9` | feat(app): proportional nudge and translated snap names |
+| `1da36c2` | feat(app): insert a node at the nearest extremum or inflection |
+| `74ac719` | feat(app): flash the last undo label in the status bar |
+| `d0d18cc` | refactor(app): tidy the editor's small edges |
+| `9a8c38c` | fix(app): live Info box numbers, complete selections and steadier tests |
+| `b2ba655` | refactor(app): split the editor controller by responsibility |
+
+## Important
+
+**I1 — `edit.selectAll` collision.** The Edit tab's command is now
+`edit.selectAllPoints`, gated on the tab kind alone so exactly one of the two
+owns `Mod+A` at any moment (`app/src/views/glyph/glyphCommands.ts:157-170`); the
+delete and deselect ids are likewise scoped (`:172-205`). Covered by
+`app/src/shell/builtinCommands.test.ts:60-77` — both ids survive registration,
+and `commandForEvent` routes `Mod+A` to the Font command in a Font tab and to
+the glyph command in a glyph tab.
+
+**I2 — shadowed title keys.** The six titles are nested under the existing
+`cmd.edit` / `cmd.path` / `cmd.view` objects (`app/src/i18n/en.json`, same in
+`zh-CN.json` with English placeholders). `builtinCommands.test.ts:39-49` now
+resolves *every* registered command's title through the app's own i18next and
+fails on any that comes back as its own key, which closes the class of bug.
+
+**I3 — a nudge run that froze the canvas.** `NudgeCoalescer` reports the end of a
+run, including from its own idle timer (`app/src/editor/gestures/nudge.ts:36-44`,
+`:112-127`), and the run's optimistic preview lives with it in the new
+`app/src/editor/nudgeRun.ts`. `editing` is now derived from the live gesture
+rather than toggled by each caller (`editorController.ts:150-160`), so a drag
+whose finish resolves late cannot clear the flag a key press just set. Tests:
+`editorController.test.ts:337-395` — first press moves the outline, 500 ms later
+`edit_end` has been sent, `editing` is false and a reload was requested.
+
+**I4 — Escape while an apply was in flight.** The compensation decision happens
+inside the chain, after the calls already on the wire have answered
+(`app/src/editor/editSession.ts:167-187`). Test:
+`gestures/drag.test.ts:299-338` holds an apply open, cancels, then releases it
+and asserts `edit_begin · edit_apply · edit_end · doc.undo`.
+
+**I5 — no error handling.** `EditSession` routes every failure to an injected
+reporter and keeps the chain alive so the gesture still closes
+(`editSession.ts:76-90`); the controller's gesture and command paths use
+try/finally that always clear `editing` and the preview and request a reload
+(`editorController.ts:352-375`, `:520-545`), and a session that failed forces the
+reload even when nothing "changed". Info box commits go through
+`views/glyph/commitField.ts`, which reports and reconciles. The reporter is the
+shell's own (`shell/commands.ts:96-110` → toast). Tests:
+`editorController.test.ts:430-470` and `views/glyph/InfoBox.test.tsx:150-173`.
+
+**I6 — Alt on a segment.** Alt converts only a *line*; on a curve it reaches the
+drag, which projects each control onto its own handle line and sends one
+`MovePoints` per control (`editor/editorActions.ts:104-140`,
+`gestures/drag.ts:370-380`, `:520-560`). Tests: the three cases in
+`editorController.test.ts:496-540` (command emitted, no command and no empty undo
+entry on a curve, plain reshape) and `gestures/drag.test.ts:129-200`.
+
+**I7 — untranslated HUD strings.** Snap-target names arrive through the label
+bundle (`editor/snapping.ts:47-66`, `views/glyph/useEditorLabels.ts:31-41`);
+`snapping.test.ts:66-80` asserts the names come from the caller, never a literal.
+
+**I8 — stale selection across tabs.** The empty selection is published
+unconditionally when a different glyph arrives (`editorController.ts:222-234`),
+with a test for the case that used to slip through: a freshly mounted controller
+whose own selection was already empty (`editorController.test.ts:474-494`).
+
+## Spec gaps
+
+**9 — Ctrl+⌥+drag nudge.** The node keeps its own handles and each neighbouring
+node's handle scales by the ratio its segment's chord changed by
+(`gestures/drag.ts:600-660` collects them, `:395-420` scales them). Tests:
+`gestures/drag.test.ts:203-280`, including that a handle already in the selection
+travels with it instead of being scaled twice.
+
+**10 — ⇧+click inserts at an extremum or inflection.** Candidates are solved from
+the segment's own Bézier — the roots of each axis of `B'(t)`, plus the root of
+`B'(t) × B''(t)` for a cubic (`editor/outlineGeometry.ts:196-266`); a segment
+with none splits where it was clicked. Tests:
+`editor/outlineGeometry.test.ts` (arch, quadratic apex, S-curve inflection,
+straight line) and `editorController.test.ts:544-578`.
+
+**11 — 1.5 s undo-label flash.** `uiStore.flashUndoLabel` holds the label for
+`UNDO_FLASH_MS` (`stores/uiStore.ts:340-355`); a fresh edit is recognised from
+the document event (a new entry clears the redo stack,
+`stores/sessionStore.ts:118-128`) and undo/redo flash from their own commands,
+which know which entry they moved (`shell/builtinCommands.ts:60-72`). Rendered by
+`shell/StatusBar.tsx:73-75`. Tests: `stores/uiStore.test.ts` (fake timers, window
+restart, empty label) and `stores/sessionStore.test.ts`.
+
+## Minors
+
+M1 `editorFrame.ts:130-136` uses `nodeOfHandle`, which walks the contour and so
+finds a node across a wrap-around · M2 a handles-only move is labelled
+`Move N handles` (`gestures/drag.ts:140-152`, test at `drag.test.ts:96-118`) ·
+M3 the controller consults `editorStore.snapping` and a `view.toggleSnapping`
+command sets it (`editorController.ts:127-133`, test at
+`editorController.test.ts:582-602`) · M4 the gesture publishes its optimistic
+geometry and the Info box reads it, so its numbers track the drag
+(`editorController.ts:162-170`, `views/glyph/GlyphView.tsx:228-242`) · M5
+master-scope guides have rows (`InfoObjectRows.tsx`, test in `InfoBox.test.tsx`) ·
+M6 the marquee samples Alt at pointer-down · M7 the dead `pan()` is gone · M8 the
+controller is split into `editorTypes` (89), `editorActions` (178), `nudgeRun`
+(110) and `viewGestures` (146), leaving 612 lines of orchestration · M9 below ·
+M10 the Info box uses a new `--shadow-popover` token with the §2.3 light and dark
+values · M11 the multi-selection box includes selected anchors and components ·
+M12 the anchor name follows the model · M13 the duplicate-node map is cached per
+outline in a `WeakMap`.
+
+**M9 — why the component tests were slow.** They are not: `GlyphView`'s slowest
+test measures 233 ms on its own and 1 579 ms under a full-speed run. The cause is
+worker oversubscription — Vitest defaults to one fork per core, each with its own
+jsdom and Vite transform pipeline, and on this 20-core box that made the whole
+suite *slower* (44 s) as well as flaky. The 20 s global timeout and the five 5 s
+`findBy` waits are reverted; `vitest.config.ts` caps the pool at 50 %, which runs
+the suite in 13-26 s and stops it tripping its own timeouts. The measurements are
+recorded in the config comment. The controller tests additionally let each
+gesture's promise chain finish against its own transport before the next test
+installs another one (`editorController.test.ts:118-125`), which was a real
+cross-test leak.
+
+## Verification
+
+```
+pnpm --dir app check   → tsc -b, silent
+pnpm --dir app test    → 50 files, 430 tests passed (12.8 s)
+pnpm --dir app lint    → eslint, silent
+pnpm --dir app exec prettier --check .  → all matched files use Prettier style
+```
+
+25 tests added this round (386 → 430).
+
+### Interactive pass (agent-browser, ports 8789 / 1422, both stopped afterwards)
+
+1. **Mod+A in a Font tab** — status bar went from `0 selected` to
+   `6,253 selected`. Before the fix this did nothing.
+2. **Edit menu titles** — `Select All Glyphs`, `Select All Points`,
+   `Deselect Points`, `Delete Selected Points`, `Delete and Open Path`; no raw
+   keys anywhere.
+3. **Arrow-key nudge** — the first press moved the node 930 → 931 in the frame
+   *before* any kernel answer; four Shift+presses took it to 971; 500 ms later
+   the preview was handed back, the kernel agreed at 971, and there was one undo
+   entry `Nudge 1 point`, flashed in the status bar.
+4. **Escape mid-drag** — with applies in flight: document clean afterwards,
+   `undo_label` null, the node back at (930, 1120), no live gesture, no preview.
+5. **Alt-click on a curve vs a line** — on the curve a drag started and the
+   document stayed clean (no empty undo entry); on the line the undo label read
+   `Convert segment`.
+6. **Switching glyph tabs** — opening Source Serif `o` from a two-node selection
+   in DejaVu `g` left `0 points selected` and the Info box on `o`'s
+   nothing-selected rows.
+
+`docs/screenshots/p1-select-drag.png` refreshed: the Info box now reads
+X 1114 / Y 1336.9 — the live dragged position — instead of the pre-gesture
+numbers the review saw next to a live HUD.
+
+## New i18n keys (10 added, 3 renamed) — for Task 13
+
+Added: `cmd.edit.selectAllPoints` · `cmd.edit.deselectPoints` ·
+`cmd.edit.deletePoints` · `cmd.edit.deletePointsBreak` ·
+`cmd.view.toggleSnapping` · `editor.snap.node` · `editor.snap.handle` ·
+`editor.snap.guide` · `editor.undo.moveHandles_one` ·
+`editor.undo.moveHandles_other`. The flat `cmd.edit.delete`,
+`cmd.edit.deleteBreak` and `cmd.edit.deselect` keys are gone — they were the
+shadowed ones. `zh-CN.json` carries all of them with English placeholders;
+nothing was translated here.
+
+## Concerns
+
+1. **The controller is 612 lines**, still above CONVENTIONS' ~400 guideline
+   though well inside the dispatch's 800. Four modules came out of it and each
+   new one is under 180; what is left is pointer routing plus the drag
+   lifecycle, and a further cut would be a facade over the same state rather
+   than a real seam. Flagging it rather than forcing it.
+2. **The disabled reasons for the point commands read "No glyphs are
+   selected"** — `cmd.reason.noSelection` is shared with the Font view. Correct
+   in spirit, wrong noun for points; a one-key fix that belongs with T8's
+   inspector strings.
+3. **Suite timing is still environment-sensitive.** With the worker cap the
+   suite is green and fast on an idle machine, but this box also hosts other
+   worktrees' builds (load average 20-40 during this round), and under that load
+   a userEvent-driven component test can still exceed 5 s. Every reported run
+   above was green; two individual runs during development failed on the grid
+   and `GlyphView` tests while a parallel build was saturating the CPU.
+4. **M4's live Info box re-renders the panel each animation frame** during a
+   drag. Measured paint stayed inside budget in the interactive pass, but it is
+   new per-frame React work that a future performance pass may want to throttle.
