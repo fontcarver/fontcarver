@@ -60,6 +60,10 @@ export interface SessionState {
   close: (doc: DocId) => Promise<void>
   /** Closes, asking Save / Don't Save / Cancel first when the document is dirty. */
   requestClose: (doc: DocId) => Promise<void>
+  /** Opens one crash-recovery snapshot as a dirty document in a new tab. */
+  recover: (autosavePath: string) => Promise<DocSummary | null>
+  /** Deletes one crash-recovery snapshot; resolves to whether it was removed. */
+  discardRecovery: (autosavePath: string) => Promise<boolean>
 }
 
 function reportError(error: unknown): void {
@@ -276,6 +280,31 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       return
     }
     await get().close(doc)
+  },
+
+  recover: async (autosavePath) => {
+    try {
+      const summary = await call('session.recover', {
+        autosave_path: autosavePath,
+      })
+      set((state) => ({ docs: upsert(state.docs, summary) }))
+      useUiStore.getState().openTab({ kind: 'font', doc: summary.doc })
+      announceWarnings(summary)
+      return summary
+    } catch (error) {
+      reportError(error)
+      return null
+    }
+  },
+
+  discardRecovery: async (autosavePath) => {
+    try {
+      await call('session.discard_recovery', { autosave_path: autosavePath })
+      return true
+    } catch (error) {
+      reportError(error)
+      return false
+    }
   },
 }))
 

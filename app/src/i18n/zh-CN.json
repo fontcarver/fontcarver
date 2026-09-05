@@ -234,7 +234,6 @@
       "autosave": "Autosave",
       "autosaveSeconds": "Autosave interval in seconds",
       "autosaveHint": "Seconds between crash-recovery snapshots; zero turns autosave off.",
-      "recentLimit": "Recent files",
       "nudge": "Nudge steps",
       "nudgeStep": {
         "small": "Arrow",
@@ -244,7 +243,6 @@
       "nudgeHint": "Font units an arrow key moves the selection, plain, with Shift and with the command modifier.",
       "gridSize": "Grid size",
       "gridHint": "Editing grid in font units; zero turns the grid off.",
-      "hitRadius": "Hit radius",
       "snapTo": "Snap to",
       "snap": {
         "nodes": "Nodes and handles",
