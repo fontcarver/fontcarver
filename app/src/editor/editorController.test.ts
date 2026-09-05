@@ -8,6 +8,7 @@ import {
   makeLayerOutline,
   makePoint,
 } from '../test/fontFixtures'
+import { TOOL_LABELS } from '../test/toolContext'
 import {
   createEditingTransport,
   createMockTransport,
@@ -54,6 +55,9 @@ const labels: EditorLabels = {
     node: 'node',
     handle: 'handle',
     guide: 'guide',
+    anchor: 'anchor',
+    grid: 'grid',
+    component: 'component',
     baseline: 'baseline',
     xHeight: 'x-height',
     capHeight: 'cap height',
@@ -69,6 +73,7 @@ const labels: EditorLabels = {
     height: 'h',
     stem: '⟂',
   },
+  tools: TOOL_LABELS,
 }
 
 /** A layer whose bottom span is a cubic, for the segment cases. */
@@ -107,6 +112,8 @@ function source(): EditorSource {
       verticalWidth: null,
     },
     master: 'm1',
+    curves: 'cubic',
+    componentPoints: [],
   }
 }
 
@@ -166,6 +173,7 @@ function makeController(supplied?: MockTransport): {
     onPreview: (preview) => {
       recorded.previews.push(preview === null ? null : preview.contours.length)
     },
+    onShapeDialog: () => undefined,
     onError: (error) => recorded.errors.push(error),
   })
   controller.setSource(source())

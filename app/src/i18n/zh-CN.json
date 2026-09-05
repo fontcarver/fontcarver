@@ -138,6 +138,15 @@
       "message": "“{{name}}”有未保存的更改。",
       "save": "保存",
       "discard": "不保存"
+    },
+    "shape": {
+      "rectangleTitle": "New rectangle",
+      "ellipseTitle": "New ellipse",
+      "x": "X",
+      "y": "Y",
+      "width": "W",
+      "height": "H",
+      "create": "Create"
     }
   },
   "document": {
@@ -572,7 +581,15 @@
       "setAnchor": "Set anchor",
       "setGuide": "Set guide",
       "setComponent": "Set component",
-      "transform": "Transform selection"
+      "transform": "Transform selection",
+      "drawPath": "Draw path",
+      "extendPath": "Extend path",
+      "draw": "Draw",
+      "cut": "Cut",
+      "drawRectangle": "Draw rectangle",
+      "drawEllipse": "Draw ellipse",
+      "rotate": "Rotate",
+      "scale": "Scale"
     },
     "hud": {
       "deltaX": "Δx",
@@ -581,7 +598,9 @@
       "length": "ℓ",
       "width": "w",
       "height": "h",
-      "stem": "⟂"
+      "stem": "⟂",
+      "distance": "d",
+      "percent": "⤢"
     },
     "a11y": {
       "selection_one": "{{count}} item selected",
@@ -590,7 +609,10 @@
     "snap": {
       "node": "node",
       "handle": "handle",
-      "guide": "guide"
+      "guide": "guide",
+      "anchor": "anchor",
+      "grid": "grid",
+      "component": "component"
     }
   },
   "infoBox": {

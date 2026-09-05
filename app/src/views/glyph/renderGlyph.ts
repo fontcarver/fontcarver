@@ -16,9 +16,11 @@ import { drawGuides } from './drawGuides'
 import { drawHud } from './drawHud'
 import { drawMetrics, type MetricLabels } from './drawMetrics'
 import { drawOutline } from './drawOutline'
+import { drawGrid, drawToolOverlay } from './drawTools'
 import { drawRulers } from './drawRulers'
 import type { GlyphScene } from './glyphScene'
 import type { GlyphTheme } from './glyphTheme'
+import { NO_TOOL_OVERLAY, type ToolOverlay } from '../../editor/tools/toolTypes'
 
 /** Which overlays the editor is currently showing. */
 export interface GlyphOverlays {
@@ -64,6 +66,10 @@ export interface RenderGlyphOptions {
   hud?: string | null
   /** Pointer position in canvas pixels, where the HUD is anchored. */
   pointerScreen?: { x: number; y: number } | null
+  /** Transient geometry the active drawing tool is showing. */
+  tool?: ToolOverlay
+  /** Grid step in font units; zero draws no grid. */
+  grid?: number
 }
 
 /** Paints one frame of the glyph editor. */
@@ -76,6 +82,8 @@ export function renderGlyph(
   ctx.setTransform(viewport.dpr, 0, 0, viewport.dpr, 0, 0)
   ctx.fillStyle = theme.background
   ctx.fillRect(0, 0, viewport.width, viewport.height)
+
+  drawGrid(ctx, viewport, options.grid ?? 0, theme)
 
   if (overlays.metrics)
     drawMetrics(
@@ -131,6 +139,7 @@ export function renderGlyph(
     drawRulers(ctx, viewport, { pointer: options.pointer }, theme)
 
   drawEditing(ctx, viewport, options.editing ?? NO_OVERLAY, theme)
+  drawToolOverlay(ctx, viewport, options.tool ?? NO_TOOL_OVERLAY, theme)
   drawHud(
     ctx,
     viewport,

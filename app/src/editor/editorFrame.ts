@@ -22,6 +22,7 @@ import { handlePolar, hudText, stemWidth, type HudLabels } from './hud'
 import { nodeOfHandle, pointAt, type EditOutline } from './outlineGeometry'
 import { selectedNodeRefs, type Selection } from './selection'
 import type { SnapMatch } from './snapping'
+import { NO_TOOL_OVERLAY, type ToolOverlay } from './tools/toolTypes'
 
 /** How near the pointer must come to a component before its ghosts appear. */
 export const COMPONENT_GHOST_REACH = 24
@@ -33,6 +34,8 @@ export interface EditorFrame {
   components: readonly ComponentView[] | null
   selected: ReadonlySet<string>
   overlay: EditingOverlay
+  /** Transient geometry the active drawing tool wants drawn. */
+  tool: ToolOverlay
   hud: string | null
   pointerScreen: Point2 | null
 }
@@ -54,6 +57,8 @@ export interface FrameState {
   band: MarqueeRect | null
   snap: SnapMatch | null
   hover: Hit | null
+  /** What the active drawing tool wants drawn, if any. */
+  tool?: ToolOverlay
 }
 
 const NOTHING_SELECTED: ReadonlySet<string> = new Set()
@@ -162,16 +167,19 @@ export function buildFrame(state: FrameState): EditorFrame {
     insertGhost: insertGhost(state),
     componentGhosts: componentGhosts(state),
   }
+  const tool = state.tool ?? NO_TOOL_OVERLAY
   return {
     contours: state.preview?.contours ?? null,
     anchors: state.preview?.anchors ?? null,
     components: state.preview?.components ?? null,
+    tool,
     selected:
       state.selection.size === 0
         ? NOTHING_SELECTED
         : new Set(state.selection.keys()),
     overlay,
-    hud: frameHud(state),
+    // A tool's own readout wins: while it is drawing, the drag HUD is idle.
+    hud: tool.hud ?? frameHud(state),
     pointerScreen: state.pointer,
   }
 }

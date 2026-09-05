@@ -4,7 +4,12 @@ import { Viewport } from '../canvas/Viewport'
 import { makeContour, makePoint } from '../test/fontFixtures'
 
 import { buildEditOutline } from './outlineGeometry'
-import { snapDelta, SNAP_DISTANCE, type SnapInput } from './snapping'
+import {
+  DEFAULT_SNAP_SETTINGS,
+  snapDelta,
+  SNAP_DISTANCE,
+  type SnapInput,
+} from './snapping'
 
 const contour = makeContour([
   makePoint(0, 0),
@@ -50,12 +55,17 @@ function input(overrides: Partial<SnapInput> = {}): SnapInput {
       node: 'NODE',
       handle: 'HANDLE',
       guide: 'GUIDE',
+      anchor: 'ANCHOR',
+      grid: 'GRID',
+      component: 'COMPONENT',
       baseline: 'baseline',
       xHeight: 'x-height',
       capHeight: 'cap height',
       ascender: 'ascender',
       descender: 'descender',
     },
+    componentPoints: [],
+    settings: { ...DEFAULT_SNAP_SETTINGS, nodes: true },
     viewport,
     exclude: new Set(['0:2']),
     ...overrides,

@@ -1,14 +1,15 @@
 /**
- * Snapping while dragging.
+ * Snapping while dragging or drawing.
  *
  * Design spec §4.2: 6 CSS pixels, tried in the order node > handle > anchor >
- * guide > metric > alignment line, and suspended entirely while Ctrl is held.
- * Point targets snap both axes; guides, metric lines and alignment lines snap
- * only the axis they constrain, so dragging along a baseline stays free in x.
+ * guide > metric > grid > alignment line, and suspended entirely while Ctrl is
+ * held. Point targets snap both axes; guides, metric lines, the grid and
+ * alignment lines snap only the axis they constrain, so dragging along a
+ * baseline stays free in x.
  *
- * The grid is not a snap target yet: the grid overlay itself is a preference
- * that ships with the drawing tools (P1 T7), and snapping to something that is
- * never drawn would be a mystery rather than a help.
+ * Which families are live is a preference (`SnapPrefs`), and so is the grid
+ * step, which is why the grid only appears once `prefs.grid_size` is set: the
+ * canvas draws exactly the grid the snap uses.
  */
 
 import type { Anchor } from '../api'
@@ -46,11 +47,35 @@ export interface SnapNames {
   handle: string
   /** Fallback for a guide with no name of its own. */
   guide: string
+  anchor: string
+  grid: string
+  component: string
   baseline: string
   xHeight: string
   capHeight: string
   ascender: string
   descender: string
+}
+
+/** Which snap families are live, and how coarse the grid is. */
+export interface SnapSettings {
+  nodes: boolean
+  guides: boolean
+  metrics: boolean
+  grid: boolean
+  components: boolean
+  /** Grid step in font units; zero disables the grid entirely. */
+  gridSize: number
+}
+
+/** Everything on until the kernel's preferences arrive. */
+export const DEFAULT_SNAP_SETTINGS: SnapSettings = {
+  nodes: true,
+  guides: true,
+  metrics: true,
+  grid: false,
+  components: true,
+  gridSize: 0,
 }
 
 /** Everything snapping looks at. */
@@ -59,8 +84,11 @@ export interface SnapInput {
   anchors: readonly Anchor[]
   guides: readonly ScopedGuide[]
   metrics: SceneMetrics
+  /** Ghost nodes of the layer's components, from `glyphs.flattened_components`. */
+  componentPoints: readonly Point2[]
   names: SnapNames
   viewport: Viewport
+  settings: SnapSettings
   /** `contour:point` keys excluded from snapping, i.e. what is being dragged. */
   exclude: ReadonlySet<string>
 }
@@ -69,6 +97,15 @@ interface PointTarget {
   point: Point2
   label: string
   rank: number
+}
+
+/** Nothing snapped. */
+export const NO_SNAP: SnapMatch = {
+  delta: { x: 0, y: 0 },
+  label: null,
+  alignedX: null,
+  alignedY: null,
+  point: null,
 }
 
 /** The unsnapped result for a delta. */
@@ -84,21 +121,28 @@ function unsnapped(delta: Point2): SnapMatch {
 
 function pointTargets(input: SnapInput): PointTarget[] {
   const targets: PointTarget[] = []
-  for (const point of input.outline.points) {
-    const key = `${point.ref.contour}:${point.ref.point}`
-    if (input.exclude.has(key)) continue
-    targets.push({
-      point: { x: point.x, y: point.y },
-      label: point.onCurve ? input.names.node : input.names.handle,
-      rank: point.onCurve ? 0 : 1,
-    })
-  }
+  if (input.settings.nodes)
+    for (const point of input.outline.points) {
+      const key = `${point.ref.contour}:${point.ref.point}`
+      if (input.exclude.has(key)) continue
+      targets.push({
+        point: { x: point.x, y: point.y },
+        label: point.onCurve ? input.names.node : input.names.handle,
+        rank: point.onCurve ? 0 : 1,
+      })
+    }
   for (const anchor of input.anchors)
     targets.push({
       point: { x: anchor.x, y: anchor.y },
-      label: anchor.name,
+      label: anchor.name || input.names.anchor,
       rank: 2,
     })
+  // §4.2 does not name the component ghosts in its order, so they sit just
+  // behind the layer's own features: a ghost is a hint about a neighbouring
+  // shape, never a reason to miss a node of the glyph being drawn.
+  if (input.settings.components)
+    for (const point of input.componentPoints)
+      targets.push({ point, label: input.names.component, rank: 3 })
   return targets
 }
 
@@ -160,26 +204,36 @@ export function snapDelta(
   let snappedX: { value: number; label: string } | null = null
   let snappedY: { value: number; label: string } | null = null
 
-  for (const entry of input.guides) {
-    const { guide } = entry
-    const angle = ((guide.angle % 180) + 180) % 180
-    const name = guide.name ?? input.names.guide
-    if (angle === 0 && Math.abs(guide.y - primary.y) <= reach && !snappedY)
-      snappedY = { value: guide.y, label: name }
-    if (angle === 90 && Math.abs(guide.x - primary.x) <= reach && !snappedX)
-      snappedX = { value: guide.x, label: name }
-  }
+  if (input.settings.guides)
+    for (const entry of input.guides) {
+      const { guide } = entry
+      const angle = ((guide.angle % 180) + 180) % 180
+      const name = guide.name ?? input.names.guide
+      if (angle === 0 && Math.abs(guide.y - primary.y) <= reach && !snappedY)
+        snappedY = { value: guide.y, label: name }
+      if (angle === 90 && Math.abs(guide.x - primary.x) <= reach && !snappedX)
+        snappedX = { value: guide.x, label: name }
+    }
 
-  if (!snappedY)
+  if (!snappedY && input.settings.metrics)
     for (const line of metricLines(input))
       if (Math.abs(line.y - primary.y) <= reach) {
         snappedY = { value: line.y, label: line.label }
         break
       }
 
+  const step = input.settings.gridSize
+  if (input.settings.grid && step > 0) {
+    const nearest = (value: number) => Math.round(value / step) * step
+    if (!snappedX && Math.abs(nearest(primary.x) - primary.x) <= reach)
+      snappedX = { value: nearest(primary.x), label: input.names.grid }
+    if (!snappedY && Math.abs(nearest(primary.y) - primary.y) <= reach)
+      snappedY = { value: nearest(primary.y), label: input.names.grid }
+  }
+
   let alignedX: number | null = null
   let alignedY: number | null = null
-  if (!snappedX || !snappedY)
+  if (input.settings.nodes && (!snappedX || !snappedY))
     for (const point of input.outline.points) {
       const key = `${point.ref.contour}:${point.ref.point}`
       if (input.exclude.has(key)) continue

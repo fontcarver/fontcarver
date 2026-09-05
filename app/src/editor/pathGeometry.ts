@@ -206,8 +206,13 @@ export function extractSegments(
   const count = path.segments.length
   if (count === 0) return []
   const wraps = to <= from + 1e-9
-  const endIndex = Math.min(count - 1, Math.max(0, Math.floor(to)))
-  const endT = to - Math.floor(to)
+  // `to === count` names the very end of an open path, which is the last
+  // segment taken whole rather than a zero-length slice of a segment past it.
+  const beyond = to >= count
+  const endIndex = beyond
+    ? count - 1
+    : Math.min(count - 1, Math.max(0, Math.floor(to)))
+  const endT = beyond ? 1 : to - Math.floor(to)
   let index = Math.min(count - 1, Math.max(0, Math.floor(from)))
   let start = from - Math.floor(from)
   const out: PathSegment[] = []
@@ -362,4 +367,25 @@ export function normaliseBox(a: Point2, b: Point2): FontBox {
     x1: Math.max(a.x, b.x),
     y1: Math.max(a.y, b.y),
   }
+}
+
+/**
+ * The curve flavour a layer is drawn in.
+ *
+ * `LayerOutline` does not carry the font's declared curve kind, so it is read
+ * off the outlines themselves: a quadratic on-curve point means TrueType, an
+ * explicit cubic means PostScript. A layer with no curves at all — an empty
+ * glyph, a rectangle — says nothing, and then the document's own format
+ * decides, defaulting to quadratic for a TrueType source.
+ */
+export function inferCurves(
+  contours: readonly Contour[],
+  format: string,
+): LayerCurves {
+  for (const contour of contours)
+    for (const point of contour.points) {
+      if (point.kind === 'QCurve') return 'quadratic'
+      if (point.kind === 'Curve') return 'cubic'
+    }
+  return /truetype|ttf|ttc|woff/i.test(format) ? 'quadratic' : 'cubic'
 }

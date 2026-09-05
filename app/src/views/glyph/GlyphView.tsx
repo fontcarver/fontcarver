@@ -5,8 +5,14 @@ import type { DocSummary, GlyphId } from '../../api'
 import type { EditorSource } from '../../editor/editorController'
 import type { ScopedGuide } from '../../editor/hitTest'
 import { replaceGlyphTab } from '../../shell/tabActions'
+import { inferCurves } from '../../editor/pathGeometry'
 import { useDocumentStore, selectDocView } from '../../stores/documentStore'
 import { useEditorStore } from '../../stores/editorStore'
+import {
+  nudgeStepsOf,
+  snapSettingsOf,
+  usePrefsStore,
+} from '../../stores/prefsStore'
 import { useFontInfo } from '../../stores/fontInfoCache'
 import { tabId, useUiStore } from '../../stores/uiStore'
 import { neighbourGid } from '../font/glyphOrder'
@@ -16,6 +22,7 @@ import { GlyphCanvas, type GlyphCanvasHandle } from './GlyphCanvas'
 import { GlyphToolbar } from './GlyphToolbar'
 import { InfoBox } from './InfoBox'
 import { ToolPalette } from './ToolPalette'
+import { ShapeDialog } from './ShapeDialog'
 import { registerGlyphView } from './glyphCommands'
 import { buildScene, formatUnicodes } from './glyphScene'
 import { useGlyphTheme } from './glyphTheme'
@@ -24,6 +31,7 @@ import { useEditorLabels } from './useEditorLabels'
 import { useGlyphDetail } from './useGlyphDetail'
 import { useLayerOutline } from './useLayerOutline'
 import { useMetricLabels } from './useMetricLabels'
+import { useComponentPoints } from './useComponentPoints'
 import { useToolShortcuts } from './useToolShortcuts'
 
 export interface GlyphViewProps {
@@ -51,6 +59,10 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
   const toggleOverlay = useEditorStore((state) => state.toggleOverlay)
   const selection = useEditorStore((state) => state.selection)
   const preview = useEditorStore((state) => state.preview)
+  const shapeDialog = useEditorStore((state) => state.shapeDialog)
+  const setShapeDialog = useEditorStore((state) => state.setShapeDialog)
+  const prefs = usePrefsStore((state) => state.prefs)
+  const loadPrefs = usePrefsStore((state) => state.load)
   const setTabLabel = useUiStore((state) => state.setTabLabel)
 
   const detail = useGlyphDetail(doc, gid, masterId)
@@ -83,6 +95,18 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
 
   const outlineResult = useLayerOutline(doc, gid, baseScene?.layer?.id ?? null)
   const outline = outlineResult.outline
+  const componentPoints = useComponentPoints(
+    doc,
+    gid,
+    outline?.layer ?? null,
+    outline?.components.length ?? 0,
+  )
+
+  // The kernel publishes no prefs-changed event, so they are read whenever a
+  // glyph tab mounts, which is the moment the editor needs them.
+  useEffect(() => {
+    void loadPrefs()
+  }, [loadPrefs])
 
   // The editable outline replaces the display copy as soon as it arrives, so
   // the canvas draws exactly the geometry the commands address.
@@ -136,8 +160,13 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
       guides: scene.guides as readonly ScopedGuide[],
       metrics: scene.metrics,
       master: masterId,
+      curves: inferCurves(outline.contours, summary.format),
+      componentPoints,
     }
-  }, [doc, gid, masterId, outline, scene])
+  }, [componentPoints, doc, gid, masterId, outline, scene, summary.format])
+
+  const snapSettings = useMemo(() => snapSettingsOf(prefs), [prefs])
+  const nudgeSteps = useMemo(() => nudgeStepsOf(prefs), [prefs])
 
   const query = useMemo<GlyphQuery>(
     () => ({ doc, master: masterId, filter: view.filter, sort: view.sort }),
@@ -222,6 +251,9 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
           })}
           source={source}
           editorLabels={editorLabels}
+          snapSettings={snapSettings}
+          nudgeSteps={nudgeSteps}
+          onShapeDialog={setShapeDialog}
           onPointerFont={setPointer}
           onZoomChange={setZoom}
           onToggleFilled={toggleFilled}
@@ -251,6 +283,15 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
             masterGuides={master?.guides ?? []}
             name={scene.name}
             unicodes={scene.unicodes}
+            onCommitted={outlineResult.reload}
+          />
+        ) : null}
+        {shapeDialog && outline ? (
+          <ShapeDialog
+            request={shapeDialog}
+            target={{ doc, glyph: scene.name, layer: outline.layer }}
+            curves={inferCurves(outline.contours, summary.format)}
+            onClose={() => setShapeDialog(null)}
             onCommitted={outlineResult.reload}
           />
         ) : null}

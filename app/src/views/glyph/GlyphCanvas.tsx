@@ -21,6 +21,8 @@ import { reportError } from '../../shell/commands'
 import { selectActiveTool, useEditorStore } from '../../stores/editorStore'
 import type { Selection } from '../../editor/selection'
 import type { ComponentView } from '../../api'
+import type { SnapSettings } from '../../editor/snapping'
+import type { ShapeDialogRequest } from '../../editor/tools/toolTypes'
 
 import type { ComponentDraw } from './drawComponents'
 import type { MetricLabels } from './drawMetrics'
@@ -55,6 +57,12 @@ export interface GlyphCanvasProps {
   source: EditorSource | null
   /** Translated undo labels and readout words. */
   editorLabels: EditorLabels
+  /** Which snap families are live, and how coarse the grid is. */
+  snapSettings: SnapSettings
+  /** Arrow-key distances from the preferences: plain, Shift, Ctrl. */
+  nudgeSteps: readonly [number, number, number]
+  /** A shape tool was clicked rather than dragged. */
+  onShapeDialog: (request: ShapeDialogRequest) => void
   /** Reports the pointer position in font units, or `null` when it leaves. */
   onPointerFont: (point: { x: number; y: number } | null) => void
   /** Reports the zoom after every viewport change. */
@@ -99,6 +107,9 @@ export function GlyphCanvas({
   label,
   source,
   editorLabels,
+  snapSettings,
+  nudgeSteps,
+  onShapeDialog,
   onPointerFont,
   onZoomChange,
   onToggleFilled,
@@ -171,6 +182,8 @@ export function GlyphCanvas({
       pointer: pointerRef.current,
       selected: editing.selected,
       editing: editing.overlay,
+      tool: editing.tool,
+      grid: controller.gridSize,
       hud: editing.hud,
       pointerScreen: editing.pointerScreen,
     })
@@ -188,9 +201,10 @@ export function GlyphCanvas({
       onReload,
       onCursorChange: setCursor,
       onPreview: (preview) => useEditorStore.getState().setPreview(preview),
+      onShapeDialog,
       onError: reportError,
     })
-  }, [controller, draw, onReload, onZoomChange])
+  }, [controller, draw, onReload, onShapeDialog, onZoomChange])
 
   useEffect(
     () => controller.setLabels(editorLabels),
@@ -198,6 +212,14 @@ export function GlyphCanvas({
   )
   useEffect(() => controller.setTool(tool), [controller, tool])
   useEffect(() => controller.setSnapping(snapping), [controller, snapping])
+  useEffect(() => {
+    controller.setSnapSettings(snapSettings)
+    draw()
+  }, [controller, draw, snapSettings])
+  useEffect(
+    () => controller.setNudgeSteps(nudgeSteps),
+    [controller, nudgeSteps],
+  )
   useEffect(() => {
     controller.setSource(source)
     draw()
@@ -381,6 +403,20 @@ export function GlyphCanvas({
       if (direction) {
         event.preventDefault()
         controller.nudgeSelection(direction, modifiers)
+        return
+      }
+      // The active tool is offered the key first: Enter finishes a pen path
+      // and Escape abandons one, and neither should reach the editor's own
+      // Escape or the command registry while a path is being drawn.
+      if (
+        controller.toolKey({
+          key: event.key,
+          modifiers,
+          repeat: event.repeat,
+        })
+      ) {
+        event.preventDefault()
+        event.stopPropagation()
         return
       }
       if (event.key === 'Escape') {

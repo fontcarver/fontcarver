@@ -45,6 +45,8 @@ export interface GlyphTheme {
   hudInk: string
   /** Duplicate nodes and audit markers. */
   warning: string
+  /** The optional editing grid (design spec §4.1 item 1). */
+  grid: string
   fontFamily: string
 }
 
@@ -76,6 +78,7 @@ export const FALLBACK_GLYPH_THEME: GlyphTheme = {
   hudBackground: 'rgb(27 31 36 / 92%)',
   hudInk: '#ffffff',
   warning: '#c2413b',
+  grid: '#d9dde3',
   fontFamily: 'system-ui',
 }
 
@@ -115,6 +118,7 @@ export function readGlyphTheme(): GlyphTheme {
     hudBackground: token('--cv-hud-bg', fb.hudBackground),
     hudInk: token('--cv-hud-ink', fb.hudInk),
     warning: token('--cv-warning', fb.warning),
+    grid: token('--color-border', fb.grid),
     fontFamily: token('--font-ui', fb.fontFamily),
   }
 }
