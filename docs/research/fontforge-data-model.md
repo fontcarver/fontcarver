@@ -2,7 +2,7 @@
 
 # FontForge Core Data Model — Reference for a Rust/TS Re-implementation
 
-All paths below are under `/home/chen/githubprojects/pixelfonts/fontworkshop/fontforge/fontforge/`. Note that although the task named `splinefont.h`, roughly half the glyph-level model actually lives in `splinechar.h`, which `splinefont.h:35` includes.
+All paths below are under `fontforge/fontforge/`, the FontForge reference checkout in this repository. Note that although the task named `splinefont.h`, roughly half the glyph-level model actually lives in `splinechar.h`, which `splinefont.h:35` includes.
 
 Scalar conventions: `real` = `float` (or `double` under `FONTFORGE_CONFIG_USE_DOUBLE`), `bigreal` = `double`, `extended` = `double` (`splinechar.h:51-57`, `splinefont.h:44`). `BasePoint{real x,y}` (`splinechar.h:59`), `DBounds{minx,maxx,miny,maxy}` (`splinechar.h:66`).
 

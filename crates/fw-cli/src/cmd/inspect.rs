@@ -9,7 +9,7 @@ use fw_cli::Error;
 
 #[derive(Debug, ClapArgs)]
 pub(crate) struct Args {
-    /// Font or FontWorkshop document to inspect.
+    /// Font or Font Cutter document to inspect.
     pub(crate) font: PathBuf,
     /// Zero-based face index for a font collection.
     #[arg(long)]

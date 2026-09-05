@@ -1,4 +1,4 @@
-# FontWorkshop — 可行性评估与实施计划
+# Font Cutter — 可行性评估与实施计划
 
 > 用 Claude Code（+ Codex）把字体编辑器重写为 TypeScript / Tauri 桌面应用，目标对标 FontLab / Glyphs / FontCreator 的可用性与专业度。
 >
@@ -178,4 +178,4 @@ Codex **不共享** Fable 的对话上下文。每次交接：Fable 要把任务
 
 ## 附：相关既有项目
 
-`~/githubprojects/pixelfontworkshop/` 下已有点阵字体相关工作（`pixel-font-workshop`、`bitmap-font`、`font-pixelation`、`shs-mono-bdf` 等），本项目为轮廓字体方向，可评估是否复用其中的字形数据处理与 UI 经验。
+`~/githubprojects/pixelfonts/` 下已有点阵字体相关工作（`pixel-font-workshop`、`bitmap-font`、`font-pixelation`、`shs-mono-bdf` 等），本项目为轮廓字体方向，可评估是否复用其中的字形数据处理与 UI 经验。

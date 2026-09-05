@@ -1,4 +1,4 @@
-# FontWorkshop — Design Specification
+# Font Cutter — Design Specification
 
 Date: 2026-09-03 · Status: approved for implementation (autonomous session; decisions recorded here stand until the user overrides them)
 
@@ -15,7 +15,7 @@ Companion research (read these before implementing anything that touches the sam
 
 ## 1. Product definition
 
-FontWorkshop is a cross-platform (Linux, macOS, Windows) desktop font editor built with Tauri 2: a Rust kernel and a React/TypeScript UI. It is a modern re-implementation of FontForge's capabilities with the workflow and polish of Glyphs 3 / FontLab 8 / FontCreator.
+Font Cutter is a cross-platform (Linux, macOS, Windows) desktop font editor built with Tauri 2: a Rust kernel and a React/TypeScript UI. It is a modern re-implementation of FontForge's capabilities with the workflow and polish of Glyphs 3 / FontLab 8 / FontCreator.
 
 Non-negotiables:
 
@@ -160,9 +160,9 @@ Identity: glyphs are addressed by `GlyphName` externally and by a stable `GlyphI
 
 ## 5. Native file format `.fwf`
 
-Single UTF-8 JSON file with deterministic key and glyph order. The envelope and font-level objects use 2-space indentation; each direct entry in `font.glyphs` stores its complete glyph as compact JSON on one physical line. This keeps `git diff` focused per glyph without the size and I/O cost of expanding every contour point across separate lines, and avoids a directory package. Schema versioned (`"format": "fontworkshop", "version": 1`). Binary payloads (bitmaps, raw tables, images) are base64. Files above ~50 MB may optionally be written as `.fwf.gz` (transparent on read). A directory-package variant is deferred until measured need.
+Single UTF-8 JSON file with deterministic key and glyph order. The envelope and font-level objects use 2-space indentation; each direct entry in `font.glyphs` stores its complete glyph as compact JSON on one physical line. This keeps `git diff` focused per glyph without the size and I/O cost of expanding every contour point across separate lines, and avoids a directory package. Schema versioned (`"format": "fontcutter", "version": 1`; the pre-rename tag `"fontworkshop"` is still accepted on read). Binary payloads (bitmaps, raw tables, images) are base64. Files above ~50 MB may optionally be written as `.fwf.gz` (transparent on read). A directory-package variant is deferred until measured need.
 
-Every other format is import/export. UFO/designspace and Glyphs exports are "lossless for what those formats can express" and use `lib`/`userData` for FontWorkshop extras.
+Every other format is import/export. UFO/designspace and Glyphs exports are "lossless for what those formats can express" and use `lib`/`userData` for Font Cutter extras.
 
 ---
 

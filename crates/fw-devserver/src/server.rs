@@ -34,7 +34,7 @@ struct ErrorEnvelope {
 /// Runtime configuration for the development server.
 #[derive(Clone, Debug, Default)]
 pub struct ServeOptions {
-    /// Overrides the FontWorkshop configuration directory for this server.
+    /// Overrides the Font Cutter configuration directory for this server.
     pub config_dir: Option<PathBuf>,
 }
 

@@ -1,4 +1,4 @@
-//! FontWorkshop's static TrueType compilation and preservation pipeline.
+//! Font Cutter's static TrueType compilation and preservation pipeline.
 //!
 //! WOFF2 support is backed by `woofwoof`, which vendors Google's native WOFF2
 //! implementation; building this crate therefore requires a C++11 compiler.

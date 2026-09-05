@@ -1,4 +1,4 @@
-//! Typed kernel API contracts and dispatch for FontWorkshop frontends.
+//! Typed kernel API contracts and dispatch for Font Cutter frontends.
 
 #![warn(missing_docs)]
 

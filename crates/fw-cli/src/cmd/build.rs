@@ -11,7 +11,7 @@ use fw_cli::Error;
 
 #[derive(Debug, ClapArgs)]
 pub(crate) struct Args {
-    /// Font or FontWorkshop document to compile.
+    /// Font or Font Cutter document to compile.
     pub(crate) input: PathBuf,
     /// Destination `.ttf`, `.woff`, or `.woff2` path.
     pub(crate) output: PathBuf,

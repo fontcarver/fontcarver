@@ -8,7 +8,7 @@
 
 **Tech Stack:** as P0 plus `flo_curves` 0.8, `fontc`/`fontir`/`fontdrasil`/`fontbe` 1.0 (`default-features = false, features = ["rayon"]`), `norad` 0.18 (`kurbo`, `rayon` features; it includes the designspace module), `harfrust` 0.13, `write-fonts` 0.52, `wuff`/own WOFF1 encoder, `evalexpr` (nonlinear transform, later), CodeMirror is P2.
 
-**Spec:** `docs/superpowers/specs/2026-09-03-fontworkshop-design.md` §3–§8, §11, §12.3, §14 row P1. Research: `docs/research/rust-crate-spike.md` §2.b–2.h (write-fonts round trip, skrifa, fontc `Source`, fea-rs, harfrust, norad, kurbo caveats), §2.k (flo_curves), `docs/research/fontforge-algorithms-and-otlayout.md` Part 2 (which FontForge algorithms to port), `docs/research/competitor-ux.md` §3 (node grammar, tool ergonomics, snapping, HUD). P0 record: `docs/p0-acceptance.md`, final review `.superpowers/sdd/2026-09-03-p0-foundation/final-review.md`.
+**Spec:** `docs/superpowers/specs/2026-09-03-fontcutter-design.md` §3–§8, §11, §12.3, §14 row P1. Research: `docs/research/rust-crate-spike.md` §2.b–2.h (write-fonts round trip, skrifa, fontc `Source`, fea-rs, harfrust, norad, kurbo caveats), §2.k (flo_curves), `docs/research/fontforge-algorithms-and-otlayout.md` Part 2 (which FontForge algorithms to port), `docs/research/competitor-ux.md` §3 (node grammar, tool ergonomics, snapping, HUD). P0 record: `docs/p0-acceptance.md`, final review `.superpowers/sdd/2026-09-03-p0-foundation/final-review.md`.
 
 ## Global Constraints
 
@@ -158,7 +158,7 @@ pub fn read_designspace(path: &Path) -> Result<Font, Error>;                // a
 pub fn write_ufo(font: &Font, master: &MasterId, dir: &Path, opts: &UfoWriteOptions { incremental: bool }) -> Result<(), Error>;   // never deletes the target dir (write to temp dir + rename per file)
 pub fn write_designspace(font: &Font, dir: &Path) -> Result<PathBuf, Error>;   // <family>.designspace + one UFO per master
 ```
-Round-trip policy: UFO ⇄ model lossless for outlines, components (with UFO identifiers preserved in `Extra.lib` under `dev.fontworkshop.ufo.identifiers`), anchors, guides, kerning/groups, features text, fontinfo (108 fields — map explicitly), lib. Things UFO cannot express (bitmaps, TT instructions, raw tables) are stored under `lib["dev.fontworkshop.extra"]` base64 with a version key.
+Round-trip policy: UFO ⇄ model lossless for outlines, components (with UFO identifiers preserved in `Extra.lib` under `com.fontcutter.ufo.identifiers`), anchors, guides, kerning/groups, features text, fontinfo (108 fields — map explicitly), lib. Things UFO cannot express (bitmaps, TT instructions, raw tables) are stored under `lib["com.fontcutter.extra"]` base64 with a version key.
 - [ ] **Step 1: Tests**: `Minimal.ufo` → Font → write → norad re-read equals the original norad `Font` (compare glyphs, kerning, groups, fontinfo, lib); a designspace with 2 masters yields 2 masters + axes + 1 instance; a Font from DejaVu (fw-sfnt) written as UFO and re-read is glyph-identical (points/components/anchors) and preserves `raw_tables` via lib; write is incremental (a second write with one glyph changed touches only that .glif — check mtimes).
 - [ ] **Step 2: Implement**; register in `fw-doc::Session::open_path` (extension `.ufo` dir / `.designspace`) and in export.
 - [ ] **Step 3:** commit `feat(fw-formats): UFO 3 and designspace import/export`.

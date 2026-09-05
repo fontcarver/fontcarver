@@ -1,4 +1,4 @@
-//! FontWorkshop browser-development server entry point.
+//! Font Cutter browser-development server entry point.
 
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 
@@ -10,12 +10,12 @@ use tokio::net::TcpListener;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 #[derive(Debug, Parser)]
-#[command(about = "FontWorkshop browser-development API server")]
+#[command(about = "Font Cutter browser-development API server")]
 struct Args {
     /// TCP port to listen on.
     #[arg(long, default_value_t = 8787)]
     port: u16,
-    /// Font or FontWorkshop document to open at startup.
+    /// Font or Font Cutter document to open at startup.
     #[arg(long = "open", value_name = "PATH")]
     open: Vec<PathBuf>,
     /// Default tracing filter when RUST_LOG is unset.
@@ -49,6 +49,6 @@ async fn main() -> Result<(), Error> {
 
     let address = SocketAddr::from(([127, 0, 0, 1], args.port));
     let listener = TcpListener::bind(address).await?;
-    tracing::info!(%address, "FontWorkshop development server listening");
+    tracing::info!(%address, "Font Cutter development server listening");
     fw_devserver::serve(listener, api, ServeOptions::default()).await
 }

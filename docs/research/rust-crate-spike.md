@@ -1,6 +1,6 @@
 # Crate feasibility spike — Tauri 2 font editor (Rust kernel + TS UI)
 
-Spike dir: `/tmp/claude-1000/-home-chen-githubprojects-pixelfonts-fontworkshop/f0187d23-6841-4655-bad5-89d6bc891ebe/scratchpad/crate-spike`
+Spike dir: a session scratchpad outside the repository (removed after the spike)
 Toolchain: `rustc 1.94.0 (4a4ef493e 2026-03-02)`, `cargo 1.94.0`, Linux x86_64, 2026-09-03.
 All crate sources read from `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/`.
 

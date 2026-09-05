@@ -1,4 +1,4 @@
-//! Conversion between norad UFO objects and the FontWorkshop model.
+//! Conversion between norad UFO objects and the Font Cutter model.
 
 use std::{collections::HashSet, path::Path, str::FromStr};
 

@@ -10,7 +10,7 @@ use fw_cli::Error;
 
 #[derive(Debug, ClapArgs)]
 pub(crate) struct Args {
-    /// Font or FontWorkshop document to shape with.
+    /// Font or Font Cutter document to shape with.
     pub(crate) input: PathBuf,
     /// Text to shape.
     pub(crate) text: String,

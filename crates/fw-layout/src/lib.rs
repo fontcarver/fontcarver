@@ -1,4 +1,4 @@
-//! Layout and shaping services for FontWorkshop documents.
+//! Layout and shaping services for Font Cutter documents.
 //!
 //! P1 provides the shaping half: [`Shaper`] keeps one in-memory font per
 //! document and master, compiled from the model by `fw-compile`, and shapes text

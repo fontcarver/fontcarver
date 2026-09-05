@@ -204,14 +204,14 @@ servers were stopped after the run; ports 8787 and 1420 were verified free.
 ## Desktop acceptance
 
 ```text
-$ /usr/bin/time -p cargo build -p fontworkshop
+$ /usr/bin/time -p cargo build -p fontcutter
 Finished `dev` profile ... in 8.39s
 real 8.45
 
 $ pnpm --dir app tauri dev
 VITE v7.3.6 ready at http://127.0.0.1:1420/
 Finished `dev` profile ... in 0.14s
-Running `target/debug/fontworkshop`
+Running `target/debug/fontcutter`
 ```
 
 The first launch used GNOME's native Wayland backend. The process remained
@@ -221,8 +221,8 @@ not installed. The same command was therefore relaunched with
 
 ```text
 $ GDK_BACKEND=x11 pnpm --dir app tauri dev
-$ xdotool search --name FontWorkshop
-16777219  FontWorkshop  1400x900
+$ xdotool search --name Font Cutter
+16777219  Font Cutter  1400x900
 $ import -window 16777219 docs/screenshots/p0-tauri-window.png
 $ identify docs/screenshots/p0-tauri-window.png
 PNG 1400x900 ... 49539B

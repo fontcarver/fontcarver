@@ -1,4 +1,4 @@
-//! Native FontWorkshop JSON persistence.
+//! Native Font Cutter JSON persistence.
 
 mod read;
 mod write;
@@ -10,7 +10,12 @@ use serde::{de::IgnoredAny, Deserialize, Serialize};
 
 use crate::Error;
 
-const FORMAT: &str = "fontworkshop";
+const FORMAT: &str = "fontcutter";
+/// The format tag written before the product was renamed to Font Cutter.
+///
+/// Documents carrying it are read unchanged; they are rewritten with [`FORMAT`]
+/// on the next save.
+const LEGACY_FORMAT: &str = "fontworkshop";
 const VERSION: u32 = 1;
 
 #[derive(Serialize)]
@@ -74,8 +79,12 @@ fn envelope<'a>(font: &'a Font, document_path: Option<&'a Path>) -> WriteEnvelop
     }
 }
 
+fn is_known_format(format: &str) -> bool {
+    format == FORMAT || format == LEGACY_FORMAT
+}
+
 fn validate(envelope: ReadEnvelope) -> Result<ReadEnvelope, Error> {
-    if envelope.format != FORMAT {
+    if !is_known_format(&envelope.format) {
         return Err(Error::InvalidFwfFormat(envelope.format));
     }
     if envelope.version > VERSION {
@@ -85,7 +94,7 @@ fn validate(envelope: ReadEnvelope) -> Result<ReadEnvelope, Error> {
 }
 
 fn validate_metadata(envelope: &MetadataEnvelope) -> Result<(), Error> {
-    if envelope.format != FORMAT {
+    if !is_known_format(&envelope.format) {
         return Err(Error::InvalidFwfFormat(envelope.format.clone()));
     }
     if envelope.version > VERSION {

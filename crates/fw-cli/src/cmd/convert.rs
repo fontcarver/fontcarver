@@ -13,7 +13,7 @@ use fw_cli::Error;
 
 #[derive(Debug, ClapArgs)]
 pub(crate) struct Args {
-    /// Font, UFO, designspace, or FontWorkshop document to read.
+    /// Font, UFO, designspace, or Font Cutter document to read.
     pub(crate) input: PathBuf,
     /// Destination path; the extension selects the output format.
     pub(crate) output: PathBuf,

@@ -1,4 +1,4 @@
-//! Reading sfnt and web-font containers into FontWorkshop's document model.
+//! Reading sfnt and web-font containers into Font Cutter's document model.
 
 #![warn(missing_docs)]
 

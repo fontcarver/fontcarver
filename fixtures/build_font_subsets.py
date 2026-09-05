@@ -40,7 +40,7 @@ COMMON_OPTIONS = [
 
 
 def download(url: str, destination: Path) -> None:
-    request = urllib.request.Request(url, headers={"User-Agent": "FontWorkshop fixtures"})
+    request = urllib.request.Request(url, headers={"User-Agent": "Font Cutter fixtures"})
     with urllib.request.urlopen(request, timeout=60) as response:
         destination.write_bytes(response.read())
 
@@ -126,7 +126,7 @@ def validate() -> None:
 
 
 def main() -> None:
-    with tempfile.TemporaryDirectory(prefix="fontworkshop-fixtures-") as temp:
+    with tempfile.TemporaryDirectory(prefix="fontcutter-fixtures-") as temp:
         temp_dir = Path(temp)
         source_sans = temp_dir / "SourceSans3-Regular.otf"
         source_serif = temp_dir / "SourceSerif4-Regular.otf"

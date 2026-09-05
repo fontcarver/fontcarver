@@ -28,7 +28,7 @@ fn fwf_plain_and_gzip_round_trip_semantically() {
     assert_eq!(fwf::read(&disguised_gzip).unwrap(), expected);
 
     let json: serde_json::Value = serde_json::from_slice(&fs::read(plain).unwrap()).unwrap();
-    assert_eq!(json["format"], "fontworkshop");
+    assert_eq!(json["format"], "fontcutter");
     assert_eq!(json["version"], 1);
     assert!(json.get("font").is_some());
 }
@@ -66,7 +66,7 @@ fn reader_accepts_unknown_fields_and_rejects_newer_versions() {
     fs::write(
         &compatible,
         serde_json::to_vec(&serde_json::json!({
-            "format": "fontworkshop",
+            "format": "fontcutter",
             "version": 1,
             "font": font,
             "futureField": true
@@ -79,7 +79,7 @@ fn reader_accepts_unknown_fields_and_rejects_newer_versions() {
     fs::write(
         &future,
         serde_json::to_vec(&serde_json::json!({
-            "format": "fontworkshop",
+            "format": "fontcutter",
             "version": 2,
             "font": test_font()
         }))
@@ -87,6 +87,30 @@ fn reader_accepts_unknown_fields_and_rejects_newer_versions() {
     )
     .unwrap();
     assert!(fwf::read(&future).is_err());
+}
+
+#[test]
+fn reader_accepts_the_pre_rename_format_tag() {
+    let dir = temp_dir("legacy-format-tag");
+    let legacy = dir.join("legacy.fwf");
+    let expected = test_font();
+    fs::write(
+        &legacy,
+        serde_json::to_vec(&serde_json::json!({
+            "format": "fontworkshop",
+            "version": 1,
+            "font": serde_json::to_value(&expected).unwrap()
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(fwf::read(&legacy).unwrap(), expected);
+
+    // Saving the document again re-stamps it with the current tag.
+    fwf::write(&legacy, &expected).unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&fs::read(&legacy).unwrap()).unwrap();
+    assert_eq!(json["format"], "fontcutter");
 }
 
 #[test]

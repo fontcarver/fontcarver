@@ -261,9 +261,7 @@ fn extras_are_compact_first_class_and_not_duplicated_in_ufo_lib() {
     let output = temp.path().join("Extras.ufo");
     write_ufo(&font, &master_id, &output, &UfoWriteOptions::default()).unwrap();
     let written = norad::Font::load(&output).unwrap();
-    let extra = written.lib["dev.fontworkshop.extra"]
-        .as_dictionary()
-        .unwrap();
+    let extra = written.lib["com.fontcutter.extra"].as_dictionary().unwrap();
     let packed = extra["tt_indices"].as_string();
     assert!(packed.is_some());
 
@@ -310,11 +308,11 @@ fn extras_are_compact_first_class_and_not_duplicated_in_ufo_lib() {
         .lib
         .get("ufo.lib")
         .and_then(serde_json::Value::as_object)
-        .is_some_and(|lib| lib.contains_key("dev.fontworkshop.extra")));
+        .is_some_and(|lib| lib.contains_key("com.fontcutter.extra")));
 }
 
 #[test]
-fn pristine_ufo_does_not_gain_an_empty_fontworkshop_extra() {
+fn pristine_ufo_does_not_gain_an_empty_fontcutter_extra() {
     let font = read_ufo(&fw_fixtures::ufo_path("Minimal.ufo")).unwrap();
     let temp = tempfile::tempdir().unwrap();
     let output = temp.path().join("Pristine.ufo");
@@ -327,7 +325,7 @@ fn pristine_ufo_does_not_gain_an_empty_fontworkshop_extra() {
     .unwrap();
 
     let written = norad::Font::load(output).unwrap();
-    assert!(!written.lib.contains_key("dev.fontworkshop.extra"));
+    assert!(!written.lib.contains_key("com.fontcutter.extra"));
 }
 
 #[test]

@@ -1,4 +1,4 @@
-//! Paths to FontWorkshop's committed and optional external test fonts.
+//! Paths to Font Cutter's committed and optional external test fonts.
 
 #![warn(missing_docs)]
 

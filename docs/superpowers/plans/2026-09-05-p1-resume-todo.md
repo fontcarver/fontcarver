@@ -1,4 +1,4 @@
-# FontWorkshop — resume TODO (written 2026-09-05, session paused by the user)
+# Font Cutter — resume TODO (written 2026-09-05, session paused by the user)
 
 Authoritative state lives in the SDD ledger `.superpowers/sdd/2026-09-03-p1-outline-editing/progress.md`
 (snapshot copies in `docs/superpowers/ledgers/2026-09-03-p1-outline-editing/`). This file is the human-readable

@@ -1,8 +1,9 @@
 {
-  "name": "fontworkshop-app",
+  "name": "fontcutter-app",
   "private": true,
   "version": "0.1.0",
   "license": "MIT OR Apache-2.0",
+  "homepage": "https://fontcutter.com",
   "type": "module",
   "scripts": {
     "dev": "vite --port 1420 --strictPort",

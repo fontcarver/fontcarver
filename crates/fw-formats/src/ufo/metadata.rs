@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use super::value::{dict_to_json, json_to_dict};
 use crate::Error;
 
-pub(crate) const IDENTIFIERS_KEY: &str = "dev.fontworkshop.ufo.identifiers";
+pub(crate) const IDENTIFIERS_KEY: &str = "com.fontcutter.ufo.identifiers";
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub(crate) struct ObjectMetadata {

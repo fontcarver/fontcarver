@@ -1,4 +1,4 @@
-//! Preservation of FontWorkshop data that UFO cannot represent.
+//! Preservation of Font Cutter data that UFO cannot represent.
 
 use std::{collections::HashSet, path::Path, str::FromStr};
 
@@ -9,7 +9,7 @@ use plist::Value;
 use super::value::json_to_plist;
 use crate::Error;
 
-pub(crate) const EXTRA_KEY: &str = "dev.fontworkshop.extra";
+pub(crate) const EXTRA_KEY: &str = "com.fontcutter.extra";
 
 pub(crate) fn copy_data_and_images(
     font: &Font,

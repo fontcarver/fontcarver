@@ -48,11 +48,11 @@ pub enum Error {
     /// The path is not a supported document format.
     #[error("unsupported document format: `{0}`")]
     UnsupportedFormat(PathBuf),
-    /// The input is not a FontWorkshop document.
-    #[error("invalid FontWorkshop document format `{0}`")]
+    /// The input is not a Font Cutter document.
+    #[error("invalid Font Cutter document format `{0}`")]
     InvalidFwfFormat(String),
-    /// The input requires a newer version of FontWorkshop.
-    #[error("unsupported FontWorkshop document version {0}")]
+    /// The input requires a newer version of Font Cutter.
+    #[error("unsupported Font Cutter document version {0}")]
     UnsupportedFwfVersion(u32),
     /// The sfnt reader is not available in this checkout.
     #[error("sfnt opening is unavailable until fw-sfnt lands")]

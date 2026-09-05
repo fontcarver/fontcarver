@@ -18,7 +18,7 @@ pub enum ExportFormat {
     Woff,
     /// WOFF 2 containing a TrueType-flavored sfnt.
     Woff2,
-    /// FontWorkshop's native document format; serialized by `fw-doc`, not this crate.
+    /// Font Cutter's native document format; serialized by `fw-doc`, not this crate.
     Fwf,
 }
 

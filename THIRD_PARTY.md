@@ -1,6 +1,6 @@
 # Third-party notices
 
-FontWorkshop itself is licensed `MIT OR Apache-2.0` (see `LICENSE-MIT`,
+Font Cutter itself is licensed `MIT OR Apache-2.0` (see `LICENSE-MIT`,
 `LICENSE-APACHE` and `docs/licensing.md`). This file records everything in the
 repository that comes from somewhere else: adapted source code, test-font
 fixtures, and the licenses of the dependency graph.
@@ -9,7 +9,7 @@ fixtures, and the licenses of the dependency graph.
 
 ## 1. FontForge
 
-FontForge is FontWorkshop's behavioural and format reference. The `fontforge/`
+FontForge is Font Cutter's behavioural and format reference. The `fontforge/`
 directory is a local research checkout: it is listed in `.gitignore`, is never
 committed, is never linked, embedded or shipped, and is not part of any build.
 The research written from it lives in `docs/research/*.md`.
@@ -17,7 +17,7 @@ The research written from it lives in `docs/research/*.md`.
 FontForge as a whole is distributed under the GPLv3-or-later, but per
 `fontforge/LICENSE` the large majority of its source — written by George Williams
 between 2000 and 2012 — is under the 3-clause ("revised") BSD license, and each
-file's own header is authoritative. FontWorkshop may adapt code only from
+file's own header is authoritative. Font Cutter may adapt code only from
 revised-BSD files, with attribution; GPL-only files are re-implemented from
 specifications or observed behaviour without copying. See `docs/licensing.md` §3.
 
@@ -66,15 +66,15 @@ with later contributors appended where applicable (for example
 `Copyright (C) 2000-2012 by George Williams, 2021 by Linus Romer`). Any adaptation
 listed in §1.2 reproduces the exact notice of the file it came from. Per the
 license's third clause, neither George Williams nor any other FontForge author
-endorses FontWorkshop; see the trademark note in `docs/licensing.md` §4.
+endorses Font Cutter; see the trademark note in `docs/licensing.md` §4.
 
-### 1.2 FontWorkshop files that adapt FontForge code
+### 1.2 Font Cutter files that adapt FontForge code
 
-| FontWorkshop file | FontForge source file | License in that file's header |
+| Font Cutter file | FontForge source file | License in that file's header |
 | --- | --- | --- |
 | _(none)_ | — | — |
 
-**As of 2026-09-04 no FontWorkshop source file contains code adapted from
+**As of 2026-09-04 no Font Cutter source file contains code adapted from
 FontForge.** The repository was surveyed with
 `grep -rn -i "fontforge" crates/ app/src src-tauri` and with a scan for FontForge
 identifiers (`SplineChar`, `SplineFont`, `SplineSet`, `SplinePoint`, `StemInfo`,
@@ -107,8 +107,8 @@ of the Rust font stack.
 
 ## 2. Test-font fixtures
 
-Fixtures are data aggregated with FontWorkshop, not part of it; their licenses do
-not affect FontWorkshop's own license. Sources and hashes are in
+Fixtures are data aggregated with Font Cutter, not part of it; their licenses do
+not affect Font Cutter's own license. Sources and hashes are in
 `fixtures/README.md`. The license column below was verified from each font's own
 `name` table (name ID 13 "license description" / 14 "license URL", falling back to
 name ID 0 "copyright") rather than taken on trust.
@@ -126,7 +126,7 @@ name ID 0 "copyright") rather than taken on trust.
 | `SourceSerif4Min.otf` | SIL Open Font License 1.1 | name ID 13 identifies OFL 1.1 and name ID 14 is <http://scripts.sil.org/OFL>; name ID 0 identifies Adobe and Reserved Font Name `Source`; the modified subset's primary family is `FontWorkshop CFF Serif Fixture` |
 
 `fixtures/ufo/Minimal.ufo` is a hand-written 3-glyph UFO created for this project
-and is covered by FontWorkshop's own license.
+and is covered by Font Cutter's own license.
 
 All committed font fixtures are now under licenses allowed by
 `docs/licensing.md` §5: SIL OFL 1.1 or the Bitstream Vera/DejaVu license. The full
@@ -196,11 +196,11 @@ No package is missing a `license` field. Every entry is on the allowed list in
 
 Five crates are MPL-2.0. MPL-2.0 is **file-level** copyleft: its obligations
 attach to the MPL-licensed files themselves, and §3.3 explicitly permits
-distributing a Larger Work under other terms. FontWorkshop uses all five
+distributing a Larger Work under other terms. Font Cutter uses all five
 unmodified, as ordinary crates.io dependencies, and modifies none of their files,
 so nothing is triggered beyond keeping their source available (which crates.io
 does) and this notice. **Ruled acceptable.** All five are transitive, none is
-chosen directly by FontWorkshop:
+chosen directly by Font Cutter:
 
 | Crate | Version | Why it is in the graph |
 | --- | --- | --- |
@@ -212,7 +212,7 @@ chosen directly by FontWorkshop:
 
 #### LGPL mention
 
-`r-efi` 5.3.0 and 6.0.0 are `MIT OR Apache-2.0 OR LGPL-2.1-or-later`. FontWorkshop
+`r-efi` 5.3.0 and 6.0.0 are `MIT OR Apache-2.0 OR LGPL-2.1-or-later`. Font Cutter
 takes the MIT/Apache-2.0 branch; the LGPL branch is not exercised. **Not a
 concern.** (`r-efi` is a UEFI target-support crate pulled in by the standard
 library's dependency set; it is not linked on Linux/macOS/Windows builds.)

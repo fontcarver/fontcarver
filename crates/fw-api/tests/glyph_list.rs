@@ -253,10 +253,8 @@ fn page_params(doc: &serde_json::Value, offset: u32, limit: u32) -> serde_json::
 }
 
 fn test_config_dir(label: &str) -> std::path::PathBuf {
-    let dir = std::env::temp_dir().join(format!(
-        "fontworkshop-fw-api-{label}-{}",
-        std::process::id()
-    ));
+    let dir =
+        std::env::temp_dir().join(format!("fontcutter-fw-api-{label}-{}", std::process::id()));
     fs::remove_dir_all(&dir).ok();
     dir
 }

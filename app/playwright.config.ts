@@ -42,7 +42,7 @@ const devserver =
  *
  * Preferences and crash-recovery snapshots live under it, so the suite is given
  * one of its own inside `target/`: a snapshot an editing spec leaves behind
- * cannot reach the developer's own FontWorkshop, and "a clean launch" means the
+ * cannot reach the developer's own Font Cutter, and "a clean launch" means the
  * same thing on a machine that has run the suite before as on one that has not.
  */
 const configDir = `${repoRoot}target/e2e-config-${apiPort}`

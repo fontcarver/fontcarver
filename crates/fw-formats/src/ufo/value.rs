@@ -6,7 +6,7 @@ use serde_json::{Map, Number};
 
 use crate::Error;
 
-const TYPE_KEY: &str = "$fontworkshop.plist.type";
+const TYPE_KEY: &str = "$fontcutter.plist.type";
 const VALUE_KEY: &str = "value";
 
 pub(crate) fn dict_to_json(dictionary: &Dictionary) -> Result<serde_json::Value, Error> {

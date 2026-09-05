@@ -1,4 +1,4 @@
-//! Thin Tauri shell for the FontWorkshop frontend.
+//! Thin Tauri shell for the Font Cutter frontend.
 
 use std::sync::Arc;
 
@@ -13,7 +13,7 @@ pub mod error;
 
 pub use error::Error;
 
-/// Starts the FontWorkshop desktop application.
+/// Starts the Font Cutter desktop application.
 ///
 /// # Errors
 ///

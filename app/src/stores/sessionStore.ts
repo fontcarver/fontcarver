@@ -11,7 +11,7 @@ import { activeDocId, reportError, tabId, useUiStore } from './uiStore'
 /** File extensions the kernel accepts as native document save targets. */
 const NATIVE_EXTENSIONS = ['.fwf', '.fwf.gz']
 
-/** Whether a path is a native FontWorkshop document the kernel can save onto. */
+/** Whether a path is a native Font Cutter document the kernel can save onto. */
 export function isNativeDocumentPath(path: string | null): boolean {
   const lower = path?.toLowerCase() ?? ''
   return NATIVE_EXTENSIONS.some((extension) => lower.endsWith(extension))

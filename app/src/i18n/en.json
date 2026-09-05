@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "FontWorkshop",
+    "name": "Font Cutter",
     "tagline": "A workshop for outline, bitmap and variable fonts."
   },
   "common": {
@@ -89,7 +89,7 @@
     },
     "help": {
       "shortcuts": "Keyboard Shortcuts",
-      "about": "About FontWorkshop"
+      "about": "About Font Cutter"
     },
     "reason": {
       "noDocument": "No font is open",
@@ -133,9 +133,9 @@
       "title": "Save As",
       "label": "Document path",
       "placeholder": "/path/to/font.fwf",
-      "hint": "FontWorkshop documents are saved as .fwf or .fwf.gz.",
+      "hint": "Font Cutter documents are saved as .fwf or .fwf.gz.",
       "confirm": "Save",
-      "filter": "FontWorkshop document"
+      "filter": "Font Cutter document"
     },
     "closeDirty": {
       "title": "Unsaved changes",
@@ -273,7 +273,7 @@
     },
     "recovery": {
       "title": "Recover Documents",
-      "intro": "FontWorkshop found unsaved work from an earlier session.",
+      "intro": "Font Cutter found unsaved work from an earlier session.",
       "untitled": "Untitled document",
       "savedAt": "Snapshot from {{time}}",
       "recover": "Recover",
@@ -387,7 +387,7 @@
     "saved": "Saved {{name}}",
     "opened": "Opened {{name}}",
     "closed": "Closed {{name}}",
-    "about": "FontWorkshop {{version}} — kernel transport: {{kind}}",
+    "about": "Font Cutter {{version}} — kernel transport: {{kind}}",
     "copiedNames_one": "Copied {{count, number}} glyph name",
     "copiedNames_other": "Copied {{count, number}} glyph names",
     "copyFailed": "Could not write to the clipboard",

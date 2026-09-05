@@ -1,4 +1,4 @@
-# FontWorkshop app
+# Font Cutter app
 
 Generate the Rust-owned API contract before checking or running the frontend:
 

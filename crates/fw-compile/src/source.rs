@@ -50,7 +50,7 @@ pub struct FwSource {
 }
 
 impl FwSource {
-    /// Copies a FontWorkshop font into a source selecting one master.
+    /// Copies a Font Cutter font into a source selecting one master.
     pub fn from_font(
         font: &Font,
         master: &MasterId,

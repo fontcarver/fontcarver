@@ -1403,6 +1403,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "fontcutter"
+version = "0.1.0"
+dependencies = [
+ "fw-api",
+ "fw-doc",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "thiserror 2.0.20",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "fontdrasil"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1457,23 +1474,6 @@ dependencies = [
  "thiserror 2.0.20",
  "tracing",
  "write-fonts",
-]
-
-[[package]]
-name = "fontworkshop"
-version = "0.1.0"
-dependencies = [
- "fw-api",
- "fw-doc",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "thiserror 2.0.20",
- "tokio",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]

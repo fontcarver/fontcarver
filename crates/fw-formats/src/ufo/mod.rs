@@ -28,7 +28,7 @@ impl Default for UfoWriteOptions {
     }
 }
 
-/// Reads one UFO as a single-master FontWorkshop document.
+/// Reads one UFO as a single-master Font Cutter document.
 pub fn read_ufo(path: &Path) -> Result<Font, Error> {
     let source = norad::Font::load_requested_data(path, norad::DataRequest::all())?;
     convert::from_norad(&source, path)

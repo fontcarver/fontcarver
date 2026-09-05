@@ -131,6 +131,6 @@ pub(crate) fn config_dir(api: &Api) -> Result<PathBuf, ApiError> {
         return Ok(PathBuf::from(path));
     }
     dirs::config_dir()
-        .map(|path| path.join("fontworkshop"))
+        .map(|path| path.join("fontcutter"))
         .ok_or_else(|| ApiError::internal("could not determine the user config directory"))
 }

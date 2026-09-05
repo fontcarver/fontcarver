@@ -1,4 +1,4 @@
-//! FontWorkshop's persistent document model, invariants, and read-only queries.
+//! Font Cutter's persistent document model, invariants, and read-only queries.
 
 #![warn(missing_docs)]
 
