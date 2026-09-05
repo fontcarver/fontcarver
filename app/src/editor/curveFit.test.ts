@@ -172,4 +172,13 @@ describe('fitSamples', () => {
       ),
     ).toBeNull()
   })
+  it('keeps a quadratic layer inside the same total tolerance', () => {
+    // The stroke is fitted twice on a quadratic layer — samples to cubics,
+    // cubics to quadratics — and the two errors add, so the budget is split
+    // rather than spent twice.
+    const samples = noisyCircle()
+    const contour = fitContour(samples, true, 'quadratic', 1)
+    const path = contourToPath(contour as NonNullable<typeof contour>)
+    expect(maxDeviation(path, samples)).toBeLessThan(1)
+  })
 })

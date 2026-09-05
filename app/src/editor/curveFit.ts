@@ -495,6 +495,17 @@ export function fitSamples(
   return { segments, smooth }
 }
 
+/**
+ * How the tolerance is split on a quadratic layer.
+ *
+ * A quadratic layer is fitted twice — samples to cubics, cubics to quadratics
+ * — and the two errors add, so each gets a share rather than the whole budget.
+ * The conversion takes the larger share because its bound falls by eight for
+ * every subdivision: giving it room costs a fraction of a segment, while
+ * giving the cubic fit room costs whole segments.
+ */
+const CUBIC_SHARE = 0.4
+
 /** The contour a freehand stroke commits as: one fitted path, no kernel pass. */
 export function fitContour(
   samples: readonly Point2[],
@@ -502,13 +513,15 @@ export function fitContour(
   curves: LayerCurves,
   error = DEFAULT_FIT_ERROR,
 ): Contour | null {
-  const fitted = fitSamples(samples, error)
+  const quadratic = curves === 'quadratic'
+  const fitError = quadratic ? error * CUBIC_SHARE : error
+  const quadError = error * (1 - CUBIC_SHARE)
+  const fitted = fitSamples(samples, fitError)
   if (fitted.segments.length === 0) return null
   const segments: PathSegment[] = []
   const smooth: boolean[] = []
   fitted.segments.forEach((segment, index) => {
-    const parts =
-      curves === 'quadratic' ? cubicToQuadratics(segment, error) : [segment]
+    const parts = quadratic ? cubicToQuadratics(segment, quadError) : [segment]
     parts.forEach((part, position) => {
       segments.push(part)
       // A quadratic run stands in for one cubic, so its inner joins are
