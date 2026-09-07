@@ -306,6 +306,7 @@ describe('GlyphView', () => {
   })
 
   it("uses the selected layer's master and clears it on toolbar changes", async () => {
+    useUiStore.getState().openTab({ kind: 'glyph', doc: 1, gid: 42 })
     const user = userEvent.setup()
     const bold = makeLayer({
       id: 'bold-layer',
