@@ -62,9 +62,11 @@ StandardEncoding and non-hint Private DICT values. The DejaVu WOFF2 contains
 
 These fonts are intentionally not committed. `fc_fixtures::external` returns
 their paths only when they exist on the current machine, so dependent tests can
-skip cleanly.
+skip cleanly. Source Han Sans uses `FC_SOURCE_HAN_SANS` when set; otherwise it
+is resolved from the sibling `SourceHanSanOTF` checkout beside the primary
+Font Cutter repository, including when a test runs from a linked worktree.
 
 | Key | Expected path | Purpose |
 | --- | --- | --- |
-| `source-han-sans-sc-otf` | `/home/chen/githubprojects/pixelfonts/SourceHanSanOTF/SimplifiedChinese/SourceHanSansSC-Regular.otf` | Large Source Han Sans SC static OTF performance and coverage tests |
+| `source-han-sans-sc-otf` | `$FC_SOURCE_HAN_SANS` or `<primary-repo-parent>/SourceHanSanOTF/SimplifiedChinese/SourceHanSansSC-Regular.otf` | Large Source Han Sans SC static OTF performance and coverage tests |
 | `fontforge-tests` | `<workspace>/fontforge/tests/fonts` | Broader compatibility corpus from the local FontForge checkout |
