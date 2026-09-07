@@ -32,8 +32,8 @@ verify both global and per-glyph instruction removal.
 
 The Noto shaping round trip passed. Compiled model glyph names are retained
 before large-font `post` format 3 removes font-file names; a focused regression
-shapes `fi` into an unencoded `f_i` and verifies its model identity. This does
-not substitute for the pending real Source Han export measurement.
+shapes `fi` into an unencoded `f_i` and verifies its model identity. Real Source
+Han import also passed the Adobe/Identity CID and `uni4E00` identity regression.
 
 ## Performance evidence
 
@@ -44,7 +44,8 @@ were active, rather than in an isolated benchmark environment.
 | --- | --- | --- | --- |
 | Rust API `doc.edit_apply`, release | median 0.556 ms; p95 0.602 ms; max 1.411 ms | p95 ≤ 4 ms | Passed |
 | DejaVu Sans TTF export, release | 0.582 s | ≤ 5 s | Passed |
-| Source Han Sans export, release | Pending actual execution | ≤ 60 s | Pending |
+| Source Han Sans open, release | 0.900 s | < 3 s | Passed |
+| Source Han Sans export, release | 58.697 s | ≤ 60 s | Passed |
 | Pointer handler through synchronous repaint, 300 points | Pending browser measurement | ≤ 8 ms | Pending |
 
 The API gate uses exactly 20,000 populated glyphs: one 300-point target and
@@ -59,6 +60,12 @@ Run it explicitly with `cargo test --release -p fc-api --test edit_performance
 The existing canvas `__fwPaint` instrumentation measures renderer duration
 only. It must not be presented as the complete pointer-to-paint measurement.
 
+Source Han used the actual 16,529,832-byte external OTF, resolved through the
+portable fixture lookup in a fresh linked worktree. The export gate verified
+65,535 glyphs and the U+4E00 cmap entry. Neither measurement early-returned.
+Export passed with only 1.303 seconds of headroom; this is a narrow margin on
+this machine, not a guarantee for every development environment.
+
 ## UFO, UI and desktop
 
 Eight `fc-formats` UFO write tests passed, including semantic, incremental and
@@ -72,10 +79,10 @@ automated browser or build evidence.
 Detailed commands and outputs are recorded in the tracked P1 ledger snapshots:
 `task-12-kernel-report.md`, `task-12-kernel-review.md`,
 `task-9b-shaping-identity-report.md`, `task-9b-kernel-review.md` and
-`fixture-path-resume-report.md`.
+`fixture-path-resume-report.md` and `task-12-cjk-report.md`.
 
 - Finish T8 scoped review and T9b UI implementation/review.
-- Execute Source Han release and integrated browser/desktop acceptance.
+- Execute integrated browser/desktop acceptance.
 - Finish T13 translation and a separate QA pass.
 - Run whole-branch review, resolve its P1 findings and record final checks.
 - Stop after P1 and hand off the branch; merging to `main` is a separate user decision.
