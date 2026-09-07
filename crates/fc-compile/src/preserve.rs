@@ -286,15 +286,19 @@ fn order_from_matching_face(bytes: &[u8], compiled_order: &[GlyphName]) -> Optio
 }
 
 fn face_with_order<'a>(bytes: &'a [u8], expected: &[GlyphName]) -> Option<FontRef<'a>> {
+    let mut matching = None;
     for index in 0..u32::from(u16::MAX) {
         let Ok(face) = FontRef::from_index(bytes, index) else {
             break;
         };
         if imported_glyph_order(&face).as_deref() == Some(expected) {
-            return Some(face);
+            if matching.is_some() {
+                return None;
+            }
+            matching = Some(face);
         }
     }
-    None
+    matching
 }
 
 fn imported_glyph_order(face: &FontRef<'_>) -> Option<Vec<GlyphName>> {
