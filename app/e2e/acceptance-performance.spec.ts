@@ -102,11 +102,14 @@ test('300-point drag repaints synchronously within eight milliseconds', async ({
             }
             __fwPaint?: {
               samples: number[]
+              count: number
               reset: () => void
             }
           }
           const editor = globals.__fwEditor
           if (!editor) throw new Error('missing dev editor handle')
+          const paintStats = globals.__fwPaint
+          if (!paintStats) throw new Error('missing dev paint statistics')
           const first = setup.first
           const target = canvas as unknown as {
             getBoundingClientRect: () => {
@@ -151,16 +154,19 @@ test('300-point drag repaints synchronously within eight milliseconds', async ({
           const pointerDown = performance.now() - downStarted
           if (!editor.dragging)
             throw new Error('pointer-down did not start a drag')
-          globals.__fwPaint?.reset()
+          paintStats.reset()
 
           let previousX = first.x
           let previousY = first.y
           const move = (sample: number): number => {
             const dx = 4 + sample * 0.03
             const dy = 2 + sample * 0.01
+            const paintsBefore = paintStats.count
             const started = performance.now()
             dispatch('pointermove', dx, dy)
             const elapsed = performance.now() - started
+            if (paintStats.count <= paintsBefore)
+              throw new Error(`sample ${sample} did not repaint synchronously`)
             const current = editor.frame().contours?.[0]?.points[0]
             if (!current) throw new Error('drag lost its preview')
             if (current.x === previousX && current.y === previousY)
@@ -176,13 +182,14 @@ test('300-point drag repaints synchronously within eight milliseconds', async ({
             move(setup.warm + index + 1),
           )
           const final = editor.frame().contours?.[0]?.points[0]
-          const paint = [...(globals.__fwPaint?.samples ?? [])]
+          const paint = [...paintStats.samples]
+          const paintCount = paintStats.count
           dispatch(
             'pointerup',
             4 + (setup.warm + setup.measured) * 0.03,
             2 + (setup.warm + setup.measured) * 0.01,
           )
-          return { pointerDown, samples, paint, final }
+          return { pointerDown, samples, paint, paintCount, final }
         },
         { warm: WARM_SAMPLES, measured: MEASURED_SAMPLES, first },
       )
@@ -201,12 +208,18 @@ test('300-point drag repaints synchronously within eight milliseconds', async ({
       .toEqual([final.x, final.y])
 
     const sorted = [...measurement.samples].sort((a, b) => a - b)
+    expect(measurement.samples).toHaveLength(MEASURED_SAMPLES)
+    expect(measurement.paintCount).toBeGreaterThanOrEqual(
+      WARM_SAMPLES + MEASURED_SAMPLES,
+    )
+    expect(measurement.paint).not.toHaveLength(0)
     const median = percentile(sorted, 50)
     const p95 = percentile(sorted, 95)
     const max = sorted.at(-1) ?? 0
+    const overBudget = measurement.samples.filter((sample) => sample > 8).length
     const paint = [...measurement.paint].sort((a, b) => a - b)
     console.log(
-      `pointer-to-paint 300 points/${MEASURED_SAMPLES} samples: median=${median.toFixed(3)}ms p95=${p95.toFixed(3)}ms max=${max.toFixed(3)}ms pointerDown=${measurement.pointerDown.toFixed(3)}ms rendererP95=${percentile(paint, 95).toFixed(3)}ms`,
+      `pointer-to-paint 300 points/${MEASURED_SAMPLES} samples: median=${median.toFixed(3)}ms p95=${p95.toFixed(3)}ms max=${max.toFixed(3)}ms over8=${overBudget} pointerDown=${measurement.pointerDown.toFixed(3)}ms rendererP95=${percentile(paint, 95).toFixed(3)}ms`,
     )
     expect(p95).toBeLessThanOrEqual(8)
     expect(final.x).not.toBe(before.contours[0]?.points[0]?.x)
