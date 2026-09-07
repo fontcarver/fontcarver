@@ -1,0 +1,140 @@
+.strip {
+  display: flex;
+  height: 96px;
+  min-width: 0;
+  flex: none;
+  flex-direction: column;
+  border-top: 1px solid var(--color-border);
+  color-scheme: light;
+  background: Canvas;
+  color: CanvasText;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+.light {
+  color-scheme: light;
+}
+
+.collapsed {
+  height: var(--control-height);
+}
+
+.header {
+  display: flex;
+  height: var(--control-height);
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  border-bottom: 1px solid color-mix(in srgb, currentcolor 18%, transparent);
+  background: color-mix(in srgb, CanvasText 5%, Canvas);
+}
+
+.title {
+  font-size: var(--text-size-xs);
+  font-weight: var(--text-weight-strong);
+}
+
+.status {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-warning);
+  font-size: var(--text-size-xs);
+}
+
+.failed {
+  color: var(--color-danger);
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.iconButton {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+}
+
+.iconButton:hover {
+  background: color-mix(in srgb, currentcolor 10%, transparent);
+}
+
+.iconButton:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 0;
+}
+
+.previews {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.region {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid color-mix(in srgb, currentcolor 14%, transparent);
+}
+
+.region:last-child {
+  border-right: 0;
+}
+
+.sizeLabel {
+  position: absolute;
+  z-index: 1;
+  top: var(--space-1);
+  left: var(--space-1);
+  padding: 1px var(--space-1);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, Canvas 84%, transparent);
+  color: color-mix(in srgb, CanvasText 72%, Canvas);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-xs);
+  pointer-events: none;
+}
+
+.scroll {
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.canvas {
+  display: block;
+  max-width: none;
+  color: inherit;
+}
+
+@media (max-width: 520px) {
+  .previews {
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+    overflow-x: auto;
+  }
+}
