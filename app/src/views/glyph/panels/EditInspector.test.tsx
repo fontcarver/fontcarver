@@ -11,6 +11,10 @@ import {
 } from '../../../api'
 import { setCommandErrorReporter } from '../../../shell/commands'
 import { initialEditorState, useEditorStore } from '../../../stores/editorStore'
+import {
+  initialDocumentState,
+  useDocumentStore,
+} from '../../../stores/documentStore'
 import { initialUiState, useUiStore } from '../../../stores/uiStore'
 import {
   makeCell,
@@ -29,6 +33,7 @@ import {
 } from '../../../test/mockTransport'
 import { selectionOf, type Selection } from '../../../editor/selection'
 import { buildScene } from '../glyphScene'
+import { measurementGuideKey } from '../guideIdentity'
 
 import { EditInspector } from './EditInspector'
 
@@ -116,6 +121,7 @@ function allApplied(mock: MockTransport): ApplyParams[] {
 beforeEach(() => {
   localStorage.clear()
   useUiStore.setState(initialUiState())
+  useDocumentStore.setState(initialDocumentState())
   useEditorStore.setState(initialEditorState())
 })
 
@@ -379,6 +385,22 @@ describe('Layers panel', () => {
 
     expect(useEditorStore.getState().editedLayer).toBe('bg-1')
   })
+
+  it("keeps the document master aligned with another master's layer", async () => {
+    const user = userEvent.setup()
+    transport()
+    const bold = makeLayer({
+      id: 'bold-layer',
+      kind: { Master: 'm2' },
+      name: 'Bold',
+    })
+    show({ layers: [masterLayer, bold] })
+
+    await user.click(screen.getByRole('button', { name: 'Bold' }))
+
+    expect(useEditorStore.getState().editedLayer).toBe('bold-layer')
+    expect(useDocumentStore.getState().byDoc[1]?.master).toBe('m2')
+  })
 })
 
 describe('Components panel', () => {
@@ -530,9 +552,17 @@ describe('Guides panel', () => {
       name: 'Measurement guide',
     })
     await user.click(measures[0] as HTMLElement)
-    expect(useEditorStore.getState().measurementGuides.has('layer:0')).toBe(
-      true,
-    )
+    expect(
+      useEditorStore
+        .getState()
+        .measurementGuides.has(
+          measurementGuideKey(
+            { doc: 1, layer: 'layer-1', master: 'm1' },
+            'layer',
+            0,
+          ),
+        ),
+    ).toBe(true)
   })
 })
 
@@ -578,6 +608,30 @@ describe('Transform panel', () => {
       TransformSelection: { affine: [-1, 0, 0, 1, 600, 0] },
     })
     expect(applied(mock)?.label).toBe('Flip horizontally')
+  })
+
+  it('applies an affine about exact custom-origin coordinates', async () => {
+    const user = userEvent.setup()
+    const mock = transport()
+    show()
+
+    await user.click(screen.getByRole('button', { name: /^Transform/ }))
+    await user.click(screen.getByRole('radio', { name: 'Custom' }))
+    const originX = screen.getByLabelText('Origin X')
+    await user.clear(originX)
+    await user.type(originX, '100{Enter}')
+    const originY = screen.getByLabelText('Origin Y')
+    await user.clear(originY)
+    await user.type(originY, '200{Enter}')
+    const scaleX = screen.getByLabelText('Scale X %')
+    await user.clear(scaleX)
+    await user.type(scaleX, '200{Enter}')
+    await user.click(screen.getByRole('button', { name: 'Apply' }))
+
+    // Doubling x about x=100 maps x to 2x−100; y is unchanged.
+    expect(applied(mock)?.command).toMatchObject({
+      TransformSelection: { affine: [2, 0, 0, 1, -100, 0] },
+    })
   })
 
   it('aligns two selected contours, moving only the one that has to move', async () => {

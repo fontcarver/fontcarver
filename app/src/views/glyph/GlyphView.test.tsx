@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -9,6 +9,7 @@ import {
   useDocumentStore,
 } from '../../stores/documentStore'
 import { initialEditorState, useEditorStore } from '../../stores/editorStore'
+import { forgetFontInfo } from '../../stores/fontInfoCache'
 import { initialUiState, useUiStore } from '../../stores/uiStore'
 import { resetOrders } from '../font/glyphOrder'
 import {
@@ -19,6 +20,7 @@ import {
   makeGlyphDetail,
   makeLayer,
   makeLayerOutline,
+  makeMaster,
   makePoint,
 } from '../../test/fontFixtures'
 import { createMockTransport, makeSummary } from '../../test/mockTransport'
@@ -188,6 +190,91 @@ describe('GlyphView', () => {
     expect(
       fit.compareDocumentPosition(fill) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).not.toBe(0)
+  })
+
+  it("uses the selected layer's master and clears it on toolbar changes", async () => {
+    const user = userEvent.setup()
+    const bold = makeLayer({
+      id: 'bold-layer',
+      kind: { Master: 'm2' },
+      name: 'Bold',
+      width: 700,
+    })
+    const both = makeGlyph({ ...glyph, layers: [layer, bold] })
+    const regularMaster = makeMaster({
+      guides: [
+        {
+          x: 0,
+          y: 500,
+          angle: 0,
+          name: 'regular-guide',
+          locked: false,
+          color: null,
+        },
+      ],
+    })
+    const boldMaster = makeMaster({
+      id: 'm2',
+      name: 'Bold',
+      guides: [
+        {
+          x: 0,
+          y: 600,
+          angle: 0,
+          name: 'bold-guide',
+          locked: false,
+          color: null,
+        },
+      ],
+    })
+    forgetFontInfo(1)
+    const mock = createMockTransport({
+      'glyphs.detail': () => makeGlyphDetail(both),
+      'glyphs.cell': () => makeCell({ gid: 42, name: 'aacute' }),
+      'glyphs.outline': (params) =>
+        params.layer === bold.id
+          ? makeLayerOutline(bold, { master: 'm2' })
+          : makeLayerOutline(layer, { master: 'm1' }),
+      'doc.font_info': () =>
+        makeFontInfoView({ masters: [regularMaster, boldMaster] }),
+    })
+    setTransport(mock)
+    render(
+      <GlyphView
+        summary={makeSummary({
+          masters: [
+            { id: 'm1', name: 'Regular' },
+            { id: 'm2', name: 'Bold' },
+          ],
+        })}
+        gid={42}
+      />,
+    )
+    await screen.findByText('aacute')
+
+    // LayerList performs these two store writes from one row click.
+    act(() => {
+      useEditorStore.getState().setEditedLayer(bold.id)
+      useDocumentStore.getState().setMaster(1, 'm2')
+    })
+    await waitFor(() => {
+      const active = useEditorStore.getState().activeGlyph
+      expect(active?.outline?.layer).toBe(bold.id)
+      expect(active?.master).toBe('m2')
+      expect(active?.masterGuides[0]?.name).toBe('bold-guide')
+    })
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Master' }),
+      'm1',
+    )
+    expect(useEditorStore.getState().editedLayer).toBeNull()
+    await waitFor(() => {
+      const active = useEditorStore.getState().activeGlyph
+      expect(active?.outline?.layer).toBe(layer.id)
+      expect(active?.master).toBe('m1')
+      expect(active?.masterGuides[0]?.name).toBe('regular-guide')
+    })
   })
 
   it('reports a glyph that cannot be loaded', async () => {

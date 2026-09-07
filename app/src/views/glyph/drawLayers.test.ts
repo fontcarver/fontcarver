@@ -361,6 +361,7 @@ describe('drawGuides', () => {
   const guide = (angle: number, name: string | null = null) => ({
     guide: { x: 100, y: 200, angle, name, locked: false, color: null },
     scope: 'layer' as const,
+    index: 0,
   })
 
   it('draws a horizontal guide as a horizontal screen line', () => {

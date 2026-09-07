@@ -10,6 +10,7 @@ import { drawGuides } from './drawGuides'
 import { drawOutline } from './drawOutline'
 import { FALLBACK_GLYPH_THEME } from './glyphTheme'
 import { guideCrossings, guideMeasurements } from './guideMeasure'
+import { measurementGuideKey } from './guideIdentity'
 
 /** One CSS pixel per font unit, origin at canvas (100, 500). */
 function viewportOf(): Viewport {
@@ -114,6 +115,7 @@ describe('guide overlays', () => {
   const guide = {
     guide: { x: 0, y: 100, angle: 0, name: null, locked: false, color: null },
     scope: 'layer' as const,
+    index: 0,
   }
 
   const stem = makeContour([
@@ -163,6 +165,26 @@ describe('guide overlays', () => {
 
     // The horizontal guide at y = 100 crosses the 60-unit stem twice.
     expect(recording.calls('fillText').map((op) => op.args[0])).toEqual(['60'])
+  })
+
+  it('matches measurement markers to the current document and layer', () => {
+    const recording = createRecordingContext()
+    const owner = { doc: 1, layer: 'layer-1', master: 'm1' }
+    drawGuides(
+      recording.ctx,
+      viewportOf(),
+      {
+        guides: [guide],
+        showLabels: false,
+        owner,
+        measurement: new Set([
+          measurementGuideKey({ ...owner, layer: 'other-layer' }, 'layer', 0),
+        ]),
+        contours: [stem],
+      },
+      FALLBACK_GLYPH_THEME,
+    )
+    expect(recording.calls('fillText')).toHaveLength(0)
   })
 })
 

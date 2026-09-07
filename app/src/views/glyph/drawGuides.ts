@@ -13,6 +13,7 @@ import type { Viewport } from '../../canvas/Viewport'
 import type { SceneGuide } from './glyphScene'
 import type { GlyphTheme } from './glyphTheme'
 import { guideMeasurements } from './guideMeasure'
+import { measurementGuideKey, type GuideOwner } from './guideIdentity'
 
 const LABEL_FONT_SIZE = 10
 
@@ -28,8 +29,10 @@ export interface GuidesData {
   showLabels: boolean
   /** Selection keys of the selected guides (`guide:scope:index`). */
   selected?: ReadonlySet<string>
-  /** Keys (`scope:index`) of the guides shown as measurement guides. */
+  /** Owner-scoped keys of the guides shown as measurement guides. */
   measurement?: ReadonlySet<string>
+  /** Ownership used to match session-only measurement markers. */
+  owner?: GuideOwner
   /** The outline the measurement guides are measured against. */
   contours?: readonly Contour[]
 }
@@ -51,9 +54,9 @@ export function drawGuides(
   ctx.textAlign = 'left'
   ctx.textBaseline = 'bottom'
 
-  data.guides.forEach((entry, index) => {
+  data.guides.forEach((entry) => {
     const { guide } = entry
-    const key = `${entry.scope}:${index}`
+    const key = `${entry.scope}:${entry.index}`
     const colour =
       entry.scope === 'master' ? theme.guideGlobal : theme.guideLocal
     const origin = viewport.toScreen({ x: guide.x, y: guide.y })
@@ -73,8 +76,8 @@ export function drawGuides(
       ctx.fillText(guide.name, origin.x + 4, origin.y - 3)
     }
 
-    // The angle knob: a handle a future drag can grab to rotate the guide,
-    // and meanwhile the sign that this guide is the selected one.
+    // Display-only angle marker for the selected guide. Angle editing is
+    // currently numeric in the Guides panel; pointer interaction is deferred.
     if (data.selected?.has(`guide:${key}`)) {
       ctx.setLineDash([])
       ctx.fillStyle = colour
@@ -90,7 +93,10 @@ export function drawGuides(
       ctx.setLineDash([5, 4])
     }
 
-    if (!data.measurement?.has(key) || !data.contours) return
+    const measurementKey = data.owner
+      ? measurementGuideKey(data.owner, entry.scope, entry.index)
+      : key
+    if (!data.measurement?.has(measurementKey) || !data.contours) return
     ctx.setLineDash([])
     ctx.fillStyle = colour
     ctx.textAlign = 'center'

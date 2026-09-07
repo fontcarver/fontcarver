@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { Lock, LockOpen } from 'lucide-react'
 
 import type { Guide } from '../../../api'
 import { NumberField } from '../../../components/NumberField'
@@ -7,6 +8,7 @@ import { setGuideCommand } from '../../../editor/pointCommands'
 import { selectionOf, type GuideScope } from '../../../editor/selection'
 import { useEditorStore } from '../../../stores/editorStore'
 import { commitField } from '../commitField'
+import { measurementGuideKey } from '../guideIdentity'
 
 import styles from './panels.module.css'
 import type { PanelContext } from './panelContext'
@@ -49,6 +51,11 @@ export function GuideRows({ context, scope, guides }: GuideRowsProps) {
     <div className={styles.list}>
       {guides.map((guide, index) => {
         const key = `${scope}:${index}`
+        const measurementKey = measurementGuideKey(
+          { doc: target.doc, layer: target.layer, master },
+          scope,
+          index,
+        )
         const selected = selection.has(`guide:${key}`)
         return (
           <div
@@ -83,14 +90,18 @@ export function GuideRows({ context, scope, guides }: GuideRowsProps) {
               aria-pressed={guide.locked}
               onClick={() => write(index, { ...guide, locked: !guide.locked })}
             >
-              {guide.locked ? '🔒' : '🔓'}
+              {guide.locked ? (
+                <Lock aria-hidden="true" size={14} />
+              ) : (
+                <LockOpen aria-hidden="true" size={14} />
+              )}
             </button>
             <button
               type="button"
               className={styles.chipRemove}
               aria-label={t('panel.guides.measurement')}
-              aria-pressed={measurement.has(key)}
-              onClick={() => toggleMeasurement(key)}
+              aria-pressed={measurement.has(measurementKey)}
+              onClick={() => toggleMeasurement(measurementKey)}
             >
               ⟺
             </button>

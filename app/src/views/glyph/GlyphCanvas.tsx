@@ -208,6 +208,13 @@ export function GlyphCanvas({
       pointerScreen: editing.pointerScreen,
       hoveredComponent: editing.hoveredComponent,
       measurementGuides: current.measurementGuides,
+      guideOwner: source
+        ? {
+            doc: source.doc,
+            layer: source.outline.layer,
+            master: source.master,
+          }
+        : undefined,
     })
     if (import.meta.env.DEV) recordPaint(performance.now() - started)
   }, [controller, viewport])

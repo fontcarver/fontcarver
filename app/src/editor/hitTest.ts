@@ -35,6 +35,8 @@ export const HIT_RADII = {
 export interface ScopedGuide {
   guide: Guide
   scope: GuideScope
+  /** Index inside `scope`, independent of combined scene ordering. */
+  index: number
 }
 
 /** A component's flattened bounds, which is what the pointer can land on. */
@@ -138,11 +140,11 @@ export function hitTest(
   })
 
   const guides: Hit[] = []
-  input.guides.forEach((entry, index) => {
+  input.guides.forEach((entry) => {
     const away = guideDistance(entry.guide, viewport, screen)
     if (away <= HIT_RADII.guide)
       guides.push({
-        target: { kind: 'guide', index, scope: entry.scope },
+        target: { kind: 'guide', index: entry.index, scope: entry.scope },
         point: { x: entry.guide.x, y: entry.guide.y },
         distance: away,
       })

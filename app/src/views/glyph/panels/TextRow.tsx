@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import styles from './panels.module.css'
 
@@ -33,6 +33,7 @@ export function TextRow({
 }: TextRowProps) {
   const [text, setText] = useState(value)
   const [shown, setShown] = useState(value)
+  const cancelBlur = useRef(false)
   if (value !== shown) {
     setShown(value)
     setText(value)
@@ -54,8 +55,15 @@ export function TextRow({
     placeholder,
     onChange: (event: { currentTarget: { value: string } }) =>
       setText(event.currentTarget.value),
-    onBlur: (event: { currentTarget: { value: string } }) =>
-      commit(event.currentTarget.value),
+    onFocus: (event: { currentTarget: { select: () => void } }) =>
+      event.currentTarget.select(),
+    onBlur: (event: { currentTarget: { value: string } }) => {
+      if (cancelBlur.current) {
+        cancelBlur.current = false
+        return
+      }
+      commit(event.currentTarget.value)
+    },
   }
 
   return (
@@ -67,6 +75,8 @@ export function TextRow({
           className={styles.textArea}
           onKeyDown={(event) => {
             if (event.key !== 'Escape') return
+            cancelBlur.current = true
+            event.currentTarget.value = value
             setText(value)
             event.currentTarget.blur()
           }}
@@ -82,6 +92,8 @@ export function TextRow({
               return
             }
             if (event.key !== 'Escape') return
+            cancelBlur.current = true
+            event.currentTarget.value = value
             setText(value)
             event.currentTarget.blur()
           }}

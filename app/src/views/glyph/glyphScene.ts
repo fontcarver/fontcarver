@@ -46,6 +46,8 @@ export interface SceneGuide {
   guide: Guide
   /** Master guides are font-wide; layer guides belong to this glyph alone. */
   scope: 'master' | 'layer'
+  /** Index inside the master or layer guide list. */
+  index: number
 }
 
 /** Everything one glyph tab draws. */
@@ -208,13 +210,15 @@ export function buildScene({
     .filter((path): path is string => path !== null)
 
   const guides: SceneGuide[] = [
-    ...(master?.guides ?? []).map((guide): SceneGuide => ({
+    ...(master?.guides ?? []).map((guide, index): SceneGuide => ({
       guide,
       scope: 'master',
+      index,
     })),
-    ...(layer?.guides ?? []).map((guide): SceneGuide => ({
+    ...(layer?.guides ?? []).map((guide, index): SceneGuide => ({
       guide,
       scope: 'layer',
+      index,
     })),
   ]
 

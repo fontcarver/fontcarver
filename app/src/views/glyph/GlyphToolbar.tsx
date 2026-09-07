@@ -44,6 +44,7 @@ export function GlyphToolbar({
   const setMaster = useDocumentStore((state) => state.setMaster)
   const overlays = useEditorStore((state) => state.overlays)
   const toggleOverlay = useEditorStore((state) => state.toggleOverlay)
+  const setEditedLayer = useEditorStore((state) => state.setEditedLayer)
   const zoom = useEditorStore((state) => state.zoom)
 
   const masterId = view?.master ?? summary.masters[0]?.id ?? ''
@@ -79,7 +80,10 @@ export function GlyphToolbar({
               value: master.id,
               label: master.name,
             }))}
-            onChange={(value) => setMaster(doc, value)}
+            onChange={(value) => {
+              setEditedLayer(null)
+              setMaster(doc, value)
+            }}
           />
         </span>
       </span>

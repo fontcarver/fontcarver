@@ -22,6 +22,7 @@ import { drawRulers } from './drawRulers'
 import { drawUnderlays, NO_UNDERLAY, type UnderlayData } from './drawUnderlays'
 import type { GlyphScene } from './glyphScene'
 import type { GlyphTheme } from './glyphTheme'
+import type { GuideOwner } from './guideIdentity'
 import { NO_TOOL_OVERLAY, type ToolOverlay } from '../../editor/tools/toolTypes'
 
 /** Which overlays the editor is currently showing. */
@@ -74,8 +75,10 @@ export interface RenderGlyphOptions {
   editing?: EditingOverlay
   /** Index of the component the pointer is over, for the locked hatch. */
   hoveredComponent?: number | null
-  /** Guides shown as measurement guides, keyed `scope:index`. */
+  /** Owner-scoped identities of guides shown as measurement guides. */
   measurementGuides?: ReadonlySet<string>
+  /** Document/layer/master identity of the guide lists in this scene. */
+  guideOwner?: GuideOwner
   /** Cursor-HUD text, or `null` when no gesture is running. */
   hud?: string | null
   /** Pointer position in canvas pixels, where the HUD is anchored. */
@@ -130,6 +133,7 @@ export function renderGlyph(
         showLabels: true,
         selected: options.selected,
         measurement: options.measurementGuides,
+        owner: options.guideOwner,
         contours: scene.contours,
       },
       theme,

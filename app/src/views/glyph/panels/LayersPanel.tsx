@@ -47,6 +47,7 @@ export function LayersPanel({
   return (
     <>
       <LayerList
+        doc={target.doc}
         layers={glyph.layers}
         masters={masters}
         current={outline.layer}

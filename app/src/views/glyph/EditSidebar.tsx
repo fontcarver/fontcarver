@@ -53,6 +53,7 @@ export function EditSidebar({ doc }: EditSidebarProps) {
         <h2 className={styles.heading}>{t('panel.sidebar.layers')}</h2>
         {active?.outline ? (
           <LayerList
+            doc={doc}
             layers={active.glyph.layers}
             masters={summary.masters}
             current={active.outline.layer}

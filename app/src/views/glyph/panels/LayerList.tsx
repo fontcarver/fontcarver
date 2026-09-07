@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 
-import type { Layer, MasterSummary } from '../../../api'
+import type { DocId, Layer, MasterSummary } from '../../../api'
+import { useDocumentStore } from '../../../stores/documentStore'
 import { useEditorStore } from '../../../stores/editorStore'
 
 import styles from './panels.module.css'
@@ -9,6 +10,7 @@ import { layerDetail, layerLabel, layerRows, type LayerRow } from './layerRows'
 export interface LayerListProps {
   layers: readonly Layer[]
   masters: readonly MasterSummary[]
+  doc: DocId
   /** The layer the canvas is editing. */
   current: string
   /** Rendered at the right of each row; the panel adds its actions here. */
@@ -28,11 +30,13 @@ function timeLabel(seconds: number): string {
 export function LayerList({
   layers,
   masters,
+  doc,
   current,
   rowActions,
 }: LayerListProps) {
   const { t } = useTranslation()
   const setEditedLayer = useEditorStore((state) => state.setEditedLayer)
+  const setMaster = useDocumentStore((state) => state.setMaster)
   const rows = layerRows(layers)
 
   if (rows.length === 0)
@@ -56,7 +60,10 @@ export function LayerList({
                 row.group === 'master' ? styles.rowNameStrong : ''
               }`}
               aria-current={active}
-              onClick={() => setEditedLayer(row.layer.id)}
+              onClick={() => {
+                setEditedLayer(row.layer.id)
+                if (row.master !== null) setMaster(doc, row.master)
+              }}
               title={`${role} · ${detail}`}
             >
               {layerLabel(row, masters, role)}

@@ -43,14 +43,15 @@ export function MetricsPanel({
   const { t } = useTranslation()
   const keys = glyph.metrics_keys
   const stored = { lsb: outline.lsb, rsb: outline.rsb, width: outline.width }
-  const resolved = useResolvedMetrics(
+  const resolution = useResolvedMetrics(
     target.doc,
     gid,
     master,
     keys,
     outline.resolved_metrics,
   )
-  const stale = outOfSync(resolved, stored)
+  const resolved = resolution.value
+  const stale = resolution.status === 'ready' && outOfSync(resolved, stored)
 
   const write = (values: { width?: number; lsb?: number; rsb?: number }) =>
     commitField(

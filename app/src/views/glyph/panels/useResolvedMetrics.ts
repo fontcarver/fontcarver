@@ -22,6 +22,17 @@ import {
 } from '../../../api'
 import { useEditorStore } from '../../../stores/editorStore'
 
+export interface ResolvedMetricsState {
+  value: ResolvedMetrics
+  status: 'pending' | 'ready' | 'error'
+}
+
+interface Resolution {
+  signature: string
+  value: ResolvedMetrics | null
+  status: 'ready' | 'error'
+}
+
 /** The resolved metrics of one glyph, refreshed on every document change. */
 export function useResolvedMetrics(
   doc: DocId,
@@ -29,8 +40,8 @@ export function useResolvedMetrics(
   master: MasterId | null,
   keys: MetricsKeys,
   fallback: ResolvedMetrics,
-): ResolvedMetrics {
-  const [resolved, setResolved] = useState<ResolvedMetrics | null>(null)
+): ResolvedMetricsState {
+  const [resolved, setResolved] = useState<Resolution | null>(null)
   const [generation, setGeneration] = useState(0)
   const editing = useEditorStore((state) => state.editing)
   const deferred = useRef(false)
@@ -44,12 +55,13 @@ export function useResolvedMetrics(
     let cancelled = false
     void call('doc.metrics_resolve', { doc, gid, master })
       .then((answer) => {
-        if (!cancelled) setResolved(answer)
+        if (!cancelled)
+          setResolved({ signature, value: answer, status: 'ready' })
       })
       .catch(() => {
         // A cyclic or malformed key makes the kernel refuse; the stored
         // sidebearings stay on screen rather than the panel going blank.
-        if (!cancelled) setResolved(null)
+        if (!cancelled) setResolved({ signature, value: null, status: 'error' })
       })
     return () => {
       cancelled = true
@@ -82,7 +94,12 @@ export function useResolvedMetrics(
     setGeneration((value) => value + 1)
   }, [editing])
 
-  return resolved ?? fallback
+  if (resolved?.signature !== signature)
+    return { value: fallback, status: 'pending' }
+  return {
+    value: resolved.value ?? fallback,
+    status: resolved.status,
+  }
 }
 
 /** Whether a resolved value differs from what the layer actually stores. */

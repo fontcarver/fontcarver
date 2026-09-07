@@ -50,12 +50,18 @@ export function TransformPanel({ target, outline, reload }: PanelContext) {
   const { t } = useTranslation()
   const selection = useEditorStore((state) => state.selection)
   const [input, setInput] = useState<TransformInput>(NEUTRAL_TRANSFORM)
-  const [origin, setOrigin] = useState(4)
+  const [origin, setOrigin] = useState<number | 'custom'>(4)
+  const [customOrigin, setCustomOrigin] = useState({ x: 0, y: 0 })
   const [locked, setLocked] = useState(false)
 
   const targets = transformTargets(outline, selection)
   const box = targets.box
-  const pivot = box ? originPoint(box, origin) : { x: 0, y: 0 }
+  const pivot =
+    origin === 'custom'
+      ? customOrigin
+      : box
+        ? originPoint(box, origin)
+        : { x: 0, y: 0 }
   const set = (patch: Partial<TransformInput>) =>
     setInput((current) => ({ ...current, ...patch }))
 
@@ -180,7 +186,36 @@ export function TransformPanel({ target, outline, reload }: PanelContext) {
             />
           ))}
         </span>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={origin === 'custom'}
+          className={styles.actionButton}
+          onClick={() => {
+            if (origin !== 'custom') setCustomOrigin(pivot)
+            setOrigin('custom')
+          }}
+        >
+          {t('panel.transform.customOrigin')}
+        </button>
       </div>
+
+      {origin === 'custom' ? (
+        <div className={styles.grid2}>
+          <NumberField
+            label={t('panel.transform.originX')}
+            value={customOrigin.x}
+            invalidHint={t('infoBox.invalid')}
+            onCommit={(x) => setCustomOrigin((point) => ({ ...point, x }))}
+          />
+          <NumberField
+            label={t('panel.transform.originY')}
+            value={customOrigin.y}
+            invalidHint={t('infoBox.invalid')}
+            onCommit={(y) => setCustomOrigin((point) => ({ ...point, y }))}
+          />
+        </div>
+      ) : null}
 
       <div className={styles.actions}>
         <button
