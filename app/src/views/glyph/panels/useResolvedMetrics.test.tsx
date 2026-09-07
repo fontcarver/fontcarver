@@ -80,4 +80,73 @@ describe('useResolvedMetrics', () => {
     await userEvent.click(button)
     expect(apply).not.toHaveBeenCalled()
   })
+
+  it('makes a resolved value pending when a referenced glyph changes', async () => {
+    const pending: ((value: ResolvedMetrics) => void)[] = []
+    const transport = createMockTransport({
+      'doc.metrics_resolve': () =>
+        new Promise<ResolvedMetrics>((resolve) => pending.push(resolve)),
+    })
+    setTransport(transport)
+    const apply = vi.fn()
+    const keys: MetricsKeys = {
+      left: '=H',
+      right: null,
+      width: null,
+      vertical_origin: null,
+      vertical_width: null,
+    }
+    const fallback: ResolvedMetrics = {
+      lsb: 10,
+      rsb: 60,
+      width: 900,
+      source: 'Explicit',
+    }
+    render(<Probe keys={keys} fallback={fallback} apply={apply} />)
+    await waitFor(() => expect(pending).toHaveLength(1))
+    pending[0]?.({ lsb: 100, rsb: 40, width: 660, source: 'Key' })
+    expect(await screen.findByText('ready:100')).toBeInTheDocument()
+
+    transport.emit({
+      doc: 1,
+      generation: 7,
+      dirty: true,
+      undo_label: 'Set metrics',
+      redo_label: null,
+      change: {
+        glyphs: [99],
+        font_info: false,
+        masters: false,
+        glyph_order: false,
+        metrics: true,
+        layers: false,
+        guides: false,
+      },
+    })
+
+    expect(await screen.findByText('pending:10')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Apply' })).toBeDisabled()
+    await waitFor(() => expect(pending).toHaveLength(2))
+    transport.emit({
+      doc: 1,
+      generation: 8,
+      dirty: true,
+      undo_label: 'Move outline',
+      redo_label: null,
+      change: {
+        glyphs: [99],
+        font_info: false,
+        masters: false,
+        glyph_order: false,
+        metrics: true,
+        layers: false,
+        guides: false,
+      },
+    })
+    await waitFor(() => expect(pending).toHaveLength(3))
+    pending[1]?.({ lsb: 110, rsb: 40, width: 670, source: 'Key' })
+    expect(screen.getByText('pending:10')).toBeInTheDocument()
+    pending[2]?.({ lsb: 120, rsb: 40, width: 680, source: 'Key' })
+    expect(await screen.findByText('ready:120')).toBeInTheDocument()
+  })
 })

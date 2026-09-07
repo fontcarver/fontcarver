@@ -466,7 +466,6 @@ export function GlyphCanvas({
       }
       if (event.key === 'Escape') {
         event.preventDefault()
-        void controller.endNudge()
         controller.escape()
         return
       }

@@ -1206,6 +1206,220 @@ describe('EditorController against the kernel token rules', () => {
     }
   })
 
+  it('keeps a replacement controller command behind disposal cancellation', async () => {
+    const { controller, transport, recorded, release } = heldMetrics()
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(10, 200))
+    await settleFrame()
+    controller.dispose()
+    expect(recorded.editing.at(-1)).toBe(false)
+
+    const replacement = makeController(transport).controller
+    const next = source()
+    replacement.setSource({
+      ...next,
+      gid: 43,
+      glyph: 'b',
+      outline: { ...next.outline, layer: 'layer-2' },
+    })
+    const stop = registerEditor(replacement)
+    try {
+      commitField(
+        { doc: 1, glyph: 'b', layer: 'layer-2' },
+        {
+          SetMetrics: {
+            glyph: 'b',
+            layer: 'layer-2',
+            width: 620,
+            lsb: null,
+            rsb: null,
+          },
+        },
+        'Set metrics',
+        () => undefined,
+      )
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+      ])
+
+      release()
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+        'doc.edit_end',
+        'doc.undo',
+        'doc.apply',
+      ])
+      expect(recorded.errors).toEqual([])
+    } finally {
+      stop()
+    }
+  })
+
+  it('cancels live metrics before editing a replacement source', async () => {
+    const { controller, transport, recorded, release } = heldMetrics()
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(10, 200))
+    await settleFrame()
+
+    const next = source()
+    controller.setSource({
+      ...next,
+      gid: 43,
+      glyph: 'b',
+      outline: { ...next.outline, layer: 'layer-2' },
+    })
+    expect(controller.frame().metrics).toBeNull()
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(20, 200))
+    controller.pointerUp(at(20, 200))
+    await settle()
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+    ])
+
+    release()
+    await controller.settle()
+    await settle()
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.undo',
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(recorded.errors).toEqual([])
+  })
+
+  it('does not cancel a live metrics edit on a same-source reload', async () => {
+    const { controller, transport, release } = heldMetrics()
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(10, 200))
+    await settleFrame()
+
+    controller.setSource({ ...source(), outline: { ...source().outline } })
+    expect(controller.frame().metrics?.lsb).toBe(10)
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+    ])
+
+    controller.escape()
+    release()
+    await controller.settle()
+  })
+
+  it('keeps a replacement command behind outline disposal cancellation', async () => {
+    const { controller, transport, release } = heldMetrics()
+    controller.pointerDown(at(200, 300))
+    controller.pointerMove(at(220, 300))
+    await settleFrame()
+    controller.dispose()
+
+    const replacement = makeController(transport).controller
+    const stop = registerEditor(replacement)
+    try {
+      commitField(
+        { doc: 1, glyph: 'a', layer: 'layer-1' },
+        {
+          SetMetrics: {
+            glyph: 'a',
+            layer: 'layer-1',
+            width: 620,
+            lsb: null,
+            rsb: null,
+          },
+        },
+        'Set metrics',
+        () => undefined,
+      )
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+      ])
+
+      release()
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+        'doc.edit_end',
+        'doc.undo',
+        'doc.apply',
+      ])
+    } finally {
+      stop()
+    }
+  })
+
+  it('finishes a nudge before a replacement controller command', async () => {
+    const { controller, transport, release } = heldMetrics()
+    selectNode(controller, 1)
+    controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+    controller.dispose()
+    await settle()
+
+    const replacement = makeController(transport).controller
+    const stop = registerEditor(replacement)
+    try {
+      commitField(
+        { doc: 1, glyph: 'a', layer: 'layer-1' },
+        {
+          SetMetrics: {
+            glyph: 'a',
+            layer: 'layer-1',
+            width: 620,
+            lsb: null,
+            rsb: null,
+          },
+        },
+        'Set metrics',
+        () => undefined,
+      )
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+      ])
+
+      release()
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+        'doc.edit_end',
+        'doc.apply',
+      ])
+    } finally {
+      stop()
+    }
+  })
+
+  it('uses one Escape to close a nudge and a second to clear selection', async () => {
+    const { controller, transport } = makeController(createEditingTransport())
+    selectNode(controller, 1)
+    controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+
+    controller.escape()
+    expect(controller.currentSelection.size).toBe(1)
+    await settle()
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+
+    controller.escape()
+    expect(controller.currentSelection.size).toBe(0)
+  })
+
   it('starts a drag after Escape from the restored baseline', async () => {
     const { controller, transport, recorded, release } = heldMetrics()
     controller.pointerDown(at(0, 200))

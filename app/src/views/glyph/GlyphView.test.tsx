@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setTransport, type GlyphDetailParams } from '../../api'
 import { Viewport } from '../../canvas/Viewport'
+import { activeEditor } from '../../editor/activeEditor'
 import {
   initialDocumentState,
   useDocumentStore,
@@ -23,9 +24,14 @@ import {
   makeMaster,
   makePoint,
 } from '../../test/fontFixtures'
-import { createMockTransport, makeSummary } from '../../test/mockTransport'
+import {
+  createMockTransport,
+  makeSummary,
+  noChange,
+} from '../../test/mockTransport'
 
 import { GlyphView } from './GlyphView'
+import { commitField } from './commitField'
 
 const layer = makeLayer({
   width: 600,
@@ -178,6 +184,113 @@ describe('GlyphView', () => {
 
     expect(pan).toHaveBeenCalledWith(25, -10)
     expect(useEditorStore.getState().overlays.filled).toBe(false)
+  })
+
+  it('cancels a metrics gesture before settling Escape from the canvas', async () => {
+    let release = () => undefined as void
+    const until = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const transport = createMockTransport({
+      'glyphs.detail': () => makeGlyphDetail(glyph),
+      'glyphs.cell': () => makeCell({ gid: 42, name: 'aacute', width: 600 }),
+      'glyphs.outline': () => makeLayerOutline(layer),
+      'doc.font_info': () => makeFontInfoView(),
+      'doc.edit_begin': () => 5,
+      'doc.edit_apply': () => noChange([42]),
+      'doc.edit_end': async () => {
+        await until
+        return null
+      },
+      'doc.undo': () => noChange([42]),
+      'doc.apply': () => noChange([42]),
+    })
+    setTransport(transport)
+    render(<GlyphView summary={makeSummary()} gid={42} />)
+    const canvas = await screen.findByRole('img', {
+      name: 'Glyph aacute, U+00E1',
+    })
+    await waitFor(() => expect(activeEditor()).not.toBeNull())
+    await waitFor(() =>
+      expect(useEditorStore.getState().activeGlyph?.outline).not.toBeNull(),
+    )
+    const viewport = activeEditor()?.viewportForTest
+    if (!viewport) throw new Error('editor did not mount')
+    viewport.setSize(400, 400, 1)
+    viewport.scale = 1
+    viewport.offset = { x: 0, y: 300 }
+
+    fireEvent(
+      canvas,
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        clientX: 40,
+        clientY: 200,
+        button: 0,
+      }),
+    )
+    fireEvent(
+      canvas,
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        clientX: 50,
+        clientY: 200,
+        button: 0,
+      }),
+    )
+    await waitFor(() =>
+      expect(transport.calls.map((entry) => entry.method)).toContain(
+        'doc.edit_apply',
+      ),
+    )
+    fireEvent.keyDown(canvas, { key: 'Escape' })
+    commitField(
+      { doc: 1, glyph: 'aacute', layer: layer.id },
+      {
+        SetMetrics: {
+          glyph: 'aacute',
+          layer: layer.id,
+          width: 620,
+          lsb: null,
+          rsb: null,
+        },
+      },
+      'Set metrics',
+      () => undefined,
+    )
+    await waitFor(() =>
+      expect(transport.calls.map((entry) => entry.method)).toContain(
+        'doc.edit_end',
+      ),
+    )
+    expect(
+      transport.calls
+        .map((entry) => entry.method)
+        .filter((method) => method.startsWith('doc.edit_')),
+    ).toEqual(['doc.edit_begin', 'doc.edit_apply', 'doc.edit_end'])
+    expect(transport.calls.some((entry) => entry.method === 'doc.apply')).toBe(
+      false,
+    )
+
+    release()
+    await waitFor(() =>
+      expect(
+        transport.calls
+          .map((entry) => entry.method)
+          .filter(
+            (method) =>
+              method.startsWith('doc.edit_') ||
+              method === 'doc.undo' ||
+              method === 'doc.apply',
+          ),
+      ).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+        'doc.edit_end',
+        'doc.undo',
+        'doc.apply',
+      ]),
+    )
   })
 
   it('places zoom and Fit before the wrappable overlay toggles', async () => {

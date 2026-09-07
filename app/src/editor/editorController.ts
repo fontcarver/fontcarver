@@ -12,7 +12,7 @@
  * animation frame, so the outline can never lag the pointer.
  */
 
-import type { Command } from '../api'
+import type { Command, DocId } from '../api'
 import type { Point2, Viewport } from '../canvas/Viewport'
 
 import {
@@ -61,6 +61,7 @@ import { HAND_CURSOR, HAND_DRAGGING_CURSOR } from './tools/hand'
 import { toolById, type ToolId } from './tools/registry'
 import { ViewGestures } from './viewGestures'
 import { AsideGestures } from './asideGestures'
+import { holdDocumentEdits } from './editSession'
 
 export type { ShapeDialogRequest, ToolOverlay } from './tools/toolTypes'
 export type {
@@ -265,15 +266,20 @@ export class EditorController {
     this.updateCursor()
   }
 
-  /**
-   * Installs new data. Any live preview is dropped: the kernel has spoken.
-   *
-   * The selection survives a reload of the same glyph — an `edit_apply` makes
-   * the view refetch, and losing the selection every frame of a drag would be
-   * absurd — and is cleared only when a different glyph arrives.
-   */
+  /** Installs kernel data; same-source reloads retain the live edit and selection. */
   setSource(source: EditorSource | null): void {
-    this.aside.sourceChanged()
+    const previous = this.geometry.source
+    const replaced =
+      previous !== null &&
+      (source === null ||
+        source.doc !== previous.doc ||
+        source.gid !== previous.gid ||
+        source.outline.layer !== previous.outline.layer)
+    if (replaced) {
+      this.cancelDrag(previous.doc)
+      if (this.nudge.active) void this.gate(this.nudge.end(), previous.doc)
+    }
+    this.aside.sourceChanged(replaced)
     const changedSource = this.geometry.install(source)
     this.nudge.reloaded()
     this.setPreview(null)
@@ -488,11 +494,15 @@ export class EditorController {
 
   /** Ends whatever gesture is running; called when the view unmounts. */
   dispose(): void {
-    void this.drag?.cancel()
+    this.cancelDrag()
     this.aside.dispose()
-    void this.nudge.end()
+    if (this.nudge.active) void this.gate(this.nudge.end())
     this.tools.dispose()
-    this.drag = null
+    if (this.editingPublished) this.callbacks.onEditingChange(false)
+    this.setPreview(null)
+    // Async closures from this controller must not clear a replacement view's
+    // editing state, preview or reload flags after it mounts.
+    this.callbacks = SILENT_CALLBACKS
   }
 
   /** Toggles smooth on the selected nodes; Alt keeps the outline unchanged. */
@@ -560,13 +570,7 @@ export class EditorController {
     if (next) this.setSelection(next)
   }
 
-  /**
-   * One arrow press.
-   *
-   * The move is shown immediately from a local copy — the kernel is told on
-   * the next animation frame and the whole run becomes one undo entry — so an
-   * arrow key feels the same as a drag rather than waiting on a round trip.
-   */
+  /** Shows one arrow press locally and coalesces the run into one undo entry. */
   nudgeSelection(direction: Point2, modifiers: Modifiers): void {
     const target = this.geometry.layerTarget()
     const source = this.geometry.source
@@ -601,14 +605,11 @@ export class EditorController {
     return this.settle()
   }
 
-  /**
-   * Records the gesture that is closing, so the next one begins behind it.
-   *
-   * Only the gesture that is *still* closing should gate the next one: a gate
-   * that is never dropped would make one unanswered call block every gesture
-   * after it, not just its successor.
-   */
-  private gate(closing: Promise<unknown>): Promise<void> {
+  /** Records the current close locally and for replacement document editors. */
+  private gate(
+    closing: Promise<unknown>,
+    doc: DocId | undefined = this.geometry.source?.doc,
+  ): Promise<void> {
     const tracked = closing
       .then(
         () => undefined,
@@ -618,19 +619,10 @@ export class EditorController {
         if (this.closing === tracked) this.closing = undefined
       })
     this.closing = tracked
-    return tracked
+    return doc === undefined ? tracked : holdDocumentEdits(doc, tracked)
   }
 
-  /**
-   * Closes whatever gesture is still open and reports when it is done.
-   *
-   * `doc.edit_begin` and `doc.apply` both finalise the active edit in the
-   * kernel, so a gesture that starts while an earlier one is still flushing
-   * would invalidate that gesture's last apply — the arrow press or the last
-   * frame of the drag would be dropped and an error raised. Every new gesture,
-   * whichever tool it belongs to, waits for this first; a drag counts, because
-   * a pointer-down that never saw its pointer-up leaves one open.
-   */
+  /** Closes any open gesture before another begin or single-shot apply. */
   settle(): Promise<void> {
     const aside = this.aside.settle()
     if (aside) return aside
@@ -668,20 +660,9 @@ export class EditorController {
       })
     )
       return
-    if (this.drag) {
-      const drag = this.drag
-      this.drag = null
-      this.setPreview(null)
-      void this.gate(
-        drag
-          .cancel()
-          .catch((error: unknown) => this.callbacks.onError(error))
-          .finally(() => {
-            this.publishEditing()
-            this.callbacks.onReload()
-          }),
-      )
-      this.callbacks.repaint()
+    if (this.drag) return this.cancelDrag()
+    if (this.nudge.active) {
+      void this.gate(this.nudge.end())
       return
     }
     if (this.view.active) {
@@ -690,6 +671,25 @@ export class EditorController {
       return
     }
     this.setSelection(EMPTY_SELECTION)
+  }
+
+  /** Drops a live outline drag and publishes its close for handover. */
+  private cancelDrag(doc: DocId | undefined = this.geometry.source?.doc): void {
+    const drag = this.drag
+    if (!drag) return
+    this.drag = null
+    this.setPreview(null)
+    void this.gate(
+      drag
+        .cancel()
+        .catch((error: unknown) => this.callbacks.onError(error))
+        .finally(() => {
+          this.publishEditing()
+          this.callbacks.onReload()
+        }),
+      doc,
+    )
+    this.callbacks.repaint()
   }
 
   private effectiveTool(): ToolId {

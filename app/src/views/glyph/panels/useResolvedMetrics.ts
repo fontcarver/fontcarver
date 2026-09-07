@@ -28,7 +28,7 @@ export interface ResolvedMetricsState {
 }
 
 interface Resolution {
-  signature: string
+  identity: string
   value: ResolvedMetrics | null
   status: 'ready' | 'error'
 }
@@ -44,31 +44,32 @@ export function useResolvedMetrics(
   const [resolved, setResolved] = useState<Resolution | null>(null)
   const [generation, setGeneration] = useState(0)
   const editing = useEditorStore((state) => state.editing)
-  const deferred = useRef(false)
+  const deferred = useRef<number | null>(null)
   // A formula names other glyphs, so the request has to be reissued whenever
   // any of them could have moved; the signature keeps it to real changes.
   const signature = `${doc}:${gid}:${master ?? ''}:${keys.left ?? ''}:${
     keys.right ?? ''
   }:${keys.width ?? ''}`
+  const identity = `${signature}:${generation}`
 
   useEffect(() => {
     let cancelled = false
     void call('doc.metrics_resolve', { doc, gid, master })
       .then((answer) => {
         if (!cancelled)
-          setResolved({ signature, value: answer, status: 'ready' })
+          setResolved({ identity, value: answer, status: 'ready' })
       })
       .catch(() => {
         // A cyclic or malformed key makes the kernel refuse; the stored
         // sidebearings stay on screen rather than the panel going blank.
-        if (!cancelled) setResolved({ signature, value: null, status: 'error' })
+        if (!cancelled) setResolved({ identity, value: null, status: 'error' })
       })
     return () => {
       cancelled = true
     }
-    // `signature` stands in for doc, gid, master and the three formulas.
+    // `identity` stands in for the request arguments and document generation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature, generation])
+  }, [identity])
 
   useEffect(
     () =>
@@ -80,21 +81,22 @@ export function useResolvedMetrics(
         // Resolving against that would flash "out of sync" for the length of
         // the drag; the answer that matters is the one after it ends.
         if (useEditorStore.getState().editing) {
-          deferred.current = true
+          deferred.current = Math.max(deferred.current ?? 0, event.generation)
           return
         }
-        setGeneration((value) => value + 1)
+        setGeneration((value) => Math.max(value, event.generation))
       }),
     [doc, gid],
   )
 
   useEffect(() => {
-    if (editing || !deferred.current) return
-    deferred.current = false
-    setGeneration((value) => value + 1)
+    if (editing || deferred.current === null) return
+    const next = deferred.current
+    deferred.current = null
+    setGeneration((value) => Math.max(value, next))
   }, [editing])
 
-  if (resolved?.signature !== signature)
+  if (resolved?.identity !== identity)
     return { value: fallback, status: 'pending' }
   return {
     value: resolved.value ?? fallback,

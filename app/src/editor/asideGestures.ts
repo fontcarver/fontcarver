@@ -82,9 +82,14 @@ export class AsideGestures {
     return this.handleAt(at) === null ? null : METRIC_CURSOR
   }
 
-  /** New kernel data has reconciled any optimistic completed metrics edit. */
-  sourceChanged(): void {
+  /** Reconciles a reload, cancelling live ownership when identity changed. */
+  sourceChanged(replaced = false): void {
     this.settledMetrics = null
+    if (!replaced) return
+    this.ruler = null
+    const gesture = this.metrics
+    this.metrics = null
+    if (gesture) void this.closeMetrics(gesture, true)
   }
 
   /**

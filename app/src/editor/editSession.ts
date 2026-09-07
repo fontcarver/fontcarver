@@ -14,6 +14,58 @@
 
 import { call, type Command, type DocId, type EditTokenId } from '../api'
 
+/** Closures that a replacement editor for the same document must not overtake. */
+const documentEdits = new Map<DocId, Promise<void>>()
+
+function completed(promise: Promise<unknown>): Promise<void> {
+  return promise.then(
+    () => undefined,
+    () => undefined,
+  )
+}
+
+/** The current edit handover for a document, if one is still running. */
+export function pendingDocumentEdits(doc: DocId): Promise<void> | undefined {
+  return documentEdits.get(doc)
+}
+
+/** Publishes an edit closure so replacement controllers and commands await it. */
+export function holdDocumentEdits(
+  doc: DocId,
+  closing: Promise<unknown>,
+): Promise<void> {
+  const prior = documentEdits.get(doc)
+  const combined = prior
+    ? Promise.allSettled([prior, closing]).then(() => undefined)
+    : completed(closing)
+  const tracked = combined.finally(() => {
+    if (documentEdits.get(doc) === tracked) documentEdits.delete(doc)
+  })
+  documentEdits.set(doc, tracked)
+  return tracked
+}
+
+/** Runs a document command after any controller handover has completed. */
+export async function afterDocumentEdits<T>(
+  doc: DocId,
+  run: () => Promise<T>,
+): Promise<T> {
+  for (;;) {
+    const pending = documentEdits.get(doc)
+    if (!pending) return run()
+    await pending
+  }
+}
+
+function combineBarriers(
+  first: Promise<unknown> | undefined,
+  second: Promise<unknown> | undefined,
+): Promise<unknown> | undefined {
+  if (!first) return second
+  if (!second) return first
+  return Promise.allSettled([first, second])
+}
+
 /** How queued applies are deferred; injected so tests can step frames. */
 export interface Scheduler {
   request: (callback: () => void) => number
@@ -84,7 +136,7 @@ export class EditSession {
     this.label = label
     this.scheduler = options.scheduler ?? frameScheduler
     this.onError = options.onError ?? (() => undefined)
-    const gate = options.after
+    const gate = combineBarriers(options.after, pendingDocumentEdits(doc))
     this.token = gate
       ? gate.then(
           () => call('doc.edit_begin', { doc, label }),
@@ -235,5 +287,7 @@ export async function applyCommand(
   command: Command,
   label: string,
 ): Promise<void> {
-  await call('doc.apply', { doc, command, label })
+  await afterDocumentEdits(doc, () =>
+    call('doc.apply', { doc, command, label }).then(() => undefined),
+  )
 }

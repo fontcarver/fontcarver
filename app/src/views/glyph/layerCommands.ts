@@ -8,6 +8,7 @@
  */
 
 import { activeEditor } from '../../editor/activeEditor'
+import { applyCommand } from '../../editor/editSession'
 import { i18n } from '../../i18n'
 import { registerCommands } from '../../shell/commands'
 import { useEditorStore } from '../../stores/editorStore'
@@ -199,11 +200,11 @@ export function registerLayerCommands(): void {
           .then((cells) => {
             const taken = new Set(cells.map((cell) => cell.name))
             const name = duplicateName(source, taken)
-            return call('doc.apply', {
-              doc: active.doc,
-              command: duplicateGlyphCommand(source, name),
-              label: i18n.t('editor.undo.duplicateGlyph'),
-            }).then(() => name)
+            return applyCommand(
+              active.doc,
+              duplicateGlyphCommand(source, name),
+              i18n.t('editor.undo.duplicateGlyph'),
+            ).then(() => name)
           })
           .then((name) =>
             call('glyphs.search', {
