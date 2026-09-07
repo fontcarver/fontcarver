@@ -82,9 +82,17 @@ test('300-point drag repaints synchronously within eight milliseconds', async ({
     const first = before.contours[0]?.points[0]
     if (!first) throw new Error('performance outline has no first point')
 
-    const measurement = await page
-      .getByRole('img', { name: /^Glyph A/ })
-      .evaluate(
+    // Pointer-up closes asynchronously after queued HTTP applies drain. Capture
+    // that closure before the gesture; timing samples still measure only paint.
+    const [closed, measurement] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().endsWith('/api/doc.edit_end') &&
+          (response.request().postDataJSON() as { doc: number }).doc ===
+            created.doc,
+        { timeout: 30_000 },
+      ),
+      page.getByRole('img', { name: /^Glyph A/ }).evaluate(
         async (canvas, setup) => {
           const globals = globalThis as unknown as {
             __fwEditor?: {
@@ -201,7 +209,9 @@ test('300-point drag repaints synchronously within eight milliseconds', async ({
           return { pointerDown, samples, paint, paintCount, final }
         },
         { warm: WARM_SAMPLES, measured: MEASURED_SAMPLES, first },
-      )
+      ),
+    ])
+    expect(closed.ok(), 'the gesture closed successfully').toBe(true)
 
     expect(
       measurement.final,
