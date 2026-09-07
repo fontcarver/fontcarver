@@ -209,13 +209,20 @@ describe('built-in commands', () => {
     )
   })
 
-  it('asks before closing a dirty document rather than discarding it', () => {
-    setTransport(createMockTransport({ 'session.close': () => null }))
+  it('asks before closing a dirty document rather than discarding it', async () => {
+    setTransport(
+      createMockTransport({
+        'doc.summary': () => makeSummary({ dirty: true }),
+        'session.close': () => null,
+      }),
+    )
     openDocument(makeSummary({ dirty: true }))
 
     runCommand('file.close')
 
-    expect(useUiStore.getState().closePrompt).toEqual({ doc: 1 })
+    await vi.waitFor(() =>
+      expect(useUiStore.getState().closePrompt).toEqual({ doc: 1 }),
+    )
   })
 })
 

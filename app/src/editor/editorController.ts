@@ -70,7 +70,6 @@ export class EditorController {
   private callbacks: EditorCallbacks = SILENT_CALLBACKS
   private labels: EditorLabels
   private readonly geometry = new EditorGeometry()
-
   private selection: Selection = EMPTY_SELECTION
   private drag: DragGesture | null = null
   private readonly view = new ViewGestures()
@@ -90,7 +89,6 @@ export class EditorController {
   private externalMetrics: { width: number; lsb: number; rsb: number } | null =
     null
   private readonly handover = new EditorHandover()
-
   constructor(viewport: Viewport, labels: EditorLabels) {
     this.viewport = viewport
     this.labels = labels
@@ -162,7 +160,10 @@ export class EditorController {
       },
     )
   }
-
+  /** Document currently owned by this editor, absent while its source loads. */
+  get documentId(): DocId | undefined {
+    return this.geometry.source?.doc
+  }
   /** Where the snap targets come from, as of right now. */
   private snapSources(): SnapSources {
     return {
@@ -174,7 +175,6 @@ export class EditorController {
       viewport: this.viewport,
     }
   }
-
   /** Installs callbacks owned by the mounted canvas. */
   setCallbacks(callbacks: EditorCallbacks): void {
     this.callbacks = callbacks

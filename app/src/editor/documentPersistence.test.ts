@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { renderHook } from '@testing-library/react'
 import { setTransport } from '../api'
+import { Viewport } from '../canvas/Viewport'
+import { makeLayer, makeLayerOutline } from '../test/fontFixtures'
 import {
   createMockTransport,
   makeSummary,
@@ -8,8 +11,9 @@ import {
 import { initialSessionState, useSessionStore } from '../stores/sessionStore'
 import { initialUiState, useUiStore } from '../stores/uiStore'
 import { TextMetricsRunner } from '../views/text/textMetrics'
+import { useEditorLabels } from '../views/glyph/useEditorLabels'
 import { registerEditor } from './activeEditor'
-import type { EditorController } from './editorController'
+import { EditorController } from './editorController'
 import {
   EditSession,
   holdDocumentEdits,
@@ -18,6 +22,7 @@ import {
 import { withSettledDocument } from './documentPersistence'
 
 let unregister = () => undefined as void
+let controller: EditorController | null = null
 const summary = makeSummary({ path: '/tmp/persistence.fcf', dirty: false })
 
 function deferred() {
@@ -28,11 +33,38 @@ function deferred() {
   return { promise, resolve }
 }
 
-function editor(doc: number, prepareTransition: () => Promise<void>) {
-  unregister = registerEditor({
-    frame: () => ({ source: { doc } }),
-    prepareTransition,
-  } as unknown as EditorController)
+function editor(doc: number, settle: () => Promise<void>) {
+  const viewport = new Viewport()
+  viewport.setSize(1000, 500, 1)
+  viewport.scale = 1
+  const labels = renderHook(useEditorLabels).result.current
+  controller = new EditorController(viewport, labels)
+  controller.setSource({
+    doc,
+    gid: 42,
+    glyph: 'a',
+    outline: makeLayerOutline(makeLayer({ contours: [] })),
+    guides: [],
+    metrics: {
+      upem: 1000,
+      ascender: 800,
+      descender: -200,
+      xHeight: 500,
+      capHeight: 700,
+      italicAngle: 0,
+      width: 600,
+      lsb: 0,
+      rsb: 600,
+      verticalOrigin: null,
+      verticalWidth: null,
+    },
+    master: 'm1',
+    curves: 'cubic',
+    componentPoints: [],
+  })
+  controller.setExternalSettler(settle)
+  unregister = registerEditor(controller)
+  return controller
 }
 
 beforeEach(() => {
@@ -41,6 +73,8 @@ beforeEach(() => {
 })
 afterEach(() => {
   unregister()
+  controller?.dispose()
+  controller = null
   setTransport(undefined)
   vi.restoreAllMocks()
 })
@@ -168,5 +202,48 @@ it('releases the document barrier when persistence fails', async () => {
   ).rejects.toThrow('disk full')
   await expect(withSettledDocument(1, async () => 'retry')).resolves.toBe(
     'retry',
+  )
+})
+
+it('commits an unfinished real Pen path before persisting the document', async () => {
+  const transport = createMockTransport({
+    'doc.apply': () => noChange([42]),
+    'session.save': () => summary,
+    'session.recent': () => [],
+  })
+  setTransport(transport)
+  const actual = editor(1, async () => undefined)
+  actual.setTool('pen')
+  for (const at of [
+    { x: 100, y: 100 },
+    { x: 250, y: 200 },
+  ]) {
+    const pointer = {
+      ...actual.viewportForTest.toScreen(at),
+      button: 0,
+      modifiers: { alt: false, shift: false, mod: false },
+    }
+    actual.pointerDown(pointer)
+    actual.pointerUp(pointer)
+  }
+  expect(actual.claimsKey('Enter')).toBe(true)
+  expect(await useSessionStore.getState().save(1)).toBe(true)
+  const applied = transport.calls.find((call) => call.method === 'doc.apply')
+  expect(applied?.params).toMatchObject({
+    command: {
+      AddContour: {
+        glyph: 'a',
+        contour: {
+          points: [
+            { x: 100, y: 100 },
+            { x: 250, y: 200 },
+          ],
+        },
+      },
+    },
+  })
+  const methods = transport.calls.map((call) => call.method)
+  expect(methods.indexOf('doc.apply')).toBeLessThan(
+    methods.indexOf('session.save'),
   )
 })
