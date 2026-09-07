@@ -211,4 +211,39 @@ describe('TextShapeCoordinator', () => {
       'compile-failed: broken outline',
     )
   })
+
+  it('aborts a superseded resolver before it launches more pooled work', async () => {
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const transport = createMockTransport({
+      'glyphs.search': async ({ query }) => {
+        await held
+        return [cellFor(8, { name: query })]
+      },
+    })
+    const coordinator = new TextShapeCoordinator(transport, vi.fn(), {
+      debounceMs: 150,
+    })
+
+    const names = Array.from({ length: 20 }, (_, index) => `/g${index}`).join(
+      ' ',
+    )
+    coordinator.update(context(names))
+    await vi.advanceTimersByTimeAsync(150)
+    await Promise.resolve()
+    expect(
+      transport.calls.filter((call) => call.method === 'glyphs.search'),
+    ).toHaveLength(8)
+
+    coordinator.update(context('new'))
+    release()
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(
+      transport.calls.filter((call) => call.method === 'glyphs.search'),
+    ).toHaveLength(8)
+    coordinator.dispose()
+  })
 })

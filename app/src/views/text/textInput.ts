@@ -25,6 +25,23 @@ export type TextInputToken = LiteralTextToken | NamedGlyphToken
 const utf8Length = (value: string): number =>
   new TextEncoder().encode(value).length
 
+function utf8Offsets(value: string): number[] {
+  const offsets = new Array<number>(value.length + 1)
+  let byte = 0
+  for (let index = 0; index < value.length;) {
+    offsets[index] = byte
+    const codePoint = value.codePointAt(index)
+    if (codePoint === undefined) break
+    const character = String.fromCodePoint(codePoint)
+    if (character.length === 2) offsets[index + 1] = byte
+    byte += utf8Length(character)
+    index += character.length
+    offsets[index] = byte
+  }
+  offsets[value.length] = byte
+  return offsets
+}
+
 /**
  * Splits editor text into shapeable Unicode spans and exact `/name` tokens.
  *
@@ -36,11 +53,12 @@ const utf8Length = (value: string): number =>
  */
 export function parseTextInput(input: string): TextInputToken[] {
   const tokens: TextInputToken[] = []
+  const sourceOffsets = utf8Offsets(input)
   let literal: LiteralTextToken | null = null
 
   const appendDirect = (start: number, end: number): void => {
     if (start === end) return
-    const sourceByteStart = utf8Length(input.slice(0, start))
+    const sourceByteStart = sourceOffsets[start] ?? 0
     const text = input.slice(start, end)
     if (!literal) {
       literal = {
@@ -54,13 +72,13 @@ export function parseTextInput(input: string): TextInputToken[] {
     }
     literal.text += text
     literal.sourceEnd = end
-    const byteLength = utf8Length(text)
+    const byteLength = (sourceOffsets[end] ?? sourceByteStart) - sourceByteStart
     for (let byte = 1; byte <= byteLength; byte += 1)
       literal.sourceByteMap.push(sourceByteStart + byte)
   }
 
   const appendEscapedSlash = (start: number): void => {
-    const sourceByteStart = utf8Length(input.slice(0, start))
+    const sourceByteStart = sourceOffsets[start] ?? 0
     if (!literal) {
       literal = {
         kind: 'literal',
@@ -113,7 +131,7 @@ export function parseTextInput(input: string): TextInputToken[] {
       name: input.slice(index + 1, end),
       sourceStart: index,
       sourceEnd,
-      sourceByteStart: utf8Length(input.slice(0, index)),
+      sourceByteStart: sourceOffsets[index] ?? 0,
     })
     index = sourceEnd
     literalStart = index

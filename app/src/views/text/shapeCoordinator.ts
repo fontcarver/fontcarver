@@ -52,6 +52,7 @@ export class TextShapeCoordinator {
   private timer: ReturnType<typeof setTimeout> | null = null
   private epoch = 0
   private disposed = false
+  private abortController: AbortController | null = null
   private context: TextRequestContext | null = null
   private lastGood: { key: string; layout: TextLayout } | null = null
   private readonly reportedFailures = new Set<string>()
@@ -89,6 +90,8 @@ export class TextShapeCoordinator {
   dispose(): void {
     this.disposed = true
     this.epoch += 1
+    this.abortController?.abort()
+    this.abortController = null
     this.clearTimer()
   }
 
@@ -99,6 +102,8 @@ export class TextShapeCoordinator {
 
   private schedule(delay: number, pollAttempt = 0): void {
     this.clearTimer()
+    this.abortController?.abort()
+    this.abortController = null
     const epoch = ++this.epoch
     this.timer = setTimeout(() => {
       this.timer = null
@@ -110,8 +115,12 @@ export class TextShapeCoordinator {
     const context = this.context
     if (!context || this.disposed) return
     const key = requestKey(context)
+    const abortController = new AbortController()
+    this.abortController = abortController
     try {
-      const layout = await buildTextLayout(this.transport, context)
+      const layout = await buildTextLayout(this.transport, context, {
+        signal: abortController.signal,
+      })
       if (this.disposed || epoch !== this.epoch) return
 
       const compileFailure =
@@ -149,7 +158,14 @@ export class TextShapeCoordinator {
         this.schedule(this.pollDelaysMs[index] ?? 1_000, pollAttempt + 1)
       }
     } catch (error) {
-      if (!this.disposed && epoch === this.epoch) this.onError(error)
+      if (
+        !abortController.signal.aborted &&
+        !this.disposed &&
+        epoch === this.epoch
+      )
+        this.onError(error)
+    } finally {
+      if (this.abortController === abortController) this.abortController = null
     }
   }
 }

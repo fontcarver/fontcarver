@@ -59,6 +59,16 @@ export interface TextLayout extends PositionedRun {
 
 export type LayoutUnits = 'font' | 'run'
 
+export interface BuildTextLayoutOptions {
+  signal?: AbortSignal
+  searchConcurrency?: number
+  listThreshold?: number
+}
+
+const DEFAULT_SEARCH_CONCURRENCY = 8
+const DEFAULT_LIST_THRESHOLD = 64
+const GLYPH_PAGE_SIZE = 2_000
+
 /** Scale from a shaped run's returned units to document font units. */
 export function runUnitsToFontUnits(run: ShapedRun): number {
   return run.size === null || run.size <= 0 ? 1 : run.units_per_em / run.size
@@ -101,12 +111,15 @@ async function exactGlyphCell(
   transport: Transport,
   context: TextRequestContext,
   name: string,
+  signal?: AbortSignal,
 ): Promise<GlyphCell | null> {
+  signal?.throwIfAborted()
   const matches = await transport.call('glyphs.search', {
     doc: context.doc,
     query: name,
     limit: 32,
   })
+  signal?.throwIfAborted()
   const exact = matches.find((cell) => cell.name === name)
   if (!exact) return null
   if (context.master === null) return exact
@@ -115,7 +128,95 @@ async function exactGlyphCell(
     gid: exact.gid,
     master: context.master,
   })
+  signal?.throwIfAborted()
   return cell.name === name ? cell : null
+}
+
+async function mapWithConcurrency<T, R>(
+  values: readonly T[],
+  concurrency: number,
+  worker: (value: T) => Promise<R>,
+  signal?: AbortSignal,
+): Promise<R[]> {
+  const results = new Array<R>(values.length)
+  let next = 0
+  const run = async (): Promise<void> => {
+    while (next < values.length) {
+      signal?.throwIfAborted()
+      const index = next
+      next += 1
+      results[index] = await worker(values[index] as T)
+      signal?.throwIfAborted()
+    }
+  }
+  const workers = Array.from(
+    { length: Math.min(Math.max(1, concurrency), values.length) },
+    () => run(),
+  )
+  await Promise.all(workers)
+  return results
+}
+
+async function resolveNamesBySearch(
+  transport: Transport,
+  context: TextRequestContext,
+  names: readonly string[],
+  concurrency: number,
+  signal?: AbortSignal,
+): Promise<Map<string, GlyphCell>> {
+  const cells = await mapWithConcurrency(
+    names,
+    concurrency,
+    (name) => exactGlyphCell(transport, context, name, signal),
+    signal,
+  )
+  return new Map(
+    names.flatMap((name, index) => {
+      const cell = cells[index]
+      return cell ? [[name, cell] as const] : []
+    }),
+  )
+}
+
+async function resolveNamesByList(
+  transport: Transport,
+  context: TextRequestContext,
+  names: ReadonlySet<string>,
+  signal?: AbortSignal,
+): Promise<Map<string, GlyphCell>> {
+  const resolved = new Map<string, GlyphCell>()
+  let offset = 0
+  let total = Number.POSITIVE_INFINITY
+  while (offset < total && resolved.size < names.size) {
+    signal?.throwIfAborted()
+    const page = await transport.call('glyphs.list', {
+      doc: context.doc,
+      master: context.master,
+      filter: {
+        query: null,
+        categories: [],
+        scripts: [],
+        blocks: [],
+        unencoded_only: false,
+        color_labels: [],
+        tags: [],
+        unicode_ranges: [],
+        has_components: null,
+        changed_only: false,
+      },
+      sort: 'Order',
+      offset,
+      limit: GLYPH_PAGE_SIZE,
+      include_paths: false,
+    })
+    signal?.throwIfAborted()
+    total = page.total
+    for (const cell of page.items)
+      if (names.has(cell.name)) resolved.set(cell.name, cell)
+    if (page.items.length === 0) break
+    offset += page.items.length
+  }
+  return resolved
 }
 
 /**
@@ -126,6 +227,7 @@ async function exactGlyphCell(
 export async function buildTextLayout(
   transport: Transport,
   context: TextRequestContext,
+  options: BuildTextLayoutOptions = {},
 ): Promise<TextLayout> {
   const diagnostics: TextDiagnostic[] = []
   const glyphs: PositionedGlyph[] = []
@@ -133,21 +235,27 @@ export async function buildTextLayout(
   let stale = false
   let unitsPerEm = context.unitsPerEm
   const tokens = parseTextInput(context.text)
-  const shapedRuns = await Promise.all(
-    tokens.map((token) =>
-      token.kind === 'named'
-        ? null
-        : transport.call('text.shape', {
-            doc: context.doc,
-            text: token.text,
-            master: context.master,
-            features: context.features,
-            script: context.script,
-            language: context.language,
-            direction: context.direction,
-            size: null,
-          }),
-    ),
+  const signal = options.signal
+  const shapedRuns = await mapWithConcurrency(
+    tokens,
+    options.searchConcurrency ?? DEFAULT_SEARCH_CONCURRENCY,
+    async (token) => {
+      signal?.throwIfAborted()
+      if (token.kind === 'named') return null
+      const shaped = await transport.call('text.shape', {
+        doc: context.doc,
+        text: token.text,
+        master: context.master,
+        features: context.features,
+        script: context.script,
+        language: context.language,
+        direction: context.direction,
+        size: null,
+      })
+      signal?.throwIfAborted()
+      return shaped
+    },
+    signal,
   )
   const names = new Set<string>()
   tokens.forEach((token, index) => {
@@ -156,15 +264,23 @@ export async function buildTextLayout(
       for (const name of shapedRuns[index]?.names ?? [])
         if (name !== null) names.add(name)
   })
-  const resolvedEntries = await Promise.all(
-    [...names].map(
-      async (name) =>
-        [name, await exactGlyphCell(transport, context, name)] as const,
-    ),
-  )
-  const resolutions = new Map(resolvedEntries)
+  const resolutions =
+    names.size >= (options.listThreshold ?? DEFAULT_LIST_THRESHOLD)
+      ? await resolveNamesByList(transport, context, names, signal)
+      : await resolveNamesBySearch(
+          transport,
+          context,
+          [...names],
+          options.searchConcurrency ?? DEFAULT_SEARCH_CONCURRENCY,
+          signal,
+        )
 
-  for (const [tokenIndex, token] of tokens.entries()) {
+  const tokenIndexes = tokens.map((_, index) => index)
+  if (context.direction === 'rtl') tokenIndexes.reverse()
+  for (const tokenIndex of tokenIndexes) {
+    signal?.throwIfAborted()
+    const token = tokens[tokenIndex]
+    if (!token) continue
     if (token.kind === 'named') {
       const cell = resolutions.get(token.name) ?? null
       if (!cell) {

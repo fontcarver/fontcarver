@@ -243,4 +243,131 @@ describe('buildTextLayout', () => {
       'glyphs.cell',
     ])
   })
+
+  it('lays out multiple RTL tokens in visual order without changing source bytes', async () => {
+    const transport = createMockTransport({
+      'text.shape': ({ text }) =>
+        run({
+          glyphs: [...text].reverse().map((_, index) => ({
+            gid: 100 + index,
+            cluster: text.length - index - 1,
+            x_advance: 100,
+            y_advance: 0,
+            x_offset: 0,
+            y_offset: 0,
+          })),
+          names: [...text].reverse(),
+        }),
+      'glyphs.search': ({ query }) => [
+        cellFor(query.charCodeAt(0), { name: query }),
+      ],
+    })
+
+    const layout = await buildTextLayout(transport, {
+      doc: 1,
+      generation: 1,
+      unitsPerEm: 1_000,
+      master: null,
+      text: 'ab/X cd',
+      features: [],
+      direction: 'rtl',
+      script: null,
+      language: null,
+    })
+
+    expect(layout.glyphs.map((glyph) => glyph.name)).toEqual([
+      'd',
+      'c',
+      'X',
+      'b',
+      'a',
+    ])
+    expect(layout.glyphs.map((glyph) => glyph.sourceByte)).toEqual([
+      6, 5, 2, 1, 0,
+    ])
+  })
+
+  it('reverses an all-name RTL run', async () => {
+    const transport = createMockTransport({
+      'glyphs.search': ({ query }) => [
+        cellFor(query === 'A' ? 1 : 2, { name: query, width: 500 }),
+      ],
+    })
+
+    const layout = await buildTextLayout(transport, {
+      doc: 1,
+      generation: 1,
+      unitsPerEm: 1_000,
+      master: null,
+      text: '/A /B',
+      features: [],
+      direction: 'rtl',
+      script: null,
+      language: null,
+    })
+
+    expect(layout.glyphs.map((glyph) => glyph.name)).toEqual(['B', 'A'])
+  })
+
+  it('bounds exact-name search concurrency for ordinary runs', async () => {
+    let active = 0
+    let peak = 0
+    const transport = createMockTransport({
+      'glyphs.search': async ({ query }) => {
+        active += 1
+        peak = Math.max(peak, active)
+        await new Promise((resolve) => setTimeout(resolve, 1))
+        active -= 1
+        return [cellFor(Number(query.slice(1)), { name: query })]
+      },
+    })
+    const names = Array.from({ length: 20 }, (_, index) => `/g${index}`).join(
+      ' ',
+    )
+
+    await buildTextLayout(
+      transport,
+      {
+        doc: 1,
+        generation: 1,
+        unitsPerEm: 1_000,
+        master: null,
+        text: names,
+        features: [],
+        direction: 'ltr',
+        script: null,
+        language: null,
+      },
+      { searchConcurrency: 3, listThreshold: 100 },
+    )
+
+    expect(peak).toBe(3)
+  })
+
+  it('uses paged glyph listing instead of per-name searches for large runs', async () => {
+    const names = Array.from({ length: 70 }, (_, index) => `g${index}`)
+    const transport = createMockTransport({
+      'glyphs.list': ({ offset, limit }) => ({
+        total: names.length,
+        items: names
+          .slice(offset, offset + limit)
+          .map((name, index) => cellFor(offset + index, { name })),
+      }),
+    })
+
+    const layout = await buildTextLayout(transport, {
+      doc: 1,
+      generation: 1,
+      unitsPerEm: 1_000,
+      master: null,
+      text: names.map((name) => `/${name}`).join(' '),
+      features: [],
+      direction: 'ltr',
+      script: null,
+      language: null,
+    })
+
+    expect(layout.glyphs.every((glyph) => glyph.editable)).toBe(true)
+    expect(transport.calls.map((call) => call.method)).toEqual(['glyphs.list'])
+  })
 })
