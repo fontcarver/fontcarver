@@ -12,15 +12,17 @@ import { createMockTransport } from '../../../test/mockTransport'
 import { useResolvedMetrics } from './useResolvedMetrics'
 
 function Probe({
+  doc = 1,
   keys,
   fallback,
   apply,
 }: {
+  doc?: number
   keys: MetricsKeys
   fallback: ResolvedMetrics
   apply: (value: ResolvedMetrics) => void
 }) {
-  const resolution = useResolvedMetrics(1, 42, 'm1', keys, fallback)
+  const resolution = useResolvedMetrics(doc, 42, 'm1', keys, fallback)
   return (
     <>
       <output>{`${resolution.status}:${resolution.value.lsb}`}</output>
@@ -148,5 +150,79 @@ describe('useResolvedMetrics', () => {
     expect(screen.getByText('pending:10')).toBeInTheDocument()
     pending[2]?.({ lsb: 120, rsb: 40, width: 680, source: 'Key' })
     expect(await screen.findByText('ready:120')).toBeInTheDocument()
+  })
+
+  it('does not carry a high document generation into another document', async () => {
+    const pending: ((value: ResolvedMetrics) => void)[] = []
+    const transport = createMockTransport({
+      'doc.metrics_resolve': () =>
+        new Promise<ResolvedMetrics>((resolve) => pending.push(resolve)),
+    })
+    setTransport(transport)
+    const keys: MetricsKeys = {
+      left: '=H',
+      right: null,
+      width: null,
+      vertical_origin: null,
+      vertical_width: null,
+    }
+    const fallback: ResolvedMetrics = {
+      lsb: 10,
+      rsb: 60,
+      width: 900,
+      source: 'Explicit',
+    }
+    const view = render(
+      <Probe keys={keys} fallback={fallback} apply={() => undefined} />,
+    )
+    await waitFor(() => expect(pending).toHaveLength(1))
+    pending[0]?.({ lsb: 100, rsb: 40, width: 660, source: 'Key' })
+    expect(await screen.findByText('ready:100')).toBeInTheDocument()
+
+    transport.emit({
+      doc: 1,
+      generation: 100,
+      dirty: true,
+      undo_label: 'Set metrics',
+      redo_label: null,
+      change: {
+        glyphs: [99],
+        font_info: false,
+        masters: false,
+        glyph_order: false,
+        metrics: true,
+        layers: false,
+        guides: false,
+      },
+    })
+    await waitFor(() => expect(pending).toHaveLength(2))
+    pending[1]?.({ lsb: 110, rsb: 40, width: 670, source: 'Key' })
+    expect(await screen.findByText('ready:110')).toBeInTheDocument()
+
+    view.rerender(
+      <Probe doc={2} keys={keys} fallback={fallback} apply={() => undefined} />,
+    )
+    await waitFor(() => expect(pending).toHaveLength(3))
+    pending[2]?.({ lsb: 120, rsb: 40, width: 680, source: 'Key' })
+    expect(await screen.findByText('ready:120')).toBeInTheDocument()
+
+    transport.emit({
+      doc: 2,
+      generation: 2,
+      dirty: true,
+      undo_label: 'Set metrics',
+      redo_label: null,
+      change: {
+        glyphs: [99],
+        font_info: false,
+        masters: false,
+        glyph_order: false,
+        metrics: true,
+        layers: false,
+        guides: false,
+      },
+    })
+    expect(await screen.findByText('pending:10')).toBeInTheDocument()
+    await waitFor(() => expect(pending).toHaveLength(4))
   })
 })

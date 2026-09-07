@@ -44,7 +44,7 @@ export function useResolvedMetrics(
   const [resolved, setResolved] = useState<Resolution | null>(null)
   const [generation, setGeneration] = useState(0)
   const editing = useEditorStore((state) => state.editing)
-  const deferred = useRef<number | null>(null)
+  const deferred = useRef(false)
   // A formula names other glyphs, so the request has to be reissued whenever
   // any of them could have moved; the signature keeps it to real changes.
   const signature = `${doc}:${gid}:${master ?? ''}:${keys.left ?? ''}:${
@@ -81,19 +81,18 @@ export function useResolvedMetrics(
         // Resolving against that would flash "out of sync" for the length of
         // the drag; the answer that matters is the one after it ends.
         if (useEditorStore.getState().editing) {
-          deferred.current = Math.max(deferred.current ?? 0, event.generation)
+          deferred.current = true
           return
         }
-        setGeneration((value) => Math.max(value, event.generation))
+        setGeneration((value) => value + 1)
       }),
     [doc, gid],
   )
 
   useEffect(() => {
-    if (editing || deferred.current === null) return
-    const next = deferred.current
-    deferred.current = null
-    setGeneration((value) => Math.max(value, next))
+    if (editing || !deferred.current) return
+    deferred.current = false
+    setGeneration((value) => value + 1)
   }, [editing])
 
   if (resolved?.identity !== identity)
