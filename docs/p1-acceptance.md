@@ -18,7 +18,8 @@ DejaVu is the redistributable representative real font used for this workflow.
 API, adds A–C, draws outlines, sets widths to 600/620/640, exports TTF and invokes
 the current Cargo-built CLI to inspect, list and shape it. Reopening the SFNT
 verifies A's width and outline. Both workflows passed in the implementer's
-isolated worktree. Pointer-driven counterparts remain pending UI integration.
+isolated worktree. Preliminary pointer-driven browser counterparts passed; the final integrated
+rerun remains pending T9.
 
 ## Preservation and shaping
 
@@ -47,7 +48,7 @@ i7-12700H, 20 logical CPUs, approximately 62 GiB RAM, Linux, Rust 1.94.0.
 | DejaVu Sans TTF export, release | 0.582 s | ≤ 5 s | Passed |
 | Source Han Sans open, release | 0.900 s | < 3 s | Passed |
 | Source Han Sans export, release | 58.697 s | ≤ 60 s | Passed |
-| Pointer handler through synchronous repaint, 300 points | Pending browser measurement | ≤ 8 ms | Pending |
+| Pointer handler through synchronous repaint, 300 points | median 1.000 ms; p95 1.300 ms; max 1.700 ms | every sample ≤ 8 ms | Preliminary passed; rerun after T9 |
 
 The API gate uses exactly 20,000 populated glyphs: one 300-point target and
 19,999 four-point outlines with widths and master layers. It performs 20 warmup
@@ -58,8 +59,19 @@ cumulative movement and a single undo restoring the original coordinates.
 Run it explicitly with `cargo test --release -p fc-api --test edit_performance
 -- --ignored --nocapture`; a debug run cannot satisfy this release-only gate.
 
-The existing canvas `__fwPaint` instrumentation measures renderer duration
-only. It must not be presented as the complete pointer-to-paint measurement.
+The browser gate sends one pointer move per animation frame, with 20 warmup
+and 200 measured moves. Its timer covers event dispatch through synchronous
+canvas drawing and checks that every move repaints and changes the preview;
+frame waiting is outside that timer. It verifies persisted coordinates and a
+single undo. Pointer-down measured 3.500 ms, and both pointer-down and every
+measured move must meet the 8 ms budget. These are CPU drawing measurements,
+not a measurement of display scanout. An earlier synthetic burst of all moves
+in one JavaScript turn produced 13–14.4 ms spikes; that diagnostic is retained
+in the browser report. Renderer-only `__fwPaint` timings are separate.
+
+Initial real Source Han `text.shape` took 76.779 seconds. The HTTP transport
+now allows 120 seconds for shaping and export, retaining 30 seconds for other
+methods and honoring explicit caller overrides. No automatic retry was added.
 
 Source Han used the actual 16,529,832-byte external OTF, resolved through the
 portable fixture lookup in a fresh linked worktree. The export gate verified
@@ -70,9 +82,12 @@ this machine, not a guarantee for every development environment.
 ## UFO, UI and desktop
 
 Eight `fc-formats` UFO write tests passed, including semantic, incremental and
-SFNT/UFO round trips. Full integrated UI acceptance, text editing and preview
-checks, Chinese translation with independent QA, and desktop build/launch
-smoke are pending. Native dialog interaction will be reported separately from
+SFNT/UFO round trips. Preliminary browser acceptance passed three tests:
+DejaVu pointer edits to A/B/C with export/reopen; new-font pen drawing and
+600/620/640 widths with export, release CLI inspection and reopen; and the
+300-point drag gate. T8 and independently checked Chinese translations are
+merged; integrated app tests passed 92 files / 869 tests. Final text editing,
+preview, translation top-up and desktop build/launch checks remain pending. Native dialog interaction will be reported separately from
 automated browser or build evidence.
 
 ## Evidence and remaining completion steps
@@ -90,7 +105,7 @@ Detailed commands and outputs are recorded in the tracked P1 ledger snapshots:
 `task-9b-shaping-identity-report.md`, `task-9b-kernel-review.md` and
 `fixture-path-resume-report.md` and `task-12-cjk-report.md`.
 
-- Finish T8 scoped review and T9b UI implementation/review.
+- Finish T9b UI implementation and scoped review.
 - Execute integrated browser/desktop acceptance.
 - Finish T13 translation and a separate QA pass.
 - Run whole-branch review, resolve its P1 findings and record final checks.

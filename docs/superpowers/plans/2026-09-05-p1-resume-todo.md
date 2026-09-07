@@ -14,23 +14,31 @@ repaired. Current dispatches and evidence are recorded in the ledger's
 and final review, then stop. Do not begin P2. Merging to main remains a separate
 user decision.**
 
-- T8: Astra fix-1 review requires a second Sol fix round for cancellation across
-  controller/source handover, the actual canvas Escape route, and metrics
-  resolution generation. Integration follows scoped re-review.
+- T8: reviewed cancellation/source handover and metrics freshness fixes merged
+  (`ee865eb`). Integrated app verification: 92 files / 869 tests passed.
 - T7 minor round: reviewed and merged (`3df91c9`).
-- T9b: parsing/layout/request foundation reviewed and merged (`fd980ef`), plus
-  compiled glyph identity and portable fixtures. UI waits for reviewed T8.
-- T12: kernel/CLI workflows and release API gate reviewed and merged. Actual
-  Source Han release open/export passed (0.900 s / 58.697 s); browser workflow
-  and pointer-to-paint tests are being prepared. Desktop evidence pending.
-- T13: separate Sol preliminary translation underway; T9b keys and independent
-  QA follow UI integration. Then whole-branch review and P1 handoff.
+- T9b: parsing/layout/request foundation, compiled glyph identity, portable
+  fixtures and lookup cancellation are merged. Sol is integrating TextView;
+  controlled TextBar/PreviewStrip are in a scoped review fix round.
+- T12: kernel/CLI and real Source Han release gates passed (open 0.900 s,
+  export 58.697 s). Preliminary browser edit/export/reopen workflows passed;
+  200 frame-paced drag samples had a 1.700 ms maximum. Final post-T9 rerun and
+  desktop smoke remain pending. Reviewed HTTP shaping/export deadlines now
+  allow 120 seconds after initial Source Han shaping took 76.779 seconds.
+- T13: preliminary Chinese translation and separate QA merged (`b460871`);
+  T9b translation top-up and independent QA follow UI integration.
+- Finish integrated acceptance and whole-branch review, then stop after P1.
 
 Authoritative state lives in the SDD ledger `.superpowers/sdd/2026-09-03-p1-outline-editing/progress.md`
 (snapshot copies in `docs/superpowers/ledgers/2026-09-03-p1-outline-editing/`). This file is the human-readable
 checklist for the next session. Process: superpowers `subagent-driven-development` (Fable orchestrates only;
 Opus implements/reviews; Sonnet only for small re-reviews; Codex paused until the user re-enables it;
 translation never on Fable). Run `scripts/sdd-snapshot.sh` after every merge.
+
+## Historical paused-session record (2026-09-05)
+
+The sections below preserve the original handoff. Paths, model assignments and
+unchecked boxes there are historical; the active resume above takes precedence.
 
 ## 0. Where things stand
 - Branch `p1-outline-editing` (from `main`): Tasks 1, 2 (+ minor round), 3, 4, 5, 6, 7, 9a, 10, 11 merged and verified
