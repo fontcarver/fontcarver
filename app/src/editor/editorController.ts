@@ -650,10 +650,10 @@ export class EditorController {
 
   /** Closes any open edit run before another begin or single-shot apply. */
   settle(): Promise<void> {
-    const external = this.externalSettler?.()
     const core = this.settleCore()
+    const external = this.externalSettler?.()
     if (!external) return core
-    return Promise.allSettled([external, core]).then(() => undefined)
+    return this.gate(Promise.allSettled([external, core]).then(() => undefined))
   }
 
   /**

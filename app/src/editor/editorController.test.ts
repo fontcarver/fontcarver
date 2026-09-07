@@ -722,6 +722,32 @@ describe('EditorController glyph switching', () => {
 
     expect(order).toEqual(['metrics'])
   })
+
+  it('gates an immediate drag behind a tab-owned metrics close', async () => {
+    const { controller, transport } = makeController()
+    let release: (() => void) | undefined
+    const metricsClosing = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    controller.setExternalSettler(() => {
+      controller.setExternalSettler(null)
+      return metricsClosing
+    })
+
+    controller.pointerDown(at(200, 300))
+    controller.pointerMove(at(230, 300))
+    expect(transport.calls).toHaveLength(0)
+
+    release?.()
+    controller.pointerUp(at(230, 300))
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+  })
 })
 
 describe('EditorController segment grammar', () => {
