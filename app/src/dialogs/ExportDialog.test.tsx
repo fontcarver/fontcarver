@@ -176,7 +176,7 @@ describe('ExportDialog', () => {
 
     expect(
       await screen.findByText(
-        'TrueType instructions were dropped for glyphs that changed since import.',
+        'All TrueType instructions were dropped from the exported font.',
       ),
     ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'A' }))

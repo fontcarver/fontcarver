@@ -344,6 +344,40 @@ describe('buildTextLayout', () => {
     expect(peak).toBe(3)
   })
 
+  it('stops queued exact-name searches after the first lookup failure', async () => {
+    const searched: string[] = []
+    const transport = createMockTransport({
+      'glyphs.search': async ({ query }) => {
+        searched.push(query)
+        if (query === 'g0') {
+          await new Promise((resolve) => setTimeout(resolve, 5))
+          throw new Error('lookup failed')
+        }
+        await new Promise((resolve) => setTimeout(resolve, 15))
+        return [cellFor(1, { name: query })]
+      },
+    })
+
+    await expect(
+      buildTextLayout(
+        transport,
+        {
+          doc: 1,
+          generation: 1,
+          unitsPerEm: 1_000,
+          master: null,
+          text: '/g0 /g1 /g2 /g3',
+          features: [],
+          direction: 'ltr',
+          script: null,
+          language: null,
+        },
+        { searchConcurrency: 2, listThreshold: 100 },
+      ),
+    ).rejects.toThrow('lookup failed')
+    expect(searched).toEqual(['g0', 'g1'])
+  })
+
   it('uses paged glyph listing instead of per-name searches for large runs', async () => {
     const names = Array.from({ length: 70 }, (_, index) => `g${index}`)
     const transport = createMockTransport({
