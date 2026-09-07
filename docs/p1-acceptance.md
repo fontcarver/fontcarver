@@ -1,8 +1,9 @@
 # P1 acceptance
 
 Status: **in progress**, 2026-09-07. This record covers the `p1-outline-editing`
-branch. P1 is not complete until the pending integration, browser, localisation
-and review items below are resolved. P2 is outside this session's scope.
+branch. Implementation, localisation and the final three review fixes are
+integrated. Final candidate verification and scoped re-review remain pending.
+P2 is outside this session's scope.
 
 ## Kernel and CLI workflows
 
@@ -24,12 +25,17 @@ rerun remains pending T9.
 ## Preservation and shaping
 
 Eight `fc-compile` preservation tests passed. Entirely untouched fonts with
-verified original glyph set/order retain `glyf`, `loca`, `maxp`, global hint
+verified original glyph set/order and an unambiguous original face retain
+`glyf`, `loca`, `maxp`, global hint
 programs and glyph instructions verbatim. **Any outline edit drops all
 TrueType hinting and emits a warning**, including instructions in otherwise
 untouched glyphs. This is the explicit Task 3 fix-1 C1 ruling, a limitation of
 P1 relative to the original broader preservation wording. Edited-font tests
-verify both global and per-glyph instruction removal.
+verify both global and per-glyph instruction removal. When multiple TTC faces
+have the same glyph order, original-face preservation is declined: export uses
+the selected face's model geometry and drops hinting with the existing warning.
+A generated two-face DejaVu regression verifies that face 1 cannot silently
+export face 0's outlines. All nine preservation tests passed after this fix.
 
 The Noto shaping round trip passed. Compiled model glyph names are retained
 before large-font `post` format 3 removes font-file names; a focused regression
@@ -86,8 +92,11 @@ SFNT/UFO round trips. Preliminary browser acceptance passed three tests:
 DejaVu pointer edits to A/B/C with export/reopen; new-font pen drawing and
 600/620/640 widths with export, release CLI inspection and reopen; and the
 300-point drag gate. T8 and independently checked Chinese translations are
-merged; integrated app tests passed 92 files / 869 tests. Final text editing,
-preview, translation top-up and desktop build/launch checks remain pending. Preliminary desktop evidence at `84e881e`: embedded debug Tauri build passed
+merged. T9 TextView integration now covers shaped runs, glyph-local editing,
+coalesced sidebearing keys, stable tab identity and delayed master handover.
+The final independently translated/reviewed Chinese locale has 881 matching
+keys. Candidate `929d826` passed all 21 headless tests without skips; the final
+post-review integrated rerun remains pending. Preliminary desktop evidence at `84e881e`: embedded debug Tauri build passed
 in 63.52 seconds; the native shell launched with isolated configuration and
 loaded DejaVu Sans through its real Open chooser, displaying 6,253 glyphs. The
 native Save chooser opened, but export was not completed. The user reported
@@ -113,8 +122,29 @@ Detailed commands and outputs are recorded in the tracked P1 ledger snapshots:
 `task-9b-shaping-identity-report.md`, `task-9b-kernel-review.md` and
 `fixture-path-resume-report.md` and `task-12-cjk-report.md`.
 
-- Finish T9b UI implementation and scoped review.
-- Execute integrated browser/desktop acceptance.
-- Finish T13 translation and a separate QA pass.
-- Run whole-branch review, resolve its P1 findings and record final checks.
+- Complete final integrated headless tests and embedded build without launch.
+- Finish scoped re-review of the three integrated corrections and record checks.
 - Stop after P1 and hand off the branch; merging to `main` is a separate user decision.
+
+## Final review corrections
+
+Whole-branch review identified three blocking persistence/handover defects.
+The fix wave serializes save/export/close with old tools and document edit
+barriers, checks fresh kernel dirty state before closing, declines ambiguous
+TTC source-face preservation, and finishes an old-layer Pen path before an
+inner-toolbar master switch. Real controller and generated TTC regressions
+cover the original triggers; scoped re-review is pending.
+
+The drag test now waits for the successful asynchronous `doc.edit_end` response
+after collecting timed pointer samples, then checks exact persisted coordinates
+and undo. A 40 ms-per-apply diagnostic demonstrated 220 successful sequential
+requests taking 14.941 s to close: the old five-second polling window could
+expire before completion. This wait is outside the unchanged 8 ms input/paint
+budget. The old failure and its cleanup-generated NotFound messages are retained
+as diagnostic evidence; neither coordinate assertions nor timing limits were
+relaxed.
+
+The preview uses model outlines with kernel-shaped advances at 12/24/48 px;
+it is not a hinted compiled-font rasterizer. Visible path work is capped at
+512 glyphs and the preview backing window at 4096 px. Kerning editing, vertical
+text and the recorded P2 backlog are deferred.
