@@ -7,7 +7,12 @@ import {
   noChange,
 } from '../test/mockTransport'
 
-import { EditSession, immediateScheduler } from './editSession'
+import {
+  applyCommand,
+  EditSession,
+  holdDocumentEdits,
+  immediateScheduler,
+} from './editSession'
 
 const move = () => ({
   MovePoints: {
@@ -98,5 +103,34 @@ describe('EditSession failures', () => {
     expect(errors).toEqual([])
     expect(session.failed).toBe(false)
     expect(session.dirty).toBe(true)
+  })
+})
+
+describe('document edit handover', () => {
+  it('keeps documents independent while one handover is blocked', async () => {
+    let release = () => undefined as void
+    holdDocumentEdits(
+      1,
+      new Promise<void>((resolve) => {
+        release = resolve
+      }),
+    )
+    const transport = createMockTransport({
+      'doc.apply': () => noChange([42]),
+    })
+    setTransport(transport)
+
+    const blocked = applyCommand(1, move(), 'Move point')
+    await applyCommand(2, move(), 'Move point')
+    expect(transport.calls.map((entry) => entry.params)).toEqual([
+      expect.objectContaining({ doc: 2 }),
+    ])
+
+    release()
+    await blocked
+    expect(transport.calls.map((entry) => entry.params)).toEqual([
+      expect.objectContaining({ doc: 2 }),
+      expect.objectContaining({ doc: 1 }),
+    ])
   })
 })

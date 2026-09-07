@@ -14,7 +14,7 @@ import {
 } from '../stores/documentStore'
 import { selectSummary, useSessionStore } from '../stores/sessionStore'
 import { selectActiveTab, useUiStore } from '../stores/uiStore'
-import { GlyphInspector } from '../views/glyph/GlyphInspector'
+import { EditInspector } from '../views/glyph/panels/EditInspector'
 
 import styles from './panels.module.css'
 
@@ -50,8 +50,14 @@ export function Inspector() {
   return (
     <>
       <div className={styles.panelTitle}>{t('inspector.title')}</div>
-      <div className={styles.panelStack}>
-        {tab.kind === 'glyph' ? <GlyphInspector /> : null}
+      <div
+        className={styles.panelStack}
+        role="region"
+        aria-label={t('a11y.inspector')}
+      >
+        {tab.kind === 'glyph' ? (
+          <EditInspector masters={summary.masters} />
+        ) : null}
         <Panel title={t('inspector.document')}>
           <Field label={t('inspector.family')} readOnly>
             {summary.family_name}

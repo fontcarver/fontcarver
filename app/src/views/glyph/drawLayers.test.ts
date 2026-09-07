@@ -16,6 +16,7 @@ import { drawComponents } from './drawComponents'
 import { drawGuides } from './drawGuides'
 import { DEFAULT_METRIC_LABELS, drawMetrics } from './drawMetrics'
 import { drawRulers, RULER_SIZE, tickStep } from './drawRulers'
+import { drawUnderlays } from './drawUnderlays'
 import { buildScene } from './glyphScene'
 import { FALLBACK_GLYPH_THEME } from './glyphTheme'
 
@@ -360,6 +361,7 @@ describe('drawGuides', () => {
   const guide = (angle: number, name: string | null = null) => ({
     guide: { x: 100, y: 200, angle, name, locked: false, color: null },
     scope: 'layer' as const,
+    index: 0,
   })
 
   it('draws a horizontal guide as a horizontal screen line', () => {
@@ -433,5 +435,66 @@ describe('drawRulers', () => {
     const recording = createRecordingContext()
     drawRulers(recording.ctx, empty, { pointer: null }, FALLBACK_GLYPH_THEME)
     expect(recording.ops).toHaveLength(0)
+  })
+})
+
+describe('drawUnderlays', () => {
+  it('strokes the background layer and dots its points', () => {
+    const recording = createRecordingContext()
+    drawUnderlays(
+      recording.ctx,
+      viewportOf(),
+      {
+        background: new Path2D('M0 0L10 0Z'),
+        backgroundPoints: [
+          { x: 0, y: 0 },
+          { x: 10, y: 0 },
+        ],
+        otherMasters: [],
+      },
+      FALLBACK_GLYPH_THEME,
+    )
+
+    expect(recording.calls('stroke')).toHaveLength(1)
+    // One 3 px dot per stored point of the background layer (§4.1 item 5).
+    expect(recording.calls('arc')).toHaveLength(2)
+    expect(recording.styleAt('stroke', 'strokeStyle')).toBe(
+      FALLBACK_GLYPH_THEME.backgroundLayer,
+    )
+    expect(recording.styleAt('fill', 'fillStyle')).toBe(
+      FALLBACK_GLYPH_THEME.backgroundLayer,
+    )
+  })
+
+  it('strokes one path per other master and no nodes at all', () => {
+    const recording = createRecordingContext()
+    drawUnderlays(
+      recording.ctx,
+      viewportOf(),
+      {
+        background: null,
+        backgroundPoints: [],
+        otherMasters: [new Path2D('M0 0Z'), new Path2D('M1 1Z')],
+      },
+      FALLBACK_GLYPH_THEME,
+    )
+
+    expect(recording.calls('stroke')).toHaveLength(2)
+    expect(recording.calls('arc')).toHaveLength(0)
+    expect(recording.styleAt('stroke', 'strokeStyle')).toBe(
+      FALLBACK_GLYPH_THEME.otherMaster,
+    )
+  })
+
+  it('draws nothing when the overlays are off', () => {
+    const recording = createRecordingContext()
+    drawUnderlays(
+      recording.ctx,
+      viewportOf(),
+      { background: null, backgroundPoints: [], otherMasters: [] },
+      FALLBACK_GLYPH_THEME,
+    )
+
+    expect(recording.calls('stroke')).toHaveLength(0)
   })
 })

@@ -41,6 +41,16 @@ export function useEditorLabels(): EditorLabels {
       deletePoints: t('editor.undo.deletePoints'),
       insertPoint: t('editor.undo.insertPoint'),
       convertSegment: t('editor.undo.convertSegment'),
+      setMetrics: t('editor.undo.setMetrics'),
+      addGuide: t('editor.undo.addGuide'),
+      metricHud: (handle, value) =>
+        `${t(
+          handle === 'width'
+            ? 'glyphView.metric.advance'
+            : handle === 'lsb'
+              ? 'glyphView.metric.lsb'
+              : 'glyphView.metric.rsb',
+        )} ${value}`,
       snap: {
         node: t('editor.snap.node'),
         handle: t('editor.snap.handle'),

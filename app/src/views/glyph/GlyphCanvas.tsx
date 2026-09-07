@@ -26,6 +26,7 @@ import type { ShapeDialogRequest } from '../../editor/tools/toolTypes'
 
 import { componentDraws, type PathCache } from './componentDraws'
 import type { MetricLabels } from './drawMetrics'
+import type { UnderlayData } from './drawUnderlays'
 import styles from './glyphView.module.css'
 import { sceneBox, type GlyphScene } from './glyphScene'
 import type { GlyphTheme } from './glyphTheme'
@@ -48,6 +49,8 @@ export interface GlyphCanvasProps {
   overlays: GlyphOverlays
   /** Component-flattened outline of the shown layer, in font units. */
   flattened: Path2D | null
+  /** The other masters and the background layer, drawn behind the outline. */
+  underlay: UnderlayData
   /** The layer's components with their own resolved paths. */
   componentViews: readonly ComponentView[]
   /** Identity of the glyph shown; changing it refits the view. */
@@ -102,6 +105,7 @@ export function GlyphCanvas({
   labels,
   overlays,
   flattened,
+  underlay,
   componentViews,
   fitKey,
   label,
@@ -123,6 +127,7 @@ export function GlyphCanvas({
   const fittedRef = useRef('')
   const tool = useEditorStore(selectActiveTool)
   const snapping = useEditorStore((state) => state.snapping)
+  const measurementGuides = useEditorStore((state) => state.measurementGuides)
 
   const frame = useRef({
     scene,
@@ -130,6 +135,8 @@ export function GlyphCanvas({
     labels,
     overlays,
     flattened,
+    underlay,
+    measurementGuides,
     componentViews,
   })
   // Parsing SVG path data is the expensive part of drawing a component, and
@@ -166,18 +173,31 @@ export function GlyphCanvas({
     // Dev builds time every frame so the 60 fps target of design spec §13 can
     // be measured from the running app rather than asserted.
     const started = import.meta.env.DEV ? performance.now() : 0
-    renderGlyph(ctx, viewport, {
-      scene: editing.contours
+    // A live gesture draws its own geometry: the optimistic contours and
+    // anchors of a drag, and the metrics a sidebearing drag is showing.
+    const scene =
+      editing.contours || editing.metrics
         ? {
             ...current.scene,
-            contours: editing.contours,
+            contours: editing.contours ?? current.scene.contours,
             anchors: editing.anchors ?? current.scene.anchors,
+            metrics: editing.metrics
+              ? {
+                  ...current.scene.metrics,
+                  width: editing.metrics.width,
+                  lsb: editing.metrics.lsb,
+                  rsb: editing.metrics.rsb,
+                }
+              : current.scene.metrics,
           }
-        : current.scene,
+        : current.scene
+    renderGlyph(ctx, viewport, {
+      scene,
       theme: current.theme,
       labels: current.labels,
       overlays: current.overlays,
       flattened: current.flattened,
+      underlay: current.underlay,
       components,
       pointer: pointerRef.current,
       selected: editing.selected,
@@ -186,9 +206,18 @@ export function GlyphCanvas({
       grid: controller.gridSize,
       hud: editing.hud,
       pointerScreen: editing.pointerScreen,
+      hoveredComponent: editing.hoveredComponent,
+      measurementGuides: current.measurementGuides,
+      guideOwner: source
+        ? {
+            doc: source.doc,
+            layer: source.outline.layer,
+            master: source.master,
+          }
+        : undefined,
     })
     if (import.meta.env.DEV) recordPaint(performance.now() - started)
-  }, [controller, viewport])
+  }, [controller, source, viewport])
 
   useEffect(() => {
     controller.setCallbacks({
@@ -212,6 +241,10 @@ export function GlyphCanvas({
   )
   useEffect(() => controller.setTool(tool), [controller, tool])
   useEffect(() => controller.setSnapping(snapping), [controller, snapping])
+  useEffect(
+    () => controller.setRulersVisible(overlays.rulers),
+    [controller, overlays.rulers],
+  )
   useEffect(() => {
     controller.setSnapSettings(snapSettings)
     draw()
@@ -294,10 +327,22 @@ export function GlyphCanvas({
       labels,
       overlays,
       flattened,
+      underlay,
+      measurementGuides,
       componentViews,
     }
     draw()
-  }, [draw, scene, theme, labels, overlays, flattened, componentViews])
+  }, [
+    draw,
+    scene,
+    theme,
+    labels,
+    overlays,
+    flattened,
+    underlay,
+    measurementGuides,
+    componentViews,
+  ])
 
   // Wheel must be a non-passive native listener: React attaches `onWheel`
   // passively at the root, where `preventDefault` is ignored.
@@ -421,7 +466,6 @@ export function GlyphCanvas({
       }
       if (event.key === 'Escape') {
         event.preventDefault()
-        void controller.endNudge()
         controller.escape()
         return
       }

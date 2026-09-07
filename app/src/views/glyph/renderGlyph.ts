@@ -19,8 +19,10 @@ import { drawMetrics, type MetricLabels } from './drawMetrics'
 import { drawOutline } from './drawOutline'
 import { drawGrid, drawToolOverlay } from './drawTools'
 import { drawRulers } from './drawRulers'
+import { drawUnderlays, NO_UNDERLAY, type UnderlayData } from './drawUnderlays'
 import type { GlyphScene } from './glyphScene'
 import type { GlyphTheme } from './glyphTheme'
+import type { GuideOwner } from './guideIdentity'
 import { NO_TOOL_OVERLAY, type ToolOverlay } from '../../editor/tools/toolTypes'
 
 /** Which overlays the editor is currently showing. */
@@ -32,6 +34,10 @@ export interface GlyphOverlays {
   anchors: boolean
   guides: boolean
   rulers: boolean
+  /** The glyph's background layer for this master (design spec §4.1 item 5). */
+  background: boolean
+  /** The same glyph in every other master (design spec §4.1 item 4). */
+  otherMasters: boolean
 }
 
 /** Every overlay on, which is the default for a read-only glyph tab. */
@@ -42,6 +48,8 @@ export const DEFAULT_OVERLAYS: GlyphOverlays = {
   anchors: true,
   guides: true,
   rulers: true,
+  background: true,
+  otherMasters: false,
 }
 
 /** Everything one frame needs. */
@@ -52,6 +60,8 @@ export interface RenderGlyphOptions {
   overlays: GlyphOverlays
   /** Component-flattened outline of the shown layer, in font units. */
   flattened: Path2D | null
+  /** The other masters and the background layer, drawn behind everything. */
+  underlay?: UnderlayData
   /**
    * The layer's components with their own paths and any preview offset. When
    * omitted, the scene's components draw as markers over the flattened path.
@@ -63,6 +73,12 @@ export interface RenderGlyphOptions {
   selected?: ReadonlySet<string>
   /** Transient editing feedback: marquee, snap halo, ghosts, alignment lines. */
   editing?: EditingOverlay
+  /** Index of the component the pointer is over, for the locked hatch. */
+  hoveredComponent?: number | null
+  /** Owner-scoped identities of guides shown as measurement guides. */
+  measurementGuides?: ReadonlySet<string>
+  /** Document/layer/master identity of the guide lists in this scene. */
+  guideOwner?: GuideOwner
   /** Cursor-HUD text, or `null` when no gesture is running. */
   hud?: string | null
   /** Pointer position in canvas pixels, where the HUD is anchored. */
@@ -71,6 +87,20 @@ export interface RenderGlyphOptions {
   tool?: ToolOverlay
   /** Grid step in font units; zero draws no grid. */
   grid?: number
+}
+
+/** The vertical metrics a node can sit on (design spec §4.1 item 9). */
+function verticalMetricsOf(scene: GlyphScene): number[] {
+  const { metrics } = scene
+  const values = [
+    0,
+    metrics.xHeight,
+    metrics.capHeight,
+    metrics.ascender,
+    metrics.descender,
+  ]
+  if (metrics.verticalOrigin !== null) values.push(metrics.verticalOrigin)
+  return [...new Set(values.filter((value) => Number.isFinite(value)))]
 }
 
 /** Paints one frame of the glyph editor. */
@@ -95,7 +125,31 @@ export function renderGlyph(
     )
 
   if (overlays.guides)
-    drawGuides(ctx, viewport, { guides: scene.guides, showLabels: true }, theme)
+    drawGuides(
+      ctx,
+      viewport,
+      {
+        guides: scene.guides,
+        showLabels: true,
+        selected: options.selected,
+        measurement: options.measurementGuides,
+        owner: options.guideOwner,
+        contours: scene.contours,
+      },
+      theme,
+    )
+
+  const underlay = options.underlay ?? NO_UNDERLAY
+  drawUnderlays(
+    ctx,
+    viewport,
+    {
+      background: overlays.background ? underlay.background : null,
+      backgroundPoints: overlays.background ? underlay.backgroundPoints : [],
+      otherMasters: overlays.otherMasters ? underlay.otherMasters : [],
+    },
+    theme,
+  )
 
   drawComponents(
     ctx,
@@ -109,6 +163,8 @@ export function renderGlyph(
           path: null,
           transform: IDENTITY,
         })),
+      bounds: scene.componentBounds,
+      hovered: options.hoveredComponent ?? null,
       filled: overlays.filled,
       showLabels: overlays.points,
     },
@@ -123,6 +179,7 @@ export function renderGlyph(
       filled: overlays.filled,
       showPoints: overlays.points,
       selected: options.selected,
+      verticalMetrics: verticalMetricsOf(scene),
     },
     theme,
   )

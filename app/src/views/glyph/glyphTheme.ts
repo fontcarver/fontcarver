@@ -28,6 +28,10 @@ export interface GlyphTheme {
   handle: string
   start: string
   component: string
+  /** The background layer's outline and its 3 px point dots. */
+  backgroundLayer: string
+  /** The same glyph in the other masters. */
+  otherMaster: string
   anchor: string
   guideLocal: string
   guideGlobal: string
@@ -45,6 +49,8 @@ export interface GlyphTheme {
   hudInk: string
   /** Duplicate nodes and audit markers. */
   warning: string
+  /** Alignment zones, and the diamond around a node on a vertical metric. */
+  zone: string
   /** The optional editing grid (design spec §4.1 item 1). */
   grid: string
   fontFamily: string
@@ -66,6 +72,8 @@ export const FALLBACK_GLYPH_THEME: GlyphTheme = {
   handle: '#8e96a2',
   start: '#3b6fb6',
   component: '#8e96a2',
+  backgroundLayer: '#c9a227',
+  otherMaster: '#9e7bb5',
   anchor: '#c2413b',
   guideLocal: '#3b6fb6',
   guideGlobal: '#c2413b',
@@ -78,6 +86,7 @@ export const FALLBACK_GLYPH_THEME: GlyphTheme = {
   hudBackground: 'rgb(27 31 36 / 92%)',
   hudInk: '#ffffff',
   warning: '#c2413b',
+  zone: '#eadfb8',
   grid: '#d9dde3',
   fontFamily: 'system-ui',
 }
@@ -106,6 +115,8 @@ export function readGlyphTheme(): GlyphTheme {
     handle: token('--cv-handle', fb.handle),
     start: token('--cv-node-corner', fb.start),
     component: token('--cv-component', fb.component),
+    backgroundLayer: token('--cv-background-layer', fb.backgroundLayer),
+    otherMaster: token('--cv-other-master', fb.otherMaster),
     anchor: token('--cv-anchor', fb.anchor),
     guideLocal: token('--cv-guide-local', fb.guideLocal),
     guideGlobal: token('--cv-guide-global', fb.guideGlobal),
@@ -118,6 +129,7 @@ export function readGlyphTheme(): GlyphTheme {
     hudBackground: token('--cv-hud-bg', fb.hudBackground),
     hudInk: token('--cv-hud-ink', fb.hudInk),
     warning: token('--cv-warning', fb.warning),
+    zone: token('--cv-zone', fb.zone),
     grid: token('--color-border', fb.grid),
     fontFamily: token('--font-ui', fb.fontFamily),
   }

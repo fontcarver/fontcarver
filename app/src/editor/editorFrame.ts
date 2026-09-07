@@ -38,6 +38,10 @@ export interface EditorFrame {
   tool: ToolOverlay
   hud: string | null
   pointerScreen: Point2 | null
+  /** Horizontal metrics a live sidebearing drag is showing, or `null`. */
+  metrics: { width: number; lsb: number; rsb: number } | null
+  /** Component the pointer is over, for the locked-component hatch. */
+  hoveredComponent: number | null
 }
 
 /** The gesture state a frame is built from. */
@@ -59,6 +63,18 @@ export interface FrameState {
   band: MarqueeRect | null
   snap: SnapMatch | null
   hover: Hit | null
+  /**
+   * A gesture the drag/marquee pair does not cover — a sidebearing drag, a
+   * guide pulled off a ruler — describing itself: the HUD line it wants, the
+   * metrics it is previewing and the alignment lines it is drawing.
+   */
+  aside?: {
+    hud?: string | null
+    metrics?: { width: number; lsb: number; rsb: number } | null
+    preview?: EditorPreview | null
+    alignX?: number | null
+    alignY?: number | null
+  } | null
   /** What the active drawing tool wants drawn, if any. */
   tool?: ToolOverlay
 }
@@ -123,6 +139,7 @@ function stem(state: FrameState): number | null {
 /** The cursor-HUD line for the gesture in progress, or `null` when idle. */
 export function frameHud(state: FrameState): string | null {
   const { labels } = state
+  if (state.aside?.hud != null) return state.aside.hud
   if (state.band) {
     const box = state.band
     const scale = state.viewport.scale || 1
@@ -173,19 +190,20 @@ export function frameHud(state: FrameState): string | null {
 
 /** Builds the whole frame description for one paint. */
 export function buildFrame(state: FrameState): EditorFrame {
+  const preview = state.preview ?? state.aside?.preview ?? null
   const overlay: EditingOverlay = {
     marquee: state.band,
     snap: state.snap?.point ?? null,
-    alignX: state.snap?.alignedX ?? null,
-    alignY: state.snap?.alignedY ?? null,
+    alignX: state.aside?.alignX ?? state.snap?.alignedX ?? null,
+    alignY: state.aside?.alignY ?? state.snap?.alignedY ?? null,
     insertGhost: insertGhost(state),
     componentGhosts: componentGhosts(state),
   }
   const tool = state.tool ?? NO_TOOL_OVERLAY
   return {
-    contours: state.preview?.contours ?? null,
-    anchors: state.preview?.anchors ?? null,
-    components: state.preview?.components ?? null,
+    contours: preview?.contours ?? null,
+    anchors: preview?.anchors ?? null,
+    components: preview?.components ?? null,
     tool,
     selected:
       state.selection.size === 0
@@ -195,5 +213,10 @@ export function buildFrame(state: FrameState): EditorFrame {
     // A tool's own readout wins: while it is drawing, the drag HUD is idle.
     hud: tool.hud ?? frameHud(state),
     pointerScreen: state.pointer,
+    metrics: state.aside?.metrics ?? null,
+    hoveredComponent:
+      state.hover?.target.kind === 'component'
+        ? state.hover.target.index
+        : null,
   }
 }

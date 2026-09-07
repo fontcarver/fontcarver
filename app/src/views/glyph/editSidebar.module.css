@@ -1,0 +1,62 @@
+/* The Edit tab's sidebar: the layer list over the compact glyph list. */
+
+.sidebar {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.layers {
+  flex: none;
+  max-height: 40%;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.heading {
+  margin: 0 0 var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+  font-weight: var(--text-weight-strong);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.glyphs {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  padding-top: var(--space-2);
+}
+
+.glyphsHeading {
+  margin: 0 var(--space-3) var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+  font-weight: var(--text-weight-strong);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.glyphScroll {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  outline: none;
+}
+
+.glyphScroll:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
+.note {
+  margin: 0;
+  padding: var(--space-3);
+  color: var(--color-text-faint);
+  font-size: var(--text-size-sm);
+}

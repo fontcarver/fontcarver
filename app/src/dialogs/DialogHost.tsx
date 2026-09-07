@@ -2,10 +2,12 @@ import { selectSummary, useSessionStore } from '../stores/sessionStore'
 import { useUiStore } from '../stores/uiStore'
 
 import { AddGlyphsDialog } from './AddGlyphsDialog'
+import { ExpandStrokeDialog } from './ExpandStrokeDialog'
 import { ExportDialog } from './ExportDialog'
 import { NewFontDialog } from './NewFontDialog'
 import { PreferencesDialog } from './PreferencesDialog'
 import { RecoveryDialog } from './RecoveryDialog'
+import { SimplifyDialog } from './SimplifyDialog'
 
 /**
  * Mounts whichever modal dialog the UI store has open. Dialogs are mounted, not
@@ -29,5 +31,9 @@ export function DialogHost() {
       return <PreferencesDialog />
     case 'recovery':
       return <RecoveryDialog entries={dialog.entries} />
+    case 'simplify':
+      return <SimplifyDialog />
+    case 'expandStroke':
+      return <ExpandStrokeDialog />
   }
 }

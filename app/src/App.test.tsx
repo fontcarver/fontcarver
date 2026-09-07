@@ -74,7 +74,9 @@ describe('App shell', () => {
     render(<App />)
     const menubar = await screen.findByRole('menubar')
 
-    await user.click(within(menubar).getByRole('menuitem', { name: 'Layer' }))
+    // Layer and Path fill up with the editor's own commands; Bitmap is one
+    // of the three menus P1 leaves empty on purpose.
+    await user.click(within(menubar).getByRole('menuitem', { name: 'Bitmap' }))
 
     const item = screen.getByRole('menuitem', {
       name: 'Arrives in a later phase',

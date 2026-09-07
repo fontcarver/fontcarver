@@ -33,9 +33,19 @@ export function NumberField({
   const [text, setText] = useState(() => formatUnits(value))
   const [invalid, setInvalid] = useState(false)
   const editing = useRef(false)
+  /**
+   * The value the field last asked for, until the model catches up.
+   *
+   * Enter commits and then blur commits again — the field has lost focus by
+   * then — and the second commit still sees the *old* `value`, because the
+   * round trip to the kernel has not finished. Without this the one edit would
+   * send two identical commands and leave two undo entries.
+   */
+  const pending = useRef<number | null>(null)
 
   // Follow the model unless the user is mid-edit, which would fight them.
   useEffect(() => {
+    if (pending.current === value) pending.current = null
     if (!editing.current) setText(formatUnits(value))
   }, [value])
 
@@ -53,7 +63,10 @@ export function NumberField({
       return false
     }
     setText(formatUnits(next))
-    if (next !== value) onCommit(next)
+    if (next !== value && next !== pending.current) {
+      pending.current = next
+      onCommit(next)
+    }
     return true
   }
 
@@ -99,7 +112,10 @@ export function NumberField({
           const base = evaluateField(event.currentTarget.value, value) ?? value
           const next = event.key === 'ArrowUp' ? base + amount : base - amount
           setText(formatUnits(next))
-          if (next !== value) onCommit(next)
+          if (next !== value) {
+            pending.current = next
+            onCommit(next)
+          }
         }}
       />
     </label>

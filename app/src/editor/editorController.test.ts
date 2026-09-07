@@ -51,6 +51,9 @@ const labels: EditorLabels = {
   deletePoints: 'Delete points',
   insertPoint: 'Insert point',
   convertSegment: 'Convert segment',
+  setMetrics: 'Set metrics',
+  addGuide: 'Add guide',
+  metricHud: (handle, value) => `${handle} ${value}`,
   snap: {
     node: 'node',
     handle: 'handle',
@@ -206,6 +209,152 @@ async function settle(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0))
   await new Promise((resolve) => setTimeout(resolve, 0))
 }
+
+/** Lets the production animation-frame scheduler put an apply on the wire. */
+async function settleFrame(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  await settle()
+}
+
+describe('dragging an anchor on its own', () => {
+  it('commits the TransformSelection that carries it', async () => {
+    const { controller, transport } = makeController(createEditingTransport())
+
+    // The layer's anchor sits at (100, 260), which is canvas (100, 40).
+    controller.pointerDown(at(100, 40))
+    expect(controller.currentSelection.has('anchor:0')).toBe(true)
+    controller.pointerMove(at(130, 40))
+    controller.pointerUp(at(130, 40))
+    await settle()
+
+    const applied = transport.calls.find(
+      (entry) => entry.method === 'doc.edit_apply',
+    )?.params as { command: Record<string, unknown> } | undefined
+    expect(applied?.command).toEqual({
+      TransformSelection: {
+        glyph: 'a',
+        layer: 'layer-1',
+        points: [],
+        components: [],
+        anchors: [0],
+        affine: [1, 0, 0, 1, 30, 0],
+      },
+    })
+    expect((transport.calls[0]?.params as { label: string }).label).toBe(
+      'Move anchor',
+    )
+  })
+})
+
+describe('metric handles and ruler guides', () => {
+  it('drags the right sidebearing as one coalesced SetMetrics run', async () => {
+    const { controller, transport, recorded } = makeController(
+      createEditingTransport(),
+    )
+
+    // The RSB line sits at x = 200 (width 600 − rsb 400); a vertical segment
+    // of the outline runs along it, and §4.2 puts the metric handle first.
+    controller.pointerDown(at(200, 250))
+    controller.pointerMove(at(240, 250))
+    controller.pointerUp(at(240, 250))
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(
+      (transport.calls[1]?.params as { command: unknown }).command,
+    ).toEqual({
+      SetMetrics: {
+        glyph: 'a',
+        layer: 'layer-1',
+        width: null,
+        lsb: null,
+        rsb: 360,
+      },
+    })
+    expect((transport.calls[0]?.params as { label: string }).label).toBe(
+      'Set metrics',
+    )
+    expect(recorded.editing).toEqual([true, false])
+    expect(recorded.errors).toEqual([])
+  })
+
+  it('leaves a node alone even when it sits on a metric line', async () => {
+    const { controller, transport } = makeController(createEditingTransport())
+
+    // The node at (200, 200) is on the RSB line; a node outranks the handle.
+    controller.pointerDown(at(200, 100))
+    controller.pointerMove(at(210, 100))
+    controller.pointerUp(at(210, 100))
+    await settle()
+
+    const applied = transport.calls.find(
+      (entry) => entry.method === 'doc.edit_apply',
+    )?.params as { command: Record<string, unknown> } | undefined
+    expect(applied && Object.keys(applied.command)).toEqual(['MovePoints'])
+  })
+
+  it('adds a layer guide dragged out of the top ruler', async () => {
+    const { controller, transport } = makeController()
+
+    controller.pointerDown(at(200, 5, { ...NO_MODIFIERS, alt: true }))
+    controller.pointerMove(at(200, 260, { ...NO_MODIFIERS, alt: true }))
+    controller.pointerUp(at(200, 260, { ...NO_MODIFIERS, alt: true }))
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual(['doc.apply'])
+    expect(transport.calls[0]?.params).toEqual({
+      doc: 1,
+      label: 'Add guide',
+      command: {
+        AddGuide: {
+          glyph: 'a',
+          layer: 'layer-1',
+          master: null,
+          guide: {
+            x: 0,
+            y: 40,
+            angle: 0,
+            name: null,
+            locked: false,
+            color: null,
+          },
+        },
+      },
+    })
+  })
+
+  it('puts a shifted ruler drag in the master scope', async () => {
+    const { controller, transport } = makeController()
+
+    const held = { ...NO_MODIFIERS, alt: true, shift: true }
+    controller.pointerDown(at(5, 200, held))
+    controller.pointerUp(at(120, 200, held))
+    await settle()
+
+    expect(transport.calls[0]?.params).toMatchObject({
+      command: {
+        AddGuide: { glyph: null, layer: null, master: 'm1' },
+      },
+    })
+  })
+
+  it('draws no guide when the rulers are hidden', async () => {
+    const { controller, transport } = makeController()
+    controller.setRulersVisible(false)
+
+    controller.pointerDown(at(200, 5, { ...NO_MODIFIERS, alt: true }))
+    controller.pointerUp(at(200, 5, { ...NO_MODIFIERS, alt: true }))
+    await settle()
+
+    expect(transport.calls.some((entry) => entry.method === 'doc.apply')).toBe(
+      false,
+    )
+  })
+})
 
 // A gesture's promise chain outlives the test that started it, and `call()`
 // reads whichever transport is installed *when it runs* — so drain the chains
@@ -878,6 +1027,460 @@ describe('EditorController against the kernel token rules', () => {
     controller.setSelection(
       new Map([[`node:0:${point}`, { kind: 'node', contour: 0, point }]]),
     )
+
+  function heldMetrics() {
+    let release = () => undefined as void
+    const until = new Promise<void>((resolve) => {
+      release = () => resolve()
+    })
+    const made = makeController(
+      createEditingTransport({ hold: { on: 'doc.edit_apply', until } }),
+    )
+    return { ...made, release }
+  }
+
+  it('keeps an immediate second metrics drag behind the first close', async () => {
+    const { controller, transport, recorded, release } = heldMetrics()
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(10, 200))
+    controller.pointerUp(at(10, 200))
+    await settle()
+
+    // The first drag's final optimistic frame remains the visible and logical
+    // baseline until its reload arrives, so the second grabs x=10 and adds 20.
+    controller.pointerDown(at(10, 200))
+    controller.pointerMove(at(30, 200))
+    controller.pointerUp(at(30, 200))
+    await settle()
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+    ])
+
+    release()
+    await controller.settle()
+    await settle()
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(
+      transport.calls
+        .filter((entry) => entry.method === 'doc.edit_apply')
+        .map(
+          (entry) =>
+            (entry.params as { command: { SetMetrics: { lsb: number } } })
+              .command.SetMetrics.lsb,
+        ),
+    ).toEqual([10, 30])
+    expect(recorded.errors).toEqual([])
+  })
+
+  it('gates a new source without projecting the old metrics preview', async () => {
+    const { controller, transport, recorded, release } = heldMetrics()
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(10, 200))
+    controller.pointerUp(at(10, 200))
+    await settle()
+    expect(controller.frame().metrics?.lsb).toBe(10)
+
+    const next = source()
+    controller.setSource({
+      ...next,
+      gid: 43,
+      glyph: 'b',
+      outline: { ...next.outline, layer: 'layer-2' },
+    })
+    expect(controller.frame().metrics).toBeNull()
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(20, 200))
+    controller.pointerUp(at(20, 200))
+    await settle()
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+    ])
+
+    release()
+    await controller.settle()
+    await settle()
+    expect(
+      transport.calls
+        .filter((entry) => entry.method === 'doc.edit_apply')
+        .map(
+          (entry) =>
+            (entry.params as { command: { SetMetrics: { layer: string } } })
+              .command.SetMetrics.layer,
+        ),
+    ).toEqual(['layer-1', 'layer-2'])
+    expect(recorded.errors).toEqual([])
+  })
+
+  it('keeps a panel field commit behind a metrics drag close', async () => {
+    const { controller, transport, recorded, release } = heldMetrics()
+    const stop = registerEditor(controller)
+    try {
+      controller.pointerDown(at(0, 200))
+      controller.pointerMove(at(10, 200))
+      controller.pointerUp(at(10, 200))
+      await settle()
+      commitField(
+        { doc: 1, glyph: 'a', layer: 'layer-1' },
+        {
+          SetMetrics: {
+            glyph: 'a',
+            layer: 'layer-1',
+            width: 620,
+            lsb: null,
+            rsb: null,
+          },
+        },
+        'Set metrics',
+        () => undefined,
+      )
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+      ])
+
+      release()
+      await controller.settle()
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+        'doc.edit_end',
+        'doc.apply',
+      ])
+      expect(recorded.errors).toEqual([])
+    } finally {
+      stop()
+    }
+  })
+
+  it('finishes Escape undo before a new command can apply', async () => {
+    const { controller, transport, recorded, release } = heldMetrics()
+    const stop = registerEditor(controller)
+    try {
+      controller.pointerDown(at(0, 200))
+      controller.pointerMove(at(10, 200))
+      await settleFrame()
+      controller.escape()
+      commitField(
+        { doc: 1, glyph: 'a', layer: 'layer-1' },
+        {
+          SetGlyphMeta: {
+            glyph: 'a',
+            export: false,
+            tags: null,
+            note: null,
+          },
+        },
+        'Set export flag',
+        () => undefined,
+      )
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+      ])
+
+      release()
+      await controller.settle()
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+        'doc.edit_end',
+        'doc.undo',
+        'doc.apply',
+      ])
+      expect(recorded.errors).toEqual([])
+    } finally {
+      stop()
+    }
+  })
+
+  it('keeps a replacement controller command behind disposal cancellation', async () => {
+    const { controller, transport, recorded, release } = heldMetrics()
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(10, 200))
+    await settleFrame()
+    controller.dispose()
+    expect(recorded.editing.at(-1)).toBe(false)
+
+    const replacement = makeController(transport).controller
+    const next = source()
+    replacement.setSource({
+      ...next,
+      gid: 43,
+      glyph: 'b',
+      outline: { ...next.outline, layer: 'layer-2' },
+    })
+    const stop = registerEditor(replacement)
+    try {
+      commitField(
+        { doc: 1, glyph: 'b', layer: 'layer-2' },
+        {
+          SetMetrics: {
+            glyph: 'b',
+            layer: 'layer-2',
+            width: 620,
+            lsb: null,
+            rsb: null,
+          },
+        },
+        'Set metrics',
+        () => undefined,
+      )
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+      ])
+
+      release()
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+        'doc.edit_end',
+        'doc.undo',
+        'doc.apply',
+      ])
+      expect(recorded.errors).toEqual([])
+    } finally {
+      stop()
+    }
+  })
+
+  it('still reports a cancellation failure after disposal', async () => {
+    const { controller, recorded } = makeController(
+      createMockTransport({
+        'doc.edit_begin': () => 5,
+        'doc.edit_apply': () => change(),
+        'doc.edit_end': () => null,
+        'doc.undo': () => {
+          throw new Error('undo failed')
+        },
+      }),
+    )
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(10, 200))
+    await settleFrame()
+
+    controller.dispose()
+    await settle()
+
+    expect(recorded.errors.map(String)).toEqual(['Error: undo failed'])
+  })
+
+  it('cancels live metrics before editing a replacement source', async () => {
+    const { controller, transport, recorded, release } = heldMetrics()
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(10, 200))
+    await settleFrame()
+
+    const next = source()
+    controller.setSource({
+      ...next,
+      gid: 43,
+      glyph: 'b',
+      outline: { ...next.outline, layer: 'layer-2' },
+    })
+    expect(controller.frame().metrics).toBeNull()
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(20, 200))
+    controller.pointerUp(at(20, 200))
+    await settle()
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+    ])
+
+    release()
+    await controller.settle()
+    await settle()
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.undo',
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(recorded.errors).toEqual([])
+  })
+
+  it('does not cancel a live metrics edit on a same-source reload', async () => {
+    const { controller, transport, release } = heldMetrics()
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(10, 200))
+    await settleFrame()
+
+    controller.setSource({ ...source(), outline: { ...source().outline } })
+    expect(controller.frame().metrics?.lsb).toBe(10)
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+    ])
+
+    controller.escape()
+    release()
+    await controller.settle()
+  })
+
+  it('keeps a replacement command behind outline disposal cancellation', async () => {
+    const { controller, transport, release } = heldMetrics()
+    controller.pointerDown(at(200, 300))
+    controller.pointerMove(at(220, 300))
+    await settleFrame()
+    controller.dispose()
+
+    const replacement = makeController(transport).controller
+    const stop = registerEditor(replacement)
+    try {
+      commitField(
+        { doc: 1, glyph: 'a', layer: 'layer-1' },
+        {
+          SetMetrics: {
+            glyph: 'a',
+            layer: 'layer-1',
+            width: 620,
+            lsb: null,
+            rsb: null,
+          },
+        },
+        'Set metrics',
+        () => undefined,
+      )
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+      ])
+
+      release()
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+        'doc.edit_end',
+        'doc.undo',
+        'doc.apply',
+      ])
+    } finally {
+      stop()
+    }
+  })
+
+  it('finishes a nudge before a replacement controller command', async () => {
+    const { controller, transport, release } = heldMetrics()
+    selectNode(controller, 1)
+    controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+    controller.dispose()
+    await settle()
+
+    const replacement = makeController(transport).controller
+    const stop = registerEditor(replacement)
+    try {
+      commitField(
+        { doc: 1, glyph: 'a', layer: 'layer-1' },
+        {
+          SetMetrics: {
+            glyph: 'a',
+            layer: 'layer-1',
+            width: 620,
+            lsb: null,
+            rsb: null,
+          },
+        },
+        'Set metrics',
+        () => undefined,
+      )
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+      ])
+
+      release()
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+        'doc.edit_end',
+        'doc.apply',
+      ])
+    } finally {
+      stop()
+    }
+  })
+
+  it('uses one Escape to close a nudge and a second to clear selection', async () => {
+    const { controller, transport } = makeController(createEditingTransport())
+    selectNode(controller, 1)
+    controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+
+    controller.escape()
+    expect(controller.currentSelection.size).toBe(1)
+    await settle()
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+
+    controller.escape()
+    expect(controller.currentSelection.size).toBe(0)
+  })
+
+  it('starts a drag after Escape from the restored baseline', async () => {
+    const { controller, transport, recorded, release } = heldMetrics()
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(10, 200))
+    await settleFrame()
+    controller.escape()
+    expect(controller.frame().contours).toBeNull()
+
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(20, 200))
+    controller.pointerUp(at(20, 200))
+    await settle()
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+    ])
+
+    release()
+    await controller.settle()
+    await settle()
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.undo',
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(
+      transport.calls
+        .filter((entry) => entry.method === 'doc.edit_apply')
+        .map(
+          (entry) =>
+            (entry.params as { command: { SetMetrics: { lsb: number } } })
+              .command.SetMetrics.lsb,
+        ),
+    ).toEqual([10, 20])
+    expect(recorded.errors).toEqual([])
+  })
 
   it('keeps a second nudge run behind the first one it closes', async () => {
     const { controller, transport, recorded } = makeController(

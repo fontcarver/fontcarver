@@ -244,5 +244,7 @@ export function registerGlyphViewCommands(): void {
     overlayCommand('anchors'),
     overlayCommand('guides'),
     overlayCommand('rulers'),
+    overlayCommand('background'),
+    overlayCommand('otherMasters'),
   ])
 }

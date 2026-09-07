@@ -32,6 +32,7 @@ const guides = [
   {
     guide: { x: 0, y: 150, angle: 0, name: 'mid', locked: false, color: null },
     scope: 'layer' as const,
+    index: 0,
   },
 ]
 
@@ -127,6 +128,20 @@ describe('hitTest', () => {
       index: 0,
       scope: 'layer',
     })
+  })
+
+  it('returns the guide index within its scope from a mixed list', () => {
+    const mixed = [
+      {
+        guide: { ...guides[0]!.guide, y: 50 },
+        scope: 'master' as const,
+        index: 0,
+      },
+      { ...guides[0]!, index: 0 },
+    ]
+    expect(
+      hitTest(input({ guides: mixed }), { x: 60, y: 150 })?.target,
+    ).toEqual({ kind: 'guide', index: 0, scope: 'layer' })
   })
 
   it('hits a segment and reports where along it the pointer landed', () => {

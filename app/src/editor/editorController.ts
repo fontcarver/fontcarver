@@ -12,7 +12,7 @@
  * animation frame, so the outline can never lag the pointer.
  */
 
-import type { Anchor, Command, ComponentView, Contour } from '../api'
+import type { Command, DocId } from '../api'
 import type { Point2, Viewport } from '../canvas/Viewport'
 
 import {
@@ -22,6 +22,7 @@ import {
   startDragGesture,
 } from './editorActions'
 import { buildFrame, type EditorFrame } from './editorFrame'
+import { EditorGeometry } from './editorGeometry'
 import {
   SILENT_CALLBACKS,
   type EditorCallbacks,
@@ -30,18 +31,16 @@ import {
   type EditorSource,
   type PointerInput,
 } from './editorTypes'
-import { hitTest, type Hit, type HitTestInput } from './hitTest'
+import type { Hit } from './hitTest'
 import { NO_MODIFIERS, type DragGesture, type Modifiers } from './gestures/drag'
 import { marqueeSelection } from './gestures/marquee'
 import { NUDGE_STEPS, nudgeStep } from './gestures/nudge'
 import { NudgeRunner } from './nudgeRun'
-import { buildEditOutline, type EditOutline } from './outlineGeometry'
 import {
   commit,
   deleteCommand,
   nextSmoothFlag,
   smoothCommand,
-  type LayerTarget,
 } from './pointCommands'
 import type { SnapSettings } from './snapping'
 import { SnapRunner, type SnapSources } from './editorSnapping'
@@ -61,6 +60,8 @@ import { HAND_CURSOR, HAND_DRAGGING_CURSOR } from './tools/hand'
 
 import { toolById, type ToolId } from './tools/registry'
 import { ViewGestures } from './viewGestures'
+import { AsideGestures } from './asideGestures'
+import { holdDocumentEdits } from './editSession'
 
 export type { ShapeDialogRequest, ToolOverlay } from './tools/toolTypes'
 export type {
@@ -71,22 +72,31 @@ export type {
   PointerInput,
 } from './editorTypes'
 
+/**
+ * Whether a hit outranks a metric line (design spec §4.2 precedence): nodes,
+ * handles, anchors and guides do; a segment or a component does not, and
+ * neither does empty canvas.
+ */
+function outranksMetrics(hit: Hit | null): boolean {
+  if (!hit) return false
+  return hit.target.kind !== 'segment' && hit.target.kind !== 'component'
+}
+
 export class EditorController {
   private readonly viewport: Viewport
   private callbacks: EditorCallbacks = SILENT_CALLBACKS
   private labels: EditorLabels
-  private source: EditorSource | null = null
-  private edit: EditOutline = buildEditOutline([])
-  private editBase: readonly Contour[] = []
-  private readonly editCache = new WeakMap<readonly Contour[], EditOutline>()
+  private readonly geometry = new EditorGeometry()
 
   private selection: Selection = EMPTY_SELECTION
   private drag: DragGesture | null = null
   private readonly view = new ViewGestures()
   private hover: Hit | null = null
   private pointer: Point2 | null = null
-  private preview: EditorPreview | null = null
   private readonly nudge: NudgeRunner
+  /** Sidebearing drags and guides pulled off a ruler. */
+  private readonly aside: AsideGestures
+  private rulersVisible = true
   private readonly tools: ToolHost
   private spaceHeld = false
   private toolEditing = false
@@ -104,27 +114,42 @@ export class EditorController {
       onEnd: () => this.closeNudge(),
       onError: (error) => this.callbacks.onError(error),
     })
+    this.aside = new AsideGestures({
+      viewport,
+      source: () => this.geometry.source,
+      target: () => this.geometry.layerTarget(),
+      labels: () => this.labels,
+      rulersVisible: () => this.rulersVisible,
+      after: () => this.closing,
+      settle: () => this.settle(),
+      gate: (closing) => this.gate(closing),
+      onError: (error) => this.callbacks.onError(error),
+      onReload: () => this.callbacks.onReload(),
+      repaint: () => this.callbacks.repaint(),
+      publishEditing: () => this.publishEditing(),
+    })
     this.tools = new ToolHost(
       {
         viewport,
-        target: () => this.layerTarget(),
-        contours: () => this.contours(),
-        outline: () => this.editOutline(),
-        anchors: () => this.anchors(),
-        components: () => this.components(),
+        target: () => this.geometry.layerTarget(),
+        contours: () => this.geometry.contours(),
+        outline: () => this.geometry.editOutline(),
+        anchors: () => this.geometry.anchors(),
+        components: () => this.geometry.components(),
         selection: () => this.selection,
-        curves: () => this.source?.curves ?? 'cubic',
+        curves: () => this.geometry.source?.curves ?? 'cubic',
         labels: () => this.labels.tools,
         snap: (point, suspend) =>
           this.snapping.forPoint(this.snapSources(), point, suspend),
-        hitTest: (screen) => this.hitAt(screen),
+        hitTest: (screen) =>
+          this.geometry.hitAt(this.viewport, this.selection, screen),
         segmentShortcut: (hit, modifiers) => {
-          const target = this.layerTarget()
+          const target = this.geometry.layerTarget()
           return target
             ? segmentShortcut(
                 target,
                 this.labels,
-                this.editOutline(),
+                this.geometry.editOutline(),
                 hit,
                 modifiers,
               )
@@ -153,8 +178,8 @@ export class EditorController {
   /** Where the snap targets come from, as of right now. */
   private snapSources(): SnapSources {
     return {
-      outline: this.editOutline(),
-      source: this.source,
+      outline: this.geometry.editOutline(),
+      source: this.geometry.source,
       selection: this.selection,
       drag: this.drag,
       labels: this.labels,
@@ -178,7 +203,11 @@ export class EditorController {
    * data hooks rely on this flag to know when it is safe to reload.
    */
   private publishEditing(): void {
-    const editing = this.drag !== null || this.nudge.active || this.toolEditing
+    const editing =
+      this.drag !== null ||
+      this.nudge.active ||
+      this.aside.editing ||
+      this.toolEditing
     if (editing === this.editingPublished) return
     this.editingPublished = editing
     this.callbacks.onEditingChange(editing)
@@ -186,7 +215,7 @@ export class EditorController {
 
   /** Records the optimistic geometry and tells the panels that read it. */
   private setPreview(preview: EditorPreview | null): void {
-    this.preview = preview
+    this.geometry.setPreview(preview)
     this.callbacks.onPreview(preview)
   }
 
@@ -221,6 +250,14 @@ export class EditorController {
     return this.snapping.gridSize
   }
 
+  /**
+   * Whether the rulers are on screen. ⌥-dragging a guide out of one only makes
+   * sense while they are drawn, so the controller has to know.
+   */
+  setRulersVisible(visible: boolean): void {
+    this.rulersVisible = visible
+  }
+
   /** Which tool the strip currently has active (or borrowed). */
   setTool(tool: ToolId): void {
     void this.settle()
@@ -229,23 +266,24 @@ export class EditorController {
     this.updateCursor()
   }
 
-  /**
-   * Installs new data. Any live preview is dropped: the kernel has spoken.
-   *
-   * The selection survives a reload of the same glyph — an `edit_apply` makes
-   * the view refetch, and losing the selection every frame of a drag would be
-   * absurd — and is cleared only when a different glyph arrives.
-   */
+  /** Installs kernel data; same-source reloads retain the live edit and selection. */
   setSource(source: EditorSource | null): void {
-    const changedGlyph =
-      source !== null &&
-      (source.doc !== this.source?.doc || source.gid !== this.source?.gid)
-    this.source = source
+    const previous = this.geometry.source
+    const replaced =
+      previous !== null &&
+      (source === null ||
+        source.doc !== previous.doc ||
+        source.gid !== previous.gid ||
+        source.outline.layer !== previous.outline.layer)
+    if (replaced) {
+      this.cancelDrag(previous.doc)
+      if (this.nudge.active) void this.gate(this.nudge.end(), previous.doc)
+    }
+    this.aside.sourceChanged(replaced)
+    const changedSource = this.geometry.install(source)
     this.nudge.reloaded()
-    this.edit = buildEditOutline(source?.outline.contours ?? [])
-    this.editBase = source?.outline.contours ?? []
     this.setPreview(null)
-    if (!changedGlyph) return
+    if (!changedSource) return
     // Published unconditionally, not through `setSelection`: a freshly mounted
     // controller's selection is already empty, so the "nothing changed" guard
     // would leave the *store* holding the previous tab's selection — point
@@ -283,17 +321,18 @@ export class EditorController {
     return buildFrame({
       viewport: this.viewport,
       labels: this.labels.hud,
-      contours: this.contours(),
-      preview: this.preview,
-      edit: this.editOutline(),
+      contours: this.geometry.contours(),
+      preview: this.geometry.preview,
+      edit: this.geometry.editOutline(),
       selection: this.selection,
-      components: this.components(),
-      componentPoints: this.source?.componentPoints ?? [],
+      components: this.geometry.components(),
+      componentPoints: this.geometry.source?.componentPoints ?? [],
       pointer: this.pointer,
       drag: this.drag,
       band: this.view.band,
       snap: this.snapping.current,
       hover: this.hover,
+      aside: this.aside.frame(),
       tool: this.tools.overlay(),
     })
   }
@@ -332,8 +371,10 @@ export class EditorController {
       return
     }
 
-    const hit = this.hitAt(at)
+    const hit = this.geometry.hitAt(this.viewport, this.selection, at)
     if (hit && this.handleSegmentShortcut(hit, input.modifiers)) return
+    if (this.aside.pointerDown(at, input.modifiers, outranksMetrics(hit)))
+      return
 
     this.setSelection(selectionForClick(this.selection, hit, input.modifiers))
     if (!hit) {
@@ -355,6 +396,7 @@ export class EditorController {
       this.callbacks.repaint()
       return
     }
+    if (this.aside.pointerMove(this.pointer, input.modifiers)) return
     if (this.drag) {
       this.drag.move(this.viewport.toFont(this.pointer), input.modifiers)
       this.setPreview(this.drag.preview)
@@ -368,13 +410,18 @@ export class EditorController {
     }
     // Hovering repaints every move: the rulers carry a pointer marker and the
     // insert-node ghost follows the pointer along a segment.
-    this.hover = this.hitAt(this.pointer)
+    this.hover = this.geometry.hitAt(
+      this.viewport,
+      this.selection,
+      this.pointer,
+    )
     this.updateCursor(input.modifiers)
     this.callbacks.repaint()
   }
 
   /** Pointer released. */
   pointerUp(input: PointerInput): void {
+    if (this.aside.pointerUp()) return
     if (this.view.endPan()) {
       this.updateCursor(input.modifiers)
       return
@@ -386,9 +433,13 @@ export class EditorController {
     }
     const marquee = this.view.endMarquee()
     if (marquee) {
-      const found = marqueeSelection(this.hitInput(), marquee.rect, {
-        ignoreHandles: marquee.ignoreHandles,
-      })
+      const found = marqueeSelection(
+        this.geometry.hitInput(this.viewport, this.selection),
+        marquee.rect,
+        {
+          ignoreHandles: marquee.ignoreHandles,
+        },
+      )
       this.setSelection(
         marquee.additive ? unionSelection(this.selection, found) : found,
       )
@@ -426,7 +477,10 @@ export class EditorController {
 
   /** Double-click toggles a node between smooth and corner. */
   doubleClick(input: PointerInput): void {
-    const hit = this.hitAt({ x: input.x, y: input.y })
+    const hit = this.geometry.hitAt(this.viewport, this.selection, {
+      x: input.x,
+      y: input.y,
+    })
     if (hit?.target.kind !== 'node') return
     this.setSelection(selectionOf([hit.target]))
     void this.toggleSmooth(input.modifiers.alt)
@@ -440,18 +494,24 @@ export class EditorController {
 
   /** Ends whatever gesture is running; called when the view unmounts. */
   dispose(): void {
-    void this.drag?.cancel()
-    void this.nudge.end()
+    const onError = this.callbacks.onError
+    this.cancelDrag()
+    this.aside.dispose()
+    if (this.nudge.active) void this.gate(this.nudge.end())
     this.tools.dispose()
-    this.drag = null
+    if (this.editingPublished) this.callbacks.onEditingChange(false)
+    this.setPreview(null)
+    // Async closures from this controller must not clear a replacement view's
+    // editing state, preview or reload flags after it mounts.
+    this.callbacks = { ...SILENT_CALLBACKS, onError }
   }
 
   /** Toggles smooth on the selected nodes; Alt keeps the outline unchanged. */
   async toggleSmooth(keepOutline: boolean): Promise<void> {
-    const target = this.layerTarget()
+    const target = this.geometry.layerTarget()
     const nodes = selectedNodeRefs(this.selection)
     if (!target || nodes.length === 0) return
-    const smooth = nextSmoothFlag(this.contours(), nodes)
+    const smooth = nextSmoothFlag(this.geometry.contours(), nodes)
     await this.runCommand(
       smoothCommand(target, nodes, smooth, !keepOutline),
       this.labels.toggleSmooth,
@@ -460,7 +520,7 @@ export class EditorController {
 
   /** Deletes the selected nodes; `break` opens the contour instead. */
   async deleteSelection(breakContour: boolean): Promise<void> {
-    const target = this.layerTarget()
+    const target = this.geometry.layerTarget()
     const points = selectedPointRefs(this.selection)
     if (!target || points.length === 0) return
     await this.runCommand(
@@ -482,7 +542,7 @@ export class EditorController {
    * rather than keep drawing what we hoped had happened.
    */
   private async runCommand(command: Command, label: string): Promise<void> {
-    const target = this.layerTarget()
+    const target = this.geometry.layerTarget()
     if (!target) return
     // `doc.apply` finalises the active edit, so an open run has to be closed
     // before it rather than by it.
@@ -498,25 +558,23 @@ export class EditorController {
 
   /** Selects every point of the layer. */
   selectAll(): void {
-    this.setSelection(allTargets(this.editOutline()))
+    this.setSelection(allTargets(this.geometry.editOutline()))
   }
 
   /** Tab and Shift+Tab walk the on-curve points in stored order. */
   cycleNodes(direction: 1 | -1): void {
-    const next = cycledSelection(this.editOutline(), this.selection, direction)
+    const next = cycledSelection(
+      this.geometry.editOutline(),
+      this.selection,
+      direction,
+    )
     if (next) this.setSelection(next)
   }
 
-  /**
-   * One arrow press.
-   *
-   * The move is shown immediately from a local copy — the kernel is told on
-   * the next animation frame and the whole run becomes one undo entry — so an
-   * arrow key feels the same as a drag rather than waiting on a round trip.
-   */
+  /** Shows one arrow press locally and coalesces the run into one undo entry. */
   nudgeSelection(direction: Point2, modifiers: Modifiers): void {
-    const target = this.layerTarget()
-    const source = this.source
+    const target = this.geometry.layerTarget()
+    const source = this.geometry.source
     const points = selectedPointRefs(this.selection)
     if (!target || !source || points.length === 0) return
     // A drag that is merely *open* registers no gate of its own, so the run
@@ -527,9 +585,9 @@ export class EditorController {
     this.setPreview(
       this.nudge.press({
         target,
-        contours: this.contours(),
-        anchors: this.anchors(),
-        components: this.components(),
+        contours: this.geometry.contours(),
+        anchors: this.geometry.anchors(),
+        components: this.geometry.components(),
         refs: points,
         delta: { x: direction.x * step, y: direction.y * step },
         handles: modifiers.alt ? 'PointsOnly' : 'WithHandles',
@@ -548,14 +606,11 @@ export class EditorController {
     return this.settle()
   }
 
-  /**
-   * Records the gesture that is closing, so the next one begins behind it.
-   *
-   * Only the gesture that is *still* closing should gate the next one: a gate
-   * that is never dropped would make one unanswered call block every gesture
-   * after it, not just its successor.
-   */
-  private gate(closing: Promise<unknown>): Promise<void> {
+  /** Records the current close locally and for replacement document editors. */
+  private gate(
+    closing: Promise<unknown>,
+    doc: DocId | undefined = this.geometry.source?.doc,
+  ): Promise<void> {
     const tracked = closing
       .then(
         () => undefined,
@@ -565,20 +620,13 @@ export class EditorController {
         if (this.closing === tracked) this.closing = undefined
       })
     this.closing = tracked
-    return tracked
+    return doc === undefined ? tracked : holdDocumentEdits(doc, tracked)
   }
 
-  /**
-   * Closes whatever gesture is still open and reports when it is done.
-   *
-   * `doc.edit_begin` and `doc.apply` both finalise the active edit in the
-   * kernel, so a gesture that starts while an earlier one is still flushing
-   * would invalidate that gesture's last apply — the arrow press or the last
-   * frame of the drag would be dropped and an error raised. Every new gesture,
-   * whichever tool it belongs to, waits for this first; a drag counts, because
-   * a pointer-down that never saw its pointer-up leaves one open.
-   */
+  /** Closes any open gesture before another begin or single-shot apply. */
   settle(): Promise<void> {
+    const aside = this.aside.settle()
+    if (aside) return aside
     if (this.drag) return this.gate(this.finishDrag())
     if (this.nudge.active) return this.gate(this.nudge.end())
     return this.closing ?? Promise.resolve()
@@ -604,6 +652,7 @@ export class EditorController {
 
   /** Escape: cancel a live drag, or clear the selection. */
   escape(): void {
+    if (this.aside.escape()) return
     if (
       this.tools.keyDown({
         key: 'Escape',
@@ -612,20 +661,9 @@ export class EditorController {
       })
     )
       return
-    if (this.drag) {
-      const drag = this.drag
-      this.drag = null
-      this.setPreview(null)
-      void this.gate(
-        drag
-          .cancel()
-          .catch((error: unknown) => this.callbacks.onError(error))
-          .finally(() => {
-            this.publishEditing()
-            this.callbacks.onReload()
-          }),
-      )
-      this.callbacks.repaint()
+    if (this.drag) return this.cancelDrag()
+    if (this.nudge.active) {
+      void this.gate(this.nudge.end())
       return
     }
     if (this.view.active) {
@@ -636,73 +674,27 @@ export class EditorController {
     this.setSelection(EMPTY_SELECTION)
   }
 
+  /** Drops a live outline drag and publishes its close for handover. */
+  private cancelDrag(doc: DocId | undefined = this.geometry.source?.doc): void {
+    const drag = this.drag
+    if (!drag) return
+    this.drag = null
+    this.setPreview(null)
+    void this.gate(
+      drag
+        .cancel()
+        .catch((error: unknown) => this.callbacks.onError(error))
+        .finally(() => {
+          this.publishEditing()
+          this.callbacks.onReload()
+        }),
+      doc,
+    )
+    this.callbacks.repaint()
+  }
+
   private effectiveTool(): ToolId {
     return this.spaceHeld ? 'hand' : this.tool
-  }
-
-  /**
-   * The editable index of the geometry currently on screen.
-   *
-   * It follows the optimistic preview, not just the last fetched layer: while a
-   * nudge run is open reloads are deferred, so a hit test or a drag based on the
-   * fetched outline would aim at where the points *used* to be. Rebuilt only
-   * when the geometry it indexes actually changes.
-   */
-  private editOutline(): EditOutline {
-    const contours = this.contours()
-    if (contours === this.editBase) return this.edit
-    // Two callers index the same geometry within one pointer move (the snap
-    // callback before the preview is replaced, the frame after it), and a
-    // gesture allocates a fresh contour array every move, so the identity
-    // check alone rebuilds the whole index twice per move. The cache is keyed
-    // on the array itself and is weak, so it costs nothing once a preview is
-    // dropped.
-    const cached = this.editCache.get(contours)
-    const outline = cached ?? buildEditOutline(contours)
-    if (!cached) this.editCache.set(contours, outline)
-    this.editBase = contours
-    this.edit = outline
-    return outline
-  }
-
-  private contours(): readonly Contour[] {
-    return this.preview?.contours ?? this.source?.outline.contours ?? []
-  }
-
-  private components(): readonly ComponentView[] {
-    return this.preview?.components ?? this.source?.outline.components ?? []
-  }
-
-  private anchors(): readonly Anchor[] {
-    return this.preview?.anchors ?? this.source?.outline.anchors ?? []
-  }
-
-  private layerTarget(): LayerTarget | null {
-    const source = this.source
-    if (!source) return null
-    return {
-      doc: source.doc,
-      glyph: source.glyph,
-      layer: source.outline.layer,
-    }
-  }
-
-  /** Everything the hit test looks at. Alt does not hide handles here: over a
-   * handle it means "keep the angle" and over a node "break the handle"
-   * (§4.3); ignoring handles is a marquee behaviour the marquee applies. */
-  private hitInput(): HitTestInput {
-    return {
-      outline: this.editOutline(),
-      anchors: this.anchors(),
-      guides: this.source?.guides ?? [],
-      components: this.components(),
-      viewport: this.viewport,
-      selection: this.selection,
-    }
-  }
-
-  private hitAt(at: Point2): Hit | null {
-    return this.source ? hitTest(this.hitInput(), at) : null
   }
 
   private updateCursor(modifiers: Modifiers = NO_MODIFIERS): void {
@@ -719,6 +711,8 @@ export class EditorController {
     if (custom !== null) return this.callbacks.onCursorChange(custom)
     if (tool !== 'select')
       return this.callbacks.onCursorChange(toolById(tool).cursor)
+    const metric = this.hover ? null : this.aside.cursorAt(this.pointer)
+    if (metric) return this.callbacks.onCursorChange(metric)
     this.callbacks.onCursorChange(cursorForHover(this.hover, modifiers))
   }
 
@@ -735,12 +729,12 @@ export class EditorController {
    * open a drag gesture.
    */
   private handleSegmentShortcut(hit: Hit, modifiers: Modifiers): boolean {
-    const target = this.layerTarget()
+    const target = this.geometry.layerTarget()
     if (!target) return false
     const action = segmentShortcut(
       target,
       this.labels,
-      this.editOutline(),
+      this.geometry.editOutline(),
       hit,
       modifiers,
     )
@@ -750,15 +744,15 @@ export class EditorController {
   }
 
   private startDrag(hit: Hit, origin: Point2, modifiers: Modifiers): void {
-    const target = this.layerTarget()
-    if (!this.source || !target) return
+    const target = this.geometry.layerTarget()
+    if (!this.geometry.source || !target) return
     this.snapping.clear()
     const drag = startDragGesture(
       {
         target,
-        contours: this.contours(),
-        anchors: this.anchors(),
-        components: this.components(),
+        contours: this.geometry.contours(),
+        anchors: this.geometry.anchors(),
+        components: this.geometry.components(),
         selection: this.selection,
         labels: this.labels,
         after: this.closing,

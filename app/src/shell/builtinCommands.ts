@@ -1,5 +1,7 @@
 import { call, getTransport, type DocId, type GlyphId } from '../api'
+import { activeEditor } from '../editor/activeEditor'
 import { i18n } from '../i18n'
+import { afterDocumentEdits } from '../editor/editSession'
 import { useDocumentStore } from '../stores/documentStore'
 import { usePrefsStore } from '../stores/prefsStore'
 import { activeSummary, useSessionStore } from '../stores/sessionStore'
@@ -15,6 +17,8 @@ import {
   registerGlyphViewCommands,
   zoomActiveGlyphView,
 } from '../views/glyph/glyphCommands'
+import { registerLayerCommands } from '../views/glyph/layerCommands'
+import { registerPathCommands } from '../views/glyph/pathCommands'
 
 import { registerCommands, type Command } from './commands'
 import { closeTab, openFontInfoTab, openGlyphTab } from './tabActions'
@@ -65,7 +69,8 @@ async function runHistory(method: 'doc.undo' | 'doc.redo'): Promise<void> {
   const summary = activeSummary()
   const moved =
     method === 'doc.undo' ? summary?.undo_label : summary?.redo_label
-  await call(method, { doc })
+  await activeEditor()?.settle()
+  await afterDocumentEdits(doc, () => call(method, { doc }))
   useUiStore.getState().flashUndoLabel(moved ?? null)
   await useSessionStore.getState().refreshSummary(doc)
 }
@@ -74,6 +79,8 @@ async function runHistory(method: 'doc.undo' | 'doc.redo'): Promise<void> {
 export function registerBuiltinCommands(): void {
   registerFontViewCommands()
   registerGlyphViewCommands()
+  registerPathCommands()
+  registerLayerCommands()
   registerCommands([
     {
       id: 'file.new',

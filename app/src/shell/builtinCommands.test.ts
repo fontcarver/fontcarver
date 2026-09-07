@@ -8,6 +8,7 @@ import { initialUiState, useUiStore } from '../stores/uiStore'
 import { createMockTransport, makeSummary } from '../test/mockTransport'
 
 import { registerBuiltinCommands } from './builtinCommands'
+import { holdDocumentEdits } from '../editor/editSession'
 import {
   getCommand,
   isCommandEnabled,
@@ -164,6 +165,31 @@ describe('built-in commands', () => {
     expect(reporter.mock.calls[0]?.[0]).toMatchObject({
       message: 'undo stack corrupt',
     })
+  })
+
+  it('waits for this document handover before running history', async () => {
+    let release = () => undefined as void
+    const closing = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    holdDocumentEdits(1, closing)
+    const transport = createMockTransport({
+      'doc.undo': () => null,
+      'session.list': () => [makeSummary({ undo_label: null })],
+    })
+    setTransport(transport)
+    openDocument(makeSummary({ undo_label: 'Move nodes' }))
+
+    expect(runCommand('edit.undo')).toBe(true)
+    await Promise.resolve()
+    expect(transport.calls).toEqual([])
+
+    release()
+    await vi.waitFor(() =>
+      expect(transport.calls.map((entry) => entry.method)).toContain(
+        'doc.undo',
+      ),
+    )
   })
 
   it('asks before closing a dirty document rather than discarding it', () => {

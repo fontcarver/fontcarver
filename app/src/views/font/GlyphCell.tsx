@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 
 import type { DocId, GlyphCell as GlyphCellData } from '../../api'
 import type { EmBox } from '../../canvas/glyphPaint'
@@ -51,19 +51,30 @@ function GlyphCellView({
   fontFamily,
 }: GlyphCellProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  /**
+   * Bumped whenever a canvas attaches.
+   *
+   * The paint below has to run *after* the element exists, and a ref alone
+   * gives no such guarantee: a cell whose page was invalidated renders its
+   * placeholder and then a *new* canvas, and the old node's ref cleanup can
+   * arrive after the new one attached — which used to leave the paint with no
+   * canvas and the cell permanently blank. Counting attachments makes the
+   * effect depend on the node without making the node itself state, which
+   * would put a mutable DOM object under the compiler's immutability rule.
+   */
+  const [attached, setAttached] = useState(0)
 
   /**
    * A 65k-glyph scroll churns through thousands of cells, so the backing store
    * is released the moment the canvas detaches rather than left to the
-   * collector. This has to be a ref callback: React nulls a ref *before* it
-   * runs unmount effects, and a cell that was pending on its first render has
-   * no canvas yet when a mount effect would capture one. The callback is
-   * stable, so React attaches it once and the cleanup runs only on detach.
+   * collector.
    */
   const attachCanvas = useCallback((node: HTMLCanvasElement | null) => {
     canvasRef.current = node
+    setAttached((count) => count + 1)
     return () => {
-      canvasRef.current = null
+      // Only clear the handle this cleanup is for.
+      if (canvasRef.current === node) canvasRef.current = null
       if (!node) return
       node.width = 0
       node.height = 0
@@ -93,6 +104,7 @@ function GlyphCellView({
       fontFamily,
     })
   }, [
+    attached,
     cell,
     doc,
     dpr,

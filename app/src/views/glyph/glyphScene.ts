@@ -46,6 +46,8 @@ export interface SceneGuide {
   guide: Guide
   /** Master guides are font-wide; layer guides belong to this glyph alone. */
   scope: 'master' | 'layer'
+  /** Index inside the master or layer guide list. */
+  index: number
 }
 
 /** Everything one glyph tab draws. */
@@ -57,6 +59,8 @@ export interface GlyphScene {
   layerName: string
   contours: readonly Contour[]
   components: readonly Component[]
+  /** Flattened bounds per component, in the same order; empty until known. */
+  componentBounds: readonly ([number, number, number, number] | null)[]
   anchors: readonly Anchor[]
   guides: readonly SceneGuide[]
   metrics: SceneMetrics
@@ -64,6 +68,15 @@ export interface GlyphScene {
   bbox: FontBox | null
   /** Component-flattened SVG path data of the shown layer. */
   flattened: string | null
+  /**
+   * The background layer of this master, drawn behind the outline when the
+   * overlay is on (design spec §4.1 item 5). Its flattened path and its own
+   * points come from the same `glyphs.detail` response the outline does, so
+   * showing it costs no extra request.
+   */
+  background: { flattened: string | null; contours: readonly Contour[] } | null
+  /** Flattened paths of the same glyph in every other master (§4.1 item 4). */
+  otherMasters: readonly string[]
 }
 
 /** The master a layer belongs to, or `null` for a free-standing custom layer. */
@@ -83,19 +96,49 @@ function isMasterLayer(layer: Layer, master: string | null): boolean {
 }
 
 /**
- * The layer to show for a master: its own master layer when there is one, the
- * first master layer otherwise, and finally whatever layer exists at all.
+ * The layer to show for a master: the one the Layers panel asked for, else its
+ * own master layer, else the first master layer, and finally whatever layer
+ * exists at all. A `preferred` id that names no layer of this glyph is ignored
+ * rather than blanking the canvas — that is what a stale selection looks like
+ * after stepping to the next glyph.
  */
 export function activeLayer(
   glyph: Glyph,
   master: MasterId | null,
+  preferred?: string | null,
 ): Layer | null {
   const wanted = master
   return (
+    (preferred
+      ? glyph.layers.find((layer) => layer.id === preferred)
+      : undefined) ??
     glyph.layers.find((layer) => isMasterLayer(layer, wanted)) ??
     glyph.layers.find((layer) => isMasterLayer(layer, null)) ??
     glyph.layers[0] ??
     null
+  )
+}
+
+/** The background layer of one master, when the glyph has one. */
+export function backgroundLayer(
+  glyph: Glyph,
+  master: MasterId | null,
+): Layer | null {
+  if (master === null) return null
+  return (
+    glyph.layers.find(
+      (layer) => 'Background' in layer.kind && layer.kind.Background === master,
+    ) ?? null
+  )
+}
+
+/** The master layers of every master except the one being edited. */
+export function otherMasterLayers(
+  glyph: Glyph,
+  master: MasterId | null,
+): Layer[] {
+  return glyph.layers.filter(
+    (layer) => 'Master' in layer.kind && layer.kind.Master !== master,
   )
 }
 
@@ -121,6 +164,8 @@ export interface BuildSceneInput {
   master: Master | null
   masterId: MasterId | null
   unitsPerEm: number
+  /** Layer the Layers panel selected, when it is not the master layer. */
+  layerId?: string | null
 }
 
 /** Builds the drawable scene for one glyph and master. */
@@ -130,9 +175,10 @@ export function buildScene({
   master,
   masterId,
   unitsPerEm,
+  layerId,
 }: BuildSceneInput): GlyphScene {
   const glyph = detail.glyph
-  const layer = activeLayer(glyph, masterId)
+  const layer = activeLayer(glyph, masterId, layerId)
   const upem = unitsPerEm > 0 ? unitsPerEm : 1000
   const fallback = fallbackMetrics(upem)
   const metrics = master?.metrics
@@ -143,20 +189,36 @@ export function buildScene({
     ? { x0: bounds[0], y0: bounds[1], x1: bounds[2], y1: bounds[3] }
     : null
 
-  const flattened =
-    layer === null
-      ? null
-      : (detail.paths.find((path) => path.layer === layer.id)?.flattened ??
-        null)
+  const pathOf = (id: string): string | null =>
+    detail.paths.find((path) => path.layer === id)?.flattened ?? null
+  const flattened = layer === null ? null : pathOf(layer.id)
+
+  // The background is an underlay of the *master* layer; while a background or
+  // a backup is itself being edited there is nothing behind it to show.
+  const backgroundSource =
+    layer !== null && 'Master' in layer.kind
+      ? backgroundLayer(glyph, masterId)
+      : null
+  const background = backgroundSource
+    ? {
+        flattened: pathOf(backgroundSource.id),
+        contours: backgroundSource.contours,
+      }
+    : null
+  const otherMasters = otherMasterLayers(glyph, masterId)
+    .map((other) => pathOf(other.id))
+    .filter((path): path is string => path !== null)
 
   const guides: SceneGuide[] = [
-    ...(master?.guides ?? []).map((guide): SceneGuide => ({
+    ...(master?.guides ?? []).map((guide, index): SceneGuide => ({
       guide,
       scope: 'master',
+      index,
     })),
-    ...(layer?.guides ?? []).map((guide): SceneGuide => ({
+    ...(layer?.guides ?? []).map((guide, index): SceneGuide => ({
       guide,
       scope: 'layer',
+      index,
     })),
   ]
 
@@ -168,6 +230,9 @@ export function buildScene({
     layerName: layer?.name || master?.name || '',
     contours: layer?.contours ?? [],
     components: layer?.components ?? [],
+    // Only `glyphs.outline` resolves component bounds; the display scene has
+    // none until the editable layer arrives and replaces them.
+    componentBounds: [],
     anchors: layer?.anchors ?? [],
     guides,
     metrics: {
@@ -187,6 +252,8 @@ export function buildScene({
     },
     bbox,
     flattened,
+    background,
+    otherMasters,
   }
 }
 

@@ -36,6 +36,7 @@ function input(overrides: Partial<SnapInput> = {}): SnapInput {
           color: null,
         },
         scope: 'layer',
+        index: 0,
       },
     ],
     metrics: {
@@ -88,6 +89,7 @@ describe('snapDelta', () => {
             color: null,
           },
           scope: 'layer',
+          index: 0,
         },
       ],
     })
