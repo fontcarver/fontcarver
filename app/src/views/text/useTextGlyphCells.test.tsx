@@ -85,4 +85,31 @@ describe('useTextGlyphCells', () => {
 
     expect(result.current.get(7)?.path).toBe('M7 0Z')
   })
+
+  it('does not restart pending cells when equal indexes are rerendered', async () => {
+    let release: ((value: GlyphCell) => void) | undefined
+    const transport = createMockTransport({
+      'glyphs.cell': ({ gid }) =>
+        new Promise<GlyphCell>((resolve) => {
+          release = resolve
+        }),
+    })
+    setTransport(transport)
+    const glyphs = [glyph(0, 7)]
+    const { result, rerender } = renderHook(
+      ({ indexes }) => useTextGlyphCells(1, 'regular', 1, glyphs, indexes),
+      { initialProps: { indexes: [0] } },
+    )
+
+    rerender({ indexes: [0] })
+    expect(
+      transport.calls.filter((entry) => entry.method === 'glyphs.cell'),
+    ).toHaveLength(1)
+
+    await act(async () => release?.(cell(7)))
+    await vi.waitFor(() => expect(result.current.size).toBe(1))
+    expect(
+      transport.calls.filter((entry) => entry.method === 'glyphs.cell'),
+    ).toHaveLength(1)
+  })
 })

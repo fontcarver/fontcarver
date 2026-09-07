@@ -47,7 +47,11 @@ export function useTextGlyphCells(
 
   useEffect(() => {
     if (master === null) return
-    const missing = wanted.filter((gid) => !cache.current.cells.has(gid))
+    const requested = signature
+      .split(',')
+      .filter(Boolean)
+      .map(Number)
+    const missing = requested.filter((gid) => !cache.current.cells.has(gid))
     if (missing.length === 0) return
     let cancelled = false
     let next = 0
@@ -62,7 +66,10 @@ export function useTextGlyphCells(
           cache.current.cells.set(gid, cell)
           setVersion((value) => value + 1)
         } catch (error) {
-          if (!cancelled) reportError(error)
+          if (!cancelled) {
+            cancelled = true
+            reportError(error)
+          }
         }
       }
     }
@@ -74,7 +81,7 @@ export function useTextGlyphCells(
     return () => {
       cancelled = true
     }
-  }, [doc, identity, master, signature, wanted])
+  }, [doc, identity, master, signature])
 
   return useMemo(() => new Map(cache.current.cells), [identity, version])
 }
