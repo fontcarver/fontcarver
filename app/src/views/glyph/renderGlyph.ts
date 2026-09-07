@@ -146,16 +146,17 @@ export function renderGlyph(
     )
 
   const underlay = options.underlay ?? NO_UNDERLAY
-  drawUnderlays(
-    ctx,
-    viewport,
-    {
-      background: overlays.background ? underlay.background : null,
-      backgroundPoints: overlays.background ? underlay.backgroundPoints : [],
-      otherMasters: overlays.otherMasters ? underlay.otherMasters : [],
-    },
-    theme,
-  )
+  if (!options.hideActive)
+    drawUnderlays(
+      ctx,
+      viewport,
+      {
+        background: overlays.background ? underlay.background : null,
+        backgroundPoints: overlays.background ? underlay.backgroundPoints : [],
+        otherMasters: overlays.otherMasters ? underlay.otherMasters : [],
+      },
+      theme,
+    )
 
   drawTextRun(ctx, viewport, options.surrounding ?? [], theme.outline)
 

@@ -74,11 +74,23 @@ export async function changeGlyphTab(
   from: GlyphId,
   to: GlyphId,
   label?: string,
+  expectedTabId?: string,
 ): Promise<void> {
-  const id = useUiStore.getState().activeTab
-  await activeEditor()?.prepareTransition()
+  const initial = useUiStore.getState()
+  const id = initial.activeTab
+  if (expectedTabId !== undefined && id !== expectedTabId) return
+  const previous = initial.tabs.find((tab) => tab.id === id)
+  if (previous?.doc !== doc || previous.gid !== from) return
+  const editor = activeEditor()
+  await editor?.prepareTransition()
   const ui = useUiStore.getState()
   const tab = ui.tabs.find((tab) => tab.id === id)
-  if (ui.activeTab !== id || tab?.doc !== doc || tab.gid !== from) return
+  if (
+    ui.activeTab !== id ||
+    activeEditor() !== editor ||
+    tab?.doc !== doc ||
+    tab.gid !== from
+  )
+    return
   replaceGlyphTab(doc, from, to, label)
 }

@@ -46,16 +46,18 @@ function cell(gid: number) {
     path: 'M40 0L560 0L560 700L40 700Z',
   })
 }
-function transportFor() {
+function transportFor(detailGate?: Promise<void>) {
   return createMockTransport({
-    'glyphs.detail': ({ gid }) =>
-      makeGlyphDetail(
+    'glyphs.detail': async ({ gid }) => {
+      await detailGate
+      return makeGlyphDetail(
         makeGlyph({
           name: names[gid - 1] ?? 'A',
           unicodes: [64 + gid],
           layers: [layer],
         }),
-      ),
+      )
+    },
     'glyphs.cell': ({ gid }) => cell(gid),
     'glyphs.search': ({ query }) =>
       names.includes(query) ? [cell(names.indexOf(query) + 1)] : [],
@@ -151,6 +153,14 @@ describe('TextView integration', () => {
       })
     })
     expect(editor.currentSelection.size).toBe(1)
+    fireEvent.keyDown(canvas, {
+      key: 'ArrowRight',
+      ctrlKey: true,
+      altKey: true,
+    })
+    expect(
+      transport.calls.filter((entry) => entry.method === 'doc.edit_apply'),
+    ).toHaveLength(0)
     fireEvent.keyDown(canvas, { key: 'ArrowRight', shiftKey: true })
     await act(async () => {
       await editor.endNudge()
@@ -174,6 +184,42 @@ describe('TextView integration', () => {
     await waitFor(() =>
       expect(useUiStore.getState().tabs[0]?.textState?.mode).toBe('text'),
     )
+  })
+
+  it('does not flush an unrelated editor from an old mounted view callback', async () => {
+    setTransport(transportFor())
+    const original = useUiStore.getState().tabs[0]!
+    render(<TextView summary={summary} tab={original} />)
+    await screen.findByRole('img', { name: /^Glyph A,/ })
+    const prepare = vi.spyOn(activeEditor()!, 'prepareTransition')
+    act(() => {
+      useUiStore.getState().openTab({ kind: 'glyph', doc: 2, gid: 20 })
+    })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Text' }), {
+      target: { value: 'late' },
+    })
+    await act(async () => undefined)
+    expect(prepare).not.toHaveBeenCalled()
+  })
+
+  it('does not overwrite early typing when initial glyph metadata arrives', async () => {
+    let release: (() => void) | undefined
+    setTransport(
+      transportFor(
+        new Promise<void>((resolve) => {
+          release = resolve
+        }),
+      ),
+    )
+    render(<Harness />)
+    const input = screen.getByRole('textbox', { name: 'Text' })
+    fireEvent.change(input, { target: { value: 'ABC' } })
+    await waitFor(() =>
+      expect(useUiStore.getState().tabs[0]?.textState?.text).toBe('ABC'),
+    )
+    await act(async () => release?.())
+    await screen.findByRole('img', { name: /^Glyph A,/ })
+    expect(input).toHaveValue('ABC')
   })
 
   it('keeps typed text visible while a tool transition is delayed', async () => {

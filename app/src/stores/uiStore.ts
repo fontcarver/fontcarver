@@ -23,6 +23,7 @@ export interface TextTabState {
   readonly text: string
   readonly activeIndex: number | null
   readonly runCount?: number
+  readonly shaping?: boolean
   readonly mode: 'text' | 'edit'
   readonly master: MasterId | null
   readonly size: number

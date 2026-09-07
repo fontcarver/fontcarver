@@ -292,8 +292,11 @@ export function GlyphView({
   const step = useCallback(
     (direction: 1 | -1) => {
       if (gid === undefined) return
+      const originatingTab = useUiStore.getState().activeTab
+      if (originatingTab === null) return
       void neighbourGid(query, gid, direction).then((next) => {
-        if (next !== null && next !== gid) return changeGlyphTab(doc, gid, next)
+        if (next !== null && next !== gid)
+          return changeGlyphTab(doc, gid, next, undefined, originatingTab)
       })
     },
     [doc, gid, query],

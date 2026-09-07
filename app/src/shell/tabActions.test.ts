@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import * as editors from '../editor/activeEditor'
+import type { EditorController } from '../editor/editorController'
 import { setTransport } from '../api'
 import { initialSessionState, useSessionStore } from '../stores/sessionStore'
 import { initialUiState, tabId, useUiStore } from '../stores/uiStore'
@@ -7,6 +9,7 @@ import { createMockTransport, makeSummary } from '../test/mockTransport'
 
 import {
   closeTab,
+  changeGlyphTab,
   openFontInfoTab,
   openGlyphTab,
   replaceGlyphTab,
@@ -199,6 +202,19 @@ describe('tabActions', () => {
     expect(useUiStore.getState().tabs.some((tab) => tab.id === suffixed)).toBe(
       false,
     )
+  })
+
+  it('does not flush the new editor when a delayed old glyph step arrives', async () => {
+    const original = openGlyphTab(1, 9, 'a')
+    const next = openGlyphTab(1, 20, 'other')
+    useUiStore.getState().updateTab(next, { gid: 9 })
+    const prepareTransition = vi.fn().mockResolvedValue(undefined)
+    vi.spyOn(editors, 'activeEditor').mockReturnValue({
+      prepareTransition,
+    } as unknown as EditorController)
+    await changeGlyphTab(1, 9, 10, 'b', original)
+    expect(prepareTransition).not.toHaveBeenCalled()
+    expect(useUiStore.getState().activeTab).toBe(next)
   })
 
   it('focuses an existing Font Info tab instead of opening a second one', () => {

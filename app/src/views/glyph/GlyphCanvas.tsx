@@ -527,6 +527,15 @@ export function GlyphCanvas({
     (event: React.KeyboardEvent<HTMLCanvasElement>) => {
       const modifiers = modifiersOf(event)
       const run = frame.current.textRun
+      if (
+        run &&
+        modifiers.mod &&
+        modifiers.alt &&
+        (event.key === 'ArrowLeft' || event.key === 'ArrowRight')
+      ) {
+        event.preventDefault()
+        return
+      }
       if (run?.onMetricKey?.(event)) {
         event.preventDefault()
         event.stopPropagation()

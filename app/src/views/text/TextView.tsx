@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { call, type DocSummary } from '../../api'
+import { type DocSummary } from '../../api'
 import { activeEditor } from '../../editor/activeEditor'
 import { reportError } from '../../shell/commands'
 import { isEditableTarget } from '../../shell/shortcuts'
@@ -27,6 +27,8 @@ import {
 import { useTextGlyphCells } from './useTextGlyphCells'
 import { useTextMetrics } from './useTextMetrics'
 import { useTextShape } from './useTextShape'
+import { useTextFeedback } from './useTextFeedback'
+import { allEncodedText } from './textSamples'
 import styles from './TextView.module.css'
 
 /** The shaped Text tab surrounds one persistent glyph editor/controller. */
@@ -80,8 +82,14 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
   )
   const transition = useCallback(
     async (action: () => void) => {
-      await activeEditor()?.prepareTransition()
-      if (useUiStore.getState().activeTab === tab.id) action()
+      if (useUiStore.getState().activeTab !== tab.id) return
+      const editor = activeEditor()
+      await editor?.prepareTransition()
+      if (
+        useUiStore.getState().activeTab === tab.id &&
+        activeEditor() === editor
+      )
+        action()
     },
     [tab.id],
   )
@@ -143,10 +151,6 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
   )
   const shaped = useTextShape(tab.textState ? context : null)
   const glyphs = shaped?.layout.glyphs ?? EMPTY_GLYPHS
-  useEffect(() => {
-    if (tab.textState && state.runCount !== glyphs.length)
-      patch({ runCount: glyphs.length })
-  }, [glyphs.length, patch, state.runCount, tab.textState])
   if (!entered && state.mode === 'text' && glyphs.length > 0) setEntered(true)
   useEffect(() => {
     if (import.meta.env.DEV)
@@ -323,63 +327,23 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
     if (id !== 'all-encoded') return changeText(TEXT_SAMPLE_TEXT[id])
     const request = ++inputRevision.current
     const requestedMaster = state.master
-    const result = await call('glyphs.ids', {
-      doc: summary.doc,
-      master: state.master,
-      filter: {
-        query: null,
-        categories: [],
-        scripts: [],
-        blocks: [],
-        unencoded_only: false,
-        color_labels: [],
-        tags: [],
-        unicode_ranges: [],
-        has_components: null,
-        changed_only: false,
-      },
-      sort: 'Unicode',
-    })
-    const codepoints: number[] = []
-    for (let offset = 0; offset < result.length; offset += 2000) {
-      const page = await call('glyphs.list', {
-        doc: summary.doc,
-        master: state.master,
-        filter: {
-          query: null,
-          categories: [],
-          scripts: [],
-          blocks: [],
-          unencoded_only: false,
-          color_labels: [],
-          tags: [],
-          unicode_ranges: [],
-          has_components: null,
-          changed_only: false,
-        },
-        sort: 'Unicode',
-        offset,
-        limit: 2000,
-        include_paths: false,
-      })
-      if (
-        request !== inputRevision.current ||
-        latest.current.state.master !== requestedMaster
-      )
-        return
-      for (const cell of page.items) codepoints.push(...cell.unicodes)
-    }
-    changeText(
-      [...new Set(codepoints)]
-        .map((cp) => (cp === 47 ? '//' : String.fromCodePoint(cp)))
-        .join(''),
+    const text = await allEncodedText(
+      summary.doc,
+      requestedMaster,
+      () =>
+        request === inputRevision.current &&
+        latest.current.state.master === requestedMaster &&
+        useUiStore.getState().activeTab === tab.id,
     )
+    if (text !== null) changeText(text)
   }
+
   const status = shaped?.compileFailure
     ? 'compile-failed'
     : !shaped || shaped.stale || shaped.context.generation !== view.generation
       ? 'stale'
       : 'ready'
+  useTextFeedback(tab.id, glyphs.length, status === 'stale')
   const statusKey = `${view.generation}:${state.text}:${status}`
   return (
     <div
