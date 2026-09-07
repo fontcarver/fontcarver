@@ -14,12 +14,19 @@ repaired. Current dispatches and evidence are recorded in the ledger's
 and final review, then stop. Do not begin P2. Merging to main remains a separate
 user decision.**
 
+**Desktop constraint (2026-09-07): user reported test automation competing with
+their input. No headed/native GUI automation, global keyboard/mouse events or
+focus activation. Use isolated headless browser, unit and CLI tests. Remaining
+real-desktop interaction is paused; record only evidence already obtained.**
+
 - T8: reviewed cancellation/source handover and metrics freshness fixes merged
   (`ee865eb`). Integrated app verification: 92 files / 869 tests passed.
 - T7 minor round: reviewed and merged (`3df91c9`).
 - T9b: parsing/layout/request foundation, compiled glyph identity, portable
-  fixtures and lookup cancellation are merged. Sol is integrating TextView;
-  controlled TextBar/PreviewStrip are in a scoped review fix round.
+  fixtures and lookup cancellation are merged. TextBar/PreviewStrip and the metrics coalescer are reviewed and merged.
+  After the user asked about model quality, Astra takes over the remaining
+  complex TextView/controller integration from Sol; Sol continues bounded
+  modules, translation and headless verification.
 - T12: kernel/CLI and real Source Han release gates passed (open 0.900 s,
   export 58.697 s). Preliminary browser edit/export/reopen workflows passed;
   200 frame-paced drag samples had a 1.700 ms maximum. Final post-T9 rerun and

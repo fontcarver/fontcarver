@@ -87,8 +87,16 @@ DejaVu pointer edits to A/B/C with export/reopen; new-font pen drawing and
 600/620/640 widths with export, release CLI inspection and reopen; and the
 300-point drag gate. T8 and independently checked Chinese translations are
 merged; integrated app tests passed 92 files / 869 tests. Final text editing,
-preview, translation top-up and desktop build/launch checks remain pending. Native dialog interaction will be reported separately from
-automated browser or build evidence.
+preview, translation top-up and desktop build/launch checks remain pending. Preliminary desktop evidence at `84e881e`: embedded debug Tauri build passed
+in 63.52 seconds; the native shell launched with isolated configuration and
+loaded DejaVu Sans through its real Open chooser, displaying 6,253 glyphs. The
+native Save chooser opened, but export was not completed. The user reported
+that automation competed with their own input, so all native/headed input was
+stopped and the owned process/dialogs/config/output were cleaned up. Remaining
+native interaction is **paused and unverified**, not passed. Continue only with
+isolated headless browser, unit and CLI checks; no further desktop interaction
+is authorized in this run. Final embedded-asset building can be verified without
+launching a window. Release packaging has not been tested.
 
 ## Evidence and remaining completion steps
 

@@ -53,3 +53,11 @@ polish. One final fix wave and one scoped re-review follow; do not reopen
 unrelated P2 scope. Write root ignored ledger final-review.md, concise findings
 plus exact candidate/base commits and verification performed. Main merge is
 the user's separate decision; P1 completion is the stop boundary.
+
+Latest user constraint: desktop automation competed with the user's own input.
+Native/headed/global input operations were stopped and the owned test process
+closed. Review and any reproductions must use headless isolated browser/unit/
+CLI checks only. Do not request interactive desktop actions to finish this run.
+Record desktop build/launch/dialog evidence already achieved and remaining
+native workflow as unverified due to the user's constraint. This does not waive
+other P1 correctness or headless acceptance requirements.
