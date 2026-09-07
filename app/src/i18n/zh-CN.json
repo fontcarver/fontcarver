@@ -108,9 +108,9 @@
       "noFontTab": "当前标签页不是字体标签页",
       "noGlyphTab": "当前标签页不是字形标签页",
       "noGlyphLayer": "编辑标签页未加载图层",
-      "noStartPoint": "请选择一个轮廓节点",
+      "noStartPoint": "请选择一个曲线上节点",
       "noJoin": "请选择两个轮廓的开放端点",
-      "noBreak": "请选择要断开轮廓的轮廓节点"
+      "noBreak": "请选择一个曲线上节点以断开轮廓"
     },
     "path": {
       "toggleSmooth": "切换平滑节点/角点",
@@ -186,8 +186,8 @@
       "starter": "初始字形",
       "set": {
         "none": "无",
-        "basicLatin": "基本拉丁文",
-        "latin1": "拉丁文-1",
+        "basicLatin": "基本拉丁字母",
+        "latin1": "拉丁字母-1 补充",
         "gb2312": "GB 2312"
       },
       "starterHint": "初始字形将以空轮廓创建；所用字形方案与“添加字形”对话框相同。",
@@ -210,9 +210,9 @@
       "add_one": "添加 {{count, number}} 个字形",
       "add_other": "添加 {{count, number}} 个字形",
       "charset": {
-        "basicLatin": "基本拉丁文",
-        "latinExtA": "拉丁文扩展 A",
-        "latin1": "拉丁文-1",
+        "basicLatin": "基本拉丁字母",
+        "latinExtA": "拉丁字母扩展 A",
+        "latin1": "拉丁字母-1 补充",
         "gb2312": "GB 2312"
       },
       "countFailed": "内核无法解析此字符集。",
@@ -333,10 +333,10 @@
       "capButt": "平头",
       "capSquare": "方头",
       "capRound": "圆头",
-      "joinBevel": "斜接",
-      "joinMiter": "尖角",
+      "joinBevel": "斜角",
+      "joinMiter": "斜接",
       "joinRound": "圆角",
-      "miterLimit": "尖角限制",
+      "miterLimit": "斜接限制",
       "removeInternal": "移除内环",
       "removeExternal": "移除外环",
       "run": "扩展"
@@ -469,7 +469,7 @@
     "transport": "界面无法连接内核"
   },
   "warning": {
-    "cffHintsNotImported": "导入 CFF 轮廓时未导入各字形的主干和提示蒙版数据",
+    "cffHintsNotImported": "导入 CFF 轮廓时未导入各字形的字干和提示蒙版数据",
     "glyphNamesSynthesized": "字体没有可用的字形名称，因此已生成字形名称。",
     "collectionFaceOpened": "{{message}}",
     "hintingDropped": "已丢弃导入后发生更改的字形中的 TrueType 指令。",
@@ -732,7 +732,7 @@
       "verticalOrigin": "垂直原点",
       "verticalAdvance": "垂直字宽",
       "zones": "对齐区域",
-      "stems": "主干",
+      "stems": "字干",
       "guides": "参考线"
     },
     "nameId": {
@@ -923,12 +923,12 @@
     "corner": "角点",
     "smooth": "平滑",
     "curve": "曲线",
-    "onCurve": "轮廓节点",
+    "onCurve": "曲线上",
     "name": "名称",
     "unicode": "Unicode",
     "base": "基础字形",
-    "scaleX": "X 缩放 %",
-    "scaleY": "Y 缩放 %",
+    "scaleX": "X 轴缩放（%）",
+    "scaleY": "Y 轴缩放（%）",
     "rotation": "旋转",
     "autoAlign": "自动对齐",
     "useMyMetrics": "使用本字形度量",
