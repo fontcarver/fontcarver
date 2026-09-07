@@ -148,3 +148,14 @@ State: p1-outline-editing = T1–T7, T9a, T10, T11 merged and verified (head 83f
 
 - 2026-09-07 milestone: compiled glyph identity/portable fixtures reviewed and merged; kernel/CLI acceptance gates merged as 5685eff. Root integrated gen:api/check and nine focused CLI/shaping/fixture tests passed. Main app baseline after foundation remains 82 files/717 tests. T12 Sol actual Source Han release open0.900s/export58.697s passed with65,535glyph/cmap assertions (only1.303s export headroom). Evidence in docs/p1-acceptance.md and task-12-cjk-report.md.
 - 2026-09-07 T8 fix1 Astra scoped review: CHANGES REQUIRED despite163focusedtests passing. Confirmed replacement-controller cancellation can undo new commands, actual canvasEscape settles beforecancel, and formula generation stays actionable while refreshing. Sol freshagent t8_fix2 owns bounded fix2 (priorimplementer threadlimit reached), dispatch task-8-resume-fix2-dispatch.md. Sol restore_environment owns independent preliminary zh-CN translation; Sol t7_minors owns T12 browser workflow/pointerpaint preparation. T9bUI still waits reviewedT8.
+
+- 2026-09-07 integration milestone: T8 fix2 approved and merged ee865eb;
+  preliminary zh QA corrections merged b460871; app 92 files / 869 tests.
+  Text controls reviewed through 3973ed4 and merged 28031a8; separate Chinese
+  top-up and QA correction a5931f6 merged, 877-key parity. Browser preliminary
+  acceptance 3/3 passed, 200 frame-paced move max 1.700 ms and down 3.500 ms;
+  final post-T9 rerun pending. HTTP shape/export deadlines reviewed at727708e
+  and merged after Source Han first shaping took76.779s. T9 UI Sol t9_ui is
+  active; metrics pure helper split to Sol t8_fix2. Native desktop debug embedded
+  build/launch and native Open dialog passed preliminarily; actual open-file
+  workflow still being checked by Sol t7_minors. No P1 completion/main merge/P2.
