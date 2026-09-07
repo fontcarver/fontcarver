@@ -1080,6 +1080,46 @@ describe('EditorController against the kernel token rules', () => {
     expect(recorded.errors).toEqual([])
   })
 
+  it('gates a new source without projecting the old metrics preview', async () => {
+    const { controller, transport, recorded, release } = heldMetrics()
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(10, 200))
+    controller.pointerUp(at(10, 200))
+    await settle()
+    expect(controller.frame().metrics?.lsb).toBe(10)
+
+    const next = source()
+    controller.setSource({
+      ...next,
+      gid: 43,
+      glyph: 'b',
+      outline: { ...next.outline, layer: 'layer-2' },
+    })
+    expect(controller.frame().metrics).toBeNull()
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(20, 200))
+    controller.pointerUp(at(20, 200))
+    await settle()
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+    ])
+
+    release()
+    await controller.settle()
+    await settle()
+    expect(
+      transport.calls
+        .filter((entry) => entry.method === 'doc.edit_apply')
+        .map(
+          (entry) =>
+            (entry.params as { command: { SetMetrics: { layer: string } } })
+              .command.SetMetrics.layer,
+        ),
+    ).toEqual(['layer-1', 'layer-2'])
+    expect(recorded.errors).toEqual([])
+  })
+
   it('keeps a panel field commit behind a metrics drag close', async () => {
     const { controller, transport, recorded, release } = heldMetrics()
     const stop = registerEditor(controller)
