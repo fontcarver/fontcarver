@@ -1,0 +1,1 @@
+export default {"root": "/home/chen/githubprojects/fontpixel/fontcutter/app", "test": {"environment": "jsdom", "include": ["/home/chen/githubprojects/fontpixel/fontcutter/.superpowers/sdd/2026-09-03-p1-outline-editing/final-review-probe.test.ts"], "setupFiles": ["/home/chen/githubprojects/fontpixel/fontcutter/app/src/test/setup.ts"], "maxWorkers": 1}}
