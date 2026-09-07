@@ -412,7 +412,7 @@
     "cffHintsNotImported": "CFF outlines were imported without per-glyph stem and hint-mask data",
     "glyphNamesSynthesized": "Glyph names were synthesized because the font had no usable glyph names.",
     "collectionFaceOpened": "{{message}}",
-    "hintingDropped": "TrueType instructions were dropped for glyphs that changed since import.",
+    "hintingDropped": "All TrueType instructions were dropped from the exported font.",
     "hintingDroppedGlyphSetChanged": "TrueType instructions were dropped because the exported glyph set or order changed.",
     "preservationUnavailable": "Imported tables could not be preserved because the document has no import provenance.",
     "layoutDropped": "Imported layout tables were dropped because the glyph order changed.",
