@@ -26,14 +26,18 @@ real-desktop interaction is paused; record only evidence already obtained.**
   fixtures and lookup cancellation are merged. TextBar/PreviewStrip and the metrics coalescer are reviewed and merged.
   After the user asked about model quality, Astra takes over the remaining
   complex TextView/controller integration from Sol; Sol continues bounded
-  modules, translation and headless verification.
+  modules, translation and headless verification. The first actual headless Text
+  workflow passed: shaping, glyph-local pointer edit, three metrics keys in one
+  undo, two-stage Escape and size changes. Final callback/shortcut review fixes
+  and integrated browser verification remain pending.
 - T12: kernel/CLI and real Source Han release gates passed (open 0.900 s,
   export 58.697 s). Preliminary browser edit/export/reopen workflows passed;
   200 frame-paced drag samples had a 1.700 ms maximum. Final post-T9 rerun and
   desktop smoke remain pending. Reviewed HTTP shaping/export deadlines now
   allow 120 seconds after initial Source Han shaping took 76.779 seconds.
-- T13: preliminary Chinese translation and separate QA merged (`b460871`);
-  T9b translation top-up and independent QA follow UI integration.
+- T13: Chinese translation and separate QA are complete, including the final
+  four TextView strings (`56f9408`). The final UI English candidate and Chinese
+  locale have matching 881 keys; integrated verification follows the T9 merge.
 - Finish integrated acceptance and whole-branch review, then stop after P1.
 
 Authoritative state lives in the SDD ledger `.superpowers/sdd/2026-09-03-p1-outline-editing/progress.md`
