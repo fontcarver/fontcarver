@@ -10,6 +10,10 @@ below. The repository now lives at
 repaired. Current dispatches and evidence are recorded in the ledger's
 `resume-2026-09-07.md`.
 
+**User stop boundary (2026-09-07): finish P1, including acceptance, translation
+and final review, then stop. Do not begin P2. Merging to main remains a separate
+user decision.**
+
 - T8: independent Astra review in progress; integration follows fixes and review.
 - T7 minor round: Sol implementation in `.worktrees/p1-t7-minors`.
 - T9b: Sol builds the independent parsing/layout/request foundation in
