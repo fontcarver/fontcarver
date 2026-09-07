@@ -791,16 +791,16 @@ export class EditorController {
       // drag's cleanup.
       if (this.drag || this.nudge.active) {
         this.publishEditing()
-        return
+      } else {
+        // However the gesture ended, the preview goes away, reloads resume and
+        // the canvas repaints; leaving any of those behind strands the editor.
+        this.setPreview(null)
+        this.publishEditing()
+        // A gesture that failed part-way leaves the document in a state only the
+        // kernel knows, so it is refetched even though nothing "changed".
+        if (changed || drag.failed) this.callbacks.onReload()
+        else this.callbacks.repaint()
       }
-      // However the gesture ended, the preview goes away, reloads resume and
-      // the canvas repaints; leaving any of those behind strands the editor.
-      this.setPreview(null)
-      this.publishEditing()
-      // A gesture that failed part-way leaves the document in a state only the
-      // kernel knows, so it is refetched even though nothing "changed".
-      if (changed || drag.failed) this.callbacks.onReload()
-      else this.callbacks.repaint()
     }
   }
 }

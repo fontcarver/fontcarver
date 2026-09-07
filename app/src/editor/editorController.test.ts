@@ -1225,7 +1225,7 @@ describe('EditorController nudging beside a drag', () => {
     // Let the interrupted drag finish while the nudge run remains open. Its
     // cleanup must leave the newer preview in place.
     await settle()
-    expect(controller.frame().contours[0]?.points[1]).toMatchObject({
+    expect(controller.frame().contours?.[0]?.points[1]).toMatchObject({
       x: 230,
       y: 10,
     })
