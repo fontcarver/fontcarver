@@ -87,6 +87,14 @@ export class TextShapeCoordinator {
     this.schedule(this.debounceMs)
   }
 
+  /** Pauses pending requests while an editor owns mutable geometry. */
+  suspend(): void {
+    this.epoch += 1
+    this.abortController?.abort()
+    this.abortController = null
+    this.clearTimer()
+  }
+
   dispose(): void {
     this.disposed = true
     this.epoch += 1

@@ -70,6 +70,8 @@ export interface TextMetricsRunnerOptions {
   start: TextMetrics
   /** Whether sidebearing edits have geometry bounds to move. Defaults to true. */
   hasOutline?: boolean
+  /** Refresh the baseline after prior edits and edit_begin finish. */
+  refreshStart?: () => Promise<{ metrics: TextMetrics; hasOutline: boolean }>
   /** Undo label, already translated. */
   label: string
   /** A controller edit that this run must not overtake. */
@@ -91,9 +93,15 @@ export class TextMetricsRunner {
   private timer: ReturnType<typeof setTimeout> | null = null
   private lsbDelta = 0
   private rsbDelta = 0
+  private baseline: TextMetrics
+  private hasOutline: boolean
+  private preparing: Promise<void> | null = null
+  private baselineReady = true
 
   constructor(options: TextMetricsRunnerOptions) {
     this.options = options
+    this.baseline = { ...options.start }
+    this.hasOutline = options.hasOutline !== false
   }
 
   /** Whether this runner currently owns an open EditSession. */
@@ -105,17 +113,37 @@ export class TextMetricsRunner {
   press(side: MetricSide, delta: number): void {
     if (delta === 0 || this.ending) return
     if (!this.session) {
-      this.session = new EditSession(this.options.doc, this.options.label, {
+      const session = new EditSession(this.options.doc, this.options.label, {
         after: this.options.after,
         scheduler: this.options.scheduler,
         onError: this.options.onError,
       })
+      this.session = session
+      const refresh = this.options.refreshStart
+      if (refresh) {
+        this.baselineReady = false
+        this.preparing = session
+          .ready()
+          .then(refresh)
+          .then((fresh) => {
+            this.baseline = { ...fresh.metrics }
+            this.hasOutline = fresh.hasOutline
+            this.baselineReady = true
+            this.options.onPreview(this.preview())
+            session.queue(() => this.command())
+          })
+          .catch((error: unknown) => {
+            if (!session.failed) this.options.onError(error)
+          })
+      }
     }
 
     if (side === 'lsb') this.lsbDelta += delta
     else this.rsbDelta += delta
-    this.options.onPreview(this.preview())
-    this.session.queue(() => this.command())
+    if (this.baselineReady) {
+      this.options.onPreview(this.preview())
+      this.session.queue(() => this.command())
+    }
     this.restartTimer()
   }
 
@@ -128,9 +156,13 @@ export class TextMetricsRunner {
     if (this.timer !== null) clearTimeout(this.timer)
     this.timer = null
 
-    this.ending = session.end().then(() => {
-      this.options.onEnd()
-    })
+    // The session was constructed synchronously, before callers publish this
+    // close as a document barrier. Waiting for the fresh baseline here cannot
+    // make its own edit_begin depend on a future closure.
+    const closing = this.preparing
+      ? this.preparing.then(() => session.end())
+      : session.end()
+    this.ending = closing.then(() => this.options.onEnd())
     return this.ending
   }
 
@@ -143,8 +175,8 @@ export class TextMetricsRunner {
   }
 
   private preview(): TextMetricsPreview {
-    const { start } = this.options
-    if (this.options.hasOutline === false) {
+    const start = this.baseline
+    if (!this.hasOutline) {
       const width = start.width + this.lsbDelta + this.rsbDelta
       return { width, lsb: 0, rsb: width, lsbDelta: 0 }
     }
@@ -158,7 +190,7 @@ export class TextMetricsRunner {
 
   private command(): Command {
     const preview = this.preview()
-    const hasOutline = this.options.hasOutline !== false
+    const hasOutline = this.hasOutline
     return {
       SetMetrics: {
         glyph: this.options.glyph,

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setTransport } from '../api'
+import { initialTextState } from '../views/text/textState'
 import { i18n } from '../i18n'
 import { initialDocumentState, useDocumentStore } from '../stores/documentStore'
 import { initialSessionState, useSessionStore } from '../stores/sessionStore'
@@ -41,6 +42,22 @@ afterEach(() => {
 })
 
 describe('built-in commands', () => {
+  it('reserves kerning arrows on a text canvas and keeps tab cycling elsewhere', () => {
+    openDocument()
+    const id = useUiStore.getState().openTab({ kind: 'glyph', doc: 1, gid: 3 })
+    useUiStore
+      .getState()
+      .updateTab(id, { textState: initialTextState('regular', 'A') })
+    const canvas = document.createElement('canvas')
+    canvas.tabIndex = 0
+    document.body.append(canvas)
+    canvas.focus()
+    expect(isCommandEnabled('window.nextTab')).toBe(false)
+    expect(isCommandEnabled('text.kerning.ArrowRight')).toBe(false)
+    canvas.remove()
+    expect(isCommandEnabled('window.nextTab')).toBe(true)
+  })
+
   it('gives every command a title that the catalogue resolves', () => {
     // A title key that i18next cannot resolve renders as the raw key in the
     // menus, the palette and the shortcut help. Nesting matters: a flat

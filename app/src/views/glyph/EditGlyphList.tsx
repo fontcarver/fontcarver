@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { DocSummary, GlyphId } from '../../api'
-import { replaceGlyphTab } from '../../shell/tabActions'
+import { changeGlyphTab } from '../../shell/tabActions'
 import { selectDocView, useDocumentStore } from '../../stores/documentStore'
 import { GRID_GAP } from '../font/GlyphGrid'
 import { GridCells } from '../font/GridCells'
@@ -94,7 +94,7 @@ export function EditGlyphList({ summary, gid, query }: EditGlyphListProps) {
         const index = Number(cell?.getAttribute('data-index') ?? -1)
         const target = pager.cell(index)
         if (!target || target.gid === gid) return
-        replaceGlyphTab(doc, gid, target.gid, target.name)
+        void changeGlyphTab(doc, gid, target.gid, target.name)
       }}
     >
       <GridCells

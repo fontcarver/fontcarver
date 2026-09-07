@@ -20,6 +20,8 @@ import { drawOutline } from './drawOutline'
 import { drawGrid, drawToolOverlay } from './drawTools'
 import { drawRulers } from './drawRulers'
 import { drawUnderlays, NO_UNDERLAY, type UnderlayData } from './drawUnderlays'
+import { drawTextRun } from '../text/drawTextRun'
+import type { SurroundingGlyph } from '../text/textCanvas'
 import type { GlyphScene } from './glyphScene'
 import type { GlyphTheme } from './glyphTheme'
 import type { GuideOwner } from './guideIdentity'
@@ -87,6 +89,10 @@ export interface RenderGlyphOptions {
   tool?: ToolOverlay
   /** Grid step in font units; zero draws no grid. */
   grid?: number
+  /** Passive outlines in a shaped Text run, relative to the active glyph. */
+  surrounding?: readonly SurroundingGlyph[]
+  /** Text mode has no editable foreground glyph. */
+  hideActive?: boolean
 }
 
 /** The vertical metrics a node can sit on (design spec §4.1 item 9). */
@@ -116,7 +122,7 @@ export function renderGlyph(
 
   drawGrid(ctx, viewport, options.grid ?? 0, theme)
 
-  if (overlays.metrics)
+  if (!options.hideActive && overlays.metrics)
     drawMetrics(
       ctx,
       viewport,
@@ -124,7 +130,7 @@ export function renderGlyph(
       theme,
     )
 
-  if (overlays.guides)
+  if (!options.hideActive && overlays.guides)
     drawGuides(
       ctx,
       viewport,
@@ -140,51 +146,56 @@ export function renderGlyph(
     )
 
   const underlay = options.underlay ?? NO_UNDERLAY
-  drawUnderlays(
-    ctx,
-    viewport,
-    {
-      background: overlays.background ? underlay.background : null,
-      backgroundPoints: overlays.background ? underlay.backgroundPoints : [],
-      otherMasters: overlays.otherMasters ? underlay.otherMasters : [],
-    },
-    theme,
-  )
+  if (!options.hideActive)
+    drawUnderlays(
+      ctx,
+      viewport,
+      {
+        background: overlays.background ? underlay.background : null,
+        backgroundPoints: overlays.background ? underlay.backgroundPoints : [],
+        otherMasters: overlays.otherMasters ? underlay.otherMasters : [],
+      },
+      theme,
+    )
 
-  drawComponents(
-    ctx,
-    viewport,
-    {
-      path: options.flattened,
-      components:
-        options.components ??
-        scene.components.map((component) => ({
-          component,
-          path: null,
-          transform: IDENTITY,
-        })),
-      bounds: scene.componentBounds,
-      hovered: options.hoveredComponent ?? null,
-      filled: overlays.filled,
-      showLabels: overlays.points,
-    },
-    theme,
-  )
+  drawTextRun(ctx, viewport, options.surrounding ?? [], theme.outline)
 
-  drawOutline(
-    ctx,
-    viewport,
-    {
-      contours: scene.contours,
-      filled: overlays.filled,
-      showPoints: overlays.points,
-      selected: options.selected,
-      verticalMetrics: verticalMetricsOf(scene),
-    },
-    theme,
-  )
+  if (!options.hideActive) {
+    drawComponents(
+      ctx,
+      viewport,
+      {
+        path: options.flattened,
+        components:
+          options.components ??
+          scene.components.map((component) => ({
+            component,
+            path: null,
+            transform: IDENTITY,
+          })),
+        bounds: scene.componentBounds,
+        hovered: options.hoveredComponent ?? null,
+        filled: overlays.filled,
+        showLabels: overlays.points,
+      },
+      theme,
+    )
 
-  if (overlays.anchors)
+    drawOutline(
+      ctx,
+      viewport,
+      {
+        contours: scene.contours,
+        filled: overlays.filled,
+        showPoints: overlays.points,
+        selected: options.selected,
+        verticalMetrics: verticalMetricsOf(scene),
+      },
+      theme,
+    )
+  }
+
+  if (!options.hideActive && overlays.anchors)
     drawAnchors(
       ctx,
       viewport,

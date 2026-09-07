@@ -1,5 +1,8 @@
 import { useTranslation } from 'react-i18next'
 
+import { activeEditor } from '../../../editor/activeEditor'
+import { useUiStore } from '../../../stores/uiStore'
+import { reportError } from '../../../shell/commands'
 import type { DocId, Layer, MasterSummary } from '../../../api'
 import { useDocumentStore } from '../../../stores/documentStore'
 import { useEditorStore } from '../../../stores/editorStore'
@@ -61,8 +64,16 @@ export function LayerList({
               }`}
               aria-current={active}
               onClick={() => {
-                setEditedLayer(row.layer.id)
-                if (row.master !== null) setMaster(doc, row.master)
+                const tabId = useUiStore.getState().activeTab
+                const editor = activeEditor()
+                const apply = () => {
+                  if (useUiStore.getState().activeTab !== tabId) return
+                  setEditedLayer(row.layer.id)
+                  if (row.master !== null) setMaster(doc, row.master)
+                }
+                if (editor)
+                  void editor.prepareTransition().then(apply).catch(reportError)
+                else apply()
               }}
               title={`${role} · ${detail}`}
             >

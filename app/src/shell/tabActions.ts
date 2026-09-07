@@ -1,3 +1,4 @@
+import { activeEditor } from '../editor/activeEditor'
 import type { DocId, GlyphId } from '../api'
 import { useSessionStore } from '../stores/sessionStore'
 import { tabId, useUiStore } from '../stores/uiStore'
@@ -20,7 +21,15 @@ export function closeTab(id: string): void {
 
 /** Opens (or focuses) the Glyph tab for one glyph of a document. */
 export function openGlyphTab(doc: DocId, gid: GlyphId, label?: string): string {
-  return useUiStore.getState().openTab({ kind: 'glyph', doc, gid, label })
+  const ui = useUiStore.getState()
+  const matching = ui.tabs.find(
+    (tab) => tab.kind === 'glyph' && tab.doc === doc && tab.gid === gid,
+  )
+  if (matching) {
+    ui.setActiveTab(matching.id)
+    return matching.id
+  }
+  return ui.openTab({ kind: 'glyph', doc, gid, label })
 }
 
 /**
@@ -34,8 +43,22 @@ export function replaceGlyphTab(
   label?: string,
 ): string {
   const ui = useUiStore.getState()
-  const previous = tabId('glyph', doc, fromGid)
+  const existing = ui.tabs.find((tab) => tab.id === ui.activeTab)
+  const activeMatches =
+    existing?.kind === 'glyph' &&
+    existing.doc === doc &&
+    existing.gid === fromGid
+  if (activeMatches && existing.textState) {
+    ui.updateTab(existing.id, {
+      gid: toGid,
+      label,
+      textState: { ...existing.textState, activeIndex: null, mode: 'edit' },
+    })
+    ui.setActiveTab(existing.id)
+    return existing.id
+  }
   const next = openGlyphTab(doc, toGid, label)
+  const previous = activeMatches ? existing.id : tabId('glyph', doc, fromGid)
   if (next !== previous) ui.closeTab(previous)
   return next
 }
@@ -43,4 +66,31 @@ export function replaceGlyphTab(
 /** Opens (or focuses) the Font Info tab of a document. */
 export function openFontInfoTab(doc: DocId): string {
   return useUiStore.getState().openTab({ kind: 'fontinfo', doc })
+}
+
+/** Finishes old tools before a sidebar or keyboard step replaces its target. */
+export async function changeGlyphTab(
+  doc: DocId,
+  from: GlyphId,
+  to: GlyphId,
+  label?: string,
+  expectedTabId?: string,
+): Promise<void> {
+  const initial = useUiStore.getState()
+  const id = initial.activeTab
+  if (expectedTabId !== undefined && id !== expectedTabId) return
+  const previous = initial.tabs.find((tab) => tab.id === id)
+  if (previous?.doc !== doc || previous.gid !== from) return
+  const editor = activeEditor()
+  await editor?.prepareTransition()
+  const ui = useUiStore.getState()
+  const tab = ui.tabs.find((tab) => tab.id === id)
+  if (
+    ui.activeTab !== id ||
+    activeEditor() !== editor ||
+    tab?.doc !== doc ||
+    tab.gid !== from
+  )
+    return
+  replaceGlyphTab(doc, from, to, label)
 }

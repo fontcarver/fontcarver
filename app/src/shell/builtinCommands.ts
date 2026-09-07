@@ -29,6 +29,14 @@ function activeDoc(): DocId | null {
   return activeDocId()
 }
 
+function textCanvasHasFocus(): boolean {
+  const ui = useUiStore.getState()
+  return (
+    Boolean(ui.tabs.find((tab) => tab.id === ui.activeTab)?.textState) &&
+    globalThis.document?.activeElement instanceof HTMLCanvasElement
+  )
+}
+
 function hasDocument(): boolean {
   return activeDoc() !== null
 }
@@ -82,6 +90,21 @@ export function registerBuiltinCommands(): void {
   registerPathCommands()
   registerLayerCommands()
   registerCommands([
+    ...(['ArrowLeft', 'ArrowRight'] as const).map((key): Command => ({
+      id: `text.kerning.${key}`,
+      title: 'textControls.sample.kerning',
+      shortcut: `Mod+Alt+${key}`,
+      when: () => false,
+      disabledReason: 'textControls.sample.kerning',
+      run: () => undefined,
+    })),
+    {
+      id: 'view.textPreview',
+      title: 'textView.previewMenu',
+      menu: 'view',
+      group: 'panels',
+      run: () => useUiStore.getState().toggleTextPreview(),
+    },
     {
       id: 'file.new',
       title: 'cmd.file.new',
@@ -302,7 +325,8 @@ export function registerBuiltinCommands(): void {
       menu: 'window',
       group: 'tabs',
       shortcut: 'Mod+Alt+ArrowRight',
-      when: () => useUiStore.getState().tabs.length > 1,
+      when: () =>
+        useUiStore.getState().tabs.length > 1 && !textCanvasHasFocus(),
       disabledReason: 'cmd.reason.oneTab',
       run: () => useUiStore.getState().cycleTab(1),
     },
@@ -312,7 +336,8 @@ export function registerBuiltinCommands(): void {
       menu: 'window',
       group: 'tabs',
       shortcut: 'Mod+Alt+ArrowLeft',
-      when: () => useUiStore.getState().tabs.length > 1,
+      when: () =>
+        useUiStore.getState().tabs.length > 1 && !textCanvasHasFocus(),
       disabledReason: 'cmd.reason.oneTab',
       run: () => useUiStore.getState().cycleTab(-1),
     },

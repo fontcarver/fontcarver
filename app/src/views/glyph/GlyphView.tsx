@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import type { TextCanvasRun } from '../text/textCanvas'
 import type { DocSummary, GlyphId } from '../../api'
 import type { EditorSource } from '../../editor/editorController'
 import type { ScopedGuide } from '../../editor/hitTest'
-import { replaceGlyphTab } from '../../shell/tabActions'
+import { changeGlyphTab } from '../../shell/tabActions'
 import { inferCurves } from '../../editor/pathGeometry'
 import { useDocumentStore, selectDocView } from '../../stores/documentStore'
 import { useEditorStore } from '../../stores/editorStore'
@@ -39,6 +40,10 @@ import { layerMaster } from './panels/layerRows'
 export interface GlyphViewProps {
   summary: DocSummary
   gid: GlyphId | undefined
+  tabIdentity?: string
+  textRun?: TextCanvasRun | null
+  textFitKey?: string
+  externalSettler?: (() => Promise<void>) | null
 }
 
 /**
@@ -49,7 +54,14 @@ export interface GlyphViewProps {
  * every editing command indexes — so what is on screen and what a command
  * addresses cannot drift apart.
  */
-export function GlyphView({ summary, gid }: GlyphViewProps) {
+export function GlyphView({
+  summary,
+  gid,
+  tabIdentity,
+  textRun = null,
+  textFitKey,
+  externalSettler,
+}: GlyphViewProps) {
   const { t } = useTranslation()
   const doc = summary.doc
   const view = useDocumentStore(selectDocView(doc))
@@ -75,7 +87,7 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
   const labels = useMetricLabels()
   const editorLabels = useEditorLabels()
   const handleRef = useRef<GlyphCanvasHandle | null>(null)
-  useToolShortcuts(gid !== undefined)
+  useToolShortcuts(gid !== undefined && textRun?.mode !== 'text')
 
   const editingMasterId = useMemo(() => {
     if (!editedLayer) return masterId
@@ -236,7 +248,12 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
   // Publish the glyph so the shell inspector can render it without a second
   // request, and name the tab now that the glyph name is known.
   useEffect(() => {
-    if (!scene || gid === undefined || !detail.detail) {
+    if (
+      !scene ||
+      gid === undefined ||
+      !detail.detail ||
+      textRun?.mode === 'text'
+    ) {
       setActiveGlyph(null)
       return
     }
@@ -251,7 +268,8 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
       masterGuides: master?.guides ?? [],
       reload: outlineResult.reload,
     })
-    setTabLabel(tabId('glyph', doc, gid), scene.name)
+    if (!textRun)
+      setTabLabel(tabIdentity ?? tabId('glyph', doc, gid), scene.name)
     return () => setActiveGlyph(null)
   }, [
     detail.cell,
@@ -265,6 +283,8 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
     scene,
     setActiveGlyph,
     setTabLabel,
+    tabIdentity,
+    textRun,
   ])
 
   useEffect(() => () => setPointer(null), [setPointer])
@@ -272,8 +292,11 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
   const step = useCallback(
     (direction: 1 | -1) => {
       if (gid === undefined) return
+      const originatingTab = useUiStore.getState().activeTab
+      if (originatingTab === null) return
       void neighbourGid(query, gid, direction).then((next) => {
-        if (next !== null && next !== gid) replaceGlyphTab(doc, gid, next)
+        if (next !== null && next !== gid)
+          return changeGlyphTab(doc, gid, next, undefined, originatingTab)
       })
     },
     [doc, gid, query],
@@ -295,18 +318,23 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
     [toggleOverlay],
   )
 
-  if (gid === undefined)
+  const [lastScene, setLastScene] = useState(scene)
+  if (scene && lastScene !== scene) setLastScene(scene)
+  const shownScene = scene ?? (textRun ? lastScene : null)
+
+  if (gid === undefined && !textRun)
     return <p className={styles.message}>{t('glyphView.noGlyph')}</p>
   if (detail.error) return <p className={styles.message}>{detail.error}</p>
   if (outlineResult.error)
     return <p className={styles.message}>{outlineResult.error}</p>
-  if (!scene) return <p className={styles.message}>{t('glyphView.loading')}</p>
+  if (!shownScene)
+    return <p className={styles.message}>{t('glyphView.loading')}</p>
 
   return (
     <div className={styles.view}>
       <GlyphToolbar
         summary={summary}
-        scene={scene}
+        scene={shownScene}
         onFit={() => handleRef.current?.fit()}
         onZoom={(factor) => handleRef.current?.zoomBy(factor)}
         onStep={step}
@@ -314,19 +342,21 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
       <div className={styles.stage}>
         <ToolPalette />
         <GlyphCanvas
-          scene={scene}
+          scene={shownScene}
           theme={theme}
           labels={labels}
           overlays={overlays}
           flattened={flattened}
           underlay={underlay}
           componentViews={outline?.components ?? []}
-          fitKey={`${doc}:${gid}:${editingMasterId ?? ''}`}
+          fitKey={textFitKey ?? `${doc}:${gid}:${editingMasterId ?? ''}`}
+          textRun={textRun}
+          externalSettler={externalSettler}
           label={t('glyphView.canvasLabel', {
-            name: scene.name,
-            unicode: formatUnicodes(scene.unicodes),
+            name: shownScene.name,
+            unicode: formatUnicodes(shownScene.unicodes),
           })}
-          source={source}
+          source={textRun?.mode === 'text' ? null : source}
           editorLabels={editorLabels}
           snapSettings={snapSettings}
           nudgeSteps={nudgeSteps}
@@ -340,9 +370,9 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
         <p className={styles.liveRegion} aria-live="polite" role="status">
           {t('editor.a11y.selection', { count: selection.size })}
         </p>
-        {outline ? (
+        {outline && textRun?.mode !== 'text' ? (
           <InfoBox
-            target={{ doc, glyph: scene.name, layer: outline.layer }}
+            target={{ doc, glyph: shownScene.name, layer: outline.layer }}
             // While a gesture runs the fetched outline is deliberately stale,
             // so the box reads the geometry the canvas is drawing.
             outline={
@@ -358,15 +388,15 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
             selection={selection}
             master={outline.master}
             masterGuides={master?.guides ?? []}
-            name={scene.name}
-            unicodes={scene.unicodes}
+            name={shownScene.name}
+            unicodes={shownScene.unicodes}
             onCommitted={outlineResult.reload}
           />
         ) : null}
         {shapeDialog && outline ? (
           <ShapeDialog
             request={shapeDialog}
-            target={{ doc, glyph: scene.name, layer: outline.layer }}
+            target={{ doc, glyph: shownScene.name, layer: outline.layer }}
             curves={inferCurves(
               outline.contours,
               summary.format,

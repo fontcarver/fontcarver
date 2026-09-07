@@ -159,7 +159,7 @@ export class ToolHost {
   /** Switches tools, committing whatever the old one had open. */
   setTool(id: ToolId): void {
     if (this.tool?.id === id) return
-    this.finishCurrent()
+    this.finish()
     this.tool = createTool(id)
     // The outgoing tool may have returned no outcome while still leaving an
     // idle overlay (for example Measure), so switching tools is itself a
@@ -219,11 +219,12 @@ export class ToolHost {
 
   /** Commits whatever is open; called when the editor goes away. */
   dispose(): void {
-    this.finishCurrent()
+    this.finish()
     this.tool = null
   }
 
-  private finishCurrent(): void {
+  /** Finishes the active tool while its current target is still installed. */
+  finish(): void {
     const tool = this.tool
     if (!tool) return
     this.consume(tool.finish(this.context()))
