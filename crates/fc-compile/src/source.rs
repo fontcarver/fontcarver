@@ -34,6 +34,19 @@ pub struct CompileOptions {
     pub production_names: bool,
 }
 
+/// Bytes and stable model identity produced by one static compilation.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StaticCompile {
+    /// Compiled TrueType-flavored sfnt bytes.
+    pub bytes: Vec<u8>,
+    /// Exact model glyph names in compiled glyph-ID order.
+    ///
+    /// A synthesized `.notdef` is included even when the model did not contain
+    /// one; non-exporting glyphs are absent. These are model identities rather
+    /// than optional production names from the emitted `post` table.
+    pub glyph_order: Vec<GlyphName>,
+}
+
 #[derive(Clone, Debug)]
 struct SourceData {
     font: Font,
@@ -85,6 +98,24 @@ pub fn compile_static(
     master: &MasterId,
     options: &CompileOptions,
 ) -> Result<Vec<u8>, Error> {
+    compile_static_with_metadata(font, master, options).map(|compiled| compiled.bytes)
+}
+
+/// Compiles one master and retains exact model names in compiled glyph-ID order.
+pub fn compile_static_with_metadata(
+    font: &Font,
+    master: &MasterId,
+    options: &CompileOptions,
+) -> Result<StaticCompile, Error> {
+    compile_static_impl(font, master, options, false)
+}
+
+fn compile_static_impl(
+    font: &Font,
+    master: &MasterId,
+    options: &CompileOptions,
+    force_large_patch: bool,
+) -> Result<StaticCompile, Error> {
     let source = FcSource::from_font(font, master, options)?;
     let mut flags = Flags::PREFER_SIMPLE_GLYPHS;
     let mut flags_to_disable = Flags::empty();
@@ -99,12 +130,20 @@ pub fn compile_static(
         ..fontc::Options::default()
     };
     let bytes = fontc::generate_font(Box::new(source), fontc_options)?;
-    let bytes = if crate::large_font::requires_workaround(font, options.production_names) {
-        crate::large_font::patch_tables(&bytes, font, options.production_names)?
+    let glyph_order = {
+        let face = read_fonts::FontRef::new(&bytes)
+            .map_err(|error| Error::parse("compiled sfnt", error))?;
+        crate::large_font::compiled_glyph_order(&face, font, options.production_names)?
+    };
+    let bytes = if force_large_patch
+        || crate::large_font::requires_workaround(font, options.production_names)
+    {
+        crate::large_font::patch_tables(&bytes, font, &glyph_order)?
     } else {
         bytes
     };
-    crate::metadata::patch_modified_timestamp(&bytes, &font.info)
+    let bytes = crate::metadata::patch_modified_timestamp(&bytes, &font.info)?;
+    Ok(StaticCompile { bytes, glyph_order })
 }
 
 impl Source for FcSource {
@@ -646,7 +685,10 @@ impl Work<Context, WorkId, IrError> for NoopWork {
 
 #[cfg(test)]
 mod tests {
-    use super::append_class_body;
+    use fc_model::{Font, Glyph, GlyphName, Layer};
+    use read_fonts::{types::Version16Dot16, FontRef, TableProvider};
+
+    use super::{append_class_body, compile_static_impl, CompileOptions};
 
     #[test]
     fn feature_class_bodies_are_not_trimmed_by_bracket_characters() {
@@ -657,5 +699,38 @@ mod tests {
         let mut body = String::new();
         append_class_body(&mut body, " A @Uppercase # keep this comment\n");
         assert_eq!(body, "[ A @Uppercase # keep this comment\n]");
+    }
+
+    #[test]
+    fn forced_post_three_keeps_pre_patch_model_identity() {
+        let mut font = Font::new_empty("Post Three Identity", 1_000);
+        let master = font.default_master().id.clone();
+        for (name, unicode) in [("A", Some(0x41)), ("unencoded.alt", None)] {
+            let mut glyph = Glyph::new(name);
+            glyph.unicodes.extend(unicode);
+            glyph.layers.push(Layer::new_master(master.clone()));
+            font.insert_glyph(glyph).expect("insert glyph");
+        }
+
+        let compiled = compile_static_impl(&font, &master, &CompileOptions::default(), true)
+            .expect("compile with forced large-font patch");
+        let face = FontRef::new(&compiled.bytes).expect("parse patched font");
+
+        assert_eq!(
+            face.post().expect("post").version(),
+            Version16Dot16::VERSION_3_0
+        );
+        assert_eq!(
+            compiled.glyph_order,
+            [
+                GlyphName::from(".notdef"),
+                GlyphName::from("A"),
+                GlyphName::from("unencoded.alt"),
+            ]
+        );
+        assert_eq!(
+            usize::from(face.maxp().expect("maxp").num_glyphs()),
+            compiled.glyph_order.len()
+        );
     }
 }

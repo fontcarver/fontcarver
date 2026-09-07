@@ -21,5 +21,7 @@ pub use export::{
 };
 pub use preserve::preserve_merge;
 pub use shaping::shaping_fingerprint;
-pub use source::{compile_static, CompileOptions, FcSource};
+pub use source::{
+    compile_static, compile_static_with_metadata, CompileOptions, FcSource, StaticCompile,
+};
 pub use webfont::{wrap_woff1, wrap_woff2};

@@ -3,9 +3,10 @@ mod common;
 use std::time::Instant;
 
 use fc_compile::{
-    export, export_with_progress, shaping_fingerprint, ExportFormat, ExportOptions, ExportStage,
+    compile_static_with_metadata, export, export_with_progress, shaping_fingerprint,
+    CompileOptions, ExportFormat, ExportOptions, ExportStage,
 };
-use fc_model::{Font, Glyph, Layer, NamePlatform, NameRecord, Tag};
+use fc_model::{Font, Glyph, GlyphName, Layer, NamePlatform, NameRecord, Tag};
 use read_fonts::{tables::cmap::CmapSubtable, types::Tag as ReadTag, FontRef, TableProvider};
 use skrifa::MetadataProvider;
 
@@ -102,6 +103,43 @@ fn missing_notdef_is_synthesized_without_renaming_a_user_glyph() {
     assert_eq!(post_names(&report.bytes), [".notdef", "A", "B"]);
     let face = FontRef::new(&report.bytes).expect("parse export");
     assert_eq!(face.charmap().map('A').expect("map A").to_u32(), 1);
+}
+
+#[test]
+fn static_compile_metadata_tracks_model_identity_and_exclusions() {
+    let mut font = Font::new_empty("Identity Test", 1_000);
+    let master = font.default_master().id.clone();
+    for (name, unicode, export) in [
+        ("B", Some(0x42), true),
+        ("hidden", None, false),
+        ("A", Some(0x41), true),
+    ] {
+        let mut glyph = Glyph::new(name);
+        glyph.unicodes.extend(unicode);
+        glyph.export = export;
+        glyph.layers.push(Layer::new_master(master.clone()));
+        font.insert_glyph(glyph).expect("insert glyph");
+    }
+    font.glyph_mut("A").expect("A").production_name = Some("uni0041".to_owned());
+
+    let compiled = compile_static_with_metadata(
+        &font,
+        &master,
+        &CompileOptions {
+            production_names: true,
+        },
+    )
+    .expect("compile with identity metadata");
+
+    assert_eq!(
+        compiled.glyph_order,
+        [
+            GlyphName::from(".notdef"),
+            GlyphName::from("B"),
+            GlyphName::from("A"),
+        ]
+    );
+    assert_eq!(post_names(&compiled.bytes), [".notdef", "B", "uni0041"]);
 }
 
 #[test]
