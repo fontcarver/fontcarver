@@ -12,6 +12,14 @@ Reuse GlyphView + GlyphCanvas's EditorController and editing source. No second e
 
 Extend the existing renderer with optional surrounding glyph data and draw it before active editing chrome; do not clear the frame twice. Nonactive glyphs use flattened layer paths (component-safe), ink, no points/anchors/metrics by default. Cache parsed Path2D and fetch distinct glyph outlines once per relevant generation/master. Frame the run on initial text entry/explicit Fit, not every click or edit. The size field must change the rendered scale, not merely label the requested shape size.
 
+For long/all-encoded CJK runs, keep canvas allocation fixed to the viewport and
+bound outline fetching to visible run/preview entries plus the active glyph.
+Do not eagerly fetch65,535fulloutlines or allocate a run-width canvas. Shape and
+identity resolution may cover the full text, while rendering is culled. Include
+a usable hit target for zero-advance marks (outline bounds or a minimum screen
+width) as well as advance boxes for spaces; combining marks must not become
+unreachable solely because their advance is zero.
+
 Canvas clicks hit run advance boxes (including spaces) with offsets accounted for. In text mode select a glyph and enter edit mode; in edit mode normal active-glyph editing wins, clicking another glyph changes the target after pending edits flush. Never send compiled GIDs to glyph APIs. Keep a single canvas/controller alive across active-glyph loading where possible; source=null while pending and clear old selection immediately so old geometry cannot edit the new glyph. Text mode supports pan/zoom and glyph activation, suppresses outline editing tools/shortcuts, and typing redirects to the text input. Tool T enters text mode/focus. Escape first deselects (or cancels a current gesture); when already deselected, exits edit mode. Modals own the keyboard.
 
 ## Metrics keyboard editing
