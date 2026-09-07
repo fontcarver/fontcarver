@@ -29,3 +29,7 @@ Applied all six required corrections and all optional polish in
 “曲线上节点”, bevel/miter terms, 字干, axis-scale labels, and Unicode block
 names. Key parity (847/847), interpolation placeholder parity, the two focused
 i18n tests, and the zh-CN Prettier check pass.
+
+Follow-up `c7e7623 fix(i18n): describe complete hint removal` translates the
+corrected `warning.hintingDropped` contract: the exported font has all TrueType
+instructions removed. Focused parity, placeholder, i18n, and Prettier checks pass.
