@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-import type { DocId, GlyphId, RecoveryEntry } from '../api'
+import type { DocId, GlyphId, MasterId, RecoveryEntry } from '../api'
 import {
   DEFAULT_LANGUAGE,
   i18n,
@@ -18,12 +18,27 @@ export type ResolvedTheme = 'light' | 'dark'
 /** Kind of workspace tab. */
 export type TabKind = 'font' | 'glyph' | 'fontinfo'
 
+/** Per-tab state for the shaped text editor hosted by a Glyph tab. */
+export interface TextTabState {
+  readonly text: string
+  readonly activeIndex: number | null
+  readonly mode: 'text' | 'edit'
+  readonly master: MasterId | null
+  readonly size: number
+  readonly features: Array<[string, boolean]>
+  readonly direction: 'ltr' | 'rtl'
+  readonly previewTheme: 'light' | 'dark'
+  readonly previewCollapsed: boolean
+}
+
 /** One workspace tab. Tab ids are derived so re-opening focuses the same tab. */
 export interface Tab {
   readonly id: string
   readonly kind: TabKind
   readonly doc: DocId
   readonly gid?: GlyphId
+  /** Present once a legacy single-glyph tab has entered the Text workflow. */
+  readonly textState?: TextTabState
   /** Optional display label; falls back to the tab kind and document name. */
   readonly label?: string
 }
@@ -91,6 +106,7 @@ interface PersistedUi {
    * migrate everyone's stored record.
    */
   sections: Record<string, boolean>
+  textPreviewVisible: boolean
 }
 
 const DEFAULT_PERSISTED: PersistedUi = {
@@ -99,6 +115,7 @@ const DEFAULT_PERSISTED: PersistedUi = {
   panels: { sidebar: true, inspector: true },
   sizes: { sidebar: 240, inspector: 300 },
   sections: {},
+  textPreviewVisible: true,
 }
 
 /** Keeps only the boolean entries of a stored section record. */
@@ -144,6 +161,8 @@ function readPersisted(): PersistedUi {
         ),
       },
       sections: readSections(parsed.sections),
+      textPreviewVisible:
+        parsed.textPreviewVisible ?? DEFAULT_PERSISTED.textPreviewVisible,
     }
   } catch {
     return DEFAULT_PERSISTED
@@ -217,6 +236,10 @@ export interface UiState extends PersistedUi {
   toggleSection: (id: string, fallback: boolean) => void
   openTab: (tab: Omit<Tab, 'id'>) => string
   setTabLabel: (id: string, label: string) => void
+  updateTab: (
+    id: string,
+    patch: Partial<Omit<Tab, 'id' | 'kind' | 'doc'>>,
+  ) => void
   setActiveTab: (id: string) => void
   closeTab: (id: string) => void
   closeTabsForDoc: (doc: DocId) => void
@@ -231,6 +254,8 @@ export interface UiState extends PersistedUi {
   pushToast: (toast: Omit<Toast, 'id'>) => string
   dismissToast: (id: string) => void
   flashUndoLabel: (label: string | null) => void
+  setTextPreviewVisible: (visible: boolean) => void
+  toggleTextPreview: () => void
 }
 
 function persistedOf(state: UiState): PersistedUi {
@@ -240,6 +265,7 @@ function persistedOf(state: UiState): PersistedUi {
     panels: state.panels,
     sizes: state.sizes,
     sections: state.sections,
+    textPreviewVisible: state.textPreviewVisible,
   }
 }
 
@@ -255,6 +281,7 @@ export function initialUiState(): Omit<
   | 'toggleSection'
   | 'openTab'
   | 'setTabLabel'
+  | 'updateTab'
   | 'setActiveTab'
   | 'closeTab'
   | 'closeTabsForDoc'
@@ -269,6 +296,8 @@ export function initialUiState(): Omit<
   | 'pushToast'
   | 'dismissToast'
   | 'flashUndoLabel'
+  | 'setTextPreviewVisible'
+  | 'toggleTextPreview'
 > {
   return {
     ...readPersisted(),
@@ -349,6 +378,14 @@ export const useUiStore = create<UiState>((set, get) => ({
         ),
       }
     })
+  },
+
+  updateTab: (id, patch) => {
+    set((state) => ({
+      tabs: state.tabs.map((tab) =>
+        tab.id === id ? { ...tab, ...patch, id: tab.id } : tab,
+      ),
+    }))
   },
 
   setActiveTab: (id) => {
@@ -443,6 +480,14 @@ export const useUiStore = create<UiState>((set, get) => ({
       set({ undoFlash: null })
     }, UNDO_FLASH_MS)
   },
+
+  setTextPreviewVisible: (textPreviewVisible) => {
+    set({ textPreviewVisible })
+    writePersisted(persistedOf(get()))
+  },
+
+  toggleTextPreview: () =>
+    get().setTextPreviewVisible(!get().textPreviewVisible),
 }))
 
 /**

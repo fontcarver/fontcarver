@@ -35,6 +35,14 @@ export function replaceGlyphTab(
 ): string {
   const ui = useUiStore.getState()
   const previous = tabId('glyph', doc, fromGid)
+  const existing = ui.tabs.find(
+    (tab) => tab.kind === 'glyph' && tab.doc === doc && tab.gid === fromGid,
+  )
+  if (existing?.textState) {
+    ui.updateTab(existing.id, { gid: toGid, label })
+    ui.setActiveTab(existing.id)
+    return existing.id
+  }
   const next = openGlyphTab(doc, toGid, label)
   if (next !== previous) ui.closeTab(previous)
   return next

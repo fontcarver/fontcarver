@@ -178,6 +178,43 @@ describe('uiStore tabs', () => {
     useUiStore.getState().cycleTab(-1)
     expect(useUiStore.getState().activeTab).toBe(b)
   })
+
+  it('updates a shaped text target without changing the tab identity', () => {
+    const id = useUiStore
+      .getState()
+      .openTab({ kind: 'glyph', doc: 1, gid: 7, label: 'A' })
+    useUiStore.getState().updateTab(id, {
+      gid: 9,
+      label: 'Hamburgefonstiv',
+      textState: {
+        text: 'Hamburgefonstiv',
+        activeIndex: 2,
+        mode: 'edit',
+        master: 'regular',
+        size: 120,
+        features: [['kern', true]],
+        direction: 'ltr',
+        previewTheme: 'light',
+        previewCollapsed: false,
+      },
+    })
+
+    const tab = selectActiveTab(useUiStore.getState())
+    expect(tab?.id).toBe(id)
+    expect(tab?.gid).toBe(9)
+    expect(tab?.textState?.activeIndex).toBe(2)
+    expect(useUiStore.getState().tabs).toHaveLength(1)
+  })
+})
+
+describe('text preview preference', () => {
+  it('toggles and persists the View-menu visibility', () => {
+    useUiStore.getState().toggleTextPreview()
+    expect(useUiStore.getState().textPreviewVisible).toBe(false)
+
+    useUiStore.setState(initialUiState())
+    expect(useUiStore.getState().textPreviewVisible).toBe(false)
+  })
 })
 
 describe('uiStore toasts', () => {

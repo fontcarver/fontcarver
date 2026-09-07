@@ -72,6 +72,26 @@ describe('tabActions', () => {
     expect(useUiStore.getState().tabs).toHaveLength(1)
   })
 
+  it('keeps a shaped text tab id when its active glyph changes', () => {
+    const id = openGlyphTab(1, 9, 'a')
+    useUiStore.getState().updateTab(id, {
+      textState: {
+        text: 'abc',
+        activeIndex: 0,
+        mode: 'edit',
+        master: 'regular',
+        size: 120,
+        features: [],
+        direction: 'ltr',
+        previewTheme: 'light',
+        previewCollapsed: false,
+      },
+    })
+
+    expect(replaceGlyphTab(1, 9, 10, 'b')).toBe(id)
+    expect(useUiStore.getState().tabs[0]).toMatchObject({ id, gid: 10 })
+  })
+
   it('focuses an existing Font Info tab instead of opening a second one', () => {
     const first = openFontInfoTab(1)
     const second = openFontInfoTab(1)
