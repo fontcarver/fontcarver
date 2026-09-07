@@ -106,6 +106,11 @@ export class EditorController {
   private editingPublished = false
   /** The gesture that is closing, if any; a new one begins after it. */
   private closing: Promise<void> | undefined
+  /** Text metrics and similar tab-owned sessions that commands must flush. */
+  private externalSettler: (() => Promise<void>) | null = null
+  private preparingTransition = false
+  private transition: Promise<void> | null = null
+  private transitionApplications: Promise<void>[] = []
 
   constructor(viewport: Viewport, labels: EditorLabels) {
     this.viewport = viewport
@@ -159,7 +164,12 @@ export class EditorController {
         onError: (error) => this.callbacks.onError(error),
       },
       {
-        apply: (command, label) => void this.runCommand(command, label),
+        apply: (command, label) => {
+          const applying = this.runCommand(command, label)
+          if (this.preparingTransition)
+            this.transitionApplications.push(applying)
+          void applying
+        },
         setSelection: (selection) => this.setSelection(selection),
         setPreview: (preview) => this.setPreview(preview),
         setEditing: (editing: boolean) => {
@@ -193,6 +203,11 @@ export class EditorController {
    */
   setCallbacks(callbacks: EditorCallbacks): void {
     this.callbacks = callbacks
+  }
+
+  /** Installs a tab-owned edit run that every ordinary command must flush. */
+  setExternalSettler(settler: (() => Promise<void>) | null): void {
+    this.externalSettler = settler
   }
 
   /**
@@ -546,7 +561,8 @@ export class EditorController {
     if (!target) return
     // `doc.apply` finalises the active edit, so an open run has to be closed
     // before it rather than by it.
-    await this.settle()
+    if (!this.preparingTransition) await this.settle()
+    else if (this.closing) await this.closing
     try {
       await commit(target, command, label)
     } catch (error) {
@@ -623,13 +639,51 @@ export class EditorController {
     return doc === undefined ? tracked : holdDocumentEdits(doc, tracked)
   }
 
-  /** Closes any open gesture before another begin or single-shot apply. */
-  settle(): Promise<void> {
+  /** Closes core editor gestures, without committing an unfinished tool. */
+  private settleCore(): Promise<void> {
     const aside = this.aside.settle()
     if (aside) return aside
     if (this.drag) return this.gate(this.finishDrag())
     if (this.nudge.active) return this.gate(this.nudge.end())
     return this.closing ?? Promise.resolve()
+  }
+
+  /** Closes any open edit run before another begin or single-shot apply. */
+  settle(): Promise<void> {
+    const external = this.externalSettler?.()
+    const core = this.settleCore()
+    if (!external) return core
+    return Promise.allSettled([external, core]).then(() => undefined)
+  }
+
+  /**
+   * Flushes every tool and edit session before a Text tab changes target.
+   *
+   * Tool finishing is separate from `settle`: a Pen finish may itself apply a
+   * command, whose normal path calls `settle`. The transition flag lets that
+   * command retain the old target and exposes its promise to this barrier.
+   */
+  prepareTransition(): Promise<void> {
+    if (this.transition) return this.transition
+    const transition = (async () => {
+      await this.settle()
+      this.preparingTransition = true
+      this.transitionApplications = []
+      try {
+        this.tools.finish()
+        await this.settleCore()
+        await Promise.allSettled(this.transitionApplications)
+        if (this.closing) await this.closing
+      } finally {
+        this.preparingTransition = false
+        this.transitionApplications = []
+      }
+    })()
+    this.transition = transition.finally(() => {
+      if (this.transition === tracked) this.transition = null
+    })
+    const tracked = this.transition
+    return tracked
   }
 
   /**

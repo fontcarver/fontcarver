@@ -691,6 +691,37 @@ describe('EditorController glyph switching', () => {
     controller.setSource({ ...source(), gid: 44, glyph: 'c' })
     expect(recorded.selections.at(-1)).toEqual([])
   })
+
+  it('finishes a tool against the old glyph before a text target changes', async () => {
+    const { controller, transport } = makeController()
+    controller.setTool('pen')
+    controller.pointerDown(at(20, 280))
+    controller.pointerUp(at(20, 280))
+    controller.pointerDown(at(120, 280))
+    controller.pointerUp(at(120, 280))
+
+    await controller.prepareTransition()
+    controller.setSource({ ...source(), gid: 43, glyph: 'b' })
+    await settle()
+
+    const applied = transport.calls.find(
+      (entry) => entry.method === 'doc.apply',
+    )?.params as ApplyParams
+    expect(applied.command).toMatchObject({ AddContour: { glyph: 'a' } })
+  })
+
+  it('flushes a tab-owned metrics run before another command', async () => {
+    const { controller } = makeController()
+    const order: string[] = []
+    controller.setExternalSettler(async () => {
+      order.push('metrics')
+    })
+    controller.selectAll()
+
+    await controller.toggleSmooth(false)
+
+    expect(order).toEqual(['metrics'])
+  })
 })
 
 describe('EditorController segment grammar', () => {
