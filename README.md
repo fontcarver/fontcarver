@@ -32,8 +32,8 @@ The font logic is built on the permissively licensed Rust font ecosystem:
 ## Status
 
 Early development. P1 outline editing and headless acceptance are complete,
-and the user has tried and accepted the current desktop version. P2 design
-preparation is underway. There is no release yet; native workflow verification
+and the user has tried and accepted the current desktop version. A P2 design
+draft is saved; P2 work is paused at the user's request. There is no release yet; native workflow verification
 is partial and release packaging is untested. See
 [`docs/p1-acceptance.md`](docs/p1-acceptance.md) for measured results and current
 limitations, including hinting removal after outline edits. The capability list

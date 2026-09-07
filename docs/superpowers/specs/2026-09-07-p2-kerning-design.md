@@ -1,10 +1,16 @@
 # P2 preparation and horizontal kerning design
 
 Date: 2026-09-07.
-Status: proposal for review; no P2 implementation is claimed.
+Status: draft retained for later review; P2 paused by the user. No implementation has begun.
 Baseline: `p1-outline-editing` at `1305109`, production candidate `2e53ba6`.
 
 ## Context and authority
+
+Latest instruction: the user explicitly deferred P2 until a later session in
+a few days. Do not execute this proposal or begin implementation planning now.
+Wait for a new user instruction; no automatic restart is scheduled. Resume
+through `../plans/2026-09-05-p1-resume-todo.md`. The earlier continuation below
+explains how the draft was prepared and does not override this pause.
 
 The user tried the P1 desktop version, found its current usability acceptable
 apart from potential optimization, and requested continuation. Performance

@@ -1,12 +1,37 @@
 # Font Cutter — resume TODO (written 2026-09-05, session paused by the user)
 
-## Current continuation — 2026-09-07
+## Current status — P2 paused by the user, 2026-09-07
+
+**Do not start P2 now.** After reviewing the proposed scope, model allocation
+and rough estimates, the user explicitly deferred P2 until a later session in
+a few days. Wait for a new instruction to resume; elapsed time does not
+authorize an automatic restart. No P2 implementation has begun.
+
+The saved [P2 design proposal](../specs/2026-09-07-p2-kerning-design.md) contains
+the P2a–P2d scope, first-milestone behavior and acceptance criteria, proposed
+Astra/Sol allocation, and tentative estimates. It is a design draft, not an
+approved, task-by-task implementation plan.
+
+Resume checklist, to execute only after the user resumes P2:
+
+- [ ] Read the P2 proposal and confirm the first milestone's scope with the user.
+- [ ] Write the detailed P2a implementation plan, with exact interfaces and tests.
+- [ ] Implement and verify P2a: horizontal kerning for eligible source fonts.
+- [ ] Design and plan P2b: editable OpenType layout and imported-font support.
+- [ ] Design and plan P2c: static OTF/CFF export.
+- [ ] Design and plan P2d: Glyphs/SFD/Type 1 interoperability and problem checks.
+
+P1 remains on `p1-outline-editing`; no merge to `main` or push has occurred.
+Performance work, the FontForge comparison and native desktop automation remain
+paused. The following continuation and P1 handoff sections are historical.
+
+## Earlier continuation — 2026-09-07
 
 The user has now tried the desktop version, accepted its current usability
 subject to possible optimization, and requested the next step. The stop-after-P1
 instruction below is historical and superseded. Export performance work and
 the FontForge comparison remain deferred at the user's request; native desktop
-automation remains paused. P2 design preparation is active; see
+automation remains paused. P2 design preparation was started; see
 `../specs/2026-09-07-p2-kerning-design.md` for the proposed first milestone.
 The user trial is not a complete native workflow test or packaging acceptance.
 
