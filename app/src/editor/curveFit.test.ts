@@ -4,6 +4,7 @@ import type { Point2 } from '../canvas/Viewport'
 
 import {
   cubicToQuadratics,
+  distanceToCubic,
   fitContour,
   fitSamples,
   findCorners,
@@ -66,6 +67,25 @@ function maxDeviation(path: GeometricPath, samples: readonly Point2[]): number {
 }
 
 describe('fitSamples', () => {
+  it('measures endpoints and stationary points without underestimating', () => {
+    const stationary = [
+      { x: 0, y: 0 },
+      { x: 100, y: 100 },
+      { x: 0, y: 0 },
+      { x: 100, y: 100 },
+    ] as const
+    expect(distanceToCubic(stationary, { x: 50, y: 50 })).toBeLessThan(1e-9)
+    expect(distanceToCubic(stationary, { x: -3, y: -4 })).toBeCloseTo(5, 6)
+
+    const cuspAtStart = [
+      { x: 0, y: 0 },
+      { x: 0, y: 0 },
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+    ] as const
+    expect(distanceToCubic(cuspAtStart, { x: 0, y: 10 })).toBeCloseTo(10, 6)
+  })
+
   it('fits a noisy circle to a handful of segments inside the tolerance', () => {
     const samples = noisyCircle()
     const contour = fitContour(samples, true, 'cubic', 1)

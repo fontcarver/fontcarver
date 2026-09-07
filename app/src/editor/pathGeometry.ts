@@ -399,13 +399,14 @@ export function normaliseBox(a: Point2, b: Point2): FontBox {
  * (malformed) mixture, because a `glyf` outline cannot hold a cubic at all.
  *
  * Only a layer with no curves at all — an empty glyph, a rectangle — falls
- * back to the document's format, and only when that format names the outline
- * table outright: `.woff`/`.woff2` wrap either `glyf` or `CFF`, so they say
- * nothing and the cubic default stands.
+ * back to the model's declared source evidence. When that is unavailable, a
+ * format name helps only if it names the outline table outright: collections
+ * and `.woff`/`.woff2` wrappers can contain either `glyf` or CFF outlines.
  */
 export function inferCurves(
   contours: readonly Contour[],
   format: string,
+  declared?: LayerCurves | null,
 ): LayerCurves {
   let cubic = false
   for (const contour of contours)
@@ -414,8 +415,9 @@ export function inferCurves(
       if (point.kind === 'Curve') cubic = true
     }
   if (cubic) return 'cubic'
+  if (declared) return declared
   return GLYF_FORMATS.test(format.trim()) ? 'quadratic' : 'cubic'
 }
 
 /** Document formats that imply a `glyf` outline table. */
-const GLYF_FORMATS = /^(truetype|ttf|ttc)$/i
+const GLYF_FORMATS = /^(truetype|ttf)$/i

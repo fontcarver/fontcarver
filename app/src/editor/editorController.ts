@@ -779,14 +779,21 @@ export class EditorController {
     } catch (error) {
       this.callbacks.onError(error)
     } finally {
-      // However the gesture ended, the preview goes away, reloads resume and
-      // the canvas repaints; leaving any of those behind strands the editor.
-      this.setPreview(null)
-      this.publishEditing()
-      // A gesture that failed part-way leaves the document in a state only the
-      // kernel knows, so it is refetched even though nothing "changed".
-      if (changed || drag.failed) this.callbacks.onReload()
-      else this.callbacks.repaint()
+      // A gesture that started while this drag was flushing owns the preview
+      // and reload deferral now. Its optimistic geometry must survive the old
+      // drag's cleanup.
+      if (this.drag || this.nudge.active) {
+        this.publishEditing()
+      } else {
+        // However the gesture ended, the preview goes away, reloads resume and
+        // the canvas repaints; leaving any of those behind strands the editor.
+        this.setPreview(null)
+        this.publishEditing()
+        // A gesture that failed part-way leaves the document in a state only the
+        // kernel knows, so it is refetched even though nothing "changed".
+        if (changed || drag.failed) this.callbacks.onReload()
+        else this.callbacks.repaint()
+      }
     }
   }
 }

@@ -79,9 +79,35 @@ fn outline_of_a_reports_two_contours_and_resolved_metrics() {
     assert!(outline.components.is_empty());
     assert_eq!(outline.width, 1401.0);
     assert_eq!(outline.resolved_metrics.width, 1401.0);
+    assert_eq!(
+        outline.curve_format,
+        Some(fc_api::LayerCurveFormat::Quadratic)
+    );
     let bbox = outline.bbox.expect("A has bounds");
     assert!((outline.lsb - bbox[0]).abs() < 1e-9);
     assert!((outline.rsb - (outline.width - bbox[2])).abs() < 1e-9);
+}
+
+#[test]
+fn outline_reports_cubic_source_evidence_independent_of_container_format() {
+    let session = Arc::new(Session::new());
+    let mut font = composite_font();
+    font.extra.source = Some(fc_model::SourceProvenance {
+        format: "ttc".to_owned(),
+        table_tags: vec![fc_model::Tag(*b"CFF ")],
+        ..fc_model::SourceProvenance::default()
+    });
+    let doc = session.open_font(font, None);
+    let api = Api::new(session);
+    let gid = gid_of(&api, doc, "a");
+
+    let outline: LayerOutline = serde_json::from_value(
+        api.call("glyphs.outline", json!({ "doc": doc, "gid": gid }))
+            .expect("read outline"),
+    )
+    .expect("decode outline");
+
+    assert_eq!(outline.curve_format, Some(fc_api::LayerCurveFormat::Cubic));
 }
 
 #[test]

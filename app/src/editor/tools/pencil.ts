@@ -45,6 +45,13 @@ export const PENCIL_CLOSE_DISTANCE = 10
  */
 export const PENCIL_FIT_ERROR = DEFAULT_FIT_ERROR
 
+/** Fit error in font units, held to about one CSS pixel at low zoom. */
+export function pencilFitError(viewportScale: number): number {
+  if (!Number.isFinite(viewportScale) || viewportScale <= 0)
+    return PENCIL_FIT_ERROR
+  return Math.max(PENCIL_FIT_ERROR, PENCIL_SAMPLE_SPACING / viewportScale / 2)
+}
+
 /** The polyline contour a run of samples describes. */
 export function polylineContour(
   samples: readonly Point2[],
@@ -153,7 +160,7 @@ export class PencilTool implements EditorTool {
       closed ? [...samples, first] : samples,
       closed,
       context.curves,
-      PENCIL_FIT_ERROR,
+      pencilFitError(context.viewport.scale),
     )
     if (!contour) return NO_OUTCOME
     return {

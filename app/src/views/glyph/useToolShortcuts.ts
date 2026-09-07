@@ -17,6 +17,7 @@ import {
 } from '../../editor/tools/registry'
 import { isEditableTarget } from '../../shell/shortcuts'
 import { useEditorStore } from '../../stores/editorStore'
+import { useUiStore } from '../../stores/uiStore'
 
 /** Installs the tool-key handling while a glyph tab is mounted. */
 export function useToolShortcuts(enabled: boolean): void {
@@ -39,6 +40,7 @@ export function useToolShortcuts(enabled: boolean): void {
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (useUiStore.getState().modalCount > 0) return
       if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) return
       if (isEditableTarget(event.target)) return
       const tool = toolForKey(event.key, event.shiftKey)
@@ -46,6 +48,10 @@ export function useToolShortcuts(enabled: boolean): void {
       event.preventDefault()
       const timer = setTimeout(() => {
         if (!pending.current) return
+        if (useUiStore.getState().modalCount > 0) {
+          clear()
+          return
+        }
         pending.current = { ...pending.current, borrowed: true }
         store().borrowTool(tool)
       }, HOLD_BORROW_MS) as unknown as number
@@ -61,6 +67,10 @@ export function useToolShortcuts(enabled: boolean): void {
       const held = pending.current
       if (!held || held.key !== event.key.toLowerCase()) return
       clear()
+      if (useUiStore.getState().modalCount > 0) {
+        if (held.borrowed) store().borrowTool(null)
+        return
+      }
       // The tool is the one the press resolved to: releasing ⇧ before F must
       // not turn a borrowed Ellipse into a Rectangle.
       if (held.borrowed) store().borrowTool(null)
