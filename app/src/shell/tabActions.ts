@@ -20,7 +20,15 @@ export function closeTab(id: string): void {
 
 /** Opens (or focuses) the Glyph tab for one glyph of a document. */
 export function openGlyphTab(doc: DocId, gid: GlyphId, label?: string): string {
-  return useUiStore.getState().openTab({ kind: 'glyph', doc, gid, label })
+  const ui = useUiStore.getState()
+  const matching = ui.tabs.find(
+    (tab) => tab.kind === 'glyph' && tab.doc === doc && tab.gid === gid,
+  )
+  if (matching) {
+    ui.setActiveTab(matching.id)
+    return matching.id
+  }
+  return ui.openTab({ kind: 'glyph', doc, gid, label })
 }
 
 /**
@@ -35,11 +43,19 @@ export function replaceGlyphTab(
 ): string {
   const ui = useUiStore.getState()
   const previous = tabId('glyph', doc, fromGid)
-  const existing = ui.tabs.find(
-    (tab) => tab.kind === 'glyph' && tab.doc === doc && tab.gid === fromGid,
-  )
+  const existing = ui.tabs.find((tab) => tab.id === ui.activeTab)
   if (existing?.textState) {
-    ui.updateTab(existing.id, { gid: toGid, label })
+    if (
+      existing.kind !== 'glyph' ||
+      existing.doc !== doc ||
+      existing.gid !== fromGid
+    )
+      return openGlyphTab(doc, toGid, label)
+    ui.updateTab(existing.id, {
+      gid: toGid,
+      label,
+      textState: { ...existing.textState, activeIndex: null },
+    })
     ui.setActiveTab(existing.id)
     return existing.id
   }

@@ -357,7 +357,21 @@ export const useUiStore = create<UiState>((set, get) => ({
   },
 
   openTab: (tab) => {
-    const id = tabId(tab.kind, tab.doc, tab.gid)
+    const baseId = tabId(tab.kind, tab.doc, tab.gid)
+    const occupied = get().tabs.find((candidate) => candidate.id === baseId)
+    let id = baseId
+    if (
+      tab.kind === 'glyph' &&
+      occupied?.textState &&
+      occupied.gid !== tab.gid
+    ) {
+      let suffix = 2
+      while (
+        get().tabs.some((candidate) => candidate.id === `${baseId}:${suffix}`)
+      )
+        suffix += 1
+      id = `${baseId}:${suffix}`
+    }
     set((state) => ({
       tabs: state.tabs.some((existing) => existing.id === id)
         ? state.tabs

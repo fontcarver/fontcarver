@@ -89,7 +89,86 @@ describe('tabActions', () => {
     })
 
     expect(replaceGlyphTab(1, 9, 10, 'b')).toBe(id)
-    expect(useUiStore.getState().tabs[0]).toMatchObject({ id, gid: 10 })
+    expect(useUiStore.getState().tabs[0]).toMatchObject({
+      id,
+      gid: 10,
+      textState: { activeIndex: null },
+    })
+  })
+
+  it('steps the active text tab when two tabs share the same active glyph', () => {
+    const first = openGlyphTab(1, 9, 'a')
+    const textState = {
+      text: 'abc',
+      activeIndex: 0,
+      mode: 'edit' as const,
+      master: 'regular',
+      size: 120,
+      features: [] as Array<[string, boolean]>,
+      direction: 'ltr' as const,
+      previewTheme: 'light' as const,
+      previewCollapsed: false,
+    }
+    useUiStore.getState().updateTab(first, { textState })
+    const second = useUiStore
+      .getState()
+      .openTab({ kind: 'glyph', doc: 1, gid: 10, label: 'b' })
+    useUiStore.getState().updateTab(second, { gid: 9, textState })
+    useUiStore.getState().setActiveTab(second)
+
+    expect(replaceGlyphTab(1, 9, 11, 'c')).toBe(second)
+    expect(
+      useUiStore.getState().tabs.find((tab) => tab.id === first)?.gid,
+    ).toBe(9)
+    expect(
+      useUiStore.getState().tabs.find((tab) => tab.id === second)?.gid,
+    ).toBe(11)
+  })
+
+  it('opens a collision-free tab when an origin id holds other typed text', () => {
+    const original = openGlyphTab(1, 9, 'a')
+    useUiStore.getState().updateTab(original, {
+      gid: 10,
+      textState: {
+        text: 'typed text',
+        activeIndex: 1,
+        mode: 'edit',
+        master: 'regular',
+        size: 120,
+        features: [],
+        direction: 'ltr',
+        previewTheme: 'light',
+        previewCollapsed: false,
+      },
+    })
+
+    const reopened = openGlyphTab(1, 9, 'a')
+
+    expect(reopened).not.toBe(original)
+    expect(useUiStore.getState().tabs).toHaveLength(2)
+    expect(useUiStore.getState().tabs[0]?.textState?.text).toBe('typed text')
+    expect(useUiStore.getState().tabs[1]).toMatchObject({ gid: 9, label: 'a' })
+  })
+
+  it('focuses a text tab already targeting the requested glyph', () => {
+    const first = openGlyphTab(1, 9, 'a')
+    useUiStore.getState().updateTab(first, {
+      gid: 10,
+      textState: {
+        text: 'abc',
+        activeIndex: 1,
+        mode: 'edit',
+        master: 'regular',
+        size: 120,
+        features: [],
+        direction: 'ltr',
+        previewTheme: 'light',
+        previewCollapsed: false,
+      },
+    })
+
+    expect(openGlyphTab(1, 10, 'b')).toBe(first)
+    expect(useUiStore.getState().tabs).toHaveLength(1)
   })
 
   it('focuses an existing Font Info tab instead of opening a second one', () => {
