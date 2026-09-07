@@ -231,6 +231,7 @@ test('300-point drag repaints synchronously within eight milliseconds', async ({
     console.log(
       `pointer-to-paint 300 points/${MEASURED_SAMPLES} frame-paced samples: median=${median.toFixed(3)}ms p95=${p95.toFixed(3)}ms max=${max.toFixed(3)}ms over8=${overBudget} pointerDown=${measurement.pointerDown.toFixed(3)}ms rendererP95=${percentile(paint, 95).toFixed(3)}ms rendererMax=${rendererMax.toFixed(3)}ms`,
     )
+    expect(measurement.pointerDown).toBeLessThanOrEqual(8)
     expect(p95).toBeLessThanOrEqual(8)
     expect(max).toBeLessThanOrEqual(8)
     expect(final.x).not.toBe(before.contours[0]?.points[0]?.x)
