@@ -1,10 +1,28 @@
 # P1 acceptance
 
-Status: **P1 implementation and headless acceptance complete; native interaction
-paused**, 2026-09-07. Final production candidate `2e53ba6` passed whole-branch
-review and scoped re-review. The user requested a stop after P1; no P2 work or
-merge to `main` was performed. Remaining native interaction and release packaging
-are explicitly unverified below.
+Status: **P1 implementation and headless acceptance complete; user desktop
+trial accepted**, 2026-09-07. Final production candidate `2e53ba6` passed whole-branch
+review and scoped re-review. The original handoff stopped after P1 without P2
+work or a merge to `main`; the later user continuation is recorded next.
+Remaining native interaction and release packaging are explicitly unverified
+below.
+
+## User desktop trial and continuation — 2026-09-07
+
+After trying the desktop version, the user reported that it was acceptable
+apart from potential optimization and speed improvements, and requested the
+next step. This supersedes the earlier stop-after-P1 instruction and authorizes
+continuing into the next phase. The user separately deferred the FontForge
+export comparison and export performance investigation.
+
+This is qualitative user acceptance, not evidence that every native
+open/save/export/reopen scenario was exercised. The detailed native test gaps
+and untested release packaging below remain accurate. Global desktop input
+automation remains paused. The automated results below are historical P1
+evidence; no new application test run is claimed by this documentation update.
+
+P2 preparation is recorded in
+`docs/superpowers/specs/2026-09-07-p2-kerning-design.md`.
 
 ## Kernel and CLI workflows
 
@@ -48,12 +66,12 @@ Measurements below were taken on this development machine while other worktrees
 were active, rather than in an isolated benchmark environment: Intel Core
 i7-12700H, 20 logical CPUs, approximately 62 GiB RAM, Linux, Rust 1.94.0.
 
-| Gate | Observed | Budget | Status |
-| --- | --- | --- | --- |
-| Rust API `doc.edit_apply`, release | median 0.556 ms; p95 0.602 ms; max 1.411 ms | p95 ≤ 4 ms | Passed |
-| DejaVu Sans TTF export, release | 0.582 s | ≤ 5 s | Passed |
-| Source Han Sans open, release | 0.900 s | < 3 s | Passed |
-| Source Han Sans export, release | 58.697 s | ≤ 60 s | Passed |
+| Gate                                                    | Observed                                    | Budget              | Status       |
+| ------------------------------------------------------- | ------------------------------------------- | ------------------- | ------------ |
+| Rust API `doc.edit_apply`, release                      | median 0.556 ms; p95 0.602 ms; max 1.411 ms | p95 ≤ 4 ms          | Passed       |
+| DejaVu Sans TTF export, release                         | 0.582 s                                     | ≤ 5 s               | Passed       |
+| Source Han Sans open, release                           | 0.900 s                                     | < 3 s               | Passed       |
+| Source Han Sans export, release                         | 58.697 s                                    | ≤ 60 s              | Passed       |
 | Pointer handler through synchronous repaint, 300 points | median 0.900 ms; p95 1.500 ms; max 5.200 ms | every sample ≤ 8 ms | Final passed |
 
 The API gate uses exactly 20,000 populated glyphs: one 300-point target and

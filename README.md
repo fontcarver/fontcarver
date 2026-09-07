@@ -31,9 +31,13 @@ The font logic is built on the permissively licensed Rust font ecosystem:
 
 ## Status
 
-Early development. The kernel crates, the Tauri shell and the font/glyph views
-exist and are under active work (outline editing is the current phase); there is
-no release yet and formats and APIs still move.
+Early development. P1 outline editing and headless acceptance are complete,
+and the user has tried and accepted the current desktop version. P2 design
+preparation is underway. There is no release yet; native workflow verification
+is partial and release packaging is untested. See
+[`docs/p1-acceptance.md`](docs/p1-acceptance.md) for measured results and current
+limitations, including hinting removal after outline edits. The capability list
+above describes the product target, not completed support for every format.
 
 ## Layout
 
@@ -92,12 +96,12 @@ dual licensed as above, without any additional terms or conditions.
 ### Relationship to FontForge
 
 Font Cutter is a from-scratch implementation, not a port of FontForge. FontForge
-is studied as a *behavioural and format reference* — what a mature editor does,
+is studied as a _behavioural and format reference_ — what a mature editor does,
 and how the file formats it reads and writes actually behave — and the findings
 are written up in `docs/research/`. FontForge is distributed as a whole under the
 GPLv3-or-later, but the large majority of its source, written by George Williams
 between 2000 and 2012, carries the 3-clause ("revised") BSD license; only files
-added later are GPL-only. Font Cutter therefore may adapt code *only* from
+added later are GPL-only. Font Cutter therefore may adapt code _only_ from
 FontForge files whose own header is the revised BSD license, always with
 attribution; anything that traces to a GPL-only file is re-implemented from the
 format specification or from observed behaviour, without copying. Font Cutter

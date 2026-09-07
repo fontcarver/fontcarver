@@ -1,5 +1,15 @@
 # Font Cutter — resume TODO (written 2026-09-05, session paused by the user)
 
+## Current continuation — 2026-09-07
+
+The user has now tried the desktop version, accepted its current usability
+subject to possible optimization, and requested the next step. The stop-after-P1
+instruction below is historical and superseded. Export performance work and
+the FontForge comparison remain deferred at the user's request; native desktop
+automation remains paused. P2 design preparation is active; see
+`../specs/2026-09-07-p2-kerning-design.md` for the proposed first milestone.
+The user trial is not a complete native workflow test or packaging acceptance.
+
 ## P1 handoff (2026-09-07)
 
 **This run is finished. Stop after P1; do not start P2.** Implementation,
@@ -44,6 +54,7 @@ The sections below preserve the original handoff. Paths, model assignments and
 unchecked boxes there are historical; the active resume above takes precedence.
 
 ## 0. Where things stand
+
 - Branch `p1-outline-editing` (from `main`): Tasks 1, 2 (+ minor round), 3, 4, 5, 6, 7, 9a, 10, 11 merged and verified
   (Rust 438 tests, Vitest 575, e2e 13 passed / 1 skipped).
 - Repository now lives at `/home/chen/githubprojects/pixelfonts/fontcutter` (moved 2026-09-05; Claude project data and
@@ -54,6 +65,7 @@ unchecked boxes there are historical; the active resume above takes precedence.
   `task-reviewer-prompt.md` / `re-review-prompt.md` (see earlier dispatches in the ledger for the exact shape).
 
 ## 0a. Rename (done 2026-09-05, after the pause)
+
 - Product is now **Font Cutter** (`fontcutter`, fontcutter.com): commits f6c5ade (product) and a166c23 (internals: crates
   `fc-*`, CLI `fontcutter`, desktop binary `fontcutter-desktop`, `fc:event`, `FC_API_PORT`/`FC_UI_PORT`/`FC_DEV_PROXY`/
   `FC_CONFIG_DIR`/`VITE_FC_API`, document extension `.fcf`; `.fwf` and the old `"fontworkshop"` format tag are still read).
@@ -63,6 +75,7 @@ unchecked boxes there are historical; the active resume above takes precedence.
   name still `fontworkshop`; port 1420 is occupied on this machine (use 1428+ for e2e).
 
 ## 1. P1 — remaining steps (in order)
+
 - [x] **T7** complete and merged (5bbd934). Deferred T7 minors → do as a small "T7 minor round" (Opus, worktree from the
       P1 head, then Sonnet re-review, merge): (1) `gestureEnded`/`setTool` must repaint; (2) `finishDrag`'s finally must not
       wipe a nudge preview started during a live drag (guard like `closeNudge`); (3) split `curveFit.ts` (538 lines) into
@@ -94,6 +107,7 @@ unchecked boxes there are historical; the active resume above takes precedence.
 - [ ] Remove merged worktrees; `rm -rf .superpowers/sdd/2026-09-03-p1-outline-editing` only after the final review is clean.
 
 ## 2. Kernel backlog (schedule as the first P2 kernel round)
+
 - Contour-scoped `PathOp` (additive `contours: Option<Vec<usize>>`) — pencil/knife/menu ops on a selection.
 - Apply `remove_overlap` in export (fc-compile calls fc_geom per touched glyph) instead of only reporting.
 - Structured `ExportWarning.glyphs` (UI parses message text today); structured `AddGlyphsResult.skipped` reasons.
@@ -107,6 +121,7 @@ unchecked boxes there are historical; the active resume above takes precedence.
 - Playwright: detect a stale `fc-devserver` binary (mtime vs sources) or default to `cargo run` locally.
 
 ## 3. UI backlog (final-review triage list)
+
 - Component filled ghost lags markers during a drag (needs per-component preview paths — partly done in T7).
 - Live Info box not memoised; `drag/index.ts`/`editorController.ts` near the size caps; `GlyphView`/`GlyphGrid` test flake
   under load (worker cap 50 %).
@@ -114,6 +129,7 @@ unchecked boxes there are historical; the active resume above takes precedence.
 - Toast stack cap/width done; global shortcuts under modals done; `reuseExistingServer` may reuse a fixture-less kernel.
 
 ## 4. After P1 (each phase: Fable writes the plan with `writing-plans`, then SDD execution)
+
 - **P2 Spacing, kerning, features, CFF**: kerning groups/panel/text-tab kerning; metrics keys UI; FEA editor with
   diagnostics; layout decompiler (GSUB/GPOS → FEA so imported fonts shape with features); automatic features; CFF/OTF
   export (own CFF writer); Glyphs import/export; SFD import/export; Type 1 read/write; Find problems v1; plus the kernel
@@ -127,6 +143,7 @@ unchecked boxes there are historical; the active resume above takes precedence.
   Exit: research doc §12 parity checklist green for Must/Should-have.
 
 ## 6. Decisions for the user (nothing proceeds on these until you say so)
+
 - [ ] Desktop binary name: the Tauri shell builds `fontcutter-desktop` because the CLI owns `fontcutter`. Keep, or pick another
       name (e.g. CLI `fontcutter`, shell `Font Cutter.app`/`fontcutter-app`)?
 - [ ] Test fixture fonts still carry "FontWorkshop" family names inside the binaries (rebuilding changes committed hashes).
@@ -134,11 +151,11 @@ unchecked boxes there are historical; the active resume above takes precedence.
 - [ ] Git history still contains the three old GPL/AFPL fixture fonts (removed in 3acdc1c). Rewrite history before the repo
       goes public, or accept? (Rewrite is destructive; needs your explicit go.)
 - [ ] Merge `p1-outline-editing` into `main` when P1 is finished (the finishing step asks; it is your call).
-- [ ] Codex: currently paused (all seats on Claude). Say when to re-enable it (kernel implementation, fix rounds, T13 translation
-      + QA go back to Codex sol xhigh under the original split).
+- [ ] Codex: currently paused (all seats on Claude). Say when to re-enable it (kernel implementation, fix rounds, T13 translation + QA go back to Codex sol xhigh under the original split).
 - [ ] Repository URL / hosting for fontcutter.com (Cargo/package `repository` fields are unset).
 
 ## 7. Environment notes (this machine)
+
 - Port 1420 is held by another Vite server ("One True PDF"); run the main tree's e2e with `FC_UI_PORT=1428` (or higher) and
   `FC_API_PORT=8787`; worktrees use 8788+/1421+ pairs as recorded in their dispatch files.
 - Before running anything in the main tree after a merge: `pnpm --dir app install --frozen-lockfile` and
@@ -148,6 +165,7 @@ unchecked boxes there are historical; the active resume above takes precedence.
   `/resume` (fallback: `claude --resume f0187d23-6841-4655-bad5-89d6bc891ebe`).
 
 ## 5. Rules to keep
+
 - Product name Font Cutter (`fontcutter`, fontcutter.com); crates `fc-*`, CLI `fontcutter`, `.fcf` documents.
 - Docs/comments in English; reply to the user in their language.
 - License MIT OR Apache-2.0; only 3-clause-BSD FontForge files may be adapted (attribution in THIRD_PARTY.md); no copyleft deps.
