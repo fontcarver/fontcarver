@@ -17,6 +17,7 @@ interface ResultEnvelope<Result> {
 const INITIAL_RECONNECT_DELAY_MS = 250
 const MAX_RECONNECT_DELAY_MS = 5_000
 const DEFAULT_TIMEOUT_MS = 30_000
+const LONG_RUNNING_TIMEOUT_MS = 120_000
 
 export interface HttpTransportOptions {
   timeoutMs?: number
@@ -25,7 +26,7 @@ export interface HttpTransportOptions {
 export class HttpTransport implements Transport {
   readonly kind = 'http'
   private readonly baseUrl: string
-  private readonly timeoutMs: number
+  private readonly timeoutOverrideMs: number | undefined
   private readonly eventListeners = new Set<(event: Event) => void>()
   private socket: WebSocket | undefined
   private reconnectTimer: ReturnType<typeof setTimeout> | undefined
@@ -33,14 +34,19 @@ export class HttpTransport implements Transport {
 
   constructor(baseUrl: string, options: HttpTransportOptions = {}) {
     this.baseUrl = baseUrl.replace(/\/$/, '')
-    this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+    this.timeoutOverrideMs = options.timeoutMs
   }
 
   async call<M extends keyof ApiMethods>(
     method: M,
     params: ApiMethods[M]['params'],
   ): Promise<ApiMethods[M]['result']> {
-    const signal = AbortSignal.timeout(this.timeoutMs)
+    const timeoutMs =
+      this.timeoutOverrideMs ??
+      (method === 'text.shape' || method === 'session.export'
+        ? LONG_RUNNING_TIMEOUT_MS
+        : DEFAULT_TIMEOUT_MS)
+    const signal = AbortSignal.timeout(timeoutMs)
     let response: Response
     try {
       response = await fetch(`${this.baseUrl}/api/${method}`, {
@@ -50,12 +56,12 @@ export class HttpTransport implements Transport {
         signal,
       })
     } catch (error) {
-      // Neither is a file error: the kernel never got the request. They carry
-      // their own codes so the interface can say so rather than blaming disk.
+      // A timeout or network failure does not identify a file problem. The
+      // request may have reached the kernel before the client stopped waiting.
       if (signal.aborted) {
         throw new ApiCallError(
           'timeout',
-          `API request timed out after ${this.timeoutMs} ms`,
+          `API request timed out after ${timeoutMs} ms`,
         )
       }
       throw new ApiCallError(
