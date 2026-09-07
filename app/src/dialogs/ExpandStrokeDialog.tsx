@@ -17,7 +17,7 @@ const CAPS: readonly StrokeCap[] = ['Butt', 'Square', 'Round']
 const JOINS: readonly StrokeJoin[] = ['Bevel', 'Miter', 'Round']
 
 /**
- * Expand Stroke (design spec §11): the `StrokeOptions` `fw-geom` takes. The
+ * Expand Stroke (design spec §11): the `StrokeOptions` `fc-geom` takes. The
  * calligraphic nib has three numbers of its own and belongs with the drawing
  * tools, so this dialog offers the round and rectangular pens only.
  */

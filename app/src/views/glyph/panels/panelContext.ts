@@ -24,7 +24,7 @@ export interface PanelContext {
   /** Session handle of the glyph, for the calls that take one. */
   gid: GlyphId
   glyph: Glyph
-  /** The grid cell, which carries the categories `fw-glyphdata` derived. */
+  /** The grid cell, which carries the categories `fc-glyphdata` derived. */
   cell: GlyphCell | null
   scene: GlyphScene
   outline: LayerOutline

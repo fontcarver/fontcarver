@@ -51,7 +51,7 @@ export function parseTags(input: string): string[] {
 
 /**
  * The Glyph section (design spec §7.1): identity, the derived classification
- * `fw-glyphdata` supplies, and the editable metadata `SetGlyphMeta` carries.
+ * `fc-glyphdata` supplies, and the editable metadata `SetGlyphMeta` carries.
  */
 export function GlyphPanel({ target, glyph, cell, reload }: PanelContext) {
   const { t } = useTranslation()

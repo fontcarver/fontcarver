@@ -9,9 +9,10 @@ import { useDocumentStore } from './documentStore'
 import { activeDocId, reportError, tabId, useUiStore } from './uiStore'
 
 /** File extensions the kernel accepts as native document save targets. */
-const NATIVE_EXTENSIONS = ['.fwf', '.fwf.gz']
+// `.fwf` is the pre-rename extension; the kernel still saves onto it.
+const NATIVE_EXTENSIONS = ['.fcf', '.fcf.gz', '.fwf', '.fwf.gz']
 
-/** Whether a path is a native FontWorkshop document the kernel can save onto. */
+/** Whether a path is a native Font Cutter document the kernel can save onto. */
 export function isNativeDocumentPath(path: string | null): boolean {
   const lower = path?.toLowerCase() ?? ''
   return NATIVE_EXTENSIONS.some((extension) => lower.endsWith(extension))
@@ -230,7 +231,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const choice = await choosePath({
         kind: 'save',
         filterName: i18n.t('dialog.saveAs.filter'),
-        extensions: ['fwf', 'fwf.gz'],
+        extensions: ['fcf', 'fcf.gz'],
       })
       if (choice.kind !== 'chosen') return
       const saved = await get().save(doc, choice.path)

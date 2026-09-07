@@ -1,0 +1,24 @@
+[package]
+name = "fc-formats"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+base64.workspace = true
+fc-model = { path = "../fc-model" }
+kurbo.workspace = true
+norad.workspace = true
+plist.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+walkdir.workspace = true
+
+[dev-dependencies]
+fc-fixtures = { path = "../fc-fixtures" }
+fc-sfnt = { path = "../fc-sfnt" }
+tempfile.workspace = true

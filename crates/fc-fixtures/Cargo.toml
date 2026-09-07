@@ -1,0 +1,15 @@
+[package]
+name = "fc-fixtures"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+norad.workspace = true
+plist.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

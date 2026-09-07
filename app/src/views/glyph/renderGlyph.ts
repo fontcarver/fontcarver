@@ -10,16 +10,19 @@
 import type { Viewport } from '../../canvas/Viewport'
 
 import { drawAnchors } from './drawAnchors'
-import { drawComponents } from './drawComponents'
+import { IDENTITY } from '../../editor/affine'
+import { drawComponents, type ComponentDraw } from './drawComponents'
 import { drawEditing, NO_OVERLAY, type EditingOverlay } from './drawEditing'
 import { drawGuides } from './drawGuides'
 import { drawHud } from './drawHud'
 import { drawMetrics, type MetricLabels } from './drawMetrics'
 import { drawOutline } from './drawOutline'
+import { drawGrid, drawToolOverlay } from './drawTools'
 import { drawRulers } from './drawRulers'
 import { drawUnderlays, NO_UNDERLAY, type UnderlayData } from './drawUnderlays'
 import type { GlyphScene } from './glyphScene'
 import type { GlyphTheme } from './glyphTheme'
+import { NO_TOOL_OVERLAY, type ToolOverlay } from '../../editor/tools/toolTypes'
 
 /** Which overlays the editor is currently showing. */
 export interface GlyphOverlays {
@@ -58,6 +61,11 @@ export interface RenderGlyphOptions {
   flattened: Path2D | null
   /** The other masters and the background layer, drawn behind everything. */
   underlay?: UnderlayData
+  /**
+   * The layer's components with their own paths and any preview offset. When
+   * omitted, the scene's components draw as markers over the flattened path.
+   */
+  components?: readonly ComponentDraw[]
   /** Pointer position in font units, or `null` when the pointer is away. */
   pointer: { x: number; y: number } | null
   /** Selection keys, drawn as the selection layer of the outline. */
@@ -72,6 +80,10 @@ export interface RenderGlyphOptions {
   hud?: string | null
   /** Pointer position in canvas pixels, where the HUD is anchored. */
   pointerScreen?: { x: number; y: number } | null
+  /** Transient geometry the active drawing tool is showing. */
+  tool?: ToolOverlay
+  /** Grid step in font units; zero draws no grid. */
+  grid?: number
 }
 
 /** The vertical metrics a node can sit on (design spec §4.1 item 9). */
@@ -98,6 +110,8 @@ export function renderGlyph(
   ctx.setTransform(viewport.dpr, 0, 0, viewport.dpr, 0, 0)
   ctx.fillStyle = theme.background
   ctx.fillRect(0, 0, viewport.width, viewport.height)
+
+  drawGrid(ctx, viewport, options.grid ?? 0, theme)
 
   if (overlays.metrics)
     drawMetrics(
@@ -138,7 +152,13 @@ export function renderGlyph(
     viewport,
     {
       path: options.flattened,
-      components: scene.components,
+      components:
+        options.components ??
+        scene.components.map((component) => ({
+          component,
+          path: null,
+          transform: IDENTITY,
+        })),
       bounds: scene.componentBounds,
       hovered: options.hoveredComponent ?? null,
       filled: overlays.filled,
@@ -172,6 +192,7 @@ export function renderGlyph(
     drawRulers(ctx, viewport, { pointer: options.pointer }, theme)
 
   drawEditing(ctx, viewport, options.editing ?? NO_OVERLAY, theme)
+  drawToolOverlay(ctx, viewport, options.tool ?? NO_TOOL_OVERLAY, theme)
   drawHud(
     ctx,
     viewport,

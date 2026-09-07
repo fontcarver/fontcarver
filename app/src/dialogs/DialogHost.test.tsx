@@ -123,12 +123,12 @@ describe('dialog wiring', () => {
     shell(
       makeSummary({
         dirty: true,
-        recovered_from: '/fonts/Workshop.fwf',
+        recovered_from: '/fonts/Workshop.fcf',
       }),
     )
 
     const banner = await screen.findByRole('status')
-    expect(banner).toHaveTextContent('/fonts/Workshop.fwf')
+    expect(banner).toHaveTextContent('/fonts/Workshop.fcf')
     expect(banner).toHaveTextContent('saving overwrites the original')
 
     await user.click(screen.getByRole('button', { name: 'Dismiss banner' }))

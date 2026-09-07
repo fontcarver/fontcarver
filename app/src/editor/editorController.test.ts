@@ -8,6 +8,7 @@ import {
   makeLayerOutline,
   makePoint,
 } from '../test/fontFixtures'
+import { TOOL_LABELS } from '../test/toolContext'
 import {
   createEditingTransport,
   createMockTransport,
@@ -57,6 +58,9 @@ const labels: EditorLabels = {
     node: 'node',
     handle: 'handle',
     guide: 'guide',
+    anchor: 'anchor',
+    grid: 'grid',
+    component: 'component',
     baseline: 'baseline',
     xHeight: 'x-height',
     capHeight: 'cap height',
@@ -72,6 +76,7 @@ const labels: EditorLabels = {
     height: 'h',
     stem: '⟂',
   },
+  tools: TOOL_LABELS,
 }
 
 /** A layer whose bottom span is a cubic, for the segment cases. */
@@ -110,6 +115,8 @@ function source(): EditorSource {
       verticalWidth: null,
     },
     master: 'm1',
+    curves: 'cubic',
+    componentPoints: [],
   }
 }
 
@@ -169,6 +176,7 @@ function makeController(supplied?: MockTransport): {
     onPreview: (preview) => {
       recorded.previews.push(preview === null ? null : preview.contours.length)
     },
+    onShapeDialog: () => undefined,
     onError: (error) => recorded.errors.push(error),
   })
   controller.setSource(source())
@@ -1167,5 +1175,253 @@ describe('EditorController against the kernel token rules', () => {
     } finally {
       stop()
     }
+  })
+  it('keeps an arrow press behind a run closed by endNudge', async () => {
+    const { controller, transport, recorded } = makeController(
+      createEditingTransport(),
+    )
+    selectNode(controller, 1)
+    controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+    // The close the runner did *not* start itself: one round trip later the
+    // replacement run used to overtake the first run's queued apply.
+    void controller.endNudge()
+    controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+    await controller.endNudge()
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(recorded.errors).toEqual([])
+  })
+
+  it('keeps an arrow press behind the drag a pointer-up closed', async () => {
+    const { controller, transport, recorded } = makeController(
+      createEditingTransport(),
+    )
+    controller.pointerDown(at(200, 300))
+    controller.pointerMove(at(230, 300))
+    controller.pointerUp(at(230, 300))
+    // Same tick as the pointer-up, so the drag's `edit_end` is still queued.
+    controller.nudgeSelection({ x: 10, y: 0 }, NO_MODIFIERS)
+    await controller.endNudge()
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(recorded.errors).toEqual([])
+  })
+
+  it('closes a drag that never saw its pointer-up before the next one', async () => {
+    const { controller, transport, recorded } = makeController(
+      createEditingTransport(),
+    )
+    controller.pointerDown(at(200, 300))
+    controller.pointerMove(at(230, 300))
+    // A lost pointer capture: the second gesture starts with the first still
+    // open, and its `edit_begin` would otherwise invalidate the queued apply.
+    controller.pointerDown(at(230, 300))
+    controller.pointerMove(at(260, 300))
+    controller.pointerUp(at(260, 300))
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(recorded.errors).toEqual([])
+  })
+
+  it('closes the drag a tool switch interrupts', async () => {
+    const { controller, transport, recorded } = makeController(
+      createEditingTransport(),
+    )
+    controller.pointerDown(at(200, 300))
+    controller.pointerMove(at(230, 300))
+    controller.setTool('hand')
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(controller.dragging).toBe(false)
+    expect(recorded.errors).toEqual([])
+  })
+})
+
+describe('EditorController drawing tools', () => {
+  /** Font (x, y) maps to canvas (x, 300 − y) in this fixture. */
+  const clickAt = (controller: EditorController, x: number, y: number) => {
+    controller.pointerDown(at(x, 300 - y))
+    controller.pointerUp(at(x, 300 - y))
+  }
+
+  it('routes the pen and applies one AddContour for a closed triangle', async () => {
+    const { controller, transport } = makeController()
+    controller.setTool('pen')
+    clickAt(controller, 300, 0)
+    clickAt(controller, 400, 0)
+    clickAt(controller, 350, 100)
+    clickAt(controller, 300, 0)
+    await settle()
+
+    const applies = transport.calls.filter(
+      (entry) => entry.method === 'doc.apply',
+    )
+    expect(applies).toHaveLength(1)
+    const params = applies[0]?.params as ApplyParams
+    const command = params.command as {
+      AddContour: { contour: { closed: boolean; points: unknown[] } }
+    }
+    expect(command.AddContour.contour.closed).toBe(true)
+    expect(command.AddContour.contour.points).toHaveLength(3)
+  })
+
+  it('shows the path being drawn in the frame it hands the canvas', () => {
+    const { controller } = makeController()
+    controller.setTool('pen')
+    clickAt(controller, 300, 0)
+    clickAt(controller, 400, 0)
+    controller.pointerMove(at(400, 200))
+    const frame = controller.frame()
+    expect(frame.tool.contours).toHaveLength(1)
+    expect(frame.tool.marks.length).toBeGreaterThan(0)
+  })
+
+  it('offers Enter and Escape to the tool before the editor sees them', () => {
+    const { controller } = makeController()
+    controller.setTool('pen')
+    expect(controller.claimsKey('Enter')).toBe(false)
+    clickAt(controller, 300, 0)
+    clickAt(controller, 400, 0)
+    expect(controller.claimsKey('Enter')).toBe(true)
+    expect(
+      controller.toolKey({
+        key: 'Enter',
+        modifiers: NO_MODIFIERS,
+        repeat: false,
+      }),
+    ).toBe(true)
+    expect(controller.claimsKey('Enter')).toBe(false)
+  })
+
+  it('asks the view for the numeric dialog when a shape tool is clicked', () => {
+    const dialogs: unknown[] = []
+    const { controller } = makeController()
+    controller.setCallbacks({
+      repaint: () => undefined,
+      onSelectionChange: () => undefined,
+      onEditingChange: () => undefined,
+      onZoomChange: () => undefined,
+      onReload: () => undefined,
+      onCursorChange: () => undefined,
+      onPreview: () => undefined,
+      onShapeDialog: (request) => dialogs.push(request),
+      onError: () => undefined,
+    })
+    controller.setTool('rectangle')
+    clickAt(controller, 40, 60)
+    expect(dialogs).toEqual([{ kind: 'rectangle', at: { x: 40, y: 60 } }])
+  })
+
+  it('commits an open path when the tool is switched away', async () => {
+    const { controller, transport } = makeController()
+    controller.setTool('pen')
+    clickAt(controller, 300, 0)
+    clickAt(controller, 400, 0)
+    controller.setTool('select')
+    await settle()
+
+    const applies = transport.calls.filter(
+      (entry) => entry.method === 'doc.apply',
+    )
+    expect(applies).toHaveLength(1)
+    const params = applies[0]?.params as ApplyParams
+    expect(params.label).toBe('Draw path')
+  })
+})
+
+describe('EditorController nudging beside a drag', () => {
+  it('closes a drag that is still open before the arrow press begins', async () => {
+    const { controller, transport, recorded } = makeController(
+      createEditingTransport(),
+    )
+    // Pointer still down: the drag has an open edit and no gate of its own.
+    controller.pointerDown(at(200, 300))
+    controller.pointerMove(at(230, 300))
+    controller.nudgeSelection({ x: 0, y: 10 }, NO_MODIFIERS)
+    await controller.endNudge()
+    await settle()
+
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(recorded.errors).toEqual([])
+    expect(controller.dragging).toBe(false)
+  })
+})
+
+describe('EditorController tool feedback', () => {
+  it('clears the snap halo when a tool gesture ends', () => {
+    const { controller } = makeController()
+    controller.setTool('pen')
+    // The node lands on the square's corner, which the snap latches onto.
+    controller.pointerDown(at(202, 302))
+    expect(controller.frame().overlay.snap).not.toBeNull()
+    controller.pointerUp(at(202, 302))
+    expect(controller.frame().overlay.snap).toBeNull()
+  })
+
+  it('repaints for an event a tool consumed, not for one it ignored', () => {
+    const { controller } = makeController()
+    let repaints = 0
+    controller.setCallbacks({
+      repaint: () => {
+        repaints += 1
+      },
+      onSelectionChange: () => undefined,
+      onEditingChange: () => undefined,
+      onZoomChange: () => undefined,
+      onReload: () => undefined,
+      onCursorChange: () => undefined,
+      onPreview: () => undefined,
+      onShapeDialog: () => undefined,
+      onError: () => undefined,
+    })
+    controller.setTool('pen')
+
+    // A key no tool claims is not a reason to repaint the whole editor: the
+    // canvas offers every key to the active tool.
+    repaints = 0
+    expect(
+      controller.toolKey({ key: 'q', modifiers: NO_MODIFIERS, repeat: false }),
+    ).toBe(false)
+    expect(repaints).toBe(0)
+
+    // A click the pen consumed is.
+    controller.pointerDown(at(300, 100))
+    expect(repaints).toBeGreaterThan(0)
   })
 })

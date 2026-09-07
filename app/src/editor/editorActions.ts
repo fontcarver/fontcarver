@@ -8,13 +8,18 @@
  * read and tested without a gesture, a transport or a canvas.
  */
 
-import type { Command } from '../api'
+import type { Anchor, Command, ComponentView, Contour } from '../api'
 import type { Viewport } from '../canvas/Viewport'
 import type { SceneMetrics } from '../views/glyph/glyphScene'
 
 import type { EditorLabels, EditorSource } from './editorTypes'
-import type { Modifiers } from './gestures/drag'
-import type { DragGesture } from './gestures/drag'
+import {
+  beginDrag,
+  type DragContext,
+  type DragGesture,
+  type Modifiers,
+  type SnapResult,
+} from './gestures/drag'
 import type { Hit } from './hitTest'
 import {
   nearestSplitParameter,
@@ -33,7 +38,8 @@ import {
   type EditTarget,
   type Selection,
 } from './selection'
-import type { SnapInput } from './snapping'
+import type { Point2 } from '../canvas/Viewport'
+import type { SnapInput, SnapSettings } from './snapping'
 
 /** Metrics used before the first layer has loaded. */
 const FALLBACK_METRICS: SceneMetrics = {
@@ -149,6 +155,7 @@ export function buildSnapInput(input: {
   drag: DragGesture | null
   labels: EditorLabels
   viewport: Viewport
+  settings: SnapSettings
 }): SnapInput {
   // What is being dragged cannot snap to itself.
   const exclude = new Set(
@@ -163,8 +170,58 @@ export function buildSnapInput(input: {
     anchors: input.source?.outline.anchors ?? [],
     guides: input.source?.guides ?? [],
     metrics: input.source?.metrics ?? FALLBACK_METRICS,
+    componentPoints: input.source?.componentPoints ?? [],
     names: input.labels.snap,
     viewport: input.viewport,
+    settings: input.settings,
     exclude,
   }
+}
+
+/** What a drag needs from the editor, beyond the hit it started on. */
+export interface DragStart {
+  target: LayerTarget
+  contours: readonly Contour[]
+  anchors: readonly Anchor[]
+  components: readonly ComponentView[]
+  selection: Selection
+  labels: EditorLabels
+  /** A gesture still closing, which this one's `edit_begin` waits for. */
+  after: Promise<unknown> | undefined
+  onError: (error: unknown) => void
+  snap: (delta: Point2, moved: readonly Point2[]) => SnapResult
+}
+
+/**
+ * Starts a drag from a hit, translating the editor's label bundle into the
+ * gesture's own. Returns `null` when the hit is not draggable.
+ */
+export function startDragGesture(
+  input: DragStart,
+  hit: Hit,
+  origin: Point2,
+  modifiers: Modifiers,
+): DragGesture | null {
+  const { target, labels } = input
+  const context: DragContext = {
+    doc: target.doc,
+    glyph: target.glyph,
+    layer: target.layer,
+    contours: input.contours,
+    anchors: input.anchors,
+    components: input.components,
+    selection: input.selection,
+    after: input.after,
+    labels: {
+      movePoints: (count) => labels.movePoints(count),
+      moveHandles: (count) => labels.moveHandles(count),
+      moveHandle: labels.moveHandle,
+      reshapeSegment: labels.reshapeSegment,
+      moveAnchor: labels.moveAnchor,
+      moveComponent: labels.moveComponent,
+    },
+    onError: input.onError,
+    snap: input.snap,
+  }
+  return beginDrag(context, hit, origin, modifiers)
 }

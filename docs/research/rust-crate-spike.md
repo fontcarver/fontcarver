@@ -1,6 +1,6 @@
 # Crate feasibility spike — Tauri 2 font editor (Rust kernel + TS UI)
 
-Spike dir: `/tmp/claude-1000/-home-chen-githubprojects-pixelfonts-fontworkshop/f0187d23-6841-4655-bad5-89d6bc891ebe/scratchpad/crate-spike`
+Spike dir: a session scratchpad outside the repository (removed after the spike)
 Toolchain: `rustc 1.94.0 (4a4ef493e 2026-03-02)`, `cargo 1.94.0`, Linux x86_64, 2026-09-03.
 All crate sources read from `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/`.
 
@@ -1983,11 +1983,11 @@ any AAT table.
 
 ### 3.7 Suggested architecture consequences
 
-* Kernel crate layout: `fw-model` (our IR) → `fw-io` (UFO/glyphs/designspace/BDF/PCF/SFD/binary) →
-  `fw-geom` (kurbo + flo_curves) → `fw-compile` (impl `fontir::source::Source`, call
-  `fontc::generate_font`) → `fw-render` (skrifa + zeno/tiny-skia) → `fw-tauri` (commands).
+* Kernel crate layout: `fc-model` (our IR) → `fc-io` (UFO/glyphs/designspace/BDF/PCF/SFD/binary) →
+  `fc-geom` (kurbo + flo_curves) → `fc-compile` (impl `fontir::source::Source`, call
+  `fontc::generate_font`) → `fc-render` (skrifa + zeno/tiny-skia) → `fc-tauri` (commands).
 * Depend on `fontc` with `default-features = false, features = ["rayon"]` to drop `clap`.
-* Keep a `fw-binary` layer over `read-fonts`/`write-fonts` that (a) uses `FontBuilder::add_raw` to
+* Keep a `fc-binary` layer over `read-fonts`/`write-fonts` that (a) uses `FontBuilder::add_raw` to
   preserve untouched tables byte-for-byte, and (b) owns the parsers/writers for everything in §3.2.
 * Pin `read-fonts`, `write-fonts`, `skrifa`, `font-types` to exact versions; they are pre-1.0.
 * Put WOFF2 encoding, `.ttc` assembly and full-font compiles on a background thread; everything else

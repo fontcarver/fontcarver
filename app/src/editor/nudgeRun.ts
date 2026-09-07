@@ -33,6 +33,13 @@ export interface NudgePress {
   handles: HandleMode
   /** Undo label for the run, already translated. */
   label: (count: number) => string
+  /**
+   * A gesture the owner is still closing, which this run's `edit_begin` waits
+   * for. The runner gates the closes it starts itself; a close started
+   * elsewhere — a pointer-up, a tool switch, an Info box commit — is only
+   * known to the owner, which hands it in here.
+   */
+  after?: Promise<unknown>
 }
 
 /** The optimistic geometry a run is showing. */
@@ -48,6 +55,16 @@ export interface NudgeRunnerOptions {
   /** A run closed, from its idle timer or from any other action. */
   onEnd: () => void
   onError: (error: unknown) => void
+}
+
+/** Both gates, when there are two; a rejected one still lets the run begin. */
+function combineGates(
+  a: Promise<unknown> | undefined,
+  b: Promise<unknown> | undefined,
+): Promise<unknown> | undefined {
+  if (!a) return b
+  if (!b) return a
+  return Promise.allSettled([a, b])
 }
 
 export class NudgeRunner {
@@ -119,7 +136,7 @@ export class NudgeRunner {
         glyph: input.target.glyph,
         layer: input.target.layer,
         label: input.label,
-        after: this.closing,
+        after: combineGates(this.closing, input.after),
         onEnd: () => this.close(generation),
         onError: this.options.onError,
       })
@@ -160,11 +177,28 @@ export class NudgeRunner {
     }
   }
 
+  /**
+   * The kernel's own geometry arrived, so the carried result is superseded.
+   * Until it does, a press landing in the window between a run closing and
+   * its reload has to keep accumulating from what the closed run left behind.
+   */
+  reloaded(): void {
+    this.carried = null
+  }
+
   private close(generation: number): void {
     // A run started while this one was closing owns the preview now.
     if (generation !== this.generation) return
+    // The reload this close triggers is still in flight, so the closed run's
+    // result stays the base for a press that lands before it arrives.
+    if (this.run)
+      this.carried = translatePoints(
+        this.run.base,
+        this.run.refs,
+        this.run.total.x,
+        this.run.total.y,
+      )
     this.run = null
-    this.carried = null
     this.closing = undefined
     this.options.onEnd()
   }

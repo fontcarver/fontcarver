@@ -2,13 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Each task is sized for one autonomous implementation run (Codex gpt-5.6-sol xhigh for kernel/CLI tasks and mechanical UI wiring; Opus for interaction-heavy UI tasks; translation/QA → Codex). Tasks list exact interfaces and acceptance tests; implementers write the code within those interfaces and must follow `CONVENTIONS.md`.
 
-**Goal:** Turn the P0 viewer into a working outline editor and exporter: a full Glyphs-grammar glyph editor (select/pen/pencil/knife/shapes/measure/transform tools, snapping, guides, components, anchors, layers, metrics), the path-operation library (`fw-geom`), fontc-based TTF export with table preservation, UFO 3 + designspace import/export, a shaped text tab (harfrust), autosave/recovery wiring, and the P0 backlog. Exit criteria (spec §14 row P1): "open a commercial TTF, edit three glyphs, export" yields a font whose untouched tables and hinting are preserved and whose shaping is unchanged; "draw a new Latin font from scratch and export" works end to end.
+**Goal:** Turn the P0 viewer into a working outline editor and exporter: a full Glyphs-grammar glyph editor (select/pen/pencil/knife/shapes/measure/transform tools, snapping, guides, components, anchors, layers, metrics), the path-operation library (`fc-geom`), fontc-based TTF export with table preservation, UFO 3 + designspace import/export, a shaped text tab (harfrust), autosave/recovery wiring, and the P0 backlog. Exit criteria (spec §14 row P1): "open a commercial TTF, edit three glyphs, export" yields a font whose untouched tables and hinting are preserved and whose shaping is unchanged; "draw a new Latin font from scratch and export" works end to end.
 
-**Architecture:** Kernel owns the document and undo; the UI keeps a per-tab editing view model, applies drags optimistically and commits through edit tokens (`doc.edit_begin/apply/end`) so one gesture = one undo entry. Geometry lives in `fw-geom` (kurbo + flo_curves) and is exposed through typed commands; interactive hit-testing/snapping runs in TypeScript on the flattened outline data the kernel already ships. Export compiles the model through our `fontir::source::Source` implementation into fontc and merges preserved tables afterwards.
+**Architecture:** Kernel owns the document and undo; the UI keeps a per-tab editing view model, applies drags optimistically and commits through edit tokens (`doc.edit_begin/apply/end`) so one gesture = one undo entry. Geometry lives in `fc-geom` (kurbo + flo_curves) and is exposed through typed commands; interactive hit-testing/snapping runs in TypeScript on the flattened outline data the kernel already ships. Export compiles the model through our `fontir::source::Source` implementation into fontc and merges preserved tables afterwards.
 
 **Tech Stack:** as P0 plus `flo_curves` 0.8, `fontc`/`fontir`/`fontdrasil`/`fontbe` 1.0 (`default-features = false, features = ["rayon"]`), `norad` 0.18 (`kurbo`, `rayon` features; it includes the designspace module), `harfrust` 0.13, `write-fonts` 0.52, `wuff`/own WOFF1 encoder, `evalexpr` (nonlinear transform, later), CodeMirror is P2.
 
-**Spec:** `docs/superpowers/specs/2026-09-03-fontworkshop-design.md` §3–§8, §11, §12.3, §14 row P1. Research: `docs/research/rust-crate-spike.md` §2.b–2.h (write-fonts round trip, skrifa, fontc `Source`, fea-rs, harfrust, norad, kurbo caveats), §2.k (flo_curves), `docs/research/fontforge-algorithms-and-otlayout.md` Part 2 (which FontForge algorithms to port), `docs/research/competitor-ux.md` §3 (node grammar, tool ergonomics, snapping, HUD). P0 record: `docs/p0-acceptance.md`, final review `.superpowers/sdd/2026-09-03-p0-foundation/final-review.md`.
+**Spec:** `docs/superpowers/specs/2026-09-03-fontcutter-design.md` §3–§8, §11, §12.3, §14 row P1. Research: `docs/research/rust-crate-spike.md` §2.b–2.h (write-fonts round trip, skrifa, fontc `Source`, fea-rs, harfrust, norad, kurbo caveats), §2.k (flo_curves), `docs/research/fontforge-algorithms-and-otlayout.md` Part 2 (which FontForge algorithms to port), `docs/research/competitor-ux.md` §3 (node grammar, tool ergonomics, snapping, HUD). P0 record: `docs/p0-acceptance.md`, final review `.superpowers/sdd/2026-09-03-p0-foundation/final-review.md`.
 
 ## Global Constraints
 
@@ -18,24 +18,24 @@
 - Export budget: static TTF export of DejaVuSans (6,253 glyphs) < 5 s release; Source Han Sans SC < 60 s release (fontc parallelism allowed).
 - Preservation contract (spec §1.5): untouched raw tables byte-identical; per-glyph TrueType instructions + `cvt `/`fpgm`/`prep` kept when no glyph outline changed (dropped with a warning listing the glyphs otherwise); GSUB/GPOS/GDEF/BASE copied raw while `Features::source_of_truth == ImportedTables`; shaping of a sample text identical before/after (harfrust).
 - Fixtures: as P0 plus a small UFO fixture (`fixtures/ufo/Minimal.ufo`, generated by norad in a test helper, committed) and `fixtures/designspace/` if needed; large corpora referenced by path.
-- Model/API changes are additive; `.fwf` version stays 1 unless a field changes meaning (then bump to 2 with a reader shim).
+- Model/API changes are additive; `.fcf` version stays 1 unless a field changes meaning (then bump to 2 with a reader shim).
 
 ---
 
 ## File structure (P1 additions)
 
 ```
-crates/fw-geom/            src/lib.rs, error.rs, path.rs (Contour⇄BezPath helpers, quad↔cubic), boolean.rs (flo_curves bridge + i_overlay oracle),
+crates/fc-geom/            src/lib.rs, error.rs, path.rs (Contour⇄BezPath helpers, quad↔cubic), boolean.rs (flo_curves bridge + i_overlay oracle),
                            stroke.rs, simplify.rs, extrema.rs, direction.rs, canonical.rs, transform.rs, nearest.rs (hit/nearest/intersections),
                            interpolate.rs (compatibility + interpolation), spacing.rs (autowidth2 port; P2 uses it), tests/
-crates/fw-compile/         src/lib.rs, error.rs, source/{mod.rs, metadata.rs, glyphs.rs, kerning.rs, features.rs} (fontir Source impl),
+crates/fc-compile/         src/lib.rs, error.rs, source/{mod.rs, metadata.rs, glyphs.rs, kerning.rs, features.rs} (fontir Source impl),
                            export.rs (ExportOptions/ExportFormat/export()), preserve.rs (merge raw/hinting/layout), webfont.rs (WOFF1 encoder, WOFF2 via woofwoof),
                            validate.rs (shaping smoke), tests/
-crates/fw-layout/          src/lib.rs, error.rs, shaping.rs (harfrust service over a compiled font, cached per generation), tests/   (FEA work is P2)
-crates/fw-formats/         src/lib.rs, error.rs, ufo/{mod.rs, read.rs, write.rs, designspace.rs, lib_keys.rs}, tests/
-crates/fw-doc/             src/command.rs (+outline/component/anchor/guide/layer/metrics commands), src/edit.rs (interactive edit helpers), src/autosave.rs (wired)
-crates/fw-api/             src/types/{editing.rs, export.rs, shaping.rs}, handlers/{editing.rs, export.rs, shaping.rs}
-crates/fw-cli/             src/cmd/build.rs, convert.rs (binary + UFO targets)
+crates/fc-layout/          src/lib.rs, error.rs, shaping.rs (harfrust service over a compiled font, cached per generation), tests/   (FEA work is P2)
+crates/fc-formats/         src/lib.rs, error.rs, ufo/{mod.rs, read.rs, write.rs, designspace.rs, lib_keys.rs}, tests/
+crates/fc-doc/             src/command.rs (+outline/component/anchor/guide/layer/metrics commands), src/edit.rs (interactive edit helpers), src/autosave.rs (wired)
+crates/fc-api/             src/types/{editing.rs, export.rs, shaping.rs}, handlers/{editing.rs, export.rs, shaping.rs}
+crates/fc-cli/             src/cmd/build.rs, convert.rs (binary + UFO targets)
 app/src/editor/            selection.ts, hitTest.ts, snapping.ts, gestures/, tools/{select,pen,pencil,knife,shapes,measure,zoom,hand,rotate,scale}.ts, editSession.ts (edit tokens), hud.ts
 app/src/views/glyph/       GlyphCanvas (now editable), ToolPalette.tsx, InfoBox.tsx, panels/{Layers,Components,Anchors,Guides,Transform}.tsx
 app/src/views/text/        TextView.tsx (shaped multi-glyph edit tab), PreviewStrip.tsx
@@ -44,9 +44,9 @@ app/src/dialogs/           ExportDialog.tsx, NewFontDialog.tsx, AddGlyphsDialog.
 
 ---
 
-### Task 1: `fw-geom` — geometry library
+### Task 1: `fc-geom` — geometry library
 
-**Files:** `crates/fw-geom/src/*` per the structure; tests `crates/fw-geom/tests/{boolean.rs, stroke.rs, simplify.rs, extrema.rs, direction.rs, transform.rs, nearest.rs, interpolate.rs, fixtures.rs}`.
+**Files:** `crates/fc-geom/src/*` per the structure; tests `crates/fc-geom/tests/{boolean.rs, stroke.rs, simplify.rs, extrema.rs, direction.rs, transform.rs, nearest.rs, interpolate.rs, fixtures.rs}`.
 
 **Interfaces (produced):**
 ```rust
@@ -76,15 +76,15 @@ pub struct Incompatibility { pub contour: Option<usize>, pub reason: String }
 pub fn compatible(a: &Layer, b: &Layer) -> Result<(), Vec<Incompatibility>>;
 pub fn interpolate(a: &Layer, b: &Layer, t: f64) -> Result<Layer, Error>;     // points, components (same base/order), anchors by name, width
 ```
-- [ ] **Step 1: Tests first** using FontForge fixtures where present (`fw_fixtures::external("fontforge-tests")` → `OverlapBugs.sfd` cannot be read yet; instead construct cases from DejaVu glyphs via fw-sfnt): remove overlap on two overlapping rectangles → 1 contour, 8 points; union of DejaVu `O` outer+inner unchanged; `remove_overlap` on a self-touching contour does not panic and either succeeds or returns `BooleanMismatch`; stroke of a straight line with round cap yields a stadium with 4 on-curve extrema; `simplify` of a 200-point noisy circle < 20 points within error; `add_extrema` inserts exactly 4 points on a rotated ellipse; `correct_direction` flips a counter-clockwise outer contour; `round_to_grid` preserves `TtIndex`; `nearest_on_path` returns the right segment/t on DejaVu `g`; `split_segment` keeps the curve shape (sample distance < 1e-6); `interpolate` at t=0.5 between two compatible layers; `compatible` reports point-count mismatch with the contour index.
+- [ ] **Step 1: Tests first** using FontForge fixtures where present (`fc_fixtures::external("fontforge-tests")` → `OverlapBugs.sfd` cannot be read yet; instead construct cases from DejaVu glyphs via fc-sfnt): remove overlap on two overlapping rectangles → 1 contour, 8 points; union of DejaVu `O` outer+inner unchanged; `remove_overlap` on a self-touching contour does not panic and either succeeds or returns `BooleanMismatch`; stroke of a straight line with round cap yields a stadium with 4 on-curve extrema; `simplify` of a 200-point noisy circle < 20 points within error; `add_extrema` inserts exactly 4 points on a rotated ellipse; `correct_direction` flips a counter-clockwise outer contour; `round_to_grid` preserves `TtIndex`; `nearest_on_path` returns the right segment/t on DejaVu `g`; `split_segment` keeps the curve shape (sample distance < 1e-6); `interpolate` at t=0.5 between two compatible layers; `compatible` reports point-count mismatch with the contour index.
 - [ ] **Step 2: Implement**; keep flo_curves conversion in one module; expose `Tolerance` defaults as constants.
-- [ ] **Step 3:** `cargo test -p fw-geom`, clippy clean, commit `feat(fw-geom): booleans, stroke, simplify, extrema, direction, transforms, nearest, interpolation`.
+- [ ] **Step 3:** `cargo test -p fc-geom`, clippy clean, commit `feat(fc-geom): booleans, stroke, simplify, extrema, direction, transforms, nearest, interpolation`.
 
 ---
 
-### Task 2: `fw-doc` editing commands and edit sessions
+### Task 2: `fc-doc` editing commands and edit sessions
 
-**Files:** `crates/fw-doc/src/command.rs` (+ new modules `command/{outline.rs, structure.rs, metrics.rs, layers.rs, glyphs.rs}` if `command.rs` would exceed 800 lines), `crates/fw-doc/src/edit.rs`, tests `crates/fw-doc/tests/{outline_commands.rs, structure_commands.rs, layers.rs, edit_sessions.rs}`.
+**Files:** `crates/fc-doc/src/command.rs` (+ new modules `command/{outline.rs, structure.rs, metrics.rs, layers.rs, glyphs.rs}` if `command.rs` would exceed 800 lines), `crates/fc-doc/src/edit.rs`, tests `crates/fc-doc/tests/{outline_commands.rs, structure_commands.rs, layers.rs, edit_sessions.rs}`.
 
 **Interfaces:**
 ```rust
@@ -112,44 +112,44 @@ pub enum Command { …P0 variants…,
     // layers
     AddLayer { glyph, layer: Layer }, RemoveLayer { glyph, layer: LayerId }, CopyLayer { glyph, from: LayerId, to: LayerKind /* Background(master) | Backup */ }, SwapWithBackground { glyph, master },
     // glyphs
-    DuplicateGlyph { source: GlyphName, name: GlyphName }, AddGlyphsFromRecipe { recipe: String /* handled in fw-api via fw-glyphdata; here AddGlyph list */ },
+    DuplicateGlyph { source: GlyphName, name: GlyphName }, AddGlyphsFromRecipe { recipe: String /* handled in fc-api via fc-glyphdata; here AddGlyph list */ },
     SetGlyphOrder { order: Vec<GlyphName> },
     SetMaster { master: Master }, SetFontGuides { guides: Vec<Guide> },
 }
 ```
-Edit sessions: `Document::begin_edit(label)` returns `EditToken`; `apply_in_edit` coalesces; **new** `Document::preview_edit(token, cmd)` applies without snapshot churn (used only inside a token; identical result). `Change` gains `metrics: bool`, `layers: bool`, `guides: bool`. Each command's inverse is via snapshots (unchanged design). Metrics keys are stored; resolution (`=H`, `=|n`, `=n+10`) is a query `fw_doc::metrics::resolve(font, glyph, master) -> ResolvedMetrics { lsb, rsb, width, source: Key|Explicit }` with cycle detection.
+Edit sessions: `Document::begin_edit(label)` returns `EditToken`; `apply_in_edit` coalesces; **new** `Document::preview_edit(token, cmd)` applies without snapshot churn (used only inside a token; identical result). `Change` gains `metrics: bool`, `layers: bool`, `guides: bool`. Each command's inverse is via snapshots (unchanged design). Metrics keys are stored; resolution (`=H`, `=|n`, `=n+10`) is a query `fc_doc::metrics::resolve(font, glyph, master) -> ResolvedMetrics { lsb, rsb, width, source: Key|Explicit }` with cycle detection.
 - [ ] **Step 1: Tests**: every command applies and undoes to the exact prior glyph (property-style helper); `DeletePoints` KeepShape on a curve keeps the outline within 1 unit sampled; `InsertPointOnSegment` then `DeletePoints` round-trips; `SetMetrics { lsb }` shifts all contours/components/anchors and adjusts width; `DecomposeComponents` flattens with transform and removes the component; `CopyLayer` to Background creates the layer kind; coalesced `MovePoints` ×50 = one undo entry; metrics-key resolution `=|n` mirrors n's RSB and reports cycles.
-- [ ] **Step 2: Implement** (commands call `fw-geom` for PathOp/transform/split).
-- [ ] **Step 3:** `cargo test -p fw-doc`, clippy, commit `feat(fw-doc): outline, structure, metrics and layer commands with edit sessions`.
+- [ ] **Step 2: Implement** (commands call `fc-geom` for PathOp/transform/split).
+- [ ] **Step 3:** `cargo test -p fc-doc`, clippy, commit `feat(fc-doc): outline, structure, metrics and layer commands with edit sessions`.
 
 ---
 
-### Task 3: `fw-compile` — fontc Source, export and preservation
+### Task 3: `fc-compile` — fontc Source, export and preservation
 
-**Files:** per structure; tests `crates/fw-compile/tests/{export_static.rs, preserve.rs, webfont.rs, roundtrip_shaping.rs}`; bench `benches/export.rs`.
+**Files:** per structure; tests `crates/fc-compile/tests/{export_static.rs, preserve.rs, webfont.rs, roundtrip_shaping.rs}`; bench `benches/export.rs`.
 
 **Interfaces:**
 ```rust
-pub enum ExportFormat { Ttf, Woff, Woff2, Fwf }               // Otf/Cff2/variable arrive in P2/P4
+pub enum ExportFormat { Ttf, Woff, Woff2, Fcf }               // Otf/Cff2/variable arrive in P2/P4
 pub struct ExportOptions { pub format: ExportFormat, pub master: Option<MasterId> /* None = default */, pub remove_overlap: bool, pub keep_tt_instructions: bool /* default true */, pub preserve_untouched_tables: bool /* default true when provenance exists */, pub production_names: bool, pub autohint: bool /* P5; ignored with warning */, pub table_subset: Option<Vec<Tag>> }
 pub struct ExportReport { pub bytes: Vec<u8>, pub warnings: Vec<ExportWarning { code, message }>, pub tables: Vec<(Tag, u32)>, pub timing_ms: u64 }
 pub fn export(font: &Font, glyph_generations: &dyn Fn(&GlyphName) -> u64 /* to detect touched glyphs vs provenance */, opts: &ExportOptions) -> Result<ExportReport, Error>;
-pub struct FwSource { .. } impl fontir::source::Source for FwSource { .. }   // static single-master in P1; axes/masters wired in P4
+pub struct FcSource { .. } impl fontir::source::Source for FcSource { .. }   // static single-master in P1; axes/masters wired in P4
 pub fn compile_static(font: &Font, master: &MasterId, opts: &CompileOptions) -> Result<Vec<u8>, Error>;   // fontc::generate_font
 pub fn preserve_merge(compiled: &[u8], font: &Font, touched: &HashSet<GlyphName>, opts: &ExportOptions) -> Result<(Vec<u8>, Vec<ExportWarning>), Error>;
 pub fn wrap_woff1(sfnt: &[u8]) -> Result<Vec<u8>, Error>;      // own encoder (flate2); WOFF2 via `woofwoof` (document the C++ toolchain requirement)
 pub fn shaping_fingerprint(font_bytes: &[u8], text: &str) -> Result<Vec<(u32, i32, i32)>, Error>;   // harfrust (gid, x_adv, y_adv) for validate/tests
 ```
 Preservation rules (spec §6.4): raw tables copied byte-for-byte via `FontBuilder::add_raw`; layout tables (`GSUB GPOS GDEF BASE`) copied raw when `Features::source_of_truth == ImportedTables` and the glyph set/order is unchanged (else remapped later in P2 — in P1, if glyph order changed, drop them with warning `layout-dropped-glyph-order-changed`); `glyf` instructions: when no glyph outline generation differs from import, keep `fpgm/prep/cvt ` and re-attach per-glyph instructions into the compiled `glyf` (write-fonts `Glyph` edit) — otherwise drop all with warning listing touched glyphs; `hmtx/hhea/OS/2/head/name/post/cmap` regenerated by fontc from the model (name records from `FontInfo.names`).
-- [ ] **Step 1: Tests**: export DejaVuSans (opened via fw-sfnt) untouched → all raw tables byte-identical to the original, `fpgm/prep/cvt ` present, per-glyph instructions present for `A`, shaping fingerprint of "Hello fi AVWA" identical to the original font; edit `A` (move a point via a Command) → export keeps other glyphs' instructions? No: rule says drop all with warning — assert the warning lists `A` and no instructions remain; NotoSans export shapes identically; a scratch font with 3 glyphs and kerning (via `Master::kerning_h`) exports with a GPOS kern (fontc generates it) and shapes with the kern; WOFF1 wrap round-trips through `wuff`; WOFF2 wrap round-trips; export timing of DejaVu < 5 s release (gated).
+- [ ] **Step 1: Tests**: export DejaVuSans (opened via fc-sfnt) untouched → all raw tables byte-identical to the original, `fpgm/prep/cvt ` present, per-glyph instructions present for `A`, shaping fingerprint of "Hello fi AVWA" identical to the original font; edit `A` (move a point via a Command) → export keeps other glyphs' instructions? No: rule says drop all with warning — assert the warning lists `A` and no instructions remain; NotoSans export shapes identically; a scratch font with 3 glyphs and kerning (via `Master::kerning_h`) exports with a GPOS kern (fontc generates it) and shapes with the kern; WOFF1 wrap round-trips through `wuff`; WOFF2 wrap round-trips; export timing of DejaVu < 5 s release (gated).
 - [ ] **Step 2: Implement** the `Source` per the spike's `custom_source.rs` (copied into `docs/research/spike-examples/`), then export + preserve + webfont.
-- [ ] **Step 3:** commit `feat(fw-compile): fontc-based TTF export with table and hinting preservation, WOFF/WOFF2`.
+- [ ] **Step 3:** commit `feat(fc-compile): fontc-based TTF export with table and hinting preservation, WOFF/WOFF2`.
 
 ---
 
-### Task 4: `fw-formats` — UFO 3 + designspace import/export
+### Task 4: `fc-formats` — UFO 3 + designspace import/export
 
-**Files:** `crates/fw-formats/src/ufo/*`, tests `crates/fw-formats/tests/{ufo_read.rs, ufo_write.rs, designspace.rs}`, fixture generator `crates/fw-fixtures/src/ufo.rs` (writes `fixtures/ufo/Minimal.ufo` deterministically; committed output).
+**Files:** `crates/fc-formats/src/ufo/*`, tests `crates/fc-formats/tests/{ufo_read.rs, ufo_write.rs, designspace.rs}`, fixture generator `crates/fc-fixtures/src/ufo.rs` (writes `fixtures/ufo/Minimal.ufo` deterministically; committed output).
 
 **Interfaces:**
 ```rust
@@ -158,16 +158,16 @@ pub fn read_designspace(path: &Path) -> Result<Font, Error>;                // a
 pub fn write_ufo(font: &Font, master: &MasterId, dir: &Path, opts: &UfoWriteOptions { incremental: bool }) -> Result<(), Error>;   // never deletes the target dir (write to temp dir + rename per file)
 pub fn write_designspace(font: &Font, dir: &Path) -> Result<PathBuf, Error>;   // <family>.designspace + one UFO per master
 ```
-Round-trip policy: UFO ⇄ model lossless for outlines, components (with UFO identifiers preserved in `Extra.lib` under `dev.fontworkshop.ufo.identifiers`), anchors, guides, kerning/groups, features text, fontinfo (108 fields — map explicitly), lib. Things UFO cannot express (bitmaps, TT instructions, raw tables) are stored under `lib["dev.fontworkshop.extra"]` base64 with a version key.
-- [ ] **Step 1: Tests**: `Minimal.ufo` → Font → write → norad re-read equals the original norad `Font` (compare glyphs, kerning, groups, fontinfo, lib); a designspace with 2 masters yields 2 masters + axes + 1 instance; a Font from DejaVu (fw-sfnt) written as UFO and re-read is glyph-identical (points/components/anchors) and preserves `raw_tables` via lib; write is incremental (a second write with one glyph changed touches only that .glif — check mtimes).
-- [ ] **Step 2: Implement**; register in `fw-doc::Session::open_path` (extension `.ufo` dir / `.designspace`) and in export.
-- [ ] **Step 3:** commit `feat(fw-formats): UFO 3 and designspace import/export`.
+Round-trip policy: UFO ⇄ model lossless for outlines, components (with UFO identifiers preserved in `Extra.lib` under `com.fontcutter.ufo.identifiers`), anchors, guides, kerning/groups, features text, fontinfo (108 fields — map explicitly), lib. Things UFO cannot express (bitmaps, TT instructions, raw tables) are stored under `lib["com.fontcutter.extra"]` base64 with a version key.
+- [ ] **Step 1: Tests**: `Minimal.ufo` → Font → write → norad re-read equals the original norad `Font` (compare glyphs, kerning, groups, fontinfo, lib); a designspace with 2 masters yields 2 masters + axes + 1 instance; a Font from DejaVu (fc-sfnt) written as UFO and re-read is glyph-identical (points/components/anchors) and preserves `raw_tables` via lib; write is incremental (a second write with one glyph changed touches only that .glif — check mtimes).
+- [ ] **Step 2: Implement**; register in `fc-doc::Session::open_path` (extension `.ufo` dir / `.designspace`) and in export.
+- [ ] **Step 3:** commit `feat(fc-formats): UFO 3 and designspace import/export`.
 
 ---
 
-### Task 5: `fw-layout` shaping service + `fw-api` editing/export/shaping surface + CLI build
+### Task 5: `fc-layout` shaping service + `fc-api` editing/export/shaping surface + CLI build
 
-**Files:** `crates/fw-layout/src/{lib.rs, error.rs, shaping.rs}`, `crates/fw-api/src/types/{editing.rs, export.rs, shaping.rs}`, `crates/fw-api/src/handlers/{editing.rs, export.rs, shaping.rs}`, `crates/fw-cli/src/cmd/{build.rs, convert.rs}`, tests.
+**Files:** `crates/fc-layout/src/{lib.rs, error.rs, shaping.rs}`, `crates/fc-api/src/types/{editing.rs, export.rs, shaping.rs}`, `crates/fc-api/src/handlers/{editing.rs, export.rs, shaping.rs}`, `crates/fc-cli/src/cmd/{build.rs, convert.rs}`, tests.
 
 **Interfaces (API methods added to `METHODS`):**
 | method | params | result |
@@ -176,18 +176,18 @@ Round-trip policy: UFO ⇄ model lossless for outlines, components (with UFO ide
 | `doc.apply` | now accepts all Task 2 commands | `Change` |
 | `glyphs.outline` | `{ doc, gid, layer }` | `LayerOutline { contours: Contour[], components: ComponentView[] /* with flattened path string + bbox */, anchors, guides, width, lsb, rsb, resolved_metrics }` |
 | `glyphs.flattened_components` | `{ doc, gid, layer }` | `{ paths: string[], points: [x,y][] }` (for component ghost-node snapping) |
-| `glyphs.add` | `{ doc, recipe: String, master?: MasterId }` | `{ added: GlyphCell[], skipped: String[] }` — recipes via fw-glyphdata (`A-Z`, `uni4E00-uni4E1F`, `a.sc`, `f_i`, charset names) |
+| `glyphs.add` | `{ doc, recipe: String, master?: MasterId }` | `{ added: GlyphCell[], skipped: String[] }` — recipes via fc-glyphdata (`A-Z`, `uni4E00-uni4E1F`, `a.sc`, `f_i`, charset names) |
 | `glyphs.ids` | `{ doc, filter, sort }` | `GlyphId[]` (select-all) |
 | `doc.metrics_resolve` | `{ doc, gid, master }` | `ResolvedMetrics` |
 | `text.shape` | `{ doc, text, master, features: [tag,bool][], script?, language?, direction?, size }` | `ShapedRun { glyphs: [{ gid, cluster, x_advance, y_advance, x_offset, y_offset }], warnings }` |
 | `session.export` | `{ doc, path, options: ExportOptions }` | `ExportReport` (bytes omitted) — emits `progress` events `{ doc, stage, percent }` |
-| `session.recover_list` / `session.recover` / `session.discard_recovery` | | wired to `fw_doc::autosave` |
+| `session.recover_list` / `session.recover` / `session.discard_recovery` | | wired to `fc_doc::autosave` |
 | `prefs.get/set` | Prefs gains `grid_size`, `snap: { nodes, guides, metrics, grid, components }`, `nudge: [1,10,100]`, `autosave_seconds` (already) | |
-Shaping: `fw_layout::Shaper::for_document(font, master, generation)` compiles via `fw_compile::compile_static` into an in-memory font (cached, recompiled when glyph set / kerning / features generation changes; outline-only edits patch `glyf`? — P1 ruling: recompile lazily on a background thread, debounce 300 ms, serve the previous font meanwhile with `stale: true`).
-CLI: `fw build <in> <out.ttf|.woff|.woff2> [--remove-overlap] [--no-preserve]`, `fw convert` gains UFO/designspace/binary targets, `fw shape <font> <text>` prints the shaped run.
-- [ ] **Step 1: Tests**: dispatch tests for every new method on DejaVu (outline of `A` has 2 contours; `glyphs.add "A-C"` on an empty font adds 3 encoded glyphs; `text.shape "fi"` returns the ligature gid; `session.export` writes a TTF whose sha256 equals `fw_compile::export` output; recovery list after a simulated autosave), CLI `assert_cmd` tests for `build`/`shape`.
+Shaping: `fc_layout::Shaper::for_document(font, master, generation)` compiles via `fc_compile::compile_static` into an in-memory font (cached, recompiled when glyph set / kerning / features generation changes; outline-only edits patch `glyf`? — P1 ruling: recompile lazily on a background thread, debounce 300 ms, serve the previous font meanwhile with `stale: true`).
+CLI: `fontcutter build <in> <out.ttf|.woff|.woff2> [--remove-overlap] [--no-preserve]`, `fontcutter convert` gains UFO/designspace/binary targets, `fontcutter shape <font> <text>` prints the shaped run.
+- [ ] **Step 1: Tests**: dispatch tests for every new method on DejaVu (outline of `A` has 2 contours; `glyphs.add "A-C"` on an empty font adds 3 encoded glyphs; `text.shape "fi"` returns the ligature gid; `session.export` writes a TTF whose sha256 equals `fc_compile::export` output; recovery list after a simulated autosave), CLI `assert_cmd` tests for `build`/`shape`.
 - [ ] **Step 2: Implement**; autosave: `Session` starts the autosave thread at construction with `Prefs.autosave_seconds`.
-- [ ] **Step 3:** commit `feat(fw-api): editing, export, shaping and recovery methods; feat(fw-cli): build/shape`.
+- [ ] **Step 3:** commit `feat(fc-api): editing, export, shaping and recovery methods; feat(fc-cli): build/shape`.
 
 ---
 
@@ -206,7 +206,7 @@ CLI: `fw build <in> <out.ttf|.woff|.woff2> [--remove-overlap] [--no-preserve]`, 
 
 **Files:** `app/src/editor/tools/{pen,pencil,knife,shapes,measure,zoom,hand,rotate,scale}.ts`, `app/src/editor/snapping.ts` (complete), `app/src/views/glyph/ToolPalette.tsx`, tests, e2e `app/e2e/draw.spec.ts`.
 
-**Design spec: `docs/design/editor-ui.md` §4–§6 (binding).** **Behaviour:** tool keys V/P/B/E/F(Shift+F ellipse)/L/Z/H(Space)/R/S with **tap = switch, hold = borrow** (FontLab); Pen: click node, drag curve, Alt during drag = outgoing handle only, Space repositions node, click first node closes, click existing node opens the path there, Shift-click a segment inserts at extremum; Pencil: freehand → `fw-geom` simplify to cubic via `AddContour`; Knife: drag a line → `InsertPointOnSegment` at intersections + `SplitContour`; Shapes: rectangle/ellipse (Shift = square/circle, Alt = from centre; click = numeric dialog); Measure: drag shows distance/angle and outline intersections (`intersections_with_line` via `glyphs.outline` data computed locally on flattened paths); Zoom/Hand; Rotate/Scale: click origin then drag, Shift constrains, commits `TransformSelection`. Snapping: to nodes, handles, metrics lines, guides, grid (pref), component ghost nodes (`glyphs.flattened_components`), Ctrl suspends; magnetic alignment lines to other nodes' x/y; snap and hit distances from prefs.
+**Design spec: `docs/design/editor-ui.md` §4–§6 (binding).** **Behaviour:** tool keys V/P/B/E/F(Shift+F ellipse)/L/Z/H(Space)/R/S with **tap = switch, hold = borrow** (FontLab); Pen: click node, drag curve, Alt during drag = outgoing handle only, Space repositions node, click first node closes, click existing node opens the path there, Shift-click a segment inserts at extremum; Pencil: freehand → `fc-geom` simplify to cubic via `AddContour`; Knife: drag a line → `InsertPointOnSegment` at intersections + `SplitContour`; Shapes: rectangle/ellipse (Shift = square/circle, Alt = from centre; click = numeric dialog); Measure: drag shows distance/angle and outline intersections (`intersections_with_line` via `glyphs.outline` data computed locally on flattened paths); Zoom/Hand; Rotate/Scale: click origin then drag, Shift constrains, commits `TransformSelection`. Snapping: to nodes, handles, metrics lines, guides, grid (pref), component ghost nodes (`glyphs.flattened_components`), Ctrl suspends; magnetic alignment lines to other nodes' x/y; snap and hit distances from prefs.
 - [ ] **Step 1: Tests** per tool state machine (pointer sequences → emitted commands) and snapping resolution order (node > handle > guide > metric > grid).
 - [ ] **Step 2: Implement**; e2e `draw.spec.ts`: new font → pen-draw a triangle → closed contour with 3 points appears in `glyphs.outline`.
 - [ ] **Step 3:** commit `feat(app): drawing and transform tools with tap/hold switching and snapping`.
@@ -217,7 +217,7 @@ CLI: `fw build <in> <out.ttf|.woff|.woff2> [--remove-overlap] [--no-preserve]`, 
 
 **Files:** `app/src/views/glyph/panels/*.tsx`, `app/src/views/glyph/metricsHandles.ts`, `app/src/shell/builtinCommands.ts` (Path/Glyph/Layer menus filled), tests.
 
-**Design spec: `docs/design/editor-ui.md` §7 (binding).** **Behaviour:** Layers panel (masters list, add background/backup, copy to background, swap with background, show background toggle, "show all masters" overlay); Components panel (add via glyph picker with search, offset/scale fields, auto-align toggle, decompose, double-click enters the base glyph in a new tab, "use my metrics"); Anchors panel (add with name suggestions from fw-glyphdata defaults, drag on canvas, mark-cloud preview later); Guides panel (local/global, angle, name, lock; Alt+drag from ruler creates a guide); Transform panel (numeric move/scale/rotate/skew with origin picker, align/distribute selection, flip); metrics editing: LSB/RSB/width fields in the inspector + draggable sidebearing handles on canvas (`SetMetrics`), metrics keys field with live resolution and "out of sync" badge; Path menu: Remove Overlap (`Mod+Shift+O`), Correct Direction (`Mod+Shift+R`), Add Extremes, Add Inflections, Simplify…, Round to Grid, Reverse, Set Start Point, Tidy (canonical start/order), Expand Stroke…, Convert to Cubic/Quadratic; Glyph menu: Duplicate, Add Glyphs… (Task 9 dialog), Decompose all; all commands undoable with labels.
+**Design spec: `docs/design/editor-ui.md` §7 (binding).** **Behaviour:** Layers panel (masters list, add background/backup, copy to background, swap with background, show background toggle, "show all masters" overlay); Components panel (add via glyph picker with search, offset/scale fields, auto-align toggle, decompose, double-click enters the base glyph in a new tab, "use my metrics"); Anchors panel (add with name suggestions from fc-glyphdata defaults, drag on canvas, mark-cloud preview later); Guides panel (local/global, angle, name, lock; Alt+drag from ruler creates a guide); Transform panel (numeric move/scale/rotate/skew with origin picker, align/distribute selection, flip); metrics editing: LSB/RSB/width fields in the inspector + draggable sidebearing handles on canvas (`SetMetrics`), metrics keys field with live resolution and "out of sync" badge; Path menu: Remove Overlap (`Mod+Shift+O`), Correct Direction (`Mod+Shift+R`), Add Extremes, Add Inflections, Simplify…, Round to Grid, Reverse, Set Start Point, Tidy (canonical start/order), Expand Stroke…, Convert to Cubic/Quadratic; Glyph menu: Duplicate, Add Glyphs… (Task 9 dialog), Decompose all; all commands undoable with labels.
 - [ ] **Step 1: Tests** for each panel's command emission and for Path menu wiring through `doc.apply(PathOp)`.
 - [ ] **Step 2: Implement**; screenshots `docs/screenshots/p1-panels-{layers,components,anchors,guides,transform}.png`.
 - [ ] **Step 3:** commit `feat(app): editor panels, metrics editing and path operations`.
@@ -230,21 +230,21 @@ CLI: `fw build <in> <out.ttf|.woff|.woff2> [--remove-overlap] [--no-preserve]`, 
 
 **Design spec: `docs/design/editor-ui.md` §8–§10 (binding).** **Behaviour:** the Glyph tab becomes a Text tab: type text (or paste) → `text.shape` → glyphs laid out with real advances/kerning; click a glyph to edit it in place with the same tools (the canvas transforms by the run offset); `Mod+←/→` adjust LSB/RSB of the active glyph by 1/10/100 (Shift/Ctrl); Escape toggles text/edit mode; sample-text menu (Latin pangrams, CJK samples, from-font "all encoded"); the bottom preview strip renders the current text at 3 sizes with feature toggles (`liga`, `kern`, `calt` when present) and master switch; `stale` shaping indicator while the background recompile runs. Dialogs: New Font (family, style, upem preset 1000/2048, metrics preset, starter glyph set), Add Glyphs (recipe + charset picker with counts, preview list), Export (format, destination, options from `ExportOptions`, warnings list after export, "reveal in folder"), Preferences (theme, language, autosave interval, snapping/grid, nudge steps — wired to `prefs.get/set`), Recovery (on launch when `session.recover_list` is non-empty).
 - [ ] **Step 1: Tests**: text layout from a shaped run; LSB/RSB keyboard editing emits `SetMetrics`; export dialog maps to `session.export` params; preferences round trip.
-- [ ] **Step 2: Implement**; e2e `export.spec.ts` covers the P1 exit criterion end to end (open DejaVu → move one point of `A` → export TTF → assert file exists and `fw inspect` reports glyph count; kernel-side test covers preservation).
+- [ ] **Step 2: Implement**; e2e `export.spec.ts` covers the P1 exit criterion end to end (open DejaVu → move one point of `A` → export TTF → assert file exists and `fontcutter inspect` reports glyph count; kernel-side test covers preservation).
 - [ ] **Step 3:** commit `feat(app): text tab with shaping preview; new-font, add-glyphs, export, preferences and recovery dialogs`.
 
 ---
 
 ### Task 10: P0 backlog and hardening (kernel)
 
-Batched mechanical items from the P0 final review, one Codex run, each its own commit: `SetGlyphMeta` `Option<Option<u8>>` → `double_option` serde (clear works over JSON); `Document::begin_edit` documents/handles a live token; `fw-doc` undo budget reachable via `Document::set_undo_budget` + eviction test; rename-mid-batch failure test; `fw-sfnt` CID fonts get `uniXXXX` names from cmap when the CFF charset gives only CIDs; platform 2/4 name records kept (model `NamePlatform::Other(u16)`); `head.created` stored as UFO date string; cmap streaming (no full `Vec` per subtable); duplicate-name suffix for CID; `#![warn(missing_docs)]` in fw-sfnt/fw-glyphdata/fw-devserver/fw-cli/fw-fixtures; `src-tauri` CSP set to a strict default; collection-warning helper de-duplicated into fw-sfnt; devserver config dir threaded without `set_var`; redundant `.gitignore` lines; fw-glyphdata unused `Error` removed or used.
+Batched mechanical items from the P0 final review, one Codex run, each its own commit: `SetGlyphMeta` `Option<Option<u8>>` → `double_option` serde (clear works over JSON); `Document::begin_edit` documents/handles a live token; `fc-doc` undo budget reachable via `Document::set_undo_budget` + eviction test; rename-mid-batch failure test; `fc-sfnt` CID fonts get `uniXXXX` names from cmap when the CFF charset gives only CIDs; platform 2/4 name records kept (model `NamePlatform::Other(u16)`); `head.created` stored as UFO date string; cmap streaming (no full `Vec` per subtable); duplicate-name suffix for CID; `#![warn(missing_docs)]` in fc-sfnt/fc-glyphdata/fc-devserver/fc-cli/fc-fixtures; `src-tauri` CSP set to a strict default; collection-warning helper de-duplicated into fc-sfnt; devserver config dir threaded without `set_var`; redundant `.gitignore` lines; fc-glyphdata unused `Error` removed or used.
 - [ ] **Step 1–3:** tests per behavioural item; `cargo test --workspace`; commit series `chore(p0-backlog): …`.
 
 ---
 
 ### Task 11: P0 backlog (UI) + e2e in CI
 
-Batched Opus run: single `invalidateFor` already landed — extend to `change.masters` (em-box refresh); grid keeps scroll position across full reloads; Font Info live refresh on `change.font_info`; smooth-point display from `Point.smooth` (kernel inference: `fw-sfnt` sets `smooth` when handles are collinear within 1°, done in Task 10 → include here the renderer change); `GlyphGrid.tsx` split under 400 lines; Playwright `webServer` array starts `fw-devserver` + Vite so `pnpm e2e` is self-contained; CI runs `pnpm e2e` on Linux with the fixtures (CJK spec skips); kernel-warning codes mapped to i18n (already), `ApiError.code` → i18n toasts.
+Batched Opus run: single `invalidateFor` already landed — extend to `change.masters` (em-box refresh); grid keeps scroll position across full reloads; Font Info live refresh on `change.font_info`; smooth-point display from `Point.smooth` (kernel inference: `fc-sfnt` sets `smooth` when handles are collinear within 1°, done in Task 10 → include here the renderer change); `GlyphGrid.tsx` split under 400 lines; Playwright `webServer` array starts `fc-devserver` + Vite so `pnpm e2e` is self-contained; CI runs `pnpm e2e` on Linux with the fixtures (CJK spec skips); kernel-warning codes mapped to i18n (already), `ApiError.code` → i18n toasts.
 - [ ] **Step 1–3:** tests; `pnpm check && lint && test && e2e`; commit `chore(app): P0 backlog and self-contained e2e`.
 
 ---
@@ -265,10 +265,10 @@ Translate all new keys (editor tools, panels, dialogs, warnings) with the P0 ter
 ## Dependency graph and delegation plan
 
 ```
-T1 fw-geom ─┐
-T2 fw-doc commands (needs T1) ─┐
-T3 fw-compile ─────────────────┼─ T5 fw-layout + fw-api + CLI (needs T2, T3, T4)
-T4 fw-formats UFO ─────────────┘        │
+T1 fc-geom ─┐
+T2 fc-doc commands (needs T1) ─┐
+T3 fc-compile ─────────────────┼─ T5 fc-layout + fc-api + CLI (needs T2, T3, T4)
+T4 fc-formats UFO ─────────────┘        │
 T10 kernel backlog (parallel with T1–T4, disjoint files; merge before T5)
                                         ├─ T6 editor core (needs T5 API) ─ T7 tools ─ T8 panels ─ T9 text tab + dialogs ─ T12 acceptance ─ T13 i18n
                                         └─ T11 UI backlog (parallel with T6 in a worktree; merge before T8)
@@ -276,11 +276,11 @@ T10 kernel backlog (parallel with T1–T4, disjoint files; merge before T5)
 Kernel tasks T1, T3, T4, T10 run in parallel Codex worktrees (disjoint crates); T2 starts after T1 merges; T5 after T2/T3/T4. UI tasks are Opus (T6, T7, T9) or Codex when mechanical (T8, T11); reviews cross-vendor as in P0. Ports: each worktree gets its own dev-server/Vite port pair.
 
 ## P0 rulings carried into P1
-- `.fwf` layout: pretty at font level, one compact glyph per line (spec §5 amended).
-- Autosave sidecar path: `<datadir>/<sha1(path)|docid>.autosave.fwf` (spec §4 amended); recovery UI is Task 9.
-- Binary export was never in P0 (`fw convert` to TTF arrives in Task 5).
+- `.fcf` layout: pretty at font level, one compact glyph per line (spec §5 amended).
+- Autosave sidecar path: `<datadir>/<sha1(path)|docid>.autosave.fcf` (spec §4 amended); recovery UI is Task 9.
+- Binary export was never in P0 (`fontcutter convert` to TTF arrives in Task 5).
 - Warnings cross the API as `{code, message}`; the UI maps codes to i18n.
 
 ## Self-review notes
 - Spec coverage for §14 row P1: glyph editor tools ✔ (T6–T7), undo ✔ (T2/T6), snapping/guides ✔ (T7/T8), components/anchors/layers ✔ (T8), metrics editing ✔ (T8/T9), transform/path ops ✔ (T1/T8), fontc export with preservation ✔ (T3/T5), UFO/designspace ✔ (T4), text tab with harfrust ✔ (T5/T9), command palette (P0) ✔, preferences ✔ (T9). Autosave wiring ✔ (T5/T9). Exit criteria proven in T12.
-- Names consistent across tasks: `PointRef`, `MovePoints`, `SetMetrics`, `PathOp`, `glyphs.outline`, `text.shape`, `session.export`, `ExportOptions`, `FwSource`, `compile_static`, `preserve_merge`, `invalidateFor`.
+- Names consistent across tasks: `PointRef`, `MovePoints`, `SetMetrics`, `PathOp`, `glyphs.outline`, `text.shape`, `session.export`, `ExportOptions`, `FcSource`, `compile_static`, `preserve_merge`, `invalidateFor`.

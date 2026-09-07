@@ -1,8 +1,8 @@
 /**
  * The Path menu's commands (design spec §11).
  *
- * `PathOp` is a whole-layer operation in the kernel — `fw-doc` hands the
- * layer's contours to `fw-geom` and takes the result back — so overlap
+ * `PathOp` is a whole-layer operation in the kernel — `fc-doc` hands the
+ * layer's contours to `fc-geom` and takes the result back — so overlap
  * removal, extrema, simplification and stroke expansion always act on the
  * whole layer, whatever is selected. The four operations that *are*
  * selection-scoped (reverse, start point, join, break) address contours and

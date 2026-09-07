@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 import { call, type Prefs } from '../api'
+import type { SnapSettings } from '../editor/snapping'
 import { normaliseLanguage } from '../i18n'
 
 import { reportError, useUiStore, type ThemePreference } from './uiStore'
@@ -215,3 +216,20 @@ export const usePrefsStore = create<PrefsState>((set, get) => {
     reset: () => enqueue({ kind: 'reset' }),
   }
 })
+
+/** The snap settings the editor works from, read off one preference record. */
+export function snapSettingsOf(prefs: Prefs): SnapSettings {
+  return {
+    nodes: prefs.snap.nodes,
+    guides: prefs.snap.guides,
+    metrics: prefs.snap.metrics,
+    grid: prefs.snap.grid,
+    components: prefs.snap.components,
+    gridSize: Math.max(0, prefs.grid_size),
+  }
+}
+
+/** The arrow-key distances of one preference record: plain, Shift, Ctrl. */
+export function nudgeStepsOf(prefs: Prefs): [number, number, number] {
+  return prefs.nudge
+}

@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 
 /**
  * The Edit tab's inspector panels and the Path menu, against
- * `fw-devserver --open fixtures/fonts/DejaVuSans.ttf`.
+ * `fc-devserver --open fixtures/fonts/DejaVuSans.ttf`.
  *
  * Every step is one undoable command, so the spec ends by walking the history
  * back and checking that the layer really is where it started: that is the

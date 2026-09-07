@@ -83,7 +83,13 @@ describe('the locked-component hatch', () => {
       viewportOf(),
       {
         path: null,
-        components: [component({ auto_align: autoAlign })],
+        components: [
+          {
+            component: component({ auto_align: autoAlign }),
+            path: null,
+            transform: [1, 0, 0, 1, 0, 0],
+          },
+        ],
         bounds: [[0, 0, 100, 200]],
         hovered,
         filled: false,

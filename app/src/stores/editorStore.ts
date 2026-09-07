@@ -12,6 +12,7 @@ import type {
 import type { EditorPreview } from '../editor/editorTypes'
 import { EMPTY_SELECTION, type Selection } from '../editor/selection'
 import type { ToolId } from '../editor/tools/registry'
+import type { ShapeDialogRequest } from '../editor/tools/toolTypes'
 import type { GlyphScene } from '../views/glyph/glyphScene'
 import type { GlyphOverlays } from '../views/glyph/renderGlyph'
 import { DEFAULT_OVERLAYS } from '../views/glyph/renderGlyph'
@@ -86,11 +87,13 @@ export interface EditorState {
   /**
    * Guides shown as measurement guides, keyed `scope:index`.
    *
-   * The model has no measurement flag (`fw_model::Guide` is position, angle,
+   * The model has no measurement flag (`fc_model::Guide` is position, angle,
    * name, lock and colour), and this task adds no kernel field, so the choice
    * lives for the session only and is deliberately not persisted.
    */
   measurementGuides: ReadonlySet<string>
+  /** The numeric shape dialog a click with a shape tool asked for (§9). */
+  shapeDialog: ShapeDialogRequest | null
   setOverlay: (key: keyof GlyphOverlays, value: boolean) => void
   setActiveGlyph: (glyph: ActiveGlyph | null) => void
   toggleOverlay: (key: keyof GlyphOverlays) => void
@@ -106,6 +109,7 @@ export interface EditorState {
   setPreview: (preview: EditorPreview | null) => void
   setEditedLayer: (layer: string | null) => void
   toggleMeasurementGuide: (key: string) => void
+  setShapeDialog: (request: ShapeDialogRequest | null) => void
 }
 
 /** The initial, action-free part of the editor state. */
@@ -124,6 +128,7 @@ export function initialEditorState(): Pick<
   | 'preview'
   | 'editedLayer'
   | 'measurementGuides'
+  | 'shapeDialog'
 > {
   return {
     overlays: { ...DEFAULT_OVERLAYS },
@@ -139,6 +144,7 @@ export function initialEditorState(): Pick<
     preview: null,
     editedLayer: null,
     measurementGuides: new Set(),
+    shapeDialog: null,
   }
 }
 
@@ -215,6 +221,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       if (!next.delete(key)) next.add(key)
       return { measurementGuides: next }
     }),
+  setShapeDialog: (shapeDialog) => set({ shapeDialog }),
 }))
 
 /** The tool actually in effect: a borrowed tool wins over the chosen one. */

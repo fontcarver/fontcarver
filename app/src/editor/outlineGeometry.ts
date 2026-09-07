@@ -8,7 +8,7 @@
  * geometry back onto stored indexes by object identity, which is exact: every
  * point in a resolved contour is one of the objects in `contour.points`.
  *
- * Geometric segment indexes match the kernel's (`fw_geom::segment_to_points`):
+ * Geometric segment indexes match the kernel's (`fc_geom::segment_to_points`):
  * they start at the first stored on-curve point and a quadratic run of N
  * controls yields N segments.
  */

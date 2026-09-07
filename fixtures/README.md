@@ -60,7 +60,7 @@ StandardEncoding and non-hint Private DICT values. The DejaVu WOFF2 contains
 
 ## Optional external fixtures
 
-These fonts are intentionally not committed. `fw_fixtures::external` returns
+These fonts are intentionally not committed. `fc_fixtures::external` returns
 their paths only when they exist on the current machine, so dependent tests can
 skip cleanly.
 

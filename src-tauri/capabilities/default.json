@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissions for the main FontWorkshop window",
+  "description": "Permissions for the main Font Cutter window",
   "windows": ["main"],
   "permissions": ["core:default", "dialog:default", "fs:default"]
 }

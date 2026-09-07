@@ -8,7 +8,7 @@ export const FORMAT_EXTENSIONS: Record<ExportFormat, string> = {
   Woff2: '.woff2',
   Ufo: '.ufo',
   Designspace: '.designspace',
-  Fwf: '.fwf',
+  Fcf: '.fcf',
 }
 
 /** Formats compiled through the sfnt pipeline, the only ones the options apply to. */
@@ -22,7 +22,7 @@ const BASE_FORMATS: readonly ExportFormat[] = [
   'Woff',
   'Woff2',
   'Ufo',
-  'Fwf',
+  'Fcf',
 ]
 
 /**

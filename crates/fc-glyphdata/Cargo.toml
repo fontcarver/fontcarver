@@ -1,0 +1,10 @@
+[package]
+name = "fc-glyphdata"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+icu_properties.workspace = true

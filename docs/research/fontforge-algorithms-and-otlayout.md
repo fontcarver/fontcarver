@@ -6,7 +6,7 @@ Now I have enough detail. Here is the report.
 
 # FontForge OpenType & Geometry Internals — Port Study
 
-All paths are relative to `/home/chen/githubprojects/pixelfonts/fontworkshop/fontforge/`.
+All paths are relative to `fontforge/`, the FontForge reference checkout in this repository.
 
 ---
 

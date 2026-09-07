@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-cargo run -p fw-devserver -- --port 8787 &
+cargo run -p fc-devserver -- --port 8787 &
 devserver_pid=$!
 
 pnpm --dir app dev &

@@ -77,7 +77,7 @@ export const PANEL_BOUNDS: Record<PanelId, { min: number; max: number }> = {
 /** How long the status bar shows the last undo label (design spec §10). */
 export const UNDO_FLASH_MS = 1500
 
-const STORAGE_KEY = 'fontworkshop.ui'
+const STORAGE_KEY = 'fontcutter.ui'
 
 interface PersistedUi {
   theme: ThemePreference

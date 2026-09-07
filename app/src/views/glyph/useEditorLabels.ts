@@ -11,10 +11,23 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { EditorLabels } from '../../editor/editorController'
+import type { HudLabels } from '../../editor/hud'
 
 /** Builds the editor's label bundle for the current language. */
 export function useEditorLabels(): EditorLabels {
   const { t } = useTranslation()
+  const hud = useMemo<HudLabels>(
+    () => ({
+      deltaX: t('editor.hud.deltaX'),
+      deltaY: t('editor.hud.deltaY'),
+      angle: t('editor.hud.angle'),
+      length: t('editor.hud.length'),
+      width: t('editor.hud.width'),
+      height: t('editor.hud.height'),
+      stem: t('editor.hud.stem'),
+    }),
+    [t],
+  )
   return useMemo<EditorLabels>(
     () => ({
       movePoints: (count) => t('editor.undo.movePoints', { count }),
@@ -42,22 +55,30 @@ export function useEditorLabels(): EditorLabels {
         node: t('editor.snap.node'),
         handle: t('editor.snap.handle'),
         guide: t('editor.snap.guide'),
+        anchor: t('editor.snap.anchor'),
+        grid: t('editor.snap.grid'),
+        component: t('editor.snap.component'),
         baseline: t('glyphView.metric.baseline'),
         xHeight: t('glyphView.metric.xHeight'),
         capHeight: t('glyphView.metric.capHeight'),
         ascender: t('glyphView.metric.ascender'),
         descender: t('glyphView.metric.descender'),
       },
-      hud: {
-        deltaX: t('editor.hud.deltaX'),
-        deltaY: t('editor.hud.deltaY'),
-        angle: t('editor.hud.angle'),
-        length: t('editor.hud.length'),
-        width: t('editor.hud.width'),
-        height: t('editor.hud.height'),
-        stem: t('editor.hud.stem'),
+      hud: hud,
+      tools: {
+        drawPath: t('editor.undo.drawPath'),
+        extendPath: t('editor.undo.extendPath'),
+        draw: t('editor.undo.draw'),
+        cut: t('editor.undo.cut'),
+        rectangle: t('editor.undo.drawRectangle'),
+        ellipse: t('editor.undo.drawEllipse'),
+        rotate: t('editor.undo.rotate'),
+        scale: t('editor.undo.scale'),
+        distance: t('editor.hud.distance'),
+        percent: t('editor.hud.percent'),
+        hud,
       },
     }),
-    [t],
+    [hud, t],
   )
 }

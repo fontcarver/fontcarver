@@ -49,7 +49,7 @@ export async function api<T>(
   return result.result as T
 }
 
-/** Runs `fw inspect --json` and returns the parsed report. */
+/** Runs `fontcutter inspect --json` and returns the parsed report. */
 export function inspect(path: string): {
   summary: { glyph_count: number; family_name: string; units_per_em: number }
 } {
@@ -59,9 +59,9 @@ export function inspect(path: string): {
       'run',
       '-q',
       '-p',
-      'fw-cli',
+      'fc-cli',
       '--bin',
-      'fw',
+      'fontcutter',
       '--',
       'inspect',
       '--json',

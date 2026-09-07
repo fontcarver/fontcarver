@@ -46,7 +46,7 @@ test.describe('export', () => {
   let directory = ''
 
   test.beforeAll(() => {
-    directory = mkdtempSync(join(tmpdir(), 'fw-e2e-export-'))
+    directory = mkdtempSync(join(tmpdir(), 'fc-e2e-export-'))
   })
 
   test.afterAll(() => {

@@ -14,6 +14,7 @@ import type {
   GlyphId,
   LayerOutline,
 } from '../api'
+import type { Point2 } from '../canvas/Viewport'
 import type { SceneMetrics } from '../views/glyph/glyphScene'
 
 import type { Modifiers } from './gestures/drag'
@@ -21,6 +22,8 @@ import type { ScopedGuide } from './hitTest'
 import type { HudLabels } from './hud'
 import type { Selection } from './selection'
 import type { SnapNames } from './snapping'
+import type { LayerCurves } from './pathGeometry'
+import type { ShapeDialogRequest, ToolLabels } from './tools/toolTypes'
 
 /** The geometry a live gesture is showing, before the kernel has answered. */
 export interface EditorPreview {
@@ -49,6 +52,8 @@ export interface EditorLabels {
   /** Names the HUD gives a snap target, already translated. */
   snap: SnapNames
   hud: HudLabels
+  /** Undo labels and readouts of the drawing and transform tools. */
+  tools: ToolLabels
 }
 
 /** The glyph and layer being edited. */
@@ -60,6 +65,10 @@ export interface EditorSource {
   guides: readonly ScopedGuide[]
   metrics: SceneMetrics
   master: string | null
+  /** Which curve flavour a tool should draw new contours in. */
+  curves: LayerCurves
+  /** Ghost nodes of this layer's components, for snapping (§4.1 item 14). */
+  componentPoints: readonly Point2[]
 }
 
 /** What the controller reports back to React. */
@@ -73,6 +82,8 @@ export interface EditorCallbacks {
   onCursorChange: (cursor: string) => void
   /** The geometry a live gesture is showing, for the panels that read numbers. */
   onPreview: (preview: EditorPreview | null) => void
+  /** A shape tool was clicked rather than dragged: open the numeric dialog. */
+  onShapeDialog: (request: ShapeDialogRequest) => void
 
   /**
    * A kernel call failed. Editing must not swallow transport errors: the shell
@@ -98,5 +109,6 @@ export const SILENT_CALLBACKS: EditorCallbacks = {
   onReload: () => undefined,
   onCursorChange: () => undefined,
   onPreview: () => undefined,
+  onShapeDialog: () => undefined,
   onError: () => undefined,
 }

@@ -1,0 +1,28 @@
+[package]
+name = "fc-doc"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+
+[features]
+default = ["sfnt"]
+sfnt = ["dep:fc-sfnt"]
+
+[dependencies]
+flate2.workspace = true
+fc-geom = { path = "../fc-geom" }
+fc-model = { path = "../fc-model" }
+fc-sfnt = { path = "../fc-sfnt", optional = true }
+kurbo.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha1 = "0.10"
+thiserror.workspace = true
+tokio = { version = "1", features = ["sync"], default-features = false }
+tracing.workspace = true
+ts-rs.workspace = true
+
+[dev-dependencies]
+fc-fixtures = { path = "../fc-fixtures" }

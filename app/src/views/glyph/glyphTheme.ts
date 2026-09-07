@@ -51,6 +51,8 @@ export interface GlyphTheme {
   warning: string
   /** Alignment zones, and the diamond around a node on a vertical metric. */
   zone: string
+  /** The optional editing grid (design spec §4.1 item 1). */
+  grid: string
   fontFamily: string
 }
 
@@ -85,6 +87,7 @@ export const FALLBACK_GLYPH_THEME: GlyphTheme = {
   hudInk: '#ffffff',
   warning: '#c2413b',
   zone: '#eadfb8',
+  grid: '#d9dde3',
   fontFamily: 'system-ui',
 }
 
@@ -127,6 +130,7 @@ export function readGlyphTheme(): GlyphTheme {
     hudInk: token('--cv-hud-ink', fb.hudInk),
     warning: token('--cv-warning', fb.warning),
     zone: token('--cv-zone', fb.zone),
+    grid: token('--color-border', fb.grid),
     fontFamily: token('--font-ui', fb.fontFamily),
   }
 }

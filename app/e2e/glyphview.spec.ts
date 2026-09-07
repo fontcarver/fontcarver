@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 /**
- * Runs against `fw-devserver --open fixtures/fonts/DejaVuSans.ttf` plus the
+ * Runs against `fc-devserver --open fixtures/fonts/DejaVuSans.ttf` plus the
  * Vite dev server, like the font-view spec.
  */
 test.describe('glyph view', () => {

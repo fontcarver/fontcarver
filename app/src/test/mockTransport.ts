@@ -95,7 +95,7 @@ export interface EditingTransportOptions {
  *
  * `Document::begin_edit` finalises whatever edit is open, and an
  * `apply_in_edit` against a token that is no longer active fails with
- * `InvalidEditToken` (`crates/fw-doc/src/document.rs`). A mock that answers
+ * `InvalidEditToken` (`crates/fc-doc/src/document.rs`). A mock that answers
  * every call cheerfully cannot see a gesture jumping the queue, which is
  * exactly the ordering these tests are about — so this one keeps the active
  * token and refuses a stale one the way the kernel does.
@@ -137,7 +137,11 @@ export function createEditingTransport(
       active = null
       return noChange([42])
     },
-    'doc.undo': () => noChange([42]),
+    // `Document::undo` finalises the active edit before it walks the stack.
+    'doc.undo': () => {
+      active = null
+      return noChange([42])
+    },
     'doc.redo': () => noChange([42]),
   })
 }

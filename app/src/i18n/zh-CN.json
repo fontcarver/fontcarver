@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "FontWorkshop",
+    "name": "Font Cutter",
     "tagline": "面向轮廓、点阵与可变字体的工坊。"
   },
   "common": {
@@ -93,7 +93,7 @@
     },
     "help": {
       "shortcuts": "键盘快捷键",
-      "about": "关于 FontWorkshop"
+      "about": "关于 Font Cutter"
     },
     "reason": {
       "noDocument": "没有打开的字体",
@@ -160,10 +160,10 @@
     "saveAs": {
       "title": "另存为",
       "label": "文档路径",
-      "placeholder": "/path/to/font.fwf",
-      "hint": "FontWorkshop 文档以 .fwf 或 .fwf.gz 格式保存。",
+      "placeholder": "/path/to/font.fcf",
+      "hint": "Font Cutter 文档以 .fcf 或 .fcf.gz 格式保存。",
       "confirm": "保存",
-      "filter": "FontWorkshop 文档"
+      "filter": "Font Cutter 文档"
     },
     "closeDirty": {
       "title": "未保存的更改",
@@ -234,7 +234,7 @@
         "Woff2": "WOFF2",
         "Ufo": "UFO",
         "Designspace": "Designspace",
-        "Fwf": "FWF"
+        "Fcf": "FCF"
       },
       "destination": "Destination",
       "destinationLabel": "Destination path",
@@ -301,7 +301,7 @@
     },
     "recovery": {
       "title": "Recover Documents",
-      "intro": "FontWorkshop found unsaved work from an earlier session.",
+      "intro": "Font Cutter found unsaved work from an earlier session.",
       "untitled": "Untitled document",
       "savedAt": "Snapshot from {{time}}",
       "recover": "Recover",
@@ -340,6 +340,15 @@
       "removeInternal": "Remove the inner ring",
       "removeExternal": "Remove the outer ring",
       "run": "Expand"
+    },
+    "shape": {
+      "rectangleTitle": "New rectangle",
+      "ellipseTitle": "New ellipse",
+      "x": "X",
+      "y": "Y",
+      "width": "W",
+      "height": "H",
+      "create": "Create"
     }
   },
   "document": {
@@ -438,7 +447,7 @@
     "saved": "已保存 {{name}}",
     "opened": "已打开 {{name}}",
     "closed": "已关闭 {{name}}",
-    "about": "FontWorkshop {{version}}——内核传输：{{kind}}",
+    "about": "Font Cutter {{version}}——内核传输：{{kind}}",
     "copiedNames_one": "已复制 {{count, number}} 个字形名称",
     "copiedNames_other": "已复制 {{count, number}} 个字形名称",
     "copyFailed": "无法写入剪贴板",
@@ -854,7 +863,15 @@
         "bottom": "Align bottom",
         "distributeH": "Distribute horizontally",
         "distributeV": "Distribute vertically"
-      }
+      },
+      "drawPath": "Draw path",
+      "extendPath": "Extend path",
+      "draw": "Draw",
+      "cut": "Cut",
+      "drawRectangle": "Draw rectangle",
+      "drawEllipse": "Draw ellipse",
+      "rotate": "Rotate",
+      "scale": "Scale"
     },
     "hud": {
       "deltaX": "Δx",
@@ -863,7 +880,9 @@
       "length": "ℓ",
       "width": "w",
       "height": "h",
-      "stem": "⟂"
+      "stem": "⟂",
+      "distance": "d",
+      "percent": "⤢"
     },
     "a11y": {
       "selection_one": "{{count}} item selected",
@@ -872,7 +891,10 @@
     "snap": {
       "node": "node",
       "handle": "handle",
-      "guide": "guide"
+      "guide": "guide",
+      "anchor": "anchor",
+      "grid": "grid",
+      "component": "component"
     }
   },
   "infoBox": {

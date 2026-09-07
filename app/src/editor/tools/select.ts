@@ -6,6 +6,7 @@
  * which is exactly the promise the cursor makes to the user.
  */
 
+import { toolCursor } from '../cursors'
 import type { Modifiers } from '../gestures/drag'
 import type { Hit } from '../hitTest'
 import {
@@ -43,7 +44,8 @@ export function cursorForHover(hit: Hit | null, modifiers: Modifiers): string {
   if (!hit) return 'default'
   switch (hit.target.kind) {
     case 'node':
-      return modifiers.alt ? 'crosshair' : 'move'
+      // ⌥ over a node breaks its handle (§2.4, §4.3).
+      return modifiers.alt ? toolCursor('breakHandle') : 'move'
     case 'handle':
     case 'anchor':
     case 'component':
@@ -51,8 +53,10 @@ export function cursorForHover(hit: Hit | null, modifiers: Modifiers): string {
     case 'guide':
       return 'move'
     case 'segment':
-      // "Insert node" is a copy cursor until the custom SVG cursors land: it
-      // is the only standard cursor that reads as "this click adds something".
-      return modifiers.alt || modifiers.shift ? 'copy' : 'move'
+      // ⌥ converts a line and ⇧ inserts a node, so both say "this click adds
+      // something" with the insert-node cursor of §2.4.
+      return modifiers.alt || modifiers.shift
+        ? toolCursor('insertNode')
+        : 'move'
   }
 }

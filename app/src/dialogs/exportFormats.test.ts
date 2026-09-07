@@ -6,7 +6,7 @@ import { formatsFor, suggestPath, warningGlyphNames } from './exportFormats'
 
 describe('export format helpers', () => {
   it('offers Designspace only for a multiple-master document', () => {
-    expect(formatsFor(1)).toEqual(['Ttf', 'Woff', 'Woff2', 'Ufo', 'Fwf'])
+    expect(formatsFor(1)).toEqual(['Ttf', 'Woff', 'Woff2', 'Ufo', 'Fcf'])
     expect(formatsFor(3)).toContain('Designspace')
   })
 

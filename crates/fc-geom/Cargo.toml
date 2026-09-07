@@ -1,0 +1,20 @@
+[package]
+name = "fc-geom"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+flo_curves.workspace = true
+fc-model = { path = "../fc-model" }
+i_overlay.workspace = true
+kurbo.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+fc-fixtures = { path = "../fc-fixtures" }
+fc-sfnt = { path = "../fc-sfnt" }
+proptest.workspace = true

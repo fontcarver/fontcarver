@@ -20,42 +20,42 @@ as requested. The external Source Han case is registered only when the file is
 present.
 
 ```text
-$ cargo bench -p fw-sfnt -- --warm-up-time 1 --measurement-time 3
+$ cargo bench -p fc-sfnt -- --warm-up-time 1 --measurement-time 3
 open/dejavu_sans        time: [33.741 ms 34.099 ms 34.614 ms]
 open/source_han_sans_sc time: [376.74 ms 386.52 ms 397.66 ms]
 ```
 
 Source Han median open: **386.52 ms < 3 s — PASS**.
 
-### Release CLI open and FWF save/load gate
+### Release CLI open and FCF save/load gate
 
 Task 12-A established the gate with a 0.549 s Source Han inspection and a
 4.104 s save+load. The final fix-wave rerun after adopting the per-glyph-line
-FWF layout was:
+FCF layout was:
 
 ```text
 $ scripts/perf-open.sh
-Building release fw...
+Building release fontcutter...
 Finished `release` profile [optimized] target(s) in 21.80s
 inspect DejaVuSans.ttf: 0.054 s
 inspect SourceHanSansSC-Regular.otf: 0.660 s
-convert Source Han Sans to FWF: 2.037 s
-inspect converted FWF: 2.748 s
+convert Source Han Sans to FCF: 2.037 s
+inspect converted FCF: 2.748 s
 save+load total: 4.786 s
 PASS: open <= 3 s; save+load <= 6 s
 ```
 
 - Source Han release inspection: **0.660 s < 3 s — PASS**.
-- Source Han FWF save+load: **4.786 s < 6 s — PASS**.
+- Source Han FCF save+load: **4.786 s < 6 s — PASS**.
 
 ### Warmed 300-cell glyph page
 
-A release `fw-devserver` was started with Source Han Sans, the exact
+A release `fc-devserver` was started with Source Han Sans, the exact
 `glyphs.list` request used by the grid (`limit: 300`, `include_paths: true`) was
 warmed three times, then sampled five times with curl's wall timer.
 
 ```text
-$ ./target/release/fw-devserver --port 8787 --open \
+$ ./target/release/fc-devserver --port 8787 --open \
     /home/chen/githubprojects/pixelfonts/SourceHanSanOTF/SimplifiedChinese/SourceHanSansSC-Regular.otf
 $ curl ... http://localhost:8787/api/glyphs.list  # 3 warmups, then 5 samples
 sample 1: 0.020328 s
@@ -92,12 +92,12 @@ Totals: 188 passed; 0 failed; 0 ignored
 real 45.03
 ```
 
-The 188 tests comprise `fw-api` 45, `fw-cli` 5, `fw-devserver` 2, `fw-doc`
-22, `fw-fixtures` 2, `fw-glyphdata` 6, `fw-model` 84 and `fw-sfnt` 22. Zero-test
+The 188 tests comprise `fc-api` 45, `fc-cli` 5, `fc-devserver` 2, `fc-doc`
+22, `fc-fixtures` 2, `fc-glyphdata` 6, `fc-model` 84 and `fc-sfnt` 22. Zero-test
 binaries and doc-test targets also passed. Notable acceptance cases include
 `source_han_sans_opens_within_the_release_budget`,
-`fwf_plain_and_gzip_round_trip_semantically`, and
-`convert_preserves_the_glyph_count_in_fwf`.
+`fcf_plain_and_gzip_round_trip_semantically`, and
+`convert_preserves_the_glyph_count_in_fcf`.
 
 ## Frontend acceptance
 
@@ -144,7 +144,7 @@ the external CJK fixture. Each line below is trimmed to the fields useful for
 acceptance; the exit code is the command's actual exit code.
 
 ```text
-$ for font in fixtures/fonts/*; do ./target/release/fw inspect "$font"; done
+$ for font in fixtures/fonts/*; do ./target/release/fontcutter inspect "$font"; done
 DejaVuSans.ttf               family=DejaVu Sans; glyphs=6253; format=ttf; warnings=none; exit=0
 DejaVuSans.woff              family=DejaVu Sans; glyphs=6253; format=woff; warnings=none; exit=0
 DejaVuSansMin.woff2          family=DejaVu Sans; glyphs=53; format=woff2; warnings=none; exit=0
@@ -153,7 +153,7 @@ NotoSerifTibetan-Regular.ttf family=Noto Serif Tibetan; glyphs=1891; format=ttf;
 SourceSans3Min.otf           family=FontWorkshop CFF Sans Fixture; glyphs=5; format=otf; warnings=cff-hints-not-imported; exit=0
 SourceSerif4Min.otf          family=FontWorkshop CFF Serif Fixture; glyphs=2; format=otf; warnings=none; exit=0
 
-$ ./target/release/fw inspect /home/chen/githubprojects/pixelfonts/SourceHanSanOTF/SimplifiedChinese/SourceHanSansSC-Regular.otf
+$ ./target/release/fontcutter inspect /home/chen/githubprojects/pixelfonts/SourceHanSanOTF/SimplifiedChinese/SourceHanSansSC-Regular.otf
 family=Source Han Sans SC; glyphs=65535; format=otf; warnings=cff-hints-not-imported; exit=0
 ```
 
@@ -165,12 +165,12 @@ indicate an import failure.
 The round trip used a validated temporary directory, removed after inspection.
 
 ```text
-$ ./target/release/fw inspect fixtures/fonts/DejaVuSans.ttf
+$ ./target/release/fontcutter inspect fixtures/fonts/DejaVuSans.ttf
 source inspect: glyphs=6253 exit=0
-$ /usr/bin/time -p ./target/release/fw convert fixtures/fonts/DejaVuSans.ttf /tmp/.../DejaVuSans.fwf
+$ /usr/bin/time -p ./target/release/fontcutter convert fixtures/fonts/DejaVuSans.ttf /tmp/.../DejaVuSans.fcf
 real 0.09
-$ ./target/release/fw inspect /tmp/.../DejaVuSans.fwf
-FWF inspect: glyphs=6253 exit=0
+$ ./target/release/fontcutter inspect /tmp/.../DejaVuSans.fcf
+FCF inspect: glyphs=6253 exit=0
 equal glyph counts: yes
 ```
 
@@ -182,13 +182,13 @@ already-exhausted 128-instance inotify ceiling; it does not change application
 behaviour.
 
 ```text
-$ ./target/debug/fw-devserver --port 8787 --open fixtures/fonts/DejaVuSans.ttf
+$ ./target/debug/fc-devserver --port 8787 --open fixtures/fonts/DejaVuSans.ttf
 opened startup font doc_id=1 path=fixtures/fonts/DejaVuSans.ttf
 listening address=127.0.0.1:8787
 
 $ cd app && /usr/bin/time -p env CHOKIDAR_USEPOLLING=true \
-    FW_UI_PORT=1420 FW_DEV_PROXY=http://localhost:8787 \
-    VITE_FW_API=http://localhost:1420 pnpm exec playwright test
+    FC_UI_PORT=1420 FC_DEV_PROXY=http://localhost:8787 \
+    VITE_FC_API=http://localhost:1420 pnpm exec playwright test
 Running 9 tests using 4 workers
 ✓ app.spec.ts (1)
 ✓ fontview.spec.ts (4)
@@ -204,14 +204,14 @@ servers were stopped after the run; ports 8787 and 1420 were verified free.
 ## Desktop acceptance
 
 ```text
-$ /usr/bin/time -p cargo build -p fontworkshop
+$ /usr/bin/time -p cargo build -p fontcutter
 Finished `dev` profile ... in 8.39s
 real 8.45
 
 $ pnpm --dir app tauri dev
 VITE v7.3.6 ready at http://127.0.0.1:1420/
 Finished `dev` profile ... in 0.14s
-Running `target/debug/fontworkshop`
+Running `target/debug/fontcutter-desktop`
 ```
 
 The first launch used GNOME's native Wayland backend. The process remained
@@ -221,8 +221,8 @@ not installed. The same command was therefore relaunched with
 
 ```text
 $ GDK_BACKEND=x11 pnpm --dir app tauri dev
-$ xdotool search --name FontWorkshop
-16777219  FontWorkshop  1400x900
+$ xdotool search --name Font Cutter
+16777219  Font Cutter  1400x900
 $ import -window 16777219 docs/screenshots/p0-tauri-window.png
 $ identify docs/screenshots/p0-tauri-window.png
 PNG 1400x900 ... 49539B
@@ -251,10 +251,10 @@ launches and their child Vite processes were terminated. Screenshot:
   Criterion median 386.52 ms.
 - ✅ **65k-glyph grid remains smooth:** 16.8 ms p95 frame delta (< 20 ms),
   bounded virtual paging, and the e2e rendered cell 65,535.
-- ✅ **`.fwf` round trip:** plain and gzip semantic release tests pass; the
+- ✅ **`.fcf` round trip:** plain and gzip semantic release tests pass; the
   Source Han save+load gate is 4.786 s (< 6 s).
-- ⚠️ **DEVIATED — CLI converts TTF → FWF → TTF (glyph-identical):** binary
-  export arrives in P1 through `fw-compile`. The met P0 criterion is TTF → FWF
+- ⚠️ **DEVIATED — CLI converts TTF → FCF → TTF (glyph-identical):** binary
+  export arrives in P1 through `fc-compile`. The met P0 criterion is TTF → FCF
   → inspect with equal glyph count: DejaVu Sans reports 6,253 before and after,
   with all exit codes zero.
 - ⚠️ **Autosave/crash recovery:** the kernel implementation and tests exist,

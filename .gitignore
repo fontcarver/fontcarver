@@ -3,7 +3,7 @@
 
 # Rust
 **/target/
-/crates/fw-api/bindings/
+/crates/fc-api/bindings/
 # Node
 node_modules/
 app/node_modules/
