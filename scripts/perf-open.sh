@@ -4,7 +4,16 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 readonly dejavu_font="fixtures/fonts/DejaVuSans.ttf"
-readonly source_han_font="/home/chen/githubprojects/pixelfonts/SourceHanSanOTF/SimplifiedChinese/SourceHanSansSC-Regular.otf"
+primary_repo_root="$PWD"
+if [[ -f .git ]]; then
+  git_dir="$(sed -n 's/^gitdir:[[:space:]]*//p' .git)"
+  if [[ "$git_dir" != /* ]]; then
+    git_dir="$PWD/$git_dir"
+  fi
+  primary_repo_root="$(cd "$(dirname "$git_dir")/../.." && pwd)"
+fi
+readonly primary_repo_root
+readonly source_han_font="${FC_SOURCE_HAN_SANS:-$(dirname "$primary_repo_root")/SourceHanSanOTF/SimplifiedChinese/SourceHanSansSC-Regular.otf}"
 readonly fc_binary="target/release/fontcutter"
 readonly open_budget_ns=3000000000
 readonly save_load_budget_ns=6000000000

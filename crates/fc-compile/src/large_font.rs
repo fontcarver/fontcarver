@@ -149,12 +149,25 @@ pub(crate) fn compiled_glyph_order(
 pub(crate) fn patch_tables(
     compiled: &[u8],
     font: &Font,
-    production_names: bool,
+    order: &[GlyphName],
 ) -> Result<Vec<u8>, Error> {
     let face =
         FontRef::new(compiled).map_err(|error| Error::parse("large compiled sfnt", error))?;
-    let order = compiled_glyph_order(&face, font, production_names)?;
-    let cmap = cmap_formats_4_and_12(font, &order)?;
+    let glyph_count = usize::from(
+        face.maxp()
+            .map_err(|error| Error::parse("large compiled maxp", error))?
+            .num_glyphs(),
+    );
+    if order.len() != glyph_count {
+        return Err(Error::parse(
+            "large compiled glyph order",
+            format!(
+                "metadata has {} names for {glyph_count} glyphs",
+                order.len()
+            ),
+        ));
+    }
+    let cmap = cmap_formats_4_and_12(font, order)?;
     let post = post_format_3(&face)?;
     let mut builder = FontBuilder::new();
     for record in face.table_directory().table_records() {

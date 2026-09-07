@@ -25,11 +25,11 @@ use std::{
     time::{Duration, Instant},
 };
 
-use fc_compile::{compile_static, CompileOptions};
+use fc_compile::{compile_static_with_metadata, CompileOptions, StaticCompile};
 use fc_model::{Font, GlyphName, MasterId};
 use harfrust::{Direction, Feature, Language, Script, ShapeOptions, ShaperData, UnicodeBuffer};
 use read_fonts::{
-    types::{GlyphId, GlyphId16, Tag},
+    types::{GlyphId, Tag},
     FontRef, TableProvider,
 };
 use serde::{Deserialize, Serialize};
@@ -622,14 +622,23 @@ impl CompiledFont {
         if font.master(master).is_none() {
             return Err(Error::MissingMaster(master.clone()));
         }
-        let bytes = compile_static(font, master, &CompileOptions::default())?;
-        let (names, advances) = glyph_table(&bytes)?;
+        let compiled = compile_static_with_metadata(font, master, &CompileOptions::default())?;
+        Self::from_static(compiled, generation, font.info.units_per_em)
+    }
+
+    fn from_static(
+        compiled: StaticCompile,
+        generation: u64,
+        units_per_em: u16,
+    ) -> Result<Self, Error> {
+        let advances = glyph_advances(&compiled.bytes)?;
+        let names = compiled.glyph_order.into_iter().map(Some).collect();
         Ok(Self {
-            bytes,
+            bytes: compiled.bytes,
             generation,
             names,
             advances,
-            units_per_em: font.info.units_per_em,
+            units_per_em,
         })
     }
 }
@@ -732,29 +741,22 @@ fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
         .unwrap_or_else(|| "the shaping compile panicked".to_owned())
 }
 
-fn glyph_table(bytes: &[u8]) -> Result<(Vec<Option<GlyphName>>, Vec<f64>), Error> {
+fn glyph_advances(bytes: &[u8]) -> Result<Vec<f64>, Error> {
     let face = FontRef::new(bytes).map_err(|error| Error::Parse(error.to_string()))?;
     let count = face
         .maxp()
         .map_err(|error| Error::Parse(error.to_string()))?
         .num_glyphs();
-    let post = face.post().ok();
     let hmtx = face.hmtx().ok();
-    let mut names = Vec::with_capacity(usize::from(count));
     let mut advances = Vec::with_capacity(usize::from(count));
     for gid in 0..count {
-        names.push(
-            post.as_ref()
-                .and_then(|post| post.glyph_name(GlyphId16::new(gid)))
-                .map(GlyphName::from),
-        );
         advances.push(
             hmtx.as_ref()
                 .and_then(|hmtx| hmtx.advance(GlyphId::new(u32::from(gid))))
                 .map_or(0.0, f64::from),
         );
     }
-    Ok((names, advances))
+    Ok(advances)
 }
 
 fn shape_run(
@@ -877,10 +879,13 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 mod tests {
     use std::sync::{atomic::Ordering, Arc};
 
-    use fc_model::{Font, MasterId};
+    use fc_compile::{compile_static_with_metadata, CompileOptions};
+    use fc_model::{FeatureBlock, Font, Glyph, Layer, MasterId};
+    use read_fonts::{types::Tag, FontRef, TableProvider};
 
     use super::{
-        lock, run_worker, CompiledFont, Entry, FontKey, PendingBuild, Shaper, WorkerGuard,
+        lock, run_worker, shape_run, CompiledFont, Entry, FontKey, ModelWidths, PendingBuild,
+        ShapeRequest, Shaper, WorkerGuard,
     };
 
     fn entry() -> Arc<Entry> {
@@ -898,6 +903,65 @@ mod tests {
             advances: Vec::new(),
             units_per_em: 1_000,
         })
+    }
+
+    #[test]
+    fn retained_names_survive_when_compiled_post_has_no_names() {
+        let mut font = Font::new_empty("Post Three Shaping", 1_000);
+        let master = font.default_master().id.clone();
+        for (name, unicode) in [("f", Some(0x66)), ("i", Some(0x69)), ("f_i", None)] {
+            let mut glyph = Glyph::new(name);
+            glyph.unicodes.extend(unicode);
+            glyph.layers.push(Layer::new_master(master.clone()));
+            font.insert_glyph(glyph).expect("insert glyph");
+        }
+        font.features.features.push(FeatureBlock {
+            tag: "liga".to_owned(),
+            code: "sub f i by f_i;".to_owned(),
+            ..FeatureBlock::default()
+        });
+        let mut output = compile_static_with_metadata(&font, &master, &CompileOptions::default())
+            .expect("compile font");
+        let post_offset = {
+            let face = FontRef::new(&output.bytes).expect("parse font");
+            face.table_directory()
+                .table_records()
+                .iter()
+                .find(|record| record.tag() == Tag::new(b"post"))
+                .map(|record| record.offset() as usize)
+                .expect("post record")
+        };
+        output.bytes[post_offset..post_offset + 4].copy_from_slice(&0x0003_0000_u32.to_be_bytes());
+        let face = FontRef::new(&output.bytes).expect("parse post 3 font");
+        assert!(face
+            .post()
+            .expect("post")
+            .glyph_name(read_fonts::types::GlyphId16::new(1))
+            .is_none());
+
+        let compiled = CompiledFont::from_static(output, 1, font.info.units_per_em)
+            .expect("load compiled metadata");
+        assert_eq!(
+            compiled.names,
+            [
+                Some(".notdef".into()),
+                Some("f".into()),
+                Some("i".into()),
+                Some("f_i".into()),
+            ]
+        );
+        let run = shape_run(
+            &compiled,
+            &ModelWidths::new(),
+            &ShapeRequest {
+                text: "fi".to_owned(),
+                ..ShapeRequest::default()
+            },
+            false,
+            None,
+        )
+        .expect("shape post 3 font");
+        assert_eq!(run.names, [Some("f_i".to_owned())]);
     }
 
     #[test]

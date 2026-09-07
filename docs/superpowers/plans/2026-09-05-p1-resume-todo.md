@@ -14,11 +14,17 @@ repaired. Current dispatches and evidence are recorded in the ledger's
 and final review, then stop. Do not begin P2. Merging to main remains a separate
 user decision.**
 
-- T8: independent Astra review in progress; integration follows fixes and review.
-- T7 minor round: Sol implementation in `.worktrees/p1-t7-minors`.
-- T9b: Sol builds the independent parsing/layout/request foundation in
-  `.worktrees/p1-t9b`; UI integration waits for the reviewed T8/T7 base.
-- Then: T12 acceptance, T13 translation and independent QA, whole-branch review.
+- T8: Astra fix-1 review requires a second Sol fix round for cancellation across
+  controller/source handover, the actual canvas Escape route, and metrics
+  resolution generation. Integration follows scoped re-review.
+- T7 minor round: reviewed and merged (`3df91c9`).
+- T9b: parsing/layout/request foundation reviewed and merged (`fd980ef`), plus
+  compiled glyph identity and portable fixtures. UI waits for reviewed T8.
+- T12: kernel/CLI workflows and release API gate reviewed and merged. Actual
+  Source Han release open/export passed (0.900 s / 58.697 s); browser workflow
+  and pointer-to-paint tests are being prepared. Desktop evidence pending.
+- T13: separate Sol preliminary translation underway; T9b keys and independent
+  QA follow UI integration. Then whole-branch review and P1 handoff.
 
 Authoritative state lives in the SDD ledger `.superpowers/sdd/2026-09-03-p1-outline-editing/progress.md`
 (snapshot copies in `docs/superpowers/ledgers/2026-09-03-p1-outline-editing/`). This file is the human-readable

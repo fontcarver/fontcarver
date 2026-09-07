@@ -1,10 +1,28 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
 
 import { expect, test } from '@playwright/test'
 
+function primaryRepositoryRoot(): string {
+  const worktreeRoot = fileURLToPath(new URL('../..', import.meta.url))
+  const dotGit = join(worktreeRoot, '.git')
+  if (!existsSync(dotGit) || statSync(dotGit).isDirectory()) return worktreeRoot
+  const pointer = readFileSync(dotGit, 'utf8').trim()
+  const match = /^gitdir:\s*(.+)$/u.exec(pointer)
+  if (!match?.[1]) return worktreeRoot
+  const gitDir = isAbsolute(match[1])
+    ? match[1]
+    : resolve(worktreeRoot, match[1])
+  return resolve(gitDir, '../../..')
+}
+
 const SOURCE_HAN =
-  '/home/chen/githubprojects/pixelfonts/SourceHanSanOTF/SimplifiedChinese/SourceHanSansSC-Regular.otf'
+  process.env.FC_SOURCE_HAN_SANS ||
+  resolve(
+    dirname(primaryRepositoryRoot()),
+    'SourceHanSanOTF/SimplifiedChinese/SourceHanSansSC-Regular.otf',
+  )
 
 /**
  * The Playwright config prefers this binary when it exists, and only it opens
