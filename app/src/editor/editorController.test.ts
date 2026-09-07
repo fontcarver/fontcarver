@@ -1259,6 +1259,27 @@ describe('EditorController against the kernel token rules', () => {
     }
   })
 
+  it('still reports a cancellation failure after disposal', async () => {
+    const { controller, recorded } = makeController(
+      createMockTransport({
+        'doc.edit_begin': () => 5,
+        'doc.edit_apply': () => change(),
+        'doc.edit_end': () => null,
+        'doc.undo': () => {
+          throw new Error('undo failed')
+        },
+      }),
+    )
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(10, 200))
+    await settleFrame()
+
+    controller.dispose()
+    await settle()
+
+    expect(recorded.errors.map(String)).toEqual(['Error: undo failed'])
+  })
+
   it('cancels live metrics before editing a replacement source', async () => {
     const { controller, transport, recorded, release } = heldMetrics()
     controller.pointerDown(at(0, 200))

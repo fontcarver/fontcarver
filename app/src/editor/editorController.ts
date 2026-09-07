@@ -494,6 +494,7 @@ export class EditorController {
 
   /** Ends whatever gesture is running; called when the view unmounts. */
   dispose(): void {
+    const onError = this.callbacks.onError
     this.cancelDrag()
     this.aside.dispose()
     if (this.nudge.active) void this.gate(this.nudge.end())
@@ -502,7 +503,7 @@ export class EditorController {
     this.setPreview(null)
     // Async closures from this controller must not clear a replacement view's
     // editing state, preview or reload flags after it mounts.
-    this.callbacks = SILENT_CALLBACKS
+    this.callbacks = { ...SILENT_CALLBACKS, onError }
   }
 
   /** Toggles smooth on the selected nodes; Alt keeps the outline unchanged. */
