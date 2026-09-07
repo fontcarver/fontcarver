@@ -139,9 +139,7 @@ async function runPreferencesRoundTrip(page: Page) {
     .poll(async () => (await api<Prefs>(page, 'prefs.get', {})).grid_size)
     .toBe(16)
 
-  // The language switch takes effect without a reload. The dialog's own
-  // labels are still English: this task only adds the keys, and the zh-CN
-  // strings for them arrive with the translation pass.
+  // The language switch updates the whole dialog without a reload.
   await dialog.getByRole('tab', { name: 'General' }).click()
   await dialog.getByLabel('Language').selectOption('zh-CN')
   await expect(page.getByRole('menuitem', { name: '文件' })).toBeVisible()
@@ -149,7 +147,8 @@ async function runPreferencesRoundTrip(page: Page) {
     .poll(async () => (await api<Prefs>(page, 'prefs.get', {})).language)
     .toBe('zh-CN')
 
-  await dialog.getByLabel('Language').selectOption('en')
+  await expect(page.getByRole('heading', { name: '偏好设置' })).toBeVisible()
+  await page.getByRole('dialog').getByLabel('语言').selectOption('en')
   await expect(
     page.getByRole('menuitem', { name: 'File', exact: true }),
   ).toBeVisible()

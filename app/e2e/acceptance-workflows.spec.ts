@@ -142,10 +142,13 @@ test.describe.serial('P1 browser acceptance workflows', () => {
         await expect(
           page.getByRole('button', { name: 'Pen', exact: true }),
         ).toHaveAttribute('aria-pressed', 'true')
+        const bounds = await canvas.boundingBox()
+        if (!bounds) throw new Error('canvas has no bounds')
+        // Draw on exposed canvas above the bottom-left Info box.
         const corners = [
-          { x: 140 + index * 8, y: 320 },
-          { x: 300 + index * 8, y: 320 },
-          { x: 220 + index * 8, y: 180 },
+          { x: bounds.width * 0.45, y: bounds.height * 0.25 },
+          { x: bounds.width * 0.75, y: bounds.height * 0.25 },
+          { x: bounds.width * 0.6, y: bounds.height * 0.45 },
         ]
         for (const corner of corners) await canvas.click({ position: corner })
         await closePenContourWithPointer(page, canvas)

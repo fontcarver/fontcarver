@@ -73,10 +73,13 @@ test.describe('drawing', () => {
       ).toHaveAttribute('aria-pressed', 'true')
 
       // Three clicks and a click back on the first node close the path.
+      const bounds = await canvas.boundingBox()
+      if (!bounds) throw new Error('canvas has no bounds')
+      // Draw on exposed canvas above the bottom-left Info box.
       const corners = [
-        { x: 140, y: 320 },
-        { x: 300, y: 320 },
-        { x: 220, y: 180 },
+        { x: bounds.width * 0.45, y: bounds.height * 0.25 },
+        { x: bounds.width * 0.75, y: bounds.height * 0.25 },
+        { x: bounds.width * 0.6, y: bounds.height * 0.45 },
       ]
       for (const corner of corners) await canvas.click({ position: corner })
       await canvas.click({ position: corners[0] as { x: number; y: number } })
