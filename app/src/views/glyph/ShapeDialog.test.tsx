@@ -83,6 +83,28 @@ describe('ShapeDialog', () => {
     expect(applied()).toHaveLength(1)
   })
 
+  it('commits the latest field text when Enter confirms from that field', async () => {
+    const user = userEvent.setup()
+    render(
+      <ShapeDialog
+        request={{ kind: 'rectangle', at: { x: 40, y: 60 } }}
+        target={target}
+        curves="cubic"
+        onClose={() => undefined}
+        onCommitted={() => undefined}
+      />,
+    )
+
+    const x = screen.getByRole('textbox', { name: 'X' })
+    await user.clear(x)
+    await user.type(x, '75{Enter}')
+
+    const command = applied()[0]?.command as {
+      AddContour: { contour: { points: { x: number; y: number }[] } }
+    }
+    expect(command.AddContour.contour.points[0]?.x).toBe(75)
+  })
+
   it('traps Tab inside the dialog', async () => {
     const user = userEvent.setup()
     render(

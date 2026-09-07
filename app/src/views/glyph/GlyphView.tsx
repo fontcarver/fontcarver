@@ -160,7 +160,11 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
       guides: scene.guides as readonly ScopedGuide[],
       metrics: scene.metrics,
       master: masterId,
-      curves: inferCurves(outline.contours, summary.format),
+      curves: inferCurves(
+        outline.contours,
+        summary.format,
+        outline.curve_format,
+      ),
       componentPoints,
     }
   }, [componentPoints, doc, gid, masterId, outline, scene, summary.format])
@@ -290,7 +294,11 @@ export function GlyphView({ summary, gid }: GlyphViewProps) {
           <ShapeDialog
             request={shapeDialog}
             target={{ doc, glyph: scene.name, layer: outline.layer }}
-            curves={inferCurves(outline.contours, summary.format)}
+            curves={inferCurves(
+              outline.contours,
+              summary.format,
+              outline.curve_format,
+            )}
             onClose={() => setShapeDialog(null)}
             onCommitted={outlineResult.reload}
           />

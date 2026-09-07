@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { HOLD_BORROW_MS, TOOLS } from '../../editor/tools/registry'
 import { initialEditorState, useEditorStore } from '../../stores/editorStore'
+import { initialUiState, useUiStore } from '../../stores/uiStore'
 
 import { useToolShortcuts } from './useToolShortcuts'
 
@@ -28,6 +29,7 @@ function press(key: string, options: { shift?: boolean; hold?: number } = {}) {
 
 beforeEach(() => {
   useEditorStore.setState(initialEditorState())
+  useUiStore.setState(initialUiState())
 })
 
 describe('useToolShortcuts', () => {
@@ -100,6 +102,26 @@ describe('useToolShortcuts', () => {
         window.dispatchEvent(
           new KeyboardEvent('keyup', { key: 'z', ctrlKey: true }),
         )
+      })
+      expect(useEditorStore.getState().tool).toBe('select')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('leaves tool keys inert while a modal is open', () => {
+    vi.useFakeTimers()
+    render(<Host />)
+    try {
+      useUiStore.getState().openModal()
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'p' }))
+        vi.advanceTimersByTime(HOLD_BORROW_MS)
+      })
+      expect(useEditorStore.getState().tool).toBe('select')
+      expect(useEditorStore.getState().borrowedTool).toBeNull()
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keyup', { key: 'p' }))
       })
       expect(useEditorStore.getState().tool).toBe('select')
     } finally {

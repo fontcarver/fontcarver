@@ -161,6 +161,10 @@ export class ToolHost {
     if (this.tool?.id === id) return
     this.finishCurrent()
     this.tool = createTool(id)
+    // The outgoing tool may have returned no outcome while still leaving an
+    // idle overlay (for example Measure), so switching tools is itself a
+    // reason to repaint.
+    this.callbacks.repaint()
   }
 
   pointerDown(input: PointerInput): boolean {
@@ -235,7 +239,12 @@ export class ToolHost {
     this.consume(outcome)
     // A gesture that has just finished leaves transient feedback behind — the
     // snap halo it latched onto — which nothing else would clear.
-    if (wasBusy && !tool.busy) this.callbacks.gestureEnded()
+    if (wasBusy && !tool.busy) {
+      this.callbacks.gestureEnded()
+      // `consume` paints the outcome before the controller clears feedback;
+      // paint once more so a snap halo cannot survive in the pixels.
+      this.callbacks.repaint()
+    }
     return outcome.handled === true
   }
 

@@ -205,10 +205,11 @@ describe('inferCurves', () => {
     expect(inferCurves([quad, cubic], 'fcf')).toBe('quadratic')
   })
 
-  it('falls back to the format only for a layer with no curves', () => {
+  it('falls back to declared model evidence for a layer with no curves', () => {
     expect(inferCurves([square], 'ttf')).toBe('quadratic')
     expect(inferCurves([square], 'TrueType')).toBe('quadratic')
-    expect(inferCurves([], 'ttc')).toBe('quadratic')
+    expect(inferCurves([], 'ttc', 'quadratic')).toBe('quadratic')
+    expect(inferCurves([], 'ttc', 'cubic')).toBe('cubic')
     expect(inferCurves([square], 'otf')).toBe('cubic')
     expect(inferCurves([square], 'fcf')).toBe('cubic')
   })

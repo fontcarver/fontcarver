@@ -7,6 +7,7 @@ import { NO_MODIFIERS } from '../gestures/drag'
 import { KnifeTool } from './knife'
 import { MeasureTool, measureSpans } from './measure'
 import { PencilTool, polylineContour } from './pencil'
+import { pencilFitError } from './pencil'
 import { ShapeTool, shapeBox } from './shapes'
 
 const shift = { ...NO_MODIFIERS, shift: true }
@@ -29,6 +30,12 @@ interface AddCommand {
 }
 
 describe('PencilTool', () => {
+  it('fits to a stable screen-space error at low zoom', () => {
+    expect(pencilFitError(1)).toBe(1)
+    expect(pencilFitError(0.1)).toBe(10)
+    expect(pencilFitError(0)).toBe(1)
+  })
+
   it('commits one AddContour and nothing else', () => {
     const context = makeToolContext({
       // A second contour the stroke must not disturb: the old whole-layer
