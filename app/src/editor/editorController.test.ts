@@ -1216,6 +1216,21 @@ describe('EditorController drawing tools', () => {
 })
 
 describe('EditorController nudging beside a drag', () => {
+  it('keeps the nudge preview that starts while the drag is closing', async () => {
+    const { controller } = makeController(createEditingTransport())
+    controller.pointerDown(at(200, 300))
+    controller.pointerMove(at(230, 300))
+    controller.nudgeSelection({ x: 0, y: 10 }, NO_MODIFIERS)
+
+    // Let the interrupted drag finish while the nudge run remains open. Its
+    // cleanup must leave the newer preview in place.
+    await settle()
+    expect(controller.frame().contours[0]?.points[1]).toMatchObject({
+      x: 230,
+      y: 10,
+    })
+  })
+
   it('closes a drag that is still open before the arrow press begins', async () => {
     const { controller, transport, recorded } = makeController(
       createEditingTransport(),
@@ -1241,6 +1256,52 @@ describe('EditorController nudging beside a drag', () => {
 })
 
 describe('EditorController tool feedback', () => {
+  it('repaints after clearing the snap halo at gesture end', () => {
+    const { controller } = makeController()
+    const paintedSnap: boolean[] = []
+    controller.setCallbacks({
+      repaint: () => paintedSnap.push(controller.frame().overlay.snap !== null),
+      onSelectionChange: () => undefined,
+      onEditingChange: () => undefined,
+      onZoomChange: () => undefined,
+      onReload: () => undefined,
+      onCursorChange: () => undefined,
+      onPreview: () => undefined,
+      onShapeDialog: () => undefined,
+      onError: () => undefined,
+    })
+    controller.setTool('pen')
+    controller.pointerDown(at(202, 302))
+    controller.pointerUp(at(202, 302))
+
+    expect(paintedSnap.at(-1)).toBe(false)
+  })
+
+  it('repaints after switching away from a tool with idle feedback', () => {
+    const { controller } = makeController()
+    const paintedMeasure: boolean[] = []
+    controller.setCallbacks({
+      repaint: () =>
+        paintedMeasure.push(controller.frame().tool.lines.length > 0),
+      onSelectionChange: () => undefined,
+      onEditingChange: () => undefined,
+      onZoomChange: () => undefined,
+      onReload: () => undefined,
+      onCursorChange: () => undefined,
+      onPreview: () => undefined,
+      onShapeDialog: () => undefined,
+      onError: () => undefined,
+    })
+    controller.setTool('measure')
+    controller.pointerDown(at(20, 20))
+    controller.pointerMove(at(120, 20))
+    controller.pointerUp(at(120, 20))
+    expect(paintedMeasure.at(-1)).toBe(true)
+
+    controller.setTool('select')
+    expect(paintedMeasure.at(-1)).toBe(false)
+  })
+
   it('clears the snap halo when a tool gesture ends', () => {
     const { controller } = makeController()
     controller.setTool('pen')

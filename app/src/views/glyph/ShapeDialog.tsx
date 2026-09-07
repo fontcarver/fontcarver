@@ -40,6 +40,12 @@ export function ShapeDialog({
   const [y, setY] = useState(Math.round(request.at.y))
   const [width, setWidth] = useState(100)
   const [height, setHeight] = useState(100)
+  const latest = useRef({
+    x: Math.round(request.at.x),
+    y: Math.round(request.at.y),
+    width: 100,
+    height: 100,
+  })
   // Enter reaches both the dialog's confirm and the focused button's own
   // click; one commit is one contour, so the second call is dropped.
   const committed = useRef(false)
@@ -52,11 +58,17 @@ export function ShapeDialog({
   const valid = width > 0 && height > 0
 
   const create = (): void => {
-    if (committed.current || !valid) return
+    const values = latest.current
+    if (committed.current || values.width <= 0 || values.height <= 0) return
     committed.current = true
     const contour = shapeContour(
       request.kind,
-      { x0: x, y0: y, x1: x + width, y1: y + height },
+      {
+        x0: values.x,
+        y0: values.y,
+        x1: values.x + values.width,
+        y1: values.y + values.height,
+      },
       curves,
     )
     commitField(
@@ -91,25 +103,37 @@ export function ShapeDialog({
         <NumberField
           label={t('dialog.shape.x')}
           value={x}
-          onCommit={setX}
+          onCommit={(value) => {
+            latest.current.x = value
+            setX(value)
+          }}
           invalidHint={t('infoBox.invalid')}
         />
         <NumberField
           label={t('dialog.shape.y')}
           value={y}
-          onCommit={setY}
+          onCommit={(value) => {
+            latest.current.y = value
+            setY(value)
+          }}
           invalidHint={t('infoBox.invalid')}
         />
         <NumberField
           label={t('dialog.shape.width')}
           value={width}
-          onCommit={setWidth}
+          onCommit={(value) => {
+            latest.current.width = value
+            setWidth(value)
+          }}
           invalidHint={t('infoBox.invalid')}
         />
         <NumberField
           label={t('dialog.shape.height')}
           value={height}
-          onCommit={setHeight}
+          onCommit={(value) => {
+            latest.current.height = value
+            setHeight(value)
+          }}
           invalidHint={t('infoBox.invalid')}
         />
       </div>
