@@ -1,7 +1,10 @@
 //! Outline reading, glyph creation, and metrics handlers for the editor.
 
 use fc_doc::{Command, Document, ResolvedMetrics};
-use fc_model::{Glyph, GlyphId, GlyphName, Layer, LayerId, MasterId};
+use fc_model::{
+    query::{declared_curve_format, CurveFormat},
+    Glyph, GlyphId, GlyphName, Layer, LayerId, MasterId,
+};
 use kurbo::{BezPath, PathEl, Point, Rect, Shape};
 
 use crate::{
@@ -13,7 +16,8 @@ use crate::{
         recipe::{self, RecipeItem},
     },
     AddGlyphsParams, AddGlyphsResult, Api, ApiError, ComponentView, FlattenedComponents, GlyphCell,
-    GlyphIdsParams, LayerOutline, LayerOutlineParams, MetricsResolveParams, PREVIEW_GLYPH_ID,
+    GlyphIdsParams, LayerCurveFormat, LayerOutline, LayerOutlineParams, MetricsResolveParams,
+    PREVIEW_GLYPH_ID,
 };
 
 pub(crate) fn outline(api: &Api, params: LayerOutlineParams) -> Result<LayerOutline, ApiError> {
@@ -26,6 +30,12 @@ pub(crate) fn outline(api: &Api, params: LayerOutlineParams) -> Result<LayerOutl
             Ok(LayerOutline {
                 layer: selection.layer.id.clone(),
                 master: selection.master.clone(),
+                curve_format: declared_curve_format(&document.font, Some(&selection.master)).map(
+                    |format| match format {
+                        CurveFormat::Quadratic => LayerCurveFormat::Quadratic,
+                        CurveFormat::Cubic => LayerCurveFormat::Cubic,
+                    },
+                ),
                 contours: selection.layer.contours.clone(),
                 components,
                 anchors: selection.layer.anchors.clone(),

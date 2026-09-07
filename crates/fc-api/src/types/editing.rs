@@ -32,6 +32,17 @@ pub struct ComponentView {
     pub bbox: Option<[f64; 4]>,
 }
 
+/// Curve family declared by the font's preserved source or master data.
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "lowercase")]
+#[ts(export)]
+pub enum LayerCurveFormat {
+    /// TrueType quadratic outlines.
+    Quadratic,
+    /// PostScript cubic outlines.
+    Cubic,
+}
+
 /// Everything the glyph editor needs to draw and edit one layer.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize, TS)]
 #[ts(export)]
@@ -40,6 +51,10 @@ pub struct LayerOutline {
     pub layer: LayerId,
     /// Master the layer belongs to, or the default master.
     pub master: MasterId,
+    /// Curve family declared by preserved model evidence, when available.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub curve_format: Option<LayerCurveFormat>,
     /// Editable contours in stored order.
     pub contours: Vec<Contour>,
     /// Components with their resolved outlines.
