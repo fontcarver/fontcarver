@@ -38,7 +38,8 @@ Han import also passed the Adobe/Identity CID and `uni4E00` identity regression.
 ## Performance evidence
 
 Measurements below were taken on this development machine while other worktrees
-were active, rather than in an isolated benchmark environment.
+were active, rather than in an isolated benchmark environment: Intel Core
+i7-12700H, 20 logical CPUs, approximately 62 GiB RAM, Linux, Rust 1.94.0.
 
 | Gate | Observed | Budget | Status |
 | --- | --- | --- | --- |
@@ -75,6 +76,14 @@ smoke are pending. Native dialog interaction will be reported separately from
 automated browser or build evidence.
 
 ## Evidence and remaining completion steps
+
+Integrated Rust verification on 2026-09-07 passed **453 tests**, with two
+explicitly ignored release-only acceptance tests covered by their separate
+release executions above. `cargo fmt --all -- --check` and
+`cargo clippy --workspace --all-targets -- -D warnings` also passed. An earlier
+attempt failed during linking when the project directory briefly became
+inaccessible; the full retry after path recovery is the passing result recorded
+here, rather than the interrupted run.
 
 Detailed commands and outputs are recorded in the tracked P1 ledger snapshots:
 `task-12-kernel-report.md`, `task-12-kernel-review.md`,
