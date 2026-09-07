@@ -23,6 +23,14 @@ import type { Selection } from '../../editor/selection'
 import type { ComponentView } from '../../api'
 import type { SnapSettings } from '../../editor/snapping'
 import type { ShapeDialogRequest } from '../../editor/tools/toolTypes'
+import type { TextCanvasRun } from '../text/textCanvas'
+import {
+  hitCanvasRun,
+  localRunBox,
+  shiftRunOrigin,
+  surroundingGlyphs,
+  visibleCanvasRun,
+} from '../text/textCanvasBridge'
 
 import { componentDraws, type PathCache } from './componentDraws'
 import type { MetricLabels } from './drawMetrics'
@@ -40,6 +48,7 @@ export interface GlyphCanvasHandle {
   fit: () => void
   zoomBy: (factor: number) => void
   redraw: () => void
+  prepareTransition: () => Promise<void>
 }
 
 export interface GlyphCanvasProps {
@@ -74,6 +83,10 @@ export interface GlyphCanvasProps {
   onToggleFilled: () => void
   /** A gesture finished; the outline must be refetched. */
   onReload: () => void
+  /** Optional shaped-run shell around the one editable glyph. */
+  textRun?: TextCanvasRun | null
+  /** A tab-owned metrics session that must close before other edits. */
+  externalSettler?: (() => Promise<void>) | null
   handleRef?: RefObject<GlyphCanvasHandle | null>
 }
 
@@ -118,6 +131,8 @@ export function GlyphCanvas({
   onZoomChange,
   onToggleFilled,
   onReload,
+  textRun = null,
+  externalSettler = null,
   handleRef,
 }: GlyphCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -138,11 +153,19 @@ export function GlyphCanvas({
     underlay,
     measurementGuides,
     componentViews,
+    textRun,
   })
   // Parsing SVG path data is the expensive part of drawing a component, and
   // the strings only change when the kernel answers, so each one is parsed
   // once and reused for every frame of a drag.
   const pathCache = useRef<PathCache>(new Map())
+  const textPathCache = useRef(new Map<string, Path2D>())
+  const visibleSignature = useRef('')
+  const runOrigin = useRef<{
+    fitKey: string
+    point: { x: number; y: number }
+  } | null>(null)
+  const requestedScale = useRef<number | null>(null)
   const [cursor, setCursor] = useState('default')
 
   // The controller must outlive every render: it holds the live gesture and
@@ -170,6 +193,9 @@ export function GlyphCanvas({
       editing.components,
       pathCache.current,
     )
+    const surrounding = current.textRun
+      ? surroundingGlyphs(current.textRun, textPathCache.current)
+      : []
     // Dev builds time every frame so the 60 fps target of design spec §13 can
     // be measured from the running app rather than asserted.
     const started = import.meta.env.DEV ? performance.now() : 0
@@ -215,7 +241,17 @@ export function GlyphCanvas({
             master: source.master,
           }
         : undefined,
+      surrounding,
+      hideActive: current.textRun?.mode === 'text',
     })
+    if (current.textRun) {
+      const visible = visibleCanvasRun(current.textRun, viewport)
+      const signature = visible.join(',')
+      if (signature !== visibleSignature.current) {
+        visibleSignature.current = signature
+        current.textRun.onVisibleIndexes(visible)
+      }
+    }
     if (import.meta.env.DEV) recordPaint(performance.now() - started)
   }, [controller, source, viewport])
 
@@ -257,11 +293,19 @@ export function GlyphCanvas({
     controller.setSource(source)
     draw()
   }, [controller, draw, source])
+  useEffect(() => {
+    controller.setExternalSettler(externalSettler)
+    return () => controller.setExternalSettler(null)
+  }, [controller, externalSettler])
   useEffect(() => registerEditor(controller), [controller])
   useEffect(() => () => controller.dispose(), [controller])
 
   const fit = useCallback(() => {
-    viewport.fit(sceneBox(frame.current.scene), FIT_PADDING)
+    const run = frame.current.textRun
+    viewport.fit(
+      run ? localRunBox(run) : sceneBox(frame.current.scene),
+      FIT_PADDING,
+    )
     onZoomChange(viewport.scale)
     draw()
   }, [draw, onZoomChange, viewport])
@@ -276,8 +320,13 @@ export function GlyphCanvas({
   )
 
   const handle = useMemo<GlyphCanvasHandle>(
-    () => ({ fit, zoomBy, redraw: draw }),
-    [draw, fit, zoomBy],
+    () => ({
+      fit,
+      zoomBy,
+      redraw: draw,
+      prepareTransition: () => controller.prepareTransition(),
+    }),
+    [controller, draw, fit, zoomBy],
   )
 
   useEffect(() => {
@@ -319,6 +368,29 @@ export function GlyphCanvas({
     return () => observer.disconnect()
   }, [draw, fit, fitKey, viewport])
 
+  useEffect(() => {
+    if (!textRun) {
+      runOrigin.current = null
+      requestedScale.current = null
+      visibleSignature.current = ''
+      return
+    }
+    const previous = runOrigin.current
+    if (previous?.fitKey === fitKey)
+      shiftRunOrigin(viewport, previous.point, textRun.activeOrigin)
+    runOrigin.current = { fitKey, point: textRun.activeOrigin }
+
+    if (
+      requestedScale.current !== null &&
+      requestedScale.current !== textRun.requestedScale
+    ) {
+      viewport.zoomTo(textRun.requestedScale)
+      onZoomChange(viewport.scale)
+    }
+    requestedScale.current = textRun.requestedScale
+    draw()
+  }, [draw, fitKey, onZoomChange, textRun, viewport])
+
   // Refresh the draw inputs and repaint whenever anything visible changes.
   useEffect(() => {
     frame.current = {
@@ -330,6 +402,7 @@ export function GlyphCanvas({
       underlay,
       measurementGuides,
       componentViews,
+      textRun,
     }
     draw()
   }, [
@@ -342,6 +415,7 @@ export function GlyphCanvas({
     underlay,
     measurementGuides,
     componentViews,
+    textRun,
   ])
 
   // Wheel must be a non-passive native listener: React attaches `onWheel`
@@ -393,9 +467,22 @@ export function GlyphCanvas({
       } catch {
         // A synthetic pointer id has nothing to capture; the move still tracks.
       }
-      controller.pointerDown(pointerInput(event))
+      const input = pointerInput(event)
+      const run = frame.current.textRun
+      if (run && input.button === 0 && !spaceRef.current.held) {
+        const index = hitCanvasRun(run, viewport, input)
+        if (
+          index !== null &&
+          (run.mode === 'text' || index !== run.activeIndex)
+        ) {
+          void controller.prepareTransition().then(() => run.onActivate(index))
+          return
+        }
+        if (run.mode === 'text') return
+      }
+      controller.pointerDown(input)
     },
-    [controller, pointerInput],
+    [controller, pointerInput, viewport],
   )
 
   const onPointerMove = useCallback(
@@ -466,7 +553,7 @@ export function GlyphCanvas({
       }
       if (event.key === 'Escape') {
         event.preventDefault()
-        controller.escape()
+        if (!controller.escape()) frame.current.textRun?.onExitEdit()
         return
       }
       // Tab cycles nodes only while something is selected; with an empty

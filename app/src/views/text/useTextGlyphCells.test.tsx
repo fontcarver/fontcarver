@@ -89,7 +89,7 @@ describe('useTextGlyphCells', () => {
   it('does not restart pending cells when equal indexes are rerendered', async () => {
     let release: ((value: GlyphCell) => void) | undefined
     const transport = createMockTransport({
-      'glyphs.cell': ({ gid }) =>
+      'glyphs.cell': () =>
         new Promise<GlyphCell>((resolve) => {
           release = resolve
         }),

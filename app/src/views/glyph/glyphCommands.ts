@@ -176,7 +176,9 @@ export function registerGlyphViewCommands(): void {
       group: 'selection',
       when: hasSelection,
       disabledReason: 'cmd.reason.noPointsSelected',
-      run: () => activeEditor()?.escape(),
+      run: () => {
+        activeEditor()?.escape()
+      },
     },
     {
       id: 'edit.deletePoints',

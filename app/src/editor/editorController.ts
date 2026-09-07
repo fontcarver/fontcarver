@@ -705,8 +705,8 @@ export class EditorController {
   }
 
   /** Escape: cancel a live drag, or clear the selection. */
-  escape(): void {
-    if (this.aside.escape()) return
+  escape(): boolean {
+    if (this.aside.escape()) return true
     if (
       this.tools.keyDown({
         key: 'Escape',
@@ -714,18 +714,23 @@ export class EditorController {
         repeat: false,
       })
     )
-      return
-    if (this.drag) return this.cancelDrag()
+      return true
+    if (this.drag) {
+      this.cancelDrag()
+      return true
+    }
     if (this.nudge.active) {
       void this.gate(this.nudge.end())
-      return
+      return true
     }
     if (this.view.active) {
       this.view.reset()
       this.callbacks.repaint()
-      return
+      return true
     }
+    if (this.selection.size === 0) return false
     this.setSelection(EMPTY_SELECTION)
+    return true
   }
 
   /** Drops a live outline drag and publishes its close for handover. */
