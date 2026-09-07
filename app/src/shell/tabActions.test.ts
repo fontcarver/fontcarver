@@ -171,6 +171,36 @@ describe('tabActions', () => {
     expect(useUiStore.getState().tabs).toHaveLength(1)
   })
 
+  it('steps a suffixed legacy tab without closing the typed origin tab', () => {
+    const original = openGlyphTab(1, 9, 'a')
+    useUiStore.getState().updateTab(original, {
+      gid: 10,
+      textState: {
+        text: 'typed text',
+        activeIndex: 1,
+        mode: 'edit',
+        master: 'regular',
+        size: 120,
+        features: [],
+        direction: 'ltr',
+        previewTheme: 'light',
+        previewCollapsed: false,
+      },
+    })
+    const suffixed = openGlyphTab(1, 9, 'a')
+
+    const next = replaceGlyphTab(1, 9, 11, 'c')
+
+    expect(next).not.toBe(suffixed)
+    expect(
+      useUiStore.getState().tabs.find((tab) => tab.id === original)?.textState
+        ?.text,
+    ).toBe('typed text')
+    expect(useUiStore.getState().tabs.some((tab) => tab.id === suffixed)).toBe(
+      false,
+    )
+  })
+
   it('focuses an existing Font Info tab instead of opening a second one', () => {
     const first = openFontInfoTab(1)
     const second = openFontInfoTab(1)
