@@ -217,7 +217,7 @@ export function GlyphCanvas({
         : undefined,
     })
     if (import.meta.env.DEV) recordPaint(performance.now() - started)
-  }, [controller, viewport])
+  }, [controller, source, viewport])
 
   useEffect(() => {
     controller.setCallbacks({
