@@ -1,5 +1,21 @@
 # Font Cutter — resume TODO (written 2026-09-05, session paused by the user)
 
+## Active resume (2026-09-07)
+
+The user resumed P1 in Codex and requested **Sol for bounded implementation,
+verification and translation; Astra for complex architecture and independent
+review**. This supersedes the historical paused-Codex and Claude-only assignments
+below. The repository now lives at
+`/home/chen/githubprojects/fontpixel/fontcutter`; the moved T8 worktree has been
+repaired. Current dispatches and evidence are recorded in the ledger's
+`resume-2026-09-07.md`.
+
+- T8: independent Astra review in progress; integration follows fixes and review.
+- T7 minor round: Sol implementation in `.worktrees/p1-t7-minors`.
+- T9b: Sol builds the independent parsing/layout/request foundation in
+  `.worktrees/p1-t9b`; UI integration waits for the reviewed T8/T7 base.
+- Then: T12 acceptance, T13 translation and independent QA, whole-branch review.
+
 Authoritative state lives in the SDD ledger `.superpowers/sdd/2026-09-03-p1-outline-editing/progress.md`
 (snapshot copies in `docs/superpowers/ledgers/2026-09-03-p1-outline-editing/`). This file is the human-readable
 checklist for the next session. Process: superpowers `subagent-driven-development` (Fable orchestrates only;
