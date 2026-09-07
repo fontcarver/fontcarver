@@ -1,18 +1,5 @@
-/**
- * The glyph editor's input controller.
- *
- * React owns the canvas element and the data; this plain class owns what the
- * pointer and the keyboard *mean*. It keeps the selection, the live gesture
- * and the optimistic geometry, and hands the canvas a ready-made frame to
- * paint. Nothing here touches the DOM or React, so the whole interaction
- * grammar is testable with plain objects.
- *
- * The optimistic copy is the point of the design: a drag updates local
- * geometry synchronously on every pointer move and tells the kernel once per
- * animation frame, so the outline can never lag the pointer.
- */
-
-import type { Command, DocId } from '../api'
+/** Glyph-local editing input, selection and optimistic geometry. */
+import { call, type Command, type DocId } from '../api'
 import type { Point2, Viewport } from '../canvas/Viewport'
 
 import {
@@ -61,7 +48,7 @@ import { HAND_CURSOR, HAND_DRAGGING_CURSOR } from './tools/hand'
 import { toolById, type ToolId } from './tools/registry'
 import { ViewGestures } from './viewGestures'
 import { AsideGestures } from './asideGestures'
-import { holdDocumentEdits } from './editSession'
+import { EditorHandover } from './editorHandover'
 
 export type { ShapeDialogRequest, ToolOverlay } from './tools/toolTypes'
 export type {
@@ -72,11 +59,7 @@ export type {
   PointerInput,
 } from './editorTypes'
 
-/**
- * Whether a hit outranks a metric line (design spec §4.2 precedence): nodes,
- * handles, anchors and guides do; a segment or a component does not, and
- * neither does empty canvas.
- */
+/** Nodes, handles, anchors and guides win over metric lines. */
 function outranksMetrics(hit: Hit | null): boolean {
   if (!hit) return false
   return hit.target.kind !== 'segment' && hit.target.kind !== 'component'
@@ -104,13 +87,9 @@ export class EditorController {
   private readonly snapping = new SnapRunner()
   private nudgeSteps: readonly [number, number, number] = NUDGE_STEPS
   private editingPublished = false
-  /** The gesture that is closing, if any; a new one begins after it. */
-  private closing: Promise<void> | undefined
-  /** Text metrics and similar tab-owned sessions that commands must flush. */
-  private externalSettler: (() => Promise<void>) | null = null
-  private preparingTransition = false
-  private transition: Promise<void> | null = null
-  private transitionApplications: Promise<void>[] = []
+  private externalMetrics: { width: number; lsb: number; rsb: number } | null =
+    null
+  private readonly handover = new EditorHandover()
 
   constructor(viewport: Viewport, labels: EditorLabels) {
     this.viewport = viewport
@@ -125,7 +104,7 @@ export class EditorController {
       target: () => this.geometry.layerTarget(),
       labels: () => this.labels,
       rulersVisible: () => this.rulersVisible,
-      after: () => this.closing,
+      after: () => this.handover.pending,
       settle: () => this.settle(),
       gate: (closing) => this.gate(closing),
       onError: (error) => this.callbacks.onError(error),
@@ -160,14 +139,13 @@ export class EditorController {
               )
             : null
         },
-        after: () => this.closing,
+        after: () => this.handover.pending,
         onError: (error) => this.callbacks.onError(error),
       },
       {
         apply: (command, label) => {
           const applying = this.runCommand(command, label)
-          if (this.preparingTransition)
-            this.transitionApplications.push(applying)
+          this.handover.trackApplication(applying)
           void applying
         },
         setSelection: (selection) => this.setSelection(selection),
@@ -197,32 +175,35 @@ export class EditorController {
     }
   }
 
-  /**
-   * Installs the callbacks. They arrive after construction because the view
-   * that owns them is built around the controller, not the other way round.
-   */
+  /** Installs callbacks owned by the mounted canvas. */
   setCallbacks(callbacks: EditorCallbacks): void {
     this.callbacks = callbacks
   }
 
   /** Installs a tab-owned edit run that every ordinary command must flush. */
   setExternalSettler(settler: (() => Promise<void>) | null): void {
-    this.externalSettler = settler
+    this.handover.externalSettler = settler
   }
 
-  /**
-   * Publishes whether a gesture is live.
-   *
-   * It is derived rather than toggled: a drag that finishes asynchronously
-   * must not clear the flag that an arrow-key run set in the meantime, and the
-   * data hooks rely on this flag to know when it is safe to reload.
-   */
+  /** Installs the optimistic geometry owned by a text metrics key session. */
+  setExternalPreview(
+    preview: EditorPreview | null,
+    metrics: { width: number; lsb: number; rsb: number } | null,
+  ): void {
+    this.externalMetrics = metrics
+    this.setPreview(preview)
+    this.publishEditing()
+    this.callbacks.repaint()
+  }
+
+  /** Derives edit deferral from every live gesture owner. */
   private publishEditing(): void {
     const editing =
       this.drag !== null ||
       this.nudge.active ||
       this.aside.editing ||
-      this.toolEditing
+      this.toolEditing ||
+      this.externalMetrics !== null
     if (editing === this.editingPublished) return
     this.editingPublished = editing
     this.callbacks.onEditingChange(editing)
@@ -265,10 +246,7 @@ export class EditorController {
     return this.snapping.gridSize
   }
 
-  /**
-   * Whether the rulers are on screen. ⌥-dragging a guide out of one only makes
-   * sense while they are drawn, so the controller has to know.
-   */
+  /** Enables guide dragging from the visible rulers. */
   setRulersVisible(visible: boolean): void {
     this.rulersVisible = visible
   }
@@ -298,17 +276,14 @@ export class EditorController {
     const changedSource = this.geometry.install(source)
     this.nudge.reloaded()
     this.setPreview(null)
-    if (!changedSource) return
-    // Published unconditionally, not through `setSelection`: a freshly mounted
-    // controller's selection is already empty, so the "nothing changed" guard
-    // would leave the *store* holding the previous tab's selection — point
-    // indexes that mean something else in this glyph.
+    if (!changedSource && !replaced) return
+    // Publish even when locally empty: the store may retain the prior tab.
     this.selection = EMPTY_SELECTION
     this.callbacks.onSelectionChange(EMPTY_SELECTION)
     this.callbacks.repaint()
   }
 
-  /** The pan/zoom transform, exposed for tests and dev verification. */
+  /** The mutable glyph-local viewport. */
   get viewportForTest(): Viewport {
     return this.viewport
   }
@@ -347,7 +322,9 @@ export class EditorController {
       band: this.view.band,
       snap: this.snapping.current,
       hover: this.hover,
-      aside: this.aside.frame(),
+      aside: this.externalMetrics
+        ? { metrics: this.externalMetrics }
+        : this.aside.frame(),
       tool: this.tools.overlay(),
     })
   }
@@ -510,14 +487,15 @@ export class EditorController {
   /** Ends whatever gesture is running; called when the view unmounts. */
   dispose(): void {
     const onError = this.callbacks.onError
+    const external = this.handover.externalSettler?.()
+    if (external) void this.gate(external)
     this.cancelDrag()
     this.aside.dispose()
     if (this.nudge.active) void this.gate(this.nudge.end())
     this.tools.dispose()
     if (this.editingPublished) this.callbacks.onEditingChange(false)
     this.setPreview(null)
-    // Async closures from this controller must not clear a replacement view's
-    // editing state, preview or reload flags after it mounts.
+    // Late closes must not publish into a replacement controller.
     this.callbacks = { ...SILENT_CALLBACKS, onError }
   }
 
@@ -549,22 +527,18 @@ export class EditorController {
     this.setSelection(EMPTY_SELECTION)
   }
 
-  /**
-   * Applies one command as its own undo entry.
-   *
-   * A failure is reported and the view still reconciles: the kernel is the
-   * source of truth, so after anything unexpected the honest move is to refetch
-   * rather than keep drawing what we hoped had happened.
-   */
+  /** Applies a separate undo entry after closing existing gestures. */
   private async runCommand(command: Command, label: string): Promise<void> {
     const target = this.geometry.layerTarget()
     if (!target) return
-    // `doc.apply` finalises the active edit, so an open run has to be closed
-    // before it rather than by it.
-    if (!this.preparingTransition) await this.settle()
-    else if (this.closing) await this.closing
+    const captured = this.handover.beforeTools
+    if (captured) await captured
+    else await this.settle()
     try {
-      await commit(target, command, label)
+      // Only an already-sequenced tool finish uses the captured barrier.
+      // Rechecking future document edits here would wait on its successor.
+      if (captured) await call('doc.apply', { doc: target.doc, command, label })
+      else await commit(target, command, label)
     } catch (error) {
       this.callbacks.onError(error)
     } finally {
@@ -610,7 +584,7 @@ export class EditorController {
         label: (count) => this.labels.nudgePoints(count),
         // A press that lands one round trip after a settle-, pointer-up- or
         // tool-switch-driven close must not overtake that close's last apply.
-        after: this.closing,
+        after: this.handover.pending,
       }),
     )
     this.publishEditing()
@@ -627,16 +601,7 @@ export class EditorController {
     closing: Promise<unknown>,
     doc: DocId | undefined = this.geometry.source?.doc,
   ): Promise<void> {
-    const tracked = closing
-      .then(
-        () => undefined,
-        () => undefined,
-      )
-      .finally(() => {
-        if (this.closing === tracked) this.closing = undefined
-      })
-    this.closing = tracked
-    return doc === undefined ? tracked : holdDocumentEdits(doc, tracked)
+    return this.handover.gate(closing, doc)
   }
 
   /** Closes core editor gestures, without committing an unfinished tool. */
@@ -645,55 +610,35 @@ export class EditorController {
     if (aside) return aside
     if (this.drag) return this.gate(this.finishDrag())
     if (this.nudge.active) return this.gate(this.nudge.end())
-    return this.closing ?? Promise.resolve()
+    return this.handover.pending ?? Promise.resolve()
   }
 
   /** Closes any open edit run before another begin or single-shot apply. */
   settle(): Promise<void> {
     const core = this.settleCore()
-    const external = this.externalSettler?.()
+    const external = this.handover.externalSettler?.()
     if (!external) return core
     return this.gate(Promise.allSettled([external, core]).then(() => undefined))
   }
 
-  /**
-   * Flushes every tool and edit session before a Text tab changes target.
-   *
-   * Tool finishing is separate from `settle`: a Pen finish may itself apply a
-   * command, whose normal path calls `settle`. The transition flag lets that
-   * command retain the old target and exposes its promise to this barrier.
-   */
+  /** Finishes tool-owned commands against the old target before handover. */
   prepareTransition(): Promise<void> {
-    if (this.transition) return this.transition
-    const transition = (async () => {
-      await this.settle()
-      this.preparingTransition = true
-      this.transitionApplications = []
-      try {
-        this.tools.finish()
-        await this.settleCore()
-        await Promise.allSettled(this.transitionApplications)
-        if (this.closing) await this.closing
-      } finally {
-        this.preparingTransition = false
-        this.transitionApplications = []
-      }
-    })()
-    this.transition = transition.finally(() => {
-      if (this.transition === tracked) this.transition = null
-    })
-    const tracked = this.transition
-    return tracked
+    return this.handover.prepare(
+      this.geometry.source?.doc,
+      () => this.settle(),
+      () => this.tools.finish(),
+      () => this.settleCore(),
+    )
   }
 
-  /**
-   * A nudge run closed, from the idle timer or from any other action. The
-   * preview is handed back to the layer and reloads resume.
-   */
+  /** Captures old edits before an external runner is created synchronously. */
+  prepareExternalEdit(): Promise<void> {
+    return this.prepareTransition()
+  }
+
+  /** Hands geometry back after a nudge session closes. */
   private closeNudge(): void {
-    // A drag that started while the run was closing owns the preview now:
-    // clearing it here would blank the dragged geometry for one frame and
-    // request a reload the drag has deliberately deferred.
+    // A newer drag owns its preview and reload deferral.
     if (this.drag) {
       this.publishEditing()
       return
@@ -782,11 +727,7 @@ export class EditorController {
     )
   }
 
-  /**
-   * Alt-click converts a line segment to a curve and Shift-click inserts a
-   * node on it (design spec §4.3); both are single commands, so they must not
-   * open a drag gesture.
-   */
+  /** Converts or inserts on a segment as a single command. */
   private handleSegmentShortcut(hit: Hit, modifiers: Modifiers): boolean {
     const target = this.geometry.layerTarget()
     if (!target) return false
@@ -814,7 +755,7 @@ export class EditorController {
         components: this.geometry.components(),
         selection: this.selection,
         labels: this.labels,
-        after: this.closing,
+        after: this.handover.pending,
         onError: (error) => this.callbacks.onError(error),
         snap: (delta, moved) =>
           this.snapping.forDelta(this.snapSources(), delta, moved),

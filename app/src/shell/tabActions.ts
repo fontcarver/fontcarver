@@ -1,3 +1,4 @@
+import { activeEditor } from '../editor/activeEditor'
 import type { DocId, GlyphId } from '../api'
 import { useSessionStore } from '../stores/sessionStore'
 import { tabId, useUiStore } from '../stores/uiStore'
@@ -51,7 +52,7 @@ export function replaceGlyphTab(
     ui.updateTab(existing.id, {
       gid: toGid,
       label,
-      textState: { ...existing.textState, activeIndex: null },
+      textState: { ...existing.textState, activeIndex: null, mode: 'edit' },
     })
     ui.setActiveTab(existing.id)
     return existing.id
@@ -65,4 +66,19 @@ export function replaceGlyphTab(
 /** Opens (or focuses) the Font Info tab of a document. */
 export function openFontInfoTab(doc: DocId): string {
   return useUiStore.getState().openTab({ kind: 'fontinfo', doc })
+}
+
+/** Finishes old tools before a sidebar or keyboard step replaces its target. */
+export async function changeGlyphTab(
+  doc: DocId,
+  from: GlyphId,
+  to: GlyphId,
+  label?: string,
+): Promise<void> {
+  const id = useUiStore.getState().activeTab
+  await activeEditor()?.prepareTransition()
+  const ui = useUiStore.getState()
+  const tab = ui.tabs.find((tab) => tab.id === id)
+  if (ui.activeTab !== id || tab?.doc !== doc || tab.gid !== from) return
+  replaceGlyphTab(doc, from, to, label)
 }

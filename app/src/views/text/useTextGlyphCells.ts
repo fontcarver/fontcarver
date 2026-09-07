@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import {
   call,
@@ -22,15 +22,14 @@ export function useTextGlyphCells(
   indexes: readonly number[],
 ): ReadonlyMap<GlyphId, GlyphCell> {
   const identity = `${doc}:${master ?? ''}:${generation}`
-  const cache = useRef<{ identity: string; cells: Map<GlyphId, GlyphCell> }>({
-    identity,
-    cells: new Map(),
+  const cache = useMemo(
+    () => ({ identity, cells: new Map<GlyphId, GlyphCell>() }),
+    [identity],
+  )
+  const [loaded, setLoaded] = useState({
+    identity: '',
+    cells: new Map<GlyphId, GlyphCell>(),
   })
-  const [version, setVersion] = useState(0)
-
-  if (cache.current.identity !== identity)
-    cache.current = { identity, cells: new Map() }
-
   const wanted = useMemo(
     () =>
       [
@@ -47,11 +46,8 @@ export function useTextGlyphCells(
 
   useEffect(() => {
     if (master === null) return
-    const requested = signature
-      .split(',')
-      .filter(Boolean)
-      .map(Number)
-    const missing = requested.filter((gid) => !cache.current.cells.has(gid))
+    const requested = signature.split(',').filter(Boolean).map(Number)
+    const missing = requested.filter((gid) => !cache.cells.has(gid))
     if (missing.length === 0) return
     let cancelled = false
     let next = 0
@@ -62,9 +58,9 @@ export function useTextGlyphCells(
         if (gid === undefined) continue
         try {
           const cell = await call('glyphs.cell', { doc, gid, master })
-          if (cancelled || cache.current.identity !== identity) return
-          cache.current.cells.set(gid, cell)
-          setVersion((value) => value + 1)
+          if (cancelled || cache.identity !== identity) return
+          cache.cells.set(gid, cell)
+          setLoaded({ identity, cells: new Map(cache.cells) })
         } catch (error) {
           if (!cancelled) {
             cancelled = true
@@ -81,7 +77,9 @@ export function useTextGlyphCells(
     return () => {
       cancelled = true
     }
-  }, [doc, identity, master, signature])
+  }, [cache, doc, identity, master, signature])
 
-  return useMemo(() => new Map(cache.current.cells), [identity, version])
+  return loaded.identity === identity ? loaded.cells : EMPTY_CELLS
 }
+
+const EMPTY_CELLS: ReadonlyMap<GlyphId, GlyphCell> = new Map()

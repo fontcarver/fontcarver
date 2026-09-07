@@ -83,6 +83,13 @@ export function registerBuiltinCommands(): void {
   registerLayerCommands()
   registerCommands([
     {
+      id: 'view.textPreview',
+      title: 'textView.previewMenu',
+      menu: 'view',
+      group: 'panels',
+      run: () => useUiStore.getState().toggleTextPreview(),
+    },
+    {
       id: 'file.new',
       title: 'cmd.file.new',
       menu: 'file',

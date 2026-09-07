@@ -9,7 +9,9 @@ import {
 } from './textRunGeometry'
 
 /** Bboxes available for the run without loading any offscreen outline. */
-export function textRunBounds(run: TextCanvasRun): TextGlyphBounds {
+export function textRunBounds(
+  run: Pick<TextCanvasRun, 'cells'>,
+): TextGlyphBounds {
   return new Map(
     [...run.cells].flatMap(([gid, cell]) =>
       cell.bbox
@@ -23,8 +25,11 @@ export function textRunBounds(run: TextCanvasRun): TextGlyphBounds {
 export function surroundingGlyphs(
   run: TextCanvasRun,
   paths: Map<string, Path2D>,
+  indexes: readonly number[],
 ): SurroundingGlyph[] {
-  return run.glyphs.flatMap((glyph, index) => {
+  return indexes.flatMap((index) => {
+    const glyph = run.glyphs[index]
+    if (!glyph) return []
     if (run.mode === 'edit' && index === run.activeIndex) return []
     if (glyph.documentGid === null) return []
     const data = run.cells.get(glyph.documentGid)?.path

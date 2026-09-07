@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -24,12 +25,11 @@ import type { ComponentView } from '../../api'
 import type { SnapSettings } from '../../editor/snapping'
 import type { ShapeDialogRequest } from '../../editor/tools/toolTypes'
 import type { TextCanvasRun } from '../text/textCanvas'
+import { TextCanvasPaint } from '../text/textCanvasPaint'
 import {
   hitCanvasRun,
   localRunBox,
   shiftRunOrigin,
-  surroundingGlyphs,
-  visibleCanvasRun,
 } from '../text/textCanvasBridge'
 
 import { componentDraws, type PathCache } from './componentDraws'
@@ -159,7 +159,7 @@ export function GlyphCanvas({
   // the strings only change when the kernel answers, so each one is parsed
   // once and reused for every frame of a drag.
   const pathCache = useRef<PathCache>(new Map())
-  const textPathCache = useRef(new Map<string, Path2D>())
+  const textPaint = useMemo(() => new TextCanvasPaint(), [])
   const visibleSignature = useRef('')
   const runOrigin = useRef<{
     fitKey: string
@@ -193,9 +193,9 @@ export function GlyphCanvas({
       editing.components,
       pathCache.current,
     )
-    const surrounding = current.textRun
-      ? surroundingGlyphs(current.textRun, textPathCache.current)
-      : []
+    const passive = current.textRun
+      ? textPaint.prepare(current.textRun, viewport, source === null)
+      : null
     // Dev builds time every frame so the 60 fps target of design spec §13 can
     // be measured from the running app rather than asserted.
     const started = import.meta.env.DEV ? performance.now() : 0
@@ -241,11 +241,13 @@ export function GlyphCanvas({
             master: source.master,
           }
         : undefined,
-      surrounding,
-      hideActive: current.textRun?.mode === 'text',
+      surrounding: passive?.surrounding,
+      hideActive:
+        current.textRun !== null &&
+        (current.textRun.mode === 'text' || source === null),
     })
     if (current.textRun) {
-      const visible = visibleCanvasRun(current.textRun, viewport)
+      const visible = passive?.visible ?? []
       const signature = visible.join(',')
       if (signature !== visibleSignature.current) {
         visibleSignature.current = signature
@@ -253,7 +255,7 @@ export function GlyphCanvas({
       }
     }
     if (import.meta.env.DEV) recordPaint(performance.now() - started)
-  }, [controller, source, viewport])
+  }, [controller, source, textPaint, viewport])
 
   useEffect(() => {
     controller.setCallbacks({
@@ -391,8 +393,8 @@ export function GlyphCanvas({
     draw()
   }, [draw, fitKey, onZoomChange, textRun, viewport])
 
-  // Refresh the draw inputs and repaint whenever anything visible changes.
-  useEffect(() => {
+  // Refresh inputs before any sizing/origin effect draws the new run.
+  useLayoutEffect(() => {
     frame.current = {
       scene,
       theme,
@@ -469,7 +471,13 @@ export function GlyphCanvas({
       }
       const input = pointerInput(event)
       const run = frame.current.textRun
-      if (run && input.button === 0 && !spaceRef.current.held) {
+      if (
+        run &&
+        input.button === 0 &&
+        !spaceRef.current.held &&
+        tool !== 'hand' &&
+        tool !== 'zoom'
+      ) {
         const index = hitCanvasRun(run, viewport, input)
         if (
           index !== null &&
@@ -482,7 +490,7 @@ export function GlyphCanvas({
       }
       controller.pointerDown(input)
     },
-    [controller, pointerInput, viewport],
+    [controller, pointerInput, tool, viewport],
   )
 
   const onPointerMove = useCallback(
@@ -518,6 +526,14 @@ export function GlyphCanvas({
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLCanvasElement>) => {
       const modifiers = modifiersOf(event)
+      const run = frame.current.textRun
+      if (run?.onMetricKey?.(event)) {
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
+      if (run?.mode === 'text' && event.key !== ' ' && event.key !== 'Escape')
+        return
       if (event.key === ' ' && !modifiers.mod && !modifiers.alt) {
         event.preventDefault()
         if (event.repeat) return

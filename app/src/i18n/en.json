@@ -1067,5 +1067,11 @@
       "glyphs": "Glyph list",
       "filterHint": "The Font tab's current filter."
     }
+  },
+  "textView": {
+    "metricsUndo": "Adjust sidebearings",
+    "runCount": "{{count}} shaped glyphs",
+    "textStatus": "{{count}} characters",
+    "previewMenu": "Text preview strip"
   }
 }

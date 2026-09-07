@@ -27,7 +27,9 @@ export function StatusBar() {
   const selection = useEditorStore((state) => state.selection)
   const snapping = useEditorStore((state) => state.snapping)
   const onGlyphTab = tab?.kind === 'glyph'
-  const glyphScene = onGlyphTab ? (activeGlyph?.scene ?? null) : null
+  const inTextMode = tab?.textState?.mode === 'text'
+  const glyphScene =
+    onGlyphTab && !inTextMode ? (activeGlyph?.scene ?? null) : null
 
   return (
     <div
@@ -64,6 +66,15 @@ export function StatusBar() {
             </span>
           ) : null}
           <span className={styles.statusSpacer} />
+          {inTextMode && (
+            <span className={styles.statusNumeric}>
+              {t('textView.textStatus', {
+                count: Array.from(tab?.textState?.text ?? '').length,
+              })}{' '}
+              ·{' '}
+              {t('textView.runCount', { count: tab?.textState?.runCount ?? 0 })}
+            </span>
+          )}
           {glyphScene ? (
             <>
               <span className={styles.statusName}>{glyphScene.name}</span>

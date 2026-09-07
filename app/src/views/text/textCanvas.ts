@@ -13,6 +13,9 @@ export interface TextCanvasRun {
   unitsPerEm: number
   fitBox: FontBox
   requestedScale: number
+  onMetricKey?: (
+    event: KeyboardEvent | React.KeyboardEvent<HTMLCanvasElement>,
+  ) => boolean
   onActivate: (index: number) => void
   onExitEdit: () => void
   onVisibleIndexes: (indexes: readonly number[]) => void

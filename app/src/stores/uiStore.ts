@@ -22,6 +22,7 @@ export type TabKind = 'font' | 'glyph' | 'fontinfo'
 export interface TextTabState {
   readonly text: string
   readonly activeIndex: number | null
+  readonly runCount?: number
   readonly mode: 'text' | 'edit'
   readonly master: MasterId | null
   readonly size: number
