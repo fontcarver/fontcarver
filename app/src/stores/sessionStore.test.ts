@@ -179,7 +179,10 @@ describe('sessionStore.close', () => {
   })
 
   it('closes a clean document without asking', async () => {
-    const transport = createMockTransport({ 'session.close': () => null })
+    const transport = createMockTransport({
+      'doc.summary': () => makeSummary({ dirty: false }),
+      'session.close': () => null,
+    })
     setTransport(transport)
     useSessionStore.setState({ docs: [makeSummary({ dirty: false })] })
 
@@ -192,14 +195,17 @@ describe('sessionStore.close', () => {
 
 describe('sessionStore dirty close', () => {
   it('asks before closing a dirty document instead of discarding it', async () => {
-    const transport = createMockTransport({ 'session.close': () => null })
+    const transport = createMockTransport({
+      'doc.summary': () => makeSummary({ dirty: true }),
+      'session.close': () => null,
+    })
     setTransport(transport)
     useSessionStore.setState({ docs: [makeSummary({ dirty: true })] })
 
     await useSessionStore.getState().requestClose(1)
 
     expect(useUiStore.getState().closePrompt).toEqual({ doc: 1 })
-    expect(transport.calls).toHaveLength(0)
+    expect(transport.calls.map((call) => call.method)).toEqual(['doc.summary'])
     expect(useSessionStore.getState().docs).toHaveLength(1)
   })
 

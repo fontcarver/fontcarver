@@ -4,6 +4,7 @@ import { call, onDocumentEvent, type DocId, type DocSummary } from '../api'
 import { i18n } from '../i18n'
 import { warningMessage } from '../i18n/warnings'
 import { choosePath, hasNativeFileDialog } from '../shell/nativeDialogs'
+import { withSettledDocument } from '../editor/documentPersistence'
 
 import { useDocumentStore } from './documentStore'
 import { activeDocId, reportError, tabId, useUiStore } from './uiStore'
@@ -71,6 +72,19 @@ function announceWarnings(summary: DocSummary): void {
         return i18n.t(key, options)
       }),
     })
+}
+
+/** Called inside the document barrier after the close decision is made. */
+async function closeDocument(doc: DocId): Promise<void> {
+  await call('session.close', { doc })
+  const ui = useUiStore.getState()
+  ui.closeTabsForDoc(doc)
+  if (ui.closePrompt?.doc === doc) ui.setClosePrompt(null)
+  if (ui.pathPrompt?.doc === doc) ui.setPathPrompt(null)
+  useDocumentStore.getState().forget(doc)
+  useSessionStore.setState((state) => ({
+    docs: state.docs.filter((entry) => entry.doc !== doc),
+  }))
 }
 
 /** Creates the initial, action-free part of the session state. */
@@ -206,7 +220,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       return false
     }
     try {
-      const saved = await call('session.save', { doc, path: asPath ?? null })
+      const saved = await withSettledDocument(doc, () =>
+        call('session.save', { doc, path: asPath ?? null }),
+      )
       set((state) => ({ docs: upsert(state.docs, saved) }))
       useUiStore.getState().pushToast({
         kind: 'info',
@@ -252,26 +268,26 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   close: async (doc) => {
     try {
-      await call('session.close', { doc })
+      await withSettledDocument(doc, () => closeDocument(doc))
     } catch (error) {
       reportError(error)
       return
     }
-    const ui = useUiStore.getState()
-    ui.closeTabsForDoc(doc)
-    if (ui.closePrompt?.doc === doc) ui.setClosePrompt(null)
-    if (ui.pathPrompt?.doc === doc) ui.setPathPrompt(null)
-    useDocumentStore.getState().forget(doc)
-    set((state) => ({ docs: state.docs.filter((entry) => entry.doc !== doc) }))
   },
 
   requestClose: async (doc) => {
-    const summary = get().docs.find((entry) => entry.doc === doc)
-    if (summary?.dirty) {
-      useUiStore.getState().setClosePrompt({ doc })
-      return
+    try {
+      await withSettledDocument(doc, async () => {
+        // The last edit's event may still be in transit. Ask the kernel after
+        // finishing tools before deciding whether closing would discard work.
+        const summary = await call('doc.summary', { doc })
+        set((state) => ({ docs: upsert(state.docs, summary) }))
+        if (summary.dirty) useUiStore.getState().setClosePrompt({ doc })
+        else await closeDocument(doc)
+      })
+    } catch (error) {
+      reportError(error)
     }
-    await get().close(doc)
   },
 
   recover: async (autosavePath) => {

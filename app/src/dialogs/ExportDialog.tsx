@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { withSettledDocument } from '../editor/documentPersistence'
 
 import {
   call,
@@ -148,11 +149,13 @@ export function ExportDialog({ summary }: ExportDialogProps) {
     // Show the busy line at once: the first kernel progress event only arrives
     // once compilation has started, which on a large font is not immediate.
     useProgressStore.getState().begin(summary.doc)
-    void call('session.export', {
-      doc: summary.doc,
-      path: path.trim(),
-      options: exportOptions,
-    })
+    void withSettledDocument(summary.doc, () =>
+      call('session.export', {
+        doc: summary.doc,
+        path: path.trim(),
+        options: exportOptions,
+      }),
+    )
       .then(setReport)
       .catch((error: unknown) => setFailure(noticeFor(error)))
       .finally(() => {

@@ -28,7 +28,10 @@ afterEach(() => {
 
 describe('tabActions', () => {
   it('closes the document when its Font tab is closed', async () => {
-    const transport = createMockTransport({ 'session.close': () => null })
+    const transport = createMockTransport({
+      'doc.summary': () => makeSummary({ dirty: false }),
+      'session.close': () => null,
+    })
     setTransport(transport)
     useSessionStore.setState({ docs: [makeSummary()] })
     useUiStore.getState().openTab({ kind: 'font', doc: 1 })
