@@ -1,5 +1,18 @@
 # SDD ledger — plan: docs/superpowers/plans/2026-09-03-p1-outline-editing.md
 
+## Final status — 2026-09-07
+
+P1 implementation, translation, headless acceptance and final review are complete.
+Production candidate `2e53ba6`: all three final blockers fixed and approved;
+104 app files / 930 tests and 21 headless e2e tests passed with no skips. Final
+Rust formatting/Clippy, nine preservation regressions and release/embedded builds
+passed. Native interaction remains paused/unverified per the user's instruction;
+release packaging is untested. No P2, main merge or push. All 14 clean merged
+temporary worktrees were removed; the desktop artifact remains in root target/
+p1-acceptance. Stop after P1. See final-verification.md and docs/p1-acceptance.md.
+This final text ledger is archived under docs/superpowers/ledgers before the
+ignored workspace is removed. Entries below are historical execution records.
+
 Spec: docs/superpowers/specs/2026-09-03-fontworkshop-design.md (binding). Branch: p1-outline-editing (from main cd12fd6). Parallel kernel tasks run in .worktrees/p1-t1 (fw-geom), p1-t3 (fw-compile), p1-t4 (fw-formats), p1-t10 (P0 kernel backlog) — disjoint crates; T2 waits for T1; T5 waits for T2/T3/T4/T10.
 
 ## Pre-flight scan (2026-09-03)
