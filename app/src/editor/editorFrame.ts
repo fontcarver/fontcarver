@@ -71,6 +71,7 @@ export interface FrameState {
   aside?: {
     hud?: string | null
     metrics?: { width: number; lsb: number; rsb: number } | null
+    preview?: EditorPreview | null
     alignX?: number | null
     alignY?: number | null
   } | null
@@ -189,6 +190,7 @@ export function frameHud(state: FrameState): string | null {
 
 /** Builds the whole frame description for one paint. */
 export function buildFrame(state: FrameState): EditorFrame {
+  const preview = state.preview ?? state.aside?.preview ?? null
   const overlay: EditingOverlay = {
     marquee: state.band,
     snap: state.snap?.point ?? null,
@@ -199,9 +201,9 @@ export function buildFrame(state: FrameState): EditorFrame {
   }
   const tool = state.tool ?? NO_TOOL_OVERLAY
   return {
-    contours: state.preview?.contours ?? null,
-    anchors: state.preview?.anchors ?? null,
-    components: state.preview?.components ?? null,
+    contours: preview?.contours ?? null,
+    anchors: preview?.anchors ?? null,
+    components: preview?.components ?? null,
     tool,
     selected:
       state.selection.size === 0

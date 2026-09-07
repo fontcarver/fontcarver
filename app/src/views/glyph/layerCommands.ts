@@ -188,11 +188,14 @@ export function registerLayerCommands(): void {
         // The copy needs a name no glyph holds; the kernel is the authority on
         // what exists, so the candidates are checked against a search of the
         // stem rather than against whatever the interface has cached.
-        void call('glyphs.search', {
-          doc: active.doc,
-          query: source,
-          limit: 64,
-        })
+        void Promise.resolve(activeEditor()?.settle())
+          .then(() =>
+            call('glyphs.search', {
+              doc: active.doc,
+              query: source,
+              limit: 64,
+            }),
+          )
           .then((cells) => {
             const taken = new Set(cells.map((cell) => cell.name))
             const name = duplicateName(source, taken)
@@ -214,7 +217,6 @@ export function registerLayerCommands(): void {
           )
           .catch(reportError)
           .finally(() => {
-            activeEditor()?.settle()
             active.reload()
           })
       },

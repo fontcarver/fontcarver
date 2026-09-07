@@ -39,6 +39,8 @@ export interface AsideContext {
   after: () => Promise<unknown> | undefined
   /** Closes any coalesced run before a single-shot `doc.apply`. */
   settle: () => Promise<void>
+  /** Registers a closing gesture with the controller's shared edit gate. */
+  gate: (closing: Promise<unknown>) => Promise<void>
   onError: (error: unknown) => void
   onReload: () => void
   repaint: () => void
@@ -50,6 +52,15 @@ export interface AsideContext {
 export class AsideGestures {
   private readonly context: AsideContext
   private metrics: MetricsDrag | null = null
+  private metricsKey: string | null = null
+  private closingMetrics: {
+    gesture: MetricsDrag
+    key: string
+    cancel: boolean
+  } | null = null
+  /** Last committed preview, retained until the authoritative reload lands. */
+  private settledMetrics: { gesture: MetricsDrag; key: string } | null = null
+  private metricClosures = 0
   private ruler: RulerGuideDrag | null = null
 
   constructor(context: AsideContext) {
@@ -58,7 +69,7 @@ export class AsideGestures {
 
   /** Whether a gesture that changes the document is live. */
   get editing(): boolean {
-    return this.metrics !== null
+    return this.metrics !== null || this.metricClosures > 0
   }
 
   /** Whether any of these gestures currently owns the pointer. */
@@ -69,6 +80,11 @@ export class AsideGestures {
   /** The cursor to show over a metric line, or `null` for none. */
   cursorAt(at: Point2 | null): string | null {
     return this.handleAt(at) === null ? null : METRIC_CURSOR
+  }
+
+  /** New kernel data has reconciled any optimistic completed metrics edit. */
+  sourceChanged(): void {
+    this.settledMetrics = null
   }
 
   /**
@@ -123,32 +139,39 @@ export class AsideGestures {
     const gesture = this.metrics
     if (!gesture) return false
     this.metrics = null
-    void gesture
-      .cancel()
-      .catch((error: unknown) => this.context.onError(error))
-      .finally(() => {
-        this.context.publishEditing()
-        this.context.onReload()
-      })
+    void this.closeMetrics(gesture, true)
     this.context.repaint()
     return true
   }
 
+  /** Finishes an abandoned live metrics gesture before another edit starts. */
+  settle(): Promise<void> | null {
+    return this.metrics ? this.finishMetrics() : null
+  }
+
   /** The view is going away: close whatever is open. */
   dispose(): void {
-    void this.metrics?.cancel()
+    if (this.metrics) void this.closeMetrics(this.metrics, true)
     this.metrics = null
     this.ruler = null
   }
 
   /** What these gestures contribute to the painted frame. */
   frame(): FrameState['aside'] {
-    if (this.metrics)
+    const source = this.context.source()
+    const key = source ? this.sourceKey(source) : null
+    const closing =
+      this.closingMetrics?.key === key && !this.closingMetrics.cancel
+        ? this.closingMetrics.gesture
+        : null
+    const settled =
+      this.settledMetrics?.key === key ? this.settledMetrics.gesture : null
+    const metrics = this.metrics ?? closing ?? settled
+    if (metrics)
       return {
-        hud: this.context
-          .labels()
-          .metricHud(this.metrics.handle, this.metrics.value),
-        metrics: this.metrics.preview,
+        hud: this.context.labels().metricHud(metrics.handle, metrics.value),
+        metrics: metrics.preview,
+        preview: metrics.geometryPreview,
       }
     if (this.ruler)
       return { alignX: this.ruler.previewX, alignY: this.ruler.previewY }
@@ -158,7 +181,12 @@ export class AsideGestures {
   private handleAt(at: Point2 | null) {
     const source = this.context.source()
     if (!at || !source) return null
-    return metricsHit(source.metrics, this.context.viewport, at)
+    const prior = this.priorMetrics(source)
+    return metricsHit(
+      prior ? { ...source.metrics, ...prior.preview } : source.metrics,
+      this.context.viewport,
+      at,
+    )
   }
 
   private startMetrics(at: Point2): boolean {
@@ -166,42 +194,87 @@ export class AsideGestures {
     const source = this.context.source()
     const handle = this.handleAt(at)
     if (!target || !source || !handle) return false
+    const prior = this.priorMetrics(source)
     this.metrics = new MetricsDrag({
       doc: target.doc,
       glyph: target.glyph,
       layer: target.layer,
       handle,
       origin: this.context.viewport.toFont(at).x,
-      start: {
-        width: source.outline.width,
-        lsb: source.outline.lsb,
-        rsb: source.outline.rsb,
-      },
+      start: prior
+        ? prior.preview
+        : {
+            width: source.outline.width,
+            lsb: source.outline.lsb,
+            rsb: source.outline.rsb,
+          },
+      outline: prior
+        ? {
+            ...source.outline,
+            contours: [...prior.geometryPreview.contours],
+            anchors: [...prior.geometryPreview.anchors],
+            components: [...prior.geometryPreview.components],
+          }
+        : source.outline,
       label: this.context.labels().setMetrics,
       after: this.context.after(),
       onError: this.context.onError,
     })
+    this.metricsKey = this.sourceKey(source)
     this.context.publishEditing()
     this.context.repaint()
     return true
   }
 
-  private async finishMetrics(): Promise<void> {
+  private finishMetrics(): Promise<void> {
     const gesture = this.metrics
-    if (!gesture) return
+    if (!gesture) return Promise.resolve()
     this.metrics = null
-    let changed = true
-    try {
-      changed = await gesture.finish()
-    } catch (error) {
-      this.context.onError(error)
-    } finally {
-      this.context.publishEditing()
-      // A gesture that failed part-way leaves the document in a state only the
-      // kernel knows, so it is refetched even though nothing "changed".
-      if (changed || gesture.failed) this.context.onReload()
-      else this.context.repaint()
-    }
+    return this.closeMetrics(gesture, false)
+  }
+
+  private closeMetrics(gesture: MetricsDrag, cancel: boolean): Promise<void> {
+    const key = this.metricsKey ?? this.currentSourceKey()
+    this.metricsKey = null
+    this.closingMetrics = { gesture, key, cancel }
+    this.metricClosures += 1
+    this.context.publishEditing()
+    const closing = (async () => {
+      let changed = true
+      try {
+        if (cancel) await gesture.cancel()
+        else changed = await gesture.finish()
+      } catch (error) {
+        this.context.onError(error)
+      } finally {
+        this.metricClosures -= 1
+        if (this.closingMetrics?.gesture === gesture) this.closingMetrics = null
+        if (!cancel && changed && !gesture.failed)
+          this.settledMetrics = { gesture, key }
+        this.context.publishEditing()
+        // A gesture that failed part-way leaves the document in a state only
+        // the kernel knows, so it is refetched even without a complete edit.
+        if (cancel || changed || gesture.failed) this.context.onReload()
+        else this.context.repaint()
+      }
+    })()
+    return this.context.gate(closing)
+  }
+
+  private priorMetrics(source: EditorSource): MetricsDrag | null {
+    const key = this.sourceKey(source)
+    if (this.closingMetrics?.key === key && !this.closingMetrics.cancel)
+      return this.closingMetrics.gesture
+    return this.settledMetrics?.key === key ? this.settledMetrics.gesture : null
+  }
+
+  private currentSourceKey(): string {
+    const source = this.context.source()
+    return source ? this.sourceKey(source) : ''
+  }
+
+  private sourceKey(source: EditorSource): string {
+    return JSON.stringify([source.doc, source.glyph, source.outline.layer])
   }
 
   private startRuler(at: Point2, modifiers: Modifiers): boolean {

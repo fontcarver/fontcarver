@@ -13,9 +13,11 @@
  * sends the value rather than a delta the way `MovePoints` has to.
  */
 
-import type { Command, DocId } from '../../api'
+import type { Command, DocId, LayerOutline } from '../../api'
 import type { Point2, Viewport } from '../../canvas/Viewport'
+import { composeAffine, type Affine } from '../../editor/affine'
 import { EditSession, type Scheduler } from '../../editor/editSession'
+import type { EditorPreview } from '../../editor/editorTypes'
 
 import type { SceneMetrics } from './glyphScene'
 
@@ -77,6 +79,8 @@ export interface MetricsDragOptions {
   /** Font-space x of the pointer when it went down. */
   origin: number
   start: StartMetrics
+  /** Stored geometry translated by an LSB edit exactly as the kernel does. */
+  outline: LayerOutline
   /** Undo label, already translated. */
   label: string
   scheduler?: Scheduler
@@ -152,6 +156,13 @@ export class MetricsDrag {
     return { ...start, width: this.current }
   }
 
+  /** Geometry the canvas should draw while this metrics edit is live. */
+  get geometryPreview(): EditorPreview {
+    const delta =
+      this.handle === 'lsb' ? this.current - this.options.start.lsb : 0
+    return metricsGeometryPreview(this.options.outline, delta)
+  }
+
   /** The pointer moved; `coarse` is the ⇧ modifier's ten-unit step. */
   move(fontX: number, coarse: boolean): void {
     const next = metricValue(
@@ -189,5 +200,49 @@ export class MetricsDrag {
         rsb: this.handle === 'rsb' ? this.current : null,
       },
     }
+  }
+}
+
+/**
+ * Applies the geometry half of `SetMetrics { lsb }` optimistically.
+ *
+ * The kernel left-multiplies every component by the translation, moves every
+ * contour point and anchor, and leaves geometry alone for RSB/width edits.
+ */
+export function metricsGeometryPreview(
+  outline: LayerOutline,
+  delta: number,
+): EditorPreview {
+  const translation: Affine = [1, 0, 0, 1, delta, 0]
+  return {
+    contours: outline.contours.map((contour) => ({
+      ...contour,
+      points: contour.points.map((point) => ({
+        ...point,
+        x: point.x + delta,
+      })),
+    })),
+    anchors: outline.anchors.map((anchor) => ({
+      ...anchor,
+      x: anchor.x + delta,
+    })),
+    components: outline.components.map((view) => ({
+      ...view,
+      component: {
+        ...view.component,
+        transform: composeAffine(
+          translation,
+          view.component.transform as Affine,
+        ),
+      },
+      bbox: view.bbox
+        ? [
+            view.bbox[0] + delta,
+            view.bbox[1],
+            view.bbox[2] + delta,
+            view.bbox[3],
+          ]
+        : null,
+    })),
   }
 }

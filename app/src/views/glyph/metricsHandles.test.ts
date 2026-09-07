@@ -7,6 +7,12 @@ import {
   createEditingTransport,
   type MockTransport,
 } from '../../test/mockTransport'
+import {
+  makeContour,
+  makeLayer,
+  makeLayerOutline,
+  makePoint,
+} from '../../test/fontFixtures'
 
 import type { SceneMetrics } from './glyphScene'
 import {
@@ -99,6 +105,7 @@ describe('MetricsDrag', () => {
         handle,
         origin: 40,
         start: { width: 600, lsb: 40, rsb: 60 },
+        outline: makeLayerOutline(makeLayer()),
         label: 'Set metrics',
         scheduler: immediateScheduler,
       }),
@@ -150,6 +157,54 @@ describe('MetricsDrag', () => {
     const { gesture } = drag('lsb')
     gesture.move(90, false)
     expect(gesture.preview).toEqual({ width: 650, lsb: 90, rsb: 60 })
+  })
+
+  it('previews the kernel-equivalent LSB translation for all geometry', () => {
+    setTransport(createEditingTransport())
+    const sourceLayer = makeLayer({
+      contours: [makeContour([makePoint(40, 0), makePoint(140, 0)])],
+      anchors: [{ name: 'top', x: 90, y: 200 }],
+    })
+    const outline = makeLayerOutline(sourceLayer, {
+      lsb: 40,
+      components: [
+        {
+          component: {
+            base: 'acute',
+            transform: [0, 2, -3, 0, 70, 80],
+            anchor: null,
+            auto_align: false,
+            use_my_metrics: false,
+            round_to_grid: false,
+            smart: null,
+            point_match: null,
+          },
+          path: 'M0 0L10 0L0 10Z',
+          bbox: [50, 60, 90, 120],
+        },
+      ],
+    })
+    const gesture = new MetricsDrag({
+      doc: 1,
+      glyph: 'A',
+      layer: sourceLayer.id,
+      handle: 'lsb',
+      origin: 40,
+      start: { width: 600, lsb: 40, rsb: 460 },
+      outline,
+      label: 'Set metrics',
+      scheduler: immediateScheduler,
+    })
+    gesture.move(65, false)
+
+    expect(gesture.geometryPreview.contours[0]?.points[0]?.x).toBe(65)
+    expect(gesture.geometryPreview.anchors[0]?.x).toBe(115)
+    expect(gesture.geometryPreview.components[0]?.component.transform).toEqual([
+      0, 2, -3, 0, 95, 80,
+    ])
+    expect(gesture.geometryPreview.components[0]?.bbox).toEqual([
+      75, 60, 115, 120,
+    ])
   })
 
   it('carries the advance with a right sidebearing too', () => {

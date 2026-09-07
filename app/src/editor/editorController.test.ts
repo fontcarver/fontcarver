@@ -210,6 +210,12 @@ async function settle(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0))
 }
 
+/** Lets the production animation-frame scheduler put an apply on the wire. */
+async function settleFrame(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  await settle()
+}
+
 describe('dragging an anchor on its own', () => {
   it('commits the TransformSelection that carries it', async () => {
     const { controller, transport } = makeController(createEditingTransport())
@@ -1021,6 +1027,185 @@ describe('EditorController against the kernel token rules', () => {
     controller.setSelection(
       new Map([[`node:0:${point}`, { kind: 'node', contour: 0, point }]]),
     )
+
+  function heldMetrics() {
+    let release = () => undefined as void
+    const until = new Promise<void>((resolve) => {
+      release = () => resolve()
+    })
+    const made = makeController(
+      createEditingTransport({ hold: { on: 'doc.edit_apply', until } }),
+    )
+    return { ...made, release }
+  }
+
+  it('keeps an immediate second metrics drag behind the first close', async () => {
+    const { controller, transport, recorded, release } = heldMetrics()
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(10, 200))
+    controller.pointerUp(at(10, 200))
+    await settle()
+
+    // The first drag's final optimistic frame remains the visible and logical
+    // baseline until its reload arrives, so the second grabs x=10 and adds 20.
+    controller.pointerDown(at(10, 200))
+    controller.pointerMove(at(30, 200))
+    controller.pointerUp(at(30, 200))
+    await settle()
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+    ])
+
+    release()
+    await controller.settle()
+    await settle()
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(
+      transport.calls
+        .filter((entry) => entry.method === 'doc.edit_apply')
+        .map(
+          (entry) =>
+            (entry.params as { command: { SetMetrics: { lsb: number } } })
+              .command.SetMetrics.lsb,
+        ),
+    ).toEqual([10, 30])
+    expect(recorded.errors).toEqual([])
+  })
+
+  it('keeps a panel field commit behind a metrics drag close', async () => {
+    const { controller, transport, recorded, release } = heldMetrics()
+    const stop = registerEditor(controller)
+    try {
+      controller.pointerDown(at(0, 200))
+      controller.pointerMove(at(10, 200))
+      controller.pointerUp(at(10, 200))
+      await settle()
+      commitField(
+        { doc: 1, glyph: 'a', layer: 'layer-1' },
+        {
+          SetMetrics: {
+            glyph: 'a',
+            layer: 'layer-1',
+            width: 620,
+            lsb: null,
+            rsb: null,
+          },
+        },
+        'Set metrics',
+        () => undefined,
+      )
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+      ])
+
+      release()
+      await controller.settle()
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+        'doc.edit_end',
+        'doc.apply',
+      ])
+      expect(recorded.errors).toEqual([])
+    } finally {
+      stop()
+    }
+  })
+
+  it('finishes Escape undo before a new command can apply', async () => {
+    const { controller, transport, recorded, release } = heldMetrics()
+    const stop = registerEditor(controller)
+    try {
+      controller.pointerDown(at(0, 200))
+      controller.pointerMove(at(10, 200))
+      await settleFrame()
+      controller.escape()
+      commitField(
+        { doc: 1, glyph: 'a', layer: 'layer-1' },
+        {
+          SetGlyphMeta: {
+            glyph: 'a',
+            export: false,
+            tags: null,
+            note: null,
+          },
+        },
+        'Set export flag',
+        () => undefined,
+      )
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+      ])
+
+      release()
+      await controller.settle()
+      await settle()
+      expect(transport.calls.map((entry) => entry.method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+        'doc.edit_end',
+        'doc.undo',
+        'doc.apply',
+      ])
+      expect(recorded.errors).toEqual([])
+    } finally {
+      stop()
+    }
+  })
+
+  it('starts a drag after Escape from the restored baseline', async () => {
+    const { controller, transport, recorded, release } = heldMetrics()
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(10, 200))
+    await settleFrame()
+    controller.escape()
+    expect(controller.frame().contours).toBeNull()
+
+    controller.pointerDown(at(0, 200))
+    controller.pointerMove(at(20, 200))
+    controller.pointerUp(at(20, 200))
+    await settle()
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+    ])
+
+    release()
+    await controller.settle()
+    await settle()
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.undo',
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(
+      transport.calls
+        .filter((entry) => entry.method === 'doc.edit_apply')
+        .map(
+          (entry) =>
+            (entry.params as { command: { SetMetrics: { lsb: number } } })
+              .command.SetMetrics.lsb,
+        ),
+    ).toEqual([10, 20])
+    expect(recorded.errors).toEqual([])
+  })
 
   it('keeps a second nudge run behind the first one it closes', async () => {
     const { controller, transport, recorded } = makeController(
