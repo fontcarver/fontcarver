@@ -140,13 +140,22 @@ async function mapWithConcurrency<T, R>(
 ): Promise<R[]> {
   const results = new Array<R>(values.length)
   let next = 0
+  let stopped = false
+  let firstFailure: unknown
   const run = async (): Promise<void> => {
-    while (next < values.length) {
-      signal?.throwIfAborted()
+    while (!stopped && next < values.length) {
       const index = next
       next += 1
-      results[index] = await worker(values[index] as T)
-      signal?.throwIfAborted()
+      try {
+        signal?.throwIfAborted()
+        results[index] = await worker(values[index] as T)
+        signal?.throwIfAborted()
+      } catch (error) {
+        if (!stopped) {
+          stopped = true
+          firstFailure = error
+        }
+      }
     }
   }
   const workers = Array.from(
@@ -154,6 +163,7 @@ async function mapWithConcurrency<T, R>(
     () => run(),
   )
   await Promise.all(workers)
+  if (stopped) throw firstFailure
   return results
 }
 
