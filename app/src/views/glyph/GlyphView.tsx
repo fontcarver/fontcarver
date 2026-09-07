@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { TextCanvasRun } from '../text/textCanvas'
 import type { DocSummary, GlyphId } from '../../api'
 import type { EditorSource } from '../../editor/editorController'
+import { activeEditor } from '../../editor/activeEditor'
 import type { ScopedGuide } from '../../editor/hitTest'
 import { changeGlyphTab } from '../../shell/tabActions'
 import { inferCurves } from '../../editor/pathGeometry'
@@ -302,6 +303,25 @@ export function GlyphView({
     [doc, gid, query],
   )
 
+  const changeMaster = useCallback(
+    async (master: string) => {
+      if (gid === undefined) return
+      const id = tabIdentity ?? tabId('glyph', doc, gid)
+      const current = () => {
+        const ui = useUiStore.getState()
+        const tab = ui.tabs.find((tab) => tab.id === id)
+        return ui.activeTab === id && tab?.doc === doc && tab.gid === gid
+      }
+      if (!current()) return
+      const editor = activeEditor()
+      await editor?.prepareTransition()
+      if (!current() || activeEditor() !== editor) return
+      setEditedLayer(null)
+      useDocumentStore.getState().setMaster(doc, master)
+    },
+    [doc, gid, setEditedLayer, tabIdentity],
+  )
+
   useEffect(() => {
     if (gid === undefined) return
     return registerGlyphView({
@@ -338,6 +358,7 @@ export function GlyphView({
         onFit={() => handleRef.current?.fit()}
         onZoom={(factor) => handleRef.current?.zoomBy(factor)}
         onStep={step}
+        onMasterChange={changeMaster}
       />
       <div className={styles.stage}>
         <ToolPalette />
