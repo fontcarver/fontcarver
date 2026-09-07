@@ -68,6 +68,8 @@ export interface TextMetricsRunnerOptions {
   glyph: string
   layer: string
   start: TextMetrics
+  /** Whether sidebearing edits have geometry bounds to move. Defaults to true. */
+  hasOutline?: boolean
   /** Undo label, already translated. */
   label: string
   /** A controller edit that this run must not overtake. */
@@ -142,6 +144,10 @@ export class TextMetricsRunner {
 
   private preview(): TextMetricsPreview {
     const { start } = this.options
+    if (this.options.hasOutline === false) {
+      const width = start.width + this.lsbDelta + this.rsbDelta
+      return { width, lsb: 0, rsb: width, lsbDelta: 0 }
+    }
     return {
       width: start.width + this.lsbDelta + this.rsbDelta,
       lsb: start.lsb + this.lsbDelta,
@@ -152,13 +158,14 @@ export class TextMetricsRunner {
 
   private command(): Command {
     const preview = this.preview()
+    const hasOutline = this.options.hasOutline !== false
     return {
       SetMetrics: {
         glyph: this.options.glyph,
         layer: this.options.layer,
-        width: null,
-        lsb: preview.lsb,
-        rsb: preview.rsb,
+        width: hasOutline ? null : preview.width,
+        lsb: hasOutline ? preview.lsb : null,
+        rsb: hasOutline ? preview.rsb : null,
       },
     }
   }

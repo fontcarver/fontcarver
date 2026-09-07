@@ -193,6 +193,37 @@ describe('TextMetricsRunner', () => {
     expect(metrics.active).toBe(false)
   })
 
+  it('edits empty glyphs as one absolute advance across repeated sides', async () => {
+    const mock = createEditingTransport()
+    const { metrics, previews, frames } = runner(mock, {
+      hasOutline: false,
+      start: { width: 600, lsb: 0, rsb: 600 },
+    })
+
+    metrics.press('lsb', -1)
+    metrics.press('lsb', -10)
+    metrics.press('rsb', 1)
+    frames.flush()
+    await metrics.end()
+
+    expect(previews).toEqual([
+      { width: 599, lsb: 0, rsb: 599, lsbDelta: 0 },
+      { width: 589, lsb: 0, rsb: 589, lsbDelta: 0 },
+      { width: 590, lsb: 0, rsb: 590, lsbDelta: 0 },
+    ])
+    expect(applies(mock).map((entry) => entry.command)).toEqual([
+      {
+        SetMetrics: {
+          glyph: 'A',
+          layer: 'layer-1',
+          width: 590,
+          lsb: null,
+          rsb: null,
+        },
+      },
+    ])
+  })
+
   it('accumulates repeats while the controller gate delays edit_begin', async () => {
     const gate = deferred()
     const mock = createEditingTransport()
