@@ -1,53 +1,42 @@
 # Font Cutter — resume TODO (written 2026-09-05, session paused by the user)
 
-## Active resume (2026-09-07)
+## P1 handoff (2026-09-07)
 
-The user resumed P1 in Codex and requested **Sol for bounded implementation,
-verification and translation; Astra for complex architecture and independent
-review**. This supersedes the historical paused-Codex and Claude-only assignments
-below. The repository now lives at
-`/home/chen/githubprojects/fontpixel/fontcutter`; the moved T8 worktree has been
-repaired. Current dispatches and evidence are recorded in the ledger's
-`resume-2026-09-07.md`.
+**This run is finished. Stop after P1; do not start P2.** Implementation,
+Chinese localisation, headless acceptance and final whole-branch/scoped review
+are complete on `p1-outline-editing`. Production candidate: `2e53ba6`; later
+commits record evidence and keep temporary binaries out of ledger snapshots.
+The repository is `/home/chen/githubprojects/fontpixel/fontcutter`.
 
-**User stop boundary (2026-09-07): finish P1, including acceptance, translation
-and final review, then stop. Do not begin P2. Merging to main remains a separate
-user decision.**
+- T7/T8/T9: complete, including shaped text, local glyph editing, preview,
+  metrics coalescing and source/master handover.
+- Final review's three blockers are fixed and independently approved: save/
+  export/close sequencing, ambiguous TTC preservation and unfinished Pen paths
+  during toolbar master changes.
+- T13: independent Sol translation and separate QA; all 881 keys match.
+- Final app checks: TypeScript, ESLint, Prettier; 104 files / 930 tests passed.
+- Final headless acceptance: 21 passed, no skips, 40.9 s using current release
+  binaries. All three browser gates and actual Source Han grid passed; 300-point
+  drag maximum 5.2 ms meets 8 ms.
+- Rust: prior integrated 453-test run passed; final nine preservation tests and
+  workspace formatting/Clippy passed. Source Han export gate passed narrowly
+  at 58.697 s / 60 s; preserve this qualification.
+- Final release CLI/server and embedded debug desktop builds passed. Desktop
+  artifact retained at `target/p1-acceptance/fontcutter-desktop`.
+- **Native/headed input remains paused and unverified** because the user reported
+  interference. The final desktop artifact was not launched. Release packaging
+  was not tested. No native interaction is authorized by this handoff.
+- All 14 clean, merged temporary worktrees were removed after final review;
+  source branches and the main working directory remain. No main merge, push,
+  branding change, P2 work or historical fixture-history purge was performed.
 
-**Desktop constraint (2026-09-07): user reported test automation competing with
-their input. No headed/native GUI automation, global keyboard/mouse events or
-focus activation. Use isolated headless browser, unit and CLI tests. Remaining
-real-desktop interaction is paused; record only evidence already obtained.**
-
-- T8: reviewed cancellation/source handover and metrics freshness fixes merged
-  (`ee865eb`). Integrated app verification: 92 files / 869 tests passed.
-- T7 minor round: reviewed and merged (`3df91c9`).
-- T9b: complete and merged, including shaped runs, local glyph edits, preview,
-  coalesced metrics and final master-handover correction. All 21 candidate
-  headless tests passed before the final review; final post-fix verification is
-  pending. Sol handled bounded helpers/tests/translation; Astra integrated and
-  independently reviewed the complex boundaries.
-- T12: kernel/CLI and real Source Han release gates passed (open 0.900 s,
-  export 58.697 s). Preliminary browser edit/export/reopen workflows passed;
-  200 frame-paced drag samples had a 1.700 ms maximum. Final post-T9 rerun and
-  desktop smoke remain pending. Reviewed HTTP shaping/export deadlines now
-  allow 120 seconds after initial Source Han shaping took 76.779 seconds.
-- T13: Chinese translation and separate QA are complete, including the final
-  four TextView strings (`56f9408`). The final UI English candidate and Chinese
-  locale have matching 881 keys; integrated verification follows the T9 merge.
-- Whole-branch review found three blockers (persistence sequencing, ambiguous
-  TTC preservation, and inner-toolbar master handover). All three corrections
-  are integrated at `2e53ba6`; final scoped re-review and candidate checks are
-  pending. Rust preservation 9/9 passed independently; formatting, full app
-  static checks and workspace Clippy passed. Final view tests run after the
-  release/desktop builds drain to avoid CPU contention.
-- Finish integrated acceptance and scoped re-review, then stop after P1.
-
-Authoritative state lives in the SDD ledger `.superpowers/sdd/2026-09-03-p1-outline-editing/progress.md`
-(snapshot copies in `docs/superpowers/ledgers/2026-09-03-p1-outline-editing/`). This file is the human-readable
-checklist for the next session. Process: superpowers `subagent-driven-development` (Fable orchestrates only;
-Opus implements/reviews; Sonnet only for small re-reviews; Codex paused until the user re-enables it;
-translation never on Fable). Run `scripts/sdd-snapshot.sh` after every merge.
+Model allocation followed the user's request: Sol for bounded implementation,
+tests, builds and translation; Astra for complex integration and independent
+review. See `docs/p1-acceptance.md` for exact evidence and accepted limitations.
+The final ledger is archived in
+`docs/superpowers/ledgers/2026-09-03-p1-outline-editing/`; the temporary ignored
+SDD workspace is cleaned after its final snapshot. Future work requires a new
+user instruction. The sections below are historical records, not active TODOs.
 
 ## Historical paused-session record (2026-09-05)
 
