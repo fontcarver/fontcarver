@@ -68,6 +68,9 @@ describe('PreviewStrip', () => {
       'data-preview-theme',
       'dark',
     )
+    expect(getComputedStyle(screen.getByRole('status')).color).toBe(
+      getComputedStyle(container.firstElementChild as Element).color,
+    )
     expect(screen.getByText('Recompiling…')).toBeVisible()
     rerender(<PreviewStrip {...callbacks} status="compile-failed" />)
     expect(screen.getByText('Preview unavailable')).toBeVisible()

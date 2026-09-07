@@ -802,15 +802,15 @@
     "directionLtrShort": "LTR",
     "directionRtl": "Right to left",
     "directionRtlShort": "RTL",
-    "directionVertical": "Vertical (P4)",
-    "directionVerticalShort": "TTB",
+    "directionVertical": "Vertical text — coming later",
+    "directionVerticalShort": "Vertical",
     "sample": {
       "label": "Sample text",
       "choose": "Samples…",
       "latin": "Latin pangram",
       "chinese": "Chinese sample",
       "allEncoded": "All encoded glyphs",
-      "kerning": "Kerning pairs (P2)"
+      "kerning": "Kerning pairs — coming later"
     },
     "preview": {
       "label": "Preview",

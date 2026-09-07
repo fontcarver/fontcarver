@@ -76,9 +76,28 @@ describe('TextBar', () => {
     render(<TextBar {...props()} />)
 
     expect(
-      screen.getByRole('option', { name: 'Kerning pairs (P2)' }),
+      screen.getByRole('option', { name: 'Kerning pairs — coming later' }),
     ).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Vertical (P4)' })).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'Vertical text — coming later' }),
+    ).toBeDisabled()
+  })
+
+  it('cancels a focused size edit on Escape without committing on blur', async () => {
+    const user = userEvent.setup()
+    const onSizeChange = vi.fn()
+    render(<TextBar {...props({ onSizeChange })} />)
+    const size = screen.getByRole('textbox', { name: 'Preview size' })
+
+    await user.click(size)
+    await user.clear(size)
+    await user.type(size, '72')
+    expect(size).toHaveFocus()
+    await user.keyboard('{Escape}')
+
+    expect(size).not.toHaveFocus()
+    expect(size).toHaveValue('48')
+    expect(onSizeChange).not.toHaveBeenCalled()
   })
 
   it('rejects malformed sizes and clamps valid values to safe bounds', () => {

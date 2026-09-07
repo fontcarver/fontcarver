@@ -52,6 +52,7 @@ export function TextBar({
   const [sizeDraft, setSizeDraft] = useState(String(size))
   const [sizeInvalid, setSizeInvalid] = useState(false)
   const editingSize = useRef(false)
+  const suppressNextSizeBlur = useRef(false)
 
   useEffect(() => {
     if (!editingSize.current) setSizeDraft(String(size))
@@ -123,6 +124,7 @@ export function TextBar({
           title={sizeInvalid ? t('textControls.sizeInvalid') : undefined}
           onFocus={(event) => {
             editingSize.current = true
+            suppressNextSizeBlur.current = false
             event.currentTarget.select()
           }}
           onChange={(event) => {
@@ -131,6 +133,10 @@ export function TextBar({
           }}
           onBlur={(event) => {
             editingSize.current = false
+            if (suppressNextSizeBlur.current) {
+              suppressNextSizeBlur.current = false
+              return
+            }
             commitSize(event.currentTarget.value)
           }}
           onKeyDown={(event) => {
@@ -140,6 +146,7 @@ export function TextBar({
             } else if (event.key === 'Escape') {
               event.preventDefault()
               editingSize.current = false
+              suppressNextSizeBlur.current = true
               setSizeInvalid(false)
               setSizeDraft(String(size))
               event.currentTarget.blur()

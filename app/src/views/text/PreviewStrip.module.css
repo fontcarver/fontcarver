@@ -43,12 +43,12 @@
   min-width: 0;
   align-items: center;
   gap: var(--space-1);
-  color: var(--color-warning);
+  color: inherit;
   font-size: var(--text-size-xs);
 }
 
 .failed {
-  color: var(--color-danger);
+  font-weight: var(--text-weight-medium);
 }
 
 .statusDot {
@@ -82,7 +82,7 @@
 }
 
 .iconButton:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
+  outline: 2px solid currentcolor;
   outline-offset: 0;
 }
 
