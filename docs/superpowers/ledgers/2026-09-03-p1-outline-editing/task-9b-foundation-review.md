@@ -8,3 +8,9 @@ Verdict: changes required before UI integration.
 2. Promise.all launches unbounded glyphs.search/glyphs.cell calls for every distinct name, including the required All encoded glyphs sample (potentially 65k calls, each scanning the font). Bound normal-text concurrency; for large sets use paginated glyphs.list with exact name matching and chosen master, include_paths:false. Propagate cancellation into layout building so a superseded shape response does not start its entire lookup phase. Test bounded fanout and cancellation before mapping/while pool jobs remain.
 
 Send back to the Sol implementer as a focused followup commit. No UI integration, dependency or Rust changes required for these two corrections. Separately, root scheduled compiled identity retention for post3 fonts; safe unnamed diagnostic remains an appropriate fallback.
+
+## Scoped re-review — 5c8bb04
+
+Both findings addressed: explicit RTL reverses token visual order with original byte positions; lookups use an 8-worker bound and paged 2,000-cell listings above 64 distinct names. AbortSignal prevents superseded results from starting the next mapping stage or queued jobs. The parser now computes source offsets once, avoiding repeated prefix scans on large inputs. Root independently ran 19 tests across the three text modules and Prettier check; all passed.
+
+Verdict: foundation approved for integration. A minor for the UI integration pass: abort remaining pool jobs when one lookup fails normally (not just when externally cancelled), so an error cannot leave unneeded reads draining after the coordinator clears its controller. Current fanout remains bounded; no wrong-document mutation occurs.
