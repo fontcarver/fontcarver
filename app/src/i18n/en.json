@@ -897,6 +897,42 @@
       "component": "component"
     }
   },
+  "textControls": {
+    "bar": "Text controls",
+    "text": "Text",
+    "textPlaceholder": "Type text or /glyphname",
+    "size": "Preview size",
+    "sizeUnit": "px",
+    "sizeInvalid": "Enter a size from 1 to 512 px",
+    "master": "Master",
+    "features": "OpenType features",
+    "direction": "Text direction",
+    "directionLtr": "Left to right",
+    "directionLtrShort": "LTR",
+    "directionRtl": "Right to left",
+    "directionRtlShort": "RTL",
+    "directionVertical": "Vertical text — coming later",
+    "directionVerticalShort": "Vertical",
+    "sample": {
+      "label": "Sample text",
+      "choose": "Samples…",
+      "latin": "Latin pangram",
+      "chinese": "Chinese sample",
+      "allEncoded": "All encoded glyphs",
+      "kerning": "Kerning pairs — coming later"
+    },
+    "preview": {
+      "label": "Preview",
+      "size": "{{size}} px preview",
+      "stale": "Recompiling…",
+      "compileFailed": "Preview unavailable",
+      "dismissStatus": "Dismiss preview status",
+      "useLight": "Use light preview",
+      "useDark": "Use dark preview",
+      "collapse": "Collapse preview",
+      "expand": "Expand preview"
+    }
+  },
   "infoBox": {
     "label": "Info box",
     "toggle": "Collapse info box",

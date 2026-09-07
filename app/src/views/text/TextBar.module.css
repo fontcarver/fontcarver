@@ -1,0 +1,141 @@
+.bar {
+  display: flex;
+  min-width: 0;
+  min-height: 32px;
+  flex: none;
+  flex-wrap: wrap;
+  align-content: center;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 3px var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.textInput,
+.control,
+.toggle {
+  height: var(--control-height);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-size-sm);
+}
+
+.textInput {
+  min-width: 160px;
+  flex: 1 1 280px;
+  padding: 0 var(--space-2);
+}
+
+.control {
+  padding: 0 var(--space-1);
+}
+
+.sample {
+  width: 112px;
+}
+
+.master {
+  width: 100px;
+}
+
+.sizeField {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.sizeInput {
+  width: 62px;
+  padding-right: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sizeInput[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.unit {
+  position: absolute;
+  right: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+  pointer-events: none;
+}
+
+.buttonGroup {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
+.toggle {
+  min-width: 30px;
+  padding: 0 6px;
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-size-xs);
+}
+
+.toggle:first-child {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.toggle:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.toggle + .toggle {
+  margin-left: -1px;
+}
+
+.toggle:hover:not(:disabled) {
+  background: var(--color-hover);
+}
+
+.toggle[aria-pressed='true'] {
+  position: relative;
+  z-index: 1;
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.toggle:disabled,
+.control:disabled {
+  background: var(--color-surface);
+  color: var(--color-text-faint);
+}
+
+.textInput:focus-visible,
+.control:focus-visible,
+.toggle:focus-visible {
+  position: relative;
+  z-index: 2;
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+.srOnly {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .bar {
+    padding-block: var(--space-1);
+  }
+
+  .textInput {
+    flex-basis: 100%;
+  }
+}
