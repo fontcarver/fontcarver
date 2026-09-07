@@ -472,7 +472,7 @@
     "cffHintsNotImported": "导入 CFF 轮廓时未导入各字形的字干和提示蒙版数据",
     "glyphNamesSynthesized": "字体没有可用的字形名称，因此已生成字形名称。",
     "collectionFaceOpened": "{{message}}",
-    "hintingDropped": "已丢弃导入后发生更改的字形中的 TrueType 指令。",
+    "hintingDropped": "导出的字体已移除全部 TrueType 指令。",
     "hintingDroppedGlyphSetChanged": "导出的字形集合或顺序发生变化，因此已丢弃 TrueType 指令。",
     "preservationUnavailable": "文档没有导入来源记录，因此无法保留导入的表。",
     "layoutDropped": "字形顺序发生变化，因此已丢弃导入的排版表。",
