@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Snapshot the gitignored SDD workspace (ledger, briefs, dispatches, reports, reviews)
 # into docs/superpowers/ledgers/<plan>/ and commit, so orchestration state survives
-# session loss, quota pauses and `git clean`. Large review diff packages are skipped.
+# session loss, quota pauses and `git clean`. Only text evidence is copied;
+# temporary review executables, generated fonts, logs and diff packages are skipped.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 for ws in .superpowers/sdd/*/; do
@@ -9,7 +10,10 @@ for ws in .superpowers/sdd/*/; do
   name=$(basename "$ws")
   dest="docs/superpowers/ledgers/$name"
   mkdir -p "$dest"
-  rsync -a --delete --exclude 'review-*.diff' --exclude '*.log' "$ws" "$dest/"
+  rsync -a --delete --delete-excluded \
+    --include '*/' --include '*.md' --include '*.json' --include '*.txt' \
+    --include '*.ts' --include '*.tsx' --include '*.rs' --include '*.mjs' \
+    --exclude '*' "$ws" "$dest/"
 done
 git add docs/superpowers/ledgers
 if ! git diff --cached --quiet; then
