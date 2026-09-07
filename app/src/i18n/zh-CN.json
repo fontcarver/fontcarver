@@ -1067,5 +1067,11 @@
       "glyphs": "字形列表",
       "filterHint": "字体标签页的当前筛选器。"
     }
+  },
+  "textView": {
+    "metricsUndo": "调整侧边距",
+    "runCount": "排版结果包含 {{count}} 个字形",
+    "textStatus": "{{count}} 个字符",
+    "previewMenu": "文本预览栏"
   }
 }
