@@ -85,7 +85,7 @@ test('300-point drag repaints synchronously within eight milliseconds', async ({
     const measurement = await page
       .getByRole('img', { name: /^Glyph A/ })
       .evaluate(
-        (canvas, setup) => {
+        async (canvas, setup) => {
           const globals = globalThis as unknown as {
             __fwEditor?: {
               dragging: boolean
@@ -126,6 +126,11 @@ test('300-point drag repaints synchronously within eight milliseconds', async ({
               ) => unknown
             }
           ).PointerEvent
+          const nextAnimationFrame = (
+            globalThis as unknown as {
+              requestAnimationFrame: (callback: () => void) => number
+            }
+          ).requestAnimationFrame
           const rect = target.getBoundingClientRect()
           const origin = editor.viewportForTest.toScreen(first)
           const dispatch = (
@@ -158,7 +163,10 @@ test('300-point drag repaints synchronously within eight milliseconds', async ({
 
           let previousX = first.x
           let previousY = first.y
-          const move = (sample: number): number => {
+          const move = async (sample: number): Promise<number> => {
+            await new Promise<void>((resolve) =>
+              nextAnimationFrame(() => resolve()),
+            )
             const dx = 4 + sample * 0.03
             const dy = 2 + sample * 0.01
             const paintsBefore = paintStats.count
@@ -177,10 +185,11 @@ test('300-point drag repaints synchronously within eight milliseconds', async ({
             previousY = current.y
             return elapsed
           }
-          for (let sample = 1; sample <= setup.warm; sample += 1) move(sample)
-          const samples = Array.from({ length: setup.measured }, (_, index) =>
-            move(setup.warm + index + 1),
-          )
+          for (let sample = 1; sample <= setup.warm; sample += 1)
+            await move(sample)
+          const samples: number[] = []
+          for (let index = 0; index < setup.measured; index += 1)
+            samples.push(await move(setup.warm + index + 1))
           const final = editor.frame().contours?.[0]?.points[0]
           const paint = [...paintStats.samples]
           const paintCount = paintStats.count
@@ -218,10 +227,12 @@ test('300-point drag repaints synchronously within eight milliseconds', async ({
     const max = sorted.at(-1) ?? 0
     const overBudget = measurement.samples.filter((sample) => sample > 8).length
     const paint = [...measurement.paint].sort((a, b) => a - b)
+    const rendererMax = paint.at(-1) ?? 0
     console.log(
-      `pointer-to-paint 300 points/${MEASURED_SAMPLES} samples: median=${median.toFixed(3)}ms p95=${p95.toFixed(3)}ms max=${max.toFixed(3)}ms over8=${overBudget} pointerDown=${measurement.pointerDown.toFixed(3)}ms rendererP95=${percentile(paint, 95).toFixed(3)}ms`,
+      `pointer-to-paint 300 points/${MEASURED_SAMPLES} frame-paced samples: median=${median.toFixed(3)}ms p95=${p95.toFixed(3)}ms max=${max.toFixed(3)}ms over8=${overBudget} pointerDown=${measurement.pointerDown.toFixed(3)}ms rendererP95=${percentile(paint, 95).toFixed(3)}ms rendererMax=${rendererMax.toFixed(3)}ms`,
     )
     expect(p95).toBeLessThanOrEqual(8)
+    expect(max).toBeLessThanOrEqual(8)
     expect(final.x).not.toBe(before.contours[0]?.points[0]?.x)
     expect(final.y).not.toBe(before.contours[0]?.points[0]?.y)
 
