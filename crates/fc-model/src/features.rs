@@ -1,6 +1,34 @@
 //! Editable OpenType feature source.
 
-use serde::{Deserialize, Serialize};
+use std::{collections::HashSet, fmt};
+
+use serde::{Deserialize, Deserializer, Serialize};
+
+mod assembly;
+
+pub use assembly::{AssembledFea, FeaSourceLocation, FeaSourceMapping, FeatureSourceKind};
+
+/// Persistent identity of a prefix, glyph class or feature block.
+///
+/// Clone preserves identity for document snapshots. Creating a new source item
+/// uses a fresh ID; tags, names, text and source ordering do not define identity.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
+pub struct FeatureSourceId(pub String);
+
+impl Default for FeatureSourceId {
+    fn default() -> Self {
+        Self(uuid::Uuid::new_v4().simple().to_string())
+    }
+}
+
+impl fmt::Display for FeatureSourceId {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
 
 /// Authoritative representation for OpenType layout data.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -19,6 +47,9 @@ pub enum FeaturesSource {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub struct FeatureBlock {
+    /// Stable source item identity, generated for documents saved without IDs.
+    #[serde(default)]
+    pub id: FeatureSourceId,
     /// Feature tag or prefix name.
     #[serde(default)]
     pub tag: String,
@@ -41,6 +72,9 @@ pub struct FeatureBlock {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub struct FeatureClass {
+    /// Stable source item identity, generated for documents saved without IDs.
+    #[serde(default)]
+    pub id: FeatureSourceId,
     /// Class name without the leading at-sign.
     #[serde(default)]
     pub name: String,
@@ -53,7 +87,7 @@ pub struct FeatureClass {
 }
 
 /// All editable feature source associated with a font.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub struct Features {
@@ -79,66 +113,54 @@ impl Features {
     /// This preserves the existing source spelling without parsing or loading
     /// includes. Callers must validate the result before interpreting it.
     pub fn to_fea(&self) -> String {
-        if self.source_of_truth != FeaturesSource::Fea {
-            return String::new();
+        self.assemble_fea().text
+    }
+}
+
+impl<'de> Deserialize<'de> for Features {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Default, Deserialize)]
+        #[serde(default)]
+        struct StoredFeatures {
+            prefixes: Vec<FeatureBlock>,
+            classes: Vec<FeatureClass>,
+            features: Vec<FeatureBlock>,
+            source_of_truth: FeaturesSource,
         }
-        let mut source = String::new();
-        for prefix in self.prefixes.iter().filter(|block| !block.disabled) {
-            source.push_str(&prefix.code);
-            source.push('\n');
+
+        let stored = StoredFeatures::deserialize(deserializer)?;
+        let mut result = Self {
+            prefixes: stored.prefixes,
+            classes: stored.classes,
+            features: stored.features,
+            source_of_truth: stored.source_of_truth,
+        };
+        // Before P2b the UFO importer stored an entire file in this one synthetic
+        // feature block. Restrict migration to its exact shape so moving it to
+        // prefixes cannot reorder source relative to user-authored blocks.
+        if result.source_of_truth == FeaturesSource::Fea
+            && result.prefixes.is_empty()
+            && result.classes.is_empty()
+            && matches!(result.features.as_slice(), [block]
+                if block.tag == "fea" && !block.automatic && block.notes.is_empty())
+        {
+            result.prefixes = std::mem::take(&mut result.features);
         }
-        for class in &self.classes {
-            source.push('@');
-            source.push_str(class.name.trim_start_matches('@'));
-            source.push_str(" = ");
-            append_class_body(&mut source, &class.code);
-            source.push_str(";\n");
-        }
-        for feature in self.features.iter().filter(|block| !block.disabled) {
-            let trimmed = feature.code.trim();
-            if trimmed.starts_with("feature ") {
-                source.push_str(trimmed);
-                source.push('\n');
-            } else {
-                source.push_str("feature ");
-                source.push_str(&feature.tag);
-                source.push_str(" {\n");
-                source.push_str(&feature.code);
-                source.push_str("\n} ");
-                source.push_str(&feature.tag);
-                source.push_str(";\n");
+
+        // Preserve the first occurrence of every stored identity. Empty and
+        // duplicate IDs must not make diagnostics refer to a different item.
+        let mut seen = HashSet::new();
+        for id in result
+            .prefixes
+            .iter_mut()
+            .map(|block| &mut block.id)
+            .chain(result.classes.iter_mut().map(|class| &mut class.id))
+            .chain(result.features.iter_mut().map(|block| &mut block.id))
+        {
+            while id.0.is_empty() || !seen.insert(id.clone()) {
+                *id = FeatureSourceId::default();
             }
         }
-        source
-    }
-}
-
-// FeatureClass::code is a body, but older documents may contain the complete
-// bracketed class. Preserve either spelling verbatim so class references,
-// comments, and whitespace are not damaged by character trimming.
-fn append_class_body(target: &mut String, body: &str) {
-    let trimmed = body.trim();
-    if trimmed.starts_with('[') && trimmed.ends_with(']') {
-        target.push_str(body);
-    } else {
-        target.push('[');
-        target.push_str(body);
-        target.push(']');
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::append_class_body;
-
-    #[test]
-    fn feature_class_bodies_are_not_trimmed_by_bracket_characters() {
-        let mut bracketed = String::new();
-        append_class_body(&mut bracketed, "[ A B ]");
-        assert_eq!(bracketed, "[ A B ]");
-
-        let mut body = String::new();
-        append_class_body(&mut body, " A @Uppercase # keep this comment\n");
-        assert_eq!(body, "[ A @Uppercase # keep this comment\n]");
+        Ok(result)
     }
 }

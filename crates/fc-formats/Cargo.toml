@@ -20,6 +20,7 @@ tracing.workspace = true
 walkdir.workspace = true
 
 [dev-dependencies]
+fc-compile = { path = "../fc-compile" }
 fc-fixtures = { path = "../fc-fixtures" }
 fc-sfnt = { path = "../fc-sfnt" }
 tempfile.workspace = true

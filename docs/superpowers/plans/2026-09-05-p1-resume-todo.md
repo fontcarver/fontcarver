@@ -1,6 +1,19 @@
 # FontCarver — resume TODO (written 2026-09-05, session paused by the user)
 
-## Current status — P2b design ready, 2026-09-17
+## Current status — P2b-01 complete, 2026-09-17
+
+The user requested the next implementation step. Shared mapped FEA assembly,
+stable source IDs, narrow legacy FCF migration and consistent UFO source
+import/compile/export are implemented and independently reviewed. Exact source
+spelling, CRLF and disabled blocks are retained; actual shaping round trips pass.
+
+Verification: 224 Rust tests, workspace/all-target Clippy, formatting, API
+generation and TypeScript checks passed. See [P2b-01 acceptance](../../p2b-01-acceptance.md).
+Next: [P2b-02 — draft transactions and persistence](tasks/p2b-02-draft-transactions.md).
+The remaining P2b implementation, P2c/P2d and the existing paused work remain
+outside this completed slice.
+
+## Previous checkpoint — P2b design ready, 2026-09-17
 
 The user authorized the P2b planning step and delegated local commit decisions.
 The [reviewed design](../specs/2026-09-17-p2b-editable-layout.md) and

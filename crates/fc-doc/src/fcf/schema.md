@@ -26,6 +26,20 @@ Glyph `metrics_keys` (`left`, `right`, `width`, `vertical_origin`, and
 unchanged; resolved metrics and edit-session state are derived and are not
 written to the document.
 
+Feature prefixes/blocks and classes carry a persistent string `id`, independent
+of their tag, name, code or ordering. New items receive UUID v4 IDs without
+separators. Older documents may omit IDs; reading assigns missing IDs and
+replaces empty or repeated IDs, preserving the first occurrence of a nonempty
+stored ID. Saving persists these identities. Source maps are derived and are
+not written to FCF. No draft or active-source revision fields are added by P2b-01.
+
+The older UFO importer stored an entire FEA file as the only feature block with
+`tag: "fea"`, `automatic: false` and empty notes. When source authority is `Fea`
+and there are no other prefixes/classes/features, reading moves this block to
+`prefixes` without changing its ID, text, disabled flag or tag. Other source
+arrangements and `ImportedTables` authority are not migrated. Source text keeps
+its whitespace, comments and original line endings.
+
 Writers use two-space indentation for the envelope and font-level objects. The
 `font.glyphs` map keeps its deterministic `IndexMap` order, but each map entry's
 entire glyph value is compact JSON on one physical line. This hybrid layout

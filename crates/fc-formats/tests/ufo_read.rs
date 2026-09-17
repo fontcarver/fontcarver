@@ -23,7 +23,8 @@ fn reads_minimal_ufo_semantics() {
     assert_eq!(b.components[0].base.as_ref(), "A");
     assert_eq!(b.anchors[0].name, "top");
     assert_eq!(font.features.source_of_truth, FeaturesSource::Fea);
-    assert!(font.features.features[0].code.contains("feature kern"));
+    assert!(font.features.features.is_empty());
+    assert!(font.features.prefixes[0].code.contains("feature kern"));
     assert!(font.kerning_groups.side1["public.kern1.A"].contains("A"));
     assert_eq!(
         master.kerning_h.0[&(

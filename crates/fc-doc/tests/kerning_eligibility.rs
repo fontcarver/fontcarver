@@ -60,6 +60,33 @@ fn parsed_feature_tag_takes_precedence_over_metadata() {
 }
 
 #[test]
+fn commented_crlf_full_blocks_preserve_parsed_kerning_ownership() {
+    for (tag, code, expected) in [
+        (
+            "liga",
+            " \r\n# 中文注释 🪶\r\nfeature\r\n kern { pos A V -80; } kern;\r\n",
+            Err(Block::SourceOwnedKerning),
+        ),
+        (
+            "kern",
+            "# feature kern is only a comment\r\nfeature\t liga { sub A V by A; } liga;\r\n",
+            Ok(()),
+        ),
+        (
+            "kern",
+            "# body-only rule still belongs to kern\r\npos A V -80;",
+            Err(Block::SourceOwnedKerning),
+        ),
+    ] {
+        let mut font = font();
+        font.features.features.push(block(tag, code));
+        let before = font.clone();
+        assert_eq!(check_horizontal_editing(&font), expected, "{code:?}");
+        assert_eq!(font, before);
+    }
+}
+
+#[test]
 fn prefix_features_and_lookup_references_reserve_kerning() {
     for code in [
         "feature\n kern { pos A V -80; } kern;",

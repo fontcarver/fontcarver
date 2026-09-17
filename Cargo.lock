@@ -1381,6 +1381,7 @@ name = "fc-formats"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
+ "fc-compile",
  "fc-fixtures",
  "fc-model",
  "fc-sfnt",

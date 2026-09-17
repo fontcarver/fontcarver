@@ -211,6 +211,7 @@ fn populated_font_round_trips_semantically() {
     );
     font.features = Features {
         prefixes: vec![FeatureBlock {
+            id: FeatureSourceId::default(),
             tag: "Languagesystems".into(),
             code: "languagesystem DFLT dflt;".into(),
             automatic: false,
@@ -218,11 +219,13 @@ fn populated_font_round_trips_semantically() {
             notes: "prefix".into(),
         }],
         classes: vec![FeatureClass {
+            id: FeatureSourceId::default(),
             name: "Uppercase".into(),
             code: "A B C".into(),
             automatic: true,
         }],
         features: vec![FeatureBlock {
+            id: FeatureSourceId::default(),
             tag: "kern".into(),
             code: "pos A V -50;".into(),
             automatic: false,

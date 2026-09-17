@@ -102,9 +102,9 @@ fn kern_name(side: &KernSide) -> Result<Name, Error> {
 
 pub(crate) fn features_from_norad(features: &str) -> Features {
     Features {
-        features: (!features.is_empty())
+        prefixes: (!features.is_empty())
             .then(|| FeatureBlock {
-                tag: "fea".to_owned(),
+                tag: "features.fea".to_owned(),
                 code: features.to_owned(),
                 automatic: false,
                 ..FeatureBlock::default()
@@ -117,21 +117,7 @@ pub(crate) fn features_from_norad(features: &str) -> Features {
 }
 
 pub(crate) fn features_to_norad(features: &Features) -> String {
-    features
-        .prefixes
-        .iter()
-        .filter(|block| !block.disabled)
-        .map(|block| block.code.as_str())
-        .chain(features.classes.iter().map(|class| class.code.as_str()))
-        .chain(
-            features
-                .features
-                .iter()
-                .filter(|block| !block.disabled)
-                .map(|block| block.code.as_str()),
-        )
-        .collect::<Vec<_>>()
-        .join("\n")
+    features.to_fea()
 }
 
 fn valid_name(value: &str) -> Result<Name, Error> {

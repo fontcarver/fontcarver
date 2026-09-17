@@ -1,14 +1,17 @@
 # P2b implementation plan
 
-Date: 2026-09-17. Status: detailed plan prepared; implementation pending.
+Date: 2026-09-17. Status: task 01 complete; tasks 02–11 remain planned.
 Behavior: [P2b design](../specs/2026-09-17-p2b-editable-layout.md).
 
-## Scope of this checkpoint
+## Original planning checkpoint
 
 The user accepted the next step of P2b design/task decomposition, then delegated
 the decision to create local commits. This checkpoint delivers the audited
 design, scoped implementation tasks and a safe starting order. It does not mark
 any P2b production feature complete or resume the paused investigations.
+
+The user subsequently authorized the next implementation step. Task 01 is now
+implemented and verified: see [P2b-01 acceptance](../../p2b-01-acceptance.md).
 
 ## Delivery sequence
 
@@ -26,10 +29,11 @@ any P2b production feature complete or resume the paused investigations.
 | [10](tasks/p2b-10-localization.md) | Independent Chinese translation and terminology QA | 09 strings stable | `zh-CN.json`; translator owns it |
 | [11](tasks/p2b-11-acceptance-review.md) | Corpus, headless acceptance and independent review | 01–10 | tests, fixtures and acceptance report |
 
-Start **task 01** next. Its first failing regression loads whole-file UFO FEA
-beginning with `languagesystem` and a named class, compiles a ligature, exports
-and reimports it, and checks both source spelling and shaping. This exposes an
-existing source-path inconsistency before adding a new UI.
+Completed **task 01**. Its first failing regression loaded whole-file UFO FEA
+beginning with `languagesystem` and a named class, compiled a ligature, exported
+and reimported it, checking both source spelling and shaping. This exposed and
+fixed the source-path inconsistency before adding a new UI. Start **task 02**
+next: persisted feature drafts, snapshots and effective compile revisions.
 
 Tasks 02 and 05 can proceed independently after 01. The frontend can build
 against reviewed/generated contracts after 03/05; do not invent a competing
@@ -119,7 +123,8 @@ generated-type commit is needed. Record actual commit/check results at handoff.
 - [x] Write scoped task contracts with explicit supported/blocked cases.
 - [x] Complete independent final design review and resolve findings.
 - [x] Validate document links and prepare all three local checkpoints.
-- [ ] Implement P2b tasks 01–11 (future work).
+- [x] Implement and verify P2b task 01 (224 Rust tests; see acceptance report).
+- [ ] Implement and verify P2b tasks 02–11.
 
 No calendar estimate is committed at this point. Re-estimate after the simple
 decompiler/compiler-equivalence slice: its support rate and rejected cases are
@@ -135,7 +140,7 @@ fixtures; and bind diagnostics to effective compile-input revision. Corrected
 the Features UI reference and required glyph-rendered lookup rules. The focused
 recheck confirmed these fixes, with one Gate B wording correction applied above.
 
-### Checkpoint verification
+### Original planning checkpoint verification
 
 - `c338650`: existing rename/compatibility checkpoint. The exact tree passed
   `cargo check --workspace --all-targets --locked`, 18 focused Rust tests

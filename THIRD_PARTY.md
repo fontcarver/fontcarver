@@ -156,6 +156,10 @@ external package is added to the workspace lockfile by this dependency edge.
 
 ### 3.1 Rust crates
 
+P2b-01 adds only a test dependency from `fc-formats` to the existing `fc-compile`
+workspace crate (`MIT OR Apache-2.0`) to verify real FEA compilation and shaping
+after UFO round trips. No third-party package or locked version is added.
+
 Surveyed 2026-09-04 with `cargo metadata --format-version 1`, over the fully
 resolved graph reachable from the 12 workspace members, all dependency kinds
 included (normal, build and dev): **596 external packages**.

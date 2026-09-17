@@ -42,6 +42,12 @@ pub(crate) fn write(
     let staging = unique_sibling(destination, "ufo-stage");
     let guard = StagingGuard(staging.clone());
     font.save(&staging)?;
+    // Norad normalizes CRLF; restore the assembled source spelling before synchronization.
+    if !font.features.is_empty() {
+        let source_path = staging.join("features.fea");
+        fs::write(&source_path, &font.features)
+            .map_err(|source| Error::io(&source_path, source))?;
+    }
     if font.meta.creator.as_deref() != Some("org.linebender.norad") {
         plist::to_file_xml(staging.join("metainfo.plist"), &font.meta)?;
     }

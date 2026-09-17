@@ -25,7 +25,10 @@ pub use component::Component;
 pub use contour::{Contour, Point, PointKind, TtIndex};
 pub use error::Error;
 pub use extra::{Extra, SourceProvenance};
-pub use features::{FeatureBlock, FeatureClass, Features, FeaturesSource};
+pub use features::{
+    AssembledFea, FeaSourceLocation, FeaSourceMapping, FeatureBlock, FeatureClass, FeatureSourceId,
+    FeatureSourceKind, Features, FeaturesSource,
+};
 pub use font::{Axis, CidInfo, DesignLocation, Font, Instance};
 pub use glyph::{Glyph, MetricsKeys};
 pub use guide::Guide;

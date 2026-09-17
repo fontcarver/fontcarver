@@ -50,8 +50,9 @@ its spacing rules belongs to P2b. See
 [`docs/p2a-acceptance.md`](docs/p2a-acceptance.md) for verified behavior and scope.
 P2b now has an independently reviewed
 [design and 11-task implementation plan](docs/superpowers/plans/2026-09-17-p2b-editable-layout.md);
-its next task unifies FEA source assembly and UFO round trips. P2b implementation
-and P2c/P2d remain pending. There is no release
+its [first task](docs/p2b-01-acceptance.md) is complete: shared mapped FEA source,
+stable source IDs and UFO compilation/export round trips. Feature drafts are
+next; the rest of P2b and P2c/P2d remain pending. There is no release
 yet; native workflow verification is partial and release packaging is untested. See
 [`docs/p1-acceptance.md`](docs/p1-acceptance.md) for measured results and current
 limitations, including hinting removal after outline edits. The capability list

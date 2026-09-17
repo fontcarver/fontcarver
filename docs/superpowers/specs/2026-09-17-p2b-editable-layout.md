@@ -1,12 +1,13 @@
 # P2b — editable OpenType layout
 
-Date: 2026-09-17. Status: independently reviewed design; implementation pending.
+Date: 2026-09-17. Status: independently reviewed design; task 01 implemented,
+remaining implementation pending. See [task 01 acceptance](../../p2b-01-acceptance.md).
 
 ## 1. Outcome and authority
 
 The user authorized advancing the proposed next step: detailed P2b design and
-task decomposition. P2a is complete. This document makes P2b implementable; it
-does not claim that its features have shipped. The user separately authorized
+task decomposition, then implementation of task 01. P2a is complete. This
+document specifies all of P2b; only task 01 is implemented so far. The user separately authorized
 local checkpoint commits. The binding product scope remains
 [product design §§6.2–6.3, 12.5, 14](2026-09-03-fontcarver-design.md) and the
 [P2 delivery order](2026-09-07-p2-kerning-design.md).
