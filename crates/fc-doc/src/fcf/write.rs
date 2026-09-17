@@ -13,6 +13,17 @@ use serde_json::ser::Formatter;
 use crate::Error;
 
 pub(super) fn write(path: &Path, font: &Font, document_path: Option<&Path>) -> Result<(), Error> {
+    for master in &font.masters {
+        if master
+            .kerning_h
+            .0
+            .values()
+            .chain(master.kerning_v.0.values())
+            .any(|value| !value.is_finite())
+        {
+            return Err(Error::NonFiniteKerning(master.id.clone()));
+        }
+    }
     let envelope = super::envelope(font, document_path);
     let temporary_path = temporary_path(path);
     if let Err(error) = write_temporary(&temporary_path, path, &envelope) {

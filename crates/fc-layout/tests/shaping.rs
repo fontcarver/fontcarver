@@ -96,6 +96,44 @@ fn disabled_features_keep_the_unligated_glyphs() {
 }
 
 #[test]
+fn imported_substitution_layout_is_preserved_only_with_verified_glyph_order() {
+    let source = ligature_font();
+    let bytes = fc_compile::export(&source, &|_| 0, &Default::default())
+        .unwrap()
+        .bytes;
+    let mut font = fc_sfnt::read_bytes(&bytes, &Default::default())
+        .unwrap()
+        .fonts
+        .remove(0);
+    let shaper = Shaper::new();
+    let run = shaper.shape(&font, &key(&font), 1, &request("fi")).unwrap();
+    assert_eq!(run.names, vec![Some("f_i".into())]);
+    assert_eq!(run.glyphs[0].x_advance, 540.0);
+    let disabled = shaper
+        .shape(
+            &font,
+            &key(&font),
+            1,
+            &ShapeRequest {
+                features: vec![("liga".into(), false)],
+                ..request("fi")
+            },
+        )
+        .unwrap();
+    assert_eq!(disabled.names, vec![Some("f".into()), Some("i".into())]);
+
+    font.extra.source.as_mut().unwrap().glyph_order.swap(1, 2);
+    let run = Shaper::new()
+        .shape(&font, &key(&font), 1, &request("fi"))
+        .unwrap();
+    assert_eq!(run.names, vec![Some("f".into()), Some("i".into())]);
+    assert!(run
+        .warnings
+        .iter()
+        .any(|warning| warning.starts_with("layout-dropped-glyph-order-changed:")));
+}
+
+#[test]
 fn size_scales_positions_from_font_units() {
     let font = ligature_font();
     let shaper = Shaper::new();

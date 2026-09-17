@@ -35,6 +35,7 @@ const WARNING_KEYS: Readonly<Record<string, string>> = {
   'value-clamped': 'warning.valueClamped',
   'mac-name-records-dropped': 'warning.macNameRecordsDropped',
   'name-language-unmapped': 'warning.nameLanguageUnmapped',
+  'invalid-horizontal-kerning': 'warning.invalidHorizontalKerning',
 }
 
 /** Translates a known warning code and preserves the kernel detail as fallback. */

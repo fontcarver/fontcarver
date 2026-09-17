@@ -133,3 +133,43 @@ fn repeated_save_is_atomic_and_leaves_no_temporary_file() {
     assert!(!temporary_path.exists());
     assert_eq!(fcf::read(&path).unwrap(), second);
 }
+
+#[test]
+fn nonfinite_kerning_save_errors_preserve_the_previous_file_and_source_records() {
+    let dir = temp_dir("nonfinite-kerning");
+    for extension in ["fcf", "fcf.gz"] {
+        let path = dir.join(format!("font.{extension}"));
+        let temporary_path = dir.join(format!("font.{extension}.tmp"));
+        let original = test_font();
+        fcf::write(&path, &original).unwrap();
+        let original_bytes = fs::read(&path).unwrap();
+        for vertical in [false, true] {
+            for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+                let mut source = original.clone();
+                let kerning = if vertical {
+                    &mut source.masters[0].kerning_v
+                } else {
+                    &mut source.masters[0].kerning_h
+                };
+                let key = (
+                    fc_model::KernSide::Glyph("base".into()),
+                    fc_model::KernSide::Glyph("composite".into()),
+                );
+                kerning.0.insert(key.clone(), value);
+                assert!(fcf::write(&path, &source)
+                    .unwrap_err()
+                    .to_string()
+                    .contains("non-finite kerning"));
+                assert_eq!(fs::read(&path).unwrap(), original_bytes);
+                assert_eq!(fcf::read(&path).unwrap(), original);
+                assert!(!temporary_path.exists());
+                let kerning = if vertical {
+                    &source.masters[0].kerning_v
+                } else {
+                    &source.masters[0].kerning_h
+                };
+                assert_eq!(kerning.0[&key].to_bits(), value.to_bits());
+            }
+        }
+    }
+}

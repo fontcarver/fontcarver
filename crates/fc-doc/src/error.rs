@@ -39,6 +39,9 @@ pub enum Error {
     /// every such result.
     #[error("invalid command: {0}")]
     InvalidCommand(String),
+    /// Source ownership does not permit horizontal kerning edits.
+    #[error(transparent)]
+    KerningUnavailable(#[from] crate::kerning::HorizontalKerningEditBlock),
     /// An outline operation failed in the geometry engine.
     #[error("geometry operation failed: {0}")]
     Geometry(String),
@@ -54,6 +57,9 @@ pub enum Error {
     /// The input requires a newer version of FontCarver.
     #[error("unsupported FontCarver document version {0}")]
     UnsupportedFcfVersion(u32),
+    /// A master contains kerning values that JSON cannot represent losslessly.
+    #[error("cannot save a native document with non-finite kerning in master `{0}`; source records remain in memory")]
+    NonFiniteKerning(MasterId),
     /// The sfnt reader is not available in this checkout.
     #[error("sfnt opening is unavailable until fc-sfnt lands")]
     SfntUnavailable,

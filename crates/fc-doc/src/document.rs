@@ -169,10 +169,11 @@ impl Document {
         }
         let label = active.label.clone();
         let coalesce = active.has_entry;
+        let generation = self.generation;
         let change = self.apply_command(command, label, coalesce)?;
         if let Some(active) = &mut self.active_edit {
             if active.token == *token {
-                active.has_entry = true;
+                active.has_entry |= self.generation != generation;
             }
         }
         Ok(change)
@@ -314,6 +315,9 @@ impl Document {
         let before_state = self.current_state;
 
         command::apply_to_font(&mut self.font, &command, &inverse)?;
+        if command::is_kerning(&command) && inverse == undo::capture(&self.font, &impact) {
+            return Ok(Change::default());
+        }
         self.apply_handle_effects(&command)?;
         if impact.component_graph_changed {
             self.bump_component_generation();
@@ -498,6 +502,7 @@ impl Document {
         glyphs.sort_by_key(|id| id.0);
         glyphs.dedup();
         Change {
+            layout: impact.layout,
             glyphs,
             font_info: impact.font_info,
             masters: !impact.masters.is_empty(),

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -187,6 +187,38 @@ describe('ExportDialog', () => {
       ]).toEqual([7]),
     )
     expect(transport.calls.at(-1)?.method).toBe('glyphs.search')
+  })
+
+  it('ignores a delayed warning lookup after another tab becomes active', async () => {
+    const user = userEvent.setup()
+    setup(
+      makeSummary(),
+      makeReport({
+        warnings: [
+          {
+            code: 'hinting-dropped',
+            message:
+              'TrueType instructions were dropped because these glyphs changed: A',
+          },
+        ],
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Export' }))
+    await screen.findByRole('button', { name: 'A' })
+    let resolve!: (cells: ReturnType<typeof cellFor>[]) => void
+    const lookup = new Promise<ReturnType<typeof cellFor>[]>((yes) => {
+      resolve = yes
+    })
+    setTransport(createMockTransport({ 'glyphs.search': () => lookup }))
+    await user.click(screen.getByRole('button', { name: 'A' }))
+    let next = ''
+    await act(async () => {
+      next = useUiStore.getState().openTab({ kind: 'font', doc: 2 })
+      resolve([cellFor(7, { name: 'A' })])
+      await lookup
+    })
+    expect(useUiStore.getState().activeTab).toBe(next)
+    expect(useDocumentStore.getState().byDoc[1]?.focus ?? null).toBeNull()
   })
 
   it('caps the chips of a warning that names thousands of glyphs', async () => {

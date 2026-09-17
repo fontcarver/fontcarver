@@ -42,9 +42,14 @@ The font logic is built on the permissively licensed Rust font ecosystem:
 ## Status
 
 Early development. P1 outline editing and headless acceptance are complete,
-and the user has tried and accepted the current desktop version. A P2 design
-draft is saved; P2 work is paused at the user's request. There is no release yet; native workflow verification
-is partial and release packaging is untested. See
+and the user has tried and accepted the P1 desktop version. P2a horizontal
+kerning authoring is complete for eligible source fonts: shared groups,
+per-master pair rules, text gap editing, undo/redo, and matching preview/export
+with headless acceptance. Imported binary layout remains previewable; editing
+its spacing rules belongs to P2b. See
+[`docs/p2a-acceptance.md`](docs/p2a-acceptance.md) for verified behavior and scope.
+The remaining P2 milestones are still planned. There is no release
+yet; native workflow verification is partial and release packaging is untested. See
 [`docs/p1-acceptance.md`](docs/p1-acceptance.md) for measured results and current
 limitations, including hinting removal after outline edits. The capability list
 above describes the product target, not completed support for every format.

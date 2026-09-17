@@ -1,6 +1,6 @@
 use std::collections::{BTreeSet, HashSet};
 
-use fc_model::{Font, Glyph, GlyphName, LayerId};
+use fc_model::{Font, Glyph, GlyphName, KernSide, LayerId};
 
 use crate::Error;
 
@@ -9,6 +9,31 @@ use super::apply::{glyph_mut, unique_names, validate_glyph_outlines};
 pub(super) fn add(font: &mut Font, glyph: &Glyph) -> Result<(), Error> {
     validate_glyph_outlines(glyph)?;
     font.insert_glyph(glyph.clone()).map_err(Error::from)
+}
+
+pub(super) fn rename(font: &mut Font, from: &GlyphName, to: &GlyphName) -> Result<(), Error> {
+    if from != to && font.glyph(from).is_some() && font.glyph(to).is_none() {
+        let paired = font
+            .masters
+            .iter()
+            .flat_map(|master| master.kerning_h.0.keys().chain(master.kerning_v.0.keys()))
+            .any(|(left, right)| {
+                matches!(left, KernSide::Glyph(name) if name == to)
+                    || matches!(right, KernSide::Glyph(name) if name == to)
+            });
+        let grouped = font
+            .kerning_groups
+            .side1
+            .values()
+            .chain(font.kerning_groups.side2.values())
+            .any(|members| members.contains(to));
+        if paired || grouped {
+            return Err(Error::InvalidCommand(format!(
+                "glyph `{to}` already has unresolved kerning references; rename would change existing source records"
+            )));
+        }
+    }
+    font.rename_glyph(from, to).map_err(Error::from)
 }
 
 pub(super) fn remove(font: &mut Font, names: &[GlyphName]) -> Result<(), Error> {
@@ -20,6 +45,20 @@ pub(super) fn remove(font: &mut Font, names: &[GlyphName]) -> Result<(), Error> 
     }
     for name in names {
         font.remove_glyph(name);
+        for members in font
+            .kerning_groups
+            .side1
+            .values_mut()
+            .chain(font.kerning_groups.side2.values_mut())
+        {
+            members.remove(name);
+        }
+        for master in &mut font.masters {
+            master.kerning_h.0.retain(|(left, right), _| {
+                !matches!(left, fc_model::KernSide::Glyph(glyph) if glyph == name)
+                    && !matches!(right, fc_model::KernSide::Glyph(glyph) if glyph == name)
+            });
+        }
     }
     Ok(())
 }

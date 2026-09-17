@@ -16,6 +16,17 @@ import { call, type Command, type DocId, type EditTokenId } from '../api'
 
 /** Closures that a replacement editor for the same document must not overtake. */
 const documentEdits = new Map<DocId, Promise<void>>()
+const documentEditRevisions = new Map<DocId, number>()
+
+/** Identifies edits started or staged since a document handover was captured. */
+export function documentEditRevision(doc: DocId): number {
+  return documentEditRevisions.get(doc) ?? 0
+}
+
+/** Records new edit intent so navigation also drains work begun while waiting. */
+export function noteDocumentEdit(doc: DocId): void {
+  documentEditRevisions.set(doc, documentEditRevision(doc) + 1)
+}
 
 function completed(promise: Promise<unknown>): Promise<void> {
   return promise.then(
@@ -133,6 +144,7 @@ export class EditSession {
 
   constructor(doc: DocId, label: string, options: EditSessionOptions = {}) {
     this.doc = doc
+    noteDocumentEdit(doc)
     this.label = label
     this.scheduler = options.scheduler ?? frameScheduler
     this.onError = options.onError ?? (() => undefined)

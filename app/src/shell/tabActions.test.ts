@@ -11,9 +11,15 @@ import {
   closeTab,
   changeGlyphTab,
   openFontInfoTab,
-  openGlyphTab,
+  openGlyphTab as openGlyphTabAction,
   replaceGlyphTab,
 } from './tabActions'
+
+async function openGlyphTab(...args: Parameters<typeof openGlyphTabAction>) {
+  const id = await openGlyphTabAction(...args)
+  if (id === undefined) throw new Error('Expected the glyph tab to open')
+  return id
+}
 
 beforeEach(() => {
   localStorage.clear()
@@ -35,9 +41,9 @@ describe('tabActions', () => {
     setTransport(transport)
     useSessionStore.setState({ docs: [makeSummary()] })
     useUiStore.getState().openTab({ kind: 'font', doc: 1 })
-    openGlyphTab(1, 9)
+    await openGlyphTab(1, 9)
 
-    closeTab(tabId('font', 1))
+    await closeTab(tabId('font', 1))
     await vi.waitFor(() => expect(useUiStore.getState().tabs).toEqual([]))
 
     expect(transport.calls.map((call) => call.method)).toContain(
@@ -46,22 +52,22 @@ describe('tabActions', () => {
     expect(useSessionStore.getState().docs).toEqual([])
   })
 
-  it('closes a Glyph tab without touching the document', () => {
+  it('closes a Glyph tab without touching the document', async () => {
     const transport = createMockTransport({})
     setTransport(transport)
     useSessionStore.setState({ docs: [makeSummary()] })
     useUiStore.getState().openTab({ kind: 'font', doc: 1 })
-    const glyph = openGlyphTab(1, 9)
+    const glyph = await openGlyphTab(1, 9)
 
-    closeTab(glyph)
+    await closeTab(glyph)
 
     expect(transport.calls).toHaveLength(0)
     expect(useUiStore.getState().tabs.map((tab) => tab.kind)).toEqual(['font'])
   })
 
-  it('moves a Glyph tab to another glyph instead of piling tabs up', () => {
+  it('moves a Glyph tab to another glyph instead of piling tabs up', async () => {
     useUiStore.getState().openTab({ kind: 'font', doc: 1 })
-    openGlyphTab(1, 9, 'a')
+    await openGlyphTab(1, 9, 'a')
 
     const next = replaceGlyphTab(1, 9, 10, 'b')
 
@@ -71,15 +77,15 @@ describe('tabActions', () => {
     expect(tabs[1]?.label).toBe('b')
   })
 
-  it('keeps the tab when the step lands on the same glyph', () => {
-    openGlyphTab(1, 9, 'a')
+  it('keeps the tab when the step lands on the same glyph', async () => {
+    await openGlyphTab(1, 9, 'a')
     const same = replaceGlyphTab(1, 9, 9)
     expect(same).toBe(tabId('glyph', 1, 9))
     expect(useUiStore.getState().tabs).toHaveLength(1)
   })
 
-  it('keeps a shaped text tab id when its active glyph changes', () => {
-    const id = openGlyphTab(1, 9, 'a')
+  it('keeps a shaped text tab id when its active glyph changes', async () => {
+    const id = await openGlyphTab(1, 9, 'a')
     useUiStore.getState().updateTab(id, {
       textState: {
         text: 'abc',
@@ -102,8 +108,8 @@ describe('tabActions', () => {
     })
   })
 
-  it('steps the active text tab when two tabs share the same active glyph', () => {
-    const first = openGlyphTab(1, 9, 'a')
+  it('steps the active text tab when two tabs share the same active glyph', async () => {
+    const first = await openGlyphTab(1, 9, 'a')
     const textState = {
       text: 'abc',
       activeIndex: 0,
@@ -131,8 +137,8 @@ describe('tabActions', () => {
     ).toBe(11)
   })
 
-  it('opens a collision-free tab when an origin id holds other typed text', () => {
-    const original = openGlyphTab(1, 9, 'a')
+  it('opens a collision-free tab when an origin id holds other typed text', async () => {
+    const original = await openGlyphTab(1, 9, 'a')
     useUiStore.getState().updateTab(original, {
       gid: 10,
       textState: {
@@ -148,7 +154,7 @@ describe('tabActions', () => {
       },
     })
 
-    const reopened = openGlyphTab(1, 9, 'a')
+    const reopened = await openGlyphTab(1, 9, 'a')
 
     expect(reopened).not.toBe(original)
     expect(useUiStore.getState().tabs).toHaveLength(2)
@@ -156,8 +162,8 @@ describe('tabActions', () => {
     expect(useUiStore.getState().tabs[1]).toMatchObject({ gid: 9, label: 'a' })
   })
 
-  it('focuses a text tab already targeting the requested glyph', () => {
-    const first = openGlyphTab(1, 9, 'a')
+  it('focuses a text tab already targeting the requested glyph', async () => {
+    const first = await openGlyphTab(1, 9, 'a')
     useUiStore.getState().updateTab(first, {
       gid: 10,
       textState: {
@@ -173,12 +179,12 @@ describe('tabActions', () => {
       },
     })
 
-    expect(openGlyphTab(1, 10, 'b')).toBe(first)
+    expect(await openGlyphTab(1, 10, 'b')).toBe(first)
     expect(useUiStore.getState().tabs).toHaveLength(1)
   })
 
-  it('steps a suffixed legacy tab without closing the typed origin tab', () => {
-    const original = openGlyphTab(1, 9, 'a')
+  it('steps a suffixed legacy tab without closing the typed origin tab', async () => {
+    const original = await openGlyphTab(1, 9, 'a')
     useUiStore.getState().updateTab(original, {
       gid: 10,
       textState: {
@@ -193,7 +199,7 @@ describe('tabActions', () => {
         previewCollapsed: false,
       },
     })
-    const suffixed = openGlyphTab(1, 9, 'a')
+    const suffixed = await openGlyphTab(1, 9, 'a')
 
     const next = replaceGlyphTab(1, 9, 11, 'c')
 
@@ -208,8 +214,8 @@ describe('tabActions', () => {
   })
 
   it('does not flush the new editor when a delayed old glyph step arrives', async () => {
-    const original = openGlyphTab(1, 9, 'a')
-    const next = openGlyphTab(1, 20, 'other')
+    const original = await openGlyphTab(1, 9, 'a')
+    const next = await openGlyphTab(1, 20, 'other')
     useUiStore.getState().updateTab(next, { gid: 9 })
     const prepareTransition = vi.fn().mockResolvedValue(undefined)
     vi.spyOn(editors, 'activeEditor').mockReturnValue({
@@ -220,9 +226,9 @@ describe('tabActions', () => {
     expect(useUiStore.getState().activeTab).toBe(next)
   })
 
-  it('focuses an existing Font Info tab instead of opening a second one', () => {
-    const first = openFontInfoTab(1)
-    const second = openFontInfoTab(1)
+  it('focuses an existing Font Info tab instead of opening a second one', async () => {
+    const first = await openFontInfoTab(1)
+    const second = await openFontInfoTab(1)
 
     expect(second).toBe(first)
     expect(useUiStore.getState().tabs).toHaveLength(1)

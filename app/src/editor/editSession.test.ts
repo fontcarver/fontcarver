@@ -12,6 +12,8 @@ import {
   EditSession,
   holdDocumentEdits,
   immediateScheduler,
+  documentEditRevision,
+  noteDocumentEdit,
 } from './editSession'
 
 const move = () => ({
@@ -107,6 +109,19 @@ describe('EditSession failures', () => {
 })
 
 describe('document edit handover', () => {
+  it('counts staged drafts and new sessions only for their own document', async () => {
+    setTransport(createEditingTransport())
+    const before = documentEditRevision(1)
+    const other = documentEditRevision(2)
+    noteDocumentEdit(1)
+    expect(documentEditRevision(1)).toBe(before + 1)
+    const session = new EditSession(1, 'Kerning')
+    expect(documentEditRevision(1)).toBe(before + 2)
+    expect(documentEditRevision(2)).toBe(other)
+    await session.end()
+    expect(documentEditRevision(1)).toBe(before + 2)
+  })
+
   it('keeps documents independent while one handover is blocked', async () => {
     let release = () => undefined as void
     holdDocumentEdits(

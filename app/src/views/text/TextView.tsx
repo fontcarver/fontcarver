@@ -1,9 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { type DocSummary } from '../../api'
 import { activeEditor } from '../../editor/activeEditor'
 import { reportError } from '../../shell/commands'
-import { isEditableTarget } from '../../shell/shortcuts'
 import { selectDocView, useDocumentStore } from '../../stores/documentStore'
 import { useEditorStore } from '../../stores/editorStore'
 import { type Tab, type TextTabState, useUiStore } from '../../stores/uiStore'
@@ -13,21 +19,21 @@ import { PreviewStrip } from './PreviewStrip'
 import type { TextSampleId } from './presentationTypes'
 import type { TextCanvasRun } from './textCanvas'
 import { textRunBounds } from './textCanvasBridge'
-import {
-  previewGlyphIndexes,
-  runBox,
-  MAX_VISIBLE_RUN_GLYPHS,
-} from './textRunGeometry'
+import { runBox } from './textRunGeometry'
 import {
   glyphText,
   initialTextState,
   reconcileTextIndex,
   textTitle,
 } from './textState'
-import { useTextGlyphCells } from './useTextGlyphCells'
+import { useTextRunCells } from './useTextRunCells'
+import { useTextKerningControls } from './useTextKerningControls'
+import { TextKerningPanel } from './TextKerningPanel'
+import { TextGapPicker } from './TextGapPicker'
 import { useTextMetrics } from './useTextMetrics'
 import { useTextShape } from './useTextShape'
 import { useTextFeedback } from './useTextFeedback'
+import { useTextTyping } from './useTextTyping'
 import { allEncodedText } from './textSamples'
 import styles from './TextView.module.css'
 
@@ -51,7 +57,7 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
   }
   const inputRef = useRef<HTMLInputElement>(null)
   const latest = useRef({ tab, state })
-  useEffect(() => {
+  useLayoutEffect(() => {
     latest.current = { tab, state }
   }, [tab, state])
   const [visible, setVisible] = useState<readonly number[]>([])
@@ -152,13 +158,6 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
   const shaped = useTextShape(tab.textState ? context : null)
   const glyphs = shaped?.layout.glyphs ?? EMPTY_GLYPHS
   if (!entered && state.mode === 'text' && glyphs.length > 0) setEntered(true)
-  useEffect(() => {
-    if (import.meta.env.DEV)
-      globalThis.__fwTextRun = { glyphs, activeIndex: state.activeIndex }
-    return () => {
-      if (import.meta.env.DEV) globalThis.__fwTextRun = null
-    }
-  }, [glyphs, state.activeIndex])
   const prior = useRef<{ glyphs: typeof glyphs; active: number | null }>({
     glyphs,
     active: state.activeIndex,
@@ -179,38 +178,38 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
     if (index !== state.activeIndex || (gid !== null && gid !== tab.gid))
       patch({ activeIndex: index }, gid ?? undefined)
   }, [glyphs, patch, shaped, state.activeIndex, state.mode, tab.gid])
-  const previewIndexes = useMemo(
-    () => previewGlyphIndexes(glyphs, summary.units_per_em),
-    [glyphs, summary.units_per_em],
-  )
-  const wanted = useMemo(
-    () =>
-      [
-        ...new Set([
-          ...(state.activeIndex === null ? [] : [state.activeIndex]),
-          ...visible,
-          ...(previewVisible && !state.previewCollapsed ? previewIndexes : []),
-        ]),
-      ].slice(0, MAX_VISIBLE_RUN_GLYPHS),
-    [
-      previewIndexes,
-      previewVisible,
-      state.activeIndex,
-      state.previewCollapsed,
-      visible,
-    ],
-  )
-  const cells = useTextGlyphCells(
+  const { cells, previewGlyphs } = useTextRunCells(
     summary.doc,
     state.master,
     shaped?.context.generation ?? view.generation,
+    summary.units_per_em,
     glyphs,
-    wanted,
+    state.activeIndex,
+    visible,
+    previewVisible && !state.previewCollapsed,
   )
   const metrics = useTextMetrics(
     state.mode === 'edit',
     t('textView.metricsUndo'),
   )
+  const pending =
+    !shaped || shaped.stale || shaped.context.generation !== view.generation
+  const kerning = useTextKerningControls({
+    doc: summary.doc,
+    master: state.master,
+    generation: view.generation,
+    text: state.text,
+    direction: state.direction,
+    features: state.features,
+    glyphs,
+    pending,
+    transition,
+  })
+  const finishMetrics = metrics.finish
+  const finishKerning = kerning.finish
+  const finishEdits = useCallback(async () => {
+    await Promise.all([finishMetrics(), finishKerning()])
+  }, [finishMetrics, finishKerning])
   const activate = useCallback(
     (index: number) => {
       const selected = glyphs[index]
@@ -240,6 +239,18 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
   )
   const active =
     state.activeIndex === null ? undefined : glyphs[state.activeIndex]
+  useEffect(() => {
+    if (import.meta.env.DEV)
+      globalThis.__fwTextRun = {
+        glyphs,
+        activeIndex: state.activeIndex,
+        selectedGap: kerning.selectedGap,
+        activeOrigin: { x: active?.x ?? 0, y: active?.y ?? 0 },
+      }
+    return () => {
+      if (import.meta.env.DEV) globalThis.__fwTextRun = null
+    }
+  }, [glyphs, state.activeIndex, kerning.selectedGap, active?.x, active?.y])
   const textRun = useMemo<TextCanvasRun | null>(() => {
     if (!tab.textState) return null
     const run: TextCanvasRun = {
@@ -251,6 +262,10 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
       unitsPerEm: summary.units_per_em,
       fitBox: runBox(glyphs, new Map(), summary.units_per_em),
       requestedScale: state.size / summary.units_per_em,
+      gaps: pending ? [] : kerning.gaps,
+      selectedGap: kerning.selectedGap,
+      onSelectGap: kerning.selectGap,
+      onKerningKey: kerning.onKerningKey,
       onActivate: activate,
       onExitEdit: enterText,
       onVisibleIndexes: setVisible,
@@ -266,24 +281,17 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
     enterText,
     glyphs,
     metrics.onMetricKey,
+    kerning.gaps,
+    kerning.selectedGap,
+    kerning.selectGap,
+    kerning.onKerningKey,
+    pending,
     state.activeIndex,
     state.mode,
     state.size,
     summary.units_per_em,
     tab.textState,
   ])
-  const previewGlyphs = useMemo(
-    () =>
-      previewIndexes.flatMap((index) => {
-        const glyph = glyphs[index]
-        const path =
-          glyph?.documentGid === null || !glyph
-            ? undefined
-            : cells.get(glyph.documentGid)?.path
-        return glyph && path ? [{ ...glyph, path }] : []
-      }),
-    [cells, glyphs, previewIndexes],
-  )
 
   const changeText = useCallback(
     (text: string) => {
@@ -299,30 +307,7 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
   useEffect(() => {
     if (tool === 'text' && state.mode !== 'text') enterText()
   }, [enterText, state.mode, tool])
-  useEffect(() => {
-    const typing = (event: KeyboardEvent) => {
-      if (
-        useUiStore.getState().modalCount > 0 ||
-        isEditableTarget(event.target) ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.altKey
-      )
-        return
-      if (state.mode !== 'text' || event.key === ' ') return
-      if (event.key.length !== 1 && event.key !== 'Backspace') return
-      event.preventDefault()
-      event.stopImmediatePropagation()
-      const next =
-        event.key === 'Backspace'
-          ? Array.from(latest.current.state.text).slice(0, -1).join('')
-          : latest.current.state.text + event.key
-      changeText(next)
-      inputRef.current?.focus({ preventScroll: true })
-    }
-    window.addEventListener('keydown', typing, true)
-    return () => window.removeEventListener('keydown', typing, true)
-  }, [changeText, state.mode])
+  useTextTyping(state.text, state.mode, changeText, inputRef)
   const sample = async (id: TextSampleId) => {
     if (id !== 'all-encoded') return changeText(TEXT_SAMPLE_TEXT[id])
     const request = ++inputRevision.current
@@ -373,13 +358,25 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
         }
         onSample={(id) => void sample(id).catch(reportError)}
       />
+      <TextGapPicker
+        gaps={kerning.gaps}
+        selected={kerning.selectedGap}
+        onSelect={kerning.selectGap}
+        pending={pending}
+        visible={visible}
+      />
+      <TextKerningPanel
+        model={kerning.panel}
+        gapDisabledReason={kerning.disabledReason}
+        pending={pending}
+      />
       <GlyphView
         summary={summary}
         gid={tab.gid}
         tabIdentity={tab.id}
         textRun={textRun}
         textFitKey={`${tab.id}:${entered ? 'text' : 'glyph'}`}
-        externalSettler={metrics.finish}
+        externalSettler={finishEdits}
       />
       {previewVisible && (
         <PreviewStrip
@@ -400,13 +397,3 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
   )
 }
 const EMPTY_GLYPHS: readonly import('./textLayout').PositionedGlyph[] = []
-
-declare global {
-  var __fwTextRun:
-    | {
-        glyphs: readonly import('./textLayout').PositionedGlyph[]
-        activeIndex: number | null
-      }
-    | null
-    | undefined
-}

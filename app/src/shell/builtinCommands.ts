@@ -21,7 +21,7 @@ import { registerLayerCommands } from '../views/glyph/layerCommands'
 import { registerPathCommands } from '../views/glyph/pathCommands'
 
 import { registerCommands, type Command } from './commands'
-import { closeTab, openFontInfoTab, openGlyphTab } from './tabActions'
+import { closeTab, cycleTab, openFontInfoTab, openGlyphTab } from './tabActions'
 
 const APP_VERSION = '0.1.0'
 
@@ -328,7 +328,7 @@ export function registerBuiltinCommands(): void {
       when: () =>
         useUiStore.getState().tabs.length > 1 && !textCanvasHasFocus(),
       disabledReason: 'cmd.reason.oneTab',
-      run: () => useUiStore.getState().cycleTab(1),
+      run: () => cycleTab(1),
     },
     {
       id: 'window.previousTab',
@@ -339,7 +339,7 @@ export function registerBuiltinCommands(): void {
       when: () =>
         useUiStore.getState().tabs.length > 1 && !textCanvasHasFocus(),
       disabledReason: 'cmd.reason.oneTab',
-      run: () => useUiStore.getState().cycleTab(-1),
+      run: () => cycleTab(-1),
     },
     {
       id: 'window.closeTab',

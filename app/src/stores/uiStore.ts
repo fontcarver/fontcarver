@@ -238,7 +238,7 @@ export interface UiState extends PersistedUi {
   setPanelSize: (panel: PanelId, size: number) => void
   setSection: (id: string, open: boolean) => void
   toggleSection: (id: string, fallback: boolean) => void
-  openTab: (tab: Omit<Tab, 'id'>) => string
+  openTab: (tab: Omit<Tab, 'id'>, activate?: boolean) => string
   setTabLabel: (id: string, label: string) => void
   updateTab: (
     id: string,
@@ -360,7 +360,7 @@ export const useUiStore = create<UiState>((set, get) => ({
     writePersisted(persistedOf(get()))
   },
 
-  openTab: (tab) => {
+  openTab: (tab, activate = true) => {
     const baseId = tabId(tab.kind, tab.doc, tab.gid)
     const occupied = get().tabs.find((candidate) => candidate.id === baseId)
     let id = baseId
@@ -380,7 +380,7 @@ export const useUiStore = create<UiState>((set, get) => ({
       tabs: state.tabs.some((existing) => existing.id === id)
         ? state.tabs
         : [...state.tabs, { ...tab, id }],
-      activeTab: id,
+      activeTab: activate ? id : state.activeTab,
     }))
     return id
   },

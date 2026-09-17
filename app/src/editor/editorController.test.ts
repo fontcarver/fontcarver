@@ -189,6 +189,7 @@ function change() {
     glyphs: [42],
     font_info: false,
     masters: false,
+    layout: false,
     glyph_order: false,
     metrics: false,
     layers: false,

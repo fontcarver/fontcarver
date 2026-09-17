@@ -189,6 +189,7 @@ pub fn export_with_progress(
         });
     }
     warnings.extend(crate::metadata::name_warnings(&font.info));
+    warnings.extend(crate::horizontal_kerning_warnings(font, master));
     if font
         .glyphs
         .values()

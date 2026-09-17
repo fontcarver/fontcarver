@@ -6,10 +6,11 @@ use fc_model::{
 
 use crate::{document::rename_references, undo, Error, Snapshot};
 
-use super::{glyphs, layers, metrics, outline, structure, Command};
+use super::{glyphs, kerning, layers, metrics, outline, structure, Command};
 
 #[derive(Default)]
 pub(crate) struct Impact {
+    pub(crate) layout: bool,
     pub(crate) glyphs: Vec<GlyphName>,
     pub(crate) font_info: bool,
     pub(crate) masters: Vec<MasterId>,
@@ -45,6 +46,12 @@ pub(crate) fn impact(font: &Font, command: &Command) -> Impact {
 
 fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
     match command {
+        Command::SetHorizontalKerning { .. }
+        | Command::CreateKerningGroup { .. }
+        | Command::SetKerningGroup { .. }
+        | Command::AssignKerningGroup { .. }
+        | Command::RenameKerningGroup { .. }
+        | Command::RemoveKerningGroup { .. } => impact.layout = true,
         Command::AddGlyph { glyph } => {
             impact.glyph(&glyph.name);
             impact.glyph_order = true;
@@ -54,6 +61,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.component_graph_changed = true;
         }
         Command::RemoveGlyphs { names } => {
+            impact.layout = true;
             for name in names {
                 impact.glyph(name);
             }
@@ -64,6 +72,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.component_graph_changed = true;
         }
         Command::RenameGlyph { from, to } => {
+            impact.layout = true;
             impact.glyph(from);
             impact.glyph(to);
             if from != to {
@@ -170,6 +179,9 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.metrics = true;
         }
         Command::SetMaster { master } => {
+            impact.layout |= font.master(&master.id).is_some_and(|current| {
+                !crate::kerning::same_records(&current.kerning_h, &master.kerning_h)
+            });
             impact.master(&master.id);
             impact.metrics = true;
             impact.guides = true;
@@ -239,9 +251,15 @@ fn apply_batch(
 
 fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
     match command {
+        Command::SetHorizontalKerning { .. }
+        | Command::CreateKerningGroup { .. }
+        | Command::SetKerningGroup { .. }
+        | Command::AssignKerningGroup { .. }
+        | Command::RenameKerningGroup { .. }
+        | Command::RemoveKerningGroup { .. } => kerning::apply(font, command),
         Command::AddGlyph { glyph } => glyphs::add(font, glyph),
         Command::RemoveGlyphs { names } => glyphs::remove(font, names),
-        Command::RenameGlyph { from, to } => font.rename_glyph(from, to).map_err(Error::from),
+        Command::RenameGlyph { from, to } => glyphs::rename(font, from, to),
         Command::SetUnicodes { glyph, unicodes } => {
             glyph_mut(font, glyph)?.unicodes.clone_from(unicodes);
             Ok(())

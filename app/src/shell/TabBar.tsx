@@ -7,14 +7,13 @@ import { useUiStore, type Tab } from '../stores/uiStore'
 import { glyphName } from '../views/font/glyphNames'
 
 import styles from './TabBar.module.css'
-import { closeTab } from './tabActions'
+import { closeTab, selectTab } from './tabActions'
 
 /** The tab strip: one Font tab per document plus Glyph and Font Info tabs. */
 export function TabBar() {
   const { t } = useTranslation()
   const tabs = useUiStore((state) => state.tabs)
   const activeTab = useUiStore((state) => state.activeTab)
-  const setActiveTab = useUiStore((state) => state.setActiveTab)
   const panels = useUiStore((state) => state.panels)
   const togglePanel = useUiStore((state) => state.togglePanel)
   const docs = useSessionStore((state) => state.docs)
@@ -35,10 +34,12 @@ export function TabBar() {
     const delta = event.key === 'ArrowRight' ? 1 : -1
     const next = tabs[(index + delta + tabs.length) % tabs.length]
     if (!next) return
-    setActiveTab(next.id)
-    stripRef.current
-      ?.querySelector<HTMLButtonElement>(`[data-tab="${next.id}"]`)
-      ?.focus()
+    void selectTab(next.id).then((selected) => {
+      if (!selected || useUiStore.getState().activeTab !== next.id) return
+      stripRef.current
+        ?.querySelector<HTMLButtonElement>(`[data-tab="${next.id}"]`)
+        ?.focus()
+    })
   }
 
   return (
@@ -68,7 +69,7 @@ export function TabBar() {
               tabIndex={selected ? 0 : -1}
               className={styles.tabLabel}
               title={title}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => void selectTab(tab.id)}
               onKeyDown={(event) => onKeyDown(event, index)}
             >
               {title}
@@ -78,7 +79,7 @@ export function TabBar() {
             ) : null}
             <IconButton
               label={t('tab.close', { title })}
-              onClick={() => closeTab(tab.id)}
+              onClick={() => void closeTab(tab.id)}
             >
               ✕
             </IconButton>

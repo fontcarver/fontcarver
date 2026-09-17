@@ -149,6 +149,11 @@ machine, and dependent tests skip when they do not:
 
 ## 3. Dependency licenses
 
+P2a eligibility (2026-09-16) adds a direct `fc-doc` dependency on the already
+locked `fea-rs` 1.0.0 parser, shared with `fontc`, to inspect feature ownership.
+Its installed Cargo manifest declares `MIT/Apache-2.0`; no package version or
+external package is added to the workspace lockfile by this dependency edge.
+
 ### 3.1 Rust crates
 
 Surveyed 2026-09-04 with `cargo metadata --format-version 1`, over the fully

@@ -26,7 +26,9 @@ import type { SnapSettings } from '../../editor/snapping'
 import type { ShapeDialogRequest } from '../../editor/tools/toolTypes'
 import type { TextCanvasRun } from '../text/textCanvas'
 import { TextCanvasPaint } from '../text/textCanvasPaint'
+import { drawTextGaps } from '../text/drawTextGaps'
 import {
+  hitCanvasGap,
   hitCanvasRun,
   localRunBox,
   shiftRunOrigin,
@@ -248,6 +250,7 @@ export function GlyphCanvas({
     })
     if (current.textRun) {
       const visible = passive?.visible ?? []
+      drawTextGaps(ctx, viewport, current.textRun, current.theme, visible)
       const signature = visible.join(',')
       if (signature !== visibleSignature.current) {
         visibleSignature.current = signature
@@ -342,6 +345,8 @@ export function GlyphCanvas({
   // A Glyph tab replaces the previous tab content, so focusing on each fitKey
   // change makes Space-tap and Space-drag available immediately on opening.
   useEffect(() => {
+    // Entering text mode also refits the run. Its text field already owns focus.
+    if (frame.current.textRun?.mode === 'text') return
     canvasRef.current?.focus({ preventScroll: true })
   }, [fitKey])
 
@@ -478,6 +483,11 @@ export function GlyphCanvas({
         tool !== 'hand' &&
         tool !== 'zoom'
       ) {
+        const gap = hitCanvasGap(run, viewport, input)
+        if (gap !== null && run.onSelectGap) {
+          run.onSelectGap(gap)
+          return
+        }
         const index = hitCanvasRun(run, viewport, input)
         if (
           index !== null &&
@@ -527,6 +537,11 @@ export function GlyphCanvas({
     (event: React.KeyboardEvent<HTMLCanvasElement>) => {
       const modifiers = modifiersOf(event)
       const run = frame.current.textRun
+      if (run?.onKerningKey?.(event)) {
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
       if (
         run &&
         modifiers.mod &&

@@ -2,12 +2,14 @@ import { useTranslation } from 'react-i18next'
 
 import type { MasterSummary } from '../../../api'
 import { useEditorStore } from '../../../stores/editorStore'
+import { selectActiveTab, useUiStore } from '../../../stores/uiStore'
 import styles from '../glyphView.module.css'
 
 import { AnchorsPanel } from './AnchorsPanel'
 import { ComponentsPanel } from './ComponentsPanel'
 import { GlyphPanel } from './GlyphPanel'
 import { GuidesPanel } from './GuidesPanel'
+import { KerningGroupsPanel } from './KerningGroupsPanel'
 import { LayersPanel } from './LayersPanel'
 import { MetricsPanel } from './MetricsPanel'
 import { PanelSection } from './PanelSection'
@@ -30,12 +32,19 @@ export interface EditInspectorProps {
 export function EditInspector({ masters }: EditInspectorProps) {
   const { t } = useTranslation()
   const active = useEditorStore((state) => state.activeGlyph)
+  const tab = useUiStore(selectActiveTab)
 
-  if (!active)
-    return <p className={styles.inspectorEmpty}>{t('glyphView.loading')}</p>
+  if (!active?.outline)
+    return (
+      <p className={styles.inspectorEmpty}>
+        {t(
+          tab?.kind === 'glyph' && tab.textState?.mode === 'text'
+            ? 'kerningGroups.selectGlyph'
+            : 'glyphView.loading',
+        )}
+      </p>
+    )
   const { outline } = active
-  if (!outline)
-    return <p className={styles.inspectorEmpty}>{t('glyphView.loading')}</p>
 
   const context: PanelContext = {
     target: {
@@ -60,6 +69,9 @@ export function EditInspector({ masters }: EditInspectorProps) {
       </PanelSection>
       <PanelSection id="metrics" title={t('glyphInspector.metrics')}>
         <MetricsPanel {...context} />
+      </PanelSection>
+      <PanelSection id="kerning-groups" title={t('kerningGroups.title')}>
+        <KerningGroupsPanel target={context.target} />
       </PanelSection>
       <PanelSection
         id="layers"

@@ -466,7 +466,9 @@
     "shaping": "无法编译排版特性",
     "invalid_response": "内核返回了意外响应",
     "timeout": "内核未及时响应",
-    "transport": "界面无法连接内核"
+    "transport": "界面无法连接内核",
+    "kerning_unavailable": "此字体的字偶距暂时无法编辑。",
+    "stale_generation": "文档已发生变化。请刷新数据后重试。"
   },
   "warning": {
     "cffHintsNotImported": "导入 CFF 轮廓时未导入各字形的字干和提示蒙版数据",
@@ -486,7 +488,8 @@
     "postNamesOmitted": "字体超出带名称 post 表的容量，因此已省略字形名称。",
     "valueClamped": "{{message}}",
     "macNameRecordsDropped": "{{message}}",
-    "nameLanguageUnmapped": "{{message}}"
+    "nameLanguageUnmapped": "{{message}}",
+    "invalidHorizontalKerning": "部分字偶距记录无法编译，原始数据已保留。{{message}}"
   },
   "a11y": {
     "menubar": "应用程序菜单",
@@ -582,7 +585,7 @@
     "export": "导出",
     "color": "颜色标签",
     "tags": "标签",
-    "kernGroups": "字距组",
+    "kernGroups": "字偶距组",
     "note": "备注",
     "layer": "图层",
     "bbox": "边界框",
@@ -919,7 +922,7 @@
       "latin": "拉丁文全字母句",
       "chinese": "中文示例",
       "allEncoded": "所有已编码字形",
-      "kerning": "字偶间距对——稍后推出"
+      "kerning": "字偶距示例——稍后推出"
     },
     "preview": {
       "label": "预览",
@@ -1073,5 +1076,104 @@
     "runCount": "排版结果包含 {{count}} 个字形",
     "textStatus": "{{count}} 个字符",
     "previewMenu": "文本预览栏"
+  },
+  "kerningCanvas": {
+    "label": "字形间隙",
+    "choose": "选择一处间隙",
+    "pair": "{{index}}. {{left}} / {{right}}",
+    "unknownGlyph": "未知字形",
+    "help": "在文本模式下选择一个间隙标记，或在下方输入字形名称。",
+    "rtl": "从右到左的文本暂不支持间隙编辑。请通过字形名称编辑字偶。",
+    "cluster": "此处包含连字或组合字形。请通过字形名称编辑字偶。",
+    "named": "以斜杠输入的字形逐个显示。请在下方输入名称来编辑字偶距。",
+    "unresolved": "此处有一个字形无法与文档中的字形匹配。"
+  },
+  "kerningGroups": {
+    "title": "字偶距组",
+    "selectGlyph": "选择一个字形，即可编辑其轮廓和字偶距组。",
+    "shared": "分组归属适用于所有母版。",
+    "side1": "第一侧",
+    "side2": "第二侧",
+    "membership": "{{side}}分组",
+    "none": "未分组",
+    "manage": "管理{{side}}分组",
+    "search": "搜索{{side}}分组",
+    "empty": "没有匹配的分组。",
+    "loading": "正在加载字偶距组…",
+    "refresh": "刷新",
+    "loadFailed": "无法加载字偶距组。",
+    "changeFailed": "无法确认分组修改是否成功。请先检查已保存的分组归属，再重试。",
+    "invalidMembership": "部分已保存的分组归属需要修正后才能编辑。",
+    "unavailable": {
+      "imported_layout": "此字体导入的间距规则暂时无法编辑。",
+      "source_owned_kerning": "此字体的字偶距由特性源代码定义，暂时无法编辑分组。",
+      "invalid_feature_source": "请先修正特性源代码，再编辑字偶距。"
+    },
+    "select": "查看 {{name}}",
+    "members_one": "{{count}} 个成员",
+    "members_other": "{{count}} 个成员",
+    "pairs_one": "所有母版共 {{count}} 条字偶距记录",
+    "pairs_other": "所有母版共 {{count}} 条字偶距记录",
+    "memberList": "{{name}} 的成员",
+    "page": "第 {{first}}–{{last}} 项，共 {{total}} 项",
+    "previous": "上一页",
+    "next": "下一页",
+    "assign": "分配 {{glyph}}",
+    "unassign": "解除 {{glyph}} 在这一侧的分组",
+    "newName": "新{{side}}分组名称",
+    "nameHint": "输入名称后缀或完整的 {{prefix}} 分组名称。",
+    "create": "创建并分配",
+    "renameName": "重命名 {{name}}",
+    "rename": "重命名分组",
+    "delete": "移除分组…",
+    "confirmDelete": "移除 {{name}} 并清除其 {{members}} 个字形的分组归属？这会影响所有母版。",
+    "confirmPairs": "这还会移除所有母版中共 {{count}} 条水平字偶距记录。",
+    "deleteGroup": "移除分组",
+    "deleteGroupAndPairs": "移除分组及字偶距记录",
+    "cancel": "取消",
+    "undo": {
+      "assign": "分配字偶距组",
+      "create": "创建字偶距组",
+      "rename": "重命名字偶距组",
+      "delete": "移除字偶距组"
+    }
+  },
+  "kerningText": {
+    "title": "字偶距",
+    "firstGlyph": "第一个字形",
+    "secondGlyph": "第二个字形",
+    "glyphPlaceholder": "字形名称",
+    "scope": "规则作用范围",
+    "scopes": {
+      "glyph_glyph": "字形 / 字形",
+      "glyph_group": "字形 / 分组",
+      "group_glyph": "分组 / 字形",
+      "group_group": "分组 / 分组"
+    },
+    "value": "字偶距值",
+    "valueHint": "零值会显式覆盖继承值。移除规则后才会恢复继承。",
+    "units": "单位",
+    "invalidValue": "请输入有限的字体单位数值。",
+    "resolved": "采用值：{{value}}",
+    "winningRule": "来自 {{first}} / {{second}}",
+    "noRule": "没有已保存的规则",
+    "exactRecord": "此范围的保存值：{{value}}",
+    "inherited": "此作用范围内没有记录，显示的是当前字偶的采用值。",
+    "remove": "移除此规则",
+    "removeHint": "移除已保存的规则，使用继承的字偶距。",
+    "empty": "选择一处字形间隙，或输入两个字形名称。",
+    "loading": "正在读取字偶距…",
+    "loadFailed": "无法读取此字偶，请检查两个字形的名称及其分组。",
+    "saving": "正在应用字偶距…",
+    "pending": "预览正在更新…",
+    "impactLoading": "正在读取受影响的分组成员…",
+    "impactFailed": "无法读取受影响的分组成员。请重新选择作用范围以刷新。",
+    "groupImpact_one": "{{name}}：{{count}} 个字形（{{members}}）",
+    "groupImpact_other": "{{name}}：{{count}} 个字形（{{members}}）",
+    "imported_layout": "此字体导入的间距规则暂时无法编辑。",
+    "source_owned_kerning": "此字体的字偶距由特性源代码定义，暂时无法在此编辑。",
+    "invalid_feature_source": "请先修正字体的特性源代码，再编辑字偶距。",
+    "undo": "设置字偶距",
+    "undoRemove": "移除字偶距规则"
   }
 }

@@ -1,16 +1,22 @@
 # P2 preparation and horizontal kerning design
 
 Date: 2026-09-07.
-Status: draft retained for later review; P2 paused by the user. No implementation has begun.
+Status: P2a implemented and verified as of 2026-09-16; P2b–P2d remain planned.
 Baseline: `p1-outline-editing` at `1305109`, production candidate `2e53ba6`.
 
 ## Context and authority
 
-Latest instruction: the user explicitly deferred P2 until a later session in
-a few days. Do not execute this proposal or begin implementation planning now.
-Wait for a new user instruction; no automatic restart is scheduled. Resume
-through `../plans/2026-09-05-p1-resume-todo.md`. The earlier continuation below
-explains how the draft was prepared and does not override this pause.
+Latest instruction (2026-09-16): the user requested completion of all P2a and
+authorized separate implementation, translation and review agents. The shared
+resolver and ownership check now support validated pair/group transactions,
+undo/redo, typed bounded queries, glyph group controls, text gap/pair editing,
+and consistent compiler/persistence behavior. Source ownership still rejects
+imported-table authority, active source-owned `kern`, and unparseable source.
+
+The [implementation plan](../plans/2026-09-16-p2a-authoring.md) and
+[acceptance report](../../p2a-acceptance.md) record the completed milestone.
+Continue with P2b through `../plans/2026-09-05-p1-resume-todo.md`. The earlier
+pauses on performance, comparison and native desktop automation remain in effect.
 
 The user tried the P1 desktop version, found its current usability acceptable
 apart from potential optimization, and requested continuation. Performance

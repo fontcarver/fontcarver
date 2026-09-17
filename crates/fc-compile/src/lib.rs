@@ -7,6 +7,7 @@
 
 mod error;
 mod export;
+mod kerning;
 mod large_font;
 mod metadata;
 mod preserve;
@@ -19,6 +20,7 @@ pub use export::{
     export, export_with_progress, touched_since_import, ExportFormat, ExportOptions, ExportReport,
     ExportStage, ExportWarning,
 };
+pub use kerning::horizontal_kerning_warnings;
 pub use preserve::preserve_merge;
 pub use shaping::shaping_fingerprint;
 pub use source::{

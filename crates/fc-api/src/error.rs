@@ -57,9 +57,11 @@ impl From<fc_doc::Error> for ApiError {
             | fc_doc::Error::MissingMaster(_) => Self::not_found(message),
             fc_doc::Error::InvalidEditToken
             | fc_doc::Error::InvalidCommand(_)
+            | fc_doc::Error::NonFiniteKerning(_)
             | fc_doc::Error::MetricsKeyCycle
             | fc_doc::Error::Model(_) => Self::invalid_params(message),
             fc_doc::Error::Geometry(_) => Self::geometry(message),
+            fc_doc::Error::KerningUnavailable(_) => Self::new("kerning_unavailable", message),
             fc_doc::Error::Io(_) => Self::io(message),
             fc_doc::Error::UnsupportedFormat(_)
             | fc_doc::Error::InvalidFcfFormat(_)

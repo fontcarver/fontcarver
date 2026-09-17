@@ -120,6 +120,17 @@ describe('uiStore panels', () => {
 })
 
 describe('uiStore tabs', () => {
+  it('can retain a completed document open without taking focus', () => {
+    const active = useUiStore.getState().openTab({ kind: 'font', doc: 1 })
+    const background = useUiStore
+      .getState()
+      .openTab({ kind: 'font', doc: 2 }, false)
+    expect(useUiStore.getState().activeTab).toBe(active)
+    expect(
+      useUiStore.getState().tabs.some((tab) => tab.id === background),
+    ).toBe(true)
+  })
+
   it('derives stable ids and never duplicates a tab', () => {
     const first = useUiStore.getState().openTab({ kind: 'font', doc: 1 })
     const again = useUiStore.getState().openTab({ kind: 'font', doc: 1 })

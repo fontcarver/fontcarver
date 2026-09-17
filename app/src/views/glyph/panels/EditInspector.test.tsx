@@ -10,6 +10,8 @@ import {
   type LayerOutline,
 } from '../../../api'
 import { setCommandErrorReporter } from '../../../shell/commands'
+import { i18n } from '../../../i18n'
+import catalog from '../../../i18n/en.json'
 import { initialEditorState, useEditorStore } from '../../../stores/editorStore'
 import {
   initialDocumentState,
@@ -34,9 +36,11 @@ import {
 import { selectionOf, type Selection } from '../../../editor/selection'
 import { buildScene } from '../glyphScene'
 import { measurementGuideKey } from '../guideIdentity'
+import { initialTextState } from '../../text/textState'
 
 import { EditInspector } from './EditInspector'
 
+const kerningGroups = catalog.kerningGroups
 const square = makeContour([
   makePoint(40, 0),
   makePoint(560, 0, 'Line'),
@@ -131,6 +135,37 @@ afterEach(() => {
 })
 
 describe('the accordion', () => {
+  it('shows a selection hint when text mode intentionally has no active glyph', () => {
+    i18n.addResourceBundle('en', 'translation', { kerningGroups }, true, true)
+    useUiStore.getState().openTab({
+      kind: 'glyph',
+      doc: 1,
+      gid: 42,
+      textState: {
+        ...initialTextState('m1', 'AV'),
+        mode: 'text',
+        activeIndex: null,
+      },
+    })
+    render(<EditInspector masters={[{ id: 'm1', name: 'Regular' }]} />)
+    expect(screen.getByText(kerningGroups.selectGlyph)).toBeVisible()
+    expect(screen.queryByText('Loading glyph…')).not.toBeInTheDocument()
+  })
+
+  it('retains loading feedback for an edit-mode glyph request', () => {
+    useUiStore.getState().openTab({
+      kind: 'glyph',
+      doc: 1,
+      gid: 42,
+      textState: initialTextState('m1', 'AV'),
+    })
+    render(<EditInspector masters={[{ id: 'm1', name: 'Regular' }]} />)
+    expect(screen.getByText('Loading glyph…')).toBeVisible()
+    expect(
+      screen.queryByText(kerningGroups.selectGlyph),
+    ).not.toBeInTheDocument()
+  })
+
   it('shows the seven sections of the design spec in order', () => {
     show()
     const headers = screen

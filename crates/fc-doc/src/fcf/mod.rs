@@ -47,6 +47,10 @@ struct MetadataEnvelope {
 }
 
 /// Writes a font to a `.fcf` or gzip-wrapped `.fcf.gz` path.
+///
+/// Non-finite imported kerning is rejected before touching the destination;
+/// JSON cannot preserve those values, and silently writing null would make
+/// the native document unreadable. Finite unresolved references are retained.
 pub fn write(path: &Path, font: &Font) -> Result<(), Error> {
     write::write(path, font, None)
 }

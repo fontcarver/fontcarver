@@ -1354,6 +1354,7 @@ dependencies = [
  "fc-geom",
  "fc-model",
  "fc-sfnt",
+ "fea-rs",
  "flate2",
  "kurbo",
  "serde",

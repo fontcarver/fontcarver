@@ -25,8 +25,11 @@ use std::{
     time::{Duration, Instant},
 };
 
-use fc_compile::{compile_static_with_metadata, CompileOptions, StaticCompile};
-use fc_model::{Font, GlyphName, MasterId};
+use fc_compile::{
+    compile_static_with_metadata, horizontal_kerning_warnings, preserve_merge, CompileOptions,
+    ExportOptions, StaticCompile,
+};
+use fc_model::{FeaturesSource, Font, GlyphName, MasterId};
 use harfrust::{Direction, Feature, Language, Script, ShapeOptions, ShaperData, UnicodeBuffer};
 use read_fonts::{
     types::{GlyphId, Tag},
@@ -615,6 +618,7 @@ struct CompiledFont {
     names: Vec<Option<GlyphName>>,
     advances: Vec<f64>,
     units_per_em: u16,
+    warnings: Vec<String>,
 }
 
 impl CompiledFont {
@@ -622,8 +626,28 @@ impl CompiledFont {
         if font.master(master).is_none() {
             return Err(Error::MissingMaster(master.clone()));
         }
-        let compiled = compile_static_with_metadata(font, master, &CompileOptions::default())?;
-        Self::from_static(compiled, generation, font.info.units_per_em)
+        let mut compiled = compile_static_with_metadata(font, master, &CompileOptions::default())?;
+        let mut warnings = horizontal_kerning_warnings(font, master);
+        if font.features.source_of_truth == FeaturesSource::ImportedTables {
+            // Shaping shares export's glyph-order-verified layout preservation.
+            // Keep newly compiled metrics/outlines: preview has no need to
+            // restore original glyph programs and must reflect current edits.
+            let options = ExportOptions {
+                master: Some(master.clone()),
+                keep_tt_instructions: false,
+                ..ExportOptions::default()
+            };
+            let (bytes, preserved) =
+                preserve_merge(&compiled.bytes, font, &HashSet::new(), &options)?;
+            compiled.bytes = bytes;
+            warnings.extend(preserved);
+        }
+        let mut result = Self::from_static(compiled, generation, font.info.units_per_em)?;
+        result.warnings = warnings
+            .into_iter()
+            .map(|warning| format!("{}: {}", warning.code, warning.message))
+            .collect();
+        Ok(result)
     }
 
     fn from_static(
@@ -639,6 +663,7 @@ impl CompiledFont {
             names,
             advances,
             units_per_em,
+            warnings: Vec::new(),
         })
     }
 }
@@ -766,7 +791,7 @@ fn shape_run(
     stale: bool,
     failure: Option<String>,
 ) -> Result<ShapedRun, Error> {
-    let mut warnings = Vec::new();
+    let mut warnings = compiled.warnings.clone();
     warnings.extend(failure);
     let face =
         FontRef::from_index(&compiled.bytes, 0).map_err(|error| Error::Parse(error.to_string()))?;
@@ -902,6 +927,7 @@ mod tests {
             names: Vec::new(),
             advances: Vec::new(),
             units_per_em: 1_000,
+            warnings: Vec::new(),
         })
     }
 

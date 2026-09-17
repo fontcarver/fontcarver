@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { setTransport } from '../../api'
+import { i18n } from '../../i18n'
+import catalog from '../../i18n/en.json'
 import {
   initialDocumentState,
   useDocumentStore,
@@ -21,11 +23,13 @@ import {
 import { glyphPage, stubGridViewport } from '../../test/glyphFixtures'
 import { createMockTransport, makeSummary } from '../../test/mockTransport'
 import { resetOrders } from '../font/glyphOrder'
+import { initialTextState } from '../text/textState'
 
 import { EditSidebar } from './EditSidebar'
 import { buildScene } from './glyphScene'
 
 const summary = makeSummary()
+const kerningGroups = catalog.kerningGroups
 
 const background = makeLayer({
   id: 'bg-1',
@@ -84,6 +88,37 @@ afterEach(() => {
 })
 
 describe('EditSidebar', () => {
+  it('shows an intentional selection hint in text mode without loading glyphs', () => {
+    i18n.addResourceBundle('en', 'translation', { kerningGroups }, true, true)
+    useUiStore.getState().openTab({
+      kind: 'glyph',
+      doc: 1,
+      gid: 3,
+      textState: {
+        ...initialTextState('m1', 'AV'),
+        mode: 'text',
+        activeIndex: null,
+      },
+    })
+    render(<EditSidebar doc={1} />)
+    expect(screen.getByText(kerningGroups.selectGlyph)).toBeVisible()
+    expect(screen.queryByText('Loading glyph…')).not.toBeInTheDocument()
+  })
+
+  it('keeps the loading message while an edit-mode glyph is being fetched', () => {
+    useUiStore.getState().openTab({
+      kind: 'glyph',
+      doc: 1,
+      gid: 3,
+      textState: initialTextState('m1', 'AV'),
+    })
+    render(<EditSidebar doc={1} />)
+    expect(screen.getAllByText('Loading glyph…')).toHaveLength(2)
+    expect(
+      screen.queryByText(kerningGroups.selectGlyph),
+    ).not.toBeInTheDocument()
+  })
+
   it('lists the layers of the glyph on screen', () => {
     publishGlyph()
     render(<EditSidebar doc={1} />)

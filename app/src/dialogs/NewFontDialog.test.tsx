@@ -26,6 +26,7 @@ function setup() {
       glyphs: [],
       font_info: true,
       masters: true,
+      layout: false,
       glyph_order: false,
       metrics: false,
       layers: false,

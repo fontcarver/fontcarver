@@ -5,6 +5,7 @@ import type { DocId } from '../../api'
 import { selectDocView, useDocumentStore } from '../../stores/documentStore'
 import { selectSummary, useSessionStore } from '../../stores/sessionStore'
 import { useEditorStore } from '../../stores/editorStore'
+import { selectActiveTab, useUiStore } from '../../stores/uiStore'
 import type { GlyphQuery } from '../font/glyphSelection'
 
 import { EditGlyphList } from './EditGlyphList'
@@ -26,6 +27,7 @@ export function EditSidebar({ doc }: EditSidebarProps) {
   const summary = useSessionStore(selectSummary(doc))
   const view = useDocumentStore(selectDocView(doc))
   const active = useEditorStore((state) => state.activeGlyph)
+  const tab = useUiStore(selectActiveTab)
   const masters = summary?.masters
 
   const query = useMemo<GlyphQuery>(
@@ -46,6 +48,13 @@ export function EditSidebar({ doc }: EditSidebarProps) {
   )
 
   if (!summary) return <p className={styles.note}>{t('inspector.empty')}</p>
+  if (
+    !active?.outline &&
+    tab?.doc === doc &&
+    tab.kind === 'glyph' &&
+    tab.textState?.mode === 'text'
+  )
+    return <p className={styles.note}>{t('kerningGroups.selectGlyph')}</p>
 
   return (
     <div className={styles.sidebar}>

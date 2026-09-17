@@ -11,6 +11,25 @@ pub(super) fn apply(font: &mut Font, command: &Command) -> Result<(), Error> {
         Command::CopyLayer { glyph, from, to } => copy(font, glyph, from, to),
         Command::SwapWithBackground { glyph, master } => swap(font, glyph, master),
         Command::SetMaster { master } => {
+            let current = font
+                .master(&master.id)
+                .ok_or_else(|| Error::MissingMaster(master.id.clone()))?;
+            if !crate::kerning::same_records(&current.kerning_h, &master.kerning_h) {
+                crate::kerning::check_horizontal_editing(font)?;
+                for ((left, right), value) in &master.kerning_h.0 {
+                    super::apply::ensure_finite(&[*value], "kerning")?;
+                    crate::kerning::validate_pair_side(
+                        font,
+                        left,
+                        crate::kerning::KerningGroupSide::Side1,
+                    )?;
+                    crate::kerning::validate_pair_side(
+                        font,
+                        right,
+                        crate::kerning::KerningGroupSide::Side2,
+                    )?;
+                }
+            }
             let target = font
                 .masters
                 .iter_mut()

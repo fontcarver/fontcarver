@@ -1,22 +1,102 @@
 # FontCarver — resume TODO (written 2026-09-05, session paused by the user)
 
-## Current status — P2 paused by the user, 2026-09-07
+## Current status — P2a complete, 2026-09-16
 
-**Do not start P2 now.** After reviewing the proposed scope, model allocation
-and rough estimates, the user explicitly deferred P2 until a later session in
-a few days. Wait for a new instruction to resume; elapsed time does not
-authorize an automatic restart. No P2 implementation has begun.
+The user authorized all P2a plus separate implementation, translation and review.
+Horizontal source-font kerning authoring is implemented and verified: atomic
+group/pair commands, undo/redo, bounded typed queries, glyph groups inspector,
+text gap and exact-name pair editing, shortcut coalescing, edit handovers,
+and matching preview/save/export/reopen behavior.
+
+Acceptance: 414 relevant Rust tests, 994 frontend tests and 6 isolated headless
+workflows pass. Workspace Clippy, TypeScript, ESLint and localization checks pass;
+English/light and Chinese/dark visual checks are complete. See
+[P2a acceptance](../../p2a-acceptance.md), the
+[implementation plan](2026-09-16-p2a-authoring.md), and its scoped task reports.
+
+Changes remain uncommitted on `p2a-kerning-resolution`, preserving pre-existing
+workspace edits. Next: design and plan P2b editable OpenType layout and imported
+font support. P2c/P2d remain later milestones. Performance investigation,
+FontForge comparison and native desktop automation remain paused.
+
+## Previous bounded step — P2a eligibility complete, 2026-09-16
+
+The user requested the next project step. Implemented shared horizontal kerning
+editing eligibility in `fc-doc`, using the compiler's assembled FEA and the
+already locked `fea-rs` parser. It distinguishes imported layout, source-owned
+`kern`, and unparseable source. Includes fail closed without filesystem access;
+disabled blocks and comments do not falsely reserve kerning.
+
+- [x] Write the [bounded plan](2026-09-16-p2a-kerning-eligibility.md).
+- [x] Implement the pure check and 13 ownership/syntax regression tests.
+- [x] Share existing FEA assembly between the check and compiler; retain the
+  existing class-spelling regression test in `fc-model`.
+- [x] Pass all 92 `fc-doc` and 37 `fc-model` tests.
+- [x] Pass 14 compiler/preservation tests, focused Clippy and formatting.
+- [x] Review the final diff and update status/acceptance documentation.
+
+See [the acceptance report](../../p2a-eligibility-acceptance.md) for compiler
+regressions, lint/formatting results and the final scope. Changes remain
+uncommitted on `p2a-kerning-resolution`, alongside pre-existing workspace edits.
+
+### Next implementation slice
+
+Plan and implement validated horizontal pair set/remove commands with undo/redo
+and a layout change signal. Call `check_horizontal_editing` from those commands
+and future authoring queries, validate glyph/group/master references and finite
+values, preserve explicit zero, and keep vertical kerning and outline provenance
+unchanged. Then add group transactions and the typed API before UI editing.
+
+P2a authoring remains incomplete; no new API endpoint or UI is exposed by this
+step. The broader P2 design is still a draft. Performance work, the FontForge
+comparison and native desktop automation remain paused.
+
+## Previous bounded step — stored query complete, 2026-09-08
+
+The user requested “先做一小步” after the P2a scope recap. Work is limited to
+`fc-doc::kerning::resolve_stored_horizontal` on `p2a-kerning-resolution`:
+resolve one pair's stored value and supplying rule, including group exceptions
+and explicit zero. The query checks relevant references and membership without
+mutating the font. It is not an API endpoint or a final shaping/eligibility query.
+
+Verification on 2026-09-08:
+
+- Added `crates/fc-doc/tests/kerning.rs`; its first run failed because the query
+  module did not exist. All eight new tests pass with the implementation.
+- `cargo test -p fc-doc --quiet`: 79 passed, zero failed or ignored.
+- `cargo clippy -p fc-doc --all-targets -- -D warnings`: passed after simplifying
+  one boolean expression; `cargo fmt --all -- --check`: passed.
+- Independent read-only review approved the bounded step with no blocking
+  findings. Optional follow-up coverage: finite winners over invalid fallback
+  values, and unrelated malformed memberships. The current implementation
+  handles both; add focused coverage when extending the query/API boundary.
+- No API, UI, editing commands, model/schema changes or new dependencies.
+  Changes remain uncommitted on `p2a-kerning-resolution`.
+
+At that handoff, work stopped after the query. The remaining P2a implementation was not started;
+the earlier pause remains in effect for performance work, the FontForge
+comparison and native desktop automation.
 
 The saved [P2 design proposal](../specs/2026-09-07-p2-kerning-design.md) contains
 the P2a–P2d scope, first-milestone behavior and acceptance criteria, proposed
 Astra/Sol allocation, and tentative estimates. It is a design draft, not an
 approved, task-by-task implementation plan.
 
-Resume checklist, to execute only after the user resumes P2:
+### Completed in this step
 
-- [ ] Read the P2 proposal and confirm the first milestone's scope with the user.
-- [ ] Write the detailed P2a implementation plan, with exact interfaces and tests.
-- [ ] Implement and verify P2a: horizontal kerning for eligible source fonts.
+- [x] Implement the stored horizontal kerning query and its eight regression tests.
+- [x] Pass all 79 `fc-doc` tests, Clippy, formatting and independent review.
+- [x] Update this TODO, README status and the P2 design draft.
+
+### Remaining work recorded at the 2026-09-08 handoff
+
+The proposed next slice was shared editing eligibility for source-owned versus
+imported layout. This was implemented in the 2026-09-16 step above; broader
+authoring planning and delivery remain outstanding.
+
+- [x] Review the full P2a design beyond the completed scope recap and small query.
+- [x] Write the detailed P2a implementation plan, with exact interfaces and tests.
+- [x] Implement and verify P2a: horizontal kerning for eligible source fonts.
 - [ ] Design and plan P2b: editable OpenType layout and imported-font support.
 - [ ] Design and plan P2c: static OTF/CFF export.
 - [ ] Design and plan P2d: Glyphs/SFD/Type 1 interoperability and problem checks.
@@ -177,7 +257,7 @@ unchecked boxes there are historical; the active resume above takes precedence.
       goes public, or accept? (Rewrite is destructive; needs your explicit go.)
 - [ ] Merge `p1-outline-editing` into `main` when P1 is finished (the finishing step asks; it is your call).
 - [ ] Codex: currently paused (all seats on Claude). Say when to re-enable it (kernel implementation, fix rounds, T13 translation + QA go back to Codex sol xhigh under the original split).
-- [ ] Repository URL / hosting for fontcarver.com (Cargo/package `repository` fields are unset).
+- [x] Repository URL set to https://github.com/fontcarver/fontcarver in Cargo/package metadata; official website is https://fontcarver.com. Website hosting remains a separate deployment task.
 
 ## 7. Environment notes (this machine)
 

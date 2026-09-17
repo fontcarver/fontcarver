@@ -6,7 +6,7 @@ use std::{
     sync::Arc,
 };
 
-use fc_model::{FeaturesSource, Font, GlyphName, KernSide, Master, MasterId};
+use fc_model::{Font, GlyphName, KernSide, Master, MasterId};
 use fontdrasil::{
     coords::NormalizedLocation,
     orchestration::{Access, AccessBuilder, Work},
@@ -517,64 +517,11 @@ impl Work<Context, WorkId, IrError> for FeatureWork {
 }
 
 fn feature_source(font: &Font) -> IrFeaturesSource {
-    if font.features.source_of_truth != FeaturesSource::Fea {
-        return IrFeaturesSource::Empty;
-    }
-    let mut source = String::new();
-    for prefix in font
-        .features
-        .prefixes
-        .iter()
-        .filter(|block| !block.disabled)
-    {
-        source.push_str(&prefix.code);
-        source.push('\n');
-    }
-    for class in &font.features.classes {
-        source.push('@');
-        source.push_str(class.name.trim_start_matches('@'));
-        source.push_str(" = ");
-        append_class_body(&mut source, &class.code);
-        source.push_str(";\n");
-    }
-    for feature in font
-        .features
-        .features
-        .iter()
-        .filter(|block| !block.disabled)
-    {
-        let trimmed = feature.code.trim();
-        if trimmed.starts_with("feature ") {
-            source.push_str(trimmed);
-            source.push('\n');
-        } else {
-            source.push_str("feature ");
-            source.push_str(&feature.tag);
-            source.push_str(" {\n");
-            source.push_str(&feature.code);
-            source.push_str("\n} ");
-            source.push_str(&feature.tag);
-            source.push_str(";\n");
-        }
-    }
+    let source = font.features.to_fea();
     if source.trim().is_empty() {
         IrFeaturesSource::Empty
     } else {
         IrFeaturesSource::from_string(source)
-    }
-}
-
-// FeatureClass::code is a body, but older documents may contain the complete
-// bracketed class. Preserve either spelling verbatim so class references,
-// comments, and whitespace are not damaged by character trimming.
-fn append_class_body(target: &mut String, body: &str) {
-    let trimmed = body.trim();
-    if trimmed.starts_with('[') && trimmed.ends_with(']') {
-        target.push_str(body);
-    } else {
-        target.push('[');
-        target.push_str(body);
-        target.push(']');
     }
 }
 
@@ -607,8 +554,9 @@ impl Work<Context, WorkId, IrError> for KerningInstanceWork {
 
     fn exec(&self, context: &Context) -> Result<(), IrError> {
         let master = selected_master(&self.data)?;
-        let kerns = master
-            .kerning_h
+        let prepared = crate::kerning::prepare(&self.data.font, &master.id);
+        let kerns = prepared
+            .pairs
             .0
             .iter()
             .map(|((left, right), value)| {
@@ -619,38 +567,24 @@ impl Work<Context, WorkId, IrError> for KerningInstanceWork {
             })
             .collect();
         let mut groups = BTreeMap::new();
-        groups.extend(
-            self.data
-                .font
-                .kerning_groups
-                .side1
-                .iter()
-                .map(|(name, members)| {
-                    (
-                        KernGroup::Side1(name.as_str().into()),
-                        members
-                            .iter()
-                            .map(|member| IrGlyphName::new(member.as_ref()))
-                            .collect(),
-                    )
-                }),
-        );
-        groups.extend(
-            self.data
-                .font
-                .kerning_groups
-                .side2
-                .iter()
-                .map(|(name, members)| {
-                    (
-                        KernGroup::Side2(name.as_str().into()),
-                        members
-                            .iter()
-                            .map(|member| IrGlyphName::new(member.as_ref()))
-                            .collect(),
-                    )
-                }),
-        );
+        groups.extend(prepared.groups.side1.iter().map(|(name, members)| {
+            (
+                KernGroup::Side1(name.as_str().into()),
+                members
+                    .iter()
+                    .map(|member| IrGlyphName::new(member.as_ref()))
+                    .collect(),
+            )
+        }));
+        groups.extend(prepared.groups.side2.iter().map(|(name, members)| {
+            (
+                KernGroup::Side2(name.as_str().into()),
+                members
+                    .iter()
+                    .map(|member| IrGlyphName::new(member.as_ref()))
+                    .collect(),
+            )
+        }));
         context.kerning_at.set(KerningInstance {
             location: self.location.clone(),
             kerns,
@@ -688,18 +622,7 @@ mod tests {
     use fc_model::{Font, Glyph, GlyphName, Layer};
     use read_fonts::{types::Version16Dot16, FontRef, TableProvider};
 
-    use super::{append_class_body, compile_static_impl, CompileOptions};
-
-    #[test]
-    fn feature_class_bodies_are_not_trimmed_by_bracket_characters() {
-        let mut bracketed = String::new();
-        append_class_body(&mut bracketed, "[ A B ]");
-        assert_eq!(bracketed, "[ A B ]");
-
-        let mut body = String::new();
-        append_class_body(&mut body, " A @Uppercase # keep this comment\n");
-        assert_eq!(body, "[ A @Uppercase # keep this comment\n]");
-    }
+    use super::{compile_static_impl, CompileOptions};
 
     #[test]
     fn forced_post_three_keeps_pre_patch_model_identity() {

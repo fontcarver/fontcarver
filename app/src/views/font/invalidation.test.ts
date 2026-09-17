@@ -36,6 +36,7 @@ function change(overrides: Partial<Change> = {}): Change {
     glyphs: [CHANGED_GID],
     font_info: false,
     masters: false,
+    layout: false,
     glyph_order: false,
     metrics: false,
     layers: false,

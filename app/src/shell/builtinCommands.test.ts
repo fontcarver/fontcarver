@@ -42,6 +42,22 @@ afterEach(() => {
 })
 
 describe('built-in commands', () => {
+  it('waits for the active document before a tab cycling command', async () => {
+    const old = useUiStore.getState().openTab({ kind: 'font', doc: 1 })
+    const next = useUiStore.getState().openTab({ kind: 'font', doc: 2 })
+    useUiStore.getState().setActiveTab(old)
+    let finish!: () => void
+    const pending = new Promise<void>((resolve) => {
+      finish = resolve
+    })
+    void holdDocumentEdits(1, pending)
+
+    expect(runCommand('window.nextTab')).toBe(true)
+    expect(useUiStore.getState().activeTab).toBe(old)
+    finish()
+    await vi.waitFor(() => expect(useUiStore.getState().activeTab).toBe(next))
+  })
+
   it('reserves kerning arrows on a text canvas and keeps tab cycling elsewhere', () => {
     openDocument()
     const id = useUiStore.getState().openTab({ kind: 'glyph', doc: 1, gid: 3 })
@@ -227,7 +243,7 @@ describe('built-in commands', () => {
 })
 
 describe('glyph.open targeting', () => {
-  it('opens the focus cell, not the first member of the selection', () => {
+  it('opens the focus cell, not the first member of the selection', async () => {
     const summary = makeSummary()
     openDocument(summary)
     const store = useDocumentStore.getState()
@@ -238,11 +254,15 @@ describe('glyph.open targeting', () => {
     expect(isCommandEnabled('glyph.open')).toBe(true)
     expect(runCommand('glyph.open')).toBe(true)
 
-    expect(useUiStore.getState().tabs.some((tab) => tab.gid === 7)).toBe(true)
+    await vi.waitFor(() =>
+      expect(useUiStore.getState().tabs.some((tab) => tab.gid === 7)).toBe(
+        true,
+      ),
+    )
     expect(useUiStore.getState().tabs.some((tab) => tab.gid === 5)).toBe(false)
   })
 
-  it('falls back to the first selected glyph when nothing has focus', () => {
+  it('falls back to the first selected glyph when nothing has focus', async () => {
     const summary = makeSummary()
     openDocument(summary)
     const store = useDocumentStore.getState()
@@ -251,7 +271,11 @@ describe('glyph.open targeting', () => {
 
     runCommand('glyph.open')
 
-    expect(useUiStore.getState().tabs.some((tab) => tab.gid === 11)).toBe(true)
+    await vi.waitFor(() =>
+      expect(useUiStore.getState().tabs.some((tab) => tab.gid === 11)).toBe(
+        true,
+      ),
+    )
   })
 
   it('is disabled with neither a focus cell nor a selection', () => {

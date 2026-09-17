@@ -41,6 +41,20 @@ pub const FAILED_STAGE: &str = "failed";
 
 /// Method name, parameter TypeScript type, and result TypeScript type.
 pub const METHODS: &[(&str, &str, &str)] = &[
+    ("kerning.status", "DocParams", "KerningStatus"),
+    ("kerning.glyph", "GlyphKerningParams", "GlyphKerning"),
+    (
+        "kerning.resolve",
+        "KerningResolveParams",
+        "KerningResolution",
+    ),
+    ("kerning.pairs", "KerningPairsParams", "KerningPairs"),
+    (
+        "kerning.groups",
+        "KerningGroupsParams",
+        "KerningGroupsResult",
+    ),
+    ("kerning.members", "KerningMembersParams", "KerningMembers"),
     ("session.open", "OpenParams", "DocSummary"),
     ("session.faces", "FacesParams", "Array<string>"),
     ("session.new", "NewParams", "DocSummary"),
@@ -305,6 +319,12 @@ macro_rules! define_dispatch {
 }
 
 define_dispatch! {
+    "kerning.status" => handlers::kerning::status,
+    "kerning.glyph" => handlers::kerning::glyph,
+    "kerning.resolve" => handlers::kerning::resolve,
+    "kerning.pairs" => handlers::kerning::pairs,
+    "kerning.groups" => handlers::kerning::groups,
+    "kerning.members" => handlers::kerning::members,
     "session.open" => handlers::session::open,
     "session.faces" => handlers::session::faces,
     "session.new" => handlers::session::new_document,

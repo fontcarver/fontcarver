@@ -2,6 +2,7 @@ import type { GlyphId } from '../../api'
 import type { FontBox, Point2, Viewport } from '../../canvas/Viewport'
 
 import type { SurroundingGlyph, TextCanvasRun } from './textCanvas'
+import { hitTextGap } from './textGaps'
 import {
   hitTextGlyph,
   visibleGlyphIndexes,
@@ -64,6 +65,22 @@ export function hitCanvasRun(
   return hitTextGlyph(
     run.glyphs,
     textRunBounds(run),
+    { x: local.x + run.activeOrigin.x, y: local.y + run.activeOrigin.y },
+    run.unitsPerEm,
+    viewport.scale,
+  )
+}
+
+/** Finds an editable gap after applying the active glyph's local origin. */
+export function hitCanvasGap(
+  run: TextCanvasRun,
+  viewport: Viewport,
+  screen: Point2,
+): number | null {
+  if (run.mode !== 'text') return null
+  const local = viewport.toFont(screen)
+  return hitTextGap(
+    run.gaps ?? [],
     { x: local.x + run.activeOrigin.x, y: local.y + run.activeOrigin.y },
     run.unitsPerEm,
     viewport.scale,

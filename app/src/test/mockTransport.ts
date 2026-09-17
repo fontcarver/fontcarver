@@ -75,6 +75,7 @@ export function noChange(glyphs: number[] = []) {
     glyphs,
     font_info: false,
     masters: false,
+    layout: false,
     glyph_order: false,
     metrics: false,
     layers: false,

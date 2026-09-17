@@ -12,6 +12,8 @@ default = ["sfnt"]
 sfnt = ["dep:fc-sfnt"]
 
 [dependencies]
+# Reuse the compiler's MIT/Apache-2.0 parser for layout ownership checks.
+fea-rs = "1.0"
 flate2.workspace = true
 fc-geom = { path = "../fc-geom" }
 fc-model = { path = "../fc-model" }

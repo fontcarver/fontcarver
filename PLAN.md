@@ -3,7 +3,7 @@
 > **Historical feasibility document.** P0 and P1 have since been implemented;
 > the original phase numbering and next steps below are obsolete. Use the
 > [binding design](docs/superpowers/specs/2026-09-03-fontcarver-design.md),
-> [P1 acceptance](docs/p1-acceptance.md), and
+> [P1 acceptance](docs/p1-acceptance.md), [P2a acceptance](docs/p2a-acceptance.md), and
 > [P2 design proposal](docs/superpowers/specs/2026-09-07-p2-kerning-design.md)
 > for current scope and status.
 >

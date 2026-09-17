@@ -5,6 +5,7 @@ import { i18n } from '../i18n'
 import { warningMessage } from '../i18n/warnings'
 import { choosePath, hasNativeFileDialog } from '../shell/nativeDialogs'
 import { withSettledDocument } from '../editor/documentPersistence'
+import { prepareTabTransition } from '../shell/tabActions'
 
 import { useDocumentStore } from './documentStore'
 import { activeDocId, reportError, tabId, useUiStore } from './uiStore'
@@ -165,13 +166,20 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   open: async (path, faceIndex) => {
     set({ busy: true })
+    const transition = prepareTabTransition()
     try {
       const summary = await call('session.open', {
         path,
         face_index: faceIndex ?? null,
       })
       set((state) => ({ docs: upsert(state.docs, summary) }))
-      useUiStore.getState().openTab({ kind: 'font', doc: summary.doc })
+      const ready = (await transition.ready) && (await transition.settle())
+      useUiStore
+        .getState()
+        .openTab(
+          { kind: 'font', doc: summary.doc },
+          ready && transition.isCurrent(),
+        )
       announceWarnings(summary)
       void get().refreshRecent()
       return summary
@@ -199,13 +207,20 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   createDocument: async (family, unitsPerEm) => {
+    const transition = prepareTabTransition()
     try {
       const summary = await call('session.new', {
         family: family ?? i18n.t('document.newFamily'),
         units_per_em: unitsPerEm ?? 1000,
       })
       set((state) => ({ docs: upsert(state.docs, summary) }))
-      useUiStore.getState().openTab({ kind: 'font', doc: summary.doc })
+      const ready = (await transition.ready) && (await transition.settle())
+      useUiStore
+        .getState()
+        .openTab(
+          { kind: 'font', doc: summary.doc },
+          ready && transition.isCurrent(),
+        )
       return summary
     } catch (error) {
       reportError(error)
@@ -291,12 +306,19 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   recover: async (autosavePath) => {
+    const transition = prepareTabTransition()
     try {
       const summary = await call('session.recover', {
         autosave_path: autosavePath,
       })
       set((state) => ({ docs: upsert(state.docs, summary) }))
-      useUiStore.getState().openTab({ kind: 'font', doc: summary.doc })
+      const ready = (await transition.ready) && (await transition.settle())
+      useUiStore
+        .getState()
+        .openTab(
+          { kind: 'font', doc: summary.doc },
+          ready && transition.isCurrent(),
+        )
       announceWarnings(summary)
       return summary
     } catch (error) {

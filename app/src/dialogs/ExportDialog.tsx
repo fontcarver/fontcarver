@@ -16,6 +16,8 @@ import { warningMessage } from '../i18n/warnings'
 import { useDocumentStore } from '../stores/documentStore'
 import { useProgressStore } from '../stores/progressStore'
 import { hasNativeFileDialog } from '../shell/nativeDialogs'
+import { prepareTabTransition } from '../shell/tabActions'
+import { reportError } from '../shell/commands'
 import { tabId, useUiStore } from '../stores/uiStore'
 
 import styles from './dialogs.module.css'
@@ -66,13 +68,23 @@ async function selectGlyph(
 ): Promise<void> {
   const ui = useUiStore.getState()
   if (!ui.tabs.some((tab) => tab.kind === 'font' && tab.doc === doc)) return
+  const transition = prepareTabTransition()
   const cells = await call('glyphs.search', { doc, query: name, limit: 8 })
   const cell = cells.find((candidate) => candidate.name === name)
   if (!cell) return
+  if (
+    !(await transition.ready) ||
+    !(await transition.settle()) ||
+    !transition.isCurrent()
+  )
+    return
+  const current = useUiStore.getState()
+  if (!current.tabs.some((tab) => tab.kind === 'font' && tab.doc === doc))
+    return
   const documents = useDocumentStore.getState()
   documents.setSelection(doc, [cell.gid])
   documents.setFocus(doc, cell.gid)
-  ui.setActiveTab(tabId('font', doc))
+  current.setActiveTab(tabId('font', doc))
 }
 
 export interface ExportDialogProps {
@@ -352,7 +364,11 @@ export function ExportDialog({ summary }: ExportDialogProps) {
                           type="button"
                           title={t('dialog.export.selectGlyph', { name })}
                           className={styles.chip}
-                          onClick={() => void selectGlyph(summary.doc, name)}
+                          onClick={() =>
+                            void selectGlyph(summary.doc, name).catch(
+                              reportError,
+                            )
+                          }
                         >
                           {name}
                         </button>

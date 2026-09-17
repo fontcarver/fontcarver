@@ -30,6 +30,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             "Master",
             "MasterMetrics",
             "MetricsKeys",
+            "KernSide",
         ],
     )?;
     repair_command_double_option(&output_dir.join("Command.ts"))?;
@@ -56,6 +57,17 @@ fn repair_command_double_option(path: &Path) -> Result<(), std::io::Error> {
 }
 
 fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
+    KerningStatus::export_all(config)?;
+    GlyphKerningParams::export_all(config)?;
+    GlyphKerning::export_all(config)?;
+    KerningResolveParams::export_all(config)?;
+    KerningResolution::export_all(config)?;
+    KerningPairsParams::export_all(config)?;
+    KerningPairs::export_all(config)?;
+    KerningGroupsParams::export_all(config)?;
+    KerningGroupsResult::export_all(config)?;
+    KerningMembersParams::export_all(config)?;
+    KerningMembers::export_all(config)?;
     ApiError::export_all(config)?;
     OpenParams::export_all(config)?;
     FacesParams::export_all(config)?;

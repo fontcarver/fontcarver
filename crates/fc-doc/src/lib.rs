@@ -10,6 +10,7 @@ pub mod double_option;
 pub mod edit;
 pub mod error;
 pub mod fcf;
+pub mod kerning;
 pub mod metrics;
 pub mod session;
 pub mod undo;

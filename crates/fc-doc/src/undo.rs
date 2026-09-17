@@ -6,12 +6,17 @@ use fc_model::{Font, FontInfo, Glyph, GlyphId, GlyphName, Guide, Master, MasterI
 
 use crate::{command::Impact, Change};
 
+mod kerning;
+pub use kerning::HorizontalKerningSnapshot;
+
 /// Default maximum estimated memory retained by one undo stack.
 pub const DEFAULT_MEMORY_BUDGET: usize = 512 * 1024 * 1024;
 
 /// A structurally shared value restored by undo or redo.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Snapshot {
+    /// Horizontal kerning and redundant group membership fields.
+    Kerning(Arc<HorizontalKerningSnapshot>),
     /// A glyph value, or absence of that glyph.
     Glyph(GlyphName, Option<Arc<Glyph>>),
     /// Complete font-wide metadata.
@@ -197,6 +202,11 @@ impl UndoStack {
 
 pub(crate) fn capture(font: &Font, impact: &Impact) -> Vec<Snapshot> {
     let mut snapshots = Vec::new();
+    if impact.layout {
+        snapshots.push(Snapshot::Kerning(Arc::new(
+            HorizontalKerningSnapshot::capture(font),
+        )));
+    }
     for name in &impact.glyphs {
         snapshots.push(Snapshot::Glyph(
             name.clone(),
@@ -237,7 +247,7 @@ pub(crate) fn restore(font: &mut Font, snapshots: &[Snapshot]) {
                 }
             }
             Snapshot::FontGuides(guides) => font.guides = (**guides).clone(),
-            Snapshot::Glyph(_, _) | Snapshot::GlyphOrder(_) => {}
+            Snapshot::Glyph(_, _) | Snapshot::GlyphOrder(_) | Snapshot::Kerning(_) => {}
         }
     }
     for snapshot in snapshots {
@@ -259,6 +269,11 @@ pub(crate) fn restore(font: &mut Font, snapshots: &[Snapshot]) {
                     target += 1;
                 }
             }
+        }
+    }
+    for snapshot in snapshots {
+        if let Snapshot::Kerning(kerning) = snapshot {
+            kerning.restore(font);
         }
     }
 }
@@ -291,6 +306,7 @@ fn same_snapshot_key(left: &Snapshot, right: &Snapshot) -> bool {
     match (left, right) {
         (Snapshot::Glyph(left, _), Snapshot::Glyph(right, _)) => left == right,
         (Snapshot::FontInfo(_), Snapshot::FontInfo(_))
+        | (Snapshot::Kerning(_), Snapshot::Kerning(_))
         | (Snapshot::GlyphOrder(_), Snapshot::GlyphOrder(_))
         | (Snapshot::FontGuides(_), Snapshot::FontGuides(_)) => true,
         (Snapshot::Master(left, _), Snapshot::Master(right, _)) => left == right,
@@ -337,6 +353,7 @@ fn estimate_entry(inverse: &[Snapshot], forward: &[Snapshot]) -> usize {
 
 fn estimate_snapshot(snapshot: &Snapshot) -> usize {
     match snapshot {
+        Snapshot::Kerning(kerning) => kerning.estimated_bytes(),
         Snapshot::Glyph(_, Some(glyph)) => glyph
             .layers
             .iter()
