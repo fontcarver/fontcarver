@@ -64,7 +64,7 @@ pub fn temp_dir(label: &str) -> PathBuf {
         .expect("clock is after epoch")
         .as_nanos();
     let dir = std::env::temp_dir().join(format!(
-        "fontcutter-fc-doc-{label}-{}-{nonce}",
+        "fontcarver-fc-doc-{label}-{}-{nonce}",
         std::process::id()
     ));
     std::fs::create_dir_all(&dir).expect("temporary test directory can be created");

@@ -131,7 +131,7 @@ native interaction is **paused and unverified**, not passed. Continue only with
 isolated headless browser, unit and CLI checks; no further desktop interaction
 is authorized in this run. Final embedded debug Tauri building at `2e53ba6`
 passed in 16.03 s without launching a window. The artifact is preserved at
-`target/p1-acceptance/fontcutter-desktop`; fresh release CLI/server binaries are
+`target/p1-acceptance/fontcarver-desktop`; fresh release CLI/server binaries are
 in `target/release`. Release packaging has not been tested.
 
 ## Final verification and handoff

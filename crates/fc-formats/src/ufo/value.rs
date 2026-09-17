@@ -6,7 +6,8 @@ use serde_json::{Map, Number};
 
 use crate::Error;
 
-const TYPE_KEY: &str = "$fontcutter.plist.type";
+const TYPE_KEY: &str = "$fontcarver.plist.type";
+const LEGACY_TYPE_KEY: &str = "$fontcutter.plist.type";
 const VALUE_KEY: &str = "value";
 
 pub(crate) fn dict_to_json(dictionary: &Dictionary) -> Result<serde_json::Value, Error> {
@@ -125,7 +126,10 @@ fn tagged_value(values: &Map<String, serde_json::Value>) -> Option<Result<Value,
     if values.len() != 2 {
         return None;
     }
-    let kind = values.get(TYPE_KEY)?.as_str()?;
+    let kind = values
+        .get(TYPE_KEY)
+        .or_else(|| values.get(LEGACY_TYPE_KEY))?
+        .as_str()?;
     let value = values.get(VALUE_KEY)?;
     Some(match kind {
         "data" => value

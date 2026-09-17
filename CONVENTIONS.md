@@ -1,4 +1,4 @@
-# Font Cutter Engineering Conventions
+# FontCarver Engineering Conventions
 
 These rules apply to every contributor, human or AI agent. Task prompts reference this file; do not restate it, follow it.
 
@@ -19,7 +19,7 @@ crates/
   fc-doc/             # session, documents, commands, undo, autosave, .fcf
   fc-api/             # typed request/response/event types (ts-rs exported) + session facade
   fc-devserver/       # axum HTTP+WS transport for browser dev and e2e tests
-  fc-cli/             # `fontcutter` binary
+  fc-cli/             # `fontcarver` binary
 src-tauri/            # Tauri 2 shell (thin: wires fc-api to invoke/emit)
 app/                  # React 19 + TypeScript + Vite frontend
 fixtures/             # test fonts (small ones committed; large ones referenced by path in fixtures/README.md)
@@ -55,7 +55,7 @@ scripts/              # dev/automation scripts
 
 ## Licensing and porting from FontForge
 
-Font Cutter is licensed `MIT OR Apache-2.0` (`LICENSE-MIT`, `LICENSE-APACHE`). FontForge is a **behavioural and format reference**, not a codebase we translate. The full reasoning is in `docs/licensing.md`; these are the rules you follow.
+FontCarver is licensed `MIT OR Apache-2.0` (`LICENSE-MIT`, `LICENSE-APACHE`). FontForge is a **behavioural and format reference**, not a codebase we translate. The full reasoning is in `docs/licensing.md`; these are the rules you follow.
 
 1. **Read the C file's header before adapting anything from `fontforge/`.** FontForge as a whole is GPLv3-or-later, but most of its source is 3-clause BSD. Only a file whose own header states the revised (3-clause) BSD license may be adapted. A GPL-only file — or one with no license, or another license (Open Group, Adobe) — must be re-implemented from the format specification or from observed behaviour, without reading and transcribing it. Naming a FontForge flag or policy in a doc comment to say which behaviour you match is description, not copying, and is fine.
 2. **Attribute every adapted block.** Put a comment at the top of the adapted function or module:

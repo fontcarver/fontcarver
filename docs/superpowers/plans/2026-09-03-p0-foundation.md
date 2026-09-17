@@ -2,13 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Each task below is sized for one autonomous implementation run (Codex gpt-5.6-sol xhigh for Rust, Opus for UI). Tasks list exact interfaces and acceptance tests; implementers write the code within those interfaces and must follow `CONVENTIONS.md`.
 
-**Goal:** A running Font Cutter that opens any sfnt font (TTF/OTF/TTC/WOFF/WOFF2, including 65k-glyph CJK fonts) into the document model, shows it in a fast virtualised Font view with sidebar filters and search, shows a read-only glyph view and Font Info, saves/reloads the native `.fcf` format, and exposes the kernel through a Tauri transport, a dev HTTP/WebSocket server and a CLI.
+**Goal:** A running FontCarver that opens any sfnt font (TTF/OTF/TTC/WOFF/WOFF2, including 65k-glyph CJK fonts) into the document model, shows it in a fast virtualised Font view with sidebar filters and search, shows a read-only glyph view and Font Info, saves/reloads the native `.fcf` format, and exposes the kernel through a Tauri transport, a dev HTTP/WebSocket server and a CLI.
 
 **Architecture:** Rust workspace of small crates (`fc-model` → `fc-sfnt`/`fc-doc`/`fc-glyphdata` → `fc-api` → `fc-devserver`/`src-tauri`/`fc-cli`) and a React 19 + TypeScript app talking to the kernel through a single `api_call(method, params)` dispatch plus an event stream. The kernel owns documents and undo; the UI renders from query results.
 
 **Tech Stack:** Rust 1.94 stable, read-fonts 0.43 / skrifa 0.46 / write-fonts 0.52, kurbo 0.13, serde/serde_json, smol_str, indexmap, uuid, ts-rs, axum + tokio (dev server), tauri 2.11 (+ plugin-dialog, plugin-fs), clap (CLI); pnpm, Vite 7, React 19, TypeScript 5.9, Zustand, i18next, Vitest, Playwright.
 
-**Spec:** `docs/superpowers/specs/2026-09-03-fontcutter-design.md` (sections 2–6, 9, 11, 12.1–12.2, 13, 14 row P0). Research: `docs/research/rust-crate-spike.md` (crate APIs), `docs/research/fontforge-data-model.md` (modelling lessons).
+**Spec:** `docs/superpowers/specs/2026-09-03-fontcarver-design.md` (sections 2–6, 9, 11, 12.1–12.2, 13, 14 row P0). Research: `docs/research/rust-crate-spike.md` (crate APIs), `docs/research/fontforge-data-model.md` (modelling lessons).
 
 ## Global Constraints
 
@@ -64,16 +64,16 @@ scripts/dev.sh                   starts fc-devserver + vite for browser developm
 - Fixtures to commit (all freely licensed, each < 2 MB): download `DejaVuSans.ttf` (from the system `/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf` if present, else fonts-dejavu release), `NotoSans-Regular.ttf` (Google Fonts GitHub `ofl/notosans` static), `NotoSansSC-Regular.otf` is too large — do **not** commit; instead commit `fontforge/tests/fonts/test1012.otf`, `CantarellMin.woff2` and `NotoSerifTibetan-Regular.ttf` copies (they are test fixtures in FontForge's repo, GPL/OFL; record source and license in `fixtures/README.md`). Also produce `fixtures/fonts/DejaVuSans.woff` by wrapping the TTF (write a tiny throwaway script; the woff is committed). If `DejaVuSans.ttf` exceeds 2 MB use `DejaVuSansMono.ttf` instead.
 - Workspace `[workspace.dependencies]` pins: `read-fonts = { version = "0.43", features = ["experimental_traverse"] }`, `write-fonts = { version = "0.52", features = ["read"] }`, `skrifa = "0.46"`, `font-types = "0.12"`, `kurbo = { version = "0.13", features = ["serde"] }`, `serde = { version = "1", features = ["derive"] }`, `serde_json = { version = "1", features = ["preserve_order"] }`, `smol_str = { version = "0.3", features = ["serde"] }`, `indexmap = { version = "2", features = ["serde"] }`, `uuid = { version = "1", features = ["v4"] }`, `thiserror = "2"`, `tracing = "0.1"`, `tracing-subscriber = "0.3"`, `ts-rs = { version = "10", features = ["serde-compat", "no-serde-warnings"] }` (check the latest ts-rs major on crates.io and use it), `tokio = { version = "1", features = ["full"] }`, `axum = { version = "0.8", features = ["ws"] }`, `clap = { version = "4", features = ["derive"] }`, `anyhow = "1"`, `flate2 = "1"`, `woff2-patched = "0.4"`, `wuff = "0.2"`, `criterion = "0.5"`, `tauri = "2"`, `tauri-build = "2"`, `tauri-plugin-dialog = "2"`, `tauri-plugin-fs = "2"`. Verify each resolves; if a version is wrong, use the latest compatible and note it in the commit message.
 - `app/package.json` scripts: `dev`, `build`, `check` (tsc -b), `lint` (eslint .), `format`, `test` (vitest run), `e2e` (playwright test), `gen:api` (`cargo run -p fc-api --bin gen_ts`), `tauri`. Dependencies: react, react-dom, zustand, i18next, react-i18next, @tauri-apps/api, @tauri-apps/plugin-dialog, @tauri-apps/plugin-fs; dev: vite, @vitejs/plugin-react, typescript, vitest, jsdom, @testing-library/react, eslint + typescript-eslint + eslint-plugin-react-hooks, prettier, @playwright/test, @tauri-apps/cli.
-- `src-tauri/tauri.conf.json`: identifier `com.fontcutter.app`, productName `Font Cutter`, window 1400×900 min 1000×700, `devUrl` `http://localhost:1420`, `frontendDist` `../app/dist`, `beforeDevCommand` `pnpm --dir ../app dev`, `beforeBuildCommand` `pnpm --dir ../app build`. Capabilities: `core:default`, `dialog:default`, `fs:default`.
+- `src-tauri/tauri.conf.json`: identifier `com.fontcarver.app`, productName `FontCarver`, window 1400×900 min 1000×700, `devUrl` `http://localhost:1420`, `frontendDist` `../app/dist`, `beforeDevCommand` `pnpm --dir ../app dev`, `beforeBuildCommand` `pnpm --dir ../app build`. Capabilities: `core:default`, `dialog:default`, `fs:default`.
 
 - [ ] **Step 1: Create the Cargo workspace and empty crates.** Each crate's `lib.rs` has a crate-level doc comment and `pub mod error;` with `#[derive(Debug, thiserror::Error)] pub enum Error {}` placeholder variants removed later — declare at least one variant `#[error("internal error: {0}")] Internal(String)` so the enum is non-empty.
 - [ ] **Step 2: Create `crates/fc-fixtures`** with the functions above and a test that `path("DejaVuSans.ttf")` exists.
 - [ ] **Step 3: Create the fixtures** as listed and `fixtures/README.md` (file, size, source URL, license, sha256).
-- [ ] **Step 4: Scaffold `app/`** (`pnpm create vite app --template react-ts` equivalent, then add the scripts, ESLint flat config, Prettier config, Vitest config with jsdom, Playwright config pointing at `http://localhost:1420`, an `App.tsx` that renders the text "Font Cutter" and a Vitest test asserting it renders).
-- [ ] **Step 5: Scaffold `src-tauri/`** (Tauri 2 library crate `fontcutter` with `lib.rs` `run()` registering dialog + fs plugins; `main.rs` calls `fontcutter_lib::run()`; icons generated with `pnpm tauri icon` from a simple placeholder PNG you create with Python/PIL or copy from the Tauri template).
+- [ ] **Step 4: Scaffold `app/`** (`pnpm create vite app --template react-ts` equivalent, then add the scripts, ESLint flat config, Prettier config, Vitest config with jsdom, Playwright config pointing at `http://localhost:1420`, an `App.tsx` that renders the text "FontCarver" and a Vitest test asserting it renders).
+- [ ] **Step 5: Scaffold `src-tauri/`** (Tauri 2 library crate `fontcarver` with `lib.rs` `run()` registering dialog + fs plugins; `main.rs` calls `fontcarver_lib::run()`; icons generated with `pnpm tauri icon` from a simple placeholder PNG you create with Python/PIL or copy from the Tauri template).
 - [ ] **Step 6: Write `.github/workflows/ci.yml`** running on ubuntu-latest: install rust 1.94 + Tauri Linux deps (`libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev`), pnpm 10, then `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `pnpm install --frozen-lockfile`, `pnpm check`, `pnpm lint`, `pnpm test`, `pnpm build`.
 - [ ] **Step 7: `scripts/dev.sh`** runs `cargo run -p fc-devserver -- --port 8787` and `pnpm --dir app dev` concurrently (use a trap to kill both).
-- [ ] **Step 8: Verify** `cargo check --workspace`, `cargo test --workspace`, `cd app && pnpm install && pnpm check && pnpm lint && pnpm test && pnpm build`, `cargo build -p fontcutter` all succeed. Commit as `chore: scaffold workspace, app, tauri shell, fixtures, CI`.
+- [ ] **Step 8: Verify** `cargo check --workspace`, `cargo test --workspace`, `cd app && pnpm install && pnpm check && pnpm lint && pnpm test && pnpm build`, `cargo build -p fontcarver` all succeed. Commit as `chore: scaffold workspace, app, tauri shell, fixtures, CI`.
 
 ---
 
@@ -341,12 +341,12 @@ pub enum Command {
 pub struct Change { pub glyphs: Vec<GlyphId>, pub font_info: bool, pub masters: bool, pub glyph_order: bool }
 pub struct DocumentEvent { pub doc: DocId, pub generation: u64, pub change: Change, pub undo_label: Option<String>, pub redo_label: Option<String>, pub dirty: bool }
 ```
-`.fcf` format (`fcf/schema.md` documents it): `{"format":"fontcutter","version":1,"font":<Font serde>}` written with `serde_json` pretty printer, 2-space indent, `preserve_order` so glyph order is stable, `f64` written without trailing `.0` noise (use `ryu`/default serde is fine). Reading accepts `version` ≤ 1 and unknown fields. A `.fcf.gz` path is gzip-wrapped.
+`.fcf` format (`fcf/schema.md` documents it): `{"format":"fontcarver","version":1,"font":<Font serde>}` written with `serde_json` pretty printer, 2-space indent, `preserve_order` so glyph order is stable, `f64` written without trailing `.0` noise (use `ryu`/default serde is fine). Reading accepts `version` ≤ 1 and unknown fields. A `.fcf.gz` path is gzip-wrapped.
 
 Undo: `UndoStack { entries: Vec<UndoEntry>, cursor: usize, memory_budget: usize (default 512 MiB, oldest dropped) }`; `UndoEntry { label, inverse: Vec<Snapshot>, forward: Vec<Snapshot> }` where `Snapshot` is `Glyph(GlyphName, Option<Arc<Glyph>>)` (None = did not exist) or `FontInfo(Arc<FontInfo>)`, `Master(MasterId, Arc<Master>)`, `GlyphOrder(Vec<GlyphName>)`. Applying a command captures before/after snapshots for touched items only.
 
 - [ ] **Step 1: Tests**: apply `SetWidth` then `undo` restores width and `dirty` toggles appropriately; `begin_edit`/`apply_in_edit` ×10/`end_edit` produces exactly one undo entry; `RenameGlyph` undo restores component references; `RemoveGlyphs` undo restores glyph order position; `flattened_path` cache invalidates when a component base changes (generation bump of dependents); `.fcf` round trip on DejaVuSans (open via `fc_sfnt`, save, read back → `font == original.font` with `original_bytes` ignored); `Session::open_path` on `.fcf` and `.ttf`; events are emitted on apply/undo with correct `change.glyphs`.
-- [ ] **Step 2: Implement.** Keep `command.rs` (definitions + application to `Font`), `undo.rs` (stack), `document.rs` (glue) separate. Autosave: `autosave::spawn(session, interval)` writes `<path>.autosave.fcf` (or `~/.local/share/fontcutter/autosave/<docid>.fcf` when unsaved) for dirty documents every `interval` (default 60 s); `autosave::list_recoverable()`.
+- [ ] **Step 2: Implement.** Keep `command.rs` (definitions + application to `Font`), `undo.rs` (stack), `document.rs` (glue) separate. Autosave: `autosave::spawn(session, interval)` writes `<path>.autosave.fcf` (or `~/.local/share/fontcarver/autosave/<docid>.fcf` when unsaved) for dirty documents every `interval` (default 60 s); `autosave::list_recoverable()`.
 - [ ] **Step 3:** `cargo test -p fc-doc`, clippy clean, commit `feat(fc-doc): session, commands, coalescing undo, .fcf format, autosave`.
 
 ---
@@ -374,7 +374,7 @@ Methods (`method` string → params type → result type; all types `#[derive(Se
 | `session.close` | `{ doc: DocId }` | `null` |
 | `session.list` | `{}` | `Vec<DocSummary>` |
 | `session.save` | `{ doc, path: Option<String> }` | `DocSummary` |
-| `session.recent` | `{}` | `Vec<String>` (persisted in `dirs::config_dir()/fontcutter/recent.json`, max 20) |
+| `session.recent` | `{}` | `Vec<String>` (persisted in `dirs::config_dir()/fontcarver/recent.json`, max 20) |
 | `doc.summary` | `{ doc }` | `DocSummary { doc, path, dirty, family_name, style_name, units_per_em, glyph_count, masters: Vec<MasterSummary{id,name}>, axes: Vec<AxisSummary>, undo_label, redo_label, format: String, warnings: Vec<String> }` |
 | `doc.font_info` | `{ doc }` | `FontInfoView { info: FontInfo, masters: Vec<Master> }` (model types re-exported with TS derive via `#[ts]` on model types — add `ts-rs` derives to `fc-model` types behind a `ts` feature) |
 | `doc.sidebar` | `{ doc }` | `SidebarCounts { categories: Vec<(String,u32)>, scripts: Vec<(String,u32)>, blocks: Vec<(String,u32)>, unencoded: u32, total: u32, color_labels: Vec<(u8,u32)> }` |
@@ -415,12 +415,12 @@ Methods (`method` string → params type → result type; all types `#[derive(Se
 
 **Files:** `crates/fc-cli/src/{main.rs, cmd/inspect.rs, cmd/convert.rs}`, tests `crates/fc-cli/tests/cli.rs` (use `assert_cmd`).
 
-**Interfaces:** binary name `fontcutter`.
-- `fontcutter inspect <font> [--face N] [--json]`: prints family/style/upem/glyph count/masters/axes/tables (tag + length + preserved?) and warnings; `--json` emits the `DocSummary` plus table list.
-- `fontcutter convert <in> <out.fcf|out.fcf.gz>`: opens any supported input, writes `.fcf`. (Export to binary formats arrives with `fc-compile` in P1; `fontcutter convert x.fcf y.ttf` must fail with a clear "not yet supported" message.)
-- `fontcutter glyphs <font> [--filter cat=Letter] [--limit N]`: lists glyph name, unicodes, width.
+**Interfaces:** binary name `fontcarver`.
+- `fontcarver inspect <font> [--face N] [--json]`: prints family/style/upem/glyph count/masters/axes/tables (tag + length + preserved?) and warnings; `--json` emits the `DocSummary` plus table list.
+- `fontcarver convert <in> <out.fcf|out.fcf.gz>`: opens any supported input, writes `.fcf`. (Export to binary formats arrives with `fc-compile` in P1; `fontcarver convert x.fcf y.ttf` must fail with a clear "not yet supported" message.)
+- `fontcarver glyphs <font> [--filter cat=Letter] [--limit N]`: lists glyph name, unicodes, width.
 
-- [ ] **Step 1: Tests**: `fontcutter inspect DejaVuSans.ttf` exit 0 and stdout contains `DejaVu Sans`; `fontcutter convert DejaVuSans.ttf out.fcf` then `fontcutter inspect out.fcf --json` reports the same glyph count; unsupported output extension exits 2 with the message.
+- [ ] **Step 1: Tests**: `fontcarver inspect DejaVuSans.ttf` exit 0 and stdout contains `DejaVu Sans`; `fontcarver convert DejaVuSans.ttf out.fcf` then `fontcarver inspect out.fcf --json` reports the same glyph count; unsupported output extension exits 2 with the message.
 - [ ] **Step 2: Implement** with clap derive; reuse `fc_doc::Session`.
 - [ ] **Step 3:** Commit `feat(fc-cli): inspect, convert, glyphs commands`.
 
@@ -483,7 +483,7 @@ Methods (`method` string → params type → result type; all types `#[derive(Se
 
 **Files:** `crates/fc-sfnt/benches/open.rs` (criterion), `scripts/perf-open.sh`, `app/e2e/cjk.spec.ts` (skips when the external font is missing), `docs/p0-acceptance.md`.
 
-- [ ] **Step 1:** Run the full acceptance list and record results in `docs/p0-acceptance.md` with commands and timings: (a) `cargo test --workspace --release`; (b) `fontcutter inspect` on every fixture and Source Han Sans; (c) `fontcutter convert SourceHanSansSC-Regular.otf shs.fcf` then `fontcutter inspect shs.fcf` — same glyph count, timings for save/load < 6 s; (d) e2e suite green; (e) Tauri app: `cargo tauri dev` opens, `Mod+O` opens a font via native dialog, grid renders, glyph tab opens, Font Info opens, `Mod+S` writes `.fcf`, reopening restores.
+- [ ] **Step 1:** Run the full acceptance list and record results in `docs/p0-acceptance.md` with commands and timings: (a) `cargo test --workspace --release`; (b) `fontcarver inspect` on every fixture and Source Han Sans; (c) `fontcarver convert SourceHanSansSC-Regular.otf shs.fcf` then `fontcarver inspect shs.fcf` — same glyph count, timings for save/load < 6 s; (d) e2e suite green; (e) Tauri app: `cargo tauri dev` opens, `Mod+O` opens a font via native dialog, grid renders, glyph tab opens, Font Info opens, `Mod+S` writes `.fcf`, reopening restores.
 - [ ] **Step 2:** Fix whatever fails; commit `test: P0 acceptance and performance gates`.
 
 ---

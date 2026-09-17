@@ -1,4 +1,4 @@
-# Font Cutter Editor UI — Design Specification
+# FontCarver Editor UI — Design Specification
 
 Owner: Fable (design). Implementation: Opus (P1 Tasks 6–9, 11). Status: v1, 2026-09-03. This document is binding for every UI task; the P1 plan's task briefs point here for look, feel and interaction grammar. Where this document and the competitor research disagree, this document wins; where it is silent, follow Glyphs 3 conventions.
 

@@ -1,4 +1,4 @@
-//! Browser-development transport for the Font Cutter kernel.
+//! Browser-development transport for the FontCarver kernel.
 
 #![warn(missing_docs)]
 

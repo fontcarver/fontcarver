@@ -1,4 +1,4 @@
-//! Font Cutter command-line entry point.
+//! FontCarver command-line entry point.
 
 mod cmd;
 
@@ -7,7 +7,7 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Parser)]
-#[command(name = "fontcutter", version, about = "Font Cutter command-line tools")]
+#[command(name = "fontcarver", version, about = "FontCarver command-line tools")]
 struct Cli {
     #[command(subcommand)]
     command: Command,

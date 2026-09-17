@@ -6,7 +6,9 @@ use serde::{Deserialize, Serialize};
 use super::value::{dict_to_json, json_to_dict};
 use crate::Error;
 
-pub(crate) const IDENTIFIERS_KEY: &str = "com.fontcutter.ufo.identifiers";
+pub(crate) const IDENTIFIERS_KEY: &str = "com.fontcarver.ufo.identifiers";
+// Native documents saved before the rename carry identifiers under this key.
+pub(crate) const LEGACY_IDENTIFIERS_KEY: &str = "com.fontcutter.ufo.identifiers";
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub(crate) struct ObjectMetadata {

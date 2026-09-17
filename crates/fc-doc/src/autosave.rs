@@ -86,7 +86,7 @@ pub fn spawn(session: Arc<Session>, config: AutosaveConfig) -> AutosaveHandle {
     let stop = Arc::new((Mutex::new(false), Condvar::new()));
     let thread_stop = Arc::clone(&stop);
     let thread = thread::Builder::new()
-        .name("fontcutter-autosave".to_owned())
+        .name("fontcarver-autosave".to_owned())
         .spawn(move || run_worker(&session, &config, &thread_stop));
     let thread = match thread {
         Ok(thread) => Some(thread),
@@ -204,10 +204,10 @@ fn original_is_newer(path: Option<&Path>, autosave_time: SystemTime) -> bool {
 
 fn default_autosave_dir() -> PathBuf {
     if let Some(dir) = std::env::var_os("XDG_DATA_HOME") {
-        return PathBuf::from(dir).join("fontcutter/autosave");
+        return PathBuf::from(dir).join("fontcarver/autosave");
     }
     if let Some(dir) = std::env::var_os("HOME") {
-        return PathBuf::from(dir).join(".local/share/fontcutter/autosave");
+        return PathBuf::from(dir).join(".local/share/fontcarver/autosave");
     }
-    std::env::temp_dir().join("fontcutter/autosave")
+    std::env::temp_dir().join("fontcarver/autosave")
 }

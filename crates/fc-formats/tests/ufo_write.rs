@@ -261,7 +261,7 @@ fn extras_are_compact_first_class_and_not_duplicated_in_ufo_lib() {
     let output = temp.path().join("Extras.ufo");
     write_ufo(&font, &master_id, &output, &UfoWriteOptions::default()).unwrap();
     let written = norad::Font::load(&output).unwrap();
-    let extra = written.lib["com.fontcutter.extra"].as_dictionary().unwrap();
+    let extra = written.lib["com.fontcarver.extra"].as_dictionary().unwrap();
     let packed = extra["tt_indices"].as_string();
     assert!(packed.is_some());
 
@@ -308,11 +308,11 @@ fn extras_are_compact_first_class_and_not_duplicated_in_ufo_lib() {
         .lib
         .get("ufo.lib")
         .and_then(serde_json::Value::as_object)
-        .is_some_and(|lib| lib.contains_key("com.fontcutter.extra")));
+        .is_some_and(|lib| lib.contains_key("com.fontcarver.extra")));
 }
 
 #[test]
-fn pristine_ufo_does_not_gain_an_empty_fontcutter_extra() {
+fn pristine_ufo_does_not_gain_an_empty_fontcarver_extra() {
     let font = read_ufo(&fc_fixtures::ufo_path("Minimal.ufo")).unwrap();
     let temp = tempfile::tempdir().unwrap();
     let output = temp.path().join("Pristine.ufo");
@@ -325,7 +325,88 @@ fn pristine_ufo_does_not_gain_an_empty_fontcutter_extra() {
     .unwrap();
 
     let written = norad::Font::load(output).unwrap();
+    assert!(!written.lib.contains_key("com.fontcarver.extra"));
+}
+
+#[test]
+fn imports_legacy_ufo_extras_and_exports_under_the_current_name() {
+    let mut font = read_ufo(&fc_fixtures::ufo_path("Minimal.ufo")).unwrap();
+    font.extra.raw_tables.insert(Tag(*b"TEST"), vec![1, 2, 3]);
+    let temp = tempfile::tempdir().unwrap();
+    let legacy_path = temp.path().join("Legacy.ufo");
+    write_ufo(
+        &font,
+        &font.default_master().id,
+        &legacy_path,
+        &UfoWriteOptions::default(),
+    )
+    .unwrap();
+    let mut legacy = norad::Font::load(&legacy_path).unwrap();
+    let extra = legacy.lib.remove("com.fontcarver.extra").unwrap();
+    legacy.lib.insert("com.fontcutter.extra".to_owned(), extra);
+    legacy.save(&legacy_path).unwrap();
+
+    let restored = read_ufo(&legacy_path).unwrap();
+    assert_eq!(restored.extra.raw_tables, font.extra.raw_tables);
+    write_ufo(
+        &restored,
+        &restored.default_master().id,
+        &legacy_path,
+        &UfoWriteOptions::default(),
+    )
+    .unwrap();
+    let written = norad::Font::load(&legacy_path).unwrap();
+    assert!(written.lib.contains_key("com.fontcarver.extra"));
     assert!(!written.lib.contains_key("com.fontcutter.extra"));
+}
+
+#[test]
+fn legacy_native_metadata_preserves_ufo_identifiers_and_plist_types() {
+    let temp = tempfile::tempdir().unwrap();
+    let source_path = temp.path().join("Source.ufo");
+    let mut source = norad::Font::load(fc_fixtures::ufo_path("Minimal.ufo")).unwrap();
+    source.lib.insert(
+        "com.example.data".to_owned(),
+        plist::Value::Data(vec![1, 2, 3]),
+    );
+    source.get_glyph_mut("A").unwrap().contours[0]
+        .replace_identifier(norad::Identifier::new("legacy-contour").unwrap());
+    source.save(&source_path).unwrap();
+    let model = read_ufo(&source_path).unwrap();
+    // Simulate the serialized metadata in a document saved before the rename.
+    let legacy_json = serde_json::to_string(&model)
+        .unwrap()
+        .replace(
+            "com.fontcarver.ufo.identifiers",
+            "com.fontcutter.ufo.identifiers",
+        )
+        .replace("$fontcarver.plist.type", "$fontcutter.plist.type");
+    let mut legacy: fc_model::Font = serde_json::from_str(&legacy_json).unwrap();
+    for scope in ["master", "font"] {
+        if scope == "font" {
+            for master in &mut legacy.masters {
+                master
+                    .user_data
+                    .as_object_mut()
+                    .unwrap()
+                    .remove("com.fontcutter.ufo.identifiers");
+            }
+        }
+        let output = temp.path().join(format!("{scope}.ufo"));
+        write_ufo(
+            &legacy,
+            &legacy.default_master().id,
+            &output,
+            &UfoWriteOptions::default(),
+        )
+        .unwrap();
+        let written = norad::Font::load(output).unwrap();
+        assert_eq!(written.get_glyph("A"), source.get_glyph("A"));
+        assert_eq!(
+            written.lib.get("com.example.data"),
+            source.lib.get("com.example.data")
+        );
+    }
 }
 
 #[test]

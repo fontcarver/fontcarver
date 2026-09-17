@@ -1,5 +1,5 @@
 /*
- * Font Cutter design tokens.
+ * FontCarver design tokens.
  *
  * The only place colours, spacing, radii and typography are defined. Component
  * CSS Modules must reference these variables and never hard-code a colour.

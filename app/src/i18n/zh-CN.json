@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Font Cutter",
+    "name": "FontCarver",
     "tagline": "面向轮廓、点阵与可变字体的工坊。"
   },
   "common": {
@@ -93,7 +93,7 @@
     },
     "help": {
       "shortcuts": "键盘快捷键",
-      "about": "关于 Font Cutter"
+      "about": "关于 FontCarver"
     },
     "reason": {
       "noDocument": "没有打开的字体",
@@ -161,9 +161,9 @@
       "title": "另存为",
       "label": "文档路径",
       "placeholder": "/path/to/font.fcf",
-      "hint": "Font Cutter 文档以 .fcf 或 .fcf.gz 格式保存。",
+      "hint": "FontCarver 文档以 .fcf 或 .fcf.gz 格式保存。",
       "confirm": "保存",
-      "filter": "Font Cutter 文档"
+      "filter": "FontCarver 文档"
     },
     "closeDirty": {
       "title": "未保存的更改",
@@ -301,7 +301,7 @@
     },
     "recovery": {
       "title": "恢复文档",
-      "intro": "Font Cutter 找到了上次会话中未保存的工作。",
+      "intro": "FontCarver 找到了上次会话中未保存的工作。",
       "untitled": "未命名文档",
       "savedAt": "{{time}} 的快照",
       "recover": "恢复",
@@ -447,7 +447,7 @@
     "saved": "已保存 {{name}}",
     "opened": "已打开 {{name}}",
     "closed": "已关闭 {{name}}",
-    "about": "Font Cutter {{version}}——内核传输：{{kind}}",
+    "about": "FontCarver {{version}}——内核传输：{{kind}}",
     "copiedNames_one": "已复制 {{count, number}} 个字形名称",
     "copiedNames_other": "已复制 {{count, number}} 个字形名称",
     "copyFailed": "无法写入剪贴板",

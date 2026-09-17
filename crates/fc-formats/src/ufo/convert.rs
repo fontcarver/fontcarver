@@ -1,4 +1,4 @@
-//! Conversion between norad UFO objects and the Font Cutter model.
+//! Conversion between norad UFO objects and the FontCarver model.
 
 use std::{collections::HashSet, path::Path, str::FromStr};
 
@@ -172,7 +172,9 @@ pub(crate) fn to_norad(font: &Font, master: &Master) -> Result<norad::Font, Erro
         master
             .user_data
             .get(metadata::IDENTIFIERS_KEY)
-            .or_else(|| font.extra.lib.get(metadata::IDENTIFIERS_KEY)),
+            .or_else(|| master.user_data.get(metadata::LEGACY_IDENTIFIERS_KEY))
+            .or_else(|| font.extra.lib.get(metadata::IDENTIFIERS_KEY))
+            .or_else(|| font.extra.lib.get(metadata::LEGACY_IDENTIFIERS_KEY)),
     )?;
     let guide_ids = font
         .guides

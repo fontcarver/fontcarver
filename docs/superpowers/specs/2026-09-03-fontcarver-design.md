@@ -1,4 +1,4 @@
-# Font Cutter — Design Specification
+# FontCarver — Design Specification
 
 Date: 2026-09-03 · Status: approved for implementation (autonomous session; decisions recorded here stand until the user overrides them)
 
@@ -15,7 +15,7 @@ Companion research (read these before implementing anything that touches the sam
 
 ## 1. Product definition
 
-Font Cutter is a cross-platform (Linux, macOS, Windows) desktop font editor built with Tauri 2: a Rust kernel and a React/TypeScript UI. It is a modern re-implementation of FontForge's capabilities with the workflow and polish of Glyphs 3 / FontLab 8 / FontCreator.
+FontCarver is a cross-platform (Linux, macOS, Windows) desktop font editor built with Tauri 2: a Rust kernel and a React/TypeScript UI. It is a modern re-implementation of FontForge's capabilities with the workflow and polish of Glyphs 3 / FontLab 8 / FontCreator.
 
 Non-negotiables:
 
@@ -160,9 +160,9 @@ Identity: glyphs are addressed by `GlyphName` externally and by a stable `GlyphI
 
 ## 5. Native file format `.fcf`
 
-Single UTF-8 JSON file with deterministic key and glyph order. The envelope and font-level objects use 2-space indentation; each direct entry in `font.glyphs` stores its complete glyph as compact JSON on one physical line. This keeps `git diff` focused per glyph without the size and I/O cost of expanding every contour point across separate lines, and avoids a directory package. Schema versioned (`"format": "fontcutter", "version": 1`; the pre-rename tag `"fontworkshop"` is still accepted on read). Binary payloads (bitmaps, raw tables, images) are base64. Files above ~50 MB may optionally be written as `.fcf.gz` (transparent on read). A directory-package variant is deferred until measured need.
+Single UTF-8 JSON file with deterministic key and glyph order. The envelope and font-level objects use 2-space indentation; each direct entry in `font.glyphs` stores its complete glyph as compact JSON on one physical line. This keeps `git diff` focused per glyph without the size and I/O cost of expanding every contour point across separate lines, and avoids a directory package. Schema versioned (`"format": "fontcarver", "version": 1`; the pre-rename tags `"fontcutter"` and `"fontworkshop"` are still accepted on read). Binary payloads (bitmaps, raw tables, images) are base64. Files above ~50 MB may optionally be written as `.fcf.gz` (transparent on read). A directory-package variant is deferred until measured need.
 
-Every other format is import/export. UFO/designspace and Glyphs exports are "lossless for what those formats can express" and use `lib`/`userData` for Font Cutter extras.
+Every other format is import/export. UFO/designspace and Glyphs exports are "lossless for what those formats can express" and use `lib`/`userData` for FontCarver extras.
 
 ---
 
@@ -213,7 +213,7 @@ Single pipeline, user chooses targets in one dialog (like Glyphs Export): format
 2. **Merge** with preserved data: raw unknown tables, original layout tables if features untouched, per-glyph TT instructions + cvt/fpgm/prep if the glyph's outline generation matches import, MATH, bitmap tables, VORG.
 3. **Post-process**: autohint (PS blues/stems from `fc-hint`; TrueType via external `ttfautohint` if installed, else skip with a notice), `kern` legacy table (option), `DSIG` dummy (option), TTC assembly, WOFF/WOFF2 wrapping, validation report (our checks + a shaping smoke test with harfrust).
 
-A headless `fontcutter build` CLI command runs the same pipeline for batch/CI use.
+A headless `fontcarver build` CLI command runs the same pipeline for batch/CI use.
 
 ---
 
@@ -318,7 +318,7 @@ Find & fix problems (all FontForge checks reorganised into categories with "fix"
 ## 13. Testing strategy
 
 - Rust: unit tests per crate; golden round-trip tests over a fixture corpus (`fixtures/`: FontForge test fonts, DejaVu, Noto samples, Source Han Sans OTF/VF from `~/githubprojects/pixelfonts/SourceHanSanOTF`, bitmap fonts from sibling projects); property tests for geometry (`proptest`); shaping-equivalence tests (harfrust before/after) for layout round trips; fuzz targets for parsers (`cargo fuzz`, optional).
-- CLI smoke tests: `fontcutter convert`, `fontcutter build`, `fontcutter inspect` on the corpus in CI.
+- CLI smoke tests: `fontcarver convert`, `fontcarver build`, `fontcarver inspect` on the corpus in CI.
 - Frontend: vitest unit tests for stores/utilities; component tests; e2e with agent-browser against `fc-devserver` (scripted: open font, edit, export, assert on file) — this is also how Opus agents verify UI work with screenshots.
 - Performance tests with a 65k-glyph font as a gate for P0.
 

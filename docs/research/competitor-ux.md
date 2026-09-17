@@ -339,7 +339,7 @@ Steal FontLab's **profiles** and make them project data:
 - The export dialog is a **matrix**: rows = instances / variable‑font settings, columns = profiles, checkboxes at intersections, with "select all", saved export sets, and a running estimate of output file count.
 - **Preflight before writing anything**: illegal glyph names, incompatible masters, unresolved components, feature compile errors, vertical‑metric mismatches, kerning referencing deleted groups. Show it as a list with click‑to‑jump, exactly like Glyphs' export error dialog (which has a "Show" button opening the offending glyph in a new tab).
 - **Test install** on all three platforms (macOS Core Text, Windows `AddFontResourceEx`, Linux `~/.local/share/fonts` + `fc-cache`), plus "copy to Adobe fonts folder" and "open in browser preview".
-- **The CLI uses the same profile file.** `fontcutter export --profile web --instances all` in CI must produce byte‑identical output to the GUI. This is a genuine differentiator: Glyphs needs a plugin/script, FontLab needs a macro.
+- **The CLI uses the same profile file.** `fontcarver export --profile web --instances all` in CI must produce byte‑identical output to the GUI. This is a genuine differentiator: Glyphs needs a plugin/script, FontLab needs a macro.
 - Hinting: ship ttfautohint (or the Fontations autohinter port) with a proper options UI, PS autohinting with stems/zones from Font Info, and defer manual TT instruction editing to a later tier — but design the data model to hold instructions from day one.
 
 ---

@@ -1,8 +1,12 @@
 {
-  "name": "fontcutter-workspace",
+  "name": "fontcarver-workspace",
   "private": true,
   "license": "MIT OR Apache-2.0",
-  "homepage": "https://fontcutter.com",
+  "homepage": "https://fontcarver.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fontcarver/fontcarver.git"
+  },
   "packageManager": "pnpm@10.32.1",
   "scripts": {
     "dev": "./scripts/dev.sh",

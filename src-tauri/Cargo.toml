@@ -1,21 +1,22 @@
 [package]
-name = "fontcutter"
+name = "fontcarver"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 homepage.workspace = true
+repository.workspace = true
 rust-version.workspace = true
-description = "The thin Tauri shell for Font Cutter"
+description = "The thin Tauri shell for FontCarver"
 
-# The CLI in `fc-cli` owns the `fontcutter` binary name, so the desktop
-# shell names its own binary explicitly; bundles are still "Font Cutter"
+# The CLI in `fc-cli` owns the `fontcarver` binary name, so the desktop
+# shell names its own binary explicitly; bundles are still "FontCarver"
 # via `productName` in `tauri.conf.json`.
 [[bin]]
-name = "fontcutter-desktop"
+name = "fontcarver-desktop"
 path = "src/main.rs"
 
 [lib]
-name = "fontcutter_lib"
+name = "fontcarver_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

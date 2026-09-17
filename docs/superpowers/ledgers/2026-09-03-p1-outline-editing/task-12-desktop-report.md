@@ -2,9 +2,9 @@
 
 **Status: paused by user; desktop acceptance is not passed.** This preliminary run used `p1-desktop-acceptance` from P1 `84e881e`, before final T9 integration. No production files changed.
 
-Bindings were generated with current-worktree Rust crates. `pnpm tauri build --debug --no-bundle` ran the frontend production build (2,225 modules, embedded `app/dist`) and built `target/debug/fontcutter-desktop` in 63.52 s. This proves a debug embedded-asset build only; release packaging was not tested.
+Bindings were generated with current-worktree Rust crates. `pnpm tauri build --debug --no-bundle` ran the frontend production build (2,225 modules, embedded `app/dist`) and built `target/debug/fontcarver-desktop` in 63.52 s. This proves a debug embedded-asset build only; release packaging was not tested.
 
-The binary launched on `DISPLAY=:0` with `GDK_BACKEND=x11` and a fresh `/tmp/fontcutter-desktop-acceptance.*` `FC_CONFIG_DIR`. Automation selected only the process-owned window with WM_CLASS `Fontcutter-desktop`; no dev URL or port 1420 was used. The initial embedded UI rendered and reported `Kernel: tauri`.
+The binary launched on `DISPLAY=:0` with `GDK_BACKEND=x11` and a fresh `/tmp/fontcarver-desktop-acceptance.*` `FC_CONFIG_DIR`. Automation selected only the process-owned window with WM_CLASS `Fontcarver-desktop`; no dev URL or port 1420 was used. The initial embedded UI rendered and reported `Kernel: tauri`.
 
 Completed interaction before the stop:
 

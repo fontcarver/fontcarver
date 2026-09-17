@@ -8,7 +8,7 @@ use fc_cli::Error;
 
 #[derive(Debug, ClapArgs)]
 pub(crate) struct Args {
-    /// Font or Font Cutter document whose glyphs should be listed.
+    /// Font or FontCarver document whose glyphs should be listed.
     pub(crate) font: PathBuf,
     /// Filter expression: cat=, script=, block=, query=, or unencoded=true.
     #[arg(long = "filter")]

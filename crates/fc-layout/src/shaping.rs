@@ -399,7 +399,7 @@ impl Shaper {
         let entry = Arc::clone(entry);
         let debounce = self.debounce;
         match thread::Builder::new()
-            .name("fontcutter-shaping".to_owned())
+            .name("fontcarver-shaping".to_owned())
             .spawn(move || run_worker(&entry, token, debounce))
         {
             Ok(_handle) => true,

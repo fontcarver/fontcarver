@@ -1,11 +1,21 @@
-# Font Cutter
+# FontCarver
 
 A cross-platform desktop font editor: a Rust kernel behind a React/TypeScript UI,
 packaged with [Tauri 2](https://tauri.app/) for Linux, macOS and Windows.
 
-Project home: <https://fontcutter.com>
+Official website: <https://fontcarver.com>
 
-Font Cutter is a modern re-implementation of the capabilities that made
+Repository: <https://github.com/fontcarver/fontcarver>
+
+The product name is **FontCarver** (also written **Font Carver**); package and
+command names use `fontcarver`.
+
+Existing `.fcf` documents and UFO metadata from earlier versions remain readable.
+On first launch, the default `fontcutter` configuration directory (preferences,
+recent files and recovery snapshots) moves to `fontcarver` if that directory does
+not already exist. Explicit `FC_CONFIG_DIR` paths are used as supplied.
+
+FontCarver is a modern re-implementation of the capabilities that made
 FontForge the reference free-software font editor, built for the workflow and
 polish people expect from Glyphs 3, FontLab 8 and FontCreator.
 
@@ -51,7 +61,7 @@ docs/         specs, plans, research, design
 
 ## Documentation
 
-- [`docs/superpowers/specs/2026-09-03-fontcutter-design.md`](docs/superpowers/specs/2026-09-03-fontcutter-design.md)
+- [`docs/superpowers/specs/2026-09-03-fontcarver-design.md`](docs/superpowers/specs/2026-09-03-fontcarver-design.md)
   — the binding design specification: product definition, architecture, document
   model, crate boundaries.
 - [`docs/design/editor-ui.md`](docs/design/editor-ui.md) — the editor UI design
@@ -78,7 +88,7 @@ pnpm tauri dev             # run the desktop app
 
 ## License
 
-Font Cutter is licensed under either of
+FontCarver is licensed under either of
 
 - Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or
   <https://www.apache.org/licenses/LICENSE-2.0>)
@@ -95,16 +105,16 @@ dual licensed as above, without any additional terms or conditions.
 
 ### Relationship to FontForge
 
-Font Cutter is a from-scratch implementation, not a port of FontForge. FontForge
+FontCarver is a from-scratch implementation, not a port of FontForge. FontForge
 is studied as a _behavioural and format reference_ — what a mature editor does,
 and how the file formats it reads and writes actually behave — and the findings
 are written up in `docs/research/`. FontForge is distributed as a whole under the
 GPLv3-or-later, but the large majority of its source, written by George Williams
 between 2000 and 2012, carries the 3-clause ("revised") BSD license; only files
-added later are GPL-only. Font Cutter therefore may adapt code _only_ from
+added later are GPL-only. FontCarver therefore may adapt code _only_ from
 FontForge files whose own header is the revised BSD license, always with
 attribution; anything that traces to a GPL-only file is re-implemented from the
-format specification or from observed behaviour, without copying. Font Cutter
+format specification or from observed behaviour, without copying. FontCarver
 never links against, embeds or ships FontForge, and the `fontforge/` reference
 checkout used during research is gitignored and is not part of this project.
 
@@ -112,5 +122,5 @@ The full reasoning and the rules contributors follow are in
 [`docs/licensing.md`](docs/licensing.md); every adaptation and every third-party
 notice is recorded in [`THIRD_PARTY.md`](THIRD_PARTY.md).
 
-Font Cutter is not affiliated with, endorsed by, or sponsored by the FontForge
+FontCarver is not affiliated with, endorsed by, or sponsored by the FontForge
 project. "FontForge" is used here only to describe that project.

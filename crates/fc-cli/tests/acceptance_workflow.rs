@@ -6,8 +6,8 @@ use fc_doc::{Command, Session};
 use fc_model::{Contour, Point, PointKind};
 use serde_json::json;
 
-fn fontcutter() -> CliCommand {
-    CliCommand::new(assert_cmd::cargo::cargo_bin!("fontcutter"))
+fn fontcarver() -> CliCommand {
+    CliCommand::new(assert_cmd::cargo::cargo_bin!("fontcarver"))
 }
 
 fn triangle(offset: f64) -> Contour {
@@ -105,7 +105,7 @@ fn scratch_font_flows_from_api_drawing_through_cli_reopen() {
     )
     .expect("export scratch font");
 
-    let inspected = fontcutter()
+    let inspected = fontcarver()
         .arg("inspect")
         .arg(&output_path)
         .arg("--json")
@@ -121,7 +121,7 @@ fn scratch_font_flows_from_api_drawing_through_cli_reopen() {
     assert_eq!(inspected["summary"]["family_name"], "Scratch Latin");
     assert_eq!(inspected["summary"]["glyph_count"], 4);
 
-    let glyph = fontcutter()
+    let glyph = fontcarver()
         .arg("glyphs")
         .arg(&output_path)
         .args(["--filter", "query=U+0041", "--limit", "1"])
@@ -133,7 +133,7 @@ fn scratch_font_flows_from_api_drawing_through_cli_reopen() {
         "A\tU+0041\t600\n"
     );
 
-    let shaped = fontcutter()
+    let shaped = fontcarver()
         .arg("shape")
         .arg(&output_path)
         .arg("ABC")

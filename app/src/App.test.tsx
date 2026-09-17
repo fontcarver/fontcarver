@@ -131,7 +131,7 @@ describe('App shell', () => {
     render(<App />)
 
     expect(
-      screen.getByRole('heading', { name: 'Font Cutter' }),
+      screen.getByRole('heading', { name: 'FontCarver' }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Open Font…' }),

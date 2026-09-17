@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Font Cutter",
+    "name": "FontCarver",
     "tagline": "A workshop for outline, bitmap and variable fonts."
   },
   "common": {
@@ -93,7 +93,7 @@
     },
     "help": {
       "shortcuts": "Keyboard Shortcuts",
-      "about": "About Font Cutter"
+      "about": "About FontCarver"
     },
     "reason": {
       "noDocument": "No font is open",
@@ -161,9 +161,9 @@
       "title": "Save As",
       "label": "Document path",
       "placeholder": "/path/to/font.fcf",
-      "hint": "Font Cutter documents are saved as .fcf or .fcf.gz.",
+      "hint": "FontCarver documents are saved as .fcf or .fcf.gz.",
       "confirm": "Save",
-      "filter": "Font Cutter document"
+      "filter": "FontCarver document"
     },
     "closeDirty": {
       "title": "Unsaved changes",
@@ -301,7 +301,7 @@
     },
     "recovery": {
       "title": "Recover Documents",
-      "intro": "Font Cutter found unsaved work from an earlier session.",
+      "intro": "FontCarver found unsaved work from an earlier session.",
       "untitled": "Untitled document",
       "savedAt": "Snapshot from {{time}}",
       "recover": "Recover",
@@ -447,7 +447,7 @@
     "saved": "Saved {{name}}",
     "opened": "Opened {{name}}",
     "closed": "Closed {{name}}",
-    "about": "Font Cutter {{version}} — kernel transport: {{kind}}",
+    "about": "FontCarver {{version}} — kernel transport: {{kind}}",
     "copiedNames_one": "Copied {{count, number}} glyph name",
     "copiedNames_other": "Copied {{count, number}} glyph names",
     "copyFailed": "Could not write to the clipboard",

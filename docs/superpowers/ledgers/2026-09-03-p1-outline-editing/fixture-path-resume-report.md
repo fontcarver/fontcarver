@@ -2,7 +2,7 @@
 
 Implemented in `p1-text-kernel` commit `cc17701 test(fixtures): make Source Han lookup portable`.
 
-Source Han Sans lookup now honors `FC_SOURCE_HAN_SANS`, then defaults to the sibling `SourceHanSanOTF` checkout beside the primary Font Cutter repository. Rust resolves linked worktrees from their `.git` pointer without invoking Git, canonicalizing relative gitdir paths before locating the primary repository. The Rust benchmark reuses `fc_fixtures::external`; Playwright and `scripts/perf-open.sh` use the equivalent override/default policy. Missing optional fixtures still skip, while the performance script retains its explicit missing-file error.
+Source Han Sans lookup now honors `FC_SOURCE_HAN_SANS`, then defaults to the sibling `SourceHanSanOTF` checkout beside the primary FontCarver repository. Rust resolves linked worktrees from their `.git` pointer without invoking Git, canonicalizing relative gitdir paths before locating the primary repository. The Rust benchmark reuses `fc_fixtures::external`; Playwright and `scripts/perf-open.sh` use the equivalent override/default policy. Missing optional fixtures still skip, while the performance script retains its explicit missing-file error.
 
 Validation:
 

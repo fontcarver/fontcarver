@@ -490,7 +490,7 @@ fn font_info_reports_preserved_and_consumed_table_lengths() {
 
 fn test_config_dir(label: &str) -> std::path::PathBuf {
     let dir =
-        std::env::temp_dir().join(format!("fontcutter-fc-api-{label}-{}", std::process::id()));
+        std::env::temp_dir().join(format!("fontcarver-fc-api-{label}-{}", std::process::id()));
     fs::remove_dir_all(&dir).ok();
     dir
 }

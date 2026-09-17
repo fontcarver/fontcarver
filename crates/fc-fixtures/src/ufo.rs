@@ -89,7 +89,7 @@ pub fn write_minimal(dir: &Path) -> Result<(), Error> {
         ),
     );
     font.lib
-        .insert("com.fontcutter.fixture".to_owned(), Value::Boolean(true));
+        .insert("com.fontcarver.fixture".to_owned(), Value::Boolean(true));
 
     font.save(dir)?;
     Ok(())

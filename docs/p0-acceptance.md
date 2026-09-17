@@ -35,7 +35,7 @@ FCF layout was:
 
 ```text
 $ scripts/perf-open.sh
-Building release fontcutter...
+Building release fontcarver...
 Finished `release` profile [optimized] target(s) in 21.80s
 inspect DejaVuSans.ttf: 0.054 s
 inspect SourceHanSansSC-Regular.otf: 0.660 s
@@ -144,7 +144,7 @@ the external CJK fixture. Each line below is trimmed to the fields useful for
 acceptance; the exit code is the command's actual exit code.
 
 ```text
-$ for font in fixtures/fonts/*; do ./target/release/fontcutter inspect "$font"; done
+$ for font in fixtures/fonts/*; do ./target/release/fontcarver inspect "$font"; done
 DejaVuSans.ttf               family=DejaVu Sans; glyphs=6253; format=ttf; warnings=none; exit=0
 DejaVuSans.woff              family=DejaVu Sans; glyphs=6253; format=woff; warnings=none; exit=0
 DejaVuSansMin.woff2          family=DejaVu Sans; glyphs=53; format=woff2; warnings=none; exit=0
@@ -153,7 +153,7 @@ NotoSerifTibetan-Regular.ttf family=Noto Serif Tibetan; glyphs=1891; format=ttf;
 SourceSans3Min.otf           family=FontWorkshop CFF Sans Fixture; glyphs=5; format=otf; warnings=cff-hints-not-imported; exit=0
 SourceSerif4Min.otf          family=FontWorkshop CFF Serif Fixture; glyphs=2; format=otf; warnings=none; exit=0
 
-$ ./target/release/fontcutter inspect /home/chen/githubprojects/pixelfonts/SourceHanSanOTF/SimplifiedChinese/SourceHanSansSC-Regular.otf
+$ ./target/release/fontcarver inspect /home/chen/githubprojects/pixelfonts/SourceHanSanOTF/SimplifiedChinese/SourceHanSansSC-Regular.otf
 family=Source Han Sans SC; glyphs=65535; format=otf; warnings=cff-hints-not-imported; exit=0
 ```
 
@@ -165,11 +165,11 @@ indicate an import failure.
 The round trip used a validated temporary directory, removed after inspection.
 
 ```text
-$ ./target/release/fontcutter inspect fixtures/fonts/DejaVuSans.ttf
+$ ./target/release/fontcarver inspect fixtures/fonts/DejaVuSans.ttf
 source inspect: glyphs=6253 exit=0
-$ /usr/bin/time -p ./target/release/fontcutter convert fixtures/fonts/DejaVuSans.ttf /tmp/.../DejaVuSans.fcf
+$ /usr/bin/time -p ./target/release/fontcarver convert fixtures/fonts/DejaVuSans.ttf /tmp/.../DejaVuSans.fcf
 real 0.09
-$ ./target/release/fontcutter inspect /tmp/.../DejaVuSans.fcf
+$ ./target/release/fontcarver inspect /tmp/.../DejaVuSans.fcf
 FCF inspect: glyphs=6253 exit=0
 equal glyph counts: yes
 ```
@@ -204,14 +204,14 @@ servers were stopped after the run; ports 8787 and 1420 were verified free.
 ## Desktop acceptance
 
 ```text
-$ /usr/bin/time -p cargo build -p fontcutter
+$ /usr/bin/time -p cargo build -p fontcarver
 Finished `dev` profile ... in 8.39s
 real 8.45
 
 $ pnpm --dir app tauri dev
 VITE v7.3.6 ready at http://127.0.0.1:1420/
 Finished `dev` profile ... in 0.14s
-Running `target/debug/fontcutter-desktop`
+Running `target/debug/fontcarver-desktop`
 ```
 
 The first launch used GNOME's native Wayland backend. The process remained
@@ -221,8 +221,8 @@ not installed. The same command was therefore relaunched with
 
 ```text
 $ GDK_BACKEND=x11 pnpm --dir app tauri dev
-$ xdotool search --name Font Cutter
-16777219  Font Cutter  1400x900
+$ xdotool search --name FontCarver
+16777219  FontCarver  1400x900
 $ import -window 16777219 docs/screenshots/p0-tauri-window.png
 $ identify docs/screenshots/p0-tauri-window.png
 PNG 1400x900 ... 49539B

@@ -1,4 +1,4 @@
-//! Preservation of Font Cutter data that UFO cannot represent.
+//! Preservation of FontCarver data that UFO cannot represent.
 
 use std::{collections::HashSet, path::Path, str::FromStr};
 
@@ -9,7 +9,9 @@ use plist::Value;
 use super::value::json_to_plist;
 use crate::Error;
 
-pub(crate) const EXTRA_KEY: &str = "com.fontcutter.extra";
+pub(crate) const EXTRA_KEY: &str = "com.fontcarver.extra";
+// Read data exported before the product rename without losing preserved tables.
+const LEGACY_EXTRA_KEY: &str = "com.fontcutter.extra";
 
 pub(crate) fn copy_data_and_images(
     font: &Font,
@@ -75,7 +77,7 @@ pub(crate) fn import(font: &mut Font) -> Result<(), Error> {
         .lib
         .get("ufo.lib")
         .and_then(serde_json::Value::as_object)
-        .and_then(|lib| lib.get(EXTRA_KEY))
+        .and_then(|lib| lib.get(EXTRA_KEY).or_else(|| lib.get(LEGACY_EXTRA_KEY)))
         .cloned()
     else {
         return Ok(());
@@ -192,6 +194,7 @@ pub(crate) fn import(font: &mut Font) -> Result<(), Error> {
         .and_then(serde_json::Value::as_object_mut)
     {
         lib.remove(EXTRA_KEY);
+        lib.remove(LEGACY_EXTRA_KEY);
     }
     Ok(())
 }

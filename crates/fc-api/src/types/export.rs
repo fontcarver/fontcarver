@@ -20,7 +20,7 @@ pub enum ExportFormat {
     Ufo,
     /// Designspace document plus one UFO per master.
     Designspace,
-    /// Native Font Cutter document.
+    /// Native FontCarver document.
     Fcf,
 }
 

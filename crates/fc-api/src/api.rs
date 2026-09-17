@@ -235,7 +235,7 @@ impl Api {
         let sink = self.events.clone();
         let shutdown = Arc::clone(&self.shutdown);
         let spawned = thread::Builder::new()
-            .name("fontcutter-events".to_owned())
+            .name("fontcarver-events".to_owned())
             .spawn(move || loop {
                 if shutdown.load(Ordering::Acquire) {
                     break;

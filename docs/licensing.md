@@ -1,8 +1,8 @@
 # Licensing policy
 
-Font Cutter is licensed **MIT OR Apache-2.0** — the Rust ecosystem's dual-license
+FontCarver is licensed **MIT OR Apache-2.0** — the Rust ecosystem's dual-license
 convention. A licensee picks either license; contributions come in under both.
-The copyright line is `Copyright (c) 2026 Tom Chen and the Font Cutter
+The copyright line is `Copyright (c) 2026 Tom Chen and the FontCarver
 contributors`. The two texts are `LICENSE-MIT` and `LICENSE-APACHE`; the workspace
 `Cargo.toml` declares `license = "MIT OR Apache-2.0"` and every crate inherits it
 with `license.workspace = true`.
@@ -25,14 +25,14 @@ Two different things are easy to confuse:
   block of expression and translating or transcribing it produces a *derivative
   work*, and it carries that code's license with it.
 
-Font Cutter does the first and, in the narrow case described in §3, a strictly
+FontCarver does the first and, in the narrow case described in §3, a strictly
 bounded amount of the second.
 
-Concretely: Font Cutter is written from scratch in Rust and TypeScript. Its font
+Concretely: FontCarver is written from scratch in Rust and TypeScript. Its font
 logic is built on the permissively licensed Rust font ecosystem — `read-fonts`,
 `write-fonts`, `skrifa`, `font-types`, `fontc`, `fea-rs`, `kurbo`, `flo_curves`,
 `harfrust`, `norad`, `tiny-skia`, plus Tauri and React for the shell and UI. None
-of it is a line-by-line translation of FontForge's C. Font Cutter does not link
+of it is a line-by-line translation of FontForge's C. FontCarver does not link
 against FontForge, does not call it as a subprocess, does not embed any part of
 it, and does not ship it.
 
@@ -64,7 +64,7 @@ proprietary works — on the condition that the copyright notice, the list of
 conditions and the disclaimer are retained, and that the author's name is not used
 to endorse the derived product. Those conditions are satisfiable inside an
 MIT/Apache-2.0 project. The GPLv3 is not: it would require the combined work to be
-distributed under the GPLv3, which is incompatible with offering Font Cutter
+distributed under the GPLv3, which is incompatible with offering FontCarver
 under MIT or Apache-2.0.
 
 Hence the asymmetry that drives every rule below: **BSD-licensed FontForge files
@@ -111,17 +111,17 @@ our own words. It does not tell us *how* to write our code.
 
 ## 4. Trademark and naming
 
-Font Cutter is not affiliated with, endorsed by, or sponsored by the FontForge
+FontCarver is not affiliated with, endorsed by, or sponsored by the FontForge
 project or its contributors. "FontForge" appears in this repository only in its
 descriptive sense — naming the program we studied, its file formats (SFD) and its
-documented behaviours. It is not used as, or as part of, a Font Cutter product
-name, and Font Cutter is not presented as a version, edition, fork or successor
+documented behaviours. It is not used as, or as part of, a FontCarver product
+name, and FontCarver is not presented as a version, edition, fork or successor
 of FontForge. The same restraint applies to Glyphs, FontLab and FontCreator, which
 are named in the research and design documents purely for UX comparison.
 
 ## 5. Dependency policy
 
-Every dependency Font Cutter ships or builds against must be under a permissive
+Every dependency FontCarver ships or builds against must be under a permissive
 license:
 
 **Allowed:** MIT, Apache-2.0 (including "WITH LLVM-exception"), BSD-2-Clause,
@@ -157,8 +157,8 @@ Practical rules:
 ## 6. Test fixtures
 
 Font fixtures are *data*, not code, and live in `fixtures/`. They are aggregated
-with Font Cutter, not derived from it, so their licenses do not affect
-Font Cutter's own license — but they are still redistributed by this repository
+with FontCarver, not derived from it, so their licenses do not affect
+FontCarver's own license — but they are still redistributed by this repository
 and so must be licensed for redistribution, and their terms must be recorded.
 Every committed fixture is listed in `fixtures/README.md` with its source and
 license and in `THIRD_PARTY.md` with the license as verified from the font's own

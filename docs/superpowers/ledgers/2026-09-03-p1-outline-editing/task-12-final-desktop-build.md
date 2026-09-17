@@ -15,13 +15,13 @@ passed; 16.03s
 The Tauri command ran `pnpm --dir ../app build`. TypeScript and Vite completed, 2,249 frontend modules were transformed, the current `app/dist` was embedded, and affected Rust/Tauri crates recompiled successfully.
 
 ```text
-target/debug/fontcutter-desktop
+target/debug/fontcarver-desktop
 size: 534,198,552 bytes
 mode: 775
 sha256: 3155f6057d7cae505a3c14db950ee1630c753ff225aa2976ae1c0892b43bdd61
 ```
 
-The exact artifact was copied byte-for-byte, with mode preserved, to `target/p1-acceptance/fontcutter-desktop` so worktree cleanup cannot remove it. Root's standard `target/debug` executable was not touched.
+The exact artifact was copied byte-for-byte, with mode preserved, to `target/p1-acceptance/fontcarver-desktop` so worktree cleanup cannot remove it. Root's standard `target/debug` executable was not touched.
 
 Non-fatal output was limited to existing Tauri workspace-inheritance notices, the `.app` identifier warning, and Vite's large-chunk warning. The worktree remained clean.
 

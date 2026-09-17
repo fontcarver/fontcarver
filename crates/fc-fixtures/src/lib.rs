@@ -1,4 +1,4 @@
-//! Paths to Font Cutter's committed and optional external test fonts.
+//! Paths to FontCarver's committed and optional external test fonts.
 
 #![warn(missing_docs)]
 
@@ -150,7 +150,7 @@ mod tests {
     #[test]
     fn source_han_override_wins_over_the_sibling_default() {
         assert_eq!(
-            source_han_candidate(Some("/fonts/custom.otf"), Path::new("/repos/fontcutter")),
+            source_han_candidate(Some("/fonts/custom.otf"), Path::new("/repos/fontcarver")),
             PathBuf::from("/fonts/custom.otf")
         );
     }
@@ -158,7 +158,7 @@ mod tests {
     #[test]
     fn linked_worktree_resolves_the_primary_repository() {
         let temp = tempfile::tempdir().expect("temporary directory");
-        let primary = temp.path().join("fontcutter");
+        let primary = temp.path().join("fontcarver");
         let worktree = primary.join(".worktrees/task");
         fs::create_dir_all(primary.join(".git/worktrees/task")).expect("create git metadata");
         fs::create_dir_all(&worktree).expect("create worktree");
@@ -174,7 +174,7 @@ mod tests {
     #[test]
     fn source_han_default_is_beside_the_primary_repository() {
         assert_eq!(
-            source_han_candidate(None::<&str>, Path::new("/repos/fontcutter")),
+            source_han_candidate(None::<&str>, Path::new("/repos/fontcarver")),
             PathBuf::from("/repos/SourceHanSanOTF/SimplifiedChinese/SourceHanSansSC-Regular.otf")
         );
     }

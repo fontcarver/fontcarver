@@ -1,4 +1,4 @@
-//! Command-line tools for Font Cutter.
+//! Command-line tools for FontCarver.
 
 #![warn(missing_docs)]
 

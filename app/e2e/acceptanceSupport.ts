@@ -39,7 +39,7 @@ export interface PointLocation {
   y: number
 }
 
-const RELEASE_CLI = resolve(REPO_ROOT, 'target', 'release', 'fontcutter')
+const RELEASE_CLI = resolve(REPO_ROOT, 'target', 'release', 'fontcarver')
 
 export function releaseInspect(path: string): {
   summary: { glyph_count: number; family_name: string; units_per_em: number }

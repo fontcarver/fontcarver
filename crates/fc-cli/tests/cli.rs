@@ -1,13 +1,13 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 
-fn fontcutter() -> Command {
-    Command::new(assert_cmd::cargo::cargo_bin!("fontcutter"))
+fn fontcarver() -> Command {
+    Command::new(assert_cmd::cargo::cargo_bin!("fontcarver"))
 }
 
 #[test]
 fn inspect_ttf_prints_summary_and_preserved_tables() {
-    fontcutter()
+    fontcarver()
         .arg("inspect")
         .arg(fc_fixtures::path("DejaVuSans.ttf"))
         .assert()
@@ -24,7 +24,7 @@ fn convert_preserves_the_glyph_count_in_fcf() {
     let source = fc_fixtures::path("DejaVuSans.ttf");
     let output = directory.path().join("DejaVuSans.fcf");
 
-    let original = fontcutter()
+    let original = fontcarver()
         .arg("inspect")
         .arg(&source)
         .arg("--json")
@@ -34,14 +34,14 @@ fn convert_preserves_the_glyph_count_in_fcf() {
     let original: serde_json::Value =
         serde_json::from_slice(&original.stdout).expect("parse source summary");
 
-    fontcutter()
+    fontcarver()
         .arg("convert")
         .arg(&source)
         .arg(&output)
         .assert()
         .success();
 
-    let converted = fontcutter()
+    let converted = fontcarver()
         .arg("inspect")
         .arg(&output)
         .arg("--json")
@@ -62,7 +62,7 @@ fn convert_rejects_an_unknown_output_format_with_exit_code_two() {
     let directory = tempfile::tempdir().expect("create temporary directory");
     let output = directory.path().join("DejaVuSans.bogus");
 
-    fontcutter().arg("convert")
+    fontcarver().arg("convert")
         .arg(fc_fixtures::path("DejaVuSans.ttf"))
         .arg(output)
         .assert()
@@ -77,7 +77,7 @@ fn build_compiles_a_ufo_into_a_truetype_font() {
     let directory = tempfile::tempdir().expect("create temporary directory");
     let output = directory.path().join("Minimal.ttf");
 
-    fontcutter()
+    fontcarver()
         .arg("build")
         .arg(fc_fixtures::ufo_path("Minimal.ufo"))
         .arg(&output)
@@ -94,7 +94,7 @@ fn build_compiles_a_ufo_into_a_truetype_font() {
 fn build_rejects_a_source_output_format_with_exit_code_two() {
     let directory = tempfile::tempdir().expect("create temporary directory");
 
-    fontcutter()
+    fontcarver()
         .arg("build")
         .arg(fc_fixtures::ufo_path("Minimal.ufo"))
         .arg(directory.path().join("Minimal.ufo"))
@@ -109,7 +109,7 @@ fn build_rejects_a_source_output_format_with_exit_code_two() {
 fn build_reports_an_unknown_master() {
     let directory = tempfile::tempdir().expect("create temporary directory");
 
-    fontcutter()
+    fontcarver()
         .arg("build")
         .arg(fc_fixtures::ufo_path("Minimal.ufo"))
         .arg(directory.path().join("Minimal.ttf"))
@@ -124,7 +124,7 @@ fn convert_writes_a_ufo_package_from_a_binary_font() {
     let directory = tempfile::tempdir().expect("create temporary directory");
     let output = directory.path().join("Minimal.ufo");
 
-    fontcutter()
+    fontcarver()
         .arg("convert")
         .arg(fc_fixtures::ufo_path("Minimal.ufo"))
         .arg(&output)
@@ -136,7 +136,7 @@ fn convert_writes_a_ufo_package_from_a_binary_font() {
 
 #[test]
 fn shape_prints_one_line_per_glyph_with_kerning_applied() {
-    let output = fontcutter()
+    let output = fontcarver()
         .arg("shape")
         .arg(fc_fixtures::ufo_path("Minimal.ufo"))
         .arg("AB")
@@ -163,9 +163,9 @@ fn shape_can_switch_a_feature_off() {
     assert_eq!(unkerned, vec!["600", "620"]);
 }
 
-/// Runs `fontcutter shape` on the minimal UFO and returns the advance column.
+/// Runs `fontcarver shape` on the minimal UFO and returns the advance column.
 fn shaped_advances(arguments: &[&str]) -> Vec<String> {
-    let output = fontcutter()
+    let output = fontcarver()
         .arg("shape")
         .arg(fc_fixtures::ufo_path("Minimal.ufo"))
         .args(arguments)
@@ -185,7 +185,7 @@ fn shaped_advances(arguments: &[&str]) -> Vec<String> {
 
 #[test]
 fn glyphs_maps_filters_and_prints_tab_separated_columns() {
-    fontcutter()
+    fontcarver()
         .arg("glyphs")
         .arg(fc_fixtures::path("DejaVuSans.ttf"))
         .args(["--filter", "cat=Letter"])
@@ -200,7 +200,7 @@ fn glyphs_maps_filters_and_prints_tab_separated_columns() {
 
 #[test]
 fn glyphs_accepts_the_unencoded_filter() {
-    fontcutter()
+    fontcarver()
         .arg("glyphs")
         .arg(fc_fixtures::path("DejaVuSans.ttf"))
         .args(["--filter", "unencoded=true"])

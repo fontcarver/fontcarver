@@ -14,7 +14,7 @@ if [[ -f .git ]]; then
 fi
 readonly primary_repo_root
 readonly source_han_font="${FC_SOURCE_HAN_SANS:-$(dirname "$primary_repo_root")/SourceHanSanOTF/SimplifiedChinese/SourceHanSansSC-Regular.otf}"
-readonly fc_binary="target/release/fontcutter"
+readonly fc_binary="target/release/fontcarver"
 readonly open_budget_ns=3000000000
 readonly save_load_budget_ns=6000000000
 
@@ -26,8 +26,8 @@ fi
 fcf_path="$(mktemp --suffix=.fcf)"
 trap 'rm -f "$fcf_path"' EXIT
 
-echo "Building release fontcutter..."
-cargo build --release -p fc-cli --bin fontcutter
+echo "Building release fontcarver..."
+cargo build --release -p fc-cli --bin fontcarver
 
 step_ns=0
 time_step() {

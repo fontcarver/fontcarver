@@ -28,7 +28,7 @@ fn fcf_plain_and_gzip_round_trip_semantically() {
     assert_eq!(fcf::read(&disguised_gzip).unwrap(), expected);
 
     let json: serde_json::Value = serde_json::from_slice(&fs::read(plain).unwrap()).unwrap();
-    assert_eq!(json["format"], "fontcutter");
+    assert_eq!(json["format"], "fontcarver");
     assert_eq!(json["version"], 1);
     assert!(json.get("font").is_some());
 }
@@ -66,7 +66,7 @@ fn reader_accepts_unknown_fields_and_rejects_newer_versions() {
     fs::write(
         &compatible,
         serde_json::to_vec(&serde_json::json!({
-            "format": "fontcutter",
+            "format": "fontcarver",
             "version": 1,
             "font": font,
             "futureField": true
@@ -79,7 +79,7 @@ fn reader_accepts_unknown_fields_and_rejects_newer_versions() {
     fs::write(
         &future,
         serde_json::to_vec(&serde_json::json!({
-            "format": "fontcutter",
+            "format": "fontcarver",
             "version": 2,
             "font": test_font()
         }))
@@ -90,27 +90,32 @@ fn reader_accepts_unknown_fields_and_rejects_newer_versions() {
 }
 
 #[test]
-fn reader_accepts_the_pre_rename_format_tag() {
-    let dir = temp_dir("legacy-format-tag");
-    let legacy = dir.join("legacy.fcf");
+fn reader_accepts_pre_rename_documents_and_recovery_snapshots() {
+    let dir = temp_dir("legacy-format-tags");
     let expected = test_font();
-    fs::write(
-        &legacy,
-        serde_json::to_vec(&serde_json::json!({
-            "format": "fontworkshop",
-            "version": 1,
-            "font": serde_json::to_value(&expected).unwrap()
-        }))
-        .unwrap(),
-    )
-    .unwrap();
+    for format in ["fontcutter", "fontworkshop"] {
+        let legacy = dir.join(format!("{format}.autosave.fcf"));
+        fs::write(
+            &legacy,
+            serde_json::to_vec(&serde_json::json!({
+                "format": format,
+                "version": 1,
+                "font": serde_json::to_value(&expected).unwrap()
+            }))
+            .unwrap(),
+        )
+        .unwrap();
 
-    assert_eq!(fcf::read(&legacy).unwrap(), expected);
+        assert_eq!(fcf::read(&legacy).unwrap(), expected);
+        assert!(fc_doc::autosave::list_recoverable(&dir)
+            .iter()
+            .any(|entry| entry.autosave_path == legacy));
 
-    // Saving the document again re-stamps it with the current tag.
-    fcf::write(&legacy, &expected).unwrap();
-    let json: serde_json::Value = serde_json::from_slice(&fs::read(&legacy).unwrap()).unwrap();
-    assert_eq!(json["format"], "fontcutter");
+        // Saving the document again re-stamps it with the current tag.
+        fcf::write(&legacy, &expected).unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&fs::read(&legacy).unwrap()).unwrap();
+        assert_eq!(json["format"], "fontcarver");
+    }
 }
 
 #[test]

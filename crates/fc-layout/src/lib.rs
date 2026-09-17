@@ -1,4 +1,4 @@
-//! Layout and shaping services for Font Cutter documents.
+//! Layout and shaping services for FontCarver documents.
 //!
 //! P1 provides the shaping half: [`Shaper`] keeps one in-memory font per
 //! document and master, compiled from the model by `fc-compile`, and shapes text

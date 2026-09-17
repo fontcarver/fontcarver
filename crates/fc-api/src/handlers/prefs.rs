@@ -3,7 +3,7 @@
 use std::{
     collections::HashSet,
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
 };
 
@@ -130,7 +130,73 @@ pub(crate) fn config_dir(api: &Api) -> Result<PathBuf, ApiError> {
     if let Some(path) = std::env::var_os("FC_CONFIG_DIR") {
         return Ok(PathBuf::from(path));
     }
-    dirs::config_dir()
-        .map(|path| path.join("fontcutter"))
-        .ok_or_else(|| ApiError::internal("could not determine the user config directory"))
+    let root = dirs::config_dir()
+        .ok_or_else(|| ApiError::internal("could not determine the user config directory"))?;
+    product_config_dir(&root)
+}
+
+fn product_config_dir(root: &Path) -> Result<PathBuf, ApiError> {
+    let current = root.join("fontcarver");
+    let legacy = root.join("fontcutter");
+    // Move preferences, recent files and recovery snapshots together on first launch.
+    if !current.exists() && legacy.is_dir() {
+        if let Err(error) = fs::rename(&legacy, &current) {
+            // Another running instance may have completed the same migration.
+            if !current.is_dir() {
+                return Err(ApiError::io(format!(
+                    "failed to migrate `{}` to `{}`: {error}",
+                    legacy.display(),
+                    current.display()
+                )));
+            }
+        }
+    }
+    Ok(current)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn migrates_preferences_and_recovery_together() {
+        let root = tempfile::tempdir().unwrap();
+        let legacy = root.path().join("fontcutter");
+        fs::create_dir_all(legacy.join("autosave")).unwrap();
+        fs::write(legacy.join("prefs.json"), b"preferences").unwrap();
+        fs::write(legacy.join("recent.json"), b"recent files").unwrap();
+        fs::write(legacy.join("autosave/work.fcf"), b"unsaved work").unwrap();
+
+        let current = product_config_dir(root.path()).unwrap();
+        assert_eq!(current, root.path().join("fontcarver"));
+        assert_eq!(
+            fs::read(current.join("prefs.json")).unwrap(),
+            b"preferences"
+        );
+        assert_eq!(
+            fs::read(current.join("recent.json")).unwrap(),
+            b"recent files"
+        );
+        assert_eq!(
+            fs::read(current.join("autosave/work.fcf")).unwrap(),
+            b"unsaved work"
+        );
+        assert!(!legacy.exists());
+        assert_eq!(product_config_dir(root.path()).unwrap(), current);
+    }
+
+    #[test]
+    fn existing_current_configuration_is_not_overwritten() {
+        let root = tempfile::tempdir().unwrap();
+        let legacy = root.path().join("fontcutter");
+        let current = root.path().join("fontcarver");
+        fs::create_dir(&legacy).unwrap();
+        fs::create_dir(&current).unwrap();
+        fs::write(legacy.join("prefs.json"), b"legacy").unwrap();
+        fs::write(current.join("prefs.json"), b"current").unwrap();
+
+        assert_eq!(product_config_dir(root.path()).unwrap(), current);
+        assert_eq!(fs::read(current.join("prefs.json")).unwrap(), b"current");
+        assert_eq!(fs::read(legacy.join("prefs.json")).unwrap(), b"legacy");
+    }
 }

@@ -1,4 +1,4 @@
-//! Geometry operations for Font Cutter outlines.
+//! Geometry operations for FontCarver outlines.
 //!
 //! The crate uses kurbo paths as its working representation. Quadratic model
 //! contours are degree-elevated exactly before cubic-only operations.

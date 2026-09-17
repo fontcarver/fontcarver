@@ -1,4 +1,4 @@
-//! Glyph names, Unicode properties, and related data for Font Cutter.
+//! Glyph names, Unicode properties, and related data for FontCarver.
 
 #![warn(missing_docs)]
 

@@ -4,7 +4,7 @@ Reviewed base: `b460871` on `p1-outline-editing` (T8 + scoped fix2 + preliminary
 Chinese translation merged). Create new `p1-text-ui` worktree from this base.
 Read CONVENTIONS, task-9b-dispatch.md, task-9b-resume-integration-rulings.md,
 task-9-brief.md and binding editor-ui.md sections3/4/5/8/10/11/12. Historical
-FontWorkshop/fw/path references are obsolete; use current fontpixel/fontcutter.
+FontWorkshop/fw/path references are obsolete; use current fontpixel/fontcarver.
 
 Complete the full Text tab integration, building on merged parsing/layout/
 coordinator/compiled-identity foundation. The independent `p1-text-controls`

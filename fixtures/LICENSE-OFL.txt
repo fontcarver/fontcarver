@@ -1,4 +1,4 @@
-Font Cutter OFL fixture notices
+FontCarver OFL fixture notices
 ================================
 
 SourceSans3Min.otf is derived from Source Sans 3 version 3.052:

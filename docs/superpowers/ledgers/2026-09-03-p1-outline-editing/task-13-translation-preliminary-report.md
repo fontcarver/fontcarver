@@ -6,7 +6,7 @@ Translated 400 English placeholder values added by T6/T7/T8/T9a/T11. Coverage in
 
 Intentionally unchanged English/technical content:
 
-- Product and language names: `Font Cutter`, `English`.
+- Product and language names: `FontCarver`, `English`.
 - Format/standard names: TTF, WOFF/WOFF2, UFO, FCF, Designspace, GB 2312, Unicode, PostScript, Macintosh, OS/2, PANOSE.
 - Field identifiers and controls: `defaultWidthX`, `nominalWidthX`, Shift, Command, X/Y/W/H, delta/HUD symbols, `px/em`.
 - Literal path examples, coordinate-only values, and pass-through interpolation-only messages such as `{{message}}`.

@@ -48,11 +48,11 @@ pub enum Error {
     /// The path is not a supported document format.
     #[error("unsupported document format: `{0}`")]
     UnsupportedFormat(PathBuf),
-    /// The input is not a Font Cutter document.
-    #[error("invalid Font Cutter document format `{0}`")]
+    /// The input is not a FontCarver document.
+    #[error("invalid FontCarver document format `{0}`")]
     InvalidFcfFormat(String),
-    /// The input requires a newer version of Font Cutter.
-    #[error("unsupported Font Cutter document version {0}")]
+    /// The input requires a newer version of FontCarver.
+    #[error("unsupported FontCarver document version {0}")]
     UnsupportedFcfVersion(u32),
     /// The sfnt reader is not available in this checkout.
     #[error("sfnt opening is unavailable until fc-sfnt lands")]

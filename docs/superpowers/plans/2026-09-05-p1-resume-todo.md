@@ -1,4 +1,4 @@
-# Font Cutter — resume TODO (written 2026-09-05, session paused by the user)
+# FontCarver — resume TODO (written 2026-09-05, session paused by the user)
 
 ## Current status — P2 paused by the user, 2026-09-07
 
@@ -41,7 +41,7 @@ The user trial is not a complete native workflow test or packaging acceptance.
 Chinese localisation, headless acceptance and final whole-branch/scoped review
 are complete on `p1-outline-editing`. Production candidate: `2e53ba6`; later
 commits record evidence and keep temporary binaries out of ledger snapshots.
-The repository is `/home/chen/githubprojects/fontpixel/fontcutter`.
+The repository is `/home/chen/githubprojects/fontpixel/fontcarver`.
 
 - T7/T8/T9: complete, including shaped text, local glyph editing, preview,
   metrics coalescing and source/master handover.
@@ -57,7 +57,7 @@ The repository is `/home/chen/githubprojects/fontpixel/fontcutter`.
   workspace formatting/Clippy passed. Source Han export gate passed narrowly
   at 58.697 s / 60 s; preserve this qualification.
 - Final release CLI/server and embedded debug desktop builds passed. Desktop
-  artifact retained at `target/p1-acceptance/fontcutter-desktop`.
+  artifact retained at `target/p1-acceptance/fontcarver-desktop`.
 - **Native/headed input remains paused and unverified** because the user reported
   interference. The final desktop artifact was not launched. Release packaging
   was not tested. No native interaction is authorized by this handoff.
@@ -82,7 +82,7 @@ unchecked boxes there are historical; the active resume above takes precedence.
 
 - Branch `p1-outline-editing` (from `main`): Tasks 1, 2 (+ minor round), 3, 4, 5, 6, 7, 9a, 10, 11 merged and verified
   (Rust 438 tests, Vitest 575, e2e 13 passed / 1 skipped).
-- Repository now lives at `/home/chen/githubprojects/pixelfonts/fontcutter` (moved 2026-09-05; Claude project data and
+- Repository now lives at `/home/chen/githubprojects/pixelfonts/fontcarver` (moved 2026-09-05; Claude project data and
   worktrees migrated). Worktree: `.worktrees/p1-t8` (T8 panels/menus, DONE but unreviewed, base 449a390).
 - T7 is merged (5bbd934). No agents are running; P1 is paused by the user.
 - Dispatch files ready: `task-9b-dispatch.md` (Text tab; fill `BASE_COMMIT`), `task-7-dispatch.md`, `task-8-dispatch.md`.
@@ -91,8 +91,8 @@ unchecked boxes there are historical; the active resume above takes precedence.
 
 ## 0a. Rename (done 2026-09-05, after the pause)
 
-- Product is now **Font Cutter** (`fontcutter`, fontcutter.com): commits f6c5ade (product) and a166c23 (internals: crates
-  `fc-*`, CLI `fontcutter`, desktop binary `fontcutter-desktop`, `fc:event`, `FC_API_PORT`/`FC_UI_PORT`/`FC_DEV_PROXY`/
+- Product is now **FontCarver** (`fontcarver`, fontcarver.com): commits f6c5ade (product) and a166c23 (internals: crates
+  `fc-*`, CLI `fontcarver`, desktop binary `fontcarver-desktop`, `fc:event`, `FC_API_PORT`/`FC_UI_PORT`/`FC_DEV_PROXY`/
   `FC_CONFIG_DIR`/`VITE_FC_API`, document extension `.fcf`; `.fwf` and the old `"fontworkshop"` format tag are still read).
 - **T8 merge implication**: `.worktrees/p1-t8` predates the rename — when merging P1 into p1-t8, apply the same renames to its
   app-side references (`fw:event`, `FW_*`, `.fwf`, "FontWorkshop" strings) before verifying. Remove `.worktrees/p1-t7`.
@@ -169,15 +169,15 @@ unchecked boxes there are historical; the active resume above takes precedence.
 
 ## 6. Decisions for the user (nothing proceeds on these until you say so)
 
-- [ ] Desktop binary name: the Tauri shell builds `fontcutter-desktop` because the CLI owns `fontcutter`. Keep, or pick another
-      name (e.g. CLI `fontcutter`, shell `Font Cutter.app`/`fontcutter-app`)?
+- [ ] Desktop binary name: the Tauri shell builds `fontcarver-desktop` because the CLI owns `fontcarver`. Keep, or pick another
+      name (e.g. CLI `fontcarver`, shell `FontCarver.app`/`fontcarver-app`)?
 - [ ] Test fixture fonts still carry "FontWorkshop" family names inside the binaries (rebuilding changes committed hashes).
       Recommendation: leave them.
 - [ ] Git history still contains the three old GPL/AFPL fixture fonts (removed in 3acdc1c). Rewrite history before the repo
       goes public, or accept? (Rewrite is destructive; needs your explicit go.)
 - [ ] Merge `p1-outline-editing` into `main` when P1 is finished (the finishing step asks; it is your call).
 - [ ] Codex: currently paused (all seats on Claude). Say when to re-enable it (kernel implementation, fix rounds, T13 translation + QA go back to Codex sol xhigh under the original split).
-- [ ] Repository URL / hosting for fontcutter.com (Cargo/package `repository` fields are unset).
+- [ ] Repository URL / hosting for fontcarver.com (Cargo/package `repository` fields are unset).
 
 ## 7. Environment notes (this machine)
 
@@ -191,7 +191,7 @@ unchecked boxes there are historical; the active resume above takes precedence.
 
 ## 5. Rules to keep
 
-- Product name Font Cutter (`fontcutter`, fontcutter.com); crates `fc-*`, CLI `fontcutter`, `.fcf` documents.
+- Product name FontCarver (`fontcarver`, fontcarver.com); crates `fc-*`, CLI `fontcarver`, `.fcf` documents.
 - Docs/comments in English; reply to the user in their language.
 - License MIT OR Apache-2.0; only 3-clause-BSD FontForge files may be adapted (attribution in THIRD_PARTY.md); no copyleft deps.
 - Every task: written dispatch with rulings, report file, review package, cross-review; ≤ 5 fix rounds then adjudicate.

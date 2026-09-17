@@ -4,7 +4,7 @@ use fc_doc::DocId;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-/// Parameters for opening a font or Font Cutter document.
+/// Parameters for opening a font or FontCarver document.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
 #[ts(export)]
 pub struct OpenParams {

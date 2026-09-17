@@ -63,7 +63,7 @@ pub struct FcSource {
 }
 
 impl FcSource {
-    /// Copies a Font Cutter font into a source selecting one master.
+    /// Copies a FontCarver font into a source selecting one master.
     pub fn from_font(
         font: &Font,
         master: &MasterId,

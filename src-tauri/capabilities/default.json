@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissions for the main Font Cutter window",
+  "description": "Permissions for the main FontCarver window",
   "windows": ["main"],
   "permissions": ["core:default", "dialog:default", "fs:default"]
 }

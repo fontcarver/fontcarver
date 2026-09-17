@@ -1,13 +1,13 @@
-import { act, fireEvent, render, screen, waitFor } from '/home/chen/githubprojects/fontpixel/fontcutter/app/node_modules/@testing-library/react/dist/index.js'
-import { afterEach, beforeEach, describe, expect, it, vi } from '/home/chen/githubprojects/fontpixel/fontcutter/app/node_modules/vitest/dist/index.js'
-import { setTransport } from '/home/chen/githubprojects/fontpixel/fontcutter/app/src/api'
-import { activeEditor } from '/home/chen/githubprojects/fontpixel/fontcutter/app/src/editor/activeEditor'
+import { act, fireEvent, render, screen, waitFor } from '/home/chen/githubprojects/fontpixel/fontcarver/app/node_modules/@testing-library/react/dist/index.js'
+import { afterEach, beforeEach, describe, expect, it, vi } from '/home/chen/githubprojects/fontpixel/fontcarver/app/node_modules/vitest/dist/index.js'
+import { setTransport } from '/home/chen/githubprojects/fontpixel/fontcarver/app/src/api'
+import { activeEditor } from '/home/chen/githubprojects/fontpixel/fontcarver/app/src/editor/activeEditor'
 import {
   initialDocumentState,
   useDocumentStore,
-} from '/home/chen/githubprojects/fontpixel/fontcutter/app/src/stores/documentStore'
-import { initialEditorState, useEditorStore } from '/home/chen/githubprojects/fontpixel/fontcutter/app/src/stores/editorStore'
-import { initialUiState, useUiStore } from '/home/chen/githubprojects/fontpixel/fontcutter/app/src/stores/uiStore'
+} from '/home/chen/githubprojects/fontpixel/fontcarver/app/src/stores/documentStore'
+import { initialEditorState, useEditorStore } from '/home/chen/githubprojects/fontpixel/fontcarver/app/src/stores/editorStore'
+import { initialUiState, useUiStore } from '/home/chen/githubprojects/fontpixel/fontcarver/app/src/stores/uiStore'
 import {
   makeCell,
   makeContour,
@@ -17,13 +17,13 @@ import {
   makeLayer,
   makeLayerOutline,
   makePoint,
-} from '/home/chen/githubprojects/fontpixel/fontcutter/app/src/test/fontFixtures'
+} from '/home/chen/githubprojects/fontpixel/fontcarver/app/src/test/fontFixtures'
 import {
   createMockTransport,
   makeSummary,
   noChange,
-} from '/home/chen/githubprojects/fontpixel/fontcutter/app/src/test/mockTransport'
-import { TextView } from '/home/chen/githubprojects/fontpixel/fontcutter/app/src/views/text/TextView'
+} from '/home/chen/githubprojects/fontpixel/fontcarver/app/src/test/mockTransport'
+import { TextView } from '/home/chen/githubprojects/fontpixel/fontcarver/app/src/views/text/TextView'
 
 const layer = makeLayer({
   width: 600,

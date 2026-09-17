@@ -64,7 +64,7 @@ These fonts are intentionally not committed. `fc_fixtures::external` returns
 their paths only when they exist on the current machine, so dependent tests can
 skip cleanly. Source Han Sans uses `FC_SOURCE_HAN_SANS` when set; otherwise it
 is resolved from the sibling `SourceHanSanOTF` checkout beside the primary
-Font Cutter repository, including when a test runs from a linked worktree.
+FontCarver repository, including when a test runs from a linked worktree.
 
 | Key | Expected path | Purpose |
 | --- | --- | --- |

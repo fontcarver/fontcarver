@@ -1,4 +1,4 @@
-//! Export handlers shared by the export dialog and the `fontcutter` command line.
+//! Export handlers shared by the export dialog and the `fontcarver` command line.
 
 use std::{
     collections::HashMap,

@@ -1,4 +1,4 @@
-//! Document sessions, commands, and persistence for Font Cutter.
+//! Document sessions, commands, and persistence for FontCarver.
 
 #![warn(missing_docs)]
 

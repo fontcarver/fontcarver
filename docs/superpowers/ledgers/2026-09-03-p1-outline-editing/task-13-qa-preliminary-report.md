@@ -18,7 +18,7 @@ Scope: independent review of the 400 translated values in `p1-zh-cn` at `b039884
 - 847/847 leaf keys; exactly 400 changed values. The bundles have a pre-existing
   ordering difference beginning at `fontInfo.noTables`; key-set parity passes.
 - Interpolation placeholders match for every changed key; all `_one`/`_other` pairs are complete.
-- No unintended untranslated sentence found; `app.name` (`Font Cutter`) is the sole unchanged English phrase.
+- No unintended untranslated sentence found; `app.name` (`FontCarver`) is the sole unchanged English phrase.
 - `pnpm --dir app exec vitest run src/i18n/i18n.test.ts`: 2 tests passed.
 - Warning causes and consequences are otherwise preserved; existing “左侧边距” / “右侧边距” terminology remains consistent.
 

@@ -1,9 +1,14 @@
 {
-  "name": "fontcutter-app",
+  "name": "fontcarver-app",
   "private": true,
   "version": "0.1.0",
   "license": "MIT OR Apache-2.0",
-  "homepage": "https://fontcutter.com",
+  "homepage": "https://fontcarver.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fontcarver/fontcarver.git",
+    "directory": "app"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite --port 1420 --strictPort",

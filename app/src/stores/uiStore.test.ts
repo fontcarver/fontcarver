@@ -60,6 +60,19 @@ describe('uiStore theme', () => {
     expect(useUiStore.getState().theme).toBe('dark')
   })
 
+  it('reads legacy preferences and saves changes under the current name', () => {
+    localStorage.setItem('fontcutter.ui', JSON.stringify({ theme: 'dark' }))
+    useUiStore.setState(initialUiState())
+    expect(useUiStore.getState().theme).toBe('dark')
+
+    useUiStore.getState().setTheme('light')
+    useUiStore.setState(initialUiState())
+    expect(useUiStore.getState().theme).toBe('light')
+    expect(JSON.parse(localStorage.getItem('fontcarver.ui')!).theme).toBe(
+      'light',
+    )
+  })
+
   it('resolves the system preference from prefers-color-scheme', () => {
     stubMatchMedia(true)
     expect(systemTheme()).toBe('dark')

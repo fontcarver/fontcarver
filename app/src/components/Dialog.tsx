@@ -33,7 +33,7 @@ export interface DialogProps {
 }
 
 /**
- * The modal primitive every Font Cutter dialog is built from: 6 px radius,
+ * The modal primitive every FontCarver dialog is built from: 6 px radius,
  * 24 px padding, a 16/600 title over a 14 px body (the chrome lives with the
  * width classes in `shell/dialog.module.css`), Escape cancels, Enter confirms
  * and Tab is trapped inside. Focus moves to the first control on open and

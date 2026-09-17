@@ -94,7 +94,7 @@ export const PANEL_BOUNDS: Record<PanelId, { min: number; max: number }> = {
 /** How long the status bar shows the last undo label (design spec §10). */
 export const UNDO_FLASH_MS = 1500
 
-const STORAGE_KEY = 'fontcutter.ui'
+const STORAGE_KEY = 'fontcarver.ui'
 
 interface PersistedUi {
   theme: ThemePreference
@@ -135,7 +135,9 @@ function clamp(value: number, min: number, max: number): number {
 
 function readPersisted(): PersistedUi {
   try {
-    const raw = globalThis.localStorage?.getItem(STORAGE_KEY)
+    const raw =
+      globalThis.localStorage?.getItem(STORAGE_KEY) ??
+      globalThis.localStorage?.getItem('fontcutter.ui')
     if (!raw) return DEFAULT_PERSISTED
     const parsed = JSON.parse(raw) as Partial<PersistedUi>
     const theme = parsed.theme

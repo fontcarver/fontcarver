@@ -1,9 +1,9 @@
-import { afterEach, expect, it } from "/home/chen/githubprojects/fontpixel/fontcutter/app/node_modules/vitest/dist/index.js"
-import { setTransport } from "/home/chen/githubprojects/fontpixel/fontcutter/app/src/api"
-import { createMockTransport, makeSummary, noChange } from "/home/chen/githubprojects/fontpixel/fontcutter/app/src/test/mockTransport"
-import { useSessionStore, initialSessionState } from "/home/chen/githubprojects/fontpixel/fontcutter/app/src/stores/sessionStore"
-import { TextMetricsRunner } from "/home/chen/githubprojects/fontpixel/fontcutter/app/src/views/text/textMetrics"
-import { holdDocumentEdits } from "/home/chen/githubprojects/fontpixel/fontcutter/app/src/editor/editSession"
+import { afterEach, expect, it } from "/home/chen/githubprojects/fontpixel/fontcarver/app/node_modules/vitest/dist/index.js"
+import { setTransport } from "/home/chen/githubprojects/fontpixel/fontcarver/app/src/api"
+import { createMockTransport, makeSummary, noChange } from "/home/chen/githubprojects/fontpixel/fontcarver/app/src/test/mockTransport"
+import { useSessionStore, initialSessionState } from "/home/chen/githubprojects/fontpixel/fontcarver/app/src/stores/sessionStore"
+import { TextMetricsRunner } from "/home/chen/githubprojects/fontpixel/fontcarver/app/src/views/text/textMetrics"
+import { holdDocumentEdits } from "/home/chen/githubprojects/fontpixel/fontcarver/app/src/editor/editSession"
 const summary = makeSummary({ path: '/tmp/review.fcf' })
 afterEach(() => { setTransport(undefined); useSessionStore.setState(initialSessionState()) })
 it('reproduction: save invalidates the still-owned metrics token and drops the next key', async () => {

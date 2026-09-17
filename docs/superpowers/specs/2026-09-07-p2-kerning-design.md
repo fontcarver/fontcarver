@@ -19,7 +19,7 @@ This resumes development after the earlier stop-after-P1 boundary. Native
 desktop input automation remains paused; use isolated headless verification.
 
 The binding product scope remains
-`2026-09-03-fontcutter-design.md` §14, with interaction conventions from
+`2026-09-03-fontcarver-design.md` §14, with interaction conventions from
 `../../design/editor-ui.md`. This proposal subdivides P2 into independently
 verifiable milestones; it does not redefine P2 as complete after kerning alone.
 

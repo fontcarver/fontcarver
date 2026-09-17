@@ -4,7 +4,7 @@ Dispatch only after root identifies the final integrated candidate. Review the
 entire P1 branch against `git merge-base main HEAD`, with special attention to
 integration boundaries, rather than treating individually approved tasks as a
 whole-branch approval. The current root is
-`/home/chen/githubprojects/fontpixel/fontcutter`; historical ledger paths and
+`/home/chen/githubprojects/fontpixel/fontcarver`; historical ledger paths and
 fw-* names predate the move and rename.
 
 Read CONVENTIONS, the binding design/spec, the P1 plan, the active section of

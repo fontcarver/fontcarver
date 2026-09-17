@@ -1,11 +1,11 @@
-# Rename report — FontWorkshop → Font Cutter
+# Rename report — FontWorkshop → FontCarver
 
 Branch `p1-outline-editing`, main working tree. Two commits, not pushed:
 
 | Commit | Subject |
 | --- | --- |
-| `f6c5ade` | `chore(rename): FontWorkshop → Font Cutter (fontcutter, fontcutter.com)` |
-| `a166c23` | `chore(rename): fw → fc internals, .fwf → .fcf, CLI fw → fontcutter` |
+| `f6c5ade` | `chore(rename): FontWorkshop → FontCarver (fontcarver, fontcarver.com)` |
+| `a166c23` | `chore(rename): fw → fc internals, .fwf → .fcf, CLI fw → fontcarver` |
 
 Both commits were verified independently with the full block (fmt, clippy,
 workspace tests, `gen_ts`, app check/test/lint/prettier, e2e, Tauri crate
@@ -21,29 +21,29 @@ and was unchanged — `pnpm install --frozen-lockfile` succeeds).
 
 | Bucket | Where | Action |
 | --- | --- | --- |
-| Display name | `app/index.html` title, `src-tauri/tauri.conf.json` `productName` + window `title`, `app/src/i18n/{en,zh-CN}.json` (6 strings each: app name, Help ▸ About, Save-As hint/filter, recovery intro, status about line), `crates/fw-cli/src/main.rs` clap `about`, `crates/fw-devserver/src/main.rs` clap `about` + startup log, `crates/fw-doc/src/error.rs` (4 messages), `src-tauri/capabilities/default.json` description, ~40 Rust module docs, `app/src/components/Dialog.tsx`, `app/src/styles/tokens.css`, `app/src/stores/sessionStore.ts`, `app/playwright.config.ts`, `app/src/App.test.tsx` heading assertion, README/CONVENTIONS/PLAN/docs headings | `FontWorkshop` → `Font Cutter` |
-| Machine identifiers | Tauri `identifier` `dev.fontworkshop.app` → `com.fontcutter.app`; `src-tauri/Cargo.toml` package `fontworkshop` → `fontcutter`, lib `fontworkshop_lib` → `fontcutter_lib` (+ `src-tauri/src/main.rs`); `package.json` `fontworkshop-workspace` → `fontcutter-workspace`; `app/package.json` `fontworkshop-app` → `fontcutter-app`; config dir `~/.config/fontworkshop` → `fontcutter` (`fw-api/src/handlers/prefs.rs`); autosave dir `fontworkshop/autosave` → `fontcutter/autosave` (3 branches in `fw-doc/src/autosave.rs`); thread names `fontworkshop-{autosave,events,shaping}`; test temp-dir prefixes; `gen_ts` temp file names; `app/src/stores/uiStore.ts` `STORAGE_KEY` `fontworkshop.ui` → `fontcutter.ui` | renamed |
-| Persisted namespaces | `fw-formats/src/ufo/extra.rs` `dev.fontworkshop.extra`, `metadata.rs` `dev.fontworkshop.ufo.identifiers`, `value.rs` `$fontworkshop.plist.type`, `fw-fixtures/src/ufo.rs` + `fixtures/ufo/Minimal.ufo/lib.plist` `com.fontworkshop.fixture` | → `com.fontcutter.*` / `$fontcutter.plist.type` |
-| `.fwf` format tag | `fw-doc/src/fwf/mod.rs` `FORMAT` | `"fontworkshop"` → `"fontcutter"`, **reader still accepts the old tag** |
+| Display name | `app/index.html` title, `src-tauri/tauri.conf.json` `productName` + window `title`, `app/src/i18n/{en,zh-CN}.json` (6 strings each: app name, Help ▸ About, Save-As hint/filter, recovery intro, status about line), `crates/fw-cli/src/main.rs` clap `about`, `crates/fw-devserver/src/main.rs` clap `about` + startup log, `crates/fw-doc/src/error.rs` (4 messages), `src-tauri/capabilities/default.json` description, ~40 Rust module docs, `app/src/components/Dialog.tsx`, `app/src/styles/tokens.css`, `app/src/stores/sessionStore.ts`, `app/playwright.config.ts`, `app/src/App.test.tsx` heading assertion, README/CONVENTIONS/PLAN/docs headings | `FontWorkshop` → `FontCarver` |
+| Machine identifiers | Tauri `identifier` `dev.fontworkshop.app` → `com.fontcarver.app`; `src-tauri/Cargo.toml` package `fontworkshop` → `fontcarver`, lib `fontworkshop_lib` → `fontcarver_lib` (+ `src-tauri/src/main.rs`); `package.json` `fontworkshop-workspace` → `fontcarver-workspace`; `app/package.json` `fontworkshop-app` → `fontcarver-app`; config dir `~/.config/fontworkshop` → `fontcarver` (`fw-api/src/handlers/prefs.rs`); autosave dir `fontworkshop/autosave` → `fontcarver/autosave` (3 branches in `fw-doc/src/autosave.rs`); thread names `fontworkshop-{autosave,events,shaping}`; test temp-dir prefixes; `gen_ts` temp file names; `app/src/stores/uiStore.ts` `STORAGE_KEY` `fontworkshop.ui` → `fontcarver.ui` | renamed |
+| Persisted namespaces | `fw-formats/src/ufo/extra.rs` `dev.fontworkshop.extra`, `metadata.rs` `dev.fontworkshop.ufo.identifiers`, `value.rs` `$fontworkshop.plist.type`, `fw-fixtures/src/ufo.rs` + `fixtures/ufo/Minimal.ufo/lib.plist` `com.fontworkshop.fixture` | → `com.fontcarver.*` / `$fontcarver.plist.type` |
+| `.fwf` format tag | `fw-doc/src/fwf/mod.rs` `FORMAT` | `"fontworkshop"` → `"fontcarver"`, **reader still accepts the old tag** |
 | Domain | `Cargo.toml` `[workspace.package] homepage`, `homepage.workspace = true` on all 13 member crates, `homepage` in both `package.json`, README "Project home" link | added |
-| Attribution | `LICENSE-MIT`, `LICENSE-APACHE`, `THIRD_PARTY.md` (15 hits), `docs/licensing.md` (12), `CONVENTIONS.md`, `PLAN.md`, `docs/{p0-acceptance,design,research}`, `docs/superpowers/{plans,specs}`, `fixtures/{README.md,LICENSE-OFL.txt,build_font_subsets.py}` | `Font Cutter contributors` / `Font Cutter` |
+| Attribution | `LICENSE-MIT`, `LICENSE-APACHE`, `THIRD_PARTY.md` (15 hits), `docs/licensing.md` (12), `CONVENTIONS.md`, `PLAN.md`, `docs/{p0-acceptance,design,research}`, `docs/superpowers/{plans,specs}`, `fixtures/{README.md,LICENSE-OFL.txt,build_font_subsets.py}` | `FontCarver contributors` / `FontCarver` |
 
 ### Judgement calls in commit 1
 
-- **`package.json` names.** The ruling said "`name` → `fontcutter`" for both
+- **`package.json` names.** The ruling said "`name` → `fontcarver`" for both
   manifests. Two packages in one pnpm workspace cannot usefully share a name, so
-  the existing suffixes were kept: `fontcutter-workspace` and `fontcutter-app`.
-- **`dev.` → `com.` for UFO lib keys.** The ruling names `com.fontcutter.*` as
+  the existing suffixes were kept: `fontcarver-workspace` and `fontcarver-app`.
+- **`dev.` → `com.` for UFO lib keys.** The ruling names `com.fontcarver.*` as
   the target namespace and moves the bundle identifier to `com.`, so
   `dev.fontworkshop.extra` and `dev.fontworkshop.ufo.identifiers` became
-  `com.fontcutter.extra` / `com.fontcutter.ufo.identifiers`. **No compatibility
+  `com.fontcarver.extra` / `com.fontcarver.ufo.identifiers`. **No compatibility
   branch exists for these keys** — a UFO written by an older build loses its
   preserved extras and UFO identifiers on re-read. Say the word and a legacy
   key fallback is a ten-line change.
-- **`localStorage` key.** `fontworkshop.ui` → `fontcutter.ui` discards the
+- **`localStorage` key.** `fontworkshop.ui` → `fontcarver.ui` discards the
   developer's stored panel sizes / theme once. No migration was added.
 - **Spec file renamed.** `docs/superpowers/specs/2026-09-03-fontworkshop-design.md`
-  → `…-fontcutter-design.md` (`git mv`), with `README.md` and both plans
+  → `…-fontcarver-design.md` (`git mv`), with `README.md` and both plans
   updated. Five files under `docs/superpowers/ledgers/` still link the old path;
   the ledgers are frozen snapshots and were not touched.
 - **Machine-absolute paths in research docs.** Four `docs/research/*.md` and one
@@ -94,7 +94,7 @@ Roughly 1 100 token occurrences across 188 files: `fw_model` (223), `fw_fixtures
 | Bucket | Action |
 | --- | --- |
 | Crates | `git mv crates/fw-* crates/fc-*` (12 directories); package names `fw-api` → `fc-api` … `fw-sfnt` → `fc-sfnt`; Rust paths `fw_api` → `fc_api` …; workspace members, every `[dependencies]` path entry, `use`/`extern` paths, `.gitignore`, `.github/workflows/ci.yml`, `scripts/dev.sh`, `scripts/perf-open.sh`, docs and plans. Doc-only future crates renamed too (`fc-raster`, `fc-hint`, `fc-io`, `fc-render`, `fc-tauri`, `fc-binary`). |
-| CLI | `[[bin]] name = "fw"` → `"fontcutter"`, clap `#[command(name = …)]`, `crates/fc-cli/tests/cli.rs` (`cargo_bin!`), `app/e2e/support.ts`, `scripts/perf-open.sh`, `docs/p0-acceptance.md`, plans and spec. |
+| CLI | `[[bin]] name = "fw"` → `"fontcarver"`, clap `#[command(name = …)]`, `crates/fc-cli/tests/cli.rs` (`cargo_bin!`), `app/e2e/support.ts`, `scripts/perf-open.sh`, `docs/p0-acceptance.md`, plans and spec. |
 | Event channel | `fw:event` → `fc:event` in `src-tauri/src/lib.rs`, `app/src/transport/TauriTransport.ts`, the P0 plan. |
 | Environment | `FW_API_PORT`→`FC_API_PORT`, `FW_UI_PORT`→`FC_UI_PORT`, `FW_DEV_PROXY`→`FC_DEV_PROXY`, `FW_CONFIG_DIR`→`FC_CONFIG_DIR`, `VITE_FW_API`→`VITE_FC_API` (playwright config, `app/vite.config.ts`, `app/src/transport/index.ts`, `fc-api` tests, `fc-devserver`, CI, docs). |
 | Document format | `.fwf` → `.fcf` in dialogs/filters/i18n/e2e/tests/docs; module `fw-doc::fwf` → `fc-doc::fcf` (`git mv` of `src/fwf/` and `tests/fwf_roundtrip.rs`); `ExportFormat::Fwf` → `Fcf` (TS bindings regenerated, `exportFormats.ts`, i18n label `FWF` → `FCF`); errors `InvalidFwfFormat`/`UnsupportedFwfVersion` → `InvalidFcfFormat`/`UnsupportedFcfVersion`; `FwSource` → `FcSource`; autosave sidecars `*.autosave.fcf`. |
@@ -103,31 +103,31 @@ Roughly 1 100 token occurrences across 188 files: `fw_model` (223), `fw_fixtures
 
 | Location | Behaviour | Test |
 | --- | --- | --- |
-| `crates/fc-doc/src/fcf/mod.rs` `LEGACY_FORMAT` | reads the `"fontworkshop"` envelope tag, re-stamps as `"fontcutter"` on save | `crates/fc-doc/tests/fcf_roundtrip.rs::reader_accepts_the_pre_rename_format_tag` |
+| `crates/fc-doc/src/fcf/mod.rs` `LEGACY_FORMAT` | reads the `"fontworkshop"` envelope tag, re-stamps as `"fontcarver"` on save | `crates/fc-doc/tests/fcf_roundtrip.rs::reader_accepts_the_pre_rename_format_tag` |
 | `crates/fc-doc/src/session.rs` `is_fcf_path` | `Session::open_path` accepts `.fwf` / `.fwf.gz` | `crates/fc-doc/tests/session.rs::session_opens_a_document_with_the_pre_rename_extension` |
 | `crates/fc-doc/src/fcf/write.rs` `is_gzip_path` | `.fwf.gz` still selects the gzip writer | same test (asserts the `1f 8b` magic) |
 | `crates/fc-doc/src/autosave.rs` `is_autosave_path` | `.autosave.fwf` snapshots stay recoverable | `crates/fc-doc/tests/session.rs::autosave_listing_finds_pre_rename_snapshots` |
 | `crates/fc-api/src/handlers/session.rs` `is_fcf_path` | `session.save` accepts a `.fwf` target | covered by the store test + existing dispatch tests |
-| `crates/fc-cli/src/cmd/convert.rs` `is_fcf_path` | `fontcutter convert x.ttf out.fwf` still writes a native document | — |
+| `crates/fc-cli/src/cmd/convert.rs` `is_fcf_path` | `fontcarver convert x.ttf out.fwf` still writes a native document | — |
 | `app/src/stores/sessionStore.ts` `NATIVE_EXTENSIONS` | a `.fwf` path is a native save target | `app/src/stores/sessionStore.test.ts::treats a pre-rename .fwf path as a native save target` |
 
 ### Binary-name collision (resolved, but worth knowing)
 
-After the CLI became `fontcutter`, both `fc-cli`'s `[[bin]] fontcutter` and the
-Tauri package `fontcutter` (implicit bin from `src/main.rs`) wrote
-`target/debug/fontcutter`. Cargo warned about the output-filename collision and
+After the CLI became `fontcarver`, both `fc-cli`'s `[[bin]] fontcarver` and the
+Tauri package `fontcarver` (implicit bin from `src/main.rs`) wrote
+`target/debug/fontcarver`. Cargo warned about the output-filename collision and
 the e2e suite, which shells out to that path, would have run whichever binary was
 built last. `src-tauri/Cargo.toml` now declares:
 
 ```toml
 [[bin]]
-name = "fontcutter-desktop"
+name = "fontcarver-desktop"
 path = "src/main.rs"
 ```
 
-The package is still `fontcutter`, `cargo build -p fontcutter` still works, and
-bundles are still named "Font Cutter" via `productName`. `docs/p0-acceptance.md`
-was updated to name `target/debug/fontcutter-desktop`. `cargo tauri dev/build`
+The package is still `fontcarver`, `cargo build -p fontcarver` still works, and
+bundles are still named "FontCarver" via `productName`. `docs/p0-acceptance.md`
+was updated to name `target/debug/fontcarver-desktop`. `cargo tauri dev/build`
 were not exercised (no display / bundling toolchain in this session) — Tauri 2
 takes the binary from Cargo's output, so no `mainBinaryName` was needed, but this
 is the one path worth a manual smoke test.
@@ -150,8 +150,8 @@ Run for **each** commit, with identical results unless noted.
 | `pnpm --dir app exec prettier --check .` | "All matched files use Prettier code style!" |
 | `cargo build -p fc-devserver` | ok |
 | e2e | commit 1 `FW_API_PORT=8787 FW_UI_PORT=1428`, commit 2 `FC_API_PORT=8787 FC_UI_PORT=1428`: **14 passed, 1 skipped** (CJK — external Source Han Sans fixture absent) |
-| `cargo build -p fontcutter` | ok (Tauri shell compiles) |
-| `./target/debug/fontcutter inspect fixtures/fonts/DejaVuSans.ttf` | `family: DejaVu Sans … glyphs: 6253` |
+| `cargo build -p fontcarver` | ok (Tauri shell compiles) |
+| `./target/debug/fontcarver inspect fixtures/fonts/DejaVuSans.ttf` | `family: DejaVu Sans … glyphs: 6253` |
 | `pnpm install --frozen-lockfile` | ok, `pnpm-lock.yaml` unchanged |
 
 **Port note.** `FW_UI_PORT=1420` / `FC_UI_PORT=1420` cannot be used on this
@@ -208,17 +208,17 @@ hand.
    `docs/p0-acceptance.md`. That is a ~30-minute change and touches committed
    binaries, which this task forbade. Want it done?
 3. **UFO lib keys have no legacy fallback.** `dev.fontworkshop.extra` and
-   `dev.fontworkshop.ufo.identifiers` became `com.fontcutter.*` with no read-side
+   `dev.fontworkshop.ufo.identifiers` became `com.fontcarver.*` with no read-side
    compatibility. A UFO exported by an older build loses its preserved extras on
    re-import. Add a fallback, or accept it pre-release?
 4. **Repository URL.** No `repository` field exists in any manifest and none was
-   added, per the ruling. If the project moves to a `fontcutter` GitHub org, both
+   added, per the ruling. If the project moves to a `fontcarver` GitHub org, both
    `package.json` files and `[workspace.package]` want a `repository` entry.
 5. **Repository directory name.** The checkout is still
    `/home/chen/githubprojects/pixelfonts/fontworkshop`. Renaming the directory is
    a separate action; nothing in the tree depends on the path any more (the
    research docs that did were made repo-relative).
-6. **The `fontcutter-desktop` binary name** for the Tauri shell (see above) — a
+6. **The `fontcarver-desktop` binary name** for the Tauri shell (see above) — a
    different name is fine, it just has to differ from the CLI's.
 7. **`app/src/i18n/zh-CN.json` has four untranslated recovery-dialog strings**
    (`dialogs.recovery.{title,intro,untitled,savedAt}`) that were already English

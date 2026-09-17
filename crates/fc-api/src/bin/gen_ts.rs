@@ -214,7 +214,7 @@ mod tests {
     #[test]
     fn import_repair_error_names_the_missing_generated_file() {
         let path = std::env::temp_dir().join(format!(
-            "fontcutter-missing-generated-file-{}.ts",
+            "fontcarver-missing-generated-file-{}.ts",
             std::process::id()
         ));
         let error = add_imports(&path, &["Glyph"]).expect_err("missing patched file must fail");
@@ -225,7 +225,7 @@ mod tests {
     #[test]
     fn repairs_double_option_as_optional_nullable_typescript() {
         let path = std::env::temp_dir().join(format!(
-            "fontcutter-command-binding-{}.ts",
+            "fontcarver-command-binding-{}.ts",
             std::process::id()
         ));
         fs::write(&path, "color_label: number | null | null,").unwrap();

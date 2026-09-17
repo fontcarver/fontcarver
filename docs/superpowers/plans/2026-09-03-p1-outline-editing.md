@@ -8,7 +8,7 @@
 
 **Tech Stack:** as P0 plus `flo_curves` 0.8, `fontc`/`fontir`/`fontdrasil`/`fontbe` 1.0 (`default-features = false, features = ["rayon"]`), `norad` 0.18 (`kurbo`, `rayon` features; it includes the designspace module), `harfrust` 0.13, `write-fonts` 0.52, `wuff`/own WOFF1 encoder, `evalexpr` (nonlinear transform, later), CodeMirror is P2.
 
-**Spec:** `docs/superpowers/specs/2026-09-03-fontcutter-design.md` §3–§8, §11, §12.3, §14 row P1. Research: `docs/research/rust-crate-spike.md` §2.b–2.h (write-fonts round trip, skrifa, fontc `Source`, fea-rs, harfrust, norad, kurbo caveats), §2.k (flo_curves), `docs/research/fontforge-algorithms-and-otlayout.md` Part 2 (which FontForge algorithms to port), `docs/research/competitor-ux.md` §3 (node grammar, tool ergonomics, snapping, HUD). P0 record: `docs/p0-acceptance.md`, final review `.superpowers/sdd/2026-09-03-p0-foundation/final-review.md`.
+**Spec:** `docs/superpowers/specs/2026-09-03-fontcarver-design.md` §3–§8, §11, §12.3, §14 row P1. Research: `docs/research/rust-crate-spike.md` §2.b–2.h (write-fonts round trip, skrifa, fontc `Source`, fea-rs, harfrust, norad, kurbo caveats), §2.k (flo_curves), `docs/research/fontforge-algorithms-and-otlayout.md` Part 2 (which FontForge algorithms to port), `docs/research/competitor-ux.md` §3 (node grammar, tool ergonomics, snapping, HUD). P0 record: `docs/p0-acceptance.md`, final review `.superpowers/sdd/2026-09-03-p0-foundation/final-review.md`.
 
 ## Global Constraints
 
@@ -158,7 +158,7 @@ pub fn read_designspace(path: &Path) -> Result<Font, Error>;                // a
 pub fn write_ufo(font: &Font, master: &MasterId, dir: &Path, opts: &UfoWriteOptions { incremental: bool }) -> Result<(), Error>;   // never deletes the target dir (write to temp dir + rename per file)
 pub fn write_designspace(font: &Font, dir: &Path) -> Result<PathBuf, Error>;   // <family>.designspace + one UFO per master
 ```
-Round-trip policy: UFO ⇄ model lossless for outlines, components (with UFO identifiers preserved in `Extra.lib` under `com.fontcutter.ufo.identifiers`), anchors, guides, kerning/groups, features text, fontinfo (108 fields — map explicitly), lib. Things UFO cannot express (bitmaps, TT instructions, raw tables) are stored under `lib["com.fontcutter.extra"]` base64 with a version key.
+Round-trip policy: UFO ⇄ model lossless for outlines, components (with UFO identifiers preserved in `Extra.lib` under `com.fontcarver.ufo.identifiers`), anchors, guides, kerning/groups, features text, fontinfo (108 fields — map explicitly), lib. Things UFO cannot express (bitmaps, TT instructions, raw tables) are stored under `lib["com.fontcarver.extra"]` base64 with a version key.
 - [ ] **Step 1: Tests**: `Minimal.ufo` → Font → write → norad re-read equals the original norad `Font` (compare glyphs, kerning, groups, fontinfo, lib); a designspace with 2 masters yields 2 masters + axes + 1 instance; a Font from DejaVu (fc-sfnt) written as UFO and re-read is glyph-identical (points/components/anchors) and preserves `raw_tables` via lib; write is incremental (a second write with one glyph changed touches only that .glif — check mtimes).
 - [ ] **Step 2: Implement**; register in `fc-doc::Session::open_path` (extension `.ufo` dir / `.designspace`) and in export.
 - [ ] **Step 3:** commit `feat(fc-formats): UFO 3 and designspace import/export`.
@@ -184,7 +184,7 @@ Round-trip policy: UFO ⇄ model lossless for outlines, components (with UFO ide
 | `session.recover_list` / `session.recover` / `session.discard_recovery` | | wired to `fc_doc::autosave` |
 | `prefs.get/set` | Prefs gains `grid_size`, `snap: { nodes, guides, metrics, grid, components }`, `nudge: [1,10,100]`, `autosave_seconds` (already) | |
 Shaping: `fc_layout::Shaper::for_document(font, master, generation)` compiles via `fc_compile::compile_static` into an in-memory font (cached, recompiled when glyph set / kerning / features generation changes; outline-only edits patch `glyf`? — P1 ruling: recompile lazily on a background thread, debounce 300 ms, serve the previous font meanwhile with `stale: true`).
-CLI: `fontcutter build <in> <out.ttf|.woff|.woff2> [--remove-overlap] [--no-preserve]`, `fontcutter convert` gains UFO/designspace/binary targets, `fontcutter shape <font> <text>` prints the shaped run.
+CLI: `fontcarver build <in> <out.ttf|.woff|.woff2> [--remove-overlap] [--no-preserve]`, `fontcarver convert` gains UFO/designspace/binary targets, `fontcarver shape <font> <text>` prints the shaped run.
 - [ ] **Step 1: Tests**: dispatch tests for every new method on DejaVu (outline of `A` has 2 contours; `glyphs.add "A-C"` on an empty font adds 3 encoded glyphs; `text.shape "fi"` returns the ligature gid; `session.export` writes a TTF whose sha256 equals `fc_compile::export` output; recovery list after a simulated autosave), CLI `assert_cmd` tests for `build`/`shape`.
 - [ ] **Step 2: Implement**; autosave: `Session` starts the autosave thread at construction with `Prefs.autosave_seconds`.
 - [ ] **Step 3:** commit `feat(fc-api): editing, export, shaping and recovery methods; feat(fc-cli): build/shape`.
@@ -230,7 +230,7 @@ CLI: `fontcutter build <in> <out.ttf|.woff|.woff2> [--remove-overlap] [--no-pres
 
 **Design spec: `docs/design/editor-ui.md` §8–§10 (binding).** **Behaviour:** the Glyph tab becomes a Text tab: type text (or paste) → `text.shape` → glyphs laid out with real advances/kerning; click a glyph to edit it in place with the same tools (the canvas transforms by the run offset); `Mod+←/→` adjust LSB/RSB of the active glyph by 1/10/100 (Shift/Ctrl); Escape toggles text/edit mode; sample-text menu (Latin pangrams, CJK samples, from-font "all encoded"); the bottom preview strip renders the current text at 3 sizes with feature toggles (`liga`, `kern`, `calt` when present) and master switch; `stale` shaping indicator while the background recompile runs. Dialogs: New Font (family, style, upem preset 1000/2048, metrics preset, starter glyph set), Add Glyphs (recipe + charset picker with counts, preview list), Export (format, destination, options from `ExportOptions`, warnings list after export, "reveal in folder"), Preferences (theme, language, autosave interval, snapping/grid, nudge steps — wired to `prefs.get/set`), Recovery (on launch when `session.recover_list` is non-empty).
 - [ ] **Step 1: Tests**: text layout from a shaped run; LSB/RSB keyboard editing emits `SetMetrics`; export dialog maps to `session.export` params; preferences round trip.
-- [ ] **Step 2: Implement**; e2e `export.spec.ts` covers the P1 exit criterion end to end (open DejaVu → move one point of `A` → export TTF → assert file exists and `fontcutter inspect` reports glyph count; kernel-side test covers preservation).
+- [ ] **Step 2: Implement**; e2e `export.spec.ts` covers the P1 exit criterion end to end (open DejaVu → move one point of `A` → export TTF → assert file exists and `fontcarver inspect` reports glyph count; kernel-side test covers preservation).
 - [ ] **Step 3:** commit `feat(app): text tab with shaping preview; new-font, add-glyphs, export, preferences and recovery dialogs`.
 
 ---
@@ -278,7 +278,7 @@ Kernel tasks T1, T3, T4, T10 run in parallel Codex worktrees (disjoint crates); 
 ## P0 rulings carried into P1
 - `.fcf` layout: pretty at font level, one compact glyph per line (spec §5 amended).
 - Autosave sidecar path: `<datadir>/<sha1(path)|docid>.autosave.fcf` (spec §4 amended); recovery UI is Task 9.
-- Binary export was never in P0 (`fontcutter convert` to TTF arrives in Task 5).
+- Binary export was never in P0 (`fontcarver convert` to TTF arrives in Task 5).
 - Warnings cross the API as `{code, message}`; the UI maps codes to i18n.
 
 ## Self-review notes

@@ -1,6 +1,6 @@
 # T9b Sol → Astra handoff
 
-Branch/worktree: `p1-text-ui` at `2098d94`, `/home/chen/githubprojects/fontpixel/fontcutter/.worktrees/p1-text-ui`. Writer stopped with clean worktree.
+Branch/worktree: `p1-text-ui` at `2098d94`, `/home/chen/githubprojects/fontpixel/fontcarver/.worktrees/p1-text-ui`. Writer stopped with clean worktree.
 
 ## Completed
 

@@ -1,6 +1,6 @@
 # T8 fix round 2 — Sol implementation, Astra review
 
-Worktree: `/home/chen/githubprojects/fontpixel/fontcutter/.worktrees/p1-t8`,
+Worktree: `/home/chen/githubprojects/fontpixel/fontcarver/.worktrees/p1-t8`,
 branch `p1-t8` at `112ab38`. Read CONVENTIONS, original task-8 dispatch and
 `task-8-fix1-review.md`. The prior implementer cannot resume because the tool
 reports an agent thread limit; its committed work and reports remain intact.
