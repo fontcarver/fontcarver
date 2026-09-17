@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { call, type LayerOutline } from '../../api'
 import { activeEditor } from '../../editor/activeEditor'
 import { holdDocumentEdits } from '../../editor/editSession'
+import { documentEditingSuspended } from '../../editor/documentEditParticipants'
 import type { EditorController } from '../../editor/editorController'
 import { reportError } from '../../shell/commands'
 import { useEditorStore, type ActiveGlyph } from '../../stores/editorStore'
@@ -60,6 +61,7 @@ export function useTextMetrics(enabled: boolean, label: string) {
       const editor = activeEditor()
       const target = useEditorStore.getState().activeGlyph
       if (!editor || !target?.outline || !alive.current) return true
+      if (documentEditingSuspended(target.doc)) return true
       const previous = currentRun.current
       if (
         previous?.runner.active &&

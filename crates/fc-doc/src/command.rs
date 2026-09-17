@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 mod apply;
+mod features;
 mod glyphs;
 mod kerning;
 mod layers;
@@ -19,6 +20,7 @@ mod outline;
 mod structure;
 
 pub(crate) use apply::{apply_to_font, impact, Impact};
+pub(crate) use features::{bump_revision as bump_feature_revision, is_draft};
 pub(crate) use kerning::is_kerning;
 
 pub use options::{
@@ -30,6 +32,24 @@ pub use options::{
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 pub enum Command {
+    /// Save source text without compiling or changing effective layout authority.
+    SetFeatureDraft {
+        /// Current persistent feature editor revision.
+        #[ts(type = "number")]
+        expected_revision: u64,
+        /// Candidate FEA source; imported-table authority is rejected.
+        #[ts(type = "Features")]
+        source: fc_model::Features,
+        /// Candidate settings, inactive until successful application.
+        #[ts(type = "FeatureGenerationSettings")]
+        settings: fc_model::FeatureGenerationSettings,
+    },
+    /// Remove the saved draft while preserving effective source.
+    DiscardFeatureDraft {
+        /// Current persistent feature editor revision.
+        #[ts(type = "number")]
+        expected_revision: u64,
+    },
     /// Set or remove one horizontal kerning record in a master.
     SetHorizontalKerning {
         /// Persistent master identifier.
@@ -593,6 +613,9 @@ pub enum Command {
 /// Precise invalidation information produced by a command.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 pub struct Change {
+    /// Whether feature editor source, settings or conversion metadata changed.
+    #[serde(default)]
+    pub feature_source: bool,
     /// Whether layout rules or kerning membership changed without outline edits.
     #[serde(default)]
     pub layout: bool,
@@ -614,8 +637,24 @@ pub struct Change {
 }
 
 impl Change {
+    /// Whether this mutation changes any existing compile input.
+    ///
+    /// Draft-only mutations are deliberately excluded; legacy mutation causes
+    /// retain their conservative invalidation behavior, including guides.
+    pub fn affects_compile(&self) -> bool {
+        self.layout
+            || !self.glyphs.is_empty()
+            || self.font_info
+            || self.masters
+            || self.glyph_order
+            || self.metrics
+            || self.layers
+            || self.guides
+    }
+
     pub(crate) fn merge(&mut self, other: &Self) {
         self.layout |= other.layout;
+        self.feature_source |= other.feature_source;
         for glyph in &other.glyphs {
             if !self.glyphs.contains(glyph) {
                 self.glyphs.push(*glyph);

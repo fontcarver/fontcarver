@@ -1,7 +1,7 @@
 import { call, getTransport, type DocId, type GlyphId } from '../api'
-import { activeEditor } from '../editor/activeEditor'
 import { i18n } from '../i18n'
-import { afterDocumentEdits } from '../editor/editSession'
+import { withSettledDocument } from '../editor/documentPersistence'
+import { hasPendingDocumentDraft } from '../editor/documentEditParticipants'
 import { useDocumentStore } from '../stores/documentStore'
 import { usePrefsStore } from '../stores/prefsStore'
 import { activeSummary, useSessionStore } from '../stores/sessionStore'
@@ -21,7 +21,13 @@ import { registerLayerCommands } from '../views/glyph/layerCommands'
 import { registerPathCommands } from '../views/glyph/pathCommands'
 
 import { registerCommands, type Command } from './commands'
-import { closeTab, cycleTab, openFontInfoTab, openGlyphTab } from './tabActions'
+import {
+  closeTab,
+  cycleTab,
+  openFeaturesTab,
+  openFontInfoTab,
+  openGlyphTab,
+} from './tabActions'
 
 const APP_VERSION = '0.1.0'
 
@@ -77,8 +83,7 @@ async function runHistory(method: 'doc.undo' | 'doc.redo'): Promise<void> {
   const summary = activeSummary()
   const moved =
     method === 'doc.undo' ? summary?.undo_label : summary?.redo_label
-  await activeEditor()?.settle()
-  await afterDocumentEdits(doc, () => call(method, { doc }))
+  await withSettledDocument(doc, () => call(method, { doc }))
   useUiStore.getState().flashUndoLabel(moved ?? null)
   await useSessionStore.getState().refreshSummary(doc)
 }
@@ -136,6 +141,7 @@ export function registerBuiltinCommands(): void {
       menu: 'file',
       group: 'save',
       shortcut: 'Mod+S',
+      allowInInput: true,
       when: hasDocument,
       disabledReason: 'cmd.reason.noDocument',
       run: () => {
@@ -154,6 +160,7 @@ export function registerBuiltinCommands(): void {
       menu: 'file',
       group: 'save',
       shortcut: 'Mod+Shift+S',
+      allowInInput: true,
       when: hasDocument,
       disabledReason: 'cmd.reason.noDocument',
       run: () => {
@@ -212,7 +219,13 @@ export function registerBuiltinCommands(): void {
       group: 'history',
       shortcut: 'Mod+Z',
       detail: () => activeSummary()?.undo_label ?? undefined,
-      when: () => activeSummary()?.undo_label != null,
+      when: () => {
+        const doc = activeDoc()
+        return (
+          activeSummary()?.undo_label != null ||
+          (doc !== null && hasPendingDocumentDraft(doc))
+        )
+      },
       disabledReason: 'cmd.reason.nothingToUndo',
       run: () => runHistory('doc.undo'),
     },
@@ -262,6 +275,18 @@ export function registerBuiltinCommands(): void {
       group: 'prefs',
       shortcut: 'Mod+,',
       run: () => useUiStore.getState().setDialog({ kind: 'preferences' }),
+    },
+    {
+      id: 'view.features',
+      title: 'cmd.view.features',
+      menu: 'view',
+      group: 'editor',
+      when: hasDocument,
+      disabledReason: 'cmd.reason.noDocument',
+      run: async () => {
+        const doc = activeDoc()
+        if (doc !== null) await openFeaturesTab(doc)
+      },
     },
     {
       id: 'view.toggleSidebar',

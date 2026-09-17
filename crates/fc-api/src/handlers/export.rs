@@ -32,6 +32,7 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
     let started = Instant::now();
     let path = PathBuf::from(&params.path);
     let (font, generations) = snapshot(api, params.doc)?;
+    check_features_for_export(&font, params.options.format)?;
     let master = match &params.options.master {
         Some(master) => master.clone(),
         None => font.default_master().id.clone(),
@@ -95,6 +96,45 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
         touched_glyphs,
         timing_ms: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
+}
+
+fn check_features_for_export(font: &Font, format: ExportFormat) -> Result<(), ApiError> {
+    if format == ExportFormat::Fcf {
+        return Ok(());
+    }
+    if font.has_unapplied_feature_draft() {
+        return Err(ApiError {
+            code: "unapplied_feature_draft".to_owned(),
+            message: "Apply or discard the feature draft before exporting a font.".to_owned(),
+        });
+    }
+    if matches!(format, ExportFormat::Ufo | ExportFormat::Designspace) {
+        if font.features.source_of_truth == fc_model::FeaturesSource::ImportedTables {
+            return Err(ApiError {
+                code: "layout_conversion_required".to_owned(),
+                message: "Imported layout requires validated conversion before source export."
+                    .to_owned(),
+            });
+        }
+        let validation =
+            fc_compile::validate_feature_candidate(font, &font.features, &font.feature_settings);
+        if !validation.is_valid() {
+            let message = validation
+                .diagnostics
+                .iter()
+                .filter(|diagnostic| {
+                    diagnostic.severity == fc_compile::FeatureDiagnosticSeverity::Error
+                })
+                .map(|diagnostic| diagnostic.message.as_str())
+                .collect::<Vec<_>>()
+                .join("; ");
+            return Err(ApiError {
+                code: "invalid_feature_source".to_owned(),
+                message: format!("Active feature source cannot compile: {message}"),
+            });
+        }
+    }
+    Ok(())
 }
 
 /// Copies the font and its per-glyph generations out of the session.

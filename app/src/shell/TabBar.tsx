@@ -24,6 +24,7 @@ export function TabBar() {
     const summary = docs.find((doc) => doc.doc === tab.doc)
     if (tab.kind === 'font') return documentLabel(summary)
     if (tab.kind === 'fontinfo') return t('tab.fontinfo')
+    if (tab.kind === 'features') return t('tab.features')
     const name = tab.gid === undefined ? undefined : glyphName(tab.doc, tab.gid)
     return name ?? t('view.glyphLabel', { gid: tab.gid })
   }

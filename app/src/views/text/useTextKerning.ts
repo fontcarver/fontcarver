@@ -8,6 +8,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { call, type DocId } from '../../api'
 import { noteDocumentEdit } from '../../editor/editSession'
+import { documentEditingSuspended } from '../../editor/documentEditParticipants'
 import { reportError } from '../../shell/commands'
 import { isEditableTarget } from '../../shell/shortcuts'
 import { useUiStore } from '../../stores/uiStore'
@@ -280,6 +281,7 @@ export function useTextKerning(options: UseTextKerningOptions) {
 
   const setValue = useCallback((text: string) => {
     const current = latest.current
+    if (documentEditingSuspended(current.options.doc)) return
     if (!current.editable || !current.sides || !current.options.master) return
     noteDocumentEdit(current.options.doc)
     const pending: Draft = {
@@ -304,6 +306,7 @@ export function useTextKerning(options: UseTextKerningOptions) {
   }, [])
   const remove = useCallback(() => {
     const current = latest.current
+    if (documentEditingSuspended(current.options.doc)) return Promise.resolve()
     if (!current.editable || !current.sides || !current.options.master)
       return Promise.resolve()
     // Removal replaces an unfinished numeric draft at this exact scope.
@@ -338,6 +341,7 @@ export function useTextKerning(options: UseTextKerningOptions) {
       )
         return false
       if (!alive.current) return false
+      if (documentEditingSuspended(current.options.doc)) return true
       const previous = currentRun.current
       if (previous?.key === current.editKey) {
         if (previous.runner.active) previous.runner.press(delta)

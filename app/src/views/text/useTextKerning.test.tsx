@@ -7,6 +7,7 @@ import {
   type KerningResolution,
 } from '../../api'
 import { afterDocumentEdits } from '../../editor/editSession'
+import { suspendDocumentEditParticipants } from '../../editor/documentEditParticipants'
 import * as commands from '../../shell/commands'
 import { useUiStore } from '../../stores/uiStore'
 import { createMockTransport, noChange } from '../../test/mockTransport'
@@ -117,6 +118,25 @@ afterEach(() => {
   setTransport(undefined)
   useUiStore.setState({ modalCount: 0 })
   vi.restoreAllMocks()
+})
+
+it('does not accept numeric or shortcut drafts while the document is closing', async () => {
+  const hook = setup()
+  await vi.waitFor(() => expect(hook.result.current.panel.editable).toBe(true))
+  const resume = suspendDocumentEditParticipants(1)
+  try {
+    act(() => {
+      hook.result.current.panel.setValue('-80')
+      hook.result.current.onKerningKey(key)
+    })
+    await hook.result.current.finish()
+    expect(
+      hook.transport.calls.some((call) => call.method === 'doc.edit_begin'),
+    ).toBe(false)
+    expect(hook.result.current.panel.value).toBe('0')
+  } finally {
+    resume()
+  }
 })
 
 describe('useTextKerning', () => {

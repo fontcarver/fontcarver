@@ -123,6 +123,7 @@ impl From<fc_layout::Error> for ApiError {
             fc_layout::Error::MissingMaster(_) => Self::not_found(message),
             fc_layout::Error::Compile(error) => Self::from(error),
             fc_layout::Error::Parse(_) => Self::new("shaping", message),
+            fc_layout::Error::LayoutConversion(_) => Self::new("layout_conversion", message),
             fc_layout::Error::MissingFont | fc_layout::Error::AbandonedCompile => {
                 Self::internal(message)
             }

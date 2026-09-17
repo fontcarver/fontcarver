@@ -154,6 +154,19 @@ pub struct Font {
     /// Editable OpenType feature source.
     #[serde(default)]
     pub features: Features,
+    /// Saved editor draft, independent from effective layout source.
+    #[serde(default)]
+    pub feature_draft: Option<crate::FeatureDraft>,
+    /// Active generation and writer policy.
+    #[serde(default)]
+    pub feature_settings: crate::FeatureGenerationSettings,
+    /// Persistent monotonic editor revision, including discard and undo.
+    #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(type = "number"))]
+    pub feature_revision: u64,
+    /// Original-layout metadata retained for native-document revert.
+    #[serde(default)]
+    pub layout_conversion: Option<crate::LayoutConversion>,
     /// Embedded bitmap strikes.
     #[serde(default)]
     pub bitmap_strikes: Vec<BitmapStrike>,
@@ -182,6 +195,10 @@ impl Default for Font {
             glyphs: IndexMap::new(),
             kerning_groups: KerningGroups::default(),
             features: Features::default(),
+            feature_draft: None,
+            feature_settings: crate::FeatureGenerationSettings::default(),
+            feature_revision: 0,
+            layout_conversion: None,
             bitmap_strikes: Vec::new(),
             cid: None,
             guides: Vec::new(),
@@ -217,6 +234,13 @@ where
 static FALLBACK_MASTER: LazyLock<Master> = LazyLock::new(regular_master);
 
 impl Font {
+    /// Whether the saved draft differs from the active source or policy.
+    pub fn has_unapplied_feature_draft(&self) -> bool {
+        self.feature_draft.as_ref().is_some_and(|draft| {
+            draft.source != self.features || draft.settings != self.feature_settings
+        })
+    }
+
     /// Creates a static empty font with one `Regular` master.
     pub fn new_empty(family: &str, units_per_em: u16) -> Font {
         let mut info = FontInfo {

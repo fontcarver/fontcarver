@@ -44,7 +44,7 @@ fn prepare(
                 return Err(ApiError::from(fc_layout::Error::MissingMaster(master)));
             }
             let key = FontKey { doc: doc.0, master };
-            let plan = api.shaper.plan(&key, document.generation);
+            let plan = api.shaper.plan(&key, document.compile_revision());
             let font = plan.needs_font().then(|| document.font.clone());
             let widths = widths_for_text(&document.font, &key.master, text);
             Ok((plan, font, widths))

@@ -226,9 +226,11 @@ fn read_face(face: &FontRef<'_>, warnings: &mut Vec<Warning>) -> Result<Font, Er
         });
     }
     font.extra.raw_tables = raw::raw_tables(face);
-    if [Tag(*b"GSUB"), Tag(*b"GPOS"), Tag(*b"GDEF")]
-        .iter()
-        .any(|tag| font.extra.raw_tables.contains_key(tag))
+    if [
+        *b"GSUB", *b"GPOS", *b"GDEF", *b"BASE", *b"kern", *b"kerx", *b"morx", *b"mort", *b"JSTF",
+    ]
+    .iter()
+    .any(|tag| font.extra.raw_tables.contains_key(&Tag(*tag)))
     {
         font.features.source_of_truth = FeaturesSource::ImportedTables;
     }

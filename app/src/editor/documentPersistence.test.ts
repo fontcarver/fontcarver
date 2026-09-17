@@ -135,7 +135,7 @@ it('closes a live metrics run before saving and lets the next run edit normally'
   )
 })
 
-it('waits for old edits and blocks a new begin until persistence finishes', async () => {
+it('waits for old edits and blocks a begin started during persistence', async () => {
   const old = deferred()
   const saving = deferred()
   void holdDocumentEdits(1, old.promise)
@@ -146,12 +146,12 @@ it('waits for old edits and blocks a new begin until persistence finishes', asyn
   })
   setTransport(transport)
   const persisted = withSettledDocument(1, operation)
-  const next = new EditSession(1, 'Next edit')
   await Promise.resolve()
   expect(operation).not.toHaveBeenCalled()
   expect(transport.calls).toHaveLength(0)
   old.resolve()
   await vi.waitFor(() => expect(operation).toHaveBeenCalledOnce())
+  const next = new EditSession(1, 'Next edit')
   expect(transport.calls).toHaveLength(0)
   saving.resolve()
   await persisted

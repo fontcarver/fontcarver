@@ -164,6 +164,11 @@ pub(crate) fn from_norad(source: &norad::Font, path: &Path) -> Result<Font, Erro
         }
     }
     extra::import(&mut font)?;
+    // UFO flattens accepted source into a fresh prefix. Generated item IDs and
+    // recipes are deliberately not restored: the exported rules are frozen.
+    if let Some(policy) = extra::feature_metadata::read_policy(&source.lib)? {
+        font.feature_settings.writer_policy = policy;
+    }
     Ok(font)
 }
 
@@ -229,6 +234,7 @@ pub(crate) fn to_norad(font: &Font, master: &Master) -> Result<norad::Font, Erro
     if let Some(extra) = extra::build(font, master)? {
         target.lib.insert(extra::EXTRA_KEY.to_owned(), extra);
     }
+    extra::feature_metadata::write_policy(&font.feature_settings.writer_policy, &mut target.lib);
 
     let layer_names = collect_layer_names(font, &master.id);
     for layer_name in &layer_names {

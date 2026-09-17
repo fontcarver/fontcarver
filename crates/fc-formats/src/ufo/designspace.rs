@@ -15,7 +15,7 @@ use norad::designspace::{
 };
 use tracing::warn;
 
-use super::{convert, value, writer, UfoWriteOptions};
+use super::{convert, extra::feature_metadata, value, writer, UfoWriteOptions};
 use crate::Error;
 
 const RULES_KEY: &str = "ufo.designspace.rules";
@@ -26,6 +26,7 @@ const INSTANCE_METADATA_KEY: &str = "ufo.designspace.instance";
 
 pub(crate) fn read(path: &Path) -> Result<Font, Error> {
     let document = DesignSpaceDocument::load(path)?;
+    let writer_policy = feature_metadata::read_policy(&document.lib)?;
     let axes = document
         .axes
         .iter()
@@ -56,13 +57,17 @@ pub(crate) fn read(path: &Path) -> Result<Font, Error> {
         let source = &document.sources[index];
         let source_path = resolve_source(base, &source.filename);
         let normalized_filename = normalized_filename(&source.filename);
-        let ufo = if let Some(ufo) = ufos_by_file.get(&normalized_filename) {
+        let mut ufo = if let Some(ufo) = ufos_by_file.get(&normalized_filename) {
             ufo.clone()
         } else {
             let ufo = norad::Font::load_requested_data(&source_path, norad::DataRequest::all())?;
             ufos_by_file.insert(normalized_filename.clone(), ufo.clone());
             ufo
         };
+        // Designspace configuration takes precedence over each UFO's lib.
+        if let Some(policy) = &writer_policy {
+            feature_metadata::write_policy(policy, &mut ufo.lib);
+        }
         let mut imported = convert::from_norad(&ufo, &source_path)?;
         let old_id = imported.default_master().id.clone();
         let mut master = imported.masters.remove(0);
@@ -77,6 +82,11 @@ pub(crate) fn read(path: &Path) -> Result<Font, Error> {
         masters_by_file.insert(normalized_filename, master.id.clone());
 
         if let Some(font) = &mut result {
+            if font.feature_settings.writer_policy != imported.feature_settings.writer_policy {
+                return Err(Error::UnsupportedPlist(
+                    "designspace masters have different feature writer policies".to_owned(),
+                ));
+            }
             merge_master(font, imported, master);
         } else {
             imported.masters = vec![master];
@@ -229,13 +239,14 @@ pub(crate) fn write(font: &Font, dir: &Path) -> Result<PathBuf, Error> {
         .cloned()
         .map(serde_json::from_value)
         .transpose()?;
-    let lib = font
+    let mut lib = font
         .extra
         .lib
         .get(LIB_KEY)
         .map(value::json_to_dict)
         .transpose()?
         .unwrap_or_default();
+    feature_metadata::write_policy(&font.feature_settings.writer_policy, &mut lib);
     let document = DesignSpaceDocument {
         format: 5.0,
         axes,

@@ -2,7 +2,7 @@
 
 use std::collections::{BTreeMap, HashMap};
 
-use fc_doc::EditToken;
+use fc_doc::{Command, EditToken};
 use fc_model::{Font, SourceProvenance, Tag};
 use read_fonts::FileRef;
 
@@ -110,6 +110,7 @@ pub(crate) fn sidebar(api: &Api, params: DocParams) -> Result<SidebarCounts, Api
 }
 
 pub(crate) fn apply(api: &Api, params: ApplyParams) -> Result<fc_doc::Change, ApiError> {
+    require_generic_command(&params.command)?;
     api.session
         .with_doc_mut(params.doc, |document| {
             document.apply(params.command, params.label)
@@ -128,12 +129,25 @@ pub(crate) fn edit_begin(api: &Api, params: EditBeginParams) -> Result<EditToken
 }
 
 pub(crate) fn edit_apply(api: &Api, params: EditApplyParams) -> Result<fc_doc::Change, ApiError> {
+    require_generic_command(&params.command)?;
     api.session
         .with_doc_mut(params.doc, |document| {
             document.apply_in_edit(&EditToken(params.token.0), params.command)
         })
         .map_err(ApiError::from)?
         .map_err(ApiError::from)
+}
+
+fn require_generic_command(command: &Command) -> Result<(), ApiError> {
+    match command {
+        Command::SetFeatureDraft { .. } | Command::DiscardFeatureDraft { .. } => {
+            Err(ApiError::invalid_params(
+                "feature draft commands require the dedicated features API revision and provenance guards",
+            ))
+        }
+        Command::Batch(commands) => commands.iter().try_for_each(require_generic_command),
+        _ => Ok(()),
+    }
 }
 
 pub(crate) fn edit_end(api: &Api, params: EditEndParams) -> Result<(), ApiError> {

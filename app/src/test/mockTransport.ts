@@ -1,4 +1,10 @@
-import type { ApiMethods, DocSummary, DocumentEvent, Event } from '../api'
+import type {
+  ApiMethods,
+  Change,
+  DocSummary,
+  DocumentEvent,
+  Event,
+} from '../api'
 import { ApiCallError, type Transport } from '../transport'
 
 /** One recorded API call. */
@@ -70,12 +76,13 @@ export function makeSummary(overrides: Partial<DocSummary> = {}): DocSummary {
 }
 
 /** An empty `Change`, which most editing calls answer with. */
-export function noChange(glyphs: number[] = []) {
+export function noChange(glyphs: number[] = []): Change {
   return {
     glyphs,
     font_info: false,
     masters: false,
     layout: false,
+    feature_source: false,
     glyph_order: false,
     metrics: false,
     layers: false,

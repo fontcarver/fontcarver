@@ -31,6 +31,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             "MasterMetrics",
             "MetricsKeys",
             "KernSide",
+            "Features",
+            "FeatureGenerationSettings",
         ],
     )?;
     repair_command_double_option(&output_dir.join("Command.ts"))?;
@@ -57,6 +59,23 @@ fn repair_command_double_option(path: &Path) -> Result<(), std::io::Error> {
 }
 
 fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
+    FeatureState::export_all(config)?;
+    SetFeatureDraftParams::export_all(config)?;
+    DiscardFeatureDraftParams::export_all(config)?;
+    FeatureValidationParams::export_all(config)?;
+    FeatureValidationResult::export_all(config)?;
+    FeatureApplyResult::export_all(config)?;
+    FreezeFeatureParams::export_all(config)?;
+    LayoutInspectParams::export_all(config)?;
+    LayoutInspection::export_all(config)?;
+    LayoutRulesParams::export_all(config)?;
+    LayoutRules::export_all(config)?;
+    LayoutRuleGlyphsParams::export_all(config)?;
+    LayoutRuleGlyphs::export_all(config)?;
+    PrepareLayoutConversionParams::export_all(config)?;
+    LayoutConversionPreview::export_all(config)?;
+    ApplyLayoutConversionParams::export_all(config)?;
+    RevertOriginalLayoutParams::export_all(config)?;
     KerningStatus::export_all(config)?;
     GlyphKerningParams::export_all(config)?;
     GlyphKerning::export_all(config)?;

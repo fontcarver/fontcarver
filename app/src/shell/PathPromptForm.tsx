@@ -18,7 +18,7 @@ export function PathPromptForm({ prompt }: PathPromptFormProps) {
   const recent = useSessionStore((state) => state.recent)
   const open = useSessionStore((state) => state.open)
   const save = useSessionStore((state) => state.save)
-  const closeDocument = useSessionStore((state) => state.close)
+  const closeDocument = useSessionStore((state) => state.requestClose)
   const [path, setPath] = useState('')
 
   const isOpen = prompt.mode === 'open'

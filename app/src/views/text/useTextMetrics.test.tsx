@@ -17,6 +17,7 @@ import {
 } from '../../test/fontFixtures'
 import { createMockTransport, noChange } from '../../test/mockTransport'
 import { useTextMetrics } from './useTextMetrics'
+import { suspendDocumentEditParticipants } from '../../editor/documentEditParticipants'
 
 function deferred() {
   let resolve!: () => void
@@ -128,6 +129,19 @@ afterEach(() => {
 })
 
 describe('useTextMetrics ordering', () => {
+  it('does not accept metrics shortcuts while the document is closing', async () => {
+    const hook = setup()
+    const resume = suspendDocumentEditParticipants(1)
+    try {
+      act(() => {
+        hook.result.current.onMetricKey(key('left'))
+      })
+      await hook.result.current.finish()
+      expect(hook.transport.calls).toEqual([])
+    } finally {
+      resume()
+    }
+  })
   it('preserves queued keys before an immediate ordinary command while old work closes', async () => {
     const preparation = deferred()
     const hook = setup({ preparation: preparation.promise })

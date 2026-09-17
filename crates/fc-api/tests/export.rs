@@ -49,6 +49,95 @@ fn digest(bytes: &[u8]) -> String {
 }
 
 #[test]
+fn feature_drafts_save_natively_but_block_all_external_exports_without_output_changes() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut font = export_font();
+    let mut source = font.features.clone();
+    source.prefixes.push(fc_model::FeatureBlock {
+        code: "invalid source {".into(),
+        ..fc_model::FeatureBlock::default()
+    });
+    font.feature_draft = Some(fc_model::FeatureDraft {
+        source,
+        settings: font.feature_settings.clone(),
+        revision: 1,
+    });
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(font.clone(), None);
+    let api = Api::new(session);
+    for format in ["Ttf", "Woff", "Woff2", "Ufo", "Designspace"] {
+        let path = directory.path().join(format);
+        std::fs::write(&path, b"previous output").unwrap();
+        let error = api
+            .call(
+                "session.export",
+                json!({"doc":doc,"path":path,
+            "options":{"format":format}}),
+            )
+            .unwrap_err();
+        assert_eq!(error.code, "unapplied_feature_draft", "{format}: {error}");
+        assert_eq!(std::fs::read(&path).unwrap(), b"previous output");
+    }
+    let path = directory.path().join("draft.fcf");
+    api.call(
+        "session.export",
+        json!({"doc":doc,"path":path,"options":{"format":"Fcf"}}),
+    )
+    .unwrap();
+    let reopened = fc_doc::fcf::read(&path).unwrap();
+    assert_eq!(reopened.feature_draft, font.feature_draft);
+    assert_eq!(reopened.features, font.features);
+}
+
+#[test]
+fn imported_source_export_requires_conversion_before_touching_destination() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut font = export_font();
+    font.features.source_of_truth = fc_model::FeaturesSource::ImportedTables;
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(font, None);
+    let api = Api::new(session);
+    for format in ["Ufo", "Designspace"] {
+        let path = directory.path().join(format);
+        let error = api
+            .call(
+                "session.export",
+                json!({"doc":doc,"path":path,
+            "options":{"format":format}}),
+            )
+            .unwrap_err();
+        assert_eq!(error.code, "layout_conversion_required");
+        assert!(!path.exists());
+    }
+}
+
+#[test]
+fn source_export_revalidates_active_features_against_current_glyphs() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut font = export_font();
+    font.features.features.push(fc_model::FeatureBlock {
+        tag: "liga".into(),
+        code: "sub A A by Missing;".into(),
+        ..fc_model::FeatureBlock::default()
+    });
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(font, None);
+    let api = Api::new(session);
+    for format in ["Ufo", "Designspace"] {
+        let path = directory.path().join(format);
+        let error = api
+            .call(
+                "session.export",
+                json!({"doc":doc,"path":path,
+            "options":{"format":format}}),
+            )
+            .unwrap_err();
+        assert_eq!(error.code, "invalid_feature_source");
+        assert!(!path.exists());
+    }
+}
+
+#[test]
 fn exported_ttf_matches_the_compiler_output_byte_for_byte() {
     let directory = tempfile::tempdir().expect("temporary directory");
     let path = directory.path().join("ExportTest.ttf");

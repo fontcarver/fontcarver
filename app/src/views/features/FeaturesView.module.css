@@ -1,0 +1,299 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  background: var(--color-canvas);
+}
+.root button,
+.root input,
+.root select {
+  font: inherit;
+  color: inherit;
+}
+.root button {
+  min-height: var(--control-height);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-2);
+  cursor: pointer;
+}
+.root button:hover:not(:disabled) {
+  background: var(--color-hover);
+}
+.root button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.root button:focus-visible,
+.root input:focus-visible,
+.root select:focus-visible,
+.root summary:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+.root input,
+.root select {
+  min-width: 0;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  min-height: var(--control-height);
+  padding: 2px var(--space-1);
+}
+.root h3 {
+  margin: 0;
+  font-size: var(--text-size);
+  font-weight: var(--text-weight-strong);
+}
+.root p {
+  margin: var(--space-2) 0;
+}
+.toolbar,
+.sourceToolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+  background: var(--color-surface);
+}
+.toolbar h2 {
+  margin: 0 var(--space-3) 0 0;
+  font-size: var(--text-size-lg);
+}
+.toolbar .primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
+}
+.toolbar .primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+.status {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+}
+.master {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.mode {
+  display: flex;
+  gap: var(--space-1);
+}
+.mode button[aria-pressed='true'] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.notice {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-size-sm);
+  color: var(--color-text-muted);
+}
+.notice p {
+  margin: 0;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: 180px minmax(220px, 1fr) 260px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.tree {
+  overflow: auto;
+  border-right: 1px solid var(--color-border);
+  padding: var(--space-2);
+  background: var(--color-surface);
+}
+.treeSection {
+  margin-bottom: var(--space-4);
+}
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+}
+.sectionHeader button {
+  padding: 0 var(--space-2);
+}
+.tree ul,
+.diagnostics ul {
+  list-style: none;
+  margin: var(--space-1) 0;
+  padding: 0;
+}
+.root .sourceItem {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-1);
+  width: 100%;
+  text-align: left;
+  border-color: transparent;
+  background: transparent;
+  overflow: hidden;
+}
+.sourceItem span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.root .sourceItem[aria-current='true'] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+.emptySection {
+  color: var(--color-text-faint);
+  font-size: var(--text-size-xs);
+  padding-left: var(--space-2);
+}
+.editorColumn {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.editor {
+  min-height: 140px;
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+.editor > * {
+  flex: 1;
+  min-width: 0;
+}
+.sourceToolbar label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.sourceToolbar label:first-child {
+  flex: 1;
+}
+.sourceToolbar label:first-child input {
+  width: 100%;
+  max-width: 240px;
+}
+.empty {
+  padding: var(--space-5);
+  color: var(--color-text-muted);
+}
+.diagnostics {
+  min-height: 90px;
+  max-height: 230px;
+  overflow: auto;
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+}
+.diagnostics li button {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+}
+.diagnosticCode {
+  font-family: var(--font-mono);
+  font-size: var(--text-size-xs);
+}
+.error {
+  color: var(--color-danger);
+}
+.warning {
+  color: var(--color-warning);
+}
+.muted {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+}
+.generation {
+  border-left: 1px solid var(--color-border);
+  overflow: auto;
+  padding: var(--space-3);
+  background: var(--color-surface);
+}
+.checks,
+.mappings {
+  padding: 0;
+  margin: var(--space-3) 0;
+  border: 0;
+  min-width: 0;
+}
+.checks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.checks label {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+.checks input {
+  min-height: 0;
+  margin-top: var(--space-1);
+}
+.generation summary {
+  cursor: pointer;
+  margin-top: var(--space-3);
+}
+.mapping {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+.mapping label {
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+}
+.substitution {
+  display: flex;
+  gap: var(--space-1);
+}
+.substitution label {
+  min-width: 0;
+}
+.generatedRecipe {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+}
+.generatedInfo {
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-accent-soft);
+  font-size: var(--text-size-sm);
+}
+@media (max-width: 1000px) {
+  .workspace {
+    grid-template-columns: 150px minmax(200px, 1fr);
+  }
+  .generation {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--color-border);
+    border-left: none;
+    max-height: 220px;
+  }
+}
+
+.diagnostic {
+  color: var(--color-text);
+}

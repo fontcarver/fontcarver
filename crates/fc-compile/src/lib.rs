@@ -7,6 +7,8 @@
 
 mod error;
 mod export;
+mod feature_generation;
+mod feature_validation;
 mod kerning;
 mod large_font;
 mod metadata;
@@ -19,6 +21,13 @@ pub use error::Error;
 pub use export::{
     export, export_with_progress, touched_since_import, ExportFormat, ExportOptions, ExportReport,
     ExportStage, ExportWarning,
+};
+pub use feature_generation::{
+    freeze_feature_source, generate_feature_source, generation_is_stale, GeneratedFeatureSource,
+};
+pub use feature_validation::{
+    validate_feature_candidate, FeatureDiagnostic, FeatureDiagnosticSeverity,
+    FeatureDiagnosticSpan, FeatureValidation,
 };
 pub use kerning::horizontal_kerning_warnings;
 pub use preserve::preserve_merge;

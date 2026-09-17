@@ -11,8 +11,20 @@ use write_fonts::{from_obj::ToOwnedTable, FontBuilder};
 use crate::{Error, ExportOptions, ExportWarning};
 
 const LAYOUT_TAGS: [Tag; 4] = [Tag(*b"GSUB"), Tag(*b"GPOS"), Tag(*b"GDEF"), Tag(*b"BASE")];
-const GID_INDEXED_TAGS: [Tag; 15] = [
+// These tables compete with source layout or refer to original lookup indices.
+// They remain available as import backups but cannot accompany source authority.
+const IMPORT_LAYOUT_DEPENDENTS: [Tag; 5] = [
     Tag(*b"kern"),
+    Tag(*b"kerx"),
+    Tag(*b"morx"),
+    Tag(*b"mort"),
+    Tag(*b"JSTF"),
+];
+const GID_INDEXED_TAGS: [Tag; 18] = [
+    Tag(*b"kern"),
+    Tag(*b"kerx"),
+    Tag(*b"morx"),
+    Tag(*b"mort"),
     Tag(*b"MATH"),
     Tag(*b"hdmx"),
     Tag(*b"VDMX"),
@@ -144,6 +156,9 @@ fn merge_raw_tables(
     let mut gid_dropped = Vec::new();
     for (tag, data) in &font.extra.raw_tables {
         if *tag == DSIG || VARIATION_TAGS.contains(tag) {
+            continue;
+        }
+        if !imported_layout && IMPORT_LAYOUT_DEPENDENTS.contains(tag) {
             continue;
         }
         if LAYOUT_TAGS.contains(tag) {

@@ -166,6 +166,11 @@ pub fn export_with_progress(
     if options.format == ExportFormat::Fcf {
         return Err(Error::UnsupportedFormat("FCF"));
     }
+    if font.has_unapplied_feature_draft() {
+        return Err(Error::InvalidSource(
+            "apply or discard the feature draft before exporting a font".to_owned(),
+        ));
+    }
     let master = options
         .master
         .as_ref()

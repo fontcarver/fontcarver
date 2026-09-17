@@ -1,6 +1,7 @@
 /** Glyph-local editing input, selection and optimistic geometry. */
 import { call, type Command, type DocId } from '../api'
 import type { Point2, Viewport } from '../canvas/Viewport'
+import { documentEditingSuspended } from './documentEditParticipants'
 
 import {
   allTargets,
@@ -340,6 +341,7 @@ export class EditorController {
 
   /** Pointer went down on the canvas. */
   pointerDown(input: PointerInput): void {
+    if (documentEditingSuspended(this.documentId)) return
     void this.settle()
     // A gesture that never saw its pointer-up — a lost capture, a cancelled
     // pointer — must not survive into the next one.
@@ -459,6 +461,7 @@ export class EditorController {
    * and the editor's own Escape do anything with them.
    */
   toolKey(key: ToolKey): boolean {
+    if (documentEditingSuspended(this.documentId)) return true
     return this.tools.keyDown(key)
   }
 
@@ -469,6 +472,7 @@ export class EditorController {
 
   /** Double-click toggles a node between smooth and corner. */
   doubleClick(input: PointerInput): void {
+    if (documentEditingSuspended(this.documentId)) return
     const hit = this.geometry.hitAt(this.viewport, this.selection, {
       x: input.x,
       y: input.y,
@@ -529,6 +533,7 @@ export class EditorController {
 
   /** Applies a separate undo entry after closing existing gestures. */
   private async runCommand(command: Command, label: string): Promise<void> {
+    if (documentEditingSuspended(this.documentId)) return
     const target = this.geometry.layerTarget()
     if (!target) return
     const captured = this.handover.beforeTools
@@ -563,6 +568,7 @@ export class EditorController {
 
   /** Shows one arrow press locally and coalesces the run into one undo entry. */
   nudgeSelection(direction: Point2, modifiers: Modifiers): void {
+    if (documentEditingSuspended(this.documentId)) return
     const target = this.geometry.layerTarget()
     const source = this.geometry.source
     const points = selectedPointRefs(this.selection)

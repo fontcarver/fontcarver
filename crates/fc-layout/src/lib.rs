@@ -7,10 +7,15 @@
 
 #![warn(missing_docs)]
 
+pub mod conversion;
 mod error;
+mod import;
 mod shaping;
 
 pub use error::Error;
+pub use import::{
+    equivalent_layout, LayoutBlocker, LayoutImport, LayoutLookup, LayoutRule, LayoutTableSummary,
+};
 pub use shaping::{
     widths_for_text, FontKey, ModelWidths, ShapePlan, ShapeRequest, ShapedGlyph, ShapedRun, Shaper,
     COMPILE_FAILED, DEFAULT_DEBOUNCE,

@@ -120,7 +120,7 @@ fn build_reports_an_unknown_master() {
 }
 
 #[test]
-fn convert_writes_a_ufo_package_from_a_binary_font() {
+fn convert_writes_a_ufo_package_from_source_font() {
     let directory = tempfile::tempdir().expect("create temporary directory");
     let output = directory.path().join("Minimal.ufo");
 
@@ -132,6 +132,27 @@ fn convert_writes_a_ufo_package_from_a_binary_font() {
         .success();
 
     assert!(output.join("metainfo.plist").is_file());
+}
+
+#[test]
+fn binary_to_source_export_requires_validated_layout_conversion() {
+    let directory = tempfile::tempdir().expect("temporary directory");
+    let binary = directory.path().join("Minimal.ttf");
+    fontcarver()
+        .arg("build")
+        .arg(fc_fixtures::ufo_path("Minimal.ufo"))
+        .arg(&binary)
+        .assert()
+        .success();
+    let output = directory.path().join("Converted.ufo");
+    fontcarver()
+        .arg("convert")
+        .arg(&binary)
+        .arg(&output)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("conversion"));
+    assert!(!output.exists());
 }
 
 #[test]

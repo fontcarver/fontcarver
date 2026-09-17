@@ -212,6 +212,7 @@ describe('sessionStore dirty close', () => {
   it('saves and then closes when the document already has a .fcf path', async () => {
     const transport = createMockTransport({
       'session.save': () => makeSummary({ path: '/docs/a.fcf', dirty: false }),
+      'doc.summary': () => makeSummary({ path: '/docs/a.fcf', dirty: false }),
       'session.close': () => null,
       'session.recent': () => [],
     })
@@ -285,6 +286,7 @@ describe('sessionStore events', () => {
         font_info: false,
         masters: false,
         layout: false,
+        feature_source: false,
         glyph_order: false,
         metrics: false,
         layers: false,
@@ -321,6 +323,7 @@ describe('undo label flash', () => {
         font_info: false,
         masters: false,
         layout: false,
+        feature_source: false,
         glyph_order: false,
         metrics: false,
         layers: false,
@@ -351,6 +354,7 @@ describe('undo label flash', () => {
         font_info: false,
         masters: false,
         layout: false,
+        feature_source: false,
         glyph_order: false,
         metrics: false,
         layers: false,

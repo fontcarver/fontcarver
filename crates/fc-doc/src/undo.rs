@@ -6,7 +6,9 @@ use fc_model::{Font, FontInfo, Glyph, GlyphId, GlyphName, Guide, Master, MasterI
 
 use crate::{command::Impact, Change};
 
+mod features;
 mod kerning;
+pub use features::FeatureSnapshot;
 pub use kerning::HorizontalKerningSnapshot;
 
 /// Default maximum estimated memory retained by one undo stack.
@@ -15,6 +17,10 @@ pub const DEFAULT_MEMORY_BUDGET: usize = 512 * 1024 * 1024;
 /// A structurally shared value restored by undo or redo.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Snapshot {
+    /// Effective source, draft, policy and conversion metadata.
+    Features(Arc<FeatureSnapshot>),
+    /// One layer's anchor list, excluding outline data and touched state.
+    FeatureAnchors(Arc<fc_model::FeatureAnchorState>),
     /// Horizontal kerning and redundant group membership fields.
     Kerning(Arc<HorizontalKerningSnapshot>),
     /// A glyph value, or absence of that glyph.
@@ -202,6 +208,20 @@ impl UndoStack {
 
 pub(crate) fn capture(font: &Font, impact: &Impact) -> Vec<Snapshot> {
     let mut snapshots = Vec::new();
+    if impact.feature_source {
+        snapshots.push(Snapshot::Features(Arc::new(FeatureSnapshot::capture(font))));
+    }
+    for (glyph, layer) in &impact.feature_anchors {
+        if let Some(value) = font.glyph(glyph).and_then(|value| value.layer(layer)) {
+            snapshots.push(Snapshot::FeatureAnchors(Arc::new(
+                fc_model::FeatureAnchorState {
+                    glyph: glyph.clone(),
+                    layer: layer.clone(),
+                    anchors: value.anchors.clone(),
+                },
+            )));
+        }
+    }
     if impact.layout {
         snapshots.push(Snapshot::Kerning(Arc::new(
             HorizontalKerningSnapshot::capture(font),
@@ -236,6 +256,17 @@ pub(crate) fn capture(font: &Font, impact: &Impact) -> Vec<Snapshot> {
 pub(crate) fn restore(font: &mut Font, snapshots: &[Snapshot]) {
     for snapshot in snapshots {
         match snapshot {
+            Snapshot::Features(features) => features.restore(font),
+            Snapshot::FeatureAnchors(state) => {
+                if let Some(layer) = font.glyph_mut(&state.glyph).and_then(|glyph| {
+                    glyph
+                        .layers
+                        .iter_mut()
+                        .find(|layer| layer.id == state.layer)
+                }) {
+                    layer.anchors = state.anchors.clone();
+                }
+            }
             Snapshot::FontInfo(info) => font.info = (**info).clone(),
             Snapshot::Master(id, master) => {
                 if let Some(target) = font
@@ -305,7 +336,11 @@ fn merge_latest_snapshots(existing: &mut Vec<Snapshot>, newer: Vec<Snapshot>) {
 fn same_snapshot_key(left: &Snapshot, right: &Snapshot) -> bool {
     match (left, right) {
         (Snapshot::Glyph(left, _), Snapshot::Glyph(right, _)) => left == right,
-        (Snapshot::FontInfo(_), Snapshot::FontInfo(_))
+        (Snapshot::FeatureAnchors(left), Snapshot::FeatureAnchors(right)) => {
+            left.glyph == right.glyph && left.layer == right.layer
+        }
+        (Snapshot::Features(_), Snapshot::Features(_))
+        | (Snapshot::FontInfo(_), Snapshot::FontInfo(_))
         | (Snapshot::Kerning(_), Snapshot::Kerning(_))
         | (Snapshot::GlyphOrder(_), Snapshot::GlyphOrder(_))
         | (Snapshot::FontGuides(_), Snapshot::FontGuides(_)) => true,
@@ -353,6 +388,8 @@ fn estimate_entry(inverse: &[Snapshot], forward: &[Snapshot]) -> usize {
 
 fn estimate_snapshot(snapshot: &Snapshot) -> usize {
     match snapshot {
+        Snapshot::Features(features) => features.estimated_bytes(),
+        Snapshot::FeatureAnchors(state) => state.anchors.len().saturating_mul(128),
         Snapshot::Kerning(kerning) => kerning.estimated_bytes(),
         Snapshot::Glyph(_, Some(glyph)) => glyph
             .layers

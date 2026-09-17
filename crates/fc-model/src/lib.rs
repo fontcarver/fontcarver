@@ -8,6 +8,8 @@ mod component;
 mod contour;
 pub mod error;
 mod extra;
+mod feature_draft;
+mod feature_generation;
 mod features;
 mod font;
 mod glyph;
@@ -25,6 +27,14 @@ pub use component::Component;
 pub use contour::{Contour, Point, PointKind, TtIndex};
 pub use error::Error;
 pub use extra::{Extra, SourceProvenance};
+pub use feature_draft::{
+    FeatureAnchorState, FeatureDraft, FeatureGlyphMembership, FeatureKerningState,
+    FeatureMasterKerning, LayoutConversion,
+};
+pub use feature_generation::{
+    FeatureGenerationSettings, FeatureGenerator, FeatureLigatureMapping, FeatureLocalizedMapping,
+    FeatureSubstitution, FeatureWriterPolicy, GeneratedFeatureRecord,
+};
 pub use features::{
     AssembledFea, FeaSourceLocation, FeaSourceMapping, FeatureBlock, FeatureClass, FeatureSourceId,
     FeatureSourceKind, Features, FeaturesSource,

@@ -5,6 +5,11 @@ import { i18n } from '../i18n'
 import { warningMessage } from '../i18n/warnings'
 import { choosePath, hasNativeFileDialog } from '../shell/nativeDialogs'
 import { withSettledDocument } from '../editor/documentPersistence'
+import {
+  flushDocumentEditParticipants,
+  suspendDocumentEditParticipants,
+} from '../editor/documentEditParticipants'
+import { documentEditRevision } from '../editor/editSession'
 import { prepareTabTransition } from '../shell/tabActions'
 
 import { useDocumentStore } from './documentStore'
@@ -266,7 +271,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       })
       if (choice.kind !== 'chosen') return
       const saved = await get().save(doc, choice.path)
-      if (saved && closeAfterSave) await get().close(doc)
+      if (saved && closeAfterSave) await get().requestClose(doc)
     } catch (error) {
       reportError(error)
     }
@@ -278,12 +283,20 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       await get().requestSaveAs(doc, true)
       return
     }
-    if (await get().save(doc)) await get().close(doc)
+    if (await get().save(doc)) await get().requestClose(doc)
   },
 
   close: async (doc) => {
     try {
-      await withSettledDocument(doc, () => closeDocument(doc))
+      await withSettledDocument(doc, async () => {
+        const resume = suspendDocumentEditParticipants(doc)
+        try {
+          await flushDocumentEditParticipants(doc)
+          await closeDocument(doc)
+        } finally {
+          resume()
+        }
+      })
     } catch (error) {
       reportError(error)
       return
@@ -293,12 +306,23 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   requestClose: async (doc) => {
     try {
       await withSettledDocument(doc, async () => {
-        // The last edit's event may still be in transit. Ask the kernel after
-        // finishing tools before deciding whether closing would discard work.
-        const summary = await call('doc.summary', { doc })
-        set((state) => ({ docs: upsert(state.docs, summary) }))
-        if (summary.dirty) useUiStore.getState().setClosePrompt({ doc })
-        else await closeDocument(doc)
+        const resume = suspendDocumentEditParticipants(doc)
+        try {
+          for (;;) {
+            await flushDocumentEditParticipants(doc)
+            const revision = documentEditRevision(doc)
+            // The last edit event may still be in transit, and a draft staged
+            // during an earlier read must be flushed before trusting clean.
+            const summary = await call('doc.summary', { doc })
+            if (documentEditRevision(doc) !== revision) continue
+            set((state) => ({ docs: upsert(state.docs, summary) }))
+            if (summary.dirty) useUiStore.getState().setClosePrompt({ doc })
+            else await closeDocument(doc)
+            return
+          }
+        } finally {
+          resume()
+        }
       })
     } catch (error) {
       reportError(error)

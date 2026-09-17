@@ -45,6 +45,7 @@ function transport(): MockTransport {
       font_info: false,
       masters: false,
       layout: false,
+      feature_source: false,
       glyph_order: false,
       metrics: true,
       layers: false,

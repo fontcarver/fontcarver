@@ -25,7 +25,7 @@ pub enum HorizontalKerningEditBlock {
     /// Imported layout tables remain authoritative until converted to source.
     #[error("the imported font's spacing rules cannot yet be edited")]
     ImportedLayout,
-    /// Active FEA reserves the `kern` feature, including empty feature blocks.
+    /// Active source or its writer policy reserves kerning from model editing.
     #[error("horizontal kerning is controlled by feature source")]
     SourceOwnedKerning,
     /// Source syntax or includes prevent reliable ownership inspection.
@@ -37,7 +37,8 @@ pub enum HorizontalKerningEditBlock {
 ///
 /// Uses the same assembled FEA as compilation. Active `kern` feature blocks
 /// and variations reserve kerning for source, including blocks referencing
-/// named lookups. Disabled blocks, comments, and unrelated names do not.
+/// named lookups. Disabling the model kerning writer also reserves ownership.
+/// Disabled blocks, comments, and unrelated names do not.
 /// Parse errors and unresolved includes fail closed; no files are read.
 ///
 /// This pure check does not validate pair/group data, compile feature source,
@@ -48,6 +49,9 @@ pub fn check_horizontal_editing(font: &Font) -> Result<(), HorizontalKerningEdit
 
     if font.features.source_of_truth == FeaturesSource::ImportedTables {
         return Err(Block::ImportedLayout);
+    }
+    if !font.feature_settings.writer_policy.kerning {
+        return Err(Block::SourceOwnedKerning);
     }
     let source: Arc<str> = font.features.to_fea().into();
     if source.trim().is_empty() {

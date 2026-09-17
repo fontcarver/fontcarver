@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use fc_model::{Font, MasterId};
+use fc_model::{FeaturesSource, Font, MasterId};
 
 use crate::Error;
 
@@ -48,6 +48,7 @@ pub fn write_ufo(
     dir: &Path,
     opts: &UfoWriteOptions,
 ) -> Result<(), Error> {
+    check_feature_export(font)?;
     let master = font
         .master(master)
         .ok_or_else(|| Error::MissingMaster(master.to_string()))?;
@@ -61,5 +62,16 @@ pub fn write_ufo(
 /// an axis-less font this writes the default master as UFO, does not create a designspace, and
 /// returns [`Error::NoAxes`]. Call [`write_ufo`] directly for static, single-master fonts.
 pub fn write_designspace(font: &Font, dir: &Path) -> Result<PathBuf, Error> {
+    check_feature_export(font)?;
     designspace::write(font, dir)
+}
+
+fn check_feature_export(font: &Font) -> Result<(), Error> {
+    if font.has_unapplied_feature_draft() {
+        return Err(Error::UnappliedFeatureDraft);
+    }
+    if font.features.source_of_truth == FeaturesSource::ImportedTables {
+        return Err(Error::ImportedLayoutRequiresConversion);
+    }
+    Ok(())
 }

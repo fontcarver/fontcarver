@@ -6,10 +6,12 @@ use fc_model::{
 
 use crate::{document::rename_references, undo, Error, Snapshot};
 
-use super::{glyphs, kerning, layers, metrics, outline, structure, Command};
+use super::{features, glyphs, kerning, layers, metrics, outline, structure, Command};
 
 #[derive(Default)]
 pub(crate) struct Impact {
+    pub(crate) feature_source: bool,
+    pub(crate) feature_anchors: Vec<(GlyphName, LayerId)>,
     pub(crate) layout: bool,
     pub(crate) glyphs: Vec<GlyphName>,
     pub(crate) font_info: bool,
@@ -46,6 +48,9 @@ pub(crate) fn impact(font: &Font, command: &Command) -> Impact {
 
 fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
     match command {
+        Command::SetFeatureDraft { .. } | Command::DiscardFeatureDraft { .. } => {
+            impact.feature_source = true
+        }
         Command::SetHorizontalKerning { .. }
         | Command::CreateKerningGroup { .. }
         | Command::SetKerningGroup { .. }
@@ -251,6 +256,14 @@ fn apply_batch(
 
 fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
     match command {
+        Command::SetFeatureDraft {
+            expected_revision,
+            source,
+            settings,
+        } => features::set_draft(font, *expected_revision, source, settings),
+        Command::DiscardFeatureDraft { expected_revision } => {
+            features::discard_draft(font, *expected_revision)
+        }
         Command::SetHorizontalKerning { .. }
         | Command::CreateKerningGroup { .. }
         | Command::SetKerningGroup { .. }

@@ -1,10 +1,4 @@
-use std::{
-    collections::BTreeMap,
-    fs,
-    path::Path,
-    thread,
-    time::{Duration, Instant},
-};
+use std::{collections::BTreeMap, fs, path::Path, thread, time::Duration};
 
 use fc_formats::ufo::{read_ufo, write_ufo, UfoWriteOptions};
 use fc_model::{BitmapStrike, Guide, StemHint, Tag, TtIndex};
@@ -495,7 +489,7 @@ fn incremental_write_touches_only_changed_glif_and_removes_stale_glifs() {
 }
 
 #[test]
-fn sfnt_round_trip_preserves_outlines_and_raw_tables() {
+fn sfnt_with_original_layout_requires_conversion_before_ufo_export() {
     let outcome = fc_sfnt::read_path(
         &fc_fixtures::path("DejaVuSans.ttf"),
         &fc_sfnt::ReadOptions {
@@ -507,33 +501,23 @@ fn sfnt_round_trip_preserves_outlines_and_raw_tables() {
     let source = &outcome.fonts[0];
     let temp = tempfile::tempdir().unwrap();
     let output = temp.path().join("DejaVuSans.ufo");
-    let started = Instant::now();
-    write_ufo(
+    let original = source.clone();
+    let error = write_ufo(
         source,
         &source.default_master().id,
         &output,
         &UfoWriteOptions::default(),
     )
-    .unwrap();
-    assert!(started.elapsed() < Duration::from_secs(10));
-    let lib_size = fs::metadata(output.join("lib.plist")).unwrap().len();
-    assert!(lib_size < 1_000_000, "lib.plist is {lib_size} bytes");
-    let round_trip = read_ufo(&output).unwrap();
-    assert_eq!(round_trip.extra.raw_tables, source.extra.raw_tables);
-    for (name, glyph) in &source.glyphs {
-        let source_layer = glyph.master_layer(&source.default_master().id).unwrap();
-        let round_layer = round_trip
-            .glyph(name.as_ref())
-            .unwrap()
-            .master_layer(&round_trip.default_master().id)
-            .unwrap();
-        assert_eq!(round_layer.contours, source_layer.contours, "glyph {name}");
-        assert_eq!(
-            round_layer.components, source_layer.components,
-            "glyph {name}"
-        );
-        assert_eq!(round_layer.anchors, source_layer.anchors, "glyph {name}");
-    }
+    .unwrap_err();
+    assert!(matches!(
+        error,
+        fc_formats::Error::ImportedLayoutRequiresConversion
+    ));
+    assert!(!output.exists());
+    assert_eq!(
+        source, &original,
+        "original outlines and tables remain untouched"
+    );
 }
 
 fn glyph_path(ufo: &Path, name: &str) -> std::path::PathBuf {

@@ -12,6 +12,7 @@ import { CloseDocumentDialog } from './CloseDocumentDialog'
 function setup(summary = makeSummary({ dirty: true })) {
   const transport = createMockTransport({
     'session.save': () => makeSummary({ path: '/docs/a.fcf', dirty: false }),
+    'doc.summary': () => makeSummary({ path: '/docs/a.fcf', dirty: false }),
     'session.close': () => null,
     'session.recent': () => [],
   })

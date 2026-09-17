@@ -78,6 +78,7 @@ impl FcSource {
         if !(16..=16_384).contains(&font.info.units_per_em) {
             return Err(Error::InvalidUnitsPerEm(font.info.units_per_em));
         }
+        crate::feature_validation::check_writer_conflicts(font)?;
         let large_font = crate::large_font::requires_workaround(font, options.production_names);
         Ok(Self {
             data: Arc::new(SourceData {
@@ -170,6 +171,7 @@ impl Source for FcSource {
                 Box::new(GlyphWork {
                     glyph,
                     master: self.data.master.clone(),
+                    model_anchors: self.data.font.feature_settings.writer_policy.anchors,
                     fontc_safe_bmp_codepoints: self.data.fontc_safe_bmp_codepoints.clone(),
                 }) as Box<IrWork>
             })
@@ -271,6 +273,29 @@ impl Work<Context, WorkId, IrError> for StaticMetadataWork {
             build_vertical,
         )?;
         apply_misc_metadata(&mut metadata, &font.info);
+        // Use fontc's explicit Skip policy: a manual feature without a marker
+        // owns its tag, and `# Automatic Code` inserts model rules only when
+        // this document explicitly permits that writer. Conversion can keep
+        // model anchors while disabling all competing automatic layout rules.
+        let policy = &font.feature_settings.writer_policy;
+        let writers = [
+            (fontir::ir::KnownFeatureWriter::Kern, policy.kerning),
+            (fontir::ir::KnownFeatureWriter::Mark, policy.anchors),
+            (fontir::ir::KnownFeatureWriter::Curs, policy.anchors),
+            (fontir::ir::KnownFeatureWriter::Gdef, policy.anchors),
+        ];
+        metadata.misc.feature_generation = Some(
+            writers
+                .into_iter()
+                .filter_map(|(writer, enabled)| {
+                    enabled.then_some(fontir::ir::FeatureWriterSpec {
+                        writer,
+                        mode: fontir::ir::FeatureWriterMode::Skip,
+                        features: None,
+                    })
+                })
+                .collect(),
+        );
         context.static_metadata.set(metadata);
 
         let mut order = GlyphOrder::new();
@@ -418,6 +443,7 @@ impl Work<Context, WorkId, IrError> for GlobalMetricsWork {
 struct GlyphWork {
     glyph: fc_model::Glyph,
     master: MasterId,
+    model_anchors: bool,
     fontc_safe_bmp_codepoints: Option<Arc<HashSet<(GlyphName, u32)>>>,
 }
 
@@ -490,7 +516,7 @@ impl Work<Context, WorkId, IrError> for GlyphWork {
         context.glyphs.set(glyph);
 
         let mut anchors = AnchorBuilder::new(name);
-        for anchor in &layer.anchors {
+        for anchor in layer.anchors.iter().filter(|_| self.model_anchors) {
             anchors.add(
                 anchor.name.clone().into(),
                 default_location(),

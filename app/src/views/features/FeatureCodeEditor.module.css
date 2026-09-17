@@ -1,0 +1,86 @@
+.editor {
+  min-width: 0;
+  min-height: 180px;
+  height: 100%;
+  background: var(--color-canvas);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.editor :global(.cm-editor) {
+  height: 100%;
+  font-size: var(--text-size);
+}
+
+.editor :global(.cm-editor.cm-focused) {
+  outline: 1px solid var(--color-focus-ring);
+  outline-offset: -1px;
+}
+
+.editor :global(.cm-scroller) {
+  font-family: var(--font-mono);
+  line-height: var(--line-height);
+  overflow: auto;
+}
+
+.editor :global(.cm-content) {
+  caret-color: var(--color-text);
+  padding: var(--space-2) 0;
+}
+
+.editor :global(.cm-gutters) {
+  background: var(--color-surface);
+  color: var(--color-text-faint);
+  border-color: var(--color-border);
+}
+
+.editor :global(.cm-activeLine) {
+  background: var(--color-hover);
+}
+
+.editor :global(.cm-matchingBracket) {
+  background: var(--color-accent-soft);
+  outline: 1px solid var(--color-border-strong);
+}
+
+.editor :global(.tok-keyword),
+.editor :global(.tok-bool) {
+  color: var(--color-accent);
+  font-weight: var(--text-weight-medium);
+}
+
+.editor :global(.tok-comment) {
+  color: var(--color-text-faint);
+  font-style: italic;
+}
+
+.editor :global(.tok-number),
+.editor :global(.tok-string) {
+  color: var(--color-warning);
+}
+
+.editor :global(.cm-tooltip) {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-popover);
+}
+
+.editor :global(.cm-tooltip-autocomplete > ul > li[aria-selected='true']) {
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+}
+
+.editor :global(.cm-diagnostic-error) {
+  border-color: var(--color-danger);
+}
+
+.editor :global(.cm-diagnostic-warning) {
+  border-color: var(--color-warning);
+}
+
+.editor :global(.cm-diagnostic-info) {
+  border-color: var(--color-accent);
+}

@@ -3,15 +3,29 @@
 use std::{collections::HashSet, path::Path, str::FromStr};
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use fc_model::{Font, Master, Tag, TtIndex};
+use fc_model::{FeaturesSource, Font, Master, Tag, TtIndex};
 use plist::Value;
 
 use super::value::json_to_plist;
 use crate::Error;
 
+#[path = "feature_metadata.rs"]
+pub(crate) mod feature_metadata;
+
 pub(crate) const EXTRA_KEY: &str = "com.fontcarver.extra";
 // Read data exported before the product rename without losing preserved tables.
 const LEGACY_EXTRA_KEY: &str = "com.fontcutter.extra";
+const ORIGINAL_LAYOUT_TABLES: [Tag; 9] = [
+    Tag(*b"GSUB"),
+    Tag(*b"GPOS"),
+    Tag(*b"GDEF"),
+    Tag(*b"BASE"),
+    Tag(*b"kern"),
+    Tag(*b"kerx"),
+    Tag(*b"morx"),
+    Tag(*b"mort"),
+    Tag(*b"JSTF"),
+];
 
 pub(crate) fn copy_data_and_images(
     font: &Font,
@@ -204,6 +218,12 @@ pub(crate) fn build(font: &Font, master: &Master) -> Result<Option<Value>, Error
         .extra
         .raw_tables
         .iter()
+        // Original layout restore belongs to FCF. A source UFO starts a new
+        // editable baseline and must not carry competing original layout.
+        .filter(|(tag, _)| {
+            font.features.source_of_truth != FeaturesSource::Fea
+                || !ORIGINAL_LAYOUT_TABLES.contains(tag)
+        })
         .map(|(tag, bytes)| {
             (
                 tag.to_string(),

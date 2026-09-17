@@ -50,6 +50,14 @@ pub(crate) fn new_document(api: &Api, params: NewParams) -> Result<DocSummary, A
 pub(crate) fn close(api: &Api, params: CloseParams) -> Result<(), ApiError> {
     api.session.close(params.doc)?;
     api.shaper.forget(params.doc.0);
+    api.layout_cache
+        .lock()
+        .map_err(|_| ApiError::internal("layout cache lock is poisoned"))?
+        .remove(&params.doc);
+    api.conversion_tokens
+        .lock()
+        .map_err(|_| ApiError::internal("layout conversion token lock is poisoned"))?
+        .remove_doc(params.doc);
     api.sidebar_cache
         .lock()
         .map_err(|_| ApiError::internal("API sidebar cache lock is poisoned"))?

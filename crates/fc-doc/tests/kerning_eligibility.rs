@@ -221,3 +221,13 @@ fn ownership_checks_leave_stored_pairs_and_source_unchanged() {
         assert_eq!(font, before);
     }
 }
+
+#[test]
+fn disabled_model_writer_blocks_even_empty_active_source() {
+    let mut font = font();
+    font.feature_settings.writer_policy.kerning = false;
+    assert_eq!(
+        check_horizontal_editing(&font),
+        Err(Block::SourceOwnedKerning)
+    );
+}

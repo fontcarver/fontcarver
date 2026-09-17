@@ -21,6 +21,9 @@ use crate::{
     Change, Command, Error,
 };
 
+mod features;
+pub use features::PreparedFeatureChange;
+
 /// Token identifying a live coalesced editing gesture.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 pub struct EditToken(#[ts(type = "number")] pub u64);
@@ -59,6 +62,7 @@ pub struct Document {
     pub dirty: bool,
     /// Monotonic mutation generation.
     pub generation: u64,
+    compile_revision: u64,
     doc_id: DocId,
     name_to_id: HashMap<GlyphName, GlyphId>,
     id_to_name: Vec<Option<GlyphName>>,
@@ -80,15 +84,22 @@ pub struct Document {
 impl Document {
     pub(crate) fn attached(
         doc_id: DocId,
-        font: Font,
+        mut font: Font,
         path: Option<PathBuf>,
         events: broadcast::Sender<DocumentEvent>,
     ) -> Self {
+        // Old or hand-edited native documents can store mismatched counters.
+        // Keep the greatest revision so reopening never accepts an older write.
+        if let Some(draft) = &mut font.feature_draft {
+            font.feature_revision = font.feature_revision.max(draft.revision);
+            draft.revision = font.feature_revision;
+        }
         let mut document = Self {
             font,
             path,
             dirty: false,
             generation: 0,
+            compile_revision: 0,
             doc_id,
             name_to_id: HashMap::new(),
             id_to_name: Vec::new(),
@@ -111,6 +122,11 @@ impl Document {
             document.allocate_handle(name);
         }
         document
+    }
+
+    /// Monotonic revision of effective compilation inputs, excluding drafts.
+    pub fn compile_revision(&self) -> u64 {
+        self.compile_revision
     }
 
     /// Returns the stable session handle for a glyph name.
@@ -315,7 +331,9 @@ impl Document {
         let before_state = self.current_state;
 
         command::apply_to_font(&mut self.font, &command, &inverse)?;
-        if command::is_kerning(&command) && inverse == undo::capture(&self.font, &impact) {
+        if (command::is_kerning(&command) || command::is_draft(&command))
+            && inverse == undo::capture(&self.font, &impact)
+        {
             return Ok(Change::default());
         }
         self.apply_handle_effects(&command)?;
@@ -359,11 +377,20 @@ impl Document {
             self.undo.push(entry);
         }
         self.generation = self.generation.saturating_add(1);
+        if change.affects_compile() {
+            self.compile_revision = self.compile_revision.saturating_add(1);
+        }
         self.emit(change.clone());
         Ok(change)
     }
 
     fn restore_entry(&mut self, entry: &UndoEntry, forward: bool) -> Result<(), Error> {
+        let previous_feature_revision = self.font.feature_revision;
+        if entry.change.feature_source && previous_feature_revision == u64::MAX {
+            return Err(Error::InvalidCommand(
+                "feature revision is exhausted; cannot safely restore history".into(),
+            ));
+        }
         if forward {
             self.apply_history_renames(&entry.renames, true);
             undo::restore(&mut self.font, &entry.forward);
@@ -374,6 +401,13 @@ impl Document {
             undo::restore(&mut self.font, &entry.inverse);
             self.restore_handles(&entry.inverse_handles);
             self.current_state = entry.before_state;
+        }
+        if entry.change.feature_source {
+            self.font.feature_revision = previous_feature_revision.max(self.font.feature_revision);
+            command::bump_feature_revision(&mut self.font)?;
+        }
+        if entry.change.affects_compile() {
+            self.compile_revision = self.compile_revision.saturating_add(1);
         }
         if entry.component_graph_changed {
             self.bump_component_generation();
@@ -502,6 +536,7 @@ impl Document {
         glyphs.sort_by_key(|id| id.0);
         glyphs.dedup();
         Change {
+            feature_source: impact.feature_source,
             layout: impact.layout,
             glyphs,
             font_info: impact.font_info,

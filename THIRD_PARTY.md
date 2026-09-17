@@ -262,6 +262,29 @@ explicitly:
 - `minimatch` 10.2.6 — **BlueOak-1.0.0**, an OSI-approved permissive license with
   no copyleft obligation. Acceptable.
 
+#### P2b CodeMirror editor additions — 2026-09-17
+
+The Features editor adds the following exact pinned packages. CodeMirror supplies
+accessible source editing, completion, syntax highlighting and located diagnostics;
+`@lezer/highlight` maps syntax tokens to the existing light/dark design tokens.
+The installed package manifests and `pnpm --dir app licenses list --json` verify
+**MIT** for all 13 newly locked packages (including the six transitive packages).
+Existing dependency versions are unchanged.
+
+| Direct package | Locked version | License |
+| --- | --- | --- |
+| `@codemirror/state` | 6.7.5 | MIT |
+| `@codemirror/view` | 6.43.12 | MIT |
+| `@codemirror/language` | 6.12.4 | MIT |
+| `@codemirror/autocomplete` | 6.20.3 | MIT |
+| `@codemirror/lint` | 6.9.7 | MIT |
+| `@codemirror/commands` | 6.11.1 | MIT |
+| `@lezer/highlight` | 1.2.3 | MIT |
+
+New transitive packages (all MIT): `@lezer/common` 1.5.2, `@lezer/lr` 1.4.10,
+`@marijn/find-cluster-break` 1.0.4, `crelt` 1.0.7, `style-mod` 4.1.3 and
+`w3c-keyname` 2.2.8. No new copyleft dependency is introduced.
+
 ### 3.3 Re-running the surveys
 
 Rust — count the license expression of every package reachable from the

@@ -25,6 +25,7 @@ import { registerEditor } from './activeEditor'
 import { commitField } from '../views/glyph/commitField'
 import { NO_MODIFIERS, type Modifiers } from './gestures/drag'
 import { NUDGE_TIMEOUT } from './gestures/nudge'
+import { suspendDocumentEditParticipants } from './documentEditParticipants'
 
 const layer = makeLayer({
   width: 600,
@@ -190,6 +191,7 @@ function change() {
     font_info: false,
     masters: false,
     layout: false,
+    feature_source: false,
     glyph_order: false,
     metrics: false,
     layers: false,
@@ -556,6 +558,24 @@ describe('EditorController modifier grammar', () => {
 })
 
 describe('EditorController nudging', () => {
+  it('does not accept outline input while the document is closing', async () => {
+    const { controller, transport } = makeController()
+    controller.setSelection(
+      new Map([['node:0:1', { kind: 'node', contour: 0, point: 1 }]]),
+    )
+    const resume = suspendDocumentEditParticipants(1)
+    try {
+      controller.nudgeSelection({ x: 1, y: 0 }, NO_MODIFIERS)
+      controller.pointerDown(at(200, 300))
+      controller.pointerMove(at(250, 300))
+      controller.pointerUp(at(250, 300))
+      await controller.toggleSmooth(false)
+      await controller.prepareTransition()
+      expect(transport.calls).toEqual([])
+    } finally {
+      resume()
+    }
+  })
   it('shows the move on the first key press, before the kernel answers', () => {
     const { controller } = makeController()
     controller.setSelection(

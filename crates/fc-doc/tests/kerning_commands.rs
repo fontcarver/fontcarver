@@ -561,3 +561,18 @@ fn set_master_cannot_bypass_kerning_eligibility() {
         assert_eq!(doc.font, before);
     });
 }
+
+#[test]
+fn disabled_model_writer_rejects_pair_and_group_commands_atomically() {
+    document(|doc| {
+        doc.font.feature_settings.writer_policy.kerning = false;
+        let before = doc.font.clone();
+        assert!(doc.apply(pair(doc, Some(-80.0)), "Unused pair").is_err());
+        assert!(doc
+            .apply(group(Side::Side1, "public.kern1.A", &["A"]), "Unused group")
+            .is_err());
+        assert_eq!(doc.font, before);
+        assert_eq!(doc.generation, 0);
+        assert_eq!(doc.undo_len(), 0);
+    });
+}

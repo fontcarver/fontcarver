@@ -41,6 +41,50 @@ pub const FAILED_STAGE: &str = "failed";
 
 /// Method name, parameter TypeScript type, and result TypeScript type.
 pub const METHODS: &[(&str, &str, &str)] = &[
+    ("features.get", "DocParams", "FeatureState"),
+    (
+        "features.set_draft",
+        "SetFeatureDraftParams",
+        "FeatureState",
+    ),
+    (
+        "features.discard_draft",
+        "DiscardFeatureDraftParams",
+        "FeatureState",
+    ),
+    (
+        "features.validate",
+        "FeatureValidationParams",
+        "FeatureValidationResult",
+    ),
+    (
+        "features.apply",
+        "FeatureValidationParams",
+        "FeatureApplyResult",
+    ),
+    ("features.freeze", "FreezeFeatureParams", "FeatureState"),
+    ("layout.inspect", "LayoutInspectParams", "LayoutInspection"),
+    ("layout.rules", "LayoutRulesParams", "LayoutRules"),
+    (
+        "layout.rule_glyphs",
+        "LayoutRuleGlyphsParams",
+        "LayoutRuleGlyphs",
+    ),
+    (
+        "layout.prepare_conversion",
+        "PrepareLayoutConversionParams",
+        "LayoutConversionPreview",
+    ),
+    (
+        "layout.apply_conversion",
+        "ApplyLayoutConversionParams",
+        "Change",
+    ),
+    (
+        "layout.revert_original",
+        "RevertOriginalLayoutParams",
+        "Change",
+    ),
     ("kerning.status", "DocParams", "KerningStatus"),
     ("kerning.glyph", "GlyphKerningParams", "GlyphKerning"),
     (
@@ -110,6 +154,8 @@ pub struct Api {
     pub(crate) recovered: std::sync::Mutex<HashMap<DocId, String>>,
     pub(crate) config_lock: std::sync::Mutex<()>,
     pub(crate) shaper: Shaper,
+    pub(crate) layout_cache: Mutex<HashMap<DocId, (u64, Arc<fc_layout::LayoutImport>)>>,
+    pub(crate) conversion_tokens: Mutex<handlers::layout_conversion::ConversionTokens>,
     config_dir: OnceLock<PathBuf>,
     events: broadcast::Sender<Event>,
     event_bridge: Mutex<bool>,
@@ -136,6 +182,8 @@ impl Api {
             recovered: std::sync::Mutex::new(HashMap::new()),
             config_lock: std::sync::Mutex::new(()),
             shaper: Shaper::new(),
+            layout_cache: Mutex::new(HashMap::new()),
+            conversion_tokens: Mutex::new(handlers::layout_conversion::ConversionTokens::default()),
             config_dir: OnceLock::new(),
             events,
             event_bridge: Mutex::new(false),
@@ -319,6 +367,18 @@ macro_rules! define_dispatch {
 }
 
 define_dispatch! {
+    "features.get" => handlers::features::get,
+    "features.set_draft" => handlers::features::set_draft,
+    "features.discard_draft" => handlers::features::discard_draft,
+    "features.validate" => handlers::features::validate,
+    "features.apply" => handlers::features::apply,
+    "features.freeze" => handlers::features::freeze,
+    "layout.inspect" => handlers::layout::inspect,
+    "layout.rules" => handlers::layout::rules,
+    "layout.rule_glyphs" => handlers::layout::rule_glyphs,
+    "layout.prepare_conversion" => handlers::layout_conversion::prepare_conversion,
+    "layout.apply_conversion" => handlers::layout_conversion::apply_conversion,
+    "layout.revert_original" => handlers::layout_conversion::revert_original,
     "kerning.status" => handlers::kerning::status,
     "kerning.glyph" => handlers::kerning::glyph,
     "kerning.resolve" => handlers::kerning::resolve,

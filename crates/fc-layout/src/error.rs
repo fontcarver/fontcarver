@@ -5,6 +5,9 @@ use fc_model::MasterId;
 /// An error that prevents a shaping request from being answered.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Imported layout cannot be represented or proven equivalent safely.
+    #[error("layout conversion blocked: {0}")]
+    LayoutConversion(String),
     /// The requested master is not present in the font.
     #[error("master {0} is not present in the font")]
     MissingMaster(MasterId),

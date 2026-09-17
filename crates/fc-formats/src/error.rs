@@ -5,6 +5,12 @@ use std::path::PathBuf;
 /// An error encountered while reading or writing a source font.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// A source export would silently omit saved feature edits.
+    #[error("apply or discard the feature draft before exporting a source font")]
+    UnappliedFeatureDraft,
+    /// Binary layout must be converted before a source format can represent it.
+    #[error("imported layout requires validated conversion before source export")]
+    ImportedLayoutRequiresConversion,
     /// A UFO could not be loaded.
     #[error("failed to load UFO: {0}")]
     UfoLoad(#[from] norad::error::FontLoadError),

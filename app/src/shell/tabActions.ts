@@ -1,8 +1,5 @@
 import { activeEditor } from '../editor/activeEditor'
-import {
-  documentEditRevision,
-  pendingDocumentEdits,
-} from '../editor/editSession'
+import { settleDocumentEdits } from '../editor/documentPersistence'
 import type { DocId, GlyphId } from '../api'
 import { useSessionStore } from '../stores/sessionStore'
 import { tabId, useUiStore } from '../stores/uiStore'
@@ -32,28 +29,9 @@ export function prepareTabTransition(): {
   }
   const settle = async () => {
     try {
-      for (;;) {
-        if (!isCurrent()) return false
-        const revision = doc === undefined ? 0 : documentEditRevision(doc)
-        // Read existing work first: prepareTransition may publish its closure.
-        const previous =
-          doc === undefined ? undefined : pendingDocumentEdits(doc)
-        const prepared =
-          doc !== undefined && editor?.documentId === doc
-            ? editor.prepareTransition()
-            : undefined
-        await Promise.all([previous, prepared])
-        for (;;) {
-          const pending =
-            doc === undefined ? undefined : pendingDocumentEdits(doc)
-          if (!pending) break
-          await pending
-        }
-        if (doc === undefined || documentEditRevision(doc) === revision)
-          return isCurrent()
-        // A new shortcut run or number draft began while the old edit closed.
-        // Finish it against the same editor before allowing the tab to unmount.
-      }
+      if (!isCurrent()) return false
+      if (doc !== undefined) await settleDocumentEdits(doc, isCurrent)
+      return isCurrent()
     } catch (error) {
       reportError(error)
       return false
@@ -165,6 +143,13 @@ export async function openFontInfoTab(doc: DocId): Promise<string | undefined> {
   const transition = prepareTabTransition()
   if (!(await transition.ready) || !transition.isCurrent()) return undefined
   return useUiStore.getState().openTab({ kind: 'fontinfo', doc })
+}
+
+/** Opens the document's Features editor after persisting the old view. */
+export async function openFeaturesTab(doc: DocId): Promise<string | undefined> {
+  const transition = prepareTabTransition()
+  if (!(await transition.ready) || !transition.isCurrent()) return undefined
+  return useUiStore.getState().openTab({ kind: 'features', doc })
 }
 
 /** Finishes old tools before a sidebar or keyboard step replaces its target. */

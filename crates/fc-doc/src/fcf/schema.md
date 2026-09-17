@@ -31,7 +31,38 @@ of their tag, name, code or ordering. New items receive UUID v4 IDs without
 separators. Older documents may omit IDs; reading assigns missing IDs and
 replaces empty or repeated IDs, preserving the first occurrence of a nonempty
 stored ID. Saving persists these identities. Source maps are derived and are
-not written to FCF. No draft or active-source revision fields are added by P2b-01.
+not written to FCF. P2b-02 adds these optional font-level fields, with defaults for version-1 files:
+
+- `feature_draft`: nullable `{source: Features, settings: FeatureGenerationSettings,
+  revision: u64}`. Invalid Unicode FEA text (including CRLF and comments) is
+  persisted without parsing. `null` means no saved draft. Merely reading source
+  does not create a draft. `font.features` always remains the effective source.
+- `feature_settings`: the active generator/writer policy. Name-derived recipes
+  default off; existing kerning/anchor writer policy defaults on. Saved candidate
+  settings live inside the draft and are inactive until validated application.
+  `localized` entries store `{script, language, substitutions}`;
+  `discretionary_ligatures` entries store
+  `{script, language, components, replacement}`. Missing discretionary scopes
+  in older files default to `DFLT`/`dflt`. Generated-source identities and the
+  exported-glyph fingerprint are server-maintained provenance stored with the
+  settings; editor API callers cannot forge them.
+- `feature_revision`: a monotonic editor revision, initially zero. Draft changes,
+  discard, successful activation and feature undo/redo advance it. A stored
+  draft's `revision` matches this counter. Undo restores source contents but does
+  not reuse a prior editor revision. Effective compile revisions are runtime-only
+  and deliberately exclude draft-only changes.
+- `layout_conversion`: nullable original-layout revert metadata. It stores
+  `original_features`, `original_settings`, `original_glyph_order`, a SHA-256
+  `baseline_fingerprint`, optional `lifted_kerning` and `lifted_anchors`. The
+  kerning backup contains affected masters' horizontal pairs, shared groups and
+  per-glyph side memberships. Anchor backups contain only a glyph name, layer
+  ID and its original anchor list. Outlines and unrelated metadata are not
+  duplicated. Original table bytes remain in `extra.raw_tables`; validation
+  tokens and parsed layout graphs are never persisted.
+
+Native save, gzip save and recovery autosave use these identical serde shapes.
+Absent fields preserve old-document semantics; historic `automatic: true`
+blocks do not enable generation recipes by themselves.
 
 The older UFO importer stored an entire FEA file as the only feature block with
 `tag: "fea"`, `automatic: false` and empty notes. When source authority is `Fea`

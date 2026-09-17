@@ -19,7 +19,7 @@ pub use command::{
     Change, Command, CurveKind, DeleteMode, HandleMode, Nib, PathOp, PointRef, SegmentKind,
     SimplifyOptions, StrokeCap, StrokeJoin, StrokeOptions,
 };
-pub use document::{Document, DocumentEvent, EditToken};
+pub use document::{Document, DocumentEvent, EditToken, PreparedFeatureChange};
 pub use error::Error;
 pub use metrics::{MetricsSource, ResolvedMetrics};
 pub use session::{DefaultFontOpener, DocId, FontOpener, Session};
