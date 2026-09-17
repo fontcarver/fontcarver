@@ -1,6 +1,6 @@
 # P2b 08 — Atomic imported conversion, revert and kerning/anchor lift
 
-Date: 2026-09-17. Status: planned, not implemented.
+Date: 2026-09-17. Status: implemented and independently reviewed.
 Dependencies: 02–07; first simple workflow may integrate after 06 behind coverage gates.
 Read `CONVENTIONS.md`, the [design](../../specs/2026-09-17-p2b-editable-layout.md)
 and [implementation plan](../2026-09-17-p2b-editable-layout.md).
@@ -55,3 +55,17 @@ Write behavioral failing tests before implementation. Keep scope bounded; report
 blocking contract changes to the coordinator. Finish with a report under 300
 words: built, commands/results, limitations and unresolved questions. Do not
 claim completion from documentation or mock-only tests.
+
+## Completion evidence
+
+Implemented all-master source proof, bounded single-use tokens (300 seconds,
+16 candidates), atomic activation, native backup/revert and independently
+proven optional spacing/anchor transfers. Joint transfer preserves exact
+mark/mkmk and compatible abvm/blwm aliases, lookup identity, language assignments
+and writer ordering. Unproven transfers retain complete source rules.
+
+Verified 9 API workflow tests, 6 conversion unit/type tests, 10 lift integration
+tests and 3 extraction tests; scoped Clippy and independent review passed.
+FCF reopen/revert/undo, original-byte verification, unrelated edits and
+outline-generation preservation are covered. Final integrated results are in
+[P2b acceptance](../../../p2b-acceptance.md).

@@ -1,6 +1,6 @@
 # P2b 05 — Imported layout inventory and lookup graph
 
-Date: 2026-09-17. Status: planned, not implemented.
+Date: 2026-09-17. Status: implemented and independently reviewed; final P2b acceptance passed.
 Dependencies: 01; coordinate API conventions with 03.
 Read `CONVENTIONS.md`, the [design](../../specs/2026-09-17-p2b-editable-layout.md)
 and [implementation plan](../2026-09-17-p2b-editable-layout.md).
@@ -39,3 +39,41 @@ Write behavioral failing tests before implementation. Keep scope bounded; report
 blocking contract changes to the coordinator. Finish with a report under 300
 words: built, commands/results, limitations and unresolved questions. Do not
 claim completion from documentation or mock-only tests.
+
+## API implementation evidence — 2026-09-17
+
+`layout.inspect`, `layout.rules` and `layout.rule_glyphs` expose imported tables,
+ordered lookup metadata, explicit coverage blockers, source-like rule renderings
+and stable session glyph handles. Pages require limits from 1 through 200;
+continuations require the original document generation. Responses carry document,
+compile and source/draft revisions plus the imported-layout fingerprint.
+
+The runtime inventory is parsed outside the session lock and cached for at most
+eight documents, keyed by effective compile revision. Close clears its cache.
+Every response rechecks the complete snapshot identity before binding glyph
+handles. Inspection never mutates authority, history or dirty state. A converted
+native backup is identified separately from conversion coverage.
+
+Rule previews contain at most 4096 characters and 64 glyph references; the
+separate glyph-reference endpoint pages the complete bounded class/reference
+list without expanding pairs. An actual 70-alternate GSUB fixture verifies that
+references after the first 64 remain available through a continuation page.
+
+API verification: the initial two `layout_inspection` integration tests passed
+for bounded/read-only pages, stable glyph handles and stale continuations; the
+additional large-alternate-class regression passed independently. Generated
+TypeScript and scoped all-target Clippy passed. Kernel evidence below covers
+malformed binary traversal and graph coverage; the final integrated acceptance
+also passed (see [P2b acceptance](../../../p2b-acceptance.md)).
+
+## Kernel implementation evidence — 2026-09-17
+
+`LayoutImport` hashes raw layout tables and original glyph order, retains checked
+lookup graphs only at runtime, and bounds all inspector output. BASE-only,
+legacy-only/AAT/JSTF authority, native conversion backup inspection, malformed
+references, cycles and allocation amplification have regression fixtures.
+FeatureParams or registration blockers retain decoded supported lookup rules
+and paged glyph references for inspection while whole conversion stays blocked.
+`layout_inventory` has 8 passing integration tests; the licensed NotoSans blocked
+inspection regression also passes. See the capability matrix and task 07 for
+additional decompiler and canonical-equivalence evidence.

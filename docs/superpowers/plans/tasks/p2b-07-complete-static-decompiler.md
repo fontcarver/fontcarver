@@ -1,6 +1,6 @@
 # P2b 07 — Remaining static lookup and GDEF/BASE coverage
 
-Date: 2026-09-17. Status: planned, not implemented.
+Date: 2026-09-17. Status: kernel implemented and focused acceptance verified; milestone-wide acceptance coordinated separately.
 Dependencies: 06.
 Read `CONVENTIONS.md`, the [design](../../specs/2026-09-17-p2b-editable-layout.md)
 and [implementation plan](../2026-09-17-p2b-editable-layout.md).
@@ -40,3 +40,23 @@ Write behavioral failing tests before implementation. Keep scope bounded; report
 blocking contract changes to the coordinator. Finish with a report under 300
 words: built, commands/results, limitations and unresolved questions. Do not
 claim completion from documentation or mock-only tests.
+
+## Implementation evidence — 2026-09-17
+
+Implemented in `fc-layout/src/import/`: checked binary readers, ordered lookup
+and feature graphs, complete static decompiler, bounded inspector records and
+whole-graph equivalence. GSUB 1–8 / GPOS 1–9 and static representable GDEF/BASE
+have actual pinned-compiler roundtrips, including all twelve GSUB/GPOS context
+format combinations. Refer to
+[`LAYOUT_CAPABILITIES.md`](../../../../crates/fc-layout/tests/LAYOUT_CAPABILITIES.md)
+for exact accepted fields, rejection fixtures, resource bounds and real-font
+corpus outcomes. Unsupported fields and unproven recompilation remain blocked;
+no conversion is authorized by shaping samples alone.
+
+Focused validation: 48 import unit tests passed; 10 layout import and 8 inventory
+integration tests passed together, then the added blocked-font inspector case
+and two full GDEF/BASE graph cases passed separately. Logs are in ignored
+`target/p2b-import-{unit,integration,inspector,full-graph}.log`; the final milestone
+report records consolidated suite counts. Separate kernel review findings were
+fixed with regressions for lookup sharing, empty language fallback, ordering and
+shared-offset allocation limits.

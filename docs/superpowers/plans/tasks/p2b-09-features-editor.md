@@ -1,6 +1,6 @@
 # P2b 09 — Features editor, lookup inspector and edit handovers
 
-Date: 2026-09-17. Status: planned, not implemented.
+Date: 2026-09-17. Status: implemented and independently reviewed.
 Dependencies: 02–05 interfaces fixed; integrate 07/08 before completion.
 Read `CONVENTIONS.md`, the [design](../../specs/2026-09-17-p2b-editable-layout.md)
 and [implementation plan](../2026-09-17-p2b-editable-layout.md).
@@ -46,3 +46,17 @@ Write behavioral failing tests before implementation. Keep scope bounded; report
 blocking contract changes to the coordinator. Finish with a report under 300
 words: built, commands/results, limitations and unresolved questions. Do not
 claim completion from documentation or mock-only tests.
+
+## Completion evidence
+
+Implemented the complete source/lookup UI, CodeMirror completion and UTF-16
+diagnostics, document-owned undo/IME handling, generation/freeze, source proof,
+conversion and native restore. Generic edit participants protect both new FEA
+drafts and existing outline/spacing edits during handovers and final close.
+All 13 added/transitive editor packages are MIT, recorded in `THIRD_PARTY.md`.
+
+Independent review passed 59 Features tests and 39 navigation/handover tests.
+The complete frontend suite passed 1,075 tests; TypeScript, ESLint, production
+build and isolated real-backend workflows passed. Final visual review moved
+optional compiler proof details under a translated disclosure; 11 targeted
+tests cover that change. See [P2b acceptance](../../../p2b-acceptance.md).

@@ -1,6 +1,6 @@
 # P2b 11 — P2b corpus, headless acceptance and independent review
 
-Date: 2026-09-17. Status: planned, not implemented.
+Date: 2026-09-17. Status: automated acceptance and independent review complete.
 Dependencies: 01–10 complete.
 Read `CONVENTIONS.md`, the [design](../../specs/2026-09-17-p2b-editable-layout.md)
 and [implementation plan](../2026-09-17-p2b-editable-layout.md).
@@ -39,3 +39,14 @@ Write behavioral failing tests before implementation. Keep scope bounded; report
 blocking contract changes to the coordinator. Finish with a report under 300
 words: built, commands/results, limitations and unresolved questions. Do not
 claim completion from documentation or mock-only tests.
+
+## Completion evidence
+
+The coordinated gate passed 673 Rust tests across the main kernel, selected
+sfnt suites and CLI, plus 1,075 frontend tests and 10 real-backend Playwright
+workflows. Workspace Clippy, formatting, generated API, TypeScript, lint and
+production build passed. Independent kernel/frontend reviews are clear; a
+separate translator verified Chinese parity and final browser screenshots.
+The paused timing and existing release-only gates remain explicitly excluded.
+The complete support matrix, measured logs and visual evidence are in
+[P2b acceptance](../../../p2b-acceptance.md).

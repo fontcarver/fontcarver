@@ -1,6 +1,6 @@
 # P2b 03 — Structured diagnostics and guarded activation
 
-Date: 2026-09-17. Status: planned, not implemented.
+Date: 2026-09-17. Status: implemented and verified in the final milestone integration gate.
 Dependencies: 01 and 02.
 Read `CONVENTIONS.md`, the [design](../../specs/2026-09-17-p2b-editable-layout.md)
 and [implementation plan](../2026-09-17-p2b-editable-layout.md).
@@ -54,3 +54,37 @@ Write behavioral failing tests before implementation. Keep scope bounded; report
 blocking contract changes to the coordinator. Finish with a report under 300
 words: built, commands/results, limitations and unresolved questions. Do not
 claim completion from documentation or mock-only tests.
+
+## Implementation evidence — 2026-09-17
+
+The source API now provides `features.get`, `set_draft`, `discard_draft`,
+`validate`, `apply` and `freeze`. Rust DTOs generate the TypeScript contract.
+Validation and activation compile a snapshot outside the document lock, then
+recheck document generation, effective compile revision and feature revision.
+Imported authority and malformed native drafts cannot enter generic activation.
+Freeze creates one persisted draft transaction; applying it remains explicit.
+
+Generated provenance stays server-owned: `set_draft` retains trusted records,
+and generic `doc.apply` / `doc.edit_apply` reject draft commands recursively,
+including nested batches. Forged source/proof fields cannot replace the stored
+candidate. Active shaping uses the effective compile revision, so invalid draft
+typing does not make an accepted preview stale.
+
+Verified API evidence:
+
+- `cargo test -p fc-api --test features --test layout_inspection --lib`: 110
+  library tests, 10 feature integration tests and two inspector tests passed.
+- Subsequent focused regressions passed for draft-only shaping and explicit
+  generation diagnostic truncation (120 missing small-cap bases).
+- Four actual-compiler race tests cover glyph deletion, glyph undo/redo, newer
+  draft text and document close between snapshot and activation.
+- `cargo clippy -p fc-api --all-targets -- -D warnings` and generated API output
+  passed. The initial frontend type check correctly exposed existing mock
+  `Change` records needing the new `feature_source` field; UI integration owns
+  those adaptations.
+
+The final combined Rust gate passed all API, compiler, document, model, layout
+and format suites, including combined lifting. Export tests prove native invalid
+draft persistence, all external-export barriers, direct source-writer guards and
+revalidation against the current glyph set. See
+[P2b acceptance](../../../p2b-acceptance.md) for integrated evidence.

@@ -1,6 +1,6 @@
 # P2b implementation plan
 
-Date: 2026-09-17. Status: task 01 complete; tasks 02–11 remain planned.
+Date: 2026-09-17. Status: tasks 01–11 complete within the documented static coverage.
 Behavior: [P2b design](../specs/2026-09-17-p2b-editable-layout.md).
 
 ## Original planning checkpoint
@@ -12,6 +12,11 @@ any P2b production feature complete or resume the paused investigations.
 
 The user subsequently authorized the next implementation step. Task 01 is now
 implemented and verified: see [P2b-01 acceptance](../../p2b-01-acceptance.md).
+
+The user has now authorized completion of all remaining P2b tasks, retaining
+the earlier approval for delegated implementation, independent translation and
+review, and local commits. All three gates below are complete; the acceptance
+report records actual results and conservative conversion boundaries.
 
 ## Delivery sequence
 
@@ -29,11 +34,15 @@ implemented and verified: see [P2b-01 acceptance](../../p2b-01-acceptance.md).
 | [10](tasks/p2b-10-localization.md) | Independent Chinese translation and terminology QA | 09 strings stable | `zh-CN.json`; translator owns it |
 | [11](tasks/p2b-11-acceptance-review.md) | Corpus, headless acceptance and independent review | 01–10 | tests, fixtures and acceptance report |
 
-Completed **task 01**. Its first failing regression loaded whole-file UFO FEA
+Completed **tasks 01–11**; measured results and remaining format boundaries are
+recorded in [P2b acceptance](../../p2b-acceptance.md). The next milestone is P2c
+CFF export, followed by P2d formats.
+
+The first regression for **task 01** loaded whole-file UFO FEA
 beginning with `languagesystem` and a named class, compiled a ligature, exported
 and reimported it, checking both source spelling and shaping. This exposed and
-fixed the source-path inconsistency before adding a new UI. Start **task 02**
-next: persisted feature drafts, snapshots and effective compile revisions.
+fixed the source-path inconsistency before adding a new UI. Tasks 02–11 then
+added drafts, validation, generation, imported conversion, UI and acceptance.
 
 Tasks 02 and 05 can proceed independently after 01. The frontend can build
 against reviewed/generated contracts after 03/05; do not invent a competing
@@ -124,11 +133,10 @@ generated-type commit is needed. Record actual commit/check results at handoff.
 - [x] Complete independent final design review and resolve findings.
 - [x] Validate document links and prepare all three local checkpoints.
 - [x] Implement and verify P2b task 01 (224 Rust tests; see acceptance report).
-- [ ] Implement and verify P2b tasks 02–11.
+- [x] Implement and verify P2b tasks 02–11; see the final acceptance report.
 
-No calendar estimate is committed at this point. Re-estimate after the simple
-decompiler/compiler-equivalence slice: its support rate and rejected cases are
-the main unknowns, not editor scaffolding.
+The complete static matrix and original-font rejection outcomes are recorded
+explicitly; safe rejection is not reported as successful corpus conversion.
 
 ### Independent review resolution
 
@@ -150,6 +158,6 @@ recheck confirmed these fixes, with one Gate B wording correction applied above.
   matched the previously accepted workspace. Its recorded acceptance remains
   414 Rust, 994 frontend and 6 headless tests; no feature code changed during
   this planning/checkpoint work.
-- P2b adds documentation only. All 79 local links across 19 new/updated documents
-  resolve; task files 01–11 are present and whitespace checks pass. Implementation
-  and its acceptance are still pending.
+- At the original planning checkpoint P2b added documentation only. All 79 local
+  links across 19 new/updated documents resolved, with task files 01–11 present.
+  Implementation and acceptance have since completed as recorded above.
