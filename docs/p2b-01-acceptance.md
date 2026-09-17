@@ -55,8 +55,10 @@ reordering, EOF and invalid UTF-8 offsets. Independent read-only review found
 no blocking implementation issue.
 
 Local compiler/model, Clippy and generation logs are under ignored `target/`
-with the `p2b01-` prefix. No frontend behavior changed, so browser acceptance
-was not rerun. Drafts, diagnostics APIs, imported conversion and the Features
-editor remain later tasks; clean imported source-export policy belongs to 03.
+with the `p2b01-` prefix. No frontend behavior changed in this slice, so browser
+acceptance was not rerun then. Drafts, diagnostics APIs, imported conversion,
+the Features editor and clean imported source-export policy were implemented
+in subsequent tasks; see [final P2b acceptance](p2b-acceptance.md).
 
-Next: [P2b-02 — feature draft transactions and persistence](superpowers/plans/tasks/p2b-02-draft-transactions.md).
+Next at this checkpoint was [P2b-02 — feature draft transactions and persistence](superpowers/plans/tasks/p2b-02-draft-transactions.md).
+All P2b tasks are now complete; the current next milestone is P2c static OTF/CFF export.

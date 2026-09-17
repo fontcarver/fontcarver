@@ -1,6 +1,6 @@
 # P2b 07 — Remaining static lookup and GDEF/BASE coverage
 
-Date: 2026-09-17. Status: kernel implemented and focused acceptance verified; milestone-wide acceptance coordinated separately.
+Date: 2026-09-17. Status: implemented and independently reviewed; final P2b acceptance passed.
 Dependencies: 06.
 Read `CONVENTIONS.md`, the [design](../../specs/2026-09-17-p2b-editable-layout.md)
 and [implementation plan](../2026-09-17-p2b-editable-layout.md).
@@ -57,6 +57,6 @@ Focused validation: 48 import unit tests passed; 10 layout import and 8 inventor
 integration tests passed together, then the added blocked-font inspector case
 and two full GDEF/BASE graph cases passed separately. Logs are in ignored
 `target/p2b-import-{unit,integration,inspector,full-graph}.log`; the final milestone
-report records consolidated suite counts. Separate kernel review findings were
+report records consolidated suite counts (see [P2b acceptance](../../../p2b-acceptance.md)). Separate kernel review findings were
 fixed with regressions for lookup sharing, empty language fallback, ordering and
 shared-offset allocation limits.

@@ -1,6 +1,7 @@
 # P2b — design audit and independent review
 
-Date: 2026-09-17. Status: complete; implementation tasks remain planned.
+Date: 2026-09-17. Status: design audit complete; subsequent implementation tasks
+01–11 are also complete (see [P2b acceptance](../../../p2b-acceptance.md)).
 
 Read `CONVENTIONS.md` and the binding P2/product specs before working.
 This task prepares the detailed P2b design; it does not implement features.

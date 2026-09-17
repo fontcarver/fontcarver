@@ -65,5 +65,6 @@ Verification on 2026-09-17:
 - `cargo fmt -p fc-model -p fc-doc --check` and `git diff --check`: passed.
 
 Compiler/proof validation, API orchestration, source-export enforcement and UI
-remain assigned to tasks 03–11; the trusted commit constructor documents this
-validation obligation for direct Rust consumers.
+were completed in tasks 03–11; see [P2b acceptance](../../../p2b-acceptance.md).
+The trusted commit constructor documents the validation obligation for direct
+Rust consumers.

@@ -1,14 +1,15 @@
 # P2b — editable OpenType layout
 
-Date: 2026-09-17. Status: independently reviewed design; task 01 implemented,
-remaining implementation pending. See [task 01 acceptance](../../p2b-01-acceptance.md).
+Date: 2026-09-17. Status: tasks 01–11 implemented, independently reviewed and
+verified within the documented static conversion scope. See
+[P2b acceptance](../../p2b-acceptance.md) for evidence and remaining boundaries.
 
 ## 1. Outcome and authority
 
-The user authorized advancing the proposed next step: detailed P2b design and
-task decomposition, then implementation of task 01. P2a is complete. This
-document specifies all of P2b; only task 01 is implemented so far. The user separately authorized
-local checkpoint commits. The binding product scope remains
+The user authorized detailed P2b design and task decomposition, task 01, then
+completion of all P2b. P2a and P2b are complete. The user also authorized
+delegated implementation, independent translation and review, and local
+checkpoint commits. The binding product scope remains
 [product design §§6.2–6.3, 12.5, 14](2026-09-03-fontcarver-design.md) and the
 [P2 delivery order](2026-09-07-p2-kerning-design.md).
 
@@ -25,7 +26,10 @@ conversion; a horizontal UI is not permission to drop them.
 
 ## 2. Inspected baseline and prerequisites
 
-| Current code | Consequence for P2b |
+This table records the pre-implementation audit. The completed work and current
+capability boundaries are recorded in the acceptance report above.
+
+| Code at the inspected baseline | Consequence for P2b |
 | --- | --- |
 | `fc-model/src/features.rs`: structured blocks and global `Fea` / `ImportedTables`; `automatic` is metadata | Add real generation policy and distinguish saved drafts from active source |
 | `fc-compile/src/source.rs`: `Features::to_fea()` plus fontc kerning/anchor writers | Validate with the same assembled source and writer options used by export |
@@ -37,10 +41,10 @@ conversion; a horizontal UI is not permission to drop them.
 | `app/src/editor/editSession.ts`, `shell/tabActions.ts`: outline/text edit handovers | Register Features drafts as document edit participants; propagate persistence errors |
 | `fc-compile/src/shaping.rs`: Latin/default-feature advance fingerprint | Add full glyph/cluster/offset/script/language comparison for layout acceptance |
 
-No new runtime dependency is required by the design work. Implementation uses
-the locked fontations, fea-rs, fontc and harfrust versions. CodeMirror 6 packages
-are a planned frontend dependency, with exact versions and permissive-license
-verification recorded when introduced; no speculative dependency upgrade.
+Implementation uses the locked fontations, fea-rs, fontc and harfrust versions.
+CodeMirror 6 packages were added for the frontend editor; exact versions,
+dependency justifications and permissive-license verification are recorded in
+[THIRD_PARTY.md](../../../THIRD_PARTY.md).
 
 ## 3. Source, draft and authority
 

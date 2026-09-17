@@ -1,6 +1,29 @@
 # FontCarver — resume TODO (written 2026-09-05, session paused by the user)
 
-## Current status — P2b-01 complete, 2026-09-17
+## Current status — P2b complete, 2026-09-17
+
+The user authorized completion of all P2b, with separate implementation,
+translation and review agents and local checkpoint commits. Tasks 01–11 are
+implemented and verified within the documented static conversion scope:
+feature drafts/editor, diagnostics and activation, automatic features,
+imported-layout inspection, validated conversion, proven kerning/anchor transfer
+and original-layout restore. Unsupported or unproven conversions retain their
+original tables.
+
+Verification: 673 Rust tests, 1,075 frontend tests and 10 real-backend browser
+workflows passed; formatting, workspace Clippy, TypeScript, ESLint and production
+build passed. See [P2b acceptance](../../p2b-acceptance.md) for the exact gates,
+ignored/filtered tests, final focused checks, screenshots and limitations, and
+the [completed implementation plan](2026-09-17-p2b-editable-layout.md).
+
+Local checkpoints: `80d72e1` records implementation and `421ede6` records
+acceptance and task completion. Next: design and plan **P2c — static OTF/CFF
+export**, followed by P2d format work. Performance investigation, FontForge
+comparison and native desktop automation remain paused; release packaging
+remains unverified. Earlier checkpoint sections below preserve their handoff
+state; this current status and the updated milestone checklist take precedence.
+
+## Previous checkpoint — P2b-01 complete, 2026-09-17
 
 The user requested the next implementation step. Shared mapped FEA assembly,
 stable source IDs, narrow legacy FCF migration and consistent UFO source
@@ -9,9 +32,9 @@ spelling, CRLF and disabled blocks are retained; actual shaping round trips pass
 
 Verification: 224 Rust tests, workspace/all-target Clippy, formatting, API
 generation and TypeScript checks passed. See [P2b-01 acceptance](../../p2b-01-acceptance.md).
-Next: [P2b-02 — draft transactions and persistence](tasks/p2b-02-draft-transactions.md).
-The remaining P2b implementation, P2c/P2d and the existing paused work remain
-outside this completed slice.
+Next at that checkpoint: [P2b-02 — draft transactions and persistence](tasks/p2b-02-draft-transactions.md).
+The remaining P2b implementation was outside that slice and is now complete;
+P2c/P2d and the existing paused work remain outside P2b.
 
 ## Previous checkpoint — P2b design ready, 2026-09-17
 
@@ -19,14 +42,16 @@ The user authorized the P2b planning step and delegated local commit decisions.
 The [reviewed design](../specs/2026-09-17-p2b-editable-layout.md) and
 [11-task implementation plan](2026-09-17-p2b-editable-layout.md) now cover source
 drafts, diagnostics, automatic features, static layout decompilation, guarded
-conversion/revert and proven kerning/anchor lifting. P2b code is not implemented.
+conversion/revert and proven kerning/anchor lifting. No P2b code was implemented
+at that planning checkpoint.
 
 Local checkpoints: `c338650` preserves the pre-existing rename and legacy-data
 compatibility work; `918a994` records the completed P2a. The isolated first tree
 passed compilation, compatibility tests and frontend checks; P2a production
-files match their accepted state. The P2b design is the next documentation commit.
+files matched their accepted state. The next documentation commit at that
+checkpoint recorded the P2b design.
 
-Next implementation task: [P2b 01 — shared mapped FEA assembly and UFO
+Next implementation task at that checkpoint: [P2b 01 — shared mapped FEA assembly and UFO
 compatibility](tasks/p2b-01-source-assembly.md). Start with the whole-file UFO FEA
 regression, then unify source assembly before adding drafts or the Features UI.
 P2c/P2d remain later milestones. Performance investigation, FontForge comparison
@@ -47,8 +72,8 @@ English/light and Chinese/dark visual checks are complete. See
 [implementation plan](2026-09-16-p2a-authoring.md), and its scoped task reports.
 
 At the original P2a handoff changes were uncommitted on `p2a-kerning-resolution`;
-the 2026-09-17 checkpoints above now record them. P2b planning is complete and
-its implementation is next. P2c/P2d remain later milestones. Performance investigation,
+the 2026-09-17 checkpoints above now record them. P2b has also been completed;
+P2c/P2d remain later milestones. Performance investigation,
 FontForge comparison and native desktop automation remain paused.
 
 ## Previous bounded step — P2a eligibility complete, 2026-09-16
@@ -120,16 +145,17 @@ approved, task-by-task implementation plan.
 - [x] Pass all 79 `fc-doc` tests, Clippy, formatting and independent review.
 - [x] Update this TODO, README status and the P2 design draft.
 
-### Remaining work recorded at the 2026-09-08 handoff
+### Milestone checklist — updated 2026-09-17
 
 The proposed next slice was shared editing eligibility for source-owned versus
-imported layout. This was implemented in the 2026-09-16 step above; broader
-authoring planning and delivery remain outstanding.
+imported layout. This and the broader P2a/P2b authoring milestones are now
+complete; P2c/P2d remain outstanding.
 
 - [x] Review the full P2a design beyond the completed scope recap and small query.
 - [x] Write the detailed P2a implementation plan, with exact interfaces and tests.
 - [x] Implement and verify P2a: horizontal kerning for eligible source fonts.
 - [x] Design and plan P2b: editable OpenType layout and imported-font support (2026-09-17).
+- [x] Implement, translate, independently review and verify P2b tasks 01–11 (2026-09-17).
 - [ ] Design and plan P2c: static OTF/CFF export.
 - [ ] Design and plan P2d: Glyphs/SFD/Type 1 interoperability and problem checks.
 

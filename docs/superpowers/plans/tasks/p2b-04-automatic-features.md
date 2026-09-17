@@ -1,6 +1,6 @@
 # P2b 04 — Automatic feature source and writer ownership
 
-Date: 2026-09-17. Status: implemented; milestone integration gate tracked by the coordinator.
+Date: 2026-09-17. Status: implemented and independently reviewed; final P2b acceptance passed.
 Dependencies: 01 and 03.
 Read `CONVENTIONS.md`, the [design](../../specs/2026-09-17-p2b-editable-layout.md)
 and [implementation plan](../2026-09-17-p2b-editable-layout.md).
@@ -67,4 +67,4 @@ Compiler-focused verification: 20 tests passed across `feature_generation`,
 `feature_validation`, and `feature_writers`; 2 model generation/serialization
 tests passed. `cargo clippy -p fc-model -p fc-compile --all-targets -- -D warnings`,
 scoped formatting, and `git diff --check` passed. Full workspace/API/UI gates
-remain recorded in the milestone acceptance report.
+passed; see [P2b acceptance](../../../p2b-acceptance.md).

@@ -1,15 +1,18 @@
 # P2 preparation and horizontal kerning design
 
 Date: 2026-09-07.
-Status: P2a implemented and verified as of 2026-09-16; P2b detailed design reviewed
-2026-09-17, implementation pending; P2c/P2d remain planned.
+Status: P2a implemented and verified as of 2026-09-16; P2b implemented and
+verified within its documented static conversion scope as of 2026-09-17;
+P2c/P2d remain planned.
 Baseline: `p1-outline-editing` at `1305109`, production candidate `2e53ba6`.
 
 ## Context and authority
 
-Latest instruction (2026-09-17): the user authorized P2b detailed planning and
-local checkpoint commits. See the [P2b design](2026-09-17-p2b-editable-layout.md)
-and [implementation plan](../plans/2026-09-17-p2b-editable-layout.md).
+Latest instruction (2026-09-17): the user authorized completion of all P2b,
+retaining approval for delegated implementation, translation, review and local
+checkpoint commits. See the [P2b design](2026-09-17-p2b-editable-layout.md),
+[completed implementation plan](../plans/2026-09-17-p2b-editable-layout.md) and
+[acceptance report](../../p2b-acceptance.md).
 
 Earlier instruction (2026-09-16): the user requested completion of all P2a and
 authorized separate implementation, translation and review agents. The shared
@@ -20,7 +23,8 @@ imported-table authority, active source-owned `kern`, and unparseable source.
 
 The [implementation plan](../plans/2026-09-16-p2a-authoring.md) and
 [acceptance report](../../p2a-acceptance.md) record the completed milestone.
-Continue with P2b through `../plans/2026-09-05-p1-resume-todo.md`. The earlier
+The next milestone is P2c static OTF/CFF export; see the
+[current TODO](../plans/2026-09-05-p1-resume-todo.md). The earlier
 pauses on performance, comparison and native desktop automation remain in effect.
 
 The user tried the P1 desktop version, found its current usability acceptable

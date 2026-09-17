@@ -54,5 +54,7 @@ workspace formatting, API generation, TypeScript and diff checks passed.
 Independent read-only review found no blocker. The paused Source Han timing
 test remained excluded. No new runtime or third-party dependency was added.
 
-No drafts, editor, validation API or imported conversion was implemented; these
-remain subsequent tasks. Details: [acceptance report](../../../p2b-01-acceptance.md).
+This task did not implement drafts, the editor, validation API or imported
+conversion; subsequent tasks completed them. Details:
+[task 01 acceptance](../../../p2b-01-acceptance.md) and
+[final P2b acceptance](../../../p2b-acceptance.md).
