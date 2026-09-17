@@ -1,6 +1,25 @@
 # FontCarver — resume TODO (written 2026-09-05, session paused by the user)
 
-## Current status — P2a complete, 2026-09-16
+## Current status — P2b design ready, 2026-09-17
+
+The user authorized the P2b planning step and delegated local commit decisions.
+The [reviewed design](../specs/2026-09-17-p2b-editable-layout.md) and
+[11-task implementation plan](2026-09-17-p2b-editable-layout.md) now cover source
+drafts, diagnostics, automatic features, static layout decompilation, guarded
+conversion/revert and proven kerning/anchor lifting. P2b code is not implemented.
+
+Local checkpoints: `c338650` preserves the pre-existing rename and legacy-data
+compatibility work; `918a994` records the completed P2a. The isolated first tree
+passed compilation, compatibility tests and frontend checks; P2a production
+files match their accepted state. The P2b design is the next documentation commit.
+
+Next implementation task: [P2b 01 — shared mapped FEA assembly and UFO
+compatibility](tasks/p2b-01-source-assembly.md). Start with the whole-file UFO FEA
+regression, then unify source assembly before adding drafts or the Features UI.
+P2c/P2d remain later milestones. Performance investigation, FontForge comparison
+and native desktop automation remain paused.
+
+## Completed milestone — P2a, 2026-09-16
 
 The user authorized all P2a plus separate implementation, translation and review.
 Horizontal source-font kerning authoring is implemented and verified: atomic
@@ -14,9 +33,9 @@ English/light and Chinese/dark visual checks are complete. See
 [P2a acceptance](../../p2a-acceptance.md), the
 [implementation plan](2026-09-16-p2a-authoring.md), and its scoped task reports.
 
-Changes remain uncommitted on `p2a-kerning-resolution`, preserving pre-existing
-workspace edits. Next: design and plan P2b editable OpenType layout and imported
-font support. P2c/P2d remain later milestones. Performance investigation,
+At the original P2a handoff changes were uncommitted on `p2a-kerning-resolution`;
+the 2026-09-17 checkpoints above now record them. P2b planning is complete and
+its implementation is next. P2c/P2d remain later milestones. Performance investigation,
 FontForge comparison and native desktop automation remain paused.
 
 ## Previous bounded step — P2a eligibility complete, 2026-09-16
@@ -97,7 +116,7 @@ authoring planning and delivery remain outstanding.
 - [x] Review the full P2a design beyond the completed scope recap and small query.
 - [x] Write the detailed P2a implementation plan, with exact interfaces and tests.
 - [x] Implement and verify P2a: horizontal kerning for eligible source fonts.
-- [ ] Design and plan P2b: editable OpenType layout and imported-font support.
+- [x] Design and plan P2b: editable OpenType layout and imported-font support (2026-09-17).
 - [ ] Design and plan P2c: static OTF/CFF export.
 - [ ] Design and plan P2d: Glyphs/SFD/Type 1 interoperability and problem checks.
 

@@ -1,12 +1,17 @@
 # P2 preparation and horizontal kerning design
 
 Date: 2026-09-07.
-Status: P2a implemented and verified as of 2026-09-16; P2b–P2d remain planned.
+Status: P2a implemented and verified as of 2026-09-16; P2b detailed design reviewed
+2026-09-17, implementation pending; P2c/P2d remain planned.
 Baseline: `p1-outline-editing` at `1305109`, production candidate `2e53ba6`.
 
 ## Context and authority
 
-Latest instruction (2026-09-16): the user requested completion of all P2a and
+Latest instruction (2026-09-17): the user authorized P2b detailed planning and
+local checkpoint commits. See the [P2b design](2026-09-17-p2b-editable-layout.md)
+and [implementation plan](../plans/2026-09-17-p2b-editable-layout.md).
+
+Earlier instruction (2026-09-16): the user requested completion of all P2a and
 authorized separate implementation, translation and review agents. The shared
 resolver and ownership check now support validated pair/group transactions,
 undo/redo, typed bounded queries, glyph group controls, text gap/pair editing,

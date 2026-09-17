@@ -107,4 +107,13 @@ touch the user's running desktop session or configuration.
 P2b imported-layout authoring/FEA editing, P2c CFF export and P2d format expansion
 remain later milestones. Horizontal operations retain vertical kerning.
 Native desktop automation, release packaging, performance investigation and
-FontForge comparison remain paused. This task does not commit, merge or publish.
+FontForge comparison remain paused. The original P2a task did not commit,
+merge or publish.
+
+## Local checkpoint — 2026-09-17
+
+The user subsequently authorized local commits. P2a is recorded in `918a994`,
+following the existing rename/compatibility checkpoint `c338650`. Production
+file hashes match the accepted workspace; this checkpoint adds no feature
+changes. P2b proceeds through its separate
+[design and implementation plan](superpowers/plans/2026-09-17-p2b-editable-layout.md).

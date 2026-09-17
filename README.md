@@ -48,7 +48,10 @@ per-master pair rules, text gap editing, undo/redo, and matching preview/export
 with headless acceptance. Imported binary layout remains previewable; editing
 its spacing rules belongs to P2b. See
 [`docs/p2a-acceptance.md`](docs/p2a-acceptance.md) for verified behavior and scope.
-The remaining P2 milestones are still planned. There is no release
+P2b now has an independently reviewed
+[design and 11-task implementation plan](docs/superpowers/plans/2026-09-17-p2b-editable-layout.md);
+its next task unifies FEA source assembly and UFO round trips. P2b implementation
+and P2c/P2d remain pending. There is no release
 yet; native workflow verification is partial and release packaging is untested. See
 [`docs/p1-acceptance.md`](docs/p1-acceptance.md) for measured results and current
 limitations, including hinting removal after outline edits. The capability list
