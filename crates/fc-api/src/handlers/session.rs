@@ -23,6 +23,12 @@ pub(crate) fn open(api: &Api, params: OpenParams) -> Result<DocSummary, ApiError
         (open_source(api, path, SourceKind::Ufo)?, Vec::new())
     } else if is_designspace_path(path) {
         (open_source(api, path, SourceKind::Designspace)?, Vec::new())
+    } else if has_extension(path, "glyphs") {
+        (open_source(api, path, SourceKind::Glyphs)?, Vec::new())
+    } else if has_extension(path, "sfd") {
+        (open_source(api, path, SourceKind::Sfd)?, Vec::new())
+    } else if has_extension(path, "pfa") || has_extension(path, "pfb") {
+        (open_source(api, path, SourceKind::Type1)?, Vec::new())
     } else {
         (api.session.open_path(path, params.face_index)?, Vec::new())
     };
@@ -199,12 +205,18 @@ fn epoch_millis(time: SystemTime) -> u64 {
 enum SourceKind {
     Ufo,
     Designspace,
+    Glyphs,
+    Sfd,
+    Type1,
 }
 
 fn open_source(api: &Api, path: &Path, kind: SourceKind) -> Result<DocId, ApiError> {
     let font = match kind {
         SourceKind::Ufo => fc_formats::ufo::read_ufo(path),
         SourceKind::Designspace => fc_formats::ufo::read_designspace(path),
+        SourceKind::Glyphs => fc_formats::glyphs::read_glyphs(path),
+        SourceKind::Sfd => fc_formats::sfd::read_sfd(path),
+        SourceKind::Type1 => fc_formats::type1::read_type1(path),
     }?;
     Ok(api.session.open_font(font, Some(path.to_path_buf())))
 }

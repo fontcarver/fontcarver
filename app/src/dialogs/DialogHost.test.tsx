@@ -33,6 +33,14 @@ function shell(summary = makeSummary()) {
     }),
     'glyphs.list': () => ({ total: 0, items: [] }),
     'glyphs.add': () => ({ added: [], skipped: [] }),
+    'doc.find_problems': ({ doc }) => ({
+      doc,
+      generation: 0,
+      issues: [],
+      total: 0,
+      truncated: false,
+      has_errors: false,
+    }),
   })
   setTransport(transport)
   render(<App />)
@@ -116,6 +124,28 @@ describe('dialog wiring', () => {
     await waitFor(() =>
       expect(screen.queryByRole('progressbar')).not.toBeInTheDocument(),
     )
+  })
+
+  it('opens Find problems from the Font menu and command palette', async () => {
+    const user = userEvent.setup()
+    shell()
+    await screen.findByRole('tab', { name: 'DejaVuSans.ttf' })
+    await user.click(screen.getByRole('menuitem', { name: 'Font' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Find problems…' }))
+    expect(
+      await screen.findByRole('dialog', { name: 'Find problems' }),
+    ).toBeVisible()
+    expect(await screen.findByText('No problems found.')).toBeVisible()
+    await user.keyboard('{Escape}')
+    await user.keyboard('{Control>}{Shift>}P{/Shift}{/Control}')
+    await user.type(
+      screen.getByRole('combobox', { name: 'Commands' }),
+      'Find problems',
+    )
+    await user.keyboard('{Enter}')
+    expect(
+      await screen.findByRole('dialog', { name: 'Find problems' }),
+    ).toBeVisible()
   })
 
   it('warns that a recovered document still points at the original file', async () => {

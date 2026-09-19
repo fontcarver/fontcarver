@@ -27,6 +27,9 @@
     "empty": "将在后续阶段推出"
   },
   "cmd": {
+    "font": {
+      "findProblems": "查找问题…"
+    },
     "file": {
       "new": "新建字体…",
       "open": "打开字体…",
@@ -151,11 +154,71 @@
     "noRecent": "暂无最近打开的文件。"
   },
   "dialog": {
+    "problems": {
+      "title": "查找问题",
+      "help": "检查轮廓、度量、Unicode、组件、字偶距和特性规则。打开字形可查看问题；系统不会自动修复。",
+      "refresh": "刷新",
+      "scanning": "正在检查…",
+      "limit": "结果上限",
+      "stale": "文档已发生变化。请刷新以检查当前版本。",
+      "wrongDocument": "此报告属于另一个文档。请为当前字体重新打开“查找问题”。",
+      "empty": "未发现问题。",
+      "count_one": "{{count, number}} 个问题",
+      "count_other": "{{count, number}} 个问题",
+      "truncated": "发现了更多问题。目前显示至少 {{total, number}} 个问题中的 {{shown, number}} 个；提高结果上限可查看更多（最多 2,000 个）。",
+      "results": "问题",
+      "font": "字体",
+      "featureDiagnostic": "特性规则需要处理。请在“详细信息”中查看编译器消息。",
+      "code": {
+        "invalid-upem": "每 em 单位数超出支持范围。",
+        "missing-masters": "字体没有母版。",
+        "nonfinite-metrics": "字体或母版的度量值不是有限数值。",
+        "missing-layer-master": "此图层引用了不存在的母版。",
+        "invalid-width": "字宽无效。",
+        "invalid-vertical-width": "垂直字宽无效。",
+        "nonfinite-anchor": "锚点位置不是有限数值。",
+        "open-contour": "此轮廓未闭合。",
+        "malformed-contour": "此轮廓的节点序列无法构成有效轮廓。",
+        "nonfinite-point": "轮廓节点的坐标不是有限数值。",
+        "nonfinite-component": "组件变换中含有非有限数值。",
+        "missing-component": "组件引用了不存在的字形。",
+        "missing-component-layer": "当前母版中没有与此组件匹配的图层。",
+        "component-cycle": "组件引用形成循环。",
+        "component-expansion-limit": "展开后的组件几何数据超出编译验证限制。请在“详细信息”中查看具体限制。",
+        "component-depth-limit": "组件引用的嵌套深度超过支持的 64 层上限。",
+        "invalid-unicode": "所分配的 Unicode 值不是有效的标量值。",
+        "duplicate-unicode": "同一个 Unicode 值分配给了多个字形。",
+        "invalid-variation-selector": "Unicode 变体序列无效。",
+        "missing-master-layer": "此字形缺少字体某个母版对应的图层。",
+        "missing-group-member": "字偶距组中包含不存在的字形。",
+        "duplicate-group-membership": "同一个字形在同一侧归属于多个字偶距组。",
+        "inconsistent-group-membership": "字形与字偶距组的归属不一致。",
+        "invalid-kerning-value": "字偶距值不是有限数值。",
+        "invalid-kerning-group": "字偶距组的名称或侧别前缀无效。",
+        "missing-kerning-glyph": "字偶距对引用了不存在的字形。",
+        "missing-kerning-group": "字偶距对引用了不存在的组。",
+        "unapplied-feature-draft": "特性规则有尚未应用的修改。导出前请应用或放弃草稿。",
+        "stale-generated-features": "自动生成特性后，字形集合已发生变化。请重新检查并编译特性源代码。",
+        "feature-validation-skipped": "请先修复结构错误，再次检查以验证特性编译。"
+      },
+      "openGlyph": "打开字形 {{name}}",
+      "layer": "图层 {{name}}",
+      "colorLayer": "彩色图层 {{count}}",
+      "contour": "轮廓 {{count}}",
+      "point": "节点 {{count}}",
+      "severity": {
+        "error": "错误",
+        "warning": "警告",
+        "info": "信息"
+      }
+    },
     "open": {
       "title": "打开字体",
       "label": "文件路径",
       "placeholder": "/path/to/font.ttf",
       "hint": "浏览器模式没有原生文件对话框：请输入内核可读取的路径。",
+      "filter": "字体和字体源文件",
+      "formats": "可打开 FCF、TTF、OTF、TTC/OTC、WOFF/WOFF2、UFO、Designspace、Glyphs、SFD 或 Type 1（PFA/PFB）。",
       "confirm": "打开"
     },
     "saveAs": {
@@ -231,9 +294,14 @@
       "format": "格式",
       "formatName": {
         "Ttf": "TTF",
+        "Otf": "OTF (CFF)",
         "Woff": "WOFF",
         "Woff2": "WOFF2",
         "Ufo": "UFO",
+        "Glyphs": "Glyphs",
+        "Sfd": "SFD",
+        "Pfa": "PFA",
+        "Pfb": "PFB",
         "Designspace": "Designspace",
         "Fcf": "FCF"
       },
@@ -243,6 +311,9 @@
       "pathHint": "浏览器模式没有原生文件对话框：请输入内核可写入的路径。",
       "directoryHint": "此格式将写入软件包目录，而非单个文件。",
       "master": "母版",
+      "allMasters": "已包含所有母版。",
+      "cffHint": "使用三次 CFF 轮廓的静态 OpenType 字体。导出的 CFF 轮廓不含提示信息；无法保留 TrueType 指令。",
+      "type1Hint": "Type 1 无法保留 OpenType 排版（字偶距、连字和替换）、锚点、源图层或已有提示信息。仅导出所选母版，并将组件分解为轮廓。往返转换后可能无法保留 Unicode 分配。",
       "options": "选项",
       "option": {
         "removeOverlap": "移除重叠",
@@ -470,9 +541,14 @@
     "timeout": "内核未及时响应",
     "transport": "界面无法连接内核",
     "kerning_unavailable": "此字体的字偶距暂时无法编辑。",
-    "stale_generation": "文档已发生变化。请刷新数据后重试。"
+    "stale_generation": "文档已发生变化。请刷新数据后重试。",
+    "stale_problems": "扫描期间文档已发生变化。请刷新以检查当前版本。"
   },
   "warning": {
+    "cffUnhintedOutlines": "CFF 轮廓以无提示形式导出。导入的 PostScript 提示信息和 TrueType 指令均不保留。",
+    "type1LayoutLoss": "Type 1 仅保留静态轮廓、字宽和 8 位编码。不保留 OpenType 排版、字偶距、锚点、其他母版和源图层。",
+    "type1HintingLoss": "Type 1 输出不含提示信息。导入的 PostScript 提示信息和 TrueType 指令均不保留。",
+    "type1UnicodeLoss": "Type 1 没有 Unicode cmap 表。部分 Unicode 分配无法从字形名称中恢复。",
     "cffHintsNotImported": "导入 CFF 轮廓时未导入各字形的字干和提示蒙版数据",
     "glyphNamesSynthesized": "字体没有可用的字形名称，因此已生成字形名称。",
     "collectionFaceOpened": "{{message}}",
@@ -486,6 +562,7 @@
     "provenanceHashMismatch": "源字体与其来源记录不再匹配，因此未保留导入的表。",
     "removeOverlapUnavailable": "移除重叠功能尚不可用，因此未执行。",
     "autohintUnavailable": "自动提示功能尚不可用，因此未执行。",
+    "productionNamesUnavailable": "Type 1 导出会保留源字形名称，未应用生产名称。",
     "variationSequencesDropped": "此导出器不会写入 Unicode 变体序列。",
     "postNamesOmitted": "字体超出带名称 post 表的容量，因此已省略字形名称。",
     "valueClamped": "{{message}}",

@@ -80,6 +80,7 @@ export type DialogState =
   | { readonly kind: 'newFont' }
   | { readonly kind: 'addGlyphs'; readonly doc: DocId }
   | { readonly kind: 'export'; readonly doc: DocId }
+  | { readonly kind: 'findProblems'; readonly doc: DocId }
   | { readonly kind: 'preferences' }
   | { readonly kind: 'recovery'; readonly entries: readonly RecoveryEntry[] }
   | { readonly kind: 'simplify' }

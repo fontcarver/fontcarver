@@ -6,7 +6,9 @@ use fc_model::{Font, GlyphName, MasterId, Tag};
 use read_fonts::FontRef;
 use write_fonts::FontBuilder;
 
-use crate::{compile_static, preserve_merge, wrap_woff1, wrap_woff2, CompileOptions, Error};
+use crate::{
+    compile_static_with_metadata, preserve_merge, wrap_woff1, wrap_woff2, CompileOptions, Error,
+};
 
 /// A container format supported by the P1 exporter.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -14,6 +16,8 @@ pub enum ExportFormat {
     /// A TrueType-flavored OpenType sfnt.
     #[default]
     Ttf,
+    /// OpenType sfnt containing static, name-keyed CFF1 outlines.
+    Otf,
     /// WOFF 1 containing a TrueType-flavored sfnt.
     Woff,
     /// WOFF 2 containing a TrueType-flavored sfnt.
@@ -215,7 +219,10 @@ pub fn export_with_progress(
     }
 
     progress(ExportStage::Compile, 0);
-    let compiled = compile_static(
+    let prepared_cff = (options.format == ExportFormat::Otf)
+        .then(|| crate::otf::prepare(font, master, options.production_names))
+        .transpose()?;
+    let compiled = compile_static_with_metadata(
         font,
         master,
         &CompileOptions {
@@ -224,8 +231,30 @@ pub fn export_with_progress(
     )?;
     progress(ExportStage::Preserve, PRESERVE_PERCENT);
     let touched = touched_since_import(font, glyph_generations);
-    let (merged, preservation_warnings) = preserve_merge(&compiled, font, &touched, options)?;
+    let mut preservation_options = options.clone();
+    if options.format == ExportFormat::Otf {
+        preservation_options.keep_tt_instructions = false;
+    }
+    let (merged, preservation_warnings) =
+        preserve_merge(&compiled.bytes, font, &touched, &preservation_options)?;
     warnings.extend(preservation_warnings);
+    let merged = if let Some(prepared) = prepared_cff {
+        let bytes = crate::otf::convert(
+            &merged,
+            font,
+            master,
+            &compiled.glyph_order,
+            options.production_names,
+            prepared,
+        )?;
+        warnings.push(ExportWarning {
+            code: "cff-unhinted-outlines",
+            message: "OTF export regenerates unhinted CFF outlines; imported TrueType and PostScript hints are not retained.".into(),
+        });
+        bytes
+    } else {
+        merged
+    };
     progress(ExportStage::Write, WRITE_PERCENT);
     let sfnt = if let Some(subset) = &options.table_subset {
         subset_tables(&merged, subset)?
@@ -234,7 +263,7 @@ pub fn export_with_progress(
     };
     let tables = table_list(&sfnt)?;
     let bytes = match options.format {
-        ExportFormat::Ttf => sfnt,
+        ExportFormat::Ttf | ExportFormat::Otf => sfnt,
         ExportFormat::Woff => wrap_woff1(&sfnt)?,
         ExportFormat::Woff2 => wrap_woff2(&sfnt)?,
         ExportFormat::Fcf => return Err(Error::UnsupportedFormat("FCF")),
@@ -265,9 +294,9 @@ fn table_list(sfnt: &[u8]) -> Result<Vec<(Tag, u32)>, Error> {
 }
 
 fn subset_tables(sfnt: &[u8], requested: &[Tag]) -> Result<Vec<u8>, Error> {
-    const CORE: [[u8; 4]; 13] = [
+    const CORE: [[u8; 4]; 14] = [
         *b"head", *b"hhea", *b"maxp", *b"OS/2", *b"hmtx", *b"cmap", *b"loca", *b"glyf", *b"name",
-        *b"post", *b"fpgm", *b"prep", *b"cvt ",
+        *b"post", *b"fpgm", *b"prep", *b"cvt ", *b"CFF ",
     ];
     let requested: HashSet<_> = requested.iter().copied().collect();
     let face = FontRef::new(sfnt).map_err(|error| Error::parse("sfnt subset", error))?;

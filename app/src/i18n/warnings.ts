@@ -16,6 +16,10 @@ export type WarningTranslator = (
 const WARNING_KEYS: Readonly<Record<string, string>> = {
   // Import warnings.
   'cff-hints-not-imported': 'warning.cffHintsNotImported',
+  'cff-unhinted-outlines': 'warning.cffUnhintedOutlines',
+  'type1-layout-loss': 'warning.type1LayoutLoss',
+  'type1-hinting-loss': 'warning.type1HintingLoss',
+  'type1-unicode-loss': 'warning.type1UnicodeLoss',
   'glyph-names-synthesized': 'warning.glyphNamesSynthesized',
   'collection-face-opened': 'warning.collectionFaceOpened',
   // Export warnings. `ExportWarning` has the same shape as `DocWarning`, so the
@@ -30,6 +34,7 @@ const WARNING_KEYS: Readonly<Record<string, string>> = {
   'provenance-hash-mismatch': 'warning.provenanceHashMismatch',
   'remove-overlap-unavailable': 'warning.removeOverlapUnavailable',
   'autohint-unavailable': 'warning.autohintUnavailable',
+  'production-names-unavailable': 'warning.productionNamesUnavailable',
   'variation-sequences-dropped': 'warning.variationSequencesDropped',
   'post-names-omitted-capacity': 'warning.postNamesOmitted',
   'value-clamped': 'warning.valueClamped',

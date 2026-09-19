@@ -12,6 +12,7 @@ pub mod error;
 pub mod fcf;
 pub mod kerning;
 pub mod metrics;
+pub mod problems;
 pub mod session;
 pub mod undo;
 

@@ -20,7 +20,7 @@ const IMPORT_LAYOUT_DEPENDENTS: [Tag; 5] = [
     Tag(*b"mort"),
     Tag(*b"JSTF"),
 ];
-const GID_INDEXED_TAGS: [Tag; 18] = [
+const GID_INDEXED_TAGS: [Tag; 23] = [
     Tag(*b"kern"),
     Tag(*b"kerx"),
     Tag(*b"morx"),
@@ -39,10 +39,16 @@ const GID_INDEXED_TAGS: [Tag; 18] = [
     Tag(*b"SVG "),
     Tag(*b"VORG"),
     Tag(*b"JSTF"),
+    Tag(*b"bsln"),
+    Tag(*b"lcar"),
+    Tag(*b"opbd"),
+    Tag(*b"ankr"),
+    Tag(*b"fmtx"),
 ];
-const VARIATION_TAGS: [Tag; 7] = [
+const VARIATION_TAGS: [Tag; 8] = [
     Tag(*b"gvar"),
     Tag(*b"HVAR"),
+    Tag(*b"VVAR"),
     Tag(*b"MVAR"),
     Tag(*b"cvar"),
     Tag(*b"avar"),

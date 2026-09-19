@@ -49,6 +49,41 @@ fn digest(bytes: &[u8]) -> String {
 }
 
 #[test]
+fn new_formats_export_reopen_and_shape_through_shared_api() {
+    let directory = tempfile::tempdir().unwrap();
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(export_font(), None);
+    let api = Api::new(session);
+    api.configure_config_dir(directory.path().join("config"))
+        .unwrap();
+    for (format, extension) in [
+        ("Otf", "otf"),
+        ("Glyphs", "glyphs"),
+        ("Sfd", "sfd"),
+        ("Pfa", "pfa"),
+        ("Pfb", "pfb"),
+    ] {
+        let path = directory.path().join(format!("export.{extension}"));
+        let report = api
+            .call(
+                "session.export",
+                json!({"doc":doc,"path":path,
+            "options":{"format":format}}),
+            )
+            .unwrap_or_else(|error| panic!("{format}: {error}"));
+        assert!(report["bytes_written"].as_u64().unwrap() > 0);
+        let reopened = api.call("session.open", json!({"path":path})).unwrap();
+        assert_eq!(reopened["glyph_count"], 4, "{format}: {reopened}");
+        let run = api
+            .call("text.shape", json!({"doc":reopened["doc"],"text":"AB"}))
+            .unwrap();
+        assert_eq!(run["names"], json!(["A", "B"]), "{format}: {run}");
+        api.call("session.close", json!({"doc":reopened["doc"]}))
+            .unwrap();
+    }
+}
+
+#[test]
 fn feature_drafts_save_natively_but_block_all_external_exports_without_output_changes() {
     let directory = tempfile::tempdir().unwrap();
     let mut font = export_font();
@@ -65,7 +100,18 @@ fn feature_drafts_save_natively_but_block_all_external_exports_without_output_ch
     let session = Arc::new(Session::new());
     let doc = session.open_font(font.clone(), None);
     let api = Api::new(session);
-    for format in ["Ttf", "Woff", "Woff2", "Ufo", "Designspace"] {
+    for format in [
+        "Ttf",
+        "Otf",
+        "Woff",
+        "Woff2",
+        "Ufo",
+        "Designspace",
+        "Glyphs",
+        "Sfd",
+        "Pfa",
+        "Pfb",
+    ] {
         let path = directory.path().join(format);
         std::fs::write(&path, b"previous output").unwrap();
         let error = api
@@ -90,6 +136,39 @@ fn feature_drafts_save_natively_but_block_all_external_exports_without_output_ch
 }
 
 #[test]
+fn type1_reports_requested_but_unsupported_export_options() {
+    let directory = tempfile::tempdir().unwrap();
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(export_font(), None);
+    let api = Api::new(session);
+    for format in ["Pfa", "Pfb"] {
+        let result = api
+            .call(
+                "session.export",
+                json!({"doc": doc,
+                "path": directory.path().join(format), "options": {
+                    "format": format, "remove_overlap": true, "autohint": true,
+                    "production_names": true
+                }}),
+            )
+            .unwrap();
+        let codes: Vec<_> = result["warnings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|warning| warning["code"].as_str().unwrap())
+            .collect();
+        for expected in [
+            "remove-overlap-unavailable",
+            "autohint-unavailable",
+            "production-names-unavailable",
+        ] {
+            assert!(codes.contains(&expected), "{format}: {codes:?}");
+        }
+    }
+}
+
+#[test]
 fn imported_source_export_requires_conversion_before_touching_destination() {
     let directory = tempfile::tempdir().unwrap();
     let mut font = export_font();
@@ -97,7 +176,7 @@ fn imported_source_export_requires_conversion_before_touching_destination() {
     let session = Arc::new(Session::new());
     let doc = session.open_font(font, None);
     let api = Api::new(session);
-    for format in ["Ufo", "Designspace"] {
+    for format in ["Ufo", "Designspace", "Glyphs", "Sfd"] {
         let path = directory.path().join(format);
         let error = api
             .call(
@@ -123,7 +202,7 @@ fn source_export_revalidates_active_features_against_current_glyphs() {
     let session = Arc::new(Session::new());
     let doc = session.open_font(font, None);
     let api = Api::new(session);
-    for format in ["Ufo", "Designspace"] {
+    for format in ["Ufo", "Designspace", "Glyphs", "Sfd"] {
         let path = directory.path().join(format);
         let error = api
             .call(
@@ -135,6 +214,82 @@ fn source_export_revalidates_active_features_against_current_glyphs() {
         assert_eq!(error.code, "invalid_feature_source");
         assert!(!path.exists());
     }
+}
+
+#[test]
+fn source_export_rejects_exponential_component_expansion_before_writing() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut font = export_font();
+    let master = font.default_master().id.clone();
+    let contours = font.glyphs["A"].layers[0].contours.clone();
+    for index in 0..24 {
+        let mut glyph = Glyph::new(format!("branch{index}"));
+        let mut layer = Layer::new_master(master.clone());
+        layer.contours = contours.clone();
+        if index > 0 {
+            layer.components = vec![
+                fc_model::Component {
+                    base: format!("branch{}", index - 1).into(),
+                    ..fc_model::Component::default()
+                };
+                2
+            ];
+        }
+        glyph.layers.push(layer);
+        font.glyphs.insert(glyph.name.clone(), glyph);
+    }
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(font, None);
+    let api = Api::new(session);
+    for format in ["Glyphs", "Sfd"] {
+        let path = directory.path().join(format);
+        std::fs::write(&path, b"previous output").unwrap();
+        let started = Instant::now();
+        let error = api
+            .call(
+                "session.export",
+                json!({"doc":doc,"path":path,"options":{"format":format}}),
+            )
+            .unwrap_err();
+        assert!(started.elapsed() < Duration::from_secs(2));
+        assert_eq!(error.code, "invalid_font_geometry");
+        assert!(error.message.contains("component-expansion-limit"));
+        assert_eq!(std::fs::read(path).unwrap(), b"previous output");
+    }
+}
+
+#[test]
+fn static_sfd_validates_only_the_selected_master() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut font = export_font();
+    let regular = font.default_master().id.clone();
+    let mut bold = font.default_master().clone();
+    bold.id = fc_model::MasterId::new();
+    bold.name = "Unfinished Bold".into();
+    // No glyph has a Bold layer yet. Regular is complete and independently
+    // exportable; Glyphs still requires validation of every master.
+    font.masters.push(bold);
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(font, None);
+    let api = Api::new(session);
+    let path = directory.path().join("Regular.sfd");
+    api.call(
+        "session.export",
+        json!({"doc":doc,"path":path,"options":{"format":"Sfd","master":regular}}),
+    )
+    .unwrap();
+    let reopened = fc_formats::sfd::read_sfd(&path).unwrap();
+    assert_eq!(reopened.masters.len(), 1);
+    assert_eq!(reopened.glyphs["A"].layers[0].width, 600.0);
+    let all_masters_path = directory.path().join("All.glyphs");
+    let error = api
+        .call(
+            "session.export",
+            json!({"doc":doc,"path":all_masters_path,"options":{"format":"Glyphs"}}),
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "invalid_feature_source");
+    assert!(!all_masters_path.exists());
 }
 
 #[test]

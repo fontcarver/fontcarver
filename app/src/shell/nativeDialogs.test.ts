@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { setTransport } from '../api'
 import type { Transport } from '../transport'
+import { useSessionStore } from '../stores/sessionStore'
 
 import { choosePath, hasNativeFileDialog } from './nativeDialogs'
 
@@ -75,5 +76,27 @@ describe('choosePath', () => {
     save.mockResolvedValue(null)
 
     expect(await choosePath({ kind: 'save' })).toEqual({ kind: 'cancelled' })
+  })
+
+  it('offers native source formats in the Open Font filter', async () => {
+    setTransport(transportOfKind('tauri'))
+    open.mockResolvedValue(null)
+    await useSessionStore.getState().openDialog()
+    expect(open).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filters: [
+          {
+            name: 'Fonts and font sources',
+            extensions: expect.arrayContaining([
+              'otf',
+              'glyphs',
+              'sfd',
+              'pfa',
+              'pfb',
+            ]),
+          },
+        ],
+      }),
+    )
   })
 })

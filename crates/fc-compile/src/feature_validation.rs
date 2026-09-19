@@ -1,5 +1,7 @@
 //! Bounded, file-access-free FEA diagnostics and real candidate compilation.
 
+mod work_budget;
+
 use std::{collections::BTreeMap, ops::Range, path::Path, sync::Arc};
 
 use fc_model::{
@@ -162,10 +164,10 @@ pub fn validate_feature_candidate(
     result
 }
 
-/// Apply the same ownership check at the direct compilation boundary.
+/// Apply source work limits and ownership checks at direct compilation too.
 pub(crate) fn check_writer_conflicts(font: &Font) -> Result<(), crate::Error> {
     let assembled = font.features.assemble_fea();
-    if !assembled.text.contains("# Automatic Code") {
+    if assembled.text.trim().is_empty() {
         return Ok(());
     }
     let mut result = FeatureValidation::default();
@@ -322,6 +324,19 @@ pub(crate) fn parse_source(
             "feature-syntax"
         };
         result.push(map_diagnostic(diagnostic, assembled, code));
+    }
+    if !result.has_errors() {
+        if let Some(range) = work_budget::exceeded(&tree) {
+            result.push(locate_diagnostic(
+                FeatureDiagnostic::error(
+                    "feature-source-limit",
+                    "Feature class/rule expansion exceeds the safe work limit (100000 records per class or rule, 1000000 total).",
+                ),
+                &assembled.text,
+                assembled,
+                range,
+            ));
+        }
     }
     Some((tree, glyphs))
 }

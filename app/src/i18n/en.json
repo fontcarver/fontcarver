@@ -27,6 +27,9 @@
     "empty": "Arrives in a later phase"
   },
   "cmd": {
+    "font": {
+      "findProblems": "Find problems…"
+    },
     "file": {
       "new": "New Font…",
       "open": "Open Font…",
@@ -151,11 +154,71 @@
     "noRecent": "No recent files yet."
   },
   "dialog": {
+    "problems": {
+      "title": "Find problems",
+      "help": "Check outlines, metrics, Unicode, components, kerning and feature rules. Open a glyph to inspect an issue; no repairs are applied automatically.",
+      "refresh": "Refresh",
+      "scanning": "Checking…",
+      "limit": "Result limit",
+      "stale": "The document changed. Refresh to check the current version.",
+      "wrongDocument": "This report belongs to a different document. Reopen Find problems for the active font.",
+      "empty": "No problems found.",
+      "count_one": "{{count, number}} problem",
+      "count_other": "{{count, number}} problems",
+      "truncated": "More problems were found. Showing {{shown, number}} of at least {{total, number}}; increase the result limit to see more (up to 2,000).",
+      "results": "Problems",
+      "font": "Font",
+      "featureDiagnostic": "Feature rules need attention. See Details for the compiler's message.",
+      "code": {
+        "invalid-upem": "Units per em is outside the supported range.",
+        "missing-masters": "The font has no masters.",
+        "nonfinite-metrics": "A font or master metric is not a finite number.",
+        "missing-layer-master": "This layer refers to a master that does not exist.",
+        "invalid-width": "The advance width is invalid.",
+        "invalid-vertical-width": "The vertical advance width is invalid.",
+        "nonfinite-anchor": "An anchor position is not a finite number.",
+        "open-contour": "This contour is open.",
+        "malformed-contour": "The contour's point sequence cannot form a valid outline.",
+        "nonfinite-point": "An outline point is not a finite number.",
+        "nonfinite-component": "A component transform contains a nonfinite value.",
+        "missing-component": "A component refers to a glyph that does not exist.",
+        "missing-component-layer": "A component has no matching layer in this master.",
+        "component-cycle": "Component references form a cycle.",
+        "component-expansion-limit": "Expanded component geometry exceeds the compilation validation limit. See Details for the affected limit.",
+        "component-depth-limit": "Component references exceed the supported nesting depth of 64.",
+        "invalid-unicode": "A Unicode assignment is not a valid scalar value.",
+        "duplicate-unicode": "The same Unicode value is assigned to multiple glyphs.",
+        "invalid-variation-selector": "A Unicode variation sequence is invalid.",
+        "missing-master-layer": "The glyph is missing a layer for one of the font's masters.",
+        "missing-group-member": "A kerning group contains a glyph that does not exist.",
+        "duplicate-group-membership": "A glyph belongs to multiple kerning groups on the same side.",
+        "inconsistent-group-membership": "Glyph and group kerning membership disagree.",
+        "invalid-kerning-value": "A kerning value is not a finite number.",
+        "invalid-kerning-group": "A kerning group has an invalid name or side prefix.",
+        "missing-kerning-glyph": "A kerning pair refers to a glyph that does not exist.",
+        "missing-kerning-group": "A kerning pair refers to a group that does not exist.",
+        "unapplied-feature-draft": "Feature rules have unapplied changes. Apply or discard the draft before exporting.",
+        "stale-generated-features": "The glyph set changed after automatic features were generated. Review and compile the feature source again.",
+        "feature-validation-skipped": "Fix structural errors, then check again to validate feature compilation."
+      },
+      "openGlyph": "Open glyph {{name}}",
+      "layer": "Layer {{name}}",
+      "colorLayer": "Color layer {{count}}",
+      "contour": "Contour {{count}}",
+      "point": "Point {{count}}",
+      "severity": {
+        "error": "Error",
+        "warning": "Warning",
+        "info": "Info"
+      }
+    },
     "open": {
       "title": "Open Font",
       "label": "File path",
       "placeholder": "/path/to/font.ttf",
       "hint": "Browser mode has no native file dialog: type a path the kernel can read.",
+      "filter": "Fonts and font sources",
+      "formats": "Open FCF, TTF, OTF, TTC/OTC, WOFF/WOFF2, UFO, Designspace, Glyphs, SFD or Type 1 (PFA/PFB).",
       "confirm": "Open"
     },
     "saveAs": {
@@ -231,9 +294,14 @@
       "format": "Format",
       "formatName": {
         "Ttf": "TTF",
+        "Otf": "OTF (CFF)",
         "Woff": "WOFF",
         "Woff2": "WOFF2",
         "Ufo": "UFO",
+        "Glyphs": "Glyphs",
+        "Sfd": "SFD",
+        "Pfa": "PFA",
+        "Pfb": "PFB",
         "Designspace": "Designspace",
         "Fcf": "FCF"
       },
@@ -243,6 +311,9 @@
       "pathHint": "Browser mode has no native file dialog: type a path the kernel can write.",
       "directoryHint": "This format writes a package directory, not a single file.",
       "master": "Master",
+      "allMasters": "All masters are included.",
+      "cffHint": "Static OpenType font with cubic CFF outlines. CFF outlines are exported without hinting; TrueType instructions cannot be retained.",
+      "type1Hint": "Type 1 cannot preserve OpenType layout (kerning, ligatures and substitutions), anchors, source layers or retained hints. Only the selected master is exported, with components expanded into outlines. Unicode assignments may not survive a roundtrip.",
       "options": "Options",
       "option": {
         "removeOverlap": "Remove overlap",
@@ -470,9 +541,14 @@
     "timeout": "The kernel did not answer in time",
     "transport": "The interface could not reach the kernel",
     "kerning_unavailable": "Kerning cannot be edited for this font yet.",
-    "stale_generation": "The document changed. Refresh the data and try again."
+    "stale_generation": "The document changed. Refresh the data and try again.",
+    "stale_problems": "The document changed during the scan. Refresh to check the current version."
   },
   "warning": {
+    "cffUnhintedOutlines": "CFF outlines are exported without hinting. Imported PostScript hints and TrueType instructions are not retained.",
+    "type1LayoutLoss": "Type 1 retains static outlines, widths and an 8-bit encoding. OpenType layout, kerning, anchors, other masters and source layers are not retained.",
+    "type1HintingLoss": "Type 1 output is unhinted. Imported PostScript hints and TrueType instructions are not retained.",
+    "type1UnicodeLoss": "Type 1 has no Unicode cmap. Some Unicode assignments cannot be recovered from glyph names.",
     "cffHintsNotImported": "CFF outlines were imported without per-glyph stem and hint-mask data",
     "glyphNamesSynthesized": "Glyph names were synthesized because the font had no usable glyph names.",
     "collectionFaceOpened": "{{message}}",
@@ -486,6 +562,7 @@
     "provenanceHashMismatch": "Imported tables were not preserved because the source font no longer matches its provenance record.",
     "removeOverlapUnavailable": "Overlap removal is not available yet and was not applied.",
     "autohintUnavailable": "Automatic hinting is not available yet and was not applied.",
+    "productionNamesUnavailable": "Type 1 export retains source glyph names. Production names were not applied.",
     "variationSequencesDropped": "Unicode variation sequences are not written by this exporter.",
     "postNamesOmitted": "The font exceeds the capacity of a named post table, so glyph names were omitted.",
     "valueClamped": "{{message}}",

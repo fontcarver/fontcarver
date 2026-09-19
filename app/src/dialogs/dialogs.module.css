@@ -123,8 +123,17 @@
 /* Format tabs of the export dialog. */
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-1);
   border-bottom: 1px solid var(--color-border);
+}
+
+.formatWarning {
+  margin: 0;
+  padding: var(--space-2);
+  border-left: 2px solid var(--color-warning);
+  color: var(--color-text);
+  font-size: var(--text-size-sm);
 }
 
 .tab {

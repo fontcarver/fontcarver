@@ -10,6 +10,7 @@ mod glyphs;
 mod kerning;
 mod layout;
 mod layout_conversion;
+mod problems;
 mod session;
 mod shaping;
 
@@ -23,5 +24,6 @@ pub use glyphs::*;
 pub use kerning::*;
 pub use layout::*;
 pub use layout_conversion::*;
+pub use problems::*;
 pub use session::*;
 pub use shaping::*;

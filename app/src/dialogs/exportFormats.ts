@@ -4,24 +4,46 @@ import { choosePath } from '../shell/nativeDialogs'
 /** File-name extension each container format is written with. */
 export const FORMAT_EXTENSIONS: Record<ExportFormat, string> = {
   Ttf: '.ttf',
+  Otf: '.otf',
   Woff: '.woff',
   Woff2: '.woff2',
   Ufo: '.ufo',
+  Glyphs: '.glyphs',
+  Sfd: '.sfd',
+  Pfa: '.pfa',
+  Pfb: '.pfb',
   Designspace: '.designspace',
   Fcf: '.fcf',
 }
 
 /** Formats compiled through the sfnt pipeline, the only ones the options apply to. */
-export const SFNT_FORMATS: readonly ExportFormat[] = ['Ttf', 'Woff', 'Woff2']
+export const SFNT_FORMATS: readonly ExportFormat[] = [
+  'Ttf',
+  'Otf',
+  'Woff',
+  'Woff2',
+]
+
+/** Source formats that always retain the document's complete master set. */
+export const ALL_MASTER_FORMATS: readonly ExportFormat[] = [
+  'Glyphs',
+  'Designspace',
+  'Fcf',
+]
 
 /** Formats written as a package directory rather than a single file. */
 export const DIRECTORY_FORMATS: readonly ExportFormat[] = ['Ufo', 'Designspace']
 
 const BASE_FORMATS: readonly ExportFormat[] = [
   'Ttf',
+  'Otf',
   'Woff',
   'Woff2',
   'Ufo',
+  'Glyphs',
+  'Sfd',
+  'Pfa',
+  'Pfb',
   'Fcf',
 ]
 

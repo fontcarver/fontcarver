@@ -17,6 +17,8 @@ struct Cli {
 enum Command {
     /// Show document metadata and preserved font tables.
     Inspect(cmd::inspect::Args),
+    /// Find document problems (exit 1 when errors are detected).
+    Check(cmd::check::Args),
     /// Convert a font between document, source, and binary formats.
     Convert(cmd::convert::Args),
     /// Compile a document into a binary font.
@@ -31,6 +33,7 @@ impl Command {
     fn run(self) -> Result<(), fc_cli::Error> {
         match self {
             Self::Inspect(args) => cmd::inspect::run(args),
+            Self::Check(args) => cmd::check::run(args),
             Self::Convert(args) => cmd::convert::run(args),
             Self::Build(args) => cmd::build::run(args),
             Self::Shape(args) => cmd::shape::run(args),

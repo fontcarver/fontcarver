@@ -9,6 +9,7 @@ pub(crate) mod kerning;
 pub(crate) mod layout;
 pub(crate) mod layout_conversion;
 pub(crate) mod prefs;
+pub(crate) mod problems;
 pub(crate) mod recipe;
 pub(crate) mod session;
 pub(crate) mod shaping;

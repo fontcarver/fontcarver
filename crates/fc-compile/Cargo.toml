@@ -17,6 +17,7 @@ fontc = { version = "1.0", default-features = false, features = ["rayon"] }
 fontdrasil = "1.0"
 fontir = "1.0"
 fc-model = { path = "../fc-model" }
+fc-sfnt = { path = "../fc-sfnt" }
 fea-rs = "1.0"
 harfrust = "0.13"
 kurbo.workspace = true
@@ -31,7 +32,6 @@ write-fonts.workspace = true
 [dev-dependencies]
 criterion.workspace = true
 fc-fixtures = { path = "../fc-fixtures" }
-fc-sfnt = { path = "../fc-sfnt" }
 serde_json.workspace = true
 wuff.workspace = true
 

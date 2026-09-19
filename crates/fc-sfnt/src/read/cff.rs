@@ -1,23 +1,20 @@
 use std::{cell::Cell, collections::BTreeMap, ops::Range};
 
 use fc_model::{CidInfo, Contour, FontInfo, GlyphName, Layer, Point, PointKind, PsPrivate};
+use kurbo::Affine;
 use read_fonts::{
     ps::{
         cff::{dict, index::Index, CffFontRef},
-        cs,
+        cs::{self, NopFilterSink},
+        transform::Transform,
     },
     types::{Fixed, GlyphId},
     FontRef, TableProvider,
-};
-use skrifa::{
-    instance::{LocationRef, Size},
-    outline::{DrawSettings, OutlineGlyphCollection, OutlineGlyphFormat, OutlinePen},
 };
 
 use crate::Error;
 
 pub(crate) struct CffSource<'a> {
-    outlines: OutlineGlyphCollection<'a>,
     font: CffFontRef<'a>,
     has_hints: Cell<bool>,
 }
@@ -27,65 +24,37 @@ impl<'a> CffSource<'a> {
         face: &FontRef<'a>,
         private_dict_has_hints: bool,
     ) -> Result<Option<Self>, Error> {
-        let Some(outlines) = OutlineGlyphCollection::with_format(face, OutlineGlyphFormat::Cff2)
-            .or_else(|| OutlineGlyphCollection::with_format(face, OutlineGlyphFormat::Cff))
-        else {
+        let Some(font) = cff_font(face)? else {
             return Ok(None);
         };
-        let font = cff_font(face)?.ok_or_else(|| Error::Parse {
-            table: "CFF/CFF2",
-            reason: "outline collection has no matching CFF table".to_owned(),
-        })?;
         Ok(Some(Self {
-            outlines,
             font,
             has_hints: Cell::new(private_dict_has_hints),
         }))
     }
 
     pub(crate) fn apply(&self, gid: u16, layer: &mut Layer) -> Result<(), Error> {
-        let Some(glyph) = self.outlines.get(GlyphId::new(u32::from(gid))) else {
+        let gid = GlyphId::new(u32::from(gid));
+        if gid.to_u32() >= self.font.num_glyphs() {
             return Ok(());
-        };
-        let mut pen = CffPen::default();
-        glyph
-            .draw(
-                DrawSettings::unhinted(Size::unscaled(), LocationRef::default()),
-                &mut pen,
-            )
-            .map_err(|error| Error::parse("CFF/CFF2", error))?;
-        pen.finish_open();
-        if pen.saw_quadratic {
-            return Err(Error::Parse {
-                table: "CFF/CFF2",
-                reason: format!("glyph {gid} emitted an unexpected quadratic segment"),
-            });
         }
-        self.detect_charstring_hints(gid)?;
+        let subfont_index = self.font.subfont_index(gid).unwrap_or(0);
+        let subfont = self
+            .font
+            .subfont(subfont_index, &[])
+            .map_err(|error| Error::parse("CFF/CFF2 Private DICT", error))?;
+        let mut pen = CffPen::new(self.font.transform(&subfont, None));
+        self.font
+            .evaluate_charstring(&subfont, gid, &[], &mut NopFilterSink::new(&mut pen))
+            .map_err(|error| Error::parse("CFF/CFF2 CharString", error))?;
+        pen.finish_open();
+        self.has_hints.set(self.has_hints.get() || pen.saw_hint);
         layer.contours = pen.contours;
         Ok(())
     }
 
     pub(crate) fn has_hints(&self) -> bool {
         self.has_hints.get()
-    }
-
-    fn detect_charstring_hints(&self, gid: u16) -> Result<(), Error> {
-        if self.has_hints.get() {
-            return Ok(());
-        }
-        let gid = GlyphId::new(u32::from(gid));
-        let subfont_index = self.font.subfont_index(gid).unwrap_or(0);
-        let subfont = self
-            .font
-            .subfont(subfont_index, &[])
-            .map_err(|error| Error::parse("CFF/CFF2 Private DICT", error))?;
-        let mut detector = HintDetector::default();
-        self.font
-            .evaluate_charstring(&subfont, gid, &[], &mut detector)
-            .map_err(|error| Error::parse("CFF/CFF2 CharString", error))?;
-        self.has_hints.set(detector.saw_hint);
-        Ok(())
     }
 }
 
@@ -342,14 +311,39 @@ fn flatten_blues(values: &read_fonts::ps::hinting::Blues) -> Vec<f64> {
 struct CffPen {
     contours: Vec<Contour>,
     points: Vec<Point>,
-    saw_quadratic: bool,
+    transform: Affine,
+    saw_hint: bool,
 }
 
 impl CffPen {
-    fn push(&mut self, x: f32, y: f32, kind: PointKind) {
+    fn new(transform: Transform) -> Self {
+        let matrix = transform.matrix;
+        // read-fonts normalizes Top/Font DICT matrices for a rendering pipeline:
+        // the linear coefficients are 16.16, translations are stored as integer
+        // font units in the Fixed bits, and scale targets 26.6 (hence / 64).
+        // Apply that effective transform in f64 directly to the charstring's
+        // 16.16 values. The renderer's TransformSink truncates them to integer
+        // font units, which would lose editable control-point precision.
+        let scale = transform.scale.map_or(1.0, |scale| scale.to_f64() / 64.0);
+        Self {
+            transform: Affine::scale(scale)
+                * Affine::new([
+                    matrix.xx.to_f64(),
+                    matrix.yx.to_f64(),
+                    matrix.xy.to_f64(),
+                    matrix.yy.to_f64(),
+                    f64::from(matrix.dx.to_bits()),
+                    f64::from(matrix.dy.to_bits()),
+                ]),
+            ..Self::default()
+        }
+    }
+
+    fn push(&mut self, x: Fixed, y: Fixed, kind: PointKind) {
+        let position = self.transform * kurbo::Point::new(x.to_f64(), y.to_f64());
         self.points.push(Point {
-            x: f64::from(x),
-            y: f64::from(y),
+            x: position.x,
+            y: position.y,
             kind,
             ..Point::default()
         });
@@ -368,21 +362,17 @@ impl CffPen {
     }
 }
 
-impl OutlinePen for CffPen {
-    fn move_to(&mut self, x: f32, y: f32) {
+impl cs::CommandSink for CffPen {
+    fn move_to(&mut self, x: Fixed, y: Fixed) {
         self.finish_open();
         self.push(x, y, PointKind::Move);
     }
 
-    fn line_to(&mut self, x: f32, y: f32) {
+    fn line_to(&mut self, x: Fixed, y: Fixed) {
         self.push(x, y, PointKind::Line);
     }
 
-    fn quad_to(&mut self, _cx0: f32, _cy0: f32, _x: f32, _y: f32) {
-        self.saw_quadratic = true;
-    }
-
-    fn curve_to(&mut self, cx0: f32, cy0: f32, cx1: f32, cy1: f32, x: f32, y: f32) {
+    fn curve_to(&mut self, cx0: Fixed, cy0: Fixed, cx1: Fixed, cy1: Fixed, x: Fixed, y: Fixed) {
         self.push(cx0, cy0, PointKind::OffCurve);
         self.push(cx1, cy1, PointKind::OffCurve);
         self.push(x, y, PointKind::Curve);
@@ -412,30 +402,6 @@ impl OutlinePen for CffPen {
             id: None,
         });
     }
-}
-
-#[derive(Default)]
-struct HintDetector {
-    saw_hint: bool,
-}
-
-impl cs::CommandSink for HintDetector {
-    fn move_to(&mut self, _x: Fixed, _y: Fixed) {}
-
-    fn line_to(&mut self, _x: Fixed, _y: Fixed) {}
-
-    fn curve_to(
-        &mut self,
-        _cx0: Fixed,
-        _cy0: Fixed,
-        _cx1: Fixed,
-        _cy1: Fixed,
-        _x: Fixed,
-        _y: Fixed,
-    ) {
-    }
-
-    fn close(&mut self) {}
 
     fn hstem(&mut self, _y: Fixed, _dy: Fixed) {
         self.saw_hint = true;
@@ -455,14 +421,25 @@ impl cs::CommandSink for HintDetector {
 }
 
 #[cfg(test)]
+mod fractional_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
+    use cs::CommandSink;
 
     #[test]
     fn closed_curve_uses_final_endpoint_kind_without_repeating_start() {
         let mut pen = CffPen::default();
-        pen.move_to(0.0, 0.0);
-        pen.curve_to(1.0, 0.0, 1.0, 1.0, 0.0, 0.0);
+        pen.move_to(Fixed::ZERO, Fixed::ZERO);
+        pen.curve_to(
+            Fixed::ONE,
+            Fixed::ZERO,
+            Fixed::ONE,
+            Fixed::ONE,
+            Fixed::ZERO,
+            Fixed::ZERO,
+        );
         pen.close();
 
         let contour = &pen.contours[0];
@@ -478,8 +455,15 @@ mod tests {
     #[test]
     fn implicit_close_is_a_line_when_final_endpoint_differs() {
         let mut pen = CffPen::default();
-        pen.move_to(0.0, 0.0);
-        pen.curve_to(1.0, 0.0, 1.0, 1.0, 0.0, 1.0);
+        pen.move_to(Fixed::ZERO, Fixed::ZERO);
+        pen.curve_to(
+            Fixed::ONE,
+            Fixed::ZERO,
+            Fixed::ONE,
+            Fixed::ONE,
+            Fixed::ZERO,
+            Fixed::ONE,
+        );
         pen.close();
 
         let contour = &pen.contours[0];
@@ -494,8 +478,15 @@ mod tests {
     #[test]
     fn open_contour_retains_move_and_explicit_final_endpoint() {
         let mut pen = CffPen::default();
-        pen.move_to(0.0, 0.0);
-        pen.curve_to(1.0, 0.0, 1.0, 1.0, 0.0, 0.0);
+        pen.move_to(Fixed::ZERO, Fixed::ZERO);
+        pen.curve_to(
+            Fixed::ONE,
+            Fixed::ZERO,
+            Fixed::ONE,
+            Fixed::ONE,
+            Fixed::ZERO,
+            Fixed::ZERO,
+        );
         pen.finish_open();
 
         let contour = &pen.contours[0];

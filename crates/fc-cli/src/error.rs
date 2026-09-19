@@ -5,6 +5,9 @@ use std::path::PathBuf;
 /// An error produced by a command-line operation.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// A read-only check found at least one error in the document.
+    #[error("document problems found; see the check report")]
+    ProblemsFound,
     /// A document could not be opened.
     #[error("failed to open `{}`: {source}", path.display())]
     Open {

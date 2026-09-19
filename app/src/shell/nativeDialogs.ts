@@ -1,5 +1,25 @@
 import { getTransport } from '../api'
 
+/** Native document and font formats supported by the shared open handler. */
+export const OPEN_FONT_EXTENSIONS = [
+  'fcf',
+  'fcf.gz',
+  'fwf',
+  'fwf.gz',
+  'ttf',
+  'otf',
+  'ttc',
+  'otc',
+  'woff',
+  'woff2',
+  'ufo',
+  'designspace',
+  'glyphs',
+  'sfd',
+  'pfa',
+  'pfb',
+] as const
+
 /** What a native file dialog should ask the user for. */
 export interface PathRequest {
   readonly kind: 'open' | 'save'

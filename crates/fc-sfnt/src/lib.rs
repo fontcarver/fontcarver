@@ -4,6 +4,7 @@
 
 pub mod error;
 mod read;
+pub mod write;
 
 pub use error::Error;
 pub use read::{

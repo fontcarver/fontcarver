@@ -5,6 +5,14 @@ use std::path::PathBuf;
 /// An error encountered while reading or writing a source font.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Native source data is malformed or unsupported.
+    #[error("{format}: {reason}")]
+    Source {
+        /// Human-readable format name.
+        format: &'static str,
+        /// Specific parsing or representation failure.
+        reason: String,
+    },
     /// A source export would silently omit saved feature edits.
     #[error("apply or discard the feature draft before exporting a source font")]
     UnappliedFeatureDraft,

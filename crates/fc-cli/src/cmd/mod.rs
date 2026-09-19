@@ -10,6 +10,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use fc_cli::Error;
 
 pub(crate) mod build;
+pub(crate) mod check;
 pub(crate) mod convert;
 pub(crate) mod glyphs;
 pub(crate) mod inspect;
@@ -27,6 +28,9 @@ fn open_in(session: &Session, path: &Path, face_index: Option<u32>) -> Result<Do
     let source = match source_extension(path).as_str() {
         "ufo" => Some(fc_formats::ufo::read_ufo(path)),
         "designspace" => Some(fc_formats::ufo::read_designspace(path)),
+        "glyphs" => Some(fc_formats::glyphs::read_glyphs(path)),
+        "sfd" => Some(fc_formats::sfd::read_sfd(path)),
+        "pfa" | "pfb" => Some(fc_formats::type1::read_type1(path)),
         _ => None,
     };
     match source {

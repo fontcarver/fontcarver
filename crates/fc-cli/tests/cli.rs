@@ -68,7 +68,7 @@ fn convert_rejects_an_unknown_output_format_with_exit_code_two() {
         .assert()
         .code(2)
         .stderr(predicate::str::contains(
-            "unsupported output format 'bogus': supported formats are fcf, fcf.gz, ttf, woff, woff2, ufo, designspace",
+            "unsupported output format 'bogus': supported formats are fcf, fcf.gz, ttf, otf, woff, woff2, ufo, designspace, glyphs, sfd, pfa, pfb",
         ));
 }
 
@@ -101,7 +101,7 @@ fn build_rejects_a_source_output_format_with_exit_code_two() {
         .assert()
         .code(2)
         .stderr(predicate::str::contains(
-            "unsupported output format 'ufo': supported formats are ttf, woff, woff2",
+            "unsupported output format 'ufo': supported formats are ttf, otf, woff, woff2, pfa, pfb",
         ));
 }
 

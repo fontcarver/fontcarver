@@ -3,7 +3,11 @@ import { create } from 'zustand'
 import { call, onDocumentEvent, type DocId, type DocSummary } from '../api'
 import { i18n } from '../i18n'
 import { warningMessage } from '../i18n/warnings'
-import { choosePath, hasNativeFileDialog } from '../shell/nativeDialogs'
+import {
+  choosePath,
+  hasNativeFileDialog,
+  OPEN_FONT_EXTENSIONS,
+} from '../shell/nativeDialogs'
 import { withSettledDocument } from '../editor/documentPersistence'
 import {
   flushDocumentEditParticipants,
@@ -204,7 +208,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       return
     }
     try {
-      const choice = await choosePath({ kind: 'open' })
+      const choice = await choosePath({
+        kind: 'open',
+        filterName: i18n.t('dialog.open.filter'),
+        extensions: OPEN_FONT_EXTENSIONS,
+      })
       if (choice.kind === 'chosen') await get().open(choice.path)
     } catch (error) {
       reportError(error)

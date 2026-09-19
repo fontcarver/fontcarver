@@ -51,13 +51,19 @@ pub(crate) fn run(args: Args) -> Result<(), Error> {
 fn output_format(path: &Path) -> Result<ExportFormat, Error> {
     match extension(path).as_str() {
         "ttf" => Ok(ExportFormat::Ttf),
+        "otf" => Ok(ExportFormat::Otf),
         "woff" => Ok(ExportFormat::Woff),
         "woff2" => Ok(ExportFormat::Woff2),
         "ufo" => Ok(ExportFormat::Ufo),
         "designspace" => Ok(ExportFormat::Designspace),
+        "glyphs" => Ok(ExportFormat::Glyphs),
+        "sfd" => Ok(ExportFormat::Sfd),
+        "pfa" => Ok(ExportFormat::Pfa),
+        "pfb" => Ok(ExportFormat::Pfb),
         extension => Err(Error::UnsupportedOutput {
             extension: extension.to_owned(),
-            supported: "fcf, fcf.gz, ttf, woff, woff2, ufo, designspace",
+            supported:
+                "fcf, fcf.gz, ttf, otf, woff, woff2, ufo, designspace, glyphs, sfd, pfa, pfb",
         }),
     }
 }

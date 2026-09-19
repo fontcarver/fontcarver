@@ -4,6 +4,7 @@ import { useUiStore } from '../stores/uiStore'
 import { AddGlyphsDialog } from './AddGlyphsDialog'
 import { ExpandStrokeDialog } from './ExpandStrokeDialog'
 import { ExportDialog } from './ExportDialog'
+import { FindProblemsDialog } from './FindProblemsDialog'
 import { NewFontDialog } from './NewFontDialog'
 import { PreferencesDialog } from './PreferencesDialog'
 import { RecoveryDialog } from './RecoveryDialog'
@@ -26,7 +27,13 @@ export function DialogHost() {
     case 'addGlyphs':
       return summary ? <AddGlyphsDialog doc={dialog.doc} /> : null
     case 'export':
-      return summary ? <ExportDialog summary={summary} /> : null
+      return summary ? (
+        <ExportDialog key={summary.doc} summary={summary} />
+      ) : null
+    case 'findProblems':
+      return summary ? (
+        <FindProblemsDialog key={summary.doc} summary={summary} />
+      ) : null
     case 'preferences':
       return <PreferencesDialog />
     case 'recovery':

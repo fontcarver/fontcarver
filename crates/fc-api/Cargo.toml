@@ -24,9 +24,9 @@ thiserror.workspace = true
 tokio = { version = "1", features = ["sync"], default-features = false }
 tracing.workspace = true
 ts-rs.workspace = true
+tempfile.workspace = true
 
 [dev-dependencies]
 fc-fixtures = { path = "../fc-fixtures" }
 kurbo.workspace = true
 sha2.workspace = true
-tempfile.workspace = true

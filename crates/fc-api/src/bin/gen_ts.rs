@@ -59,6 +59,8 @@ fn repair_command_double_option(path: &Path) -> Result<(), std::io::Error> {
 }
 
 fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
+    FindProblemsParams::export_all(config)?;
+    FindProblemsResult::export_all(config)?;
     FeatureState::export_all(config)?;
     SetFeatureDraftParams::export_all(config)?;
     DiscardFeatureDraftParams::export_all(config)?;

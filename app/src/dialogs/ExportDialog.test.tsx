@@ -129,6 +129,91 @@ describe('ExportDialog', () => {
     ).toBeGreaterThan(0)
   })
 
+  it('exports OTF without offering TrueType instruction retention', async () => {
+    const user = userEvent.setup()
+    const transport = setup()
+    await user.click(screen.getByRole('tab', { name: 'OTF (CFF)' }))
+    expect(screen.getByLabelText('Destination path')).toHaveValue(
+      '/fonts/DejaVuSans.otf',
+    )
+    expect(
+      screen.queryByRole('checkbox', { name: 'Keep TrueType instructions' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByText(/CFF outlines are exported without hinting/),
+    ).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Export' }))
+    await waitFor(() => expect(transport.calls).toHaveLength(1))
+    expect((transport.calls[0]?.params as ExportParams).options).toMatchObject({
+      format: 'Otf',
+      master: 'm1',
+      keep_tt_instructions: false,
+    })
+  })
+
+  it('selects the new formats from the keyboard', async () => {
+    const user = userEvent.setup()
+    setup()
+    screen.getByRole('tab', { name: 'TTF' }).focus()
+    await user.keyboard('{ArrowRight}')
+    expect(screen.getByRole('tab', { name: 'OTF (CFF)' })).toHaveFocus()
+    expect(screen.getByLabelText('Destination path')).toHaveValue(
+      '/fonts/DejaVuSans.otf',
+    )
+    await user.keyboard('{End}{ArrowLeft}')
+    expect(screen.getByRole('tab', { name: 'PFB' })).toHaveFocus()
+    expect(
+      screen.getByText(/Type 1 cannot preserve OpenType layout/),
+    ).toBeVisible()
+  })
+
+  it('exports all Glyphs masters but uses the selected master for SFD', async () => {
+    const user = userEvent.setup()
+    const transport = setup(
+      makeSummary({
+        masters: [
+          { id: 'm1', name: 'Light' },
+          { id: 'm2', name: 'Bold' },
+        ],
+      }),
+    )
+    await user.selectOptions(screen.getByLabelText('Master'), 'm2')
+    await user.click(screen.getByRole('tab', { name: 'Glyphs' }))
+    expect(screen.queryByLabelText('Master')).not.toBeInTheDocument()
+    expect(screen.getByText('All masters are included.')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Export' }))
+    await waitFor(() => expect(transport.calls).toHaveLength(1))
+    expect((transport.calls[0]?.params as ExportParams).options).toMatchObject({
+      format: 'Glyphs',
+      master: null,
+    })
+    await user.click(screen.getByRole('tab', { name: 'SFD' }))
+    expect(screen.getByLabelText('Master')).toHaveValue('m2')
+    await user.click(screen.getByRole('button', { name: 'Export' }))
+    await waitFor(() => expect(transport.calls).toHaveLength(2))
+    expect((transport.calls[1]?.params as ExportParams).options).toMatchObject({
+      format: 'Sfd',
+      master: 'm2',
+    })
+  })
+
+  it.each(['PFA', 'PFB'])(
+    'discloses Type 1 loss before exporting %s',
+    async (label) => {
+      const user = userEvent.setup()
+      const transport = setup()
+      await user.click(screen.getByRole('tab', { name: label }))
+      expect(
+        screen.getByText(/Type 1 cannot preserve OpenType layout/),
+      ).toBeVisible()
+      expect(screen.getByLabelText('Master')).toBeVisible()
+      expect(
+        screen.queryByRole('checkbox', { name: 'Preserve untouched tables' }),
+      ).not.toBeInTheDocument()
+      expect(transport.calls).toHaveLength(0)
+    },
+  )
+
   it('shows the busy line while the export runs and clears it afterwards', async () => {
     const user = userEvent.setup()
     let release = () => undefined as void

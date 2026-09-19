@@ -13,7 +13,7 @@ use fc_cli::Error;
 pub(crate) struct Args {
     /// Font or FontCarver document to compile.
     pub(crate) input: PathBuf,
-    /// Destination `.ttf`, `.woff`, or `.woff2` path.
+    /// Destination `.ttf`, `.otf`, `.woff`, `.woff2`, `.pfa`, or `.pfb` path.
     pub(crate) output: PathBuf,
     /// Remove overlapping contours before compiling.
     #[arg(long)]
@@ -97,11 +97,14 @@ pub(crate) fn print_report(report: &ExportReport) {
 pub(crate) fn binary_format(path: &Path) -> Result<ExportFormat, Error> {
     match extension(path).as_str() {
         "ttf" => Ok(ExportFormat::Ttf),
+        "otf" => Ok(ExportFormat::Otf),
+        "pfa" => Ok(ExportFormat::Pfa),
+        "pfb" => Ok(ExportFormat::Pfb),
         "woff" => Ok(ExportFormat::Woff),
         "woff2" => Ok(ExportFormat::Woff2),
         extension => Err(Error::UnsupportedOutput {
             extension: extension.to_owned(),
-            supported: "ttf, woff, woff2",
+            supported: "ttf, otf, woff, woff2, pfa, pfb",
         }),
     }
 }

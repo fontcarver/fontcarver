@@ -156,6 +156,17 @@ external package is added to the workspace lockfile by this dependency edge.
 
 ### 3.1 Rust crates
 
+P2c/P2d (2026-09-19) reuses already locked permissive dependencies; no new
+third-party package or version is introduced. `fc-formats` now directly uses
+`glyphs-reader` 1.0.0 (`MIT/Apache-2.0`) for native Glyphs parsing and `read-fonts`
+0.43.3 (`MIT OR Apache-2.0`, including its AGL feature) for native Type 1 parsing
+and glyph-name mapping. `tempfile` 3.27.0 (`MIT OR Apache-2.0`) moves from test
+to runtime use in `fc-formats` and `fc-api` for atomic export replacement.
+`harfrust` 0.13.3 (`MIT`) is a direct `fc-formats` test dependency for independent
+SFD shaping checks. These licenses were checked in the installed Cargo manifests.
+The internal `fc-compile` → `fc-sfnt` edge now supports CFF output at runtime.
+No FontForge implementation code or additional font fixtures are redistributed.
+
 P2b-01 adds only a test dependency from `fc-formats` to the existing `fc-compile`
 workspace crate (`MIT OR Apache-2.0`) to verify real FEA compilation and shaping
 after UFO round trips. No third-party package or locked version is added.

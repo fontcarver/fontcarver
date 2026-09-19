@@ -213,6 +213,19 @@ export function registerBuiltinCommands(): void {
       },
     },
     {
+      id: 'font.findProblems',
+      title: 'cmd.font.findProblems',
+      menu: 'font',
+      group: 'validation',
+      when: hasDocument,
+      disabledReason: 'cmd.reason.noDocument',
+      run: () => {
+        const doc = activeDoc()
+        if (doc !== null)
+          useUiStore.getState().setDialog({ kind: 'findProblems', doc })
+      },
+    },
+    {
       id: 'edit.undo',
       title: 'cmd.edit.undo',
       menu: 'edit',

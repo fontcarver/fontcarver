@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { withSettledDocument } from '../editor/documentPersistence'
 
@@ -12,23 +12,20 @@ import {
 import { Button } from '../components/Button'
 import { Dialog } from '../components/Dialog'
 import { errorNotice, type ErrorNotice } from '../i18n/errors'
-import { warningMessage } from '../i18n/warnings'
-import { useDocumentStore } from '../stores/documentStore'
 import { useProgressStore } from '../stores/progressStore'
 import { hasNativeFileDialog } from '../shell/nativeDialogs'
-import { prepareTabTransition } from '../shell/tabActions'
-import { reportError } from '../shell/commands'
-import { tabId, useUiStore } from '../stores/uiStore'
+import { useUiStore } from '../stores/uiStore'
 
 import styles from './dialogs.module.css'
 import {
+  ALL_MASTER_FORMATS,
   DIRECTORY_FORMATS,
   SFNT_FORMATS,
   chooseExportPath,
   formatsFor,
   suggestPath,
-  warningGlyphNames,
 } from './exportFormats'
+import { ExportResult } from './ExportResult'
 
 /** The four checkboxes of the dialog and the `ExportOptions` field each writes. */
 const OPTION_FIELDS = [
@@ -40,51 +37,11 @@ const OPTION_FIELDS = [
 
 type OptionField = (typeof OPTION_FIELDS)[number]
 
-/**
- * How many affected glyphs a warning shows as chips.
- *
- * `hinting-dropped` names every touched glyph, which on a heavily edited font is
- * thousands of them; the rest are summarised rather than rendered as thousands
- * of buttons in a modal.
- */
-const MAX_CHIPS = 50
-
 const OPTION_KEYS: Record<OptionField, string> = {
   remove_overlap: 'removeOverlap',
   keep_tt_instructions: 'keepTtInstructions',
   preserve_untouched_tables: 'preserveUntouchedTables',
   production_names: 'productionNames',
-}
-
-/**
- * Focuses one glyph in the document's Font tab.
- *
- * A warning chip is a shortcut into the grid, never a way to open a tab: when
- * the Font tab is closed the chip does nothing, as the dialog's own help says.
- */
-async function selectGlyph(
-  doc: DocSummary['doc'],
-  name: string,
-): Promise<void> {
-  const ui = useUiStore.getState()
-  if (!ui.tabs.some((tab) => tab.kind === 'font' && tab.doc === doc)) return
-  const transition = prepareTabTransition()
-  const cells = await call('glyphs.search', { doc, query: name, limit: 8 })
-  const cell = cells.find((candidate) => candidate.name === name)
-  if (!cell) return
-  if (
-    !(await transition.ready) ||
-    !(await transition.settle()) ||
-    !transition.isCurrent()
-  )
-    return
-  const current = useUiStore.getState()
-  if (!current.tabs.some((tab) => tab.kind === 'font' && tab.doc === doc))
-    return
-  const documents = useDocumentStore.getState()
-  documents.setSelection(doc, [cell.gid])
-  documents.setFocus(doc, cell.gid)
-  current.setActiveTab(tabId('font', doc))
 }
 
 export interface ExportDialogProps {
@@ -114,6 +71,7 @@ export function ExportDialog({ summary }: ExportDialogProps) {
   const [busy, setBusy] = useState(false)
   const [report, setReport] = useState<ExportReport | null>(null)
   const [failure, setFailure] = useState<ErrorNotice | null>(null)
+  const allMasters = ALL_MASTER_FORMATS.includes(format)
 
   const close = () => setDialog(null)
 
@@ -150,9 +108,9 @@ export function ExportDialog({ summary }: ExportDialogProps) {
     setReport(null)
     const exportOptions: ExportOptions = {
       format,
-      master,
+      master: allMasters ? null : master,
       remove_overlap: options.remove_overlap,
-      keep_tt_instructions: options.keep_tt_instructions,
+      keep_tt_instructions: format !== 'Otf' && options.keep_tt_instructions,
       preserve_untouched_tables: options.preserve_untouched_tables,
       production_names: options.production_names,
       autohint: false,
@@ -177,15 +135,6 @@ export function ExportDialog({ summary }: ExportDialogProps) {
   }
 
   const showOptions = SFNT_FORMATS.includes(format)
-  // Parsed once per report rather than twice per warning on every render.
-  const warnings = useMemo(
-    () =>
-      (report?.warnings ?? []).map((warning) => ({
-        warning,
-        names: warningGlyphNames(warning),
-      })),
-    [report],
-  )
 
   return (
     <Dialog
@@ -222,18 +171,57 @@ export function ExportDialog({ summary }: ExportDialogProps) {
               key={candidate}
               type="button"
               role="tab"
+              disabled={busy}
               aria-selected={candidate === format}
+              tabIndex={candidate === format ? 0 : -1}
               className={
                 candidate === format
                   ? `${styles.tab} ${styles.tabActive}`
                   : styles.tab
               }
               onClick={() => chooseFormat(candidate)}
+              onKeyDown={(event) => {
+                const delta =
+                  event.key === 'ArrowRight'
+                    ? 1
+                    : event.key === 'ArrowLeft'
+                      ? -1
+                      : 0
+                if (!delta && event.key !== 'Home' && event.key !== 'End')
+                  return
+                event.preventDefault()
+                const index =
+                  event.key === 'Home'
+                    ? 0
+                    : event.key === 'End'
+                      ? formats.length - 1
+                      : (formats.indexOf(candidate) + delta + formats.length) %
+                        formats.length
+                const next = formats[index]
+                if (next) chooseFormat(next)
+                const tabs =
+                  event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
+                    '[role="tab"]',
+                  )
+                tabs?.[index]?.focus()
+              }}
             >
               {t(`dialog.export.formatName.${candidate}`)}
             </button>
           ))}
         </div>
+
+        {format === 'Otf' ? (
+          <p className={styles.hint}>{t('dialog.export.cffHint')}</p>
+        ) : null}
+        {format === 'Pfa' || format === 'Pfb' ? (
+          <p role="note" className={styles.formatWarning}>
+            {t('dialog.export.type1Hint')}
+          </p>
+        ) : null}
+        {allMasters ? (
+          <p className={styles.hint}>{t('dialog.export.allMasters')}</p>
+        ) : null}
 
         <div className={`${styles.row} ${styles.rowTop}`}>
           <span className={styles.rowLabel}>
@@ -244,11 +232,14 @@ export function ExportDialog({ summary }: ExportDialogProps) {
               <input
                 aria-label={t('dialog.export.destinationLabel')}
                 className={styles.text}
+                disabled={busy}
                 value={path}
                 onChange={(event) => setPath(event.target.value)}
               />
               {hasNativeFileDialog() ? (
-                <Button onClick={browse}>{t('dialog.export.choose')}</Button>
+                <Button disabled={busy} onClick={browse}>
+                  {t('dialog.export.choose')}
+                </Button>
               ) : null}
             </div>
             <p className={styles.hint}>
@@ -260,11 +251,12 @@ export function ExportDialog({ summary }: ExportDialogProps) {
           </div>
         </div>
 
-        {summary.masters.length > 0 ? (
+        {!allMasters && summary.masters.length > 0 ? (
           <label className={styles.row}>
             <span className={styles.rowLabel}>{t('dialog.export.master')}</span>
             <select
               className={styles.text}
+              disabled={busy}
               value={master ?? ''}
               onChange={(event) => setMaster(event.target.value || null)}
             >
@@ -282,11 +274,14 @@ export function ExportDialog({ summary }: ExportDialogProps) {
             <h3 className={styles.sectionTitle}>
               {t('dialog.export.options')}
             </h3>
-            {OPTION_FIELDS.map((field) => (
+            {OPTION_FIELDS.filter(
+              (field) => format !== 'Otf' || field !== 'keep_tt_instructions',
+            ).map((field) => (
               <div key={field} className={styles.checkRow}>
                 <input
                   id={`export-${field}`}
                   type="checkbox"
+                  disabled={busy}
                   checked={options[field]}
                   onChange={(event) =>
                     setOptions((current) => ({
@@ -323,70 +318,7 @@ export function ExportDialog({ summary }: ExportDialogProps) {
           </div>
         ) : null}
 
-        {report ? (
-          <div className={styles.section}>
-            <h3 className={styles.sectionTitle}>{t('dialog.export.result')}</h3>
-            <p className={styles.reportPath} title={report.path}>
-              {report.path}
-            </p>
-            <div className={styles.reportRow}>
-              <span>
-                {t('dialog.export.bytes', { count: report.bytes_written })}
-              </span>
-              <span>
-                {t('dialog.export.touched', { count: report.touched_glyphs })}
-              </span>
-              <span>
-                {t('dialog.export.timing', { count: report.timing_ms })}
-              </span>
-            </div>
-            <h3 className={styles.sectionTitle}>
-              {t('dialog.export.warnings')}
-            </h3>
-            {warnings.length === 0 ? (
-              <p className={styles.hint}>{t('dialog.export.noWarnings')}</p>
-            ) : (
-              warnings.map(({ warning, names }) => (
-                <div
-                  key={warning.code + warning.message}
-                  className={styles.warningItem}
-                >
-                  <span>
-                    {warningMessage(warning, (key, translation) =>
-                      translation ? t(key, translation) : t(key),
-                    )}
-                  </span>
-                  {names.length > 0 ? (
-                    <div className={styles.chips}>
-                      {names.slice(0, MAX_CHIPS).map((name) => (
-                        <button
-                          key={name}
-                          type="button"
-                          title={t('dialog.export.selectGlyph', { name })}
-                          className={styles.chip}
-                          onClick={() =>
-                            void selectGlyph(summary.doc, name).catch(
-                              reportError,
-                            )
-                          }
-                        >
-                          {name}
-                        </button>
-                      ))}
-                      {names.length > MAX_CHIPS ? (
-                        <span className={styles.hint}>
-                          {t('dialog.export.moreGlyphs', {
-                            count: names.length - MAX_CHIPS,
-                          })}
-                        </span>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              ))
-            )}
-          </div>
-        ) : null}
+        {report ? <ExportResult doc={summary.doc} report={report} /> : null}
       </div>
     </Dialog>
   )

@@ -3,12 +3,13 @@
 use std::{
     collections::HashMap,
     fs,
+    io::Write,
     path::{Path, PathBuf},
     time::Instant,
 };
 
 use fc_compile::{ExportFormat as CompileFormat, ExportOptions as CompileOptions};
-use fc_model::{Font, GlyphName, MasterId, Tag};
+use fc_model::{Font, GlyphName, LayerKind, MasterId, Tag};
 
 use crate::{
     Api, ApiError, ExportFormat, ExportOptions, ExportParams, ExportReport, ExportWarning,
@@ -32,7 +33,6 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
     let started = Instant::now();
     let path = PathBuf::from(&params.path);
     let (font, generations) = snapshot(api, params.doc)?;
-    check_features_for_export(&font, params.options.format)?;
     let master = match &params.options.master {
         Some(master) => master.clone(),
         None => font.default_master().id.clone(),
@@ -42,13 +42,14 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
             "master `{master}` does not exist"
         )));
     }
+    check_features_for_export(&font, params.options.format, &master)?;
     let touched_glyphs =
         u32::try_from(generations.values().filter(|value| **value > 0).count()).unwrap_or(u32::MAX);
 
     let mut warnings = Vec::new();
     let mut tables = Vec::new();
     match params.options.format {
-        ExportFormat::Ttf | ExportFormat::Woff | ExportFormat::Woff2 => {
+        ExportFormat::Ttf | ExportFormat::Otf | ExportFormat::Woff | ExportFormat::Woff2 => {
             let options = compile_options(&params.options, &master)?;
             let report = fc_compile::export_with_progress(
                 &font,
@@ -80,6 +81,40 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
             api.emit_progress(params.doc, WRITE_STAGE, 0);
             fc_formats::ufo::write_designspace(&font, &path)?;
         }
+        ExportFormat::Glyphs => {
+            api.emit_progress(params.doc, WRITE_STAGE, 0);
+            fc_formats::glyphs::write_glyphs(&font, &path)?;
+        }
+        ExportFormat::Sfd => {
+            api.emit_progress(params.doc, WRITE_STAGE, 0);
+            fc_formats::sfd::write_sfd(&font, &master, &path)?;
+        }
+        ExportFormat::Pfa | ExportFormat::Pfb => {
+            api.emit_progress(params.doc, WRITE_STAGE, 0);
+            for (requested, code, message) in [
+                (params.options.remove_overlap, "remove-overlap-unavailable", "Overlap removal is not applied by the Type 1 exporter."),
+                (params.options.autohint, "autohint-unavailable", "Automatic hinting is not applied by the Type 1 exporter."),
+                (params.options.production_names, "production-names-unavailable", "Type 1 export retains source glyph names; production-name substitution was not applied."),
+            ] {
+                if requested {
+                    warnings.push(ExportWarning { code: code.into(), message: message.into() });
+                }
+            }
+            warnings.extend(
+                fc_formats::type1::loss_warnings(&font, &master)
+                    .into_iter()
+                    .map(|warning| ExportWarning {
+                        code: warning.code.into(),
+                        message: warning.message,
+                    }),
+            );
+            fc_formats::type1::write_type1(
+                &font,
+                &master,
+                &path,
+                params.options.format == ExportFormat::Pfb,
+            )?;
+        }
         ExportFormat::Fcf => {
             api.emit_progress(params.doc, WRITE_STAGE, 0);
             fc_doc::fcf::write(&path, &font)?;
@@ -98,7 +133,11 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
     })
 }
 
-fn check_features_for_export(font: &Font, format: ExportFormat) -> Result<(), ApiError> {
+fn check_features_for_export(
+    font: &Font,
+    format: ExportFormat,
+    master: &MasterId,
+) -> Result<(), ApiError> {
     if format == ExportFormat::Fcf {
         return Ok(());
     }
@@ -108,7 +147,10 @@ fn check_features_for_export(font: &Font, format: ExportFormat) -> Result<(), Ap
             message: "Apply or discard the feature draft before exporting a font.".to_owned(),
         });
     }
-    if matches!(format, ExportFormat::Ufo | ExportFormat::Designspace) {
+    if matches!(
+        format,
+        ExportFormat::Ufo | ExportFormat::Designspace | ExportFormat::Glyphs | ExportFormat::Sfd
+    ) {
         if font.features.source_of_truth == fc_model::FeaturesSource::ImportedTables {
             return Err(ApiError {
                 code: "layout_conversion_required".to_owned(),
@@ -116,8 +158,30 @@ fn check_features_for_export(font: &Font, format: ExportFormat) -> Result<(), Ap
                     .to_owned(),
             });
         }
-        let validation =
-            fc_compile::validate_feature_candidate(font, &font.features, &font.feature_settings);
+        // Static SFD contains only the selected master. A work-in-progress
+        // alternate master must not prevent validating that selected output.
+        let selected = (format == ExportFormat::Sfd).then(|| {
+            let mut selected = font.clone();
+            selected.masters.retain(|candidate| &candidate.id == master);
+            for glyph in selected.glyphs.values_mut() {
+                glyph
+                    .layers
+                    .retain(|layer| matches!(&layer.kind, LayerKind::Master(id) if id == master));
+            }
+            selected
+        });
+        let validation_font = selected.as_ref().unwrap_or(font);
+        if let Some(blocker) = fc_doc::problems::compilation_blocker(validation_font) {
+            return Err(ApiError {
+                code: "invalid_font_geometry".to_owned(),
+                message: format!("{}: {}", blocker.code, blocker.message),
+            });
+        }
+        let validation = fc_compile::validate_feature_candidate(
+            validation_font,
+            &validation_font.features,
+            &validation_font.feature_settings,
+        );
         if !validation.is_valid() {
             let message = validation
                 .diagnostics
@@ -181,6 +245,7 @@ fn compile_options(options: &ExportOptions, master: &MasterId) -> Result<Compile
     };
     Ok(CompileOptions {
         format: match options.format {
+            ExportFormat::Otf => CompileFormat::Otf,
             ExportFormat::Woff => CompileFormat::Woff,
             ExportFormat::Woff2 => CompileFormat::Woff2,
             _ => CompileFormat::Ttf,
@@ -204,8 +269,20 @@ fn write_file(path: &Path, bytes: &[u8]) -> Result<(), ApiError> {
             ApiError::io(format!("failed to create `{}`: {error}", parent.display()))
         })?;
     }
-    fs::write(path, bytes)
-        .map_err(|error| ApiError::io(format!("failed to write `{}`: {error}", path.display())))
+    let parent = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let mut temporary = tempfile::NamedTempFile::new_in(parent)
+        .map_err(|error| ApiError::io(format!("failed to stage `{}`: {error}", path.display())))?;
+    temporary
+        .write_all(bytes)
+        .and_then(|()| temporary.as_file().sync_all())
+        .map_err(|error| ApiError::io(format!("failed to write `{}`: {error}", path.display())))?;
+    temporary.persist(path).map_err(|error| {
+        ApiError::io(format!("failed to replace `{}`: {error}", path.display()))
+    })?;
+    Ok(())
 }
 
 /// Returns the number of bytes an export wrote, walking package directories.

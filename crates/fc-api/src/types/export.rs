@@ -12,6 +12,8 @@ pub enum ExportFormat {
     /// TrueType-flavored OpenType sfnt.
     #[default]
     Ttf,
+    /// Static OpenType with name-keyed CFF1 outlines.
+    Otf,
     /// WOFF 1 wrapping a TrueType-flavored sfnt.
     Woff,
     /// WOFF 2 wrapping a TrueType-flavored sfnt.
@@ -20,6 +22,14 @@ pub enum ExportFormat {
     Ufo,
     /// Designspace document plus one UFO per master.
     Designspace,
+    /// Glyphs 3 source with all masters.
+    Glyphs,
+    /// Static Spline Font Database source for the selected master.
+    Sfd,
+    /// ASCII PostScript Type 1 for the selected master.
+    Pfa,
+    /// Binary PostScript Type 1 for the selected master.
+    Pfb,
     /// Native FontCarver document.
     Fcf,
 }

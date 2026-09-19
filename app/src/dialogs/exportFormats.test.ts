@@ -6,8 +6,31 @@ import { formatsFor, suggestPath, warningGlyphNames } from './exportFormats'
 
 describe('export format helpers', () => {
   it('offers Designspace only for a multiple-master document', () => {
-    expect(formatsFor(1)).toEqual(['Ttf', 'Woff', 'Woff2', 'Ufo', 'Fcf'])
+    expect(formatsFor(1)).toEqual([
+      'Ttf',
+      'Otf',
+      'Woff',
+      'Woff2',
+      'Ufo',
+      'Glyphs',
+      'Sfd',
+      'Pfa',
+      'Pfb',
+      'Fcf',
+    ])
     expect(formatsFor(3)).toContain('Designspace')
+  })
+
+  it.each([
+    ['Otf', '.otf'],
+    ['Glyphs', '.glyphs'],
+    ['Sfd', '.sfd'],
+    ['Pfa', '.pfa'],
+    ['Pfb', '.pfb'],
+  ] as const)('suggests the native extension for %s', (format, extension) => {
+    expect(suggestPath(makeSummary(), format)).toBe(
+      `/fonts/DejaVuSans${extension}`,
+    )
   })
 
   it('suggests the document’s own location and stem', () => {

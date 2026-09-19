@@ -77,6 +77,9 @@ export function PathPromptForm({ prompt }: PathPromptFormProps) {
             }}
           />
           <p className={styles.dialogHint}>{t(`${namespace}.hint`)}</p>
+          {isOpen ? (
+            <p className={styles.dialogHint}>{t('dialog.open.formats')}</p>
+          ) : null}
           {isOpen && recent.length > 0 ? (
             <ul className={styles.dialogRecent}>
               {recent.map((entry) => (
