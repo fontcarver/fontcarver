@@ -53,8 +53,11 @@ layout conversion and native restore, with proven kerning/anchor transfers.
 Conversion remains conservative; unsupported or unproven layouts keep their
 original tables. See [P2b acceptance](docs/p2b-acceptance.md) and the executable
 [coverage matrix](crates/fc-layout/tests/LAYOUT_CAPABILITIES.md).
-P2c CFF export and P2d formats are next. There is no release
-yet; native workflow verification is partial and release packaging is untested. See
+P2c/P2d are complete within the documented static scope: native OTF/CFF export,
+Glyphs 2/3 import and Glyphs 3 export, SFD and Type 1 interoperability, and
+Find problems through the UI and CLI. See [P2c/P2d acceptance](docs/p2cd-acceptance.md)
+for format boundaries, independent reviews and final browser verification.
+There is no release yet; native workflow verification is partial and release packaging is untested. See
 [`docs/p1-acceptance.md`](docs/p1-acceptance.md) for measured results and current
 limitations, including hinting removal after outline edits. The capability list
 above describes the product target, not completed support for every format.

@@ -1,6 +1,24 @@
 # FontCarver — resume TODO (written 2026-09-05, session paused by the user)
 
-## Current status — P2b complete, 2026-09-17
+## Current status — P2 complete, 2026-09-19
+
+The user authorized all remaining P2 work with separate implementation/review
+agents and Sol Chinese translation. P2c static OTF/CFF export and P2d
+Glyphs/SFD/Type 1 interoperability plus Find problems are now implemented and
+verified within the explicit static-format boundaries. P2a/P2b remain complete.
+
+Verification: two integrated Rust batches passed 592 + 304 tests, supplemented
+by final feature-budget and Type 1 guard regressions; 1,096 frontend tests and
+8 final real-backend browser workflows passed. Formatting, workspace Clippy,
+API generation, TypeScript, ESLint, production build and independent reviews
+passed. See [P2c/P2d acceptance](../../p2cd-acceptance.md) and the
+[completed plan](2026-09-19-p2-completion.md).
+
+No P3 work, release packaging, performance investigation, FontForge execution
+or native desktop automation was started. No push or main merge occurred.
+Earlier checkpoint sections below are historical; this status takes precedence.
+
+## Previous checkpoint — P2b complete, 2026-09-17
 
 The user authorized completion of all P2b, with separate implementation,
 translation and review agents and local checkpoint commits. Tasks 01–11 are
@@ -145,19 +163,20 @@ approved, task-by-task implementation plan.
 - [x] Pass all 79 `fc-doc` tests, Clippy, formatting and independent review.
 - [x] Update this TODO, README status and the P2 design draft.
 
-### Milestone checklist — updated 2026-09-17
+### Milestone checklist — updated 2026-09-19
 
 The proposed next slice was shared editing eligibility for source-owned versus
 imported layout. This and the broader P2a/P2b authoring milestones are now
-complete; P2c/P2d remain outstanding.
+complete; P2c/P2d are also complete within their documented static scope.
 
 - [x] Review the full P2a design beyond the completed scope recap and small query.
 - [x] Write the detailed P2a implementation plan, with exact interfaces and tests.
 - [x] Implement and verify P2a: horizontal kerning for eligible source fonts.
 - [x] Design and plan P2b: editable OpenType layout and imported-font support (2026-09-17).
 - [x] Implement, translate, independently review and verify P2b tasks 01–11 (2026-09-17).
-- [ ] Design and plan P2c: static OTF/CFF export.
-- [ ] Design and plan P2d: Glyphs/SFD/Type 1 interoperability and problem checks.
+- [x] Design, implement and verify P2c: static OTF/CFF export.
+- [x] Design, implement and verify P2d: Glyphs/SFD/Type 1 interoperability and problem checks.
+- [x] Complete Sol translation, independent review and integrated P2c/P2d acceptance.
 
 P1 remains on `p1-outline-editing`; no merge to `main` or push has occurred.
 Performance work, the FontForge comparison and native desktop automation remain
