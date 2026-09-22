@@ -224,6 +224,14 @@ fn read_face(face: &FontRef<'_>, warnings: &mut Vec<Warning>) -> Result<Font, Er
         font.glyphs.insert(glyph.name.clone(), glyph);
     }
     metrics::apply_height_fallbacks(&mut font);
+    if let Err(error) = crate::tt::imported_bindings(face, &mut font) {
+        warnings.push(Warning {
+            code: "tt-instruction-bindings-partial",
+            message: format!(
+                "Some imported TrueType programs could not be bound for safe editing: {error}"
+            ),
+        });
+    }
     if cff_source.as_ref().is_some_and(cff::CffSource::lost_hints) {
         warnings.push(Warning {
             code: "cff-hints-not-imported",

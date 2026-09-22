@@ -300,6 +300,7 @@ fn blend(template: &Layer, layers: &[(&Layer, f64)]) -> Result<Layer, Error> {
         })?;
     }
     result.tt_instructions = None;
+    result.tt_binding = None;
     result.hints = Default::default();
     Ok(result)
 }

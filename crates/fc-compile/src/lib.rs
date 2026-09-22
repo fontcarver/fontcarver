@@ -22,6 +22,7 @@ mod preprocess;
 mod preserve;
 mod shaping;
 mod source;
+mod tt;
 mod variable;
 mod variable_cff;
 mod vertical;

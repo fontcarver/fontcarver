@@ -136,9 +136,9 @@ metric caches. Unsupported point bindings and malformed pushes fail before outpu
 is returned. Glyph instruction limits and interpreter maxima are bounded. Runtime
 program correctness is not inferred from successful bytecode framing.
 
-This is a library foundation, not a completed editor or export-pipeline feature.
-Model persistence, revision-checked API, undo/redo, UI and preview integration
-remain open. Variable inputs are rejected. Point views currently reject the rare
+At this foundation checkpoint, model persistence, revision-checked API, undo/redo,
+UI and preview integration remained open; the next section records that follow-up.
+Variable inputs are rejected. Point views currently reject the rare
 case of components aligned through phantom points; ordinary point matching works.
 Reported horizontal phantom coordinates are nominal parent hmtx coordinates:
 `USE_MY_METRICS` is exposed separately because the interpreter can replace them.
@@ -168,3 +168,65 @@ Verification:
   `/tmp/fontcarver-p5-tt-native-2.13.2.log`,
   `/tmp/fontcarver-p5-tt-native-2.14.3.log` and
   `/tmp/fontcarver-p5-tt-phantom.log`.
+
+## TrueType static-master editing and export
+
+The model stores imported/authored point bindings and the UPEM at global authoring
+time. Native JSON and compressed FCF retain them without original binary bytes.
+Geometry edits keep the source available for correction; stale authored programs
+fail export. Glyph and global commands form one undoable transaction. Imported
+programs are retained alongside authored ones only when their compiled point
+identities still match and imported-hint retention is enabled.
+
+The revision-checked TT API compiles outside the document lock, then checks the
+revision again before applying. Its separate state keeps malformed TT bytes from
+breaking PS editing. The bilingual editor exposes glyph/fpgm/prep assembly, CVT,
+maxima, paged on/off-curve point coordinates, nominal phantom metrics and preview
+at up to eight pixel sizes. Incompatible imported programs start as reference;
+stale authored programs remain editable and require review before rebinding.
+Language changes preserve unsaved source. Preview errors retain the draft and
+never silently substitute an unhinted result.
+
+Static TTF/WOFF/WOFF2 writes authored programs independently of the imported-hint
+retention option. Google WOFF2 normalization discards zero-contour programs even
+with transforms disabled, so this case now uses an original null-transform
+encoder implementing the W3C WOFF2 directory/header format with the existing
+Brotli 7 dependency. Both FontTools and Google's decoder reproduce every table
+and program byte (excluding the recomputed head checksum). Other fonts retain the
+ordinary compressed-transform path.
+
+Verification:
+
+- Related model/hint/sfnt/doc/compiler/API regression: **733 passed, 2 existing
+  ignored** before the new editor handlers. Subsequent targeted checks cover
+  **7** authored-export cases, **6** instruction/import cases, and **5** API
+  workflows, including native save/reopen and destination protection on failure.
+  The final complete API/raster regression passes **232 tests, 2 existing ignored**.
+- Frontend full regression: **1,123 passed in 138 files**. The subsequent language
+  preservation test passes with all **6** TT editor tests and **10** transport
+  tests. TypeScript, ESLint, workspace Clippy with denied warnings, formatting and
+  whitespace checks pass.
+- Headless browser verification authors and previews an actual program, applies
+  and reopens it, switches to Chinese, and preserves the saved source. Independent
+  FontTools decoding verifies exact browser-authored bytes in TTF/WOFF/WOFF2;
+  FreeType completes **30** native renders with **15** hinted outline differences.
+- The large WOFF2 acceptance also checks **6,253** glyph outlines, **252** point
+  arrays, exact programs and **36** native renders. Early composite instruction
+  flags and zero-contour/header-only import have explicit regressions.
+- Evidence: `/tmp/fontcarver-p5-tt-integration-regression.log`,
+  `/tmp/fontcarver-p5-tt-api-tests.log`,
+  `/tmp/fontcarver-p5-tt-api-raster-regression.log`,
+  `/tmp/fontcarver-p5-tt-editor-frontend.log`,
+  `/tmp/fontcarver-p5-tt-editor-final-tests.log`,
+  `/tmp/fontcarver-p5-tt-browser-export.log`,
+  `/tmp/fontcarver-p5-tt-woff2-independent.log` and browser screenshots
+  `/tmp/fontcarver-p5-tt-preview-en.png`, `/tmp/fontcarver-p5-tt-editor-zh.png`.
+
+Remaining boundaries: authored TT output currently rejects variable fonts,
+generated instances, smart/bracket resolution, overlap removal and automatic TT
+hinting. Recompiled point-dependent raw layout is rejected. Phantom-point component
+alignment is not supported in the point view. Skrifa bounds VM execution, uses
+pedantic glyph execution but compatibility-mode global initialization, and may
+tolerate some global stack errors. Neither preview success nor successful assembly
+proves universal interpreter compatibility. FreeType zero-contour execution is
+still not claimed. Complex Type 1, per-FD parameters and the rest of P5 remain open.

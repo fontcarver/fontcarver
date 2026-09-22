@@ -68,6 +68,26 @@ pub fn disassemble(bytes: &[u8]) -> Result<String, Error> {
         .join("\n"))
 }
 
+/// Validates authored global data and complete interpreter maxima before storage.
+/// This checks bytecode framing and resource declarations, not runtime semantics.
+pub fn validate_globals(data: &fc_model::TtMasterData) -> Result<(), Error> {
+    decode(&data.fpgm)?;
+    decode(&data.prep)?;
+    if data.cvt.len() > 65536
+        || !matches!(data.max_zones, Some(1 | 2))
+        || data.max_stack_elements.is_none()
+        || data.max_storage.is_none()
+        || data.max_function_defs.is_none()
+        || data.max_instruction_defs.is_none_or(|count| count > 256)
+        || data.max_twilight_points.is_none()
+    {
+        return Err(Error::Invalid(
+            "invalid or incomplete TrueType interpreter maxima/CVT".into(),
+        ));
+    }
+    Ok(())
+}
+
 /// Assembles strict, line-oriented source with bounded allocation and exact pushes.
 pub fn assemble(source: &str) -> Result<Vec<u8>, Error> {
     if source.len() > MAX_SOURCE_BYTES {

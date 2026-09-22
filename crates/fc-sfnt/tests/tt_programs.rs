@@ -12,6 +12,7 @@ use support::{composite, font, simple};
 
 fn globals() -> TtMasterData {
     TtMasterData {
+        authored_units_per_em: None,
         cvt: vec![40, -20, 90],
         fpgm: vec![0xb0, 0, 0x2c, 0x00, 0x2d],
         prep: vec![0xb0, 0, 0x2b],
@@ -110,6 +111,38 @@ fn replacement_preserves_wrapped_coordinate_encoding_and_removes_unlisted_progra
         point_basis(&bytes, 1).unwrap(),
         point_basis(&result, 1).unwrap()
     );
+}
+
+#[test]
+fn importer_keeps_early_component_program_flags_and_zero_contour_programs() {
+    let mut parent = composite(&[(2 | 0x100, 0, 0, 0, &[]), (2, 0, 0, 0, &[])]);
+    parent.extend([0, 1, 0x01]);
+    let bytes = font(&[
+        simple(&[(10, 20, true), (30, 40, true)], &[]),
+        parent,
+        simple(&[], &[0x00]),
+        vec![0; 10],
+    ]);
+    let imported = fc_sfnt::read_bytes(&bytes, &Default::default())
+        .unwrap()
+        .fonts
+        .remove(0);
+    let layers: Vec<_> = imported
+        .glyphs
+        .values()
+        .map(|glyph| &glyph.layers[0])
+        .collect();
+    assert_eq!(layers[1].tt_instructions, Some(vec![0x01]));
+    assert_eq!(layers[2].tt_instructions, Some(vec![0x00]));
+    assert_eq!(layers[3].tt_instructions, None);
+    for id in [1, 2] {
+        let binding = layers[id].tt_binding.as_ref().unwrap();
+        assert!(!binding.authored);
+        assert_eq!(
+            binding.fingerprint,
+            point_basis(&bytes, id as u16).unwrap().fingerprint
+        );
+    }
 }
 
 #[test]

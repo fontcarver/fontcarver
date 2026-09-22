@@ -36,6 +36,10 @@ impl<'a> Source<'a> {
             return Err(invalid("font size limit exceeded"));
         }
         let face = FontRef::new(bytes).map_err(invalid)?;
+        Self::from_face(face)
+    }
+
+    pub(super) fn from_face(face: FontRef<'a>) -> Result<Self, Error> {
         if face.table_data(Tag::new(b"fvar")).is_some() {
             return Err(invalid(
                 "instruction authoring currently requires a static font",

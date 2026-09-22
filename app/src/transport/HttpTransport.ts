@@ -45,6 +45,7 @@ export class HttpTransport implements Transport {
       this.timeoutOverrideMs ??
       (method === 'text.shape' ||
       method === 'session.export' ||
+      method.startsWith('hints.tt_') ||
       method === 'bitmap.rasterize'
         ? LONG_RUNNING_TIMEOUT_MS
         : DEFAULT_TIMEOUT_MS)

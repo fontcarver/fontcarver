@@ -10,6 +10,8 @@ mod features;
 mod font;
 mod glyphs;
 mod hints;
+mod tt_hints;
+pub use tt_hints::*;
 mod kerning;
 mod layout;
 mod layout_conversion;

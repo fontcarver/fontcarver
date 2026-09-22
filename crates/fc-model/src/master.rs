@@ -194,6 +194,10 @@ pub struct PsPrivate {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub struct TtMasterData {
+    /// UPEM at explicit authoring time; absence identifies imported or legacy data.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub authored_units_per_em: Option<u16>,
     /// Control value table entries.
     #[serde(default)]
     pub cvt: Vec<i16>,

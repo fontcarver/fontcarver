@@ -95,6 +95,7 @@ fn populated_font_round_trips_semantically() {
             other: BTreeMap::from([("ExpansionFactor".into(), json!(0.06))]),
         };
         master.tt = TtMasterData {
+            authored_units_per_em: None,
             cvt: vec![1, -2],
             fpgm: vec![0xb0, 0x01],
             prep: vec![0x40],

@@ -243,6 +243,10 @@ pub struct Layer {
     /// Raw per-glyph TrueType instructions.
     #[serde(default)]
     pub tt_instructions: Option<Vec<u8>>,
+    /// Compiled source point identity; retained when an outline edit makes it stale.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub tt_binding: Option<crate::TtInstructionBinding>,
     /// Optional color outlines or paint graphs.
     #[serde(default)]
     pub color_layers: Option<Vec<ColorLayer>>,
@@ -268,6 +272,7 @@ impl Default for Layer {
             background_image: None,
             hints: PsHints::default(),
             tt_instructions: None,
+            tt_binding: None,
             color_layers: None,
             user_data: serde_json::Value::Null,
         }

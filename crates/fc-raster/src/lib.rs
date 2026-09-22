@@ -3,7 +3,7 @@
 mod hint;
 mod trace;
 use fc_model::{Bitmap, BitmapGlyph, BitmapStrike, Font, MasterId};
-pub use hint::hinted_paths;
+pub use hint::{compiled_outline, hinted_paths, preview_glyph, GlyphDrawing};
 use kurbo::{Affine, PathEl, Shape};
 pub use trace::trace_bitmap;
 

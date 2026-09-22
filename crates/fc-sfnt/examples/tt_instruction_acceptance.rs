@@ -45,6 +45,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         });
     }
     let globals = TtMasterData {
+        authored_units_per_em: None,
         cvt: vec![40, -20, 90],
         fpgm: vec![0xb0, 0, 0x2c, 0x00, 0x2d],
         prep: vec![0xb0, 0, 0x2b],

@@ -34,7 +34,7 @@ stored ID. Saving persists these identities. Source maps are derived and are
 not written to FCF. P2b-02 adds these optional font-level fields, with defaults for version-1 files:
 
 - `feature_draft`: nullable `{source: Features, settings: FeatureGenerationSettings,
-  revision: u64}`. Invalid Unicode FEA text (including CRLF and comments) is
+revision: u64}`. Invalid Unicode FEA text (including CRLF and comments) is
   persisted without parsing. `null` means no saved draft. Merely reading source
   does not create a draft. `font.features` always remains the effective source.
 - `feature_settings`: the active generator/writer policy. Name-derived recipes
@@ -76,6 +76,22 @@ Writers use two-space indentation for the envelope and font-level objects. The
 entire glyph value is compact JSON on one physical line. This hybrid layout
 makes a glyph edit appear as a focused per-glyph line change in Git instead of
 expanding every contour and point across a large multi-line diff.
+
+## P5 TrueType instruction bindings
+
+Layers may contain `tt_binding: {fingerprint, authored}` beside the existing
+`tt_instructions` byte array. `fingerprint` is a versioned compiled point/metric
+digest, currently `tt-points-v1:` followed by a lowercase SHA-256 hex digest.
+`authored` defaults to false and distinguishes retained imported bytes from an
+explicitly authored program. The optional field is omitted when absent. Older
+documents retain legacy import semantics; a missing binding must never be
+interpreted as permission to attach a program to newly compiled point numbers.
+
+`master.tt.authored_units_per_em` is an optional integer recording explicit global
+program ownership and the source scale for CVT/fpgm/prep. Absence identifies
+imported/legacy data. These additive fields do not change the schema version.
+Geometry edits retain authored programs and their bindings for review; only
+comparison with current compiled geometry can establish export eligibility.
 
 ## P3 bitmap strikes
 

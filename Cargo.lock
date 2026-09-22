@@ -1311,6 +1311,7 @@ dependencies = [
 name = "fc-compile"
 version = "0.1.0"
 dependencies = [
+ "brotli 7.0.0",
  "chrono",
  "criterion",
  "fc-fixtures",

@@ -1,4 +1,4 @@
-# PostScript hints and automatic hinting
+# Hint authoring and automatic hinting
 
 Open a glyph and expand **Hints** in the inspector, then choose **PostScript
 hints**. The dialog shows the selected outline with horizontal and vertical stem
@@ -30,8 +30,68 @@ matrices and seac transformations may prevent faithful hint import and produce a
 warning. CID sources with multiple private dictionaries retain only the first
 as editable master parameters; export currently uses this dictionary for every
 glyph and reports that limitation. Diagonal stems and coordinate-range hints must be converted to supported
-stems and point masks before CFF export. A full TrueType instruction editor is
-still under development.
+stems and point masks before CFF export.
+
+## TrueType instructions
+
+From a glyph's master layer, open **Hints → TrueType instructions**. The point
+view shows the actual compiled quadratic outline, including off-curve controls
+and expanded component points. Page through the coordinate table to inspect dense
+outlines. Four phantom points follow the outline points. Horizontal phantom
+coordinates are nominal parent metrics; a `USE_MY_METRICS` component can replace
+them during interpretation. Without explicit vertical metrics, the vertical
+phantom coordinates are marked as interpreter defaults.
+
+Edit the glyph program, font program (`fpgm`), preparation program (`prep`), CVT and
+interpreter maxima together. Global values affect every glyph in the selected
+master. Assembly has one canonical instruction per line, decimal push operands,
+and `#` or `;` comments. Push counts use the encoded count minus one:
+
+```text
+SVTCA[x]
+PUSHB[0] 0
+MDAP[rnd]
+PUSHB[1] 0 64
+SHPIX
+```
+
+This example rounds point 0 in the horizontal direction and moves it by one pixel.
+Use actual point indices from the dialog. Syntax checks validate bytecode framing,
+not runtime correctness. Set interpreter maxima to match the program; export
+computes the maximum glyph-program size. Missing maxima begin with zero storage,
+definitions and twilight points, two zones and a 256-element stack.
+
+**Run instruction preview** executes the unsaved draft at one to eight sizes from
+1 to 128 pixels per em. Filled outlines are hinted, dashed outlines are unhinted,
+and the vertical line shows the adjusted advance. The preview uses Skrifa's
+bounded interpreter and propagates reported execution errors. Glyph execution is
+pedantic; global initialization uses Skrifa's compatibility behavior, which can
+tolerate some stack errors. Preview success is not a proof that every interpreter
+will accept a program. In particular, tested FreeType 2.13.2 and 2.14.3 skip legal
+zero-contour programs, while Skrifa executes their phantom-point movements.
+
+**Apply changes** checks the captured document revision and compiled point
+identity, then stores glyph and master programs as one undo step. Cancel and
+preview do not modify the document. FCF and compressed FCF preserve these programs
+and bindings. Outline or metric edits retain the source for review; export rejects
+stale authored programs. Reopen the editor, inspect the current points, correct the
+draft and acknowledge the review before rebinding. Imported programs with a
+different or unknown point identity remain available as reference, with an empty
+editable glyph draft. Malformed imported bytes remain visible without preventing
+PostScript editing.
+
+Static master TTF, WOFF and WOFF2 export writes authored programs even when
+**Keep TrueType instructions** is off; that option controls imported programs.
+Compatible imported programs can remain alongside authored ones. Programs that no
+longer match the compiled points are omitted with a warning. WOFF2 uses null
+transforms when needed to preserve zero-contour instructions. CFF output reports
+that authored TT programs cannot be included and leaves them in the document.
+
+Variable TT output, generated static instances, overlap removal, automatic TT
+hinting, smart-component resolution and bracket layers currently reject authored
+TT programs. Imported raw layout using point-index references can also prevent
+safe export after recompilation. Component alignment through phantom points is
+not yet supported in the point view. These are remaining hinting boundaries.
 
 ## Type 1 hints
 

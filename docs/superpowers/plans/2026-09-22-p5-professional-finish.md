@@ -17,25 +17,25 @@ by the earlier user instruction; headless browser testing and builds are allowed
 ## Work sequence
 
 - [ ] Hinting: bounded TT assembler/disassembler, editable programs/CVT/maxima,
-  source-index validation, hinted preview, PS stems/zones/masks, CFF/Type 1 output,
-  external ttfautohint bridge with honest availability/results.
+      source-index validation, hinted preview, PS stems/zones/masks, CFF/Type 1 output,
+      external ttfautohint bridge with honest availability/results.
 - [ ] OpenType authoring: MATH constants/glyph data/assemblies, COLR/CPAL palettes
-  and layers, SVG documents, semantic binary import/export and persistence.
+      and layers, SVG documents, semantic binary import/export and persistence.
 - [ ] Geometry and construction: style effects, non-destructive effects and smart
-  geometry, raster-image trace, background images, optical spacing/kerning, CJK
-  construction helpers and remaining editor/metrics/variable requirements.
+      geometry, raster-image trace, background images, optical spacing/kerning, CJK
+      construction helpers and remaining editor/metrics/variable requirements.
 - [ ] Document workflows: compare/family comparison, merge, paste special,
-  cross-document copy, visual diffs and reference binary handling.
+      cross-document copy, visual diffs and reference binary handling.
 - [ ] Automation: generated TypeScript API, scripts console/reload, Python RPC,
-  plugin lifecycle/manager, reporter/filter preview contracts and documentation.
+      plugin lifecycle/manager, reporter/filter preview contracts and documentation.
 - [ ] Formats/export: remaining SVG/EPS/AFM/PFM/TTX/collection paths, functional
-  preprocessing options, stored profiles, preflight and shared CLI behavior.
+      preprocessing options, stored profiles, preflight and shared CLI behavior.
 - [ ] Shell/UX: complete checklist gaps in windows/workspaces, filters, metadata,
-  proofing, shortcuts, accessibility/help, feature editing and previews.
+      proofing, shortcuts, accessibility/help, feature editing and previews.
 - [ ] Release: Linux deb/AppImage and macOS dmg/Windows msi build definitions,
-  locally verifiable installers, platform CI, user/developer docs.
+      locally verifiable installers, platform CI, user/developer docs.
 - [ ] Final row-by-row acceptance, independent font decoding/rendering, realistic
-  corpora, failure/undo/save/reopen tests, formatting and regression checks.
+      corpora, failure/undo/save/reopen tests, formatting and regression checks.
 
 ## Initial audit
 
@@ -75,8 +75,9 @@ containers match the TTF rendering digest. WOFF2 was decoded by FontTools becaus
 the host FreeType cannot load that container directly. A separate browser export
 added 30 renders and verified the editable source remained unchanged.
 
-This is not the full hinting milestone. Complex Type 1 hint import/output, the TT editor
-and authored TT program export/preview still need implementation. Variable
+This is not the full hinting milestone. Complex Type 1 hint import/output needs
+further implementation. Static-master TT editing, persistence, compiled-point
+checks, authored program export and interpreter preview are now integrated. Variable
 hinting, multiple editable CID private dictionaries and broader PS analysis
 quality remain open. The full P5 checklist is still open.
 
@@ -88,3 +89,12 @@ Native output rejects unsupported path-bound hints before replacing a file.
 The real Nimbus Sans fixture verifies unsorted BlueValues and nonzero sidebearings;
 independent FontTools/FreeType checks cover both PFA and PFB output. This remains a
 partial Type 1 implementation rather than a completed hinting checklist item.
+
+The TT follow-up adds a separate bilingual editor for glyph/fpgm/prep assembly,
+CVT and interpreter maxima, with actual compiled point indices and phantom points.
+Revision-checked apply, undo/redo, save/reopen, stale-binding failures and native
+TTF/WOFF/WOFF2 export are verified. WOFF2 null transforms preserve zero-contour
+programs that the ordinary encoder discards. Smart/bracket resolution, generated
+instances, variable TT programs and simultaneous automatic hinting/overlap removal
+remain unsupported for authored TT programs. See `docs/user/hinting.md` for exact
+interpreter and source-resolution limits.

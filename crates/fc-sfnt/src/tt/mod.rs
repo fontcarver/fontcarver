@@ -75,6 +75,42 @@ pub fn fingerprints(bytes: &[u8], glyph_ids: &[u16]) -> Result<Vec<String>, Erro
     glyph_ids.iter().map(|id| source.fingerprint(*id)).collect()
 }
 
+pub(crate) fn imported_bindings(
+    face: &read_fonts::FontRef<'_>,
+    font: &mut fc_model::Font,
+) -> Result<(), Error> {
+    use read_fonts::types::Tag;
+    if face.table_data(Tag::new(b"glyf")).is_none() || face.table_data(Tag::new(b"fvar")).is_some()
+    {
+        return Ok(());
+    }
+    let mut source = basis::Source::from_face(face.clone())?;
+    // Import inserts glyphs in source GID order before any editor reordering.
+    for (id, glyph) in font.glyphs.values_mut().enumerate() {
+        for layer in &mut glyph.layers {
+            if layer
+                .tt_instructions
+                .as_ref()
+                .is_some_and(|program| !program.is_empty())
+            {
+                layer.tt_binding = Some(fc_model::TtInstructionBinding {
+                    fingerprint: source.fingerprint(id as u16)?,
+                    authored: false,
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
 fn invalid(reason: impl std::fmt::Display) -> Error {
     Error::parse("TrueType instruction binding", reason)
+}
+
+pub(crate) fn stored_program(bytes: &[u8]) -> Result<&[u8], Error> {
+    let span = span::locate(bytes)?;
+    if span.range.is_empty() {
+        return Ok(&[]);
+    }
+    Ok(&bytes[span.range.start + 2..span.range.end])
 }

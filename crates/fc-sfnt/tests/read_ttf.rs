@@ -40,6 +40,15 @@ fn reads_dejavu_into_the_document_model() {
         )
     );
     assert!(!layer_a.contours.is_empty());
+    let binding = layer_a
+        .tt_binding
+        .as_ref()
+        .expect("imported point identity");
+    assert!(!binding.authored);
+    assert_eq!(
+        binding.fingerprint,
+        fc_sfnt::tt::point_basis(&bytes, 36).unwrap().fingerprint
+    );
     assert!(layer_a
         .contours
         .iter()

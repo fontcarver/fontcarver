@@ -24,6 +24,7 @@ pub(crate) fn overlap(font: &Font, master: &MasterId) -> Result<Font, Error> {
         target.contours = contours;
         target.components.clear();
         target.tt_instructions = None;
+        target.tt_binding = None;
         target.hints = Default::default();
     }
     Ok(prepared)

@@ -3,9 +3,11 @@
 use std::io::Write;
 
 use flate2::{write::ZlibEncoder, Compression};
-use read_fonts::FontRef;
+use read_fonts::{FontRef, TableProvider};
 
 use crate::Error;
+
+mod raw_woff2;
 
 const WOFF_HEADER_LEN: usize = 44;
 const WOFF_TABLE_RECORD_LEN: usize = 20;
@@ -124,13 +126,56 @@ pub fn wrap_woff1(sfnt: &[u8]) -> Result<Vec<u8>, Error> {
     Ok(output)
 }
 
-/// Encodes one sfnt as transformed WOFF 2 at Brotli quality 8.
+/// Encodes one sfnt as WOFF 2 at Brotli quality 8.
 ///
 /// `woofwoof` vendors Google's WOFF2 implementation and therefore requires a
 /// C++11 compiler on every build and cross-compilation host.
+/// Glyph transforms are disabled when zero-contour programs would be lost.
 pub fn wrap_woff2(sfnt: &[u8]) -> Result<Vec<u8>, Error> {
-    FontRef::new(sfnt).map_err(|error| Error::parse("sfnt for WOFF2", error))?;
+    let face = FontRef::new(sfnt).map_err(|error| Error::parse("sfnt for WOFF2", error))?;
+    if has_empty_glyph_programs(&face)? {
+        return raw_woff2::encode(sfnt, &face);
+    }
     woofwoof::compress(sfnt, Vec::<u8>::new(), 8, true).ok_or(Error::Woff2Compression)
+}
+
+fn has_empty_glyph_programs(face: &FontRef<'_>) -> Result<bool, Error> {
+    let glyf = match face.glyf() {
+        Ok(glyf) => glyf,
+        Err(read_fonts::ReadError::TableIsMissing(_)) => return Ok(false),
+        Err(error) => return Err(Error::parse("glyf for WOFF2", error)),
+    };
+    let head = face.head().map_err(|e| Error::parse("head for WOFF2", e))?;
+    let loca = face
+        .loca(head.index_to_loc_format() == 1)
+        .map_err(|e| Error::parse("loca for WOFF2", e))?;
+    let count = face
+        .maxp()
+        .map_err(|e| Error::parse("maxp for WOFF2", e))?
+        .num_glyphs();
+    for gid in 0..count {
+        let start = loca
+            .get_raw(usize::from(gid))
+            .ok_or_else(|| Error::parse("loca", "missing offset"))? as usize;
+        let end = loca
+            .get_raw(usize::from(gid) + 1)
+            .ok_or_else(|| Error::parse("loca", "missing end offset"))? as usize;
+        let raw = glyf
+            .offset_data()
+            .as_bytes()
+            .get(start..end)
+            .ok_or_else(|| Error::parse("glyf", "invalid offset range"))?;
+        if raw.len() >= 12 && raw[..2] == [0, 0] {
+            let length = usize::from(u16::from_be_bytes([raw[10], raw[11]]));
+            if 12 + length > raw.len() {
+                return Err(Error::parse("glyf", "truncated empty glyph program"));
+            }
+            if length > 0 {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
 }
 
 fn padded_len(length: usize) -> usize {

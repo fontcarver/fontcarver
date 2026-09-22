@@ -1,6 +1,9 @@
 # TrueType hint authoring
 
-Status: implementation follows the basic Type 1 checkpoint `2e47f63`.
+Status: the static-master editing slice is implemented and verified. Advanced
+program-aware source resolution and variable hinting remain open. Binary
+foundation checkpoint: `f15d0bb`; integration evidence is recorded in
+`docs/p5-hinting-checkpoint.md`.
 
 ## Behavior
 

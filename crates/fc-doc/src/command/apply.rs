@@ -53,8 +53,10 @@ pub(crate) fn impact(font: &Font, command: &Command) -> Impact {
 
 fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
     match command {
-        Command::Hints(super::HintCommand::Ps { glyph, .. }) => impact.glyph(glyph),
-        Command::Hints(super::HintCommand::Private { master, .. }) => {
+        Command::Hints(super::HintCommand::Ps { glyph, .. })
+        | Command::Hints(super::HintCommand::Tt { glyph, .. }) => impact.glyph(glyph),
+        Command::Hints(super::HintCommand::Private { master, .. })
+        | Command::Hints(super::HintCommand::TtGlobals { master, .. }) => {
             impact.master(master);
             impact.font_info = true;
         }

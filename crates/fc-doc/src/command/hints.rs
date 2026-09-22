@@ -1,4 +1,4 @@
-//! Undoable PostScript stems, masks, zones and private dictionary authoring.
+//! Undoable PostScript and TrueType hint authoring.
 
 use fc_model::{Font, GlyphName, LayerId, MasterId, PsHints, PsPrivate, Stem, Zone};
 use serde::{Deserialize, Serialize};
@@ -9,6 +9,28 @@ use crate::Error;
 /// Hint authoring operations; validation completes before mutation.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 pub enum HintCommand {
+    /// Replace a program while retaining its explicit compiled-point binding.
+    Tt {
+        /// Persistent glyph name.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Target master layer; alternate and background layers are not supported.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Validated assembled program, possibly empty to remove imported hints.
+        program: Vec<u8>,
+        /// Compiled point identity; export validates the current outline against it.
+        fingerprint: String,
+    },
+    /// Replace global programs, CVT and maxima at the document's current UPEM.
+    TtGlobals {
+        /// Target master.
+        #[ts(type = "string")]
+        master: MasterId,
+        /// Complete global program data and interpreter resource declarations.
+        #[ts(type = "TtMasterData")]
+        data: fc_model::TtMasterData,
+    },
     /// Replace the complete hint set of one outline layer.
     Ps {
         /// Persistent glyph name.
@@ -49,6 +71,51 @@ pub enum HintCommand {
 
 pub(super) fn apply(font: &mut Font, command: &HintCommand) -> Result<(), Error> {
     match command {
+        HintCommand::Tt {
+            glyph,
+            layer,
+            program,
+            fingerprint,
+        } => {
+            fc_hint::tt::decode(program).map_err(|e| Error::InvalidCommand(e.to_string()))?;
+            if !fingerprint
+                .strip_prefix("tt-points-v1:")
+                .is_some_and(|digest| {
+                    digest.len() == 64
+                        && digest
+                            .bytes()
+                            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+                })
+            {
+                return Err(Error::InvalidCommand(
+                    "invalid TrueType point binding".into(),
+                ));
+            }
+            let target = super::apply::layer_mut(font, glyph, layer)?;
+            if !matches!(target.kind, fc_model::LayerKind::Master(_)) {
+                return Err(Error::InvalidCommand(
+                    "TrueType instructions require a master layer".into(),
+                ));
+            }
+            target.tt_instructions = Some(program.clone());
+            target.tt_binding = Some(fc_model::TtInstructionBinding {
+                fingerprint: fingerprint.clone(),
+                authored: true,
+            });
+        }
+        HintCommand::TtGlobals { master, data } => {
+            fc_hint::tt::validate_globals(data)
+                .map_err(|e| Error::InvalidCommand(e.to_string()))?;
+            let upem = font.info.units_per_em;
+            let target = font
+                .masters
+                .iter_mut()
+                .find(|m| m.id == *master)
+                .ok_or_else(|| Error::MissingMaster(master.clone()))?;
+            target.tt = data.clone();
+            target.tt.authored_units_per_em = Some(upem);
+            target.tt.max_size_of_instructions = None;
+        }
         HintCommand::Ps {
             glyph,
             layer,

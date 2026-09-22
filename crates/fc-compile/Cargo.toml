@@ -11,6 +11,8 @@ rust-version.workspace = true
 bench = false
 
 [dependencies]
+# Reuse woofwoof's Brotli version (BSD-3-Clause AND MIT) for raw WOFF2 tables.
+brotli = "7"
 chrono = "0.4"
 flate2.workspace = true
 fontc = { version = "1.0", default-features = false, features = ["rayon"] }

@@ -175,7 +175,16 @@ pub fn export_with_progress(
     options: &ExportOptions,
     progress: &mut dyn FnMut(ExportStage, u8),
 ) -> Result<ExportReport, Error> {
-    export_inner(font, glyph_generations, options, progress, false)
+    let mut report = export_inner(font, glyph_generations, options, progress, false)?;
+    // Inspect the original source before instance/smart/overlap preprocessing
+    // can discard TT metadata from the temporary CFF compilation copy.
+    if options.format == ExportFormat::Otf && crate::tt::selected_authored(font, options) {
+        report.warnings.push(ExportWarning {
+            code: "tt-authored-programs-omitted",
+            message: "Authored TrueType programs remain in the source document but cannot be written to CFF outlines".into(),
+        });
+    }
+    Ok(report)
 }
 
 fn export_inner(
@@ -194,6 +203,7 @@ fn export_inner(
             "apply or discard the feature draft before exporting a font".to_owned(),
         ));
     }
+    crate::tt::preflight(font, options)?;
     if font.glyphs.values().any(|glyph| {
         !glyph.smart_axes.is_empty()
             || glyph
@@ -305,6 +315,7 @@ fn export_inner(
         );
     }
     let mut warnings = Vec::new();
+    let authored_tt = crate::tt::authored(font, master);
     warnings.extend(crate::metadata::name_warnings(&font.info));
     warnings.extend(crate::horizontal_kerning_warnings(font, master));
     if font
@@ -348,12 +359,25 @@ fn export_inner(
     let touched = touched_since_import(font, glyph_generations);
     let mut preservation_options = options.clone();
     preservation_options.master = Some(master.clone());
-    if options.format == ExportFormat::Otf || options.variable {
+    if options.format == ExportFormat::Otf || options.variable || authored_tt {
         preservation_options.keep_tt_instructions = false;
     }
     let (merged, preservation_warnings) =
         preserve_merge(&compiled.bytes, font, &touched, &preservation_options)?;
     warnings.extend(preservation_warnings);
+    let merged = if authored_tt && options.format != ExportFormat::Otf {
+        let (bytes, diagnostics) = crate::tt::apply(
+            &merged,
+            font,
+            master,
+            &compiled.glyph_order,
+            options.keep_tt_instructions,
+        )?;
+        warnings.extend(diagnostics);
+        bytes
+    } else {
+        merged
+    };
     if outline_changed {
         crate::otf_preservation::check_geometry_independent_layout(&merged)
             .and_then(|()| crate::otf_preservation_aat::check(&merged))

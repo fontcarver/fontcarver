@@ -127,6 +127,7 @@ pub fn instantiate(
             .map_err(|e| invalid(format!("{}: {e}", glyph.name)))?;
         layer.kind = LayerKind::Master(master.id.clone());
         layer.tt_instructions = None;
+        layer.tt_binding = None;
         layer.hints = Default::default();
         for point in layer.contours.iter_mut().flat_map(|c| &mut c.points) {
             point.tt_index = fc_model::TtIndex::Unnumbered;

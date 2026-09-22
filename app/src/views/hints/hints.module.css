@@ -57,6 +57,73 @@
   color: var(--color-text);
   background: var(--color-canvas);
 }
+.sourceField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-3) 0;
+}
+.editor textarea {
+  box-sizing: border-box;
+  width: 100%;
+  resize: vertical;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  color: var(--color-text);
+  background: var(--color-canvas);
+}
+.assembly {
+  font-family: monospace;
+  tab-size: 2;
+}
+.onPoint {
+  fill: var(--color-accent);
+}
+.offPoint {
+  fill: var(--color-canvas);
+  stroke: var(--color-accent);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.pointTable {
+  max-height: 200px;
+  overflow: auto;
+}
+.pointTable table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: start;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-size-sm);
+}
+.pointTable td,
+.pointTable th {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+.samples {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.samples figure {
+  margin: 0;
+}
+.samples svg {
+  height: 180px;
+}
+.unhinted {
+  fill: none;
+  stroke: var(--color-text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+  vector-effect: non-scaling-stroke;
+}
+.hinted {
+  fill: var(--color-accent);
+  opacity: 0.55;
+}
 .editor input:invalid {
   border-color: var(--color-danger);
 }

@@ -25,6 +25,20 @@ def main() -> None:
     original = TTFont(args.source, checkChecksums=2)
     output_path = args.directory / "instructed.ttf"
     output = TTFont(output_path, checkChecksums=2)
+    # The optional WOFF2 example uses Google's independent decoder as well as
+    # FontTools. Compare raw table bytes so zero-contour instructions are covered.
+    for name in ("instructed.woff2", "instructed.decoded.ttf"):
+        candidate = args.directory / name
+        if candidate.exists():
+            wrapped = TTFont(candidate, checkChecksums=2)
+            assert set(output.reader.keys()) - {"DSIG"} == set(wrapped.reader.keys())
+            for tag in wrapped.reader.keys():
+                before, after = output.reader[tag], wrapped.reader[tag]
+                if tag == "head":
+                    before = before[:8] + bytes(4) + before[12:]
+                    after = after[:8] + bytes(4) + after[12:]
+                assert before == after, (name, tag)
+            print(f"Verified every WOFF2 table and instruction byte: {name}")
     order = original.getGlyphOrder()
     assert output.getGlyphOrder() == order
     programs = {

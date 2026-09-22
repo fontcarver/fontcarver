@@ -38,6 +38,27 @@ impl<'a> GlyfSource<'a> {
         names: &[GlyphName],
         layer: &mut Layer,
     ) -> Result<(), Error> {
+        let start = self
+            .loca
+            .get_raw(usize::from(gid))
+            .ok_or_else(|| Error::parse("loca", "missing glyph offset"))?;
+        let end = self
+            .loca
+            .get_raw(usize::from(gid) + 1)
+            .ok_or_else(|| Error::parse("loca", "missing glyph end"))?;
+        let raw = self
+            .glyf
+            .offset_data()
+            .as_bytes()
+            .get(start as usize..end as usize)
+            .ok_or_else(|| Error::parse("glyf", "invalid glyph range"))?;
+        let program = crate::tt::stored_program(raw)?;
+        if !program.is_empty() {
+            layer.tt_instructions = Some(program.to_vec());
+        }
+        if raw.len() == 10 && raw[..2] == [0, 0] {
+            return Ok(());
+        }
         let glyph = self
             .loca
             .get_glyf(GlyphId::new(u32::from(gid)), &self.glyf)
@@ -45,9 +66,6 @@ impl<'a> GlyfSource<'a> {
         match glyph {
             Some(Glyph::Simple(simple)) => {
                 layer.contours = simple_contours(&simple)?;
-                if !simple.instructions().is_empty() {
-                    layer.tt_instructions = Some(simple.instructions().to_vec());
-                }
             }
             Some(Glyph::Composite(composite)) => {
                 let raw_components: Vec<_> = composite.components().collect();
@@ -63,23 +81,10 @@ impl<'a> GlyfSource<'a> {
                         reason: format!("component stream for glyph {gid} is truncated"),
                     });
                 }
-                let has_instructions = last
-                    .flags
-                    .contains(CompositeGlyphFlags::WE_HAVE_INSTRUCTIONS);
-                let instructions = composite.instructions();
-                if has_instructions && instructions.is_none() {
-                    return Err(Error::Parse {
-                        table: "glyf",
-                        reason: format!("instructions for composite glyph {gid} are truncated"),
-                    });
-                }
                 layer.components = raw_components
                     .into_iter()
                     .map(|component| map_component(component, names))
                     .collect::<Result<_, _>>()?;
-                if let Some(instructions) = instructions.filter(|data| !data.is_empty()) {
-                    layer.tt_instructions = Some(instructions.to_vec());
-                }
             }
             None => {}
         }
