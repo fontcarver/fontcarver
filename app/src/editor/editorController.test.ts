@@ -191,6 +191,7 @@ function change() {
     font_info: false,
     masters: false,
     layout: false,
+    bitmaps: false,
     feature_source: false,
     glyph_order: false,
     metrics: false,

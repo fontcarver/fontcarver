@@ -52,6 +52,7 @@ struct MetadataEnvelope {
 /// JSON cannot preserve those values, and silently writing null would make
 /// the native document unreadable. Finite unresolved references are retained.
 pub fn write(path: &Path, font: &Font) -> Result<(), Error> {
+    font.validate_bitmaps()?;
     write::write(path, font, None)
 }
 
@@ -65,6 +66,7 @@ pub(crate) fn write_autosave(
     font: &Font,
     document_path: Option<&Path>,
 ) -> Result<(), Error> {
+    font.validate_bitmaps()?;
     write::write(path, font, document_path)
 }
 
@@ -88,6 +90,7 @@ fn is_known_format(format: &str) -> bool {
 }
 
 fn validate(envelope: ReadEnvelope) -> Result<ReadEnvelope, Error> {
+    envelope.font.validate_bitmaps()?;
     if !is_known_format(&envelope.format) {
         return Err(Error::InvalidFcfFormat(envelope.format));
     }

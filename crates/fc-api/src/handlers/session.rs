@@ -17,6 +17,12 @@ pub(crate) fn open(api: &Api, params: OpenParams) -> Result<DocSummary, ApiError
     let path = Path::new(&params.path);
     let (doc, warnings) = if is_fcf_path(path) {
         (api.session.open_path(path, params.face_index)?, Vec::new())
+    } else if fc_formats::bitmap::is_bitmap_path(path) {
+        (
+            api.session
+                .open_font(fc_formats::bitmap::read(path)?, Some(path.to_path_buf())),
+            Vec::new(),
+        )
     } else if is_binary_font_path(path) {
         open_binary(api, path, params.face_index)?
     } else if is_ufo_path(path) {
@@ -293,6 +299,22 @@ fn document_format(document: &Document) -> String {
     if document.path.as_deref().is_some_and(is_fcf_path) {
         return "fcf".to_owned();
     }
+    if let Some(path) = document
+        .path
+        .as_deref()
+        .filter(|p| fc_formats::bitmap::is_bitmap_path(p))
+    {
+        let inner = if path.extension().is_some_and(|e| e == "gz") {
+            path.with_extension("")
+        } else {
+            path.to_path_buf()
+        };
+        return inner
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("bitmap")
+            .to_owned();
+    }
     document
         .font
         .extra
@@ -329,7 +351,7 @@ fn open_binary(
     let options = fc_sfnt::ReadOptions {
         font_index: face_index,
         keep_original_bytes: true,
-        decode_bitmaps: false,
+        decode_bitmaps: true,
     };
     let mut outcome = fc_sfnt::read_bytes(&bytes, &options)?;
     if !outcome.warnings.is_empty() {
@@ -389,7 +411,7 @@ fn is_binary_font_path(path: &Path) -> bool {
         .is_some_and(|extension| {
             matches!(
                 extension.as_str(),
-                "ttf" | "otf" | "ttc" | "otc" | "woff" | "woff2"
+                "otb" | "ttf" | "otf" | "ttc" | "otc" | "woff" | "woff2"
             )
         })
 }

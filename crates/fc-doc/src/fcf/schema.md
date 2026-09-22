@@ -76,3 +76,36 @@ Writers use two-space indentation for the envelope and font-level objects. The
 entire glyph value is compact JSON on one physical line. This hybrid layout
 makes a glyph edit appear as a focused per-glyph line change in Git instead of
 expanding every contour and point across a large multi-line diff.
+
+## P3 bitmap strikes
+
+`font.bitmap_strikes` (default `[]`) contains strikes keyed by the unique pair
+`(ppem, depth)`. Each strike has nonnegative pixel `ascent` and `descent`, a
+`properties` dictionary of BDF values (`{"Int":123}` or `{"Str":"text"}`), and a
+`glyphs` dictionary keyed by existing persistent glyph names. Supported depths
+are 1, 2, 4, 8 (coverage) and 32 (straight RGBA8).
+
+Each bitmap glyph stores `advance`, nullable `vertical_advance`, optional
+`vertical_origin: [x,y]` (default null), `bitmap` and `refs`. Vertical origin is
+relative to the horizontal writing origin. References are `{base,dx,dy}` in y-up
+pixels and must form a bounded acyclic graph within that strike.
+
+The bitmap stores `width`, `height`, `origin_x`, `origin_y`, `depth` and `rows`.
+Origins locate the lower-left corner relative to the baseline. Rows run from top
+to bottom, with MSB-first packed samples and each row aligned to a byte. Unused
+row bits are zero; RGBA uses four bytes per pixel in red/green/blue/alpha order.
+Unlike opaque sfnt byte tables, the pre-existing `rows: Vec<u8>` serde contract
+uses a JSON array of bytes, retained for version-1 compatibility and the editor
+API. Empty bitmaps retain advance metrics.
+
+`font.bitmap_tables_owned` (default false) records that decoded/edited strikes
+own EBDT/EBLC, CBDT/CBLC and sbix tables. Once owned, exporting an empty strike
+collection removes old embedded tables. Native save/recovery and UFO extension
+metadata retain this flag, so deleted strikes cannot reappear after reopening.
+
+Read and write validate the exact buffer length, referenced names, depth,
+origins, cycles and resource limits (4096-pixel dimensions/ppem, 16 MiB per
+image, 256 MiB decoded pixels and 256 strikes per font). Pixel undo records one
+image; strike changes record the strike collection. Neither changes outline
+hint-program eligibility. Glyph rename/duplicate/delete update strike ownership;
+deleting a referenced glyph resolves surviving dependants before removal.

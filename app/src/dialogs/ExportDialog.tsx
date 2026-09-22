@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { withSettledDocument } from '../editor/documentPersistence'
 
 import {
   call,
+  type BitmapState,
   type DocSummary,
   type ExportFormat,
   type ExportOptions,
@@ -18,6 +19,7 @@ import { useUiStore } from '../stores/uiStore'
 
 import styles from './dialogs.module.css'
 import {
+  BITMAP_FORMATS,
   ALL_MASTER_FORMATS,
   DIRECTORY_FORMATS,
   SFNT_FORMATS,
@@ -71,6 +73,32 @@ export function ExportDialog({ summary }: ExportDialogProps) {
   const [busy, setBusy] = useState(false)
   const [report, setReport] = useState<ExportReport | null>(null)
   const [failure, setFailure] = useState<ErrorNotice | null>(null)
+  const [strikes, setStrikes] = useState<BitmapState['strikes']>([])
+  const [bitmapKey, setBitmapKey] = useState('')
+  const bitmapFormat = BITMAP_FORMATS.includes(format)
+  useEffect(() => {
+    if (!bitmapFormat) return
+    let current = true
+    void call('bitmap.state', { doc: summary.doc })
+      .then((result) => {
+        if (!current) return
+        setStrikes(result.strikes)
+        setBitmapKey(
+          (key) =>
+            key ||
+            (result.strikes[0]
+              ? `${result.strikes[0].ppem}:${result.strikes[0].depth}`
+              : ''),
+        )
+      })
+      .catch((error) => {
+        if (current)
+          setFailure(errorNotice(error, (key, options) => t(key, options)))
+      })
+    return () => {
+      current = false
+    }
+  }, [bitmapFormat, summary.doc, t])
   const allMasters = ALL_MASTER_FORMATS.includes(format)
 
   const close = () => setDialog(null)
@@ -108,6 +136,10 @@ export function ExportDialog({ summary }: ExportDialogProps) {
     setReport(null)
     const exportOptions: ExportOptions = {
       format,
+      bitmap_strike:
+        bitmapFormat && bitmapKey
+          ? (bitmapKey.split(':').map(Number) as [number, number])
+          : undefined,
       master: allMasters ? null : master,
       remove_overlap: options.remove_overlap,
       keep_tt_instructions: format !== 'Otf' && options.keep_tt_instructions,
@@ -160,6 +192,29 @@ export function ExportDialog({ summary }: ExportDialogProps) {
         </>
       }
     >
+      {bitmapFormat && (
+        <div>
+          <p>{t('bitmap.exportHint')}</p>
+          {['Bdf', 'Pcf', 'Psf', 'Psf1', 'Fnt'].includes(format) && (
+            <label>
+              {t('bitmap.exportStrike')}
+              <select
+                value={bitmapKey}
+                onChange={(event) => setBitmapKey(event.target.value)}
+              >
+                {strikes.map((strike) => (
+                  <option
+                    key={`${strike.ppem}:${strike.depth}`}
+                    value={`${strike.ppem}:${strike.depth}`}
+                  >
+                    {strike.ppem}px · {strike.depth}bpp
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+      )}
       <div className={styles.form}>
         <div
           role="tablist"

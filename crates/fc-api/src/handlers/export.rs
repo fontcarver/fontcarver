@@ -32,7 +32,7 @@ pub(crate) fn export(api: &Api, params: ExportParams) -> Result<ExportReport, Ap
 fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
     let started = Instant::now();
     let path = PathBuf::from(&params.path);
-    let (font, generations) = snapshot(api, params.doc)?;
+    let (mut font, generations) = snapshot(api, params.doc)?;
     let master = match &params.options.master {
         Some(master) => master.clone(),
         None => font.default_master().id.clone(),
@@ -43,13 +43,81 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
         )));
     }
     check_features_for_export(&font, params.options.format, &master)?;
+    if matches!(
+        params.options.format,
+        ExportFormat::Cbdt | ExportFormat::Sbix
+    ) {
+        if font.bitmap_strikes.is_empty() || font.bitmap_strikes.iter().any(|s| s.depth != 32) {
+            return Err(ApiError::invalid_params(
+                "CBDT and sbix outputs require RGBA strikes; use TTF or OTB for coverage strikes",
+            ));
+        }
+        for strike in &mut font.bitmap_strikes {
+            strike.properties.insert(
+                "FONTCARVER_BITMAP_TABLE".into(),
+                fc_model::BdfValue::Str(
+                    if params.options.format == ExportFormat::Sbix {
+                        "sbix"
+                    } else {
+                        "CBDT"
+                    }
+                    .into(),
+                ),
+            );
+        }
+    }
+    if params.options.format == ExportFormat::Otb {
+        if font.bitmap_strikes.is_empty() {
+            return Err(ApiError::invalid_params(
+                "OTB requires at least one bitmap strike",
+            ));
+        }
+        // OTB is bitmap-only; source outlines and layout remain in the native document.
+        font.extra = Default::default();
+        font.features = Default::default();
+        for glyph in font.glyphs.values_mut() {
+            for layer in &mut glyph.layers {
+                layer.contours.clear();
+                layer.components.clear();
+            }
+        }
+    }
     let touched_glyphs =
         u32::try_from(generations.values().filter(|value| **value > 0).count()).unwrap_or(u32::MAX);
 
     let mut warnings = Vec::new();
     let mut tables = Vec::new();
     match params.options.format {
-        ExportFormat::Ttf | ExportFormat::Otf | ExportFormat::Woff | ExportFormat::Woff2 => {
+        ExportFormat::Bdf
+        | ExportFormat::Pcf
+        | ExportFormat::Psf
+        | ExportFormat::Psf1
+        | ExportFormat::Fnt
+        | ExportFormat::Fon => {
+            api.emit_progress(params.doc, WRITE_STAGE, 0);
+            let strike = fc_formats::bitmap::select_strike(&font, params.options.bitmap_strike);
+            let bytes = match params.options.format {
+                ExportFormat::Bdf => fc_formats::bitmap::bdf::encode(&font, strike?)?,
+                ExportFormat::Pcf => fc_formats::bitmap::pcf::encode(&font, strike?)?,
+                ExportFormat::Psf | ExportFormat::Psf1 => fc_formats::bitmap::psf::encode(
+                    &font,
+                    strike?,
+                    params.options.format == ExportFormat::Psf1,
+                )?,
+                ExportFormat::Fnt => fc_formats::bitmap::fnt::encode(&font, strike?)?,
+                ExportFormat::Fon => fc_formats::bitmap::fnt::encode_fon(&font)?,
+                _ => unreachable!(),
+            };
+            fc_formats::bitmap::write_bytes(&path, &bytes)?;
+            warnings.push(ExportWarning { code: "bitmap-source-loss".into(), message: "Standalone bitmap formats retain supported bitmap data (one strike, or all strikes for FON). Keep the native document for outlines, layout and source metadata. PSF uses fixed cells without baseline metadata.".into() });
+        }
+        ExportFormat::Ttf
+        | ExportFormat::Otf
+        | ExportFormat::Woff
+        | ExportFormat::Woff2
+        | ExportFormat::Otb
+        | ExportFormat::Cbdt
+        | ExportFormat::Sbix => {
             let options = compile_options(&params.options, &master)?;
             let report = fc_compile::export_with_progress(
                 &font,
@@ -57,6 +125,9 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
                 &options,
                 &mut |stage, percent| api.emit_progress(params.doc, stage.as_str(), percent),
             )?;
+            if params.options.format == ExportFormat::Otb {
+                warnings.push(ExportWarning{code:"bitmap-source-loss".into(),message:"OTB contains bitmap strikes; source outlines and layout remain in the native document.".into()});
+            }
             warnings.extend(report.warnings.iter().map(|warning| ExportWarning {
                 code: warning.code.to_owned(),
                 message: warning.message.clone(),

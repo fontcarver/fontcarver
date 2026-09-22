@@ -36,6 +36,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         ],
     )?;
     repair_command_double_option(&output_dir.join("Command.ts"))?;
+    add_imports(
+        &output_dir.join("BitmapCommand.ts"),
+        &["BitmapStrike", "BitmapGlyph"],
+    )?;
+    add_imports(&output_dir.join("BitmapStrike.ts"), &["BitmapGlyph"])?;
     add_imports(&output_dir.join("Kerning.ts"), &["KernPair"])?;
     write_methods(&output_dir)?;
     write_index(&output_dir)?;
@@ -59,6 +64,17 @@ fn repair_command_double_option(path: &Path) -> Result<(), std::io::Error> {
 }
 
 fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
+    BitmapRasterParams::export_all(config)?;
+    BitmapTraceParams::export_all(config)?;
+    BitmapPreviewParams::export_all(config)?;
+    BitmapPreviewLine::export_all(config)?;
+    BitmapConfigureParams::export_all(config)?;
+    BitmapState::export_all(config)?;
+    BitmapGlyphParams::export_all(config)?;
+    BitmapGlyphView::export_all(config)?;
+    BitmapApplyParams::export_all(config)?;
+    fc_model::BitmapStrike::export_all(config)?;
+    fc_model::BitmapGlyph::export_all(config)?;
     FindProblemsParams::export_all(config)?;
     FindProblemsResult::export_all(config)?;
     FeatureState::export_all(config)?;

@@ -43,7 +43,9 @@ export class HttpTransport implements Transport {
   ): Promise<ApiMethods[M]['result']> {
     const timeoutMs =
       this.timeoutOverrideMs ??
-      (method === 'text.shape' || method === 'session.export'
+      (method === 'text.shape' ||
+      method === 'session.export' ||
+      method === 'bitmap.rasterize'
         ? LONG_RUNNING_TIMEOUT_MS
         : DEFAULT_TIMEOUT_MS)
     const signal = AbortSignal.timeout(timeoutMs)

@@ -22,7 +22,10 @@ mod master;
 pub mod query;
 
 pub use anchor::{Anchor, AnchorKind};
-pub use bitmap::{BdfValue, Bitmap, BitmapGlyph, BitmapRef, BitmapStrike};
+pub use bitmap::{
+    BdfValue, Bitmap, BitmapGlyph, BitmapRef, BitmapStrike, MAX_BITMAP_BYTES, MAX_BITMAP_SIZE,
+    MAX_FONT_BITMAP_BYTES,
+};
 pub use component::Component;
 pub use contour::{Contour, Point, PointKind, TtIndex};
 pub use error::Error;

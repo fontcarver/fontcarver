@@ -253,6 +253,7 @@ fn populated_font_round_trips_semantically() {
                 },
                 advance: 9,
                 vertical_advance: Some(16),
+                vertical_origin: None,
                 refs: vec![BitmapRef {
                     base: "acute".into(),
                     dx: 1,

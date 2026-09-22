@@ -1,3 +1,4 @@
+import { BitmapView } from '../views/bitmap/BitmapView'
 import type { DocSummary } from '../api'
 import type { Tab } from '../stores/uiStore'
 import { FeaturesView } from '../views/features/FeaturesView'
@@ -12,6 +13,8 @@ export interface TabContentProps {
 
 /** Renders the view that belongs to the active tab. */
 export function TabContent({ summary, tab }: TabContentProps) {
+  if (tab.kind === 'bitmap')
+    return <BitmapView key={tab.id} summary={summary} />
   if (tab.kind === 'glyph')
     return <TextView key={tab.id} summary={summary} tab={tab} />
   if (tab.kind === 'features')

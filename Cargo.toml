@@ -11,6 +11,7 @@ members = [
     "crates/fc-geom",
     "crates/fc-layout",
     "crates/fc-model",
+    "crates/fc-raster",
     "crates/fc-sfnt",
     "src-tauri",
 ]

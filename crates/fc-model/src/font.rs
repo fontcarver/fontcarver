@@ -170,6 +170,9 @@ pub struct Font {
     /// Embedded bitmap strikes.
     #[serde(default)]
     pub bitmap_strikes: Vec<BitmapStrike>,
+    /// Decoded/edited strikes own embedded tables, including an empty collection.
+    #[serde(default)]
+    pub bitmap_tables_owned: bool,
     /// CID metadata when this is a CID-keyed font.
     #[serde(default)]
     pub cid: Option<CidInfo>,
@@ -200,6 +203,7 @@ impl Default for Font {
             feature_revision: 0,
             layout_conversion: None,
             bitmap_strikes: Vec::new(),
+            bitmap_tables_owned: false,
             cid: None,
             guides: Vec::new(),
             extra: Extra::default(),
@@ -360,6 +364,9 @@ impl Font {
         rename_group_members(&mut self.kerning_groups.side1, from, &new_name);
         rename_group_members(&mut self.kerning_groups.side2, from, &new_name);
         for strike in &mut self.bitmap_strikes {
+            if let Some(bitmap) = strike.glyphs.remove(from) {
+                strike.glyphs.insert(new_name.clone(), bitmap);
+            }
             for bitmap_glyph in strike.glyphs.values_mut() {
                 for reference in &mut bitmap_glyph.refs {
                     rename_name(&mut reference.base, from, &new_name);

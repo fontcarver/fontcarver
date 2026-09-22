@@ -9,6 +9,7 @@ rust-version.workspace = true
 
 [dependencies]
 base64.workspace = true
+flate2.workspace = true
 fc-model = { path = "../fc-model" }
 kurbo.workspace = true
 glyphs-reader = "1.0"

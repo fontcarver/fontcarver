@@ -43,6 +43,27 @@ pub(super) fn remove(font: &mut Font, names: &[GlyphName]) -> Result<(), Error> 
             return Err(Error::MissingGlyph(name.clone()));
         }
     }
+    // Resolve dependants before removing any referenced image, preserving their pixels.
+    for strike in &mut font.bitmap_strikes {
+        let affected: Vec<_> = strike
+            .glyphs
+            .iter()
+            .filter(|(name, glyph)| {
+                !seen.contains(name) && glyph.refs.iter().any(|r| seen.contains(&r.base))
+            })
+            .map(|(name, _)| name.clone())
+            .collect();
+        let resolved = affected
+            .iter()
+            .map(|name| Ok((name.clone(), strike.flattened(name)?)))
+            .collect::<Result<Vec<_>, fc_model::Error>>()?;
+        for (name, glyph) in resolved {
+            strike.glyphs.insert(name, glyph);
+        }
+        for name in names {
+            strike.glyphs.remove(name);
+        }
+    }
     for name in names {
         font.remove_glyph(name);
         for members in font
@@ -102,7 +123,13 @@ pub(super) fn duplicate(
     for layer in &mut glyph.layers {
         layer.id = LayerId::new();
     }
-    font.insert_glyph(glyph).map_err(Error::from)
+    font.insert_glyph(glyph).map_err(Error::from)?;
+    for strike in &mut font.bitmap_strikes {
+        if let Some(bitmap) = strike.glyphs.get(source).cloned() {
+            strike.glyphs.insert(name.clone(), bitmap);
+        }
+    }
+    Ok(())
 }
 
 pub(super) fn set_order(font: &mut Font, order: &[GlyphName]) -> Result<(), Error> {

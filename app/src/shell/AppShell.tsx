@@ -84,7 +84,7 @@ export function AppShell() {
       <TabBar />
       <ProgressLine />
       <div className={styles.workspace}>
-        {summary && panels.sidebar ? (
+        {summary && activeTab?.kind !== 'bitmap' && panels.sidebar ? (
           <SplitPane
             side="left"
             size={sizes.sidebar}
@@ -104,7 +104,7 @@ export function AppShell() {
             <EmptyState />
           )}
         </main>
-        {summary && panels.inspector ? (
+        {summary && activeTab?.kind !== 'bitmap' && panels.inspector ? (
           <SplitPane
             side="right"
             size={sizes.inspector}

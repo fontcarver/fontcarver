@@ -2,6 +2,7 @@
 
 #![warn(missing_docs)]
 
+pub mod bitmap;
 pub mod error;
 mod read;
 pub mod write;

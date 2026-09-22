@@ -41,6 +41,17 @@ pub const FAILED_STAGE: &str = "failed";
 
 /// Method name, parameter TypeScript type, and result TypeScript type.
 pub const METHODS: &[(&str, &str, &str)] = &[
+    ("bitmap.rasterize", "BitmapRasterParams", "Change"),
+    ("bitmap.trace", "BitmapTraceParams", "Change"),
+    (
+        "bitmap.preview",
+        "BitmapPreviewParams",
+        "Array<BitmapPreviewLine>",
+    ),
+    ("bitmap.configure", "BitmapConfigureParams", "Change"),
+    ("bitmap.state", "DocParams", "BitmapState"),
+    ("bitmap.glyph", "BitmapGlyphParams", "BitmapGlyphView"),
+    ("bitmap.apply", "BitmapApplyParams", "Change"),
     ("features.get", "DocParams", "FeatureState"),
     (
         "features.set_draft",
@@ -372,6 +383,13 @@ macro_rules! define_dispatch {
 }
 
 define_dispatch! {
+    "bitmap.rasterize" => handlers::bitmap::rasterize,
+    "bitmap.trace" => handlers::bitmap::trace,
+    "bitmap.preview" => handlers::bitmap::preview,
+    "bitmap.configure" => handlers::bitmap::configure,
+    "bitmap.state" => handlers::bitmap::state,
+    "bitmap.glyph" => handlers::bitmap::glyph,
+    "bitmap.apply" => handlers::bitmap::apply,
     "features.get" => handlers::features::get,
     "features.set_draft" => handlers::features::set_draft,
     "features.discard_draft" => handlers::features::discard_draft,

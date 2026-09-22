@@ -7,6 +7,15 @@ import { formatsFor, suggestPath, warningGlyphNames } from './exportFormats'
 describe('export format helpers', () => {
   it('offers Designspace only for a multiple-master document', () => {
     expect(formatsFor(1)).toEqual([
+      'Bdf',
+      'Pcf',
+      'Psf',
+      'Psf1',
+      'Fnt',
+      'Fon',
+      'Otb',
+      'Cbdt',
+      'Sbix',
       'Ttf',
       'Otf',
       'Woff',

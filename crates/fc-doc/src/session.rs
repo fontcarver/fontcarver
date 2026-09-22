@@ -41,7 +41,7 @@ impl FontOpener for DefaultFontOpener {
         let options = fc_sfnt::ReadOptions {
             font_index: face_index,
             keep_original_bytes: true,
-            decode_bitmaps: false,
+            decode_bitmaps: true,
         };
         let outcome =
             fc_sfnt::read_path(path, &options).map_err(|error| Error::Sfnt(error.to_string()))?;
@@ -266,7 +266,7 @@ fn is_binary_font_path(path: &Path) -> bool {
         .is_some_and(|extension| {
             matches!(
                 extension.as_str(),
-                "ttf" | "otf" | "ttc" | "otc" | "woff" | "woff2"
+                "ttf" | "otf" | "ttc" | "otc" | "woff" | "woff2" | "otb"
             )
         })
 }

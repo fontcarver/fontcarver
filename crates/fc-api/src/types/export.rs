@@ -9,6 +9,24 @@ use ts_rs::TS;
 #[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, Serialize, TS)]
 #[ts(export)]
 pub enum ExportFormat {
+    /// Adobe Bitmap Distribution Format, one selected strike.
+    Bdf,
+    /// X11 Portable Compiled Format.
+    Pcf,
+    /// Linux console PSF2.
+    Psf,
+    /// Legacy Linux console PSF1 (256 or 512 fixed 8-pixel cells).
+    Psf1,
+    /// Windows raster font.
+    Fnt,
+    /// Windows raster font resource collection.
+    Fon,
+    /// OpenType bitmap font (EBDT or CBDT strikes).
+    Otb,
+    /// TrueType container with PNG color bitmap tables.
+    Cbdt,
+    /// TrueType container with Apple PNG bitmap strikes.
+    Sbix,
     /// TrueType-flavored OpenType sfnt.
     #[default]
     Ttf,
@@ -38,6 +56,10 @@ pub enum ExportFormat {
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
 #[ts(export)]
 pub struct ExportOptions {
+    /// Bitmap strike identity for single-strike outputs.
+    #[serde(default)]
+    #[ts(optional)]
+    pub bitmap_strike: Option<(u16, u8)>,
     /// Output container format.
     pub format: ExportFormat,
     /// Master to export, or the default master when absent.
@@ -70,6 +92,7 @@ const fn default_true() -> bool {
 impl Default for ExportOptions {
     fn default() -> Self {
         Self {
+            bitmap_strike: None,
             format: ExportFormat::Ttf,
             master: None,
             remove_overlap: false,

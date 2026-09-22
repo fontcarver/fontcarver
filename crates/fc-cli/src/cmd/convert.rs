@@ -20,6 +20,15 @@ pub(crate) struct Args {
     /// Master to write, by name or identifier.
     #[arg(long, value_name = "NAME")]
     pub(crate) master: Option<String>,
+    /// Strike pixels per em for single-strike bitmap outputs.
+    #[arg(long, requires = "depth")]
+    pub(crate) ppem: Option<u16>,
+    /// Strike depth (1, 2, 4, 8, 32), together with --ppem.
+    #[arg(long, requires = "ppem")]
+    pub(crate) depth: Option<u8>,
+    /// Write legacy PSF1 instead of PSF2 for .psf outputs.
+    #[arg(long)]
+    pub(crate) psf1: bool,
 }
 
 pub(crate) fn run(args: Args) -> Result<(), Error> {
@@ -37,9 +46,19 @@ pub(crate) fn run(args: Args) -> Result<(), Error> {
                 source,
             });
     }
-    let format = output_format(&args.output)?;
+    let mut format = output_format(&args.output)?;
+    if args.psf1 {
+        if format != ExportFormat::Psf {
+            return Err(Error::UnsupportedOutput {
+                extension: "--psf1 requires a .psf output".into(),
+                supported: "psf, psf.gz",
+            });
+        }
+        format = ExportFormat::Psf1;
+    }
     let options = ExportOptions {
         format,
+        bitmap_strike: args.ppem.zip(args.depth),
         master: master_id(&opened, args.master.as_deref())?,
         ..ExportOptions::default()
     };
@@ -49,7 +68,18 @@ pub(crate) fn run(args: Args) -> Result<(), Error> {
 }
 
 fn output_format(path: &Path) -> Result<ExportFormat, Error> {
-    match extension(path).as_str() {
+    let inner = if extension(path) == "gz" {
+        path.with_extension("")
+    } else {
+        path.to_path_buf()
+    };
+    match extension(&inner).as_str() {
+        "pcf" => Ok(ExportFormat::Pcf),
+        "psf" | "psfu" => Ok(ExportFormat::Psf),
+        "fnt" => Ok(ExportFormat::Fnt),
+        "fon" => Ok(ExportFormat::Fon),
+        "otb" => Ok(ExportFormat::Otb),
+        "bdf" => Ok(ExportFormat::Bdf),
         "ttf" => Ok(ExportFormat::Ttf),
         "otf" => Ok(ExportFormat::Otf),
         "woff" => Ok(ExportFormat::Woff),
@@ -63,7 +93,7 @@ fn output_format(path: &Path) -> Result<ExportFormat, Error> {
         extension => Err(Error::UnsupportedOutput {
             extension: extension.to_owned(),
             supported:
-                "fcf, fcf.gz, ttf, otf, woff, woff2, ufo, designspace, glyphs, sfd, pfa, pfb",
+                "bdf, pcf, psf, fnt, fon, otb, fcf, fcf.gz, ttf, otf, woff, woff2, ufo, designspace, glyphs, sfd, pfa, pfb",
         }),
     }
 }

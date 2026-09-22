@@ -24,6 +24,7 @@ import { registerCommands, type Command } from './commands'
 import {
   closeTab,
   cycleTab,
+  openBitmapTab,
   openFeaturesTab,
   openFontInfoTab,
   openGlyphTab,
@@ -95,6 +96,18 @@ export function registerBuiltinCommands(): void {
   registerPathCommands()
   registerLayerCommands()
   registerCommands([
+    {
+      id: 'bitmap.open',
+      disabledReason: 'cmd.reason.noDocument',
+      title: 'bitmap.title',
+      menu: 'bitmap',
+      group: 'editor',
+      when: hasDocument,
+      run: async () => {
+        const doc = activeDoc()
+        if (doc !== null) await openBitmapTab(doc)
+      },
+    },
     ...(['ArrowLeft', 'ArrowRight'] as const).map((key): Command => ({
       id: `text.kerning.${key}`,
       title: 'textControls.sample.kerning',

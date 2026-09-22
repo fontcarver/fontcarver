@@ -331,3 +331,29 @@ pnpm --dir app licenses list
 `cargo-deny` is not currently wired into CI; if it is added later, this section's
 allow-list should be encoded in `deny.toml` so the policy in `docs/licensing.md`
 §5 is enforced automatically rather than by review.
+
+### P3 bitmap implementation — 2026-09-22
+
+The bitmap readers/writers, pixel tools and boundary tracer are original
+implementations from format specifications; no FontForge source was adapted,
+linked, embedded or executed. No external font was added to the repository.
+Tests construct their own small bitmap fonts; the optional CJK acceptance input
+is read from `FC_CJK_BDF` and remains outside the checkout.
+
+- `tiny-skia 0.11.4` and `tiny-skia-path 0.11.4` (BSD-3-Clause): bounded outline
+  coverage rasterization. Added transitive dependencies are `arrayref 0.3.9`
+  (BSD-2-Clause) and `strict-num 0.1.1` (MIT).
+- Existing `png 0.17.16` (MIT OR Apache-2.0) is now used directly by `fc-sfnt`
+  to decode and encode embedded PNG bitmap payloads.
+- Existing `flate2` (MIT OR Apache-2.0) is reused by `fc-formats` for compressed
+  bitmap files. Existing skrifa/fontations dependencies supply embedded hint
+  interpretation, automatic grid fitting and checked bitmap table parsing.
+
+License identifiers were checked in the pinned packages' Cargo manifests.
+Specifications: [Adobe BDF](https://adobe-type-tools.github.io/font-tech-notes/pdfs/5005.BDF_Spec.pdf),
+[X11 PCF description](https://fontforge.org/docs/techref/pcf-format.html),
+[Microsoft FNT KB 65123 archive](https://ftp.zx.net.nz/pub/Patches/ftp.microsoft.com/MISC/KB/en-us/65/123.HTM),
+[FONTDIR](https://learn.microsoft.com/en-us/windows/win32/menurc/fontdirentry),
+[OpenType EBDT](https://learn.microsoft.com/en-us/typography/opentype/spec/ebdt),
+[CBDT](https://learn.microsoft.com/en-us/typography/opentype/spec/cbdt),
+[sbix](https://learn.microsoft.com/en-us/typography/opentype/spec/sbix).

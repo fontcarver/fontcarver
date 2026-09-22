@@ -25,6 +25,13 @@ pub(crate) struct OpenedDocument {
 
 /// Opens a binary font, a native document, or a UFO source into `session`.
 fn open_in(session: &Session, path: &Path, face_index: Option<u32>) -> Result<DocId, Error> {
+    if fc_formats::bitmap::is_bitmap_path(path) {
+        let font = fc_formats::bitmap::read(path).map_err(|source| Error::OpenSource {
+            path: path.to_path_buf(),
+            source,
+        })?;
+        return Ok(session.open_font(font, Some(path.to_path_buf())));
+    }
     let source = match source_extension(path).as_str() {
         "ufo" => Some(fc_formats::ufo::read_ufo(path)),
         "designspace" => Some(fc_formats::ufo::read_designspace(path)),
@@ -83,7 +90,7 @@ impl FontOpener for CliFontOpener {
             &fc_sfnt::ReadOptions {
                 font_index: face_index,
                 keep_original_bytes: true,
-                decode_bitmaps: false,
+                decode_bitmaps: true,
             },
         )
         .map_err(|error| fc_doc::Error::Sfnt(error.to_string()))?;

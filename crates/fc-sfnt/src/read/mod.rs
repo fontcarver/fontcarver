@@ -28,7 +28,7 @@ pub struct ReadOptions {
     pub font_index: Option<u32>,
     /// Keep decoded source bytes for preservation-based export.
     pub keep_original_bytes: bool,
-    /// Reserved for P3 embedded-bitmap decoding; currently ignored and must be false.
+    /// Decode editable embedded bitmap strikes; false keeps their original tables opaque.
     pub decode_bitmaps: bool,
 }
 
@@ -37,7 +37,7 @@ impl Default for ReadOptions {
         Self {
             font_index: None,
             keep_original_bytes: true,
-            decode_bitmaps: false,
+            decode_bitmaps: true,
         }
     }
 }
@@ -128,6 +128,12 @@ fn read_impl(bytes: &[u8], path: Option<&Path>, opts: &ReadOptions) -> Result<Re
         let face = FontRef::from_index(source_bytes.as_slice(), index)
             .map_err(|error| Error::parse("sfnt", error))?;
         let mut font = read_face(&face, &mut warnings)?;
+        if opts.decode_bitmaps {
+            font.bitmap_strikes = crate::bitmap::read_strikes(&face, &font)?;
+            font.bitmap_tables_owned = [b"EBLC", b"CBLC", b"sbix"]
+                .iter()
+                .any(|tag| face.table_data(read_fonts::types::Tag::new(tag)).is_some());
+        }
         let format = source_format(container, &face);
         let glyph_order = font.glyph_order().cloned().collect();
         font.extra.source = Some(SourceProvenance {

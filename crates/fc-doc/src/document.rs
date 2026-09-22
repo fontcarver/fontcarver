@@ -536,6 +536,7 @@ impl Document {
         glyphs.sort_by_key(|id| id.0);
         glyphs.dedup();
         Change {
+            bitmaps: impact.bitmap_strikes || !impact.bitmap_glyphs.is_empty(),
             feature_source: impact.feature_source,
             layout: impact.layout,
             glyphs,

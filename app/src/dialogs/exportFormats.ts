@@ -3,6 +3,15 @@ import { choosePath } from '../shell/nativeDialogs'
 
 /** File-name extension each container format is written with. */
 export const FORMAT_EXTENSIONS: Record<ExportFormat, string> = {
+  Bdf: '.bdf',
+  Pcf: '.pcf',
+  Psf: '.psf',
+  Psf1: '.psf',
+  Fnt: '.fnt',
+  Fon: '.fon',
+  Otb: '.otb',
+  Cbdt: '.ttf',
+  Sbix: '.ttf',
   Ttf: '.ttf',
   Otf: '.otf',
   Woff: '.woff',
@@ -34,7 +43,28 @@ export const ALL_MASTER_FORMATS: readonly ExportFormat[] = [
 /** Formats written as a package directory rather than a single file. */
 export const DIRECTORY_FORMATS: readonly ExportFormat[] = ['Ufo', 'Designspace']
 
+export const BITMAP_FORMATS: readonly ExportFormat[] = [
+  'Bdf',
+  'Pcf',
+  'Psf',
+  'Psf1',
+  'Fnt',
+  'Fon',
+  'Otb',
+  'Cbdt',
+  'Sbix',
+]
+
 const BASE_FORMATS: readonly ExportFormat[] = [
+  'Bdf',
+  'Pcf',
+  'Psf',
+  'Psf1',
+  'Fnt',
+  'Fon',
+  'Otb',
+  'Cbdt',
+  'Sbix',
   'Ttf',
   'Otf',
   'Woff',

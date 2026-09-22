@@ -9,6 +9,9 @@ use crate::{GlyphName, LayerId, MasterId};
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub enum Error {
+    /// Bitmap storage, metrics, identity or references are invalid.
+    #[error("invalid bitmap: {0}")]
+    InvalidBitmap(String),
     /// A glyph name is already present in the font.
     #[error("glyph `{glyph}` already exists")]
     DuplicateGlyph {

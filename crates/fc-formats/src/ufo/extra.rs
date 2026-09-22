@@ -117,6 +117,10 @@ pub(crate) fn import(font: &mut Font) -> Result<(), Error> {
     }
     if let Some(strikes) = extra.get("bitmap_strikes") {
         font.bitmap_strikes = serde_json::from_value(strikes.clone())?;
+        font.bitmap_tables_owned = extra
+            .get("bitmap_tables_owned")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(!font.bitmap_strikes.is_empty());
     }
     let master_id = font.default_master().id.clone();
     if let Some(instructions) = extra
@@ -292,6 +296,7 @@ pub(crate) fn build(font: &Font, master: &Master) -> Result<Option<Value>, Error
         })
         .collect::<serde_json::Map<_, _>>();
     let has_data = !raw_tables.is_empty()
+        || font.bitmap_tables_owned
         || !font.bitmap_strikes.is_empty()
         || !tt_instructions.is_empty()
         || !hints.is_empty()
@@ -304,6 +309,7 @@ pub(crate) fn build(font: &Font, master: &Master) -> Result<Option<Value>, Error
         "version": 1,
         "raw_tables": raw_tables,
         "bitmap_strikes": font.bitmap_strikes,
+        "bitmap_tables_owned": font.bitmap_tables_owned,
         "tt_instructions": tt_instructions,
         "hints": hints,
         "tt_indices": tt_indices,

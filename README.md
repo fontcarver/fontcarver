@@ -57,6 +57,10 @@ P2c/P2d are complete within the documented static scope: native OTF/CFF export,
 Glyphs 2/3 import and Glyphs 3 export, SFD and Type 1 interoperability, and
 Find problems through the UI and CLI. See [P2c/P2d acceptance](docs/p2cd-acceptance.md)
 for format boundaries, independent reviews and final browser verification.
+P3 bitmap fonts are implemented: editable strikes, pixel tools, BDF/PCF/PSF/FNT/FON,
+OTB and embedded EBDT/CBDT/sbix, outline rasterization, pixel tracing and waterfall
+preview. See [P3 acceptance](docs/p3-acceptance.md) for supported format variants,
+CJK round trips, browser verification and the existing layout-test baseline failure.
 There is no release yet; native workflow verification is partial and release packaging is untested. See
 [`docs/p1-acceptance.md`](docs/p1-acceptance.md) for measured results and current
 limitations, including hinting removal after outline edits. The capability list

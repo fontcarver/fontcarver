@@ -255,6 +255,8 @@ pub fn export_with_progress(
     } else {
         merged
     };
+    let merged = fc_sfnt::bitmap::replace_tables(&merged, font, &compiled.glyph_order)
+        .map_err(|e| Error::write("embedded bitmaps", e))?;
     progress(ExportStage::Write, WRITE_PERCENT);
     let sfnt = if let Some(subset) = &options.table_subset {
         subset_tables(&merged, subset)?

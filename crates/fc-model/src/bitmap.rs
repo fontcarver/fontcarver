@@ -6,6 +6,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::GlyphName;
 
+mod ops;
+pub use ops::{MAX_BITMAP_BYTES, MAX_BITMAP_SIZE, MAX_FONT_BITMAP_BYTES};
+
 /// A value from a BDF properties dictionary.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
@@ -78,6 +81,10 @@ pub struct BitmapGlyph {
     /// Optional vertical pixel advance.
     #[serde(default)]
     pub vertical_advance: Option<i16>,
+    /// Vertical writing origin relative to the horizontal origin, in pixels.
+    #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub vertical_origin: Option<(i16, i16)>,
     /// Composite bitmap references.
     #[serde(default)]
     pub refs: Vec<BitmapRef>,

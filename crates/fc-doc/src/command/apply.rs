@@ -10,6 +10,8 @@ use super::{features, glyphs, kerning, layers, metrics, outline, structure, Comm
 
 #[derive(Default)]
 pub(crate) struct Impact {
+    pub(crate) bitmap_strikes: bool,
+    pub(crate) bitmap_glyphs: Vec<(u16, u8, GlyphName)>,
     pub(crate) feature_source: bool,
     pub(crate) feature_anchors: Vec<(GlyphName, LayerId)>,
     pub(crate) layout: bool,
@@ -48,6 +50,15 @@ pub(crate) fn impact(font: &Font, command: &Command) -> Impact {
 
 fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
     match command {
+        Command::Bitmap(super::BitmapCommand::SetGlyph {
+            ppem, depth, glyph, ..
+        }) => {
+            let key = (*ppem, *depth, glyph.clone());
+            if !impact.bitmap_glyphs.contains(&key) {
+                impact.bitmap_glyphs.push(key);
+            }
+        }
+        Command::Bitmap(_) => impact.bitmap_strikes = true,
         Command::SetFeatureDraft { .. } | Command::DiscardFeatureDraft { .. } => {
             impact.feature_source = true
         }
@@ -66,6 +77,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.component_graph_changed = true;
         }
         Command::RemoveGlyphs { names } => {
+            impact.bitmap_strikes = !font.bitmap_strikes.is_empty();
             impact.layout = true;
             for name in names {
                 impact.glyph(name);
@@ -77,6 +89,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.component_graph_changed = true;
         }
         Command::RenameGlyph { from, to } => {
+            impact.bitmap_strikes = !font.bitmap_strikes.is_empty();
             impact.layout = true;
             impact.glyph(from);
             impact.glyph(to);
@@ -170,6 +183,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.component_graph_changed = true;
         }
         Command::DuplicateGlyph { name, .. } => {
+            impact.bitmap_strikes = !font.bitmap_strikes.is_empty();
             impact.glyph(name);
             impact.glyph_order = true;
             impact.layers = true;
@@ -256,6 +270,7 @@ fn apply_batch(
 
 fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
     match command {
+        Command::Bitmap(command) => super::bitmap::apply(font, command),
         Command::SetFeatureDraft {
             expected_revision,
             source,

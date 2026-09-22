@@ -2,6 +2,7 @@
 
 #![warn(missing_docs)]
 
+pub mod bitmap;
 mod error;
 pub mod glyphs;
 pub mod sfd;

@@ -1,6 +1,8 @@
 //! Serializable request and response types for every API method.
 
+mod bitmap;
 mod commands;
+pub use bitmap::*;
 mod editing;
 mod events;
 mod export;
@@ -27,3 +29,6 @@ pub use layout_conversion::*;
 pub use problems::*;
 pub use session::*;
 pub use shaping::*;
+
+mod bitmap_config;
+pub use bitmap_config::*;

@@ -172,3 +172,10 @@ export async function changeGlyphTab(
   if (ui.activeTab !== id || tab?.doc !== doc || tab.gid !== from) return
   replaceGlyphTab(doc, from, to, label)
 }
+
+/** Opens the bitmap workspace after persisting the active editor. */
+export async function openBitmapTab(doc: DocId): Promise<string | undefined> {
+  const transition = prepareTabTransition()
+  if (!(await transition.ready) || !transition.isCurrent()) return undefined
+  return useUiStore.getState().openTab({ kind: 'bitmap', doc })
+}

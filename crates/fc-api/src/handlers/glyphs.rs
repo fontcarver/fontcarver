@@ -350,7 +350,45 @@ pub(crate) fn build_cell(
             generation: document.glyph_generation(gid),
         });
     };
-    let flattened = document.flattened_path(gid, master)?;
+    let mut flattened = document.flattened_path(gid, master)?;
+    let bitmap_preview = flattened.elements().is_empty()
+        && document
+            .font
+            .bitmap_strikes
+            .iter()
+            .any(|s| s.glyphs.contains_key(name));
+    if bitmap_preview {
+        if let Some(strike) = document
+            .font
+            .bitmap_strikes
+            .iter()
+            .find(|s| s.glyphs.contains_key(name))
+        {
+            let image = strike
+                .flattened(name)
+                .map_err(|e| ApiError::invalid_params(e.to_string()))?;
+            let b = &image.bitmap;
+            if usize::from(b.width) * usize::from(b.height) <= 262_144 {
+                let scale = f64::from(document.font.info.units_per_em) / f64::from(strike.ppem);
+                let mut path = BezPath::new();
+                for row in 0..b.height {
+                    for col in 0..b.width {
+                        if b.coverage(col, row) == 0 {
+                            continue;
+                        }
+                        let x = (f64::from(b.origin_x) + f64::from(col)) * scale;
+                        let y = (f64::from(b.origin_y) + f64::from(b.height - row)) * scale;
+                        path.move_to((x, y));
+                        path.line_to((x + scale, y));
+                        path.line_to((x + scale, y - scale));
+                        path.line_to((x, y - scale));
+                        path.close_path();
+                    }
+                }
+                flattened = std::sync::Arc::new(path);
+            }
+        }
+    }
     let bbox = (!flattened.elements().is_empty()).then(|| {
         let bounds = flattened.bounding_box();
         [bounds.x0, bounds.y0, bounds.x1, bounds.y1]
@@ -368,8 +406,12 @@ pub(crate) fn build_cell(
         color_label: glyph.color_label,
         export: glyph.export,
         has_components: !layer.components.is_empty(),
-        is_empty: layer.is_empty(),
-        generation: document.glyph_generation(gid),
+        is_empty: layer.is_empty() && !bitmap_preview,
+        generation: if bitmap_preview {
+            document.generation
+        } else {
+            document.glyph_generation(gid)
+        },
     })
 }
 

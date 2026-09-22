@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 mod apply;
+mod bitmap;
+pub use bitmap::BitmapCommand;
 mod features;
 mod glyphs;
 mod kerning;
@@ -32,6 +34,8 @@ pub use options::{
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 pub enum Command {
+    /// Edit bitmap pixels and strikes independently of outline data.
+    Bitmap(BitmapCommand),
     /// Save source text without compiling or changing effective layout authority.
     SetFeatureDraft {
         /// Current persistent feature editor revision.
@@ -613,6 +617,9 @@ pub enum Command {
 /// Precise invalidation information produced by a command.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 pub struct Change {
+    /// Bitmap pixels, references or strike metadata changed.
+    #[serde(default)]
+    pub bitmaps: bool,
     /// Whether feature editor source, settings or conversion metadata changed.
     #[serde(default)]
     pub feature_source: bool,
@@ -653,6 +660,7 @@ impl Change {
     }
 
     pub(crate) fn merge(&mut self, other: &Self) {
+        self.bitmaps |= other.bitmaps;
         self.layout |= other.layout;
         self.feature_source |= other.feature_source;
         for glyph in &other.glyphs {

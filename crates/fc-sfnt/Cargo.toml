@@ -18,6 +18,8 @@ sha2.workspace = true
 skrifa.workspace = true
 thiserror.workspace = true
 wuff.workspace = true
+png = "0.17"
+write-fonts.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true

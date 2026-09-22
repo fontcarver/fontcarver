@@ -68,18 +68,17 @@ describe('App shell', () => {
       ).toBeInTheDocument()
   })
 
-  it('shows a placeholder inside menus that have no commands yet', async () => {
+  it('lists bitmap editing with a disabled reason when no document is open', async () => {
     const user = userEvent.setup()
     setTransport(emptySession())
     render(<App />)
     const menubar = await screen.findByRole('menubar')
 
-    // Layer and Path fill up with the editor's own commands; Bitmap is one
-    // of the three menus P1 leaves empty on purpose.
+    // Bitmap commands are listed but require an open document.
     await user.click(within(menubar).getByRole('menuitem', { name: 'Bitmap' }))
 
-    const item = screen.getByRole('menuitem', {
-      name: 'Arrives in a later phase',
+    const item = await screen.findByRole('menuitem', {
+      name: /^Bitmap editor/,
     })
     expect(item).toBeDisabled()
   })

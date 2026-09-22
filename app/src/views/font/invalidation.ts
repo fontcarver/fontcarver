@@ -53,18 +53,16 @@ export function invalidateFor(
 
   const { query, pager } = grid
   pager.setGeneration(generation)
-  const fullReload = requiresFullReload(
-    change,
-    query.sort,
-    isFiltered(query.filter),
-  )
+  const fullReload =
+    change.bitmaps ||
+    requiresFullReload(change, query.sort, isFiltered(query.filter))
 
   if (fullReload) {
     forgetOrder(query.doc)
     forgetGlyphNames(query.doc)
   }
 
-  if (change.glyph_order) pathCache.clearDoc(query.doc)
+  if (change.glyph_order || change.bitmaps) pathCache.clearDoc(query.doc)
   else pathCache.drop(query.doc, change.glyphs)
 
   if (fullReload) {

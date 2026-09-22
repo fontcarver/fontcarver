@@ -17,6 +17,10 @@ pub const DEFAULT_MEMORY_BUDGET: usize = 512 * 1024 * 1024;
 /// A structurally shared value restored by undo or redo.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Snapshot {
+    /// Complete strike collection for strike management and glyph structure edits.
+    BitmapStrikes(Arc<Vec<fc_model::BitmapStrike>>, bool),
+    /// One bitmap for bounded pixel-edit undo storage.
+    BitmapGlyph(u16, u8, GlyphName, Option<Arc<fc_model::BitmapGlyph>>),
     /// Effective source, draft, policy and conversion metadata.
     Features(Arc<FeatureSnapshot>),
     /// One layer's anchor list, excluding outline data and touched state.
@@ -208,6 +212,23 @@ impl UndoStack {
 
 pub(crate) fn capture(font: &Font, impact: &Impact) -> Vec<Snapshot> {
     let mut snapshots = Vec::new();
+    if impact.bitmap_strikes {
+        snapshots.push(Snapshot::BitmapStrikes(
+            Arc::new(font.bitmap_strikes.clone()),
+            font.bitmap_tables_owned,
+        ));
+    } else {
+        for (ppem, depth, name) in &impact.bitmap_glyphs {
+            let value = font
+                .bitmap_strikes
+                .iter()
+                .find(|s| (s.ppem, s.depth) == (*ppem, *depth))
+                .and_then(|s| s.glyphs.get(name))
+                .cloned()
+                .map(Arc::new);
+            snapshots.push(Snapshot::BitmapGlyph(*ppem, *depth, name.clone(), value));
+        }
+    }
     if impact.feature_source {
         snapshots.push(Snapshot::Features(Arc::new(FeatureSnapshot::capture(font))));
     }
@@ -256,6 +277,26 @@ pub(crate) fn capture(font: &Font, impact: &Impact) -> Vec<Snapshot> {
 pub(crate) fn restore(font: &mut Font, snapshots: &[Snapshot]) {
     for snapshot in snapshots {
         match snapshot {
+            Snapshot::BitmapStrikes(strikes, owned) => {
+                font.bitmap_strikes = (**strikes).clone();
+                font.bitmap_tables_owned = *owned;
+            }
+            Snapshot::BitmapGlyph(ppem, depth, name, value) => {
+                if let Some(strike) = font
+                    .bitmap_strikes
+                    .iter_mut()
+                    .find(|s| (s.ppem, s.depth) == (*ppem, *depth))
+                {
+                    match value {
+                        Some(value) => {
+                            strike.glyphs.insert(name.clone(), (**value).clone());
+                        }
+                        None => {
+                            strike.glyphs.remove(name);
+                        }
+                    }
+                }
+            }
             Snapshot::Features(features) => features.restore(font),
             Snapshot::FeatureAnchors(state) => {
                 if let Some(layer) = font.glyph_mut(&state.glyph).and_then(|glyph| {
@@ -310,7 +351,10 @@ pub(crate) fn restore(font: &mut Font, snapshots: &[Snapshot]) {
 }
 
 fn merge_earliest_snapshots(existing: &mut Vec<Snapshot>, newer: Vec<Snapshot>) {
-    for snapshot in newer {
+    for mut snapshot in newer {
+        if merge_bitmap_snapshot(existing, &mut snapshot, false) {
+            continue;
+        }
         if !existing
             .iter()
             .any(|candidate| same_snapshot_key(candidate, &snapshot))
@@ -321,7 +365,10 @@ fn merge_earliest_snapshots(existing: &mut Vec<Snapshot>, newer: Vec<Snapshot>) 
 }
 
 fn merge_latest_snapshots(existing: &mut Vec<Snapshot>, newer: Vec<Snapshot>) {
-    for snapshot in newer {
+    for mut snapshot in newer {
+        if merge_bitmap_snapshot(existing, &mut snapshot, true) {
+            continue;
+        }
         if let Some(position) = existing
             .iter()
             .position(|candidate| same_snapshot_key(candidate, &snapshot))
@@ -333,8 +380,85 @@ fn merge_latest_snapshots(existing: &mut Vec<Snapshot>, newer: Vec<Snapshot>) {
     }
 }
 
+// Full-strike and single-image snapshots overlap. Fold their chronology into a
+// single full snapshot when necessary so mixed gestures restore the true endpoints.
+fn merge_bitmap_snapshot(
+    existing: &mut Vec<Snapshot>,
+    incoming: &mut Snapshot,
+    latest: bool,
+) -> bool {
+    if !matches!(
+        incoming,
+        Snapshot::BitmapStrikes(..) | Snapshot::BitmapGlyph(..)
+    ) {
+        return false;
+    }
+    let full = existing
+        .iter()
+        .position(|s| matches!(s, Snapshot::BitmapStrikes(..)));
+    if let Some(index) = full {
+        if !latest {
+            return true;
+        }
+        if let Snapshot::BitmapGlyph(ppem, depth, name, value) = incoming {
+            if let Snapshot::BitmapStrikes(strikes, _) = &mut existing[index] {
+                restore_bitmap_glyph(
+                    Arc::make_mut(strikes).as_mut_slice(),
+                    *ppem,
+                    *depth,
+                    name,
+                    value,
+                );
+            }
+            return true;
+        }
+    }
+    if let Snapshot::BitmapStrikes(strikes, _) = incoming {
+        if !latest {
+            for old in existing.iter() {
+                if let Snapshot::BitmapGlyph(ppem, depth, name, value) = old {
+                    restore_bitmap_glyph(
+                        Arc::make_mut(strikes).as_mut_slice(),
+                        *ppem,
+                        *depth,
+                        name,
+                        value,
+                    );
+                }
+            }
+        }
+        existing.retain(|s| !matches!(s, Snapshot::BitmapStrikes(..) | Snapshot::BitmapGlyph(..)));
+    }
+    false
+}
+fn restore_bitmap_glyph(
+    strikes: &mut [fc_model::BitmapStrike],
+    ppem: u16,
+    depth: u8,
+    name: &GlyphName,
+    value: &Option<Arc<fc_model::BitmapGlyph>>,
+) {
+    if let Some(strike) = strikes
+        .iter_mut()
+        .find(|s| (s.ppem, s.depth) == (ppem, depth))
+    {
+        match value {
+            Some(g) => {
+                strike.glyphs.insert(name.clone(), (**g).clone());
+            }
+            None => {
+                strike.glyphs.remove(name);
+            }
+        }
+    }
+}
+
 fn same_snapshot_key(left: &Snapshot, right: &Snapshot) -> bool {
     match (left, right) {
+        (Snapshot::BitmapStrikes(..), Snapshot::BitmapStrikes(..)) => true,
+        (Snapshot::BitmapGlyph(a, b, c, _), Snapshot::BitmapGlyph(d, e, f, _)) => {
+            (a, b, c) == (d, e, f)
+        }
         (Snapshot::Glyph(left, _), Snapshot::Glyph(right, _)) => left == right,
         (Snapshot::FeatureAnchors(left), Snapshot::FeatureAnchors(right)) => {
             left.glyph == right.glyph && left.layer == right.layer
@@ -388,6 +512,14 @@ fn estimate_entry(inverse: &[Snapshot], forward: &[Snapshot]) -> usize {
 
 fn estimate_snapshot(snapshot: &Snapshot) -> usize {
     match snapshot {
+        Snapshot::BitmapStrikes(strikes, _) => strikes
+            .iter()
+            .flat_map(|s| s.glyphs.values())
+            .map(|g| g.bitmap.rows.len() + g.refs.len() * 64 + 128)
+            .sum(),
+        Snapshot::BitmapGlyph(_, _, _, value) => value
+            .as_ref()
+            .map_or(64, |g| g.bitmap.rows.len() + g.refs.len() * 64 + 128),
         Snapshot::Features(features) => features.estimated_bytes(),
         Snapshot::FeatureAnchors(state) => state.anchors.len().saturating_mul(128),
         Snapshot::Kerning(kerning) => kerning.estimated_bytes(),

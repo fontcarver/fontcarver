@@ -16,7 +16,7 @@ export type ThemePreference = 'light' | 'dark' | 'system'
 export type ResolvedTheme = 'light' | 'dark'
 
 /** Kind of workspace tab. */
-export type TabKind = 'font' | 'glyph' | 'fontinfo' | 'features'
+export type TabKind = 'font' | 'glyph' | 'fontinfo' | 'features' | 'bitmap'
 
 /** Per-tab state for the shaped text editor hosted by a Glyph tab. */
 export interface TextTabState {

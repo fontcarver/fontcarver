@@ -16,6 +16,7 @@ fc-glyphdata = { path = "../fc-glyphdata" }
 fc-layout = { path = "../fc-layout" }
 fc-model = { path = "../fc-model", features = ["ts"] }
 fc-sfnt = { path = "../fc-sfnt" }
+fc-raster = { path = "../fc-raster" }
 kurbo.workspace = true
 read-fonts.workspace = true
 serde.workspace = true

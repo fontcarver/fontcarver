@@ -68,7 +68,7 @@ fn convert_rejects_an_unknown_output_format_with_exit_code_two() {
         .assert()
         .code(2)
         .stderr(predicate::str::contains(
-            "unsupported output format 'bogus': supported formats are fcf, fcf.gz, ttf, otf, woff, woff2, ufo, designspace, glyphs, sfd, pfa, pfb",
+            "unsupported output format 'bogus': supported formats are bdf, pcf, psf, fnt, fon, otb, fcf, fcf.gz, ttf, otf, woff, woff2, ufo, designspace, glyphs, sfd, pfa, pfb",
         ));
 }
 
