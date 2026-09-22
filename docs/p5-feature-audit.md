@@ -105,7 +105,7 @@ claimed complete. P1–P4 evidence may be reused after checking its exact scope.
 | 95 | Pairs‑and‑phrases proof library with ↑/↓ stepping during spacing | Pending verification | |
 | 96 | Compare Fonts / Compare Family diff view; compare against a reference binary | Pending verification | |
 | 97 | Virtual masters | Pending verification | |
-| 98 | Manual PostScript hint editing (stems, ghosts, hint replacement) | Partial | Revision-checked PS editor, undo/redo, native persistence and CFF stem/mask/counter/closing-edge round trips verified. Type 1 and per-FD master parameters remain open. |
+| 98 | Manual PostScript hint editing (stems, ghosts, hint replacement) | Partial | Revision-checked PS editor, undo/redo, native persistence and CFF stem/mask/counter/closing-edge round trips verified. Type 1 private parameters and whole-glyph stems now round-trip; complex Type 1 hints and per-FD master parameters remain open. |
 | 99 | Visual OpenType lookup editor for GSUB 1/2/3/4/6 and GPOS 1/2/4/6, round‑tripping to FEA | Pending verification | |
 | 100 | Feature‑code tokens (numbers, glyph properties, predicates) and `#ifdef VARIABLE` conditional blocks | Pending verification | |
 | 101 | Multi‑strike waterfall and cross‑strike copy/scale | Pending verification | |

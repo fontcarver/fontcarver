@@ -59,7 +59,7 @@ hinting milestone remain open. The complete exit audit is
 
 ## Remaining hinting work
 
-Type 1 hint import/output; TT source-index binding, instruction/CVT/fpgm/prep
+Type 1 path-bound hint import/output; TT source-index binding, instruction/CVT/fpgm/prep
 editing, authored-program export and hinted preview; variable hinting; multiple
 editable CID private dictionaries; broader PS analysis quality and format-aware
 handling of diagonal hints, active ranges and flex. These remain open and are
@@ -69,3 +69,53 @@ been completed by this checkpoint.
 The implementation uses existing permissive dependencies and original code.
 No FontForge source or executable was used. The optional external hinter is a
 separate user tool; its upstream manual is linked in the user documentation.
+
+## Type 1 follow-up
+
+The next slice retains the supported private parameters and whole-glyph H/V stems
+in native PFA/PFB. Fractional stem operands and ghost sentinels survive round trips.
+Import adds the charstring sidebearing to vertical stems and applies positive,
+axis-aligned FontMatrix normalization. A bounded metadata walker follows ordinary
+subroutines and division without executing PostScript. The private parser retains
+literal values and distinguishes glyph names from private dictionary keys.
+Runtime private-field computation is not executed or mistaken for a constant: the
+affected field is omitted and disclosed. The Nimbus Sans fixture exercises this
+with interpreter-dependent StemSnap compatibility procedures.
+
+The real `n019003l.pfb` fixture exposed a shared validation bug: BlueValues pairs
+need not be globally sorted. Validation now checks each low/high pair and all
+pairwise overlaps while preserving the baseline pair and original zone order.
+This follows section 5.3 of the [Adobe Type 1 specification](https://adobe-type-tools.github.io/font-tech-notes/pdfs/T1_SPEC.pdf).
+
+Complex glyph hint mechanisms remain unsupported. Import warnings persist in
+source metadata and appear through the API and CLI; FCF save/reopen retains them.
+Unrepresentable transformed private values are preserved as source metadata.
+The exporter rejects unsupported masks, flex, diagonal hints, ranges and overlapping
+stems before replacing any destination. TrueType instruction loss is reported
+when present. Type 1 automatic hinting and overlap preprocessing remain open.
+
+Focused verification includes an independently encoded source with a nonzero
+sidebearing, subroutine stems and a translated/nonuniform FontMatrix, reserved
+private-key glyph names, invalid/computed private values, reflected private zones,
+real Nimbus Sans data, and FontTools operand decoding plus FreeType rendering at
+six sizes for both PFA and PFB. This does not close the complete hinting milestone.
+
+Follow-up verification:
+
+- Related Rust crates (`fc-model`, `fc-formats`, `fc-sfnt`, `fc-hint`, `fc-api`,
+  `fc-cli`): **527 passed, 0 failed, 2 existing ignored**, with serial test
+  execution. This includes **29 Type 1 tests** and persistent API import warnings.
+  The previously recorded `fc-layout` Tibetan case is outside this run.
+- FontTools checks exact emitted stem operands and private values. FreeType
+  performs **12 native-hinted and 12 unhinted renders**, with a confirmed rendering
+  difference at tested pixel sizes.
+- Frontend: **1,118 passed in 137 files**, using two workers. Earlier concurrent
+  runs exceeded existing wall-clock limits; isolated repeats and the final full
+  run pass without changing test timeouts. The 65K CJK search/preview recheck takes
+  approximately **449/155 ms**, respectively, and the serial Rust run also passes.
+- Workspace Clippy with denied warnings, Rust formatting, TypeScript, ESLint,
+  changed-file Prettier and `git diff --check` pass.
+- Evidence: `/tmp/fontcarver-p5-type1-regression.log`,
+  `/tmp/fontcarver-p5-type1-frontend-final.log`,
+  `/tmp/fontcarver-p5-type1-independent.log`, and
+  `/tmp/fontcarver-p5-type1-cjk-recheck.log`.

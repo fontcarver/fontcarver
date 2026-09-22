@@ -126,7 +126,18 @@ pub(crate) fn open_document(path: &Path, face_index: Option<u32>) -> Result<Open
     let session = Arc::new(Session::with_opener(opener.clone()));
     let doc = open_in(&session, path, face_index)?;
     let api = Api::new(Arc::clone(&session));
-    let warnings = opener.take_warnings();
+    let mut warnings = opener.take_warnings();
+    warnings.extend(
+        session
+            .with_doc(doc, |document| {
+                fc_formats::type1::read_warnings(&document.font)
+            })?
+            .into_iter()
+            .map(|warning| DocWarning {
+                code: warning.code.into(),
+                message: warning.message,
+            }),
+    );
     Ok(OpenedDocument {
         session,
         api,

@@ -1,10 +1,12 @@
 //! Static PostScript Type 1 PFA/PFB import and export.
 //!
 //! The writer implements Adobe's Type 1 format (T1_SPEC.pdf), without adapting
-//! FontForge code. Output uses unhinted native charstrings and a 256-slot encoding;
+//! FontForge code. Output uses native charstrings and a 256-slot encoding;
 //! OpenType layout, editable component relationships and extra layers are omitted.
 
 mod guards;
+mod hints;
+mod private;
 mod reader;
 mod writer;
 
@@ -38,7 +40,10 @@ pub fn read_type1(path: &Path) -> Result<Font, Error> {
     reader::read(path)
 }
 
-/// Writes a selected master as an unhinted static PFA (`false`) or PFB (`true`).
+/// Writes a selected master as a static PFA (`false`) or PFB (`true`).
+///
+/// Private hint parameters and whole-glyph horizontal/vertical stems are retained.
+/// Unsupported path-bound hint mechanisms produce an error before replacing output.
 ///
 /// Validation and complete serialization precede the atomic destination replace.
 /// Call [`loss_warnings`] before exporting to disclose Type 1's format limitations.
@@ -68,11 +73,28 @@ pub fn write_type1(font: &Font, master: &MasterId, path: &Path, binary: bool) ->
 /// Messages describe format behavior, not validation errors. Glyph names are
 /// preserved; Unicode assignments inconsistent with those names cannot survive
 /// a native Type 1 roundtrip. Imported 8-bit encodings are retained where possible.
-pub fn loss_warnings(font: &Font, _master: &MasterId) -> Vec<Type1Warning> {
+pub fn loss_warnings(font: &Font, master: &MasterId) -> Vec<Type1Warning> {
     let mut warnings = vec![
         Type1Warning { code: "type1-layout-loss", message: "Type 1 contains only static outlines, widths and an 8-bit encoding; OpenType layout, kerning, anchors, extra masters and source layers are not retained.".into() },
-        Type1Warning { code: "type1-hinting-loss", message: "Type 1 output is unhinted; imported PostScript hints and TrueType instructions are not retained.".into() },
     ];
+    if font
+        .master(master)
+        .is_some_and(|master| master.tt != fc_model::TtMasterData::default())
+        || font
+            .glyphs
+            .values()
+            .filter(|glyph| glyph.export)
+            .any(|glyph| {
+                glyph.master_layer(master).is_some_and(|layer| {
+                    layer
+                        .tt_instructions
+                        .as_ref()
+                        .is_some_and(|program| !program.is_empty())
+                })
+            })
+    {
+        warnings.push(Type1Warning { code: "type1-hinting-loss", message: "Type 1 output cannot retain TrueType instructions. Supported PostScript stems and private values are retained.".into() });
+    }
     let glyphs: Vec<_> = font.glyphs.values().filter(|glyph| glyph.export).collect();
     let inferred = reader::unicode_assignments(
         glyphs.iter().enumerate().map(|(index, glyph)| {
@@ -91,6 +113,47 @@ pub fn loss_warnings(font: &Font, _master: &MasterId) -> Vec<Type1Warning> {
         })
     }) {
         warnings.push(Type1Warning { code: "type1-unicode-loss", message: "Type 1 has no Unicode cmap; some Unicode assignments cannot be recovered from the preserved glyph names.".into() });
+    }
+    warnings
+}
+
+/// Reports Type 1 hint metadata that could not be retained during source import.
+///
+/// Diagnostics are stored in font user data, so saving and reopening an FCF does
+/// not erase the import warning or the affected glyph names.
+pub fn read_warnings(font: &Font) -> Vec<Type1Warning> {
+    let Some(source) = font.user_data.get(SOURCE_KEY) else {
+        return Vec::new();
+    };
+    let mut warnings = Vec::new();
+    if source
+        .get("computed_private_fields")
+        .and_then(|value| value.as_array())
+        .is_some_and(|values| !values.is_empty())
+    {
+        warnings.push(Type1Warning {
+            code: "type1-import-private-computed",
+            message: "Some Type 1 private hint fields use runtime PostScript and were not imported. Their field names remain in source metadata; literal parameters are retained.".into(),
+        });
+    }
+    if let Some(glyphs) = source
+        .get("unretained_glyph_hints")
+        .and_then(|value| value.as_array())
+        .filter(|values| !values.is_empty())
+    {
+        warnings.push(Type1Warning {
+            code: "type1-import-hints-partial",
+            message: format!("Type 1 hint metadata could not be fully retained for {} glyphs. Those glyphs have editable outlines without imported stems; private parameters are retained where representable.", glyphs.len()),
+        });
+    }
+    if source
+        .get("unretained_private_hints")
+        .is_some_and(|value| value.as_bool() == Some(true))
+    {
+        warnings.push(Type1Warning {
+            code: "type1-import-private-transform",
+            message: "Type 1 private hint parameters could not be represented after normalizing FontMatrix; the original values are retained in source metadata.".into(),
+        });
     }
     warnings
 }

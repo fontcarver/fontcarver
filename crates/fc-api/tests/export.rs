@@ -169,6 +169,38 @@ fn type1_reports_requested_but_unsupported_export_options() {
 }
 
 #[test]
+fn type1_hint_import_diagnostics_survive_native_save_and_reopen() {
+    let directory = tempfile::tempdir().unwrap();
+    let session = Arc::new(Session::new());
+    let mut font = export_font();
+    font.user_data = json!({"org.fontcarver.type1": {
+        "unretained_glyph_hints": ["A"],
+        "unretained_private_hints": true,
+        "original_private": {"blue_values": [-10.0, 0.0]},
+    }});
+    let doc = session.open_font(font, None);
+    let api = Api::new(session);
+    api.configure_config_dir(directory.path().join("config"))
+        .unwrap();
+    let path = directory.path().join("imported.fcf");
+    let saved = api
+        .call("session.save", json!({"doc": doc, "path": path}))
+        .unwrap();
+    let reopened = api.call("session.open", json!({"path": path})).unwrap();
+    for result in [saved, reopened] {
+        let warnings = result["warnings"].as_array().unwrap();
+        assert_eq!(warnings.len(), 2);
+        assert_eq!(warnings[0]["code"], "type1-import-hints-partial");
+        assert_eq!(warnings[1]["code"], "type1-import-private-transform");
+    }
+    let font = fc_doc::fcf::read(&path).unwrap();
+    assert_eq!(
+        font.user_data["org.fontcarver.type1"]["original_private"]["blue_values"],
+        json!([-10.0, 0.0])
+    );
+}
+
+#[test]
 fn imported_source_export_requires_conversion_before_touching_destination() {
     let directory = tempfile::tempdir().unwrap();
     let mut font = export_font();

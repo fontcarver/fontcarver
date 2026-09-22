@@ -15,19 +15,21 @@ impl PsPrivate {
             (&self.family_blues, 14),
             (&self.family_other_blues, 10),
         ] {
+            // The first BlueValues pair is the baseline; later pairs may occur
+            // in any order (Adobe Type 1 specification, section 5.3).
             if values.len() > limit
                 || !values.len().is_multiple_of(2)
                 || values.iter().any(|v| !v.is_finite() || v.abs() > 32767.0)
-                || values.windows(2).enumerate().any(|(index, pair)| {
-                    if index % 2 == 0 {
-                        pair[0] > pair[1]
-                    } else {
-                        pair[0] >= pair[1]
-                    }
+                || values.chunks_exact(2).any(|pair| pair[0] > pair[1])
+                || values.chunks_exact(2).enumerate().any(|(index, pair)| {
+                    values
+                        .chunks_exact(2)
+                        .skip(index + 1)
+                        .any(|other| pair[0] <= other[1] && other[0] <= pair[1])
                 })
             {
                 return Err(invalid(
-                    "blue zones must be ordered, nonoverlapping pairs within format limits",
+                    "blue zones must contain nonoverlapping low/high pairs within format limits",
                 ));
             }
         }
@@ -138,5 +140,23 @@ impl PsHints {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::PsPrivate;
+
+    #[test]
+    fn blue_zone_pair_order_is_preserved_but_each_pair_must_be_valid() {
+        let mut private = PsPrivate {
+            blue_values: vec![-15.0, 0.0, 700.0, 715.0, 547.0, 559.0],
+            ..Default::default()
+        };
+        assert!(private.validate().is_ok());
+        private.blue_values[4..].copy_from_slice(&[-12.0, -2.0]);
+        assert!(private.validate().is_err());
+        private.blue_values[4..].copy_from_slice(&[559.0, 547.0]);
+        assert!(private.validate().is_err());
     }
 }

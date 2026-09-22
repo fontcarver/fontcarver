@@ -327,7 +327,7 @@
       "master": "母版",
       "allMasters": "已包含所有母版。",
       "cffHint": "使用三次 CFF 轮廓的静态 OpenType 字体，支持 PostScript 字干提示、提示蒙版和对齐区；无法保留 TrueType 指令。",
-      "type1Hint": "Type 1 无法保留 OpenType 排版（字偶距、连字和替换）、锚点、源图层或已有提示信息。仅导出所选母版，并将组件分解为轮廓。往返转换后可能无法保留 Unicode 分配。",
+      "type1Hint": "Type 1 导出所选母版，展开组件，并保留支持的 PostScript 笔画提示和私有提示参数。OpenType 排版、锚点、源图层和 TrueType 指令不会保留。往返转换后可能无法保留 Unicode 分配。导出前需要处理暂不支持的 PostScript 提示类型。",
       "options": "选项",
       "option": {
         "removeOverlap": "移除重叠",
@@ -568,7 +568,7 @@
   "warning": {
     "cffUnhintedOutlines": "CFF 轮廓以无提示形式导出。导入的 PostScript 提示信息和 TrueType 指令均不保留。",
     "type1LayoutLoss": "Type 1 仅保留静态轮廓、字宽和 8 位编码。不保留 OpenType 排版、字偶距、锚点、其他母版和源图层。",
-    "type1HintingLoss": "Type 1 输出不含提示信息。导入的 PostScript 提示信息和 TrueType 指令均不保留。",
+    "type1HintingLoss": "Type 1 无法保留 TrueType 指令。支持的 PostScript 笔画提示和私有提示参数会保留。",
     "type1UnicodeLoss": "Type 1 没有 Unicode cmap 表。部分 Unicode 分配无法从字形名称中恢复。",
     "cffHintsNotImported": "字体矩阵或 seac 变换后的部分 CFF 提示无法表示。",
     "glyphNamesSynthesized": "字体没有可用的字形名称，因此已生成字形名称。",
@@ -590,7 +590,10 @@
     "macNameRecordsDropped": "{{message}}",
     "nameLanguageUnmapped": "{{message}}",
     "invalidHorizontalKerning": "部分字偶距记录无法编译，原始数据已保留。{{message}}",
-    "cffPrivateDictsFlattened": "此字体包含多个 CFF 私有字典。第一个字典用于可编辑的主版参数，导出时应用到所有字形；各字形的字干提示会保留。"
+    "cffPrivateDictsFlattened": "此字体包含多个 CFF 私有字典。第一个字典用于可编辑的主版参数，导出时应用到所有字形；各字形的字干提示会保留。",
+    "type1ImportHintsPartial": "部分 Type 1 字形的提示类型暂不支持保留。这些字形已导入为不含笔画提示的可编辑轮廓；支持的私有提示参数仍会保留。",
+    "type1ImportPrivateTransform": "规范化字体变换后，部分 Type 1 私有提示参数无法表示。原始参数仍保存在源元数据中。",
+    "type1ImportPrivateComputed": "部分 Type 1 私有提示参数由运行时 PostScript 代码计算，暂不支持导入。参数名称仍保存在源元数据中；直接声明的参数会保留。"
   },
   "a11y": {
     "menubar": "应用程序菜单",

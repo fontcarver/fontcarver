@@ -235,7 +235,9 @@ describe('ExportDialog', () => {
     await user.keyboard('{End}{ArrowLeft}')
     expect(screen.getByRole('tab', { name: 'PFB' })).toHaveFocus()
     expect(
-      screen.getByText(/Type 1 cannot preserve OpenType layout/),
+      screen.getByText(
+        /OpenType layout, anchors, source layers and TrueType instructions are omitted/,
+      ),
     ).toBeVisible()
   })
 
@@ -276,7 +278,9 @@ describe('ExportDialog', () => {
       const transport = setup()
       await user.click(screen.getByRole('tab', { name: label }))
       expect(
-        screen.getByText(/Type 1 cannot preserve OpenType layout/),
+        screen.getByText(
+          /OpenType layout, anchors, source layers and TrueType instructions are omitted/,
+        ),
       ).toBeVisible()
       expect(screen.getByLabelText('Master')).toBeVisible()
       expect(

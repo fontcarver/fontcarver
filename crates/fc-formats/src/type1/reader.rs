@@ -26,7 +26,7 @@ pub(super) fn read(path: &Path) -> Result<Font, Error> {
     }
     validate_framing(&bytes)?;
     let header = inspect_header(&bytes)?;
-    super::guards::check_horizontal_charstrings(&bytes)?;
+    let data = super::guards::check_horizontal_charstrings(&bytes)?;
     let source = Type1Font::new(&bytes).map_err(|e| source_error(e.to_string()))?;
     if !source.weight_vector().is_empty() {
         return Err(source_error(
@@ -57,6 +57,9 @@ pub(super) fn read(path: &Path) -> Result<Font, Error> {
             .unwrap_or(f64::from(source.underline_thickness())),
     );
     font.masters[0].name = font.info.style_name.clone();
+    let normalized_private = super::private::normalized(&data.private, transform);
+    let unretained_private = normalized_private.is_none();
+    font.masters[0].private_dict = normalized_private.unwrap_or_default();
     font.masters[0].metrics.italic_angle = header
         .italic_angle
         .unwrap_or(f64::from(source.italic_angle()));
@@ -74,6 +77,8 @@ pub(super) fn read(path: &Path) -> Result<Font, Error> {
     // Fontations' draw() intentionally truncates fractions for FreeType-compatible
     // rasterization. Evaluate into our own sink and apply its normalized matrix.
     let mut total_elements = 0usize;
+    let mut hint_budget = 2_000_000usize;
+    let mut unretained_glyph_hints = Vec::new();
     for (gid, name) in source.glyph_names() {
         if font.glyph(name).is_some() {
             return Err(source_error(format!("duplicate glyph name {name}")));
@@ -96,12 +101,29 @@ pub(super) fn read(path: &Path) -> Result<Font, Error> {
             return Err(source_error(format!("glyph {name}: invalid advance")));
         }
         layer.contours = Contour::from_bezpath(&(transform * sink.path));
+        if let Some(program) = data.glyphs.get(name) {
+            match super::hints::read(program, &source, transform, &mut hint_budget) {
+                Ok(hints) => layer.hints = hints,
+                Err(reason) => {
+                    tracing::debug!(glyph = name, reason, "Type 1 hints not retained");
+                    unretained_glyph_hints.push(name.to_owned());
+                }
+            }
+        }
         glyph.layers.push(layer);
         font.insert_glyph(glyph)
             .map_err(|e| source_error(e.to_string()))?;
     }
-    font.user_data =
-        serde_json::json!({(SOURCE_KEY): {"encoding": encoding, "hinting": "not retained"}});
+    font.user_data = serde_json::json!({(SOURCE_KEY): {
+        "encoding": encoding,
+        "unretained_glyph_hints": unretained_glyph_hints,
+        "unretained_private_hints": unretained_private,
+        "computed_private_fields": data.computed_private_fields,
+    }});
+    if unretained_private {
+        font.user_data[SOURCE_KEY]["original_private"] =
+            serde_json::to_value(&data.private).map_err(|error| source_error(error.to_string()))?;
+    }
     let bbox = source.bbox();
     let bbox = transform.transform_rect_bbox(kurbo::Rect::new(
         fixed(bbox.x_min),

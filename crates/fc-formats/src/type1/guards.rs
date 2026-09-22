@@ -7,7 +7,13 @@
 use super::{reader::header_token, source_error};
 use crate::Error;
 
-pub(super) fn check_horizontal_charstrings(bytes: &[u8]) -> Result<(), Error> {
+pub(super) struct SourceData {
+    pub private: fc_model::PsPrivate,
+    pub glyphs: std::collections::BTreeMap<String, Vec<u8>>,
+    pub computed_private_fields: std::collections::BTreeSet<String>,
+}
+
+pub(super) fn check_horizontal_charstrings(bytes: &[u8]) -> Result<SourceData, Error> {
     let encrypted = eexec_bytes(bytes)?;
     let private = decrypt(&encrypted, 55665);
     let mut input = private
@@ -16,7 +22,12 @@ pub(super) fn check_horizontal_charstrings(bytes: &[u8]) -> Result<(), Error> {
     let mut previous = None;
     let mut len_iv = 4i32;
     let mut in_charstrings = false;
+    let mut in_glyphs = false;
     let mut procedures = 0usize;
+    let mut values = fc_model::PsPrivate::default();
+    let mut glyphs = std::collections::BTreeMap::new();
+    let mut glyph_name = None;
+    let mut computed_private_fields = std::collections::BTreeSet::new();
     while let Some(token) = header_token(&mut input)? {
         match token {
             b"{" => {
@@ -27,7 +38,23 @@ pub(super) fn check_horizontal_charstrings(bytes: &[u8]) -> Result<(), Error> {
             }
             b"}" => procedures = procedures.saturating_sub(1),
             _ if procedures > 0 => {}
-            b"closefile" => return Ok(()),
+            _ if in_glyphs && token.starts_with(b"/") => {
+                glyph_name = Some(
+                    std::str::from_utf8(&token[1..])
+                        .map_err(|_| source_error("glyph name is not UTF-8"))?
+                        .to_owned(),
+                );
+            }
+            b"closefile" => {
+                values
+                    .validate()
+                    .map_err(|error| source_error(error.to_string()))?;
+                return Ok(SourceData {
+                    private: values,
+                    glyphs,
+                    computed_private_fields,
+                });
+            }
             b"/lenIV" => {
                 len_iv = header_token(&mut input)?
                     .and_then(integer)
@@ -36,7 +63,11 @@ pub(super) fn check_horizontal_charstrings(bytes: &[u8]) -> Result<(), Error> {
                     return Err(source_error("invalid lenIV"));
                 }
             }
-            b"/Subrs" | b"/CharStrings" => in_charstrings = true,
+            b"/Subrs" => in_charstrings = true,
+            b"/CharStrings" => {
+                in_charstrings = true;
+                in_glyphs = true;
+            }
             b"/Metrics" | b"/Metrics2" | b"/CDevProc" => {
                 return Err(source_error(
                     "PostScript metric overrides are not supported",
@@ -55,14 +86,28 @@ pub(super) fn check_horizontal_charstrings(bytes: &[u8]) -> Result<(), Error> {
                     .get(..size)
                     .ok_or_else(|| source_error("truncated binary charstring"))?;
                 input = &input[size..];
-                if len_iv == -1 {
-                    check_program(data)?;
+                let program = if len_iv == -1 {
+                    data.to_vec()
                 } else {
                     let decrypted = decrypt(data, 4330);
-                    let program = decrypted
+                    decrypted
                         .get(len_iv as usize..)
-                        .ok_or_else(|| source_error("charstring is shorter than lenIV"))?;
-                    check_program(program)?;
+                        .ok_or_else(|| source_error("charstring is shorter than lenIV"))?
+                        .to_vec()
+                };
+                check_program(&program)?;
+                if in_glyphs {
+                    let name = glyph_name
+                        .take()
+                        .ok_or_else(|| source_error("missing glyph name"))?;
+                    if glyphs.len() >= 65535 || glyphs.insert(name, program).is_some() {
+                        return Err(source_error("duplicate or excessive charstrings"));
+                    }
+                }
+            }
+            _ if !in_glyphs => {
+                if let Some(name) = super::private::field(token, &mut input, &mut values)? {
+                    computed_private_fields.insert(name);
                 }
             }
             _ => {}
@@ -81,6 +126,26 @@ fn integer(token: &[u8]) -> Option<i32> {
 }
 
 fn check_program(program: &[u8]) -> Result<(), Error> {
+    let tokens = tokens(program)?;
+    for (index, token) in tokens.iter().enumerate() {
+        if matches!(token, ProgramToken::Integer(0))
+            && matches!(tokens.get(index + 1), Some(ProgramToken::Operator(0x0c0c)))
+        {
+            return Err(source_error("charstring division by zero"));
+        }
+        if matches!(token, ProgramToken::Integer(value) if !(-32000..=32000).contains(value))
+            && !safe_large_division(&tokens, index)
+            && !index
+                .checked_sub(1)
+                .is_some_and(|start| safe_large_division(&tokens, start))
+        {
+            return Err(source_error("unsupported large-integer charstring arithmetic; use an adjacent large numerator / integer denominator div pair with a result below 32000"));
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn tokens(program: &[u8]) -> Result<Vec<ProgramToken>, Error> {
     if program.len() > 65535 {
         return Err(source_error(
             "charstring exceeds the PostScript string limit",
@@ -139,26 +204,11 @@ fn check_program(program: &[u8]) -> Result<(), Error> {
             return Err(source_error("truncated charstring operand"));
         }
     }
-    for (index, token) in tokens.iter().enumerate() {
-        if matches!(token, ProgramToken::Integer(0))
-            && matches!(tokens.get(index + 1), Some(ProgramToken::Operator(0x0c0c)))
-        {
-            return Err(source_error("charstring division by zero"));
-        }
-        if matches!(token, ProgramToken::Integer(value) if !(-32000..=32000).contains(value))
-            && !safe_large_division(&tokens, index)
-            && !index
-                .checked_sub(1)
-                .is_some_and(|start| safe_large_division(&tokens, start))
-        {
-            return Err(source_error("unsupported large-integer charstring arithmetic; use an adjacent large numerator / integer denominator div pair with a result below 32000"));
-        }
-    }
-    Ok(())
+    Ok(tokens)
 }
 
 #[derive(Clone, Copy)]
-enum ProgramToken {
+pub(super) enum ProgramToken {
     Integer(i32),
     Operator(u16),
 }

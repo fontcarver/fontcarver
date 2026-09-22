@@ -653,3 +653,36 @@ fn native_sbw_charstrings_and_subroutines_are_rejected() {
         assert!(read_type1(&path).unwrap_err().to_string().contains("sbw"));
     }
 }
+
+#[test]
+fn private_hint_values_survive_pfa_and_pfb_round_trips() {
+    let mut font = sample(1000);
+    font.masters[0].private_dict = fc_model::PsPrivate {
+        blue_values: vec![-12.0, 0.0, 690.0, 702.0],
+        other_blues: vec![-212.0, -200.0],
+        family_blues: vec![-14.0, 0.0, 688.0, 704.0],
+        family_other_blues: vec![-214.0, -200.0],
+        std_hw: Some(72.5),
+        std_vw: Some(84.25),
+        stem_snap_h: vec![60.0, 72.5],
+        stem_snap_v: vec![80.0, 84.25],
+        blue_scale: Some(0.039625),
+        blue_shift: Some(7.0),
+        blue_fuzz: Some(1.0),
+        force_bold: Some(false),
+        language_group: Some(0),
+        ..Default::default()
+    };
+    let directory = tempfile::tempdir().unwrap();
+    for binary in [false, true] {
+        let path = directory
+            .path()
+            .join(if binary { "hints.pfb" } else { "hints.pfa" });
+        write_type1(&font, &font.default_master().id, &path, binary).unwrap();
+        let imported = read_type1(&path).unwrap();
+        assert_eq!(
+            imported.default_master().private_dict,
+            font.default_master().private_dict
+        );
+    }
+}

@@ -327,7 +327,7 @@
       "master": "Master",
       "allMasters": "All masters are included.",
       "cffHint": "Static OpenType font with cubic CFF outlines and PostScript stems, masks and zones. TrueType instructions cannot be retained.",
-      "type1Hint": "Type 1 cannot preserve OpenType layout (kerning, ligatures and substitutions), anchors, source layers or retained hints. Only the selected master is exported, with components expanded into outlines. Unicode assignments may not survive a roundtrip.",
+      "type1Hint": "Type 1 exports the selected master with expanded components, supported PostScript stems and private hint parameters. OpenType layout, anchors, source layers and TrueType instructions are omitted. Unicode assignments may not survive a roundtrip. Unsupported PostScript hint mechanisms must be resolved before export.",
       "options": "Options",
       "option": {
         "removeOverlap": "Remove overlap",
@@ -568,7 +568,7 @@
   "warning": {
     "cffUnhintedOutlines": "CFF outlines are exported without hinting. Imported PostScript hints and TrueType instructions are not retained.",
     "type1LayoutLoss": "Type 1 retains static outlines, widths and an 8-bit encoding. OpenType layout, kerning, anchors, other masters and source layers are not retained.",
-    "type1HintingLoss": "Type 1 output is unhinted. Imported PostScript hints and TrueType instructions are not retained.",
+    "type1HintingLoss": "Type 1 cannot retain TrueType instructions. Supported PostScript stems and private hint parameters are retained.",
     "type1UnicodeLoss": "Type 1 has no Unicode cmap. Some Unicode assignments cannot be recovered from glyph names.",
     "cffHintsNotImported": "Some CFF hints could not be represented after font-matrix or seac transformation.",
     "glyphNamesSynthesized": "Glyph names were synthesized because the font had no usable glyph names.",
@@ -590,7 +590,10 @@
     "macNameRecordsDropped": "{{message}}",
     "nameLanguageUnmapped": "{{message}}",
     "invalidHorizontalKerning": "Some kerning records could not be compiled. The original data is retained. {{message}}",
-    "cffPrivateDictsFlattened": "This font has multiple CFF private dictionaries. The first supplies editable master parameters and will be used for every glyph on export; per-glyph stems are retained."
+    "cffPrivateDictsFlattened": "This font has multiple CFF private dictionaries. The first supplies editable master parameters and will be used for every glyph on export; per-glyph stems are retained.",
+    "type1ImportHintsPartial": "Some Type 1 glyph hint mechanisms could not be retained. Those glyphs were imported with editable outlines and no stems; supported private parameters are retained.",
+    "type1ImportPrivateTransform": "Type 1 private hint parameters could not be represented after normalizing the font transform. Their original values remain in source metadata.",
+    "type1ImportPrivateComputed": "Some Type 1 private hint fields use runtime PostScript and were not imported. Their field names remain in source metadata; literal parameters are retained."
   },
   "a11y": {
     "menubar": "Application menu",

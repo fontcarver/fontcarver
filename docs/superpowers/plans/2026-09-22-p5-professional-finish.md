@@ -75,7 +75,16 @@ containers match the TTF rendering digest. WOFF2 was decoded by FontTools becaus
 the host FreeType cannot load that container directly. A separate browser export
 added 30 renders and verified the editable source remained unchanged.
 
-This is not the full hinting milestone. Type 1 hint import/output, the TT editor
+This is not the full hinting milestone. Complex Type 1 hint import/output, the TT editor
 and authored TT program export/preview still need implementation. Variable
 hinting, multiple editable CID private dictionaries and broader PS analysis
 quality remain open. The full P5 checklist is still open.
+
+The Type 1 follow-up retains literal private values and whole-glyph H/V stems,
+including ghosts, fractional operands and ordinary subroutine hints. Import
+normalizes sidebearings and representable matrices; runtime private-field
+computation and unsupported glyph mechanisms produce persistent diagnostics.
+Native output rejects unsupported path-bound hints before replacing a file.
+The real Nimbus Sans fixture verifies unsorted BlueValues and nonzero sidebearings;
+independent FontTools/FreeType checks cover both PFA and PFB output. This remains a
+partial Type 1 implementation rather than a completed hinting checklist item.

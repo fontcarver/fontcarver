@@ -251,9 +251,17 @@ pub(crate) fn summary_for(api: &Api, doc: DocId) -> Result<DocSummary, ApiError>
 fn build_summary(
     doc: DocId,
     document: &Document,
-    warnings: Vec<DocWarning>,
+    mut warnings: Vec<DocWarning>,
     recovered_from: Option<String>,
 ) -> DocSummary {
+    warnings.extend(
+        fc_formats::type1::read_warnings(&document.font)
+            .into_iter()
+            .map(|warning| DocWarning {
+                code: warning.code.into(),
+                message: warning.message,
+            }),
+    );
     DocSummary {
         doc,
         path: document

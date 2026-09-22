@@ -2,7 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use fc_model::{Font, MasterId};
+use fc_model::{Font, MasterId, PsHints};
 use kurbo::{BezPath, PathEl, Point, Rect, Shape};
 
 use super::{source_error, MAX_FILE_BYTES};
@@ -62,7 +62,7 @@ pub(super) fn encode(font: &Font, master: &MasterId, binary: bool) -> Result<Vec
     let mut glyphs = Vec::new();
     let mut bbox: Option<Rect> = None;
     let mut total_size = 0usize;
-    let mut add = |name: &str, width: f64, path: BezPath| -> Result<(), Error> {
+    let mut add = |name: &str, width: f64, path: BezPath, hints: &PsHints| -> Result<(), Error> {
         validate_name(name)?;
         if !width.is_finite() || !(0.0..=32000.0).contains(&width) {
             return Err(source_error(format!(
@@ -70,8 +70,8 @@ pub(super) fn encode(font: &Font, master: &MasterId, binary: bool) -> Result<Vec
             )));
         }
         let path = quantized_path(&path)?;
-        let data =
-            charstring(&path, width).map_err(|e| source_error(format!("glyph {name}: {e}")))?;
+        let data = charstring(&path, width, hints)
+            .map_err(|e| source_error(format!("glyph {name}: {e}")))?;
         if !path.elements().is_empty() {
             let bounds = path.bounding_box();
             bbox = Some(bbox.map_or(bounds, |b| b.union(bounds)));
@@ -84,7 +84,7 @@ pub(super) fn encode(font: &Font, master: &MasterId, binary: bool) -> Result<Vec
         Ok(())
     };
     if font.glyph(".notdef").is_none_or(|g| !g.export) {
-        add(".notdef", 0.0, BezPath::new())?;
+        add(".notdef", 0.0, BezPath::new(), &PsHints::default())?;
     }
     for (name, glyph) in &font.glyphs {
         if !glyph.export {
@@ -98,7 +98,7 @@ pub(super) fn encode(font: &Font, master: &MasterId, binary: bool) -> Result<Vec
         })?;
         let path = fc_model::query::flatten_layer(font, name, master)
             .map_err(|e| source_error(e.to_string()))?;
-        add(name, layer.width, path)?;
+        add(name, layer.width, path, &layer.hints)?;
     }
     if glyphs.len() > 65535 {
         return Err(source_error("more than 65535 exported glyphs"));
@@ -122,7 +122,8 @@ pub(super) fn encode(font: &Font, master: &MasterId, binary: bool) -> Result<Vec
         clear.push_str(&format!("dup {code} /{name} put\n"));
     }
     clear.push_str("readonly def\ncurrentdict end\ncurrentfile eexec\n");
-    let mut private = b"FC01dup /Private 8 dict dup begin\n/RD {string currentfile exch readstring pop} executeonly def\n/ND {noaccess def} executeonly def\n/NP {noaccess put} executeonly def\n/lenIV 4 def\n/BlueValues [] def\n/MinFeature {16 16} def\n/password 5839 def\n/Subrs 0 array ND\n".to_vec();
+    let mut private = b"FC01dup /Private 24 dict dup begin\n/RD {string currentfile exch readstring pop} executeonly def\n/ND {noaccess def} executeonly def\n/NP {noaccess put} executeonly def\n/lenIV 4 def\n/MinFeature {16 16} def\n/password 5839 def\n/Subrs 0 array ND\n".to_vec();
+    private.extend_from_slice(super::private::write(&master_data.private_dict)?.as_bytes());
     private.extend_from_slice(
         format!("2 index /CharStrings {} dict dup begin\n", glyphs.len()).as_bytes(),
     );
@@ -284,11 +285,12 @@ fn encrypt(bytes: &[u8], mut state: u16) -> Vec<u8> {
         .collect()
 }
 
-fn charstring(path: &BezPath, width: f64) -> Result<Vec<u8>, Error> {
+fn charstring(path: &BezPath, width: f64, hints: &PsHints) -> Result<Vec<u8>, Error> {
     let mut out = vec![0, 0, 0, 0];
     number(&mut out, 0.0)?;
     number(&mut out, width)?;
     out.push(13); // hsbw
+    super::hints::write(&mut out, hints)?;
     let mut current = Point::ZERO;
     let mut source_current = Point::ZERO;
     let mut open = false;
@@ -419,7 +421,7 @@ fn vector(out: &mut Vec<u8>, delta: kurbo::Vec2) -> Result<(), Error> {
     number(out, delta.y)
 }
 
-fn number(out: &mut Vec<u8>, value: f64) -> Result<(), Error> {
+pub(super) fn number(out: &mut Vec<u8>, value: f64) -> Result<(), Error> {
     if !value.is_finite() || value.abs() > 32000.0 {
         return Err(source_error("charstring operand outside -32000..32000"));
     }

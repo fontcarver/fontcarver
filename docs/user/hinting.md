@@ -30,8 +30,34 @@ matrices and seac transformations may prevent faithful hint import and produce a
 warning. CID sources with multiple private dictionaries retain only the first
 as editable master parameters; export currently uses this dictionary for every
 glyph and reports that limitation. Diagonal stems and coordinate-range hints must be converted to supported
-stems and point masks before CFF export. Type 1 hint output and a full TrueType
-instruction editor are still under development.
+stems and point masks before CFF export. A full TrueType instruction editor is
+still under development.
+
+## Type 1 hints
+
+Static PFA/PFB export writes the selected layer's whole-glyph horizontal and
+vertical stems, including fractional positions and `-20`/`-21` ghost hints.
+It also writes blue zones, family zones, standard stem widths, stem snaps,
+BlueScale/BlueShift/BlueFuzz, ForceBold and LanguageGroup. Zone pairs keep their
+original order; only the values within each pair must be low-to-high.
+Component outlines are expanded; their base glyphs' hint sets are not inherited.
+
+The importer retains whole-glyph stems from direct charstrings and ordinary
+subroutines, adds the original sidebearing to vertical positions and normalizes
+representable hint coordinates with FontMatrix. It reads literal private values
+without executing PostScript. A literal private value followed by runtime
+PostScript is omitted with a warning; malformed numeric arrays are rejected. Source glyphs
+using hint replacement, counter stems, dot sections, flex or seac currently import
+with editable outlines but without their stem sets. An import warning identifies
+this limitation; affected glyph names remain in source metadata. Private values
+that cannot be represented after reflection or an out-of-range transform remain
+in source metadata and produce a separate warning.
+
+Export rejects overlapping stems, point masks, counter masks, diagonal stems,
+active ranges and flex metadata until they are converted to supported whole-glyph
+stems or removed. A failed export leaves an existing destination unchanged.
+Automatic hinting and overlap removal through the Type 1 export options are still
+pending. These boundaries are part of the unfinished Type 1 hinting work.
 
 ## Automatic hints when exporting
 
