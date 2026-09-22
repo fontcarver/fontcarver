@@ -150,6 +150,32 @@ describe('ExportDialog', () => {
     })
   })
 
+  it.each(['PFA', 'PFB'] as const)(
+    'sends the supported Type 1 preprocessing options for %s',
+    async (tab) => {
+      const user = userEvent.setup()
+      const transport = setup()
+      await user.click(screen.getByRole('tab', { name: tab }))
+      expect(screen.getAllByRole('checkbox')).toHaveLength(2)
+      await user.click(
+        screen.getByRole('checkbox', { name: 'Automatic hinting' }),
+      )
+      await user.click(screen.getByRole('checkbox', { name: 'Remove overlap' }))
+      await user.click(screen.getByRole('button', { name: 'Export' }))
+      await waitFor(() => expect(transport.calls).toHaveLength(1))
+      expect(
+        (transport.calls[0]?.params as ExportParams).options,
+      ).toMatchObject({
+        format: tab === 'PFA' ? 'Pfa' : 'Pfb',
+        autohint: true,
+        remove_overlap: true,
+        keep_tt_instructions: false,
+        preserve_untouched_tables: false,
+        production_names: false,
+      })
+    },
+  )
+
   it('follows the format tab into the file extension and the options', async () => {
     const user = userEvent.setup()
     const transport = setup()

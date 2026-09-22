@@ -39,6 +39,7 @@ const WARNING_KEYS: Readonly<Record<string, string>> = {
   'variation-tables-dropped': 'warning.variationTablesDropped',
   'tables-not-preserved': 'warning.tablesNotPreserved',
   'provenance-hash-mismatch': 'warning.provenanceHashMismatch',
+  'ps-hints-cleared-overlap': 'warning.psHintsClearedOverlap',
   'remove-overlap-unavailable': 'warning.removeOverlapUnavailable',
   'autohint-unavailable': 'warning.autohintUnavailable',
   'production-names-unavailable': 'warning.productionNamesUnavailable',

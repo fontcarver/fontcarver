@@ -172,15 +172,26 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
         }
         ExportFormat::Pfa | ExportFormat::Pfb => {
             api.emit_progress(params.doc, WRITE_STAGE, 0);
-            for (requested, code, message) in [
-                (params.options.remove_overlap, "remove-overlap-unavailable", "Overlap removal is not applied by the Type 1 exporter."),
-                (params.options.autohint, "autohint-unavailable", "Automatic hinting is not applied by the Type 1 exporter."),
-                (params.options.production_names, "production-names-unavailable", "Type 1 export retains source glyph names; production-name substitution was not applied."),
-            ] {
-                if requested {
-                    warnings.push(ExportWarning { code: code.into(), message: message.into() });
-                }
+            if params.options.production_names {
+                warnings.push(ExportWarning {
+                    code: "production-names-unavailable".into(),
+                    message: "Type 1 export retains source glyph names; production-name substitution was not applied.".into(),
+                });
             }
+            if params.options.remove_overlap
+                && !params.options.autohint
+                && font
+                    .glyphs
+                    .values()
+                    .filter(|g| g.export)
+                    .any(|g| g.master_layer(&master).is_some_and(|l| !l.hints.is_empty()))
+            {
+                warnings.push(ExportWarning {
+                    code: "ps-hints-cleared-overlap".into(),
+                    message: "Overlap removal clears existing PostScript glyph hints in the exported master. Enable automatic hinting to infer new hints; the source document is unchanged.".into(),
+                });
+            }
+            // Compute losses from the source before preprocessing clears TT programs.
             warnings.extend(
                 fc_formats::type1::loss_warnings(&font, &master)
                     .into_iter()
@@ -189,6 +200,14 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
                         message: warning.message,
                     }),
             );
+            if params.options.remove_overlap || params.options.autohint {
+                font = fc_compile::prepare_postscript_export(
+                    &font,
+                    &master,
+                    params.options.remove_overlap,
+                    params.options.autohint,
+                )?;
+            }
             fc_formats::type1::write_type1(
                 &font,
                 &master,

@@ -128,17 +128,18 @@ metadata and produce a separate warning.
 
 Export rejects invalid active sets, unsupported counter groups, diagonal stems,
 active ranges and flex metadata before replacing an existing destination.
-Automatic hinting and overlap removal through the Type 1 export options are still
-pending. These boundaries are part of the unfinished Type 1 hinting work.
+The Type 1 export dialog offers **Automatic hinting** and **Remove overlap**.
+Removing overlaps without rehinting clears old glyph hints in the exported copy
+and reports that change. The source document and its undo history remain intact.
 
 ## Automatic hints when exporting
 
-In the export dialog, enable **Automatic hinting** for a static OTF, TTF, WOFF or
-WOFF2 export. It operates on a temporary copy; your source document remains
+In the export dialog, enable **Automatic hinting** for a static OTF, TTF, WOFF,
+WOFF2, PFA or PFB export. It operates on a temporary copy; your source document remains
 unchanged. **Remove overlap** runs before automatic hinting and also affects only
 the exported copy. These options currently require a static master or instance.
 
-- OTF uses FontCarver's geometric PostScript stem analysis and zone inference.
+- OTF, PFA and PFB use FontCarver's geometric PostScript stem analysis and zone inference.
 - TrueType output uses the separately installed `ttfautohint` executable on
   `PATH`. FontCarver does not bundle or link it. If it is absent, export reports
   that automatic hinting was not performed. An installed hinter's failure,
@@ -148,6 +149,7 @@ The shared CLI exposes the same operations:
 
 ```sh
 fontcarver build Source.fcf Output.otf --autohint --remove-overlap
+fontcarver build Source.fcf Output.pfb --autohint --remove-overlap
 fontcarver build Source.fcf Output.ttf --autohint --master Regular
 ```
 

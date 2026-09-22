@@ -25,13 +25,16 @@ export const FORMAT_EXTENSIONS: Record<ExportFormat, string> = {
   Fcf: '.fcf',
 }
 
-/** Formats compiled through the sfnt pipeline, the only ones the options apply to. */
+/** Formats compiled through the sfnt pipeline. */
 export const SFNT_FORMATS: readonly ExportFormat[] = [
   'Ttf',
   'Otf',
   'Woff',
   'Woff2',
 ]
+
+/** Static Type 1 outputs support overlap removal and PostScript automatic hints. */
+export const TYPE1_FORMATS: readonly ExportFormat[] = ['Pfa', 'Pfb']
 
 /** Source formats that always retain the document's complete master set. */
 export const ALL_MASTER_FORMATS: readonly ExportFormat[] = [

@@ -136,7 +136,7 @@ fn feature_drafts_save_natively_but_block_all_external_exports_without_output_ch
 }
 
 #[test]
-fn type1_reports_requested_but_unsupported_export_options() {
+fn type1_preprocessing_is_applied_and_production_names_are_disclosed() {
     let directory = tempfile::tempdir().unwrap();
     let session = Arc::new(Session::new());
     let doc = session.open_font(export_font(), None);
@@ -158,13 +158,9 @@ fn type1_reports_requested_but_unsupported_export_options() {
             .iter()
             .map(|warning| warning["code"].as_str().unwrap())
             .collect();
-        for expected in [
-            "remove-overlap-unavailable",
-            "autohint-unavailable",
-            "production-names-unavailable",
-        ] {
-            assert!(codes.contains(&expected), "{format}: {codes:?}");
-        }
+        assert!(codes.contains(&"production-names-unavailable"));
+        assert!(!codes.contains(&"remove-overlap-unavailable"));
+        assert!(!codes.contains(&"autohint-unavailable"));
     }
 }
 

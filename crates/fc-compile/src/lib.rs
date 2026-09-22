@@ -42,6 +42,7 @@ pub use feature_validation::{
 };
 pub use instance::instantiate;
 pub use kerning::horizontal_kerning_warnings;
+pub use preprocess::prepare_postscript_export;
 pub use preserve::preserve_merge;
 pub use shaping::shaping_fingerprint;
 pub use source::{

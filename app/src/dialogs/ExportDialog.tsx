@@ -23,6 +23,7 @@ import {
   ALL_MASTER_FORMATS,
   DIRECTORY_FORMATS,
   SFNT_FORMATS,
+  TYPE1_FORMATS,
   chooseExportPath,
   formatsFor,
   suggestPath,
@@ -30,24 +31,10 @@ import {
 import { ExportResult } from './ExportResult'
 import { ExportVariationOptions } from './ExportVariationOptions'
 
-/** Export option checkboxes and the `ExportOptions` fields they write. */
-const OPTION_FIELDS = [
-  'remove_overlap',
-  'autohint',
-  'keep_tt_instructions',
-  'preserve_untouched_tables',
-  'production_names',
-] as const
-
-type OptionField = (typeof OPTION_FIELDS)[number]
-
-const OPTION_KEYS: Record<OptionField, string> = {
-  remove_overlap: 'removeOverlap',
-  autohint: 'autohint',
-  keep_tt_instructions: 'keepTtInstructions',
-  preserve_untouched_tables: 'preserveUntouchedTables',
-  production_names: 'productionNames',
-}
+import {
+  ExportProcessingOptions,
+  type ExportOptionField,
+} from './ExportProcessingOptions'
 
 export interface ExportDialogProps {
   summary: DocSummary
@@ -63,6 +50,8 @@ export function ExportDialog({ summary }: ExportDialogProps) {
   const setDialog = useUiStore((state) => state.setDialog)
   const formats = formatsFor(summary.masters.length)
   const [format, setFormat] = useState<ExportFormat>('Ttf')
+  const type1 = TYPE1_FORMATS.includes(format)
+  const canPreprocess = SFNT_FORMATS.includes(format) || type1
   const [variable, setVariable] = useState(false)
   const [instance, setInstance] = useState<number>()
   const [masterSubset, setMasterSubset] = useState<string[]>()
@@ -72,7 +61,7 @@ export function ExportDialog({ summary }: ExportDialogProps) {
   const [master, setMaster] = useState<string | null>(
     summary.masters[0]?.id ?? null,
   )
-  const [options, setOptions] = useState<Record<OptionField, boolean>>({
+  const [options, setOptions] = useState<Record<ExportOptionField, boolean>>({
     remove_overlap: false,
     autohint: false,
     keep_tt_instructions: true,
@@ -154,19 +143,15 @@ export function ExportDialog({ summary }: ExportDialogProps) {
           : undefined,
       master: allMasters ? null : master,
       remove_overlap:
-        SFNT_FORMATS.includes(format) &&
-        !(canVary && variable) &&
-        options.remove_overlap,
+        canPreprocess && !(canVary && variable) && options.remove_overlap,
       keep_tt_instructions:
+        !type1 &&
         !(canVary && (variable || instance !== undefined)) &&
         format !== 'Otf' &&
         options.keep_tt_instructions,
-      preserve_untouched_tables: options.preserve_untouched_tables,
-      production_names: options.production_names,
-      autohint:
-        SFNT_FORMATS.includes(format) &&
-        !(canVary && variable) &&
-        options.autohint,
+      preserve_untouched_tables: !type1 && options.preserve_untouched_tables,
+      production_names: !type1 && options.production_names,
+      autohint: canPreprocess && !(canVary && variable) && options.autohint,
       table_subset: null,
     }
     // Show the busy line at once: the first kernel progress event only arrives
@@ -186,13 +171,6 @@ export function ExportDialog({ summary }: ExportDialogProps) {
         setBusy(false)
       })
   }
-
-  const showOptions = SFNT_FORMATS.includes(format)
-  const unavailable = (field: OptionField) =>
-    canVary &&
-    ((field === 'keep_tt_instructions' &&
-      (variable || instance !== undefined)) ||
-      (variable && (field === 'autohint' || field === 'remove_overlap')))
 
   return (
     <Dialog
@@ -366,40 +344,17 @@ export function ExportDialog({ summary }: ExportDialogProps) {
           </label>
         ) : null}
 
-        {showOptions ? (
-          <div className={styles.section}>
-            <h3 className={styles.sectionTitle}>
-              {t('dialog.export.options')}
-            </h3>
-            {OPTION_FIELDS.filter(
-              (field) => format !== 'Otf' || field !== 'keep_tt_instructions',
-            ).map((field) => (
-              <div key={field} className={styles.checkRow}>
-                <input
-                  id={`export-${field}`}
-                  type="checkbox"
-                  disabled={busy || unavailable(field)}
-                  checked={!unavailable(field) && options[field]}
-                  onChange={(event) =>
-                    setOptions((current) => ({
-                      ...current,
-                      [field]: event.target.checked,
-                    }))
-                  }
-                />
-                <label
-                  htmlFor={`export-${field}`}
-                  className={styles.checkLabel}
-                >
-                  {t(`dialog.export.option.${OPTION_KEYS[field]}`)}
-                </label>
-                <span className={styles.checkHint}>
-                  {t(`dialog.export.option.${OPTION_KEYS[field]}Hint`)}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : null}
+        <ExportProcessingOptions
+          format={format}
+          canVary={canVary}
+          variable={variable}
+          instance={instance}
+          busy={busy}
+          options={options}
+          onChange={(field, value) =>
+            setOptions((current) => ({ ...current, [field]: value }))
+          }
+        />
 
         {failure ? (
           <div role="alert" className={styles.error}>

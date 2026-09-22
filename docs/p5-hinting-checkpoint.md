@@ -92,7 +92,8 @@ source metadata and appear through the API and CLI; FCF save/reopen retains them
 Unrepresentable transformed private values are preserved as source metadata.
 The exporter rejects unsupported masks, flex, diagonal hints, ranges and overlapping
 stems before replacing any destination. TrueType instruction loss is reported
-when present. Type 1 automatic hinting and overlap preprocessing remain open.
+when present. At that checkpoint, Type 1 automatic hinting and overlap
+preprocessing were still open; the later section below records their completion.
 
 Focused verification includes an independently encoded source with a nonzero
 sidebearing, subroutine stems and a translated/nonuniform FontMatrix, reserved
@@ -252,8 +253,9 @@ Representable hstem3/vstem3 groups import and export through counter masks.
 Triples require positive nonoverlapping stems, equal outer widths and equally
 spaced centers, with at most one fixed triple on each axis and no ordinary stems
 on that axis. All three members must be active together. General counter control,
-flex, dot sections, seac hint inheritance, per-FD dictionaries, Type 1 automatic
-hinting and overlap preprocessing remain open. The full P5 milestone is not done.
+flex, dot sections, seac hint inheritance and per-FD dictionaries remain open.
+Type 1 export preprocessing is covered in the next section. The full P5 milestone
+is not done.
 
 Verification for this slice:
 
@@ -271,3 +273,36 @@ Verification for this slice:
   formatting and `git diff --check` pass.
 - No frontend behavior changed in this slice. Advanced Type 1 mechanisms and the
   rest of P5 remain open; this is not a full-workspace-test completion claim.
+
+## Type 1 export preprocessing
+
+The shared API and CLI now apply overlap removal and geometric PostScript
+hint analysis to PFA/PFB export copies. Overlap removal runs first, expands
+components and clears stale glyph hints. Rehinting then computes fresh stems and
+private parameters. Without rehinting, cleared PS hints produce a localized
+warning. TrueType loss reporting inspects the original snapshot, before programs
+are cleared. Failed analysis or serialization leaves the destination untouched.
+
+The export dialog exposes only these two processing options for Type 1. Existing
+source-format and variable-font option behavior is retained. The options component
+was extracted so the dialog stays below 400 lines. Labels and warning text are
+available in English and zh-CN; developer comments and documentation are English.
+
+Verification:
+
+- Full `fc-api` suite: **232 passed, 2 existing ignored**. New coverage checks
+  both masters, both containers, all four option combinations, original hints,
+  source equality, unchanged generation/undo history and destination protection.
+- Full frontend suite: **1,126 passed in 138 files**. TypeScript, ESLint, workspace
+  all-target Clippy with `-D warnings`, formatting and whitespace checks pass.
+- Isolated browser exports exercise English PFB with both options, and Chinese
+  PFA with overlap removal only. Both screenshots were visually checked; the
+  clearing warning is translated. The source hint/outline API state remains
+  unchanged, with generation zero.
+- CLI `build --autohint --remove-overlap` produces the same glyph program as
+  the browser. FontTools confirms one merged contour, width 333 and the expected
+  `(50, 130)` vertical stem in both hinted outputs, and no stems in the unhinted
+  PFA. FreeType renders the three outputs at six sizes (**18 native renders**).
+
+This closes these Type 1 export options, not the remaining advanced Type 1
+mechanisms or the full P5 milestone.

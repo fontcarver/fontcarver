@@ -90,6 +90,9 @@ before replacing a file. The real Nimbus Sans fixture verifies unsorted BlueValu
 nonzero sidebearings and replacement hints. FontTools, FreeType and Ghostscript
 checks cover both PFA and PFB output. Flex, dot sections, general counter control,
 seac hint inheritance and per-FD dictionaries remain open.
+PFA/PFB automatic hinting and overlap removal now run on export copies through
+the API, CLI and bilingual export dialog. Old PS hints cleared without rehinting
+are disclosed; failed preprocessing preserves the existing destination.
 
 The TT follow-up adds a separate bilingual editor for glyph/fpgm/prep assembly,
 CVT and interpreter maxima, with actual compiled point indices and phantom points.

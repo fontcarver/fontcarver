@@ -339,7 +339,7 @@
         "productionNames": "Production names",
         "productionNamesHint": "Write the production glyph names the model supplies instead of the working names.",
         "autohint": "Automatic hinting",
-        "autohintHint": "Analyze PostScript stems for static OTF; use installed ttfautohint for static TrueType. Changes apply only to the exported copy."
+        "autohintHint": "Analyze PostScript stems for static OTF, PFA and PFB; use installed ttfautohint for static TrueType. Changes apply only to the exported copy."
       },
       "run": "Export",
       "running": "Exporting…",
@@ -581,6 +581,7 @@
     "variationTablesDropped": "Imported variation tables were dropped from this static export.",
     "tablesNotPreserved": "{{message}}",
     "provenanceHashMismatch": "Imported tables were not preserved because the source font no longer matches its provenance record.",
+    "psHintsClearedOverlap": "Overlap removal cleared existing PostScript glyph hints in the exported master. Enable automatic hinting to infer new hints. The source document is unchanged.",
     "removeOverlapUnavailable": "Overlap removal is not available yet and was not applied.",
     "autohintUnavailable": "ttfautohint is not installed on PATH; automatic TrueType hinting was not applied.",
     "productionNamesUnavailable": "Type 1 export retains source glyph names. Production names were not applied.",

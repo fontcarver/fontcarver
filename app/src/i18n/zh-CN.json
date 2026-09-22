@@ -339,7 +339,7 @@
         "productionNames": "生产名称",
         "productionNamesHint": "写入模型提供的生产字形名称，而非工作名称。",
         "autohint": "自动提示",
-        "autohintHint": "静态 OTF 自动分析 PostScript 字干；静态 TrueType 使用已安装的 ttfautohint。只更改导出副本。"
+        "autohintHint": "静态 OTF、PFA 和 PFB 自动分析 PostScript 字干；静态 TrueType 使用已安装的 ttfautohint。只更改导出副本。"
       },
       "run": "导出",
       "running": "正在导出…",
@@ -581,6 +581,7 @@
     "variationTablesDropped": "已从此次静态导出中丢弃导入的可变字体表。",
     "tablesNotPreserved": "{{message}}",
     "provenanceHashMismatch": "源字体与其来源记录不再匹配，因此未保留导入的表。",
+    "psHintsClearedOverlap": "移除重叠已清除导出母版中原有的 PostScript 字形提示。可启用自动提示以重新生成提示。源文档不受影响。",
     "removeOverlapUnavailable": "移除重叠功能尚不可用，因此未执行。",
     "autohintUnavailable": "PATH 中未安装 ttfautohint，未执行 TrueType 自动提示。",
     "productionNamesUnavailable": "Type 1 导出会保留源字形名称，未应用生产名称。",
