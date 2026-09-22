@@ -5,6 +5,8 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+mod build_unihan;
+
 type BuildResult<T> = Result<T, Box<dyn Error>>;
 
 fn main() -> BuildResult<()> {
@@ -13,11 +15,15 @@ fn main() -> BuildResult<()> {
         "data/Blocks.txt",
         "data/GB2312.TXT",
         "data/BIG5.TXT",
+        "data/JIS0208.TXT",
+        "data/KSX1001.TXT",
+        "data/GB18030-2022-Level1.txt",
     ] {
         println!("cargo:rerun-if-changed={input}");
     }
 
     let output_dir = PathBuf::from(env::var("OUT_DIR")?);
+    build_unihan::generate(&output_dir)?;
     generate_aglfn(&output_dir.join("aglfn.rs"))?;
     generate_unicode_tables(&output_dir.join("unicode_tables.rs"))?;
     Ok(())
@@ -75,8 +81,8 @@ fn generate_aglfn(output: &Path) -> BuildResult<()> {
 
 fn generate_unicode_tables(output: &Path) -> BuildResult<()> {
     let blocks = parse_blocks("data/Blocks.txt")?;
-    let gb2312 = parse_mapping_codepoints("data/GB2312.TXT")?;
-    let big5 = parse_mapping_codepoints("data/BIG5.TXT")?;
+    let gb2312 = parse_mapping_codepoints("data/GB2312.TXT", 1)?;
+    let big5 = parse_mapping_codepoints("data/BIG5.TXT", 1)?;
 
     let mut generated = generated_header();
     generated.push_str("pub(super) static BLOCKS: &[(u32, u32, &str)] = &[\n");
@@ -94,6 +100,24 @@ fn generate_unicode_tables(output: &Path) -> BuildResult<()> {
     write_codepoint_array(&mut generated, "GB2312_CODEPOINTS", &gb2312)?;
     generated.push('\n');
     write_codepoint_array(&mut generated, "BIG5_CODEPOINTS", &big5)?;
+    for (path, name, column) in [
+        ("data/JIS0208.TXT", "JIS0208_CODEPOINTS", 2),
+        ("data/KSX1001.TXT", "KSX1001_CODEPOINTS", 1),
+    ] {
+        write_codepoint_array(
+            &mut generated,
+            name,
+            &parse_mapping_codepoints(path, column)?,
+        )?;
+    }
+    let gb = read_data("data/GB18030-2022-Level1.txt")?;
+    let gb: Vec<u32> = gb
+        .lines()
+        .map(data_part)
+        .filter(|line| !line.is_empty())
+        .map(parse_hex)
+        .collect::<BuildResult<_>>()?;
+    write_codepoint_array(&mut generated, "GB18030_LEVEL1_CODEPOINTS", &gb)?;
     fs::write(output, generated)?;
     Ok(())
 }
@@ -136,7 +160,7 @@ fn parse_blocks(path: &str) -> BuildResult<Vec<(u32, u32, String)>> {
     Ok(blocks)
 }
 
-fn parse_mapping_codepoints(path: &str) -> BuildResult<Vec<u32>> {
+fn parse_mapping_codepoints(path: &str, column: usize) -> BuildResult<Vec<u32>> {
     let input = read_data(path)?;
     let mut codepoints = Vec::new();
 
@@ -148,7 +172,7 @@ fn parse_mapping_codepoints(path: &str) -> BuildResult<Vec<u32>> {
 
         let unicode = line
             .split_whitespace()
-            .nth(1)
+            .nth(column)
             .ok_or_else(|| invalid_data(line_index, "mapping row has no Unicode value"))?;
         codepoints.push(parse_prefixed_hex(unicode)?);
     }

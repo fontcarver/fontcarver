@@ -10,6 +10,14 @@ use crate::{Anchor, Component, Contour, DesignLocation, Guide, LayerId, MasterId
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub enum LayerKind {
+    /// Local smart-component source associated with a global master.
+    Smart {
+        /// Associated global master.
+        master: MasterId,
+        /// Local axis values; omitted axes use their defaults.
+        #[serde(default)]
+        location: std::collections::BTreeMap<String, f64>,
+    },
     /// Main layer for a design-space master.
     Master(MasterId),
     /// Intermediate source at an explicit design location.

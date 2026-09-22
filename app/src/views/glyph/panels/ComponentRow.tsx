@@ -145,6 +145,16 @@ export function ComponentRow({
       </button>
       {selected ? (
         <div className={styles.rowFields}>
+          {view.smart_axes?.map((axis) => (
+            <NumberField
+              key={axis.name}
+              label={axis.name}
+              value={component.smart?.[axis.name] ?? axis.default}
+              onCommit={(value) =>
+                write({ smart: { ...component.smart, [axis.name]: value } })
+              }
+            />
+          ))}
           <NumberField
             label={t('infoBox.x')}
             value={offsetX}

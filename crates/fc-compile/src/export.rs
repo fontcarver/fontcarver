@@ -67,6 +67,12 @@ impl std::fmt::Display for ExportStage {
 /// Options controlling static export and preservation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExportOptions {
+    /// Index of a named static instance to interpolate instead of selecting a master.
+    pub instance: Option<usize>,
+    /// Compile all masters as a variable font (gvar for TTF, CFF2 for OTF).
+    pub variable: bool,
+    /// Optional source-master subset for variable compilation; includes the default.
+    pub master_subset: Option<Vec<MasterId>>,
     /// Output container format.
     pub format: ExportFormat,
     /// Master to compile; the first master is used when absent.
@@ -88,6 +94,9 @@ pub struct ExportOptions {
 impl Default for ExportOptions {
     fn default() -> Self {
         Self {
+            instance: None,
+            variable: false,
+            master_subset: None,
             format: ExportFormat::Ttf,
             master: None,
             remove_overlap: false,
@@ -175,12 +184,81 @@ pub fn export_with_progress(
             "apply or discard the feature draft before exporting a font".to_owned(),
         ));
     }
-    let master = options
-        .master
-        .as_ref()
-        .unwrap_or_else(|| &font.default_master().id);
+    if font.glyphs.values().any(|glyph| {
+        !glyph.smart_axes.is_empty()
+            || glyph
+                .layers
+                .iter()
+                .flat_map(|l| &l.components)
+                .any(|c| c.smart.as_ref().is_some_and(|v| !v.is_empty()))
+    }) {
+        let resolved =
+            fc_geom::resolve_smart_font(font).map_err(|e| Error::InvalidSource(e.to_string()))?;
+        let mut options = options.clone();
+        options.keep_tt_instructions = false;
+        return export_with_progress(&resolved, &|_| 1, &options, progress);
+    }
+    if let Some(index) = options.instance {
+        if options.variable || options.master_subset.is_some() {
+            return Err(Error::InvalidSource(
+                "choose either a static instance or variable export".into(),
+            ));
+        }
+        let instance = font
+            .instances
+            .get(index)
+            .ok_or_else(|| Error::InvalidSource("export instance does not exist".into()))?;
+        let resolved = crate::instantiate(font, &instance.location, Some(instance))?;
+        let mut options = options.clone();
+        options.instance = None;
+        options.master = Some(resolved.default_master().id.clone());
+        options.keep_tt_instructions = false;
+        return export_with_progress(&resolved, &|_| 1, &options, progress);
+    }
+    if !options.variable && options.master_subset.is_some() {
+        return Err(Error::InvalidSource(
+            "source-master subsets require variable export".into(),
+        ));
+    }
+    if options.variable {
+        if let Some(subset) = &options.master_subset {
+            let selected = crate::variable::master_subset(font, subset)?;
+            let mut options = options.clone();
+            options.master_subset = None;
+            return export_with_progress(&selected, glyph_generations, &options, progress);
+        }
+        crate::variable::validate_export(font)?;
+    }
+    let master = if options.variable {
+        &font
+            .design_default_master()
+            .map_err(|e| Error::InvalidSource(e.to_string()))?
+            .id
+    } else {
+        options
+            .master
+            .as_ref()
+            .unwrap_or_else(|| &font.default_master().id)
+    };
     if font.master(master).is_none() {
         return Err(Error::MissingMaster(master.clone()));
+    }
+    if !options.variable
+        && font.glyphs.values().any(|glyph| {
+            glyph
+                .layers
+                .iter()
+                .any(|layer| matches!(layer.kind, fc_model::LayerKind::Bracket { .. }))
+        })
+    {
+        let source = font
+            .master(master)
+            .ok_or_else(|| Error::MissingMaster(master.clone()))?;
+        let resolved = crate::instantiate(font, &source.location, None)?;
+        let mut options = options.clone();
+        options.master = Some(resolved.default_master().id.clone());
+        options.keep_tt_instructions = false;
+        return export_with_progress(&resolved, &|_| 1, &options, progress);
     }
 
     let mut warnings = Vec::new();
@@ -219,26 +297,36 @@ pub fn export_with_progress(
     }
 
     progress(ExportStage::Compile, 0);
-    let prepared_cff = (options.format == ExportFormat::Otf)
+    let prepared_cff = (options.format == ExportFormat::Otf && !options.variable)
         .then(|| crate::otf::prepare(font, master, options.production_names))
         .transpose()?;
-    let compiled = compile_static_with_metadata(
-        font,
-        master,
-        &CompileOptions {
-            production_names: options.production_names,
-        },
-    )?;
+    let compile_options = CompileOptions {
+        production_names: options.production_names,
+    };
+    let (compiled, variable_sources) = if options.variable {
+        let (compiled, prepared) =
+            crate::source::compile_variable_with_sources(font, &compile_options)?;
+        (compiled, Some(prepared))
+    } else {
+        (
+            compile_static_with_metadata(font, master, &compile_options)?,
+            None,
+        )
+    };
+    let font = variable_sources.as_ref().unwrap_or(font);
     progress(ExportStage::Preserve, PRESERVE_PERCENT);
     let touched = touched_since_import(font, glyph_generations);
     let mut preservation_options = options.clone();
-    if options.format == ExportFormat::Otf {
+    preservation_options.master = Some(master.clone());
+    if options.format == ExportFormat::Otf || options.variable {
         preservation_options.keep_tt_instructions = false;
     }
     let (merged, preservation_warnings) =
         preserve_merge(&compiled.bytes, font, &touched, &preservation_options)?;
     warnings.extend(preservation_warnings);
-    let merged = if let Some(prepared) = prepared_cff {
+    let merged = if options.format == ExportFormat::Otf && options.variable {
+        crate::variable_cff::convert(&merged, font, &compiled.glyph_order)?
+    } else if let Some(prepared) = prepared_cff {
         let bytes = crate::otf::convert(
             &merged,
             font,
@@ -305,7 +393,15 @@ fn subset_tables(sfnt: &[u8], requested: &[Tag]) -> Result<Vec<u8>, Error> {
     let mut builder = FontBuilder::new();
     for record in face.table_directory().table_records() {
         let tag = Tag(record.tag().to_be_bytes());
-        if CORE.contains(&tag.0) || requested.contains(&tag) {
+        let variable_core = face
+            .table_data(read_fonts::types::Tag::new(b"fvar"))
+            .is_some()
+            && [
+                *b"CFF2", *b"fvar", *b"avar", *b"gvar", *b"HVAR", *b"VVAR", *b"MVAR", *b"STAT",
+                *b"vhea", *b"vmtx", *b"VORG", *b"GDEF", *b"GPOS", *b"GSUB",
+            ]
+            .contains(&tag.0);
+        if CORE.contains(&tag.0) || variable_core || requested.contains(&tag) {
             let data = face
                 .table_data(record.tag())
                 .ok_or_else(|| Error::parse("sfnt subset table", record.tag()))?;

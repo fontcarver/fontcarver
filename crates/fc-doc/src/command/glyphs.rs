@@ -64,6 +64,9 @@ pub(super) fn remove(font: &mut Font, names: &[GlyphName]) -> Result<(), Error> 
             strike.glyphs.remove(name);
         }
     }
+    if let Some(cid) = &mut font.cid {
+        cid.cid_map.retain(|_, name| !seen.contains(name));
+    }
     for name in names {
         font.remove_glyph(name);
         for members in font
@@ -75,10 +78,12 @@ pub(super) fn remove(font: &mut Font, names: &[GlyphName]) -> Result<(), Error> 
             members.remove(name);
         }
         for master in &mut font.masters {
-            master.kerning_h.0.retain(|(left, right), _| {
-                !matches!(left, fc_model::KernSide::Glyph(glyph) if glyph == name)
-                    && !matches!(right, fc_model::KernSide::Glyph(glyph) if glyph == name)
-            });
+            for pairs in [&mut master.kerning_h, &mut master.kerning_v] {
+                pairs.0.retain(|(left, right), _| {
+                    !matches!(left, fc_model::KernSide::Glyph(glyph) if glyph == name)
+                        && !matches!(right, fc_model::KernSide::Glyph(glyph) if glyph == name)
+                });
+            }
         }
     }
     Ok(())

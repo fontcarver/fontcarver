@@ -31,6 +31,16 @@ pub(crate) fn export(api: &Api, params: ExportParams) -> Result<ExportReport, Ap
 
 fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
     let started = Instant::now();
+    if (params.options.variable || params.options.instance.is_some())
+        && !matches!(
+            params.options.format,
+            ExportFormat::Ttf | ExportFormat::Otf | ExportFormat::Woff | ExportFormat::Woff2
+        )
+    {
+        return Err(ApiError::invalid_params(
+            "variable or interpolated instance compilation requires TTF, OTF, WOFF or WOFF2 output",
+        ));
+    }
     let path = PathBuf::from(&params.path);
     let (mut font, generations) = snapshot(api, params.doc)?;
     let master = match &params.options.master {
@@ -315,6 +325,9 @@ fn compile_options(options: &ExportOptions, master: &MasterId) -> Result<Compile
         None => None,
     };
     Ok(CompileOptions {
+        instance: options.instance,
+        variable: options.variable,
+        master_subset: options.master_subset.clone(),
         format: match options.format {
             ExportFormat::Otf => CompileFormat::Otf,
             ExportFormat::Woff => CompileFormat::Woff,

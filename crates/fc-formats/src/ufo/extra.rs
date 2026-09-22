@@ -400,7 +400,7 @@ fn decode_packed_indices(encoded: &str) -> Result<Vec<TtIndex>, Error> {
     Ok(result)
 }
 
-fn build_component_data(components: &[fc_model::Component]) -> serde_json::Value {
+pub(super) fn build_component_data(components: &[fc_model::Component]) -> serde_json::Value {
     let flags = components
         .iter()
         .map(|component| {
@@ -420,7 +420,7 @@ fn build_component_data(components: &[fc_model::Component]) -> serde_json::Value
         .map(|(index, component)| {
             (
                 index.to_string(),
-                serde_json::json!([component.anchor, component.smart, component.point_match]),
+                serde_json::json!({"anchor":component.anchor,"smart":component.smart,"point_match":component.point_match}),
             )
         })
         .collect::<serde_json::Map<_, _>>();
@@ -431,7 +431,7 @@ fn build_component_data(components: &[fc_model::Component]) -> serde_json::Value
     }
 }
 
-fn import_component_data(
+pub(super) fn import_component_data(
     components: &mut Vec<fc_model::Component>,
     value: &serde_json::Value,
 ) -> Result<(), Error> {
@@ -460,27 +460,17 @@ fn import_component_data(
             else {
                 continue;
             };
-            let Some(details) = details.as_array() else {
-                continue;
+            let item = |index, key| {
+                details
+                    .as_array()
+                    .and_then(|values| values.get(index))
+                    .or_else(|| details.get(key))
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null)
             };
-            component.anchor = details
-                .first()
-                .cloned()
-                .map(serde_json::from_value)
-                .transpose()?
-                .flatten();
-            component.smart = details
-                .get(1)
-                .cloned()
-                .map(serde_json::from_value)
-                .transpose()?
-                .flatten();
-            component.point_match = details
-                .get(2)
-                .cloned()
-                .map(serde_json::from_value)
-                .transpose()?
-                .flatten();
+            component.anchor = serde_json::from_value(item(0, "anchor"))?;
+            component.smart = serde_json::from_value(item(1, "smart"))?;
+            component.point_match = serde_json::from_value(item(2, "point_match"))?;
         }
     }
     Ok(())

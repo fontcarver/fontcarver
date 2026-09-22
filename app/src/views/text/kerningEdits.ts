@@ -31,6 +31,7 @@ export function kerningShortcut(
 /** Immutable rule identity captured when an edit starts. */
 export interface KerningEditTarget {
   doc: DocId
+  vertical?: boolean
   master: string
   left: KernSide
   right: KernSide
@@ -136,6 +137,8 @@ export class KerningEditRunner {
 
   private command(value: number | null): Command {
     const { master, left, right } = this.options
-    return { SetHorizontalKerning: { master, left, right, value } }
+    return this.options.vertical
+      ? { SetVerticalKerning: { master, left, right, value } }
+      : { SetHorizontalKerning: { master, left, right, value } }
   }
 }

@@ -64,6 +64,7 @@ pub struct Document {
     pub generation: u64,
     compile_revision: u64,
     doc_id: DocId,
+    unicode_index: fc_model::UnicodeIndex,
     name_to_id: HashMap<GlyphName, GlyphId>,
     id_to_name: Vec<Option<GlyphName>>,
     glyph_generations: Vec<u64>,
@@ -95,6 +96,7 @@ impl Document {
             draft.revision = font.feature_revision;
         }
         let mut document = Self {
+            unicode_index: fc_model::UnicodeIndex::new(&font),
             font,
             path,
             dirty: false,
@@ -256,6 +258,11 @@ impl Document {
         self.undo.set_memory_budget(bytes);
     }
 
+    /// Reverse character map updated by commands and history without rescanning the font.
+    pub fn unicode_index(&self) -> &fc_model::UnicodeIndex {
+        &self.unicode_index
+    }
+
     /// Resolves and caches a glyph's component-flattened path for one master.
     pub fn flattened_path(&self, id: GlyphId, master: &MasterId) -> Result<Arc<BezPath>, Error> {
         let Some(name) = self.glyph_name(id) else {
@@ -337,6 +344,9 @@ impl Document {
             return Ok(Change::default());
         }
         self.apply_handle_effects(&command)?;
+        for name in &impact.glyphs {
+            self.unicode_index.update(name, self.font.glyph(name));
+        }
         if impact.component_graph_changed {
             self.bump_component_generation();
         }
@@ -401,6 +411,9 @@ impl Document {
             undo::restore(&mut self.font, &entry.inverse);
             self.restore_handles(&entry.inverse_handles);
             self.current_state = entry.before_state;
+        }
+        for (name, _) in entry.inverse_handles.iter().chain(&entry.forward_handles) {
+            self.unicode_index.update(name, self.font.glyph(name));
         }
         if entry.change.feature_source {
             self.font.feature_revision = previous_feature_revision.max(self.font.feature_revision);
@@ -541,7 +554,7 @@ impl Document {
             layout: impact.layout,
             glyphs,
             font_info: impact.font_info,
-            masters: !impact.masters.is_empty(),
+            masters: impact.design_space || !impact.masters.is_empty(),
             glyph_order: impact.glyph_order,
             metrics: impact.metrics,
             layers: impact.layers,

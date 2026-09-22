@@ -221,6 +221,7 @@ fn layer_master<'a>(font: &'a Font, layer: &'a Layer) -> Option<&'a MasterId> {
     match &layer.kind {
         LayerKind::Master(master)
         | LayerKind::Background(master)
+        | LayerKind::Smart { master, .. }
         | LayerKind::Brace { master, .. }
         | LayerKind::Bracket { master, .. } => Some(master),
         LayerKind::Backup { of, .. } => Some(of),

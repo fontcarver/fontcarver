@@ -58,6 +58,7 @@ export function useTextKerningControls(options: Options) {
     master,
     generation,
     prepare,
+    vertical: direction === 'ttb',
   })
   const setPair = editor.panel.setPair
   const selectGap = useCallback(

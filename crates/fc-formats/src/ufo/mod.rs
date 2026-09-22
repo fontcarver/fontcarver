@@ -6,6 +6,7 @@ use fc_model::{FeaturesSource, Font, MasterId};
 
 use crate::Error;
 
+mod conditional;
 mod convert;
 mod designspace;
 mod extra;

@@ -1,6 +1,8 @@
 //! Text-shaping handler backed by `fc-layout`.
 
-use fc_layout::{widths_for_text, FontKey, ModelWidths, ShapePlan, ShapeRequest, ShapedRun};
+use fc_layout::{
+    widths_for_text_indexed, FontKey, ModelWidths, ShapePlan, ShapeRequest, ShapedRun,
+};
 use fc_model::Font;
 
 use crate::{Api, ApiError, ShapeParams};
@@ -46,7 +48,12 @@ fn prepare(
             let key = FontKey { doc: doc.0, master };
             let plan = api.shaper.plan(&key, document.compile_revision());
             let font = plan.needs_font().then(|| document.font.clone());
-            let widths = widths_for_text(&document.font, &key.master, text);
+            let widths = widths_for_text_indexed(
+                &document.font,
+                document.unicode_index(),
+                &key.master,
+                text,
+            );
             Ok((plan, font, widths))
         })
         .map_err(ApiError::from)?

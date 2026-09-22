@@ -1,24 +1,46 @@
-//! Recursive outline resolution and bounds.
-
-use std::collections::HashSet;
-
+//! Recursive outline resolution and bounds, including local smart components.
+use crate::{Error, Font, GlyphName, Layer, LayerId, LayerKind, MasterId};
 use kurbo::{BezPath, Rect, Shape};
-
-use crate::{Error, Font, GlyphName, LayerId, LayerKind, MasterId};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, HashSet},
+};
 
 const MAX_COMPONENT_DEPTH: usize = 64;
+const MAX_PATH_ELEMENTS: usize = 1_000_000;
 
-/// Resolves a master layer's contours and transformed components into one path.
+/// Resolve a master layer and its ordinary or smart components into one path.
 pub fn flatten_layer(font: &Font, glyph: &str, master: &MasterId) -> Result<BezPath, Error> {
-    let mut visited = HashSet::new();
-    flatten_inner(font, &GlyphName::from(glyph), master, 0, &mut visited)
+    let mut budget = MAX_PATH_ELEMENTS;
+    flatten_inner(
+        font,
+        &glyph.into(),
+        master,
+        None,
+        &mut HashSet::new(),
+        &mut budget,
+    )
 }
 
-/// Resolves one specific layer's contours and transformed components into one path.
-///
-/// Components are resolved in the master the layer belongs to, so a background,
-/// brace, bracket, or backup layer flattens against its own master's outlines.
-/// A custom layer resolves components in the default master.
+/// Resolve one component's local parameters in a global master, with cycle/work limits.
+pub fn flatten_smart_component(
+    font: &Font,
+    glyph: &str,
+    master: &MasterId,
+    values: &BTreeMap<String, f64>,
+) -> Result<BezPath, Error> {
+    let mut budget = MAX_PATH_ELEMENTS;
+    flatten_inner(
+        font,
+        &glyph.into(),
+        master,
+        Some(values),
+        &mut HashSet::new(),
+        &mut budget,
+    )
+}
+
+/// Resolve a specific layer; its components use the associated master.
 pub fn flatten_layer_by_id(font: &Font, glyph: &str, layer: &LayerId) -> Result<BezPath, Error> {
     let name = GlyphName::from(glyph);
     let glyph_data = font.glyph(&name).ok_or_else(|| Error::MissingGlyph {
@@ -32,78 +54,110 @@ pub fn flatten_layer_by_id(font: &Font, glyph: &str, layer: &LayerId) -> Result<
         LayerKind::Master(master)
         | LayerKind::Background(master)
         | LayerKind::Brace { master, .. }
-        | LayerKind::Bracket { master, .. } => master.clone(),
-        LayerKind::Backup { of, .. } => of.clone(),
-        LayerKind::Custom(_) => font.default_master().id.clone(),
+        | LayerKind::Bracket { master, .. }
+        | LayerKind::Smart { master, .. } => master,
+        LayerKind::Backup { of, .. } => of,
+        LayerKind::Custom(_) => &font.default_master().id,
     };
-    let mut path = BezPath::new();
-    for contour in &layer_data.contours {
-        path.extend(contour.to_bezpath().elements().iter().copied());
-    }
-    let mut visited = HashSet::from([name]);
-    for component in &layer_data.components {
-        let base = flatten_inner(font, &component.base, &master, 1, &mut visited)?;
-        path.extend((component.transform * base).elements().iter().copied());
-    }
-    Ok(path)
+    let mut budget = MAX_PATH_ELEMENTS;
+    flatten_contents(
+        font,
+        layer_data,
+        master,
+        &mut HashSet::from([name]),
+        &mut budget,
+    )
 }
 
-/// Returns the exact curve bounds of a flattened master layer.
+/// Return the exact curve bounds of a flattened master layer.
 pub fn layer_bbox(font: &Font, glyph: &str, master: &MasterId) -> Result<Option<Rect>, Error> {
     let path = flatten_layer(font, glyph, master)?;
-    if path.elements().is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some(path.bounding_box()))
-    }
+    Ok((!path.elements().is_empty()).then(|| path.bounding_box()))
 }
 
 fn flatten_inner(
     font: &Font,
-    glyph_name: &GlyphName,
+    name: &GlyphName,
     master: &MasterId,
-    depth: usize,
+    smart: Option<&BTreeMap<String, f64>>,
     visited: &mut HashSet<GlyphName>,
+    budget: &mut usize,
 ) -> Result<BezPath, Error> {
-    if depth > MAX_COMPONENT_DEPTH {
+    if visited.len() >= MAX_COMPONENT_DEPTH {
         return Err(Error::ComponentDepthLimit {
-            glyph: glyph_name.clone(),
+            glyph: name.clone(),
         });
     }
-    if !visited.insert(glyph_name.clone()) {
+    if !visited.insert(name.clone()) {
         return Err(Error::ComponentCycle {
-            glyph: glyph_name.clone(),
+            glyph: name.clone(),
         });
     }
-    let result = flatten_contents(font, glyph_name, master, depth, visited);
-    visited.remove(glyph_name);
+    let glyph = font.glyph(name).ok_or_else(|| Error::MissingGlyph {
+        glyph: name.clone(),
+    })?;
+    let layer = if !glyph.smart_axes.is_empty() || smart.is_some_and(|v| !v.is_empty()) {
+        Cow::Owned(crate::smart_layer(
+            glyph,
+            master,
+            smart.unwrap_or(&BTreeMap::new()),
+        )?)
+    } else {
+        Cow::Borrowed(
+            glyph
+                .master_layer(master)
+                .ok_or_else(|| Error::MissingMasterLayer {
+                    glyph: name.clone(),
+                    master: master.clone(),
+                })?,
+        )
+    };
+    let result = flatten_contents(font, &layer, master, visited, budget);
+    visited.remove(name);
     result
 }
 
 fn flatten_contents(
     font: &Font,
-    glyph_name: &GlyphName,
+    layer: &Layer,
     master: &MasterId,
-    depth: usize,
     visited: &mut HashSet<GlyphName>,
+    budget: &mut usize,
 ) -> Result<BezPath, Error> {
-    let glyph = font.glyph(glyph_name).ok_or_else(|| Error::MissingGlyph {
-        glyph: glyph_name.clone(),
-    })?;
-    let layer = glyph
-        .master_layer(master)
-        .ok_or_else(|| Error::MissingMasterLayer {
-            glyph: glyph_name.clone(),
-            master: master.clone(),
-        })?;
-
     let mut path = BezPath::new();
     for contour in &layer.contours {
-        path.extend(contour.to_bezpath().elements().iter().copied());
+        let curve = contour.try_to_bezpath()?;
+        *budget = budget
+            .checked_sub(curve.elements().len())
+            .ok_or_else(|| Error::InvalidDesignSpace("component outline work limit".into()))?;
+        path.extend(curve);
     }
     for component in &layer.components {
-        let base = flatten_inner(font, &component.base, master, depth + 1, visited)?;
-        path.extend((component.transform * base).elements().iter().copied());
+        if component
+            .transform
+            .as_coeffs()
+            .iter()
+            .any(|v| !v.is_finite())
+        {
+            return Err(Error::InvalidDesignSpace(
+                "nonfinite component transform".into(),
+            ));
+        }
+        let base = flatten_inner(
+            font,
+            &component.base,
+            master,
+            component.smart.as_ref(),
+            visited,
+            budget,
+        )?;
+        let transformed = component.transform * base;
+        if !transformed.is_finite() {
+            return Err(Error::InvalidDesignSpace(
+                "component transform overflows outline coordinates".into(),
+            ));
+        }
+        path.extend(transformed);
     }
     Ok(path)
 }

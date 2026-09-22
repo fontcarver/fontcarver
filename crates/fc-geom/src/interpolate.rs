@@ -17,6 +17,7 @@ pub struct Incompatibility {
 /// Checks whether two layers have interpolation-compatible outline structure.
 ///
 /// Smooth flags may differ. Anchors are matched by name rather than position.
+/// Diagnostics stop after the first 128 mismatches to bound pathological reports.
 pub fn compatible(a: &Layer, b: &Layer) -> Result<(), Vec<Incompatibility>> {
     let mut issues = Vec::new();
     if a.contours.len() != b.contours.len() {
@@ -27,6 +28,9 @@ pub fn compatible(a: &Layer, b: &Layer) -> Result<(), Vec<Incompatibility>> {
         )));
     }
     for (index, (left, right)) in a.contours.iter().zip(&b.contours).enumerate() {
+        if issues.len() >= 128 {
+            return Err(issues);
+        }
         if left.closed != right.closed {
             issues.push(contour_issue(index, "open/closed state differs"));
         }
@@ -62,6 +66,9 @@ pub fn compatible(a: &Layer, b: &Layer) -> Result<(), Vec<Incompatibility>> {
         )));
     }
     for (index, (left, right)) in a.components.iter().zip(&b.components).enumerate() {
+        if issues.len() >= 128 {
+            return Err(issues);
+        }
         if left.base != right.base {
             issues.push(layer_issue(format!(
                 "component base differs at index {index}: {} versus {}",
@@ -73,11 +80,17 @@ pub fn compatible(a: &Layer, b: &Layer) -> Result<(), Vec<Incompatibility>> {
     let left_anchors = anchor_counts(&a.anchors);
     let right_anchors = anchor_counts(&b.anchors);
     for (name, count) in &left_anchors {
+        if issues.len() >= 128 {
+            return Err(issues);
+        }
         if right_anchors.get(name) != Some(count) {
             issues.push(layer_issue(format!("anchor set differs for name '{name}'")));
         }
     }
     for name in right_anchors.keys() {
+        if issues.len() >= 128 {
+            return Err(issues);
+        }
         if !left_anchors.contains_key(name) {
             issues.push(layer_issue(format!("anchor '{name}' is unmatched")));
         }

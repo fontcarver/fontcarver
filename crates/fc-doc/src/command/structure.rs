@@ -129,7 +129,18 @@ fn mutate_components(
     let contours = target.contours.clone();
     let mut components = target.components.clone();
     let anchors = target.anchors.clone();
+    let kind = target.kind.clone();
     mutate(&mut components)?;
+    let master = master_for_layer(font, &kind);
+    for component in &components {
+        super::apply::ensure_finite(&component.transform.as_coeffs(), "component transform")?;
+        if let Some(values) = component.smart.as_ref().filter(|v| !v.is_empty()) {
+            let base = font
+                .glyph(&component.base)
+                .ok_or_else(|| Error::MissingGlyph(component.base.clone()))?;
+            fc_model::smart_layer(base, &master, values)?;
+        }
+    }
     replace_layer_outline(font, glyph, layer, &contours, &components, &anchors)
 }
 
@@ -156,7 +167,12 @@ fn decompose(
     let mut components = target.components.clone();
     let anchors = target.anchors.clone();
     for component in selected {
-        let path = fc_model::flatten_layer(font, &component.base, &master)?;
+        let path = fc_model::flatten_smart_component(
+            font,
+            &component.base,
+            &master,
+            component.smart.as_ref().unwrap_or(&Default::default()),
+        )?;
         let source = fc_model::Contour::from_bezpath(&path);
         contours.extend(fc_geom::transform(&source, component.transform));
     }
@@ -168,6 +184,7 @@ fn master_for_layer(font: &Font, kind: &LayerKind) -> MasterId {
     match kind {
         LayerKind::Master(master)
         | LayerKind::Background(master)
+        | LayerKind::Smart { master, .. }
         | LayerKind::Brace { master, .. }
         | LayerKind::Bracket { master, .. } => master.clone(),
         LayerKind::Backup { of, .. } => of.clone(),

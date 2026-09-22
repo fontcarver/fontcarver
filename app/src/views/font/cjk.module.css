@@ -1,0 +1,33 @@
+.filters {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+.filters label {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  font-size: var(--text-size-xs);
+  color: var(--color-text-muted);
+}
+.filters input,
+.filters select {
+  width: 100%;
+  min-width: 0;
+  height: var(--control-height);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+.range {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-1);
+}
+.filters p {
+  margin: 0;
+  font-size: var(--text-size-xs);
+  color: var(--color-text-muted);
+}

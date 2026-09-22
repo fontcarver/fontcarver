@@ -15,6 +15,7 @@ fc-formats = { path = "../fc-formats" }
 fc-glyphdata = { path = "../fc-glyphdata" }
 fc-layout = { path = "../fc-layout" }
 fc-model = { path = "../fc-model", features = ["ts"] }
+fc-geom = { path = "../fc-geom" }
 fc-sfnt = { path = "../fc-sfnt" }
 fc-raster = { path = "../fc-raster" }
 kurbo.workspace = true

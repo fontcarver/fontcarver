@@ -83,13 +83,13 @@ fn exposes_sidebar_property_values() {
 }
 
 #[test]
-fn reports_p0_cjk_charset_membership() {
+fn reports_cjk_charset_membership() {
     let ideograph = fc_glyphdata::cjk_charset_membership(0x4E00);
     assert!(ideograph.contains(CjkCharsets::GB2312));
     assert!(ideograph.contains(CjkCharsets::BIG5));
-    assert!(!ideograph.contains(CjkCharsets::GB18030_LEVEL1));
-    assert!(!ideograph.contains(CjkCharsets::JIS_X_0208));
-    assert!(!ideograph.contains(CjkCharsets::KS_X_1001));
+    assert!(ideograph.contains(CjkCharsets::GB18030_LEVEL1));
+    assert!(ideograph.contains(CjkCharsets::JIS_X_0208));
+    assert!(ideograph.contains(CjkCharsets::KS_X_1001));
 
     let simplified = fc_glyphdata::cjk_charset_membership(0x56FD);
     assert!(simplified.contains(CjkCharsets::GB2312));

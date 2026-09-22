@@ -6,7 +6,9 @@
 //! `a.sc`, `f_i` (unencoded variants and ligatures); and `@charset:GB2312`
 //! (a legacy CJK repertoire).
 
-use fc_glyphdata::{cjk_charset_membership, name_for_unicode, unicode_for_name, CjkCharsets};
+use fc_glyphdata::{
+    cjk_charset_codepoints, iicore_codepoints, name_for_unicode, unicode_for_name, CjkCharsets,
+};
 use fc_model::GlyphName;
 
 /// One resolved item of a recipe.
@@ -24,9 +26,6 @@ pub(crate) enum RecipeItem {
     /// A range that asks for more glyphs than one recipe item may create.
     TooLarge(String),
 }
-
-/// The highest scalar value scanned when expanding a legacy CJK charset.
-const CHARSET_SCAN_LIMIT: u32 = 0xFFFF;
 
 /// The most glyphs one recipe item may expand to.
 ///
@@ -105,20 +104,15 @@ fn range(token: &str) -> Option<Result<Vec<RecipeItem>, RecipeItem>> {
 }
 
 fn expand_charset(name: &str, token: &str, items: &mut Vec<RecipeItem>) {
-    let Some(charset) = charset(name) else {
+    let codepoints = if name.eq_ignore_ascii_case("iicore") {
+        iicore_codepoints()
+    } else if let Some(charset) = charset(name) {
+        cjk_charset_codepoints(charset)
+    } else {
         items.push(RecipeItem::Unknown(token.to_owned()));
         return;
     };
-    let before = items.len();
-    for unicode in 0..=CHARSET_SCAN_LIMIT {
-        if !(cjk_charset_membership(unicode) & charset).is_empty() {
-            items.push(encoded(unicode));
-        }
-    }
-    if items.len() == before {
-        // A repertoire whose table is not compiled in yet yields nothing.
-        items.push(RecipeItem::Unknown(token.to_owned()));
-    }
+    items.extend(codepoints.iter().copied().map(encoded));
 }
 
 fn charset(name: &str) -> Option<CjkCharsets> {

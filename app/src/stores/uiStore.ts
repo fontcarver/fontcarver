@@ -28,7 +28,7 @@ export interface TextTabState {
   readonly master: MasterId | null
   readonly size: number
   readonly features: Array<[string, boolean]>
-  readonly direction: 'ltr' | 'rtl'
+  readonly direction: 'ltr' | 'rtl' | 'ttb'
   readonly previewTheme: 'light' | 'dark'
   readonly previewCollapsed: boolean
 }

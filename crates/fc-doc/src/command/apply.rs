@@ -10,12 +10,15 @@ use super::{features, glyphs, kerning, layers, metrics, outline, structure, Comm
 
 #[derive(Default)]
 pub(crate) struct Impact {
+    pub(crate) cid: bool,
+    pub(crate) design_space: bool,
     pub(crate) bitmap_strikes: bool,
     pub(crate) bitmap_glyphs: Vec<(u16, u8, GlyphName)>,
     pub(crate) feature_source: bool,
     pub(crate) feature_anchors: Vec<(GlyphName, LayerId)>,
     pub(crate) layout: bool,
     pub(crate) glyphs: Vec<GlyphName>,
+    pub(crate) glyph_set: HashSet<GlyphName>,
     pub(crate) font_info: bool,
     pub(crate) masters: Vec<MasterId>,
     pub(crate) glyph_order: bool,
@@ -30,7 +33,7 @@ pub(crate) struct Impact {
 
 impl Impact {
     pub(crate) fn glyph(&mut self, name: &GlyphName) {
-        if !self.glyphs.contains(name) {
+        if self.glyph_set.insert(name.clone()) {
             self.glyphs.push(name.clone());
         }
     }
@@ -50,6 +53,46 @@ pub(crate) fn impact(font: &Font, command: &Command) -> Impact {
 
 fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
     match command {
+        Command::SetCidInfo { .. } => {
+            impact.cid = true;
+            impact.font_info = true;
+        }
+        Command::DesignSpace(super::DesignSpaceCommand::Layer { glyph, .. })
+        | Command::DesignSpace(super::DesignSpaceCommand::SmartAxes { glyph, .. }) => {
+            impact.glyph(glyph);
+            impact.layers = true;
+            impact.metrics = true;
+            impact.affects_dependents = true;
+            impact.component_graph_changed = true;
+        }
+        Command::DesignSpace(super::DesignSpaceCommand::Repair { glyphs }) => {
+            for name in glyphs {
+                impact.glyph(name);
+            }
+            impact.affects_dependents = true;
+            impact.component_graph_changed = true;
+        }
+        Command::DesignSpace(super::DesignSpaceCommand::Set {
+            masters,
+            axis_renames,
+            ..
+        }) => {
+            impact.design_space = true;
+            impact.layout = true;
+            impact.metrics = true;
+            impact.layers = true;
+            impact.font_info = true;
+            let changed = !axis_renames.is_empty()
+                || masters.len() != font.masters.len()
+                || masters.iter().any(|m| font.master(&m.id).is_none());
+            if changed {
+                for name in font.glyphs.keys() {
+                    impact.glyph(name);
+                }
+                impact.affects_dependents = true;
+                impact.component_graph_changed = true;
+            }
+        }
         Command::Bitmap(super::BitmapCommand::SetGlyph {
             ppem, depth, glyph, ..
         }) => {
@@ -63,6 +106,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.feature_source = true
         }
         Command::SetHorizontalKerning { .. }
+        | Command::SetVerticalKerning { .. }
         | Command::CreateKerningGroup { .. }
         | Command::SetKerningGroup { .. }
         | Command::AssignKerningGroup { .. }
@@ -77,6 +121,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.component_graph_changed = true;
         }
         Command::RemoveGlyphs { names } => {
+            impact.cid = font.cid.is_some();
             impact.bitmap_strikes = !font.bitmap_strikes.is_empty();
             impact.layout = true;
             for name in names {
@@ -89,6 +134,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.component_graph_changed = true;
         }
         Command::RenameGlyph { from, to } => {
+            impact.cid = font.cid.is_some();
             impact.bitmap_strikes = !font.bitmap_strikes.is_empty();
             impact.layout = true;
             impact.glyph(from);
@@ -104,10 +150,15 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.glyph(glyph)
         }
         Command::SetWidth { glyph, .. }
-        | Command::SetMetrics { glyph, .. }
+        | Command::SetVerticalMetrics { glyph, .. }
         | Command::SetMetricsKeys { glyph, .. } => {
             impact.glyph(glyph);
             impact.metrics = true;
+        }
+        Command::SetMetrics { glyph, .. } | Command::CenterMetrics { glyph, .. } => {
+            impact.glyph(glyph);
+            impact.metrics = true;
+            impact.affects_dependents = true;
         }
         Command::ReplaceLayerOutline {
             glyph,
@@ -270,6 +321,8 @@ fn apply_batch(
 
 fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
     match command {
+        Command::SetCidInfo { cid } => super::cid::set(font, cid),
+        Command::DesignSpace(command) => super::designspace::apply(font, command),
         Command::Bitmap(command) => super::bitmap::apply(font, command),
         Command::SetFeatureDraft {
             expected_revision,
@@ -280,6 +333,7 @@ fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
             features::discard_draft(font, *expected_revision)
         }
         Command::SetHorizontalKerning { .. }
+        | Command::SetVerticalKerning { .. }
         | Command::CreateKerningGroup { .. }
         | Command::SetKerningGroup { .. }
         | Command::AssignKerningGroup { .. }
@@ -316,6 +370,7 @@ fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
             Ok(())
         }
         Command::SetMasterMetrics { master, metrics } => {
+            metrics.validate()?;
             let target = font
                 .masters
                 .iter_mut()
@@ -348,6 +403,11 @@ fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
         | Command::AddGuide { .. }
         | Command::SetGuide { .. }
         | Command::RemoveGuide { .. } => structure::apply(font, command),
+        Command::CenterMetrics {
+            glyph,
+            layer,
+            width,
+        } => metrics::center(font, glyph, layer, *width),
         Command::SetMetrics {
             glyph,
             layer,
@@ -355,6 +415,12 @@ fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
             lsb,
             rsb,
         } => metrics::set(font, glyph, layer, *width, *lsb, *rsb),
+        Command::SetVerticalMetrics {
+            glyph,
+            layer,
+            advance,
+            origin,
+        } => metrics::set_vertical(font, glyph, layer, *advance, *origin),
         Command::SetMetricsKeys { glyph, keys } => {
             glyph_mut(font, glyph)?.metrics_keys = keys.clone();
             Ok(())

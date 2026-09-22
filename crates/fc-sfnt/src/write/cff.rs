@@ -1,4 +1,4 @@
-//! Name-keyed CFF1 writer. See Adobe Technical Note 5176.
+//! Name-keyed and CID-keyed CFF1 writer. See Adobe Technical Note 5176.
 
 use std::collections::{HashMap, HashSet};
 
@@ -14,7 +14,7 @@ use super::{
 
 /// CFF bytes and geometry needed by the enclosing OpenType tables.
 pub struct CffOutput {
-    /// A complete name-keyed CFF1 table.
+    /// A complete CFF1 table, CID-keyed when the font supplies CID metadata.
     pub bytes: Vec<u8>,
     /// Per-glyph curve bounds in the supplied glyph-ID order; empty outlines are `None`.
     pub bounds: Vec<Option<Rect>>,
@@ -44,6 +44,11 @@ pub fn write_cff(
         return Err(WriteError("units per em outside 16..=16384".into()));
     }
     let mut strings = Strings::new();
+    let mut cid = font
+        .cid
+        .as_ref()
+        .map(|info| CidDict::new(info, order, &mut strings))
+        .transpose()?;
     let mut charset = vec![0];
     let mut charstrings = Vec::with_capacity(order.len());
     let mut bounds = Vec::with_capacity(order.len());
@@ -70,7 +75,12 @@ pub fn write_cff(
             )));
         }
         if gid > 0 {
-            charset.extend_from_slice(&strings.sid(output_name)?.to_be_bytes());
+            let code = if let Some(cid) = &cid {
+                cid.codes[gid]
+            } else {
+                strings.sid(output_name)?
+            };
+            charset.extend_from_slice(&code.to_be_bytes());
         }
         let (path, width) = if let Some(glyph) = glyph {
             let layer = glyph
@@ -133,10 +143,39 @@ pub fn write_cff(
     let charstring_index = index(&charstrings)?;
     let private = vec![139, 20, 139, 21]; // defaultWidthX = nominalWidthX = 0
     let bbox = bbox.unwrap_or(Rect::ZERO);
-    let top = top_dict(font.info.units_per_em, bbox, 0, 0, 0, private.len())?;
+    let top = top_dict(
+        font.info.units_per_em,
+        bbox,
+        0,
+        0,
+        0,
+        private.len(),
+        cid.as_ref(),
+    )?;
     let charset_offset = 4 + name_index.len() + index(&[top])?.len() + string_index.len() + 2;
     let charstrings_offset = charset_offset + charset.len();
-    let private_offset = charstrings_offset + charstring_index.len();
+    let fdselect = if cid.is_some() {
+        vec![0; order.len() + 1]
+    } else {
+        vec![]
+    };
+    let fdarray_size = if cid.is_some() {
+        index(&[private_dict(0, private.len())?])?.len()
+    } else {
+        0
+    };
+    let fdselect_offset = charstrings_offset + charstring_index.len();
+    let fdarray_offset = fdselect_offset + fdselect.len();
+    let private_offset = fdarray_offset + fdarray_size;
+    if let Some(cid) = &mut cid {
+        cid.fdselect = fdselect_offset;
+        cid.fdarray = fdarray_offset;
+    }
+    let fdarray = if cid.is_some() {
+        index(&[private_dict(private_offset, private.len())?])?
+    } else {
+        vec![]
+    };
     let top = index(&[top_dict(
         font.info.units_per_em,
         bbox,
@@ -144,6 +183,7 @@ pub fn write_cff(
         charstrings_offset,
         private_offset,
         private.len(),
+        cid.as_ref(),
     )?])?;
     let mut bytes = vec![1, 0, 4, 4];
     bytes.extend(name_index);
@@ -152,6 +192,8 @@ pub fn write_cff(
     bytes.extend([0, 0]); // Global Subrs INDEX
     bytes.extend(charset);
     bytes.extend(charstring_index);
+    bytes.extend(fdselect);
+    bytes.extend(fdarray);
     bytes.extend(private);
     Ok(CffOutput {
         bytes,
@@ -181,8 +223,17 @@ fn top_dict(
     charstrings: usize,
     private: usize,
     private_size: usize,
+    cid: Option<&CidDict>,
 ) -> Result<Vec<u8>, WriteError> {
     let mut data = Vec::new();
+    if let Some(cid) = cid {
+        integer(&mut data, i32::from(cid.registry));
+        integer(&mut data, i32::from(cid.ordering));
+        integer(&mut data, cid.supplement);
+        data.extend([12, 30]);
+        integer(&mut data, cid.count);
+        data.extend([12, 34]);
+    }
     for value in [
         bbox.x0.floor(),
         bbox.y0.floor(),
@@ -207,10 +258,75 @@ fn top_dict(
     data.push(15);
     offset(&mut data, charstrings)?;
     data.push(17);
-    offset(&mut data, private_size)?;
-    offset(&mut data, private)?;
-    data.push(18);
+    if let Some(cid) = cid {
+        offset(&mut data, cid.fdarray)?;
+        data.extend([12, 36]);
+        offset(&mut data, cid.fdselect)?;
+        data.extend([12, 37]);
+    } else {
+        data.extend(private_dict(private, private_size)?);
+    }
     Ok(data)
+}
+
+fn private_dict(location: usize, size: usize) -> Result<Vec<u8>, WriteError> {
+    let mut bytes = Vec::new();
+    offset(&mut bytes, size)?;
+    offset(&mut bytes, location)?;
+    bytes.push(18);
+    Ok(bytes)
+}
+
+struct CidDict {
+    registry: u16,
+    ordering: u16,
+    supplement: i32,
+    count: i32,
+    codes: Vec<u16>,
+    fdarray: usize,
+    fdselect: usize,
+}
+impl CidDict {
+    fn new(
+        info: &fc_model::CidInfo,
+        order: &[GlyphName],
+        strings: &mut Strings,
+    ) -> Result<Self, WriteError> {
+        check_name(&info.registry, 127)?;
+        check_name(&info.ordering, 127)?;
+        let mut names = HashMap::new();
+        for (cid, name) in &info.cid_map {
+            let cid = u16::try_from(*cid).map_err(|_| WriteError("CID exceeds 65,535".into()))?;
+            if (cid == 0) != (name.as_ref() == ".notdef") || names.insert(name, cid).is_some() {
+                return Err(WriteError(
+                    "CID 0 is reserved for .notdef and glyph mappings must be unique".into(),
+                ));
+            }
+        }
+        let codes: Vec<_> = order
+            .iter()
+            .enumerate()
+            .map(|(gid, name)| {
+                if gid == 0 {
+                    Ok(0)
+                } else {
+                    names.get(name).copied().ok_or_else(|| {
+                        WriteError(format!("exported glyph {name} has no CID mapping"))
+                    })
+                }
+            })
+            .collect::<Result<_, _>>()?;
+        Ok(Self {
+            registry: strings.sid(&info.registry)?,
+            ordering: strings.sid(&info.ordering)?,
+            supplement: i32::try_from(info.supplement)
+                .map_err(|_| WriteError("CID supplement exceeds signed 32-bit range".into()))?,
+            count: i32::from(codes.iter().copied().max().unwrap_or(0)) + 1,
+            codes,
+            fdarray: 0,
+            fdselect: 0,
+        })
+    }
 }
 
 fn checked_path(

@@ -17,6 +17,6 @@ pub use import::{
     equivalent_layout, LayoutBlocker, LayoutImport, LayoutLookup, LayoutRule, LayoutTableSummary,
 };
 pub use shaping::{
-    widths_for_text, FontKey, ModelWidths, ShapePlan, ShapeRequest, ShapedGlyph, ShapedRun, Shaper,
-    COMPILE_FAILED, DEFAULT_DEBOUNCE,
+    widths_for_text, widths_for_text_indexed, FontKey, ModelWidths, ShapePlan, ShapeRequest,
+    ShapedGlyph, ShapedRun, Shaper, COMPILE_FAILED, DEFAULT_DEBOUNCE,
 };

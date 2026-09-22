@@ -143,9 +143,28 @@ pub fn cjk_charset_membership(cp: u32) -> CjkCharsets {
         membership |= CjkCharsets::BIG5;
     }
 
-    // TODO(P4): generate GB18030 Level 1 from the GB 18030-2022 repertoire,
-    // JIS X 0208 from JIS0208.TXT, and KS X 1001 from KSX1001.TXT.
+    for (data, flag) in [
+        (GB18030_LEVEL1_CODEPOINTS, CjkCharsets::GB18030_LEVEL1),
+        (JIS0208_CODEPOINTS, CjkCharsets::JIS_X_0208),
+        (KSX1001_CODEPOINTS, CjkCharsets::KS_X_1001),
+    ] {
+        if data.binary_search(&cp).is_ok() {
+            membership |= flag;
+        }
+    }
     membership
+}
+
+/// Sorted scalar repertoire for exactly one charset flag; other flags yield no values.
+pub fn cjk_charset_codepoints(charset: CjkCharsets) -> &'static [u32] {
+    match charset {
+        CjkCharsets::GB2312 => GB2312_CODEPOINTS,
+        CjkCharsets::GB18030_LEVEL1 => GB18030_LEVEL1_CODEPOINTS,
+        CjkCharsets::BIG5 => BIG5_CODEPOINTS,
+        CjkCharsets::JIS_X_0208 => JIS0208_CODEPOINTS,
+        CjkCharsets::KS_X_1001 => KSX1001_CODEPOINTS,
+        _ => &[],
+    }
 }
 
 pub(crate) fn script_value(cp: u32) -> IcuScript {

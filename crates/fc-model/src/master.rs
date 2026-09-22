@@ -67,6 +67,49 @@ pub struct MasterMetrics {
     pub default_vertical_advance: Option<f64>,
 }
 
+impl MasterMetrics {
+    /// Validate finite source metrics and OpenType-sized overrides before editing.
+    pub fn validate(&self) -> Result<(), crate::Error> {
+        let signed = [
+            Some(self.ascender),
+            Some(self.descender),
+            Some(self.x_height),
+            Some(self.cap_height),
+            self.hhea_ascender,
+            self.hhea_descender,
+            self.hhea_line_gap,
+            self.typo_ascender,
+            self.typo_descender,
+            self.typo_line_gap,
+            self.vhea_ascender,
+            self.vhea_descender,
+            self.vhea_line_gap,
+            self.default_vertical_origin,
+        ];
+        let unsigned = [
+            self.win_ascent,
+            self.win_descent,
+            self.default_vertical_advance,
+        ];
+        if signed
+            .into_iter()
+            .flatten()
+            .any(|v| !v.is_finite() || !(-32768.0..=32767.0).contains(&v))
+            || unsigned
+                .into_iter()
+                .flatten()
+                .any(|v| !v.is_finite() || !(0.0..=65535.0).contains(&v))
+            || !self.italic_angle.is_finite()
+            || self.italic_angle.abs() >= 90.0
+        {
+            return Err(crate::Error::InvalidDesignSpace(
+                "master metrics exceed finite OpenType ranges".into(),
+            ));
+        }
+        Ok(())
+    }
+}
+
 /// A PostScript alignment zone.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]

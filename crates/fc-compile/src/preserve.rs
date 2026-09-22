@@ -103,7 +103,7 @@ pub fn preserve_merge(
     let mut builder = FontBuilder::new();
     for record in compiled_face.table_directory().table_records() {
         let tag = Tag(record.tag().to_be_bytes());
-        if tag == DSIG || VARIATION_TAGS.contains(&tag) {
+        if tag == DSIG || (!options.variable && VARIATION_TAGS.contains(&tag)) {
             continue;
         }
         let data = compiled_face
@@ -112,7 +112,9 @@ pub fn preserve_merge(
         builder.add_raw(record.tag(), data.as_bytes());
     }
 
-    warn_variation_tables(font, &mut warnings);
+    if !options.variable {
+        warn_variation_tables(font, &mut warnings);
+    }
     if options.preserve_untouched_tables {
         merge_raw_tables(&mut builder, font, provenance.order, &mut warnings);
     } else {

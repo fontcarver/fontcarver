@@ -41,6 +41,16 @@ pub const FAILED_STAGE: &str = "failed";
 
 /// Method name, parameter TypeScript type, and result TypeScript type.
 pub const METHODS: &[(&str, &str, &str)] = &[
+    ("cjk.batch", "CjkBatchParams", "CjkBatchResult"),
+    ("cid.state", "DocParams", "CidState"),
+    ("cid.apply", "CidApplyParams", "Change"),
+    ("variation.state", "DocParams", "VariationState"),
+    ("variation.apply", "VariationApplyParams", "Change"),
+    (
+        "variation.preview",
+        "VariationPreviewParams",
+        "VariationPreview",
+    ),
     ("bitmap.rasterize", "BitmapRasterParams", "Change"),
     ("bitmap.trace", "BitmapTraceParams", "Change"),
     (
@@ -104,6 +114,17 @@ pub const METHODS: &[(&str, &str, &str)] = &[
         "KerningResolution",
     ),
     ("kerning.pairs", "KerningPairsParams", "KerningPairs"),
+    ("kerning.status_vertical", "DocParams", "KerningStatus"),
+    (
+        "kerning.resolve_vertical",
+        "KerningResolveParams",
+        "KerningResolution",
+    ),
+    (
+        "kerning.pairs_vertical",
+        "KerningPairsParams",
+        "KerningPairs",
+    ),
     (
         "kerning.groups",
         "KerningGroupsParams",
@@ -129,6 +150,7 @@ pub const METHODS: &[(&str, &str, &str)] = &[
     ("glyphs.index_of", "GlyphIndexParams", "number | null"),
     ("glyphs.cell", "GlyphCellParams", "GlyphCell"),
     ("glyphs.detail", "GlyphDetailParams", "GlyphDetail"),
+    ("glyphs.unihan", "UnihanParams", "UnihanInfo | null"),
     ("glyphs.search", "GlyphSearchParams", "Array<GlyphCell>"),
     ("doc.apply", "ApplyParams", "Change"),
     ("doc.edit_begin", "EditBeginParams", "EditTokenId"),
@@ -383,6 +405,12 @@ macro_rules! define_dispatch {
 }
 
 define_dispatch! {
+    "cjk.batch"=>handlers::cjk_batch::run,
+    "cid.state"=>handlers::cid::state,
+    "cid.apply"=>handlers::cid::apply,
+    "variation.state"=>handlers::variation::state,
+    "variation.apply"=>handlers::variation::apply,
+    "variation.preview"=>handlers::variation::preview,
     "bitmap.rasterize" => handlers::bitmap::rasterize,
     "bitmap.trace" => handlers::bitmap::trace,
     "bitmap.preview" => handlers::bitmap::preview,
@@ -406,6 +434,9 @@ define_dispatch! {
     "kerning.glyph" => handlers::kerning::glyph,
     "kerning.resolve" => handlers::kerning::resolve,
     "kerning.pairs" => handlers::kerning::pairs,
+    "kerning.status_vertical" => handlers::kerning::status_vertical,
+    "kerning.resolve_vertical" => handlers::kerning::resolve_vertical,
+    "kerning.pairs_vertical" => handlers::kerning::pairs_vertical,
     "kerning.groups" => handlers::kerning::groups,
     "kerning.members" => handlers::kerning::members,
     "session.open" => handlers::session::open,
@@ -423,6 +454,7 @@ define_dispatch! {
     "glyphs.index_of" => handlers::glyphs::index_of,
     "glyphs.cell" => handlers::glyphs::cell,
     "glyphs.detail" => handlers::glyphs::detail,
+    "glyphs.unihan" => handlers::cjk::info,
     "glyphs.search" => handlers::glyphs::search,
     "doc.apply" => handlers::doc::apply,
     "doc.edit_begin" => handlers::doc::edit_begin,

@@ -405,3 +405,50 @@ describe('buildTextLayout', () => {
     expect(transport.calls.map((call) => call.method)).toEqual(['glyphs.list'])
   })
 })
+
+it('keeps vertical advances and named glyph origins in the same run', async () => {
+  const transport = createMockTransport({
+    'text.shape': ({ features, direction }) => {
+      expect(direction).toBe('ttb')
+      expect(features).toContainEqual(['vert', true])
+      expect(features).toContainEqual(['vkrn', false])
+      return run({
+        names: ['A'],
+        glyphs: [
+          {
+            gid: 7,
+            cluster: 0,
+            x_advance: 0,
+            y_advance: -950,
+            x_offset: -300,
+            y_offset: -880,
+          },
+        ],
+      })
+    },
+    'glyphs.search': ({ query }) => [
+      cellFor(9, {
+        name: query,
+        width: 600,
+        vertical_advance: 1200,
+        vertical_origin: 900,
+      }),
+    ],
+  })
+  const result = await buildTextLayout(transport, {
+    doc: 1,
+    generation: 0,
+    unitsPerEm: 1000,
+    master: null,
+    text: 'A/V',
+    direction: 'ttb',
+    features: [['vkrn', false]],
+    script: null,
+    language: null,
+  })
+  expect(result.glyphs.map((g) => [g.x, g.y, g.xAdvance, g.yAdvance])).toEqual([
+    [-300, -880, 0, -950],
+    [-300, -1850, 0, -1200],
+  ])
+  expect(result.end).toEqual({ x: 0, y: -2150 })
+})

@@ -12,6 +12,7 @@ import {
 } from '../../stores/documentStore'
 
 import { COLOR_LABELS, colorLabelKey } from './colorLabels'
+import { CjkFilters } from './CjkFilters'
 import { FilterRow } from './FilterRow'
 
 export interface SidebarFiltersProps {
@@ -83,6 +84,9 @@ export function SidebarFilters({ doc }: SidebarFiltersProps) {
         />
       </Panel>
 
+      {(counts.scripts.some(([script]) => script === 'Hani') || filter.cjk) && (
+        <CjkFilters doc={doc} value={filter.cjk} />
+      )}
       {counts.categories.length > 0 ? (
         <Panel title={t('sidebar.categories')}>
           {counts.categories.map(([name, count]) => (

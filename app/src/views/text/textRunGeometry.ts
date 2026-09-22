@@ -25,6 +25,10 @@ function boundsFor(
   let x1 = Math.max(glyph.x, glyph.x + glyph.xAdvance)
   let y0 = glyph.y - unitsPerEm * 0.2
   let y1 = glyph.y + unitsPerEm * 0.8
+  if (glyph.yAdvance !== 0) {
+    x1 = Math.max(x1, glyph.x + unitsPerEm)
+    y0 = Math.min(y0, glyph.y + glyph.yAdvance + unitsPerEm * 0.8)
+  }
   if (outline) {
     x0 = Math.min(x0, glyph.x + outline[0])
     x1 = Math.max(x1, glyph.x + outline[2])
@@ -112,12 +116,17 @@ export function visibleGlyphIndexes(
       : [],
   )
   if (matches.length <= MAX_VISIBLE_RUN_GLYPHS) return matches
-  const centre = (visible.x0 + visible.x1) / 2
+  const vertical = glyphs.some((glyph) => glyph.yAdvance !== 0)
+  const centre = vertical
+    ? (visible.y0 + visible.y1) / 2
+    : (visible.x0 + visible.x1) / 2
+  const coordinate = (index: number) =>
+    (vertical ? glyphs[index]?.y : glyphs[index]?.x) ?? 0
   return matches
     .sort(
       (left, right) =>
-        Math.abs((glyphs[left]?.x ?? 0) - centre) -
-        Math.abs((glyphs[right]?.x ?? 0) - centre),
+        Math.abs(coordinate(left) - centre) -
+        Math.abs(coordinate(right) - centre),
     )
     .slice(0, MAX_VISIBLE_RUN_GLYPHS)
     .sort((left, right) => left - right)
@@ -130,10 +139,14 @@ export function previewGlyphIndexes(
 ): number[] {
   if (glyphs.length === 0) return []
   const firstX = glyphs[0]?.x ?? 0
+  const firstY = glyphs[0]?.y ?? 0
   const extent = (PREVIEW_WINDOW_PX * unitsPerEm) / SMALLEST_PREVIEW_SIZE
   return glyphs
     .flatMap((glyph, index) =>
-      Math.abs(glyph.x - firstX) <= extent ? [index] : [],
+      Math.abs(glyph.x - firstX) <= extent &&
+      Math.abs(glyph.y - firstY) <= extent
+        ? [index]
+        : [],
     )
     .slice(0, MAX_VISIBLE_RUN_GLYPHS)
 }

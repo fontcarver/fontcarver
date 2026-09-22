@@ -6,9 +6,10 @@ use std::{
     sync::Arc,
 };
 
+use fc_geom::variation::{compiler_axes, glyph_sources, normalized_location};
 use fc_model::{Font, GlyphName, KernSide, Master, MasterId};
 use fontdrasil::{
-    coords::NormalizedLocation,
+    coords::{NormalizedLocation, UserCoord},
     orchestration::{Access, AccessBuilder, Work},
     types::GlyphName as IrGlyphName,
 };
@@ -17,7 +18,7 @@ use fontir::{
     ir::{
         AnchorBuilder, Component as IrComponent, FeaturesSource as IrFeaturesSource, GlobalMetric,
         GlobalMetricsBuilder, Glyph as IrGlyph, GlyphInstance, GlyphOrder, KernGroup,
-        KernSide as IrKernSide, KerningInstance, KerningLocations, StaticMetadata,
+        KernSide as IrKernSide, KerningInstance, KerningLocations, NamedInstance, StaticMetadata,
     },
     orchestration::{Context, Flags, IrWork, WorkId},
     source::Source,
@@ -26,6 +27,9 @@ use kurbo::Point;
 
 use crate::metadata::{apply_misc_metadata, names};
 use crate::Error;
+
+mod metrics;
+use metrics::GlobalMetricsWork;
 
 /// Options that affect the fontc compilation phase.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -51,12 +55,14 @@ pub struct StaticCompile {
 struct SourceData {
     font: Font,
     master: MasterId,
+    variable: bool,
+    variations: Option<fontir::ir::VariableFeature>,
     options: CompileOptions,
     large_font: bool,
     fontc_safe_bmp_codepoints: Option<Arc<HashSet<(GlyphName, u32)>>>,
 }
 
-/// A static, single-master, in-memory source for fontc.
+/// An in-memory source for static or variable fontc compilation.
 #[derive(Clone, Debug)]
 pub struct FcSource {
     data: Arc<SourceData>,
@@ -78,12 +84,22 @@ impl FcSource {
         if !(16..=16_384).contains(&font.info.units_per_em) {
             return Err(Error::InvalidUnitsPerEm(font.info.units_per_em));
         }
+        if font.extra.lib.contains_key("ufo.designspace.rules") {
+            return Err(Error::InvalidSource(
+                "preserved native designspace rules require conversion before compilation".into(),
+            ));
+        }
         crate::feature_validation::check_writer_conflicts(font)?;
         let large_font = crate::large_font::requires_workaround(font, options.production_names);
+        let mut resolved =
+            fc_geom::resolve_smart_font(font).map_err(|e| Error::InvalidSource(e.to_string()))?;
+        crate::vertical::apply_metric_defaults(&mut resolved);
         Ok(Self {
             data: Arc::new(SourceData {
-                font: font.clone(),
+                font: resolved,
                 master: master.clone(),
+                variable: false,
+                variations: None,
                 options: options.clone(),
                 large_font,
                 fontc_safe_bmp_codepoints: large_font
@@ -91,6 +107,45 @@ impl FcSource {
             }),
         })
     }
+
+    /// Build a variable source from every master and intermediate layer.
+    pub fn from_variable_font(font: &Font, options: &CompileOptions) -> Result<Self, Error> {
+        let (prepared, variations) = crate::bracket::prepare(font)?;
+        let font = &prepared;
+        font.validate_designspace()
+            .map_err(|e| Error::InvalidSource(e.to_string()))?;
+        if font.axes.is_empty() {
+            return Err(Error::InvalidSource(
+                "variable export requires at least one axis".into(),
+            ));
+        }
+        let master = font
+            .design_default_master()
+            .map_err(|e| Error::InvalidSource(e.to_string()))?;
+        let mut source = Self::from_font(font, &master.id, options)?;
+        for glyph in source.data.font.glyphs.values() {
+            fc_geom::variation::interpolate_glyph(&source.data.font, glyph, &master.location)
+                .map_err(|e| Error::InvalidSource(format!("{}: {e}", glyph.name)))?;
+        }
+        Arc::make_mut(&mut source.data).variable = true;
+        Arc::make_mut(&mut source.data).variations = variations;
+        Ok(source)
+    }
+}
+
+/// Compile all masters and intermediate sources into a variable TrueType font.
+pub fn compile_variable(font: &Font, options: &CompileOptions) -> Result<StaticCompile, Error> {
+    compile_variable_with_sources(font, options).map(|(compiled, _)| compiled)
+}
+
+pub(crate) fn compile_variable_with_sources(
+    font: &Font,
+    options: &CompileOptions,
+) -> Result<(StaticCompile, Font), Error> {
+    let source = FcSource::from_variable_font(font, options)?;
+    let prepared = source.data.font.clone();
+    let compiled = compile_source(source, &prepared, options, false)?;
+    Ok((compiled, prepared))
 }
 
 /// Compiles one master of a model font to a static TrueType-flavored sfnt.
@@ -118,6 +173,15 @@ fn compile_static_impl(
     force_large_patch: bool,
 ) -> Result<StaticCompile, Error> {
     let source = FcSource::from_font(font, master, options)?;
+    compile_source(source, font, options, force_large_patch)
+}
+
+fn compile_source(
+    source: FcSource,
+    font: &Font,
+    options: &CompileOptions,
+    force_large_patch: bool,
+) -> Result<StaticCompile, Error> {
     let mut flags = Flags::PREFER_SIMPLE_GLYPHS;
     let mut flags_to_disable = Flags::empty();
     if options.production_names {
@@ -161,29 +225,59 @@ impl Source for FcSource {
     }
 
     fn create_glyph_ir_work(&self) -> Result<Vec<Box<IrWork>>, IrError> {
-        Ok(self
-            .data
+        self.data
             .font
             .glyphs
             .values()
             .cloned()
             .map(|glyph| {
-                Box::new(GlyphWork {
+                let layers = if self.data.variable {
+                    glyph_sources(&self.data.font, &glyph)
+                        .map_err(|e| IrError::InvalidEntry("glyph sources", e.to_string()))?
+                        .into_iter()
+                        .map(|(at, layer)| {
+                            (
+                                normalized_location(&self.data.font.axes, &at),
+                                layer.clone(),
+                            )
+                        })
+                        .collect()
+                } else {
+                    vec![(
+                        default_location(),
+                        glyph
+                            .master_layer(&self.data.master)
+                            .ok_or_else(|| {
+                                IrError::NoSuchLayer(format!(
+                                    "{} / {}",
+                                    glyph.name, self.data.master
+                                ))
+                            })?
+                            .clone(),
+                    )]
+                };
+                Ok(Box::new(GlyphWork {
                     glyph,
-                    master: self.data.master.clone(),
+                    layers,
                     model_anchors: self.data.font.feature_settings.writer_policy.anchors,
                     fontc_safe_bmp_codepoints: self.data.fontc_safe_bmp_codepoints.clone(),
-                }) as Box<IrWork>
+                }) as Box<IrWork>)
             })
-            .collect())
+            .collect()
     }
 
     fn create_feature_ir_work(&self) -> Result<Box<IrWork>, IrError> {
-        Ok(Box::new(FeatureWork(feature_source(&self.data.font))))
+        Ok(Box::new(FeatureWork(feature_source(&self.data)?)))
     }
 
     fn create_kerning_locations_ir_work(&self) -> Result<Box<IrWork>, IrError> {
-        Ok(Box::new(KerningLocationsWork))
+        Ok(Box::new(KerningLocationsWork(
+            self.data
+                .master_locations()
+                .into_iter()
+                .map(|(_, loc)| loc)
+                .collect(),
+        )))
     }
 
     fn create_kerning_instance_ir_work(
@@ -215,6 +309,26 @@ impl Source for FcSource {
 
 fn default_location() -> NormalizedLocation {
     NormalizedLocation::new()
+}
+
+impl SourceData {
+    fn master_locations(&self) -> Vec<(&Master, NormalizedLocation)> {
+        self.font
+            .masters
+            .iter()
+            .filter(|m| self.variable || m.id == self.master)
+            .map(|m| {
+                (
+                    m,
+                    if self.variable {
+                        normalized_location(&self.font.axes, &m.location)
+                    } else {
+                        default_location()
+                    },
+                )
+            })
+            .collect()
+    }
 }
 
 #[derive(Debug)]
@@ -264,15 +378,53 @@ impl Work<Context, WorkId, IrError> for StaticMetadataWork {
         let mut metadata = StaticMetadata::new(
             font.info.units_per_em,
             names(&font.info),
-            Vec::new(),
-            Vec::new(),
-            HashSet::from([default_location()]),
+            if self.0.variable {
+                compiler_axes(&font.axes)
+                    .map_err(|e| IrError::InvalidEntry("axes", e.to_string()))?
+            } else {
+                Vec::new()
+            },
+            if self.0.variable {
+                font.instances
+                    .iter()
+                    .filter(|i| i.active && i.is_variable_named_instance)
+                    .map(|i| NamedInstance {
+                        name: i.name.clone(),
+                        postscript_name: None,
+                        location: font
+                            .axes
+                            .iter()
+                            .map(|a| {
+                                (
+                                    fontdrasil::types::Tag::new(&a.tag.0),
+                                    UserCoord::new(
+                                        a.design_to_user(
+                                            i.location
+                                                .get(&a.tag)
+                                                .copied()
+                                                .unwrap_or_else(|| a.user_to_design(a.default)),
+                                        ),
+                                    ),
+                                )
+                            })
+                            .collect(),
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            },
+            self.0
+                .master_locations()
+                .into_iter()
+                .map(|(_, loc)| loc)
+                .collect(),
             postscript_names,
             master.metrics.italic_angle,
             None,
             build_vertical,
         )?;
         apply_misc_metadata(&mut metadata, &font.info);
+        metadata.variations = self.0.variations.clone();
         // Use fontc's explicit Skip policy: a manual feature without a marker
         // owns its tag, and `# Automatic Code` inserts model rules only when
         // this document explicitly permits that writer. Conversion can keep
@@ -315,134 +467,9 @@ fn selected_master(data: &SourceData) -> Result<&Master, IrError> {
 }
 
 #[derive(Debug)]
-struct GlobalMetricsWork(Arc<SourceData>);
-
-impl Work<Context, WorkId, IrError> for GlobalMetricsWork {
-    fn id(&self) -> WorkId {
-        WorkId::GlobalMetrics
-    }
-
-    fn read_access(&self) -> Access<WorkId> {
-        Access::Variant(WorkId::StaticMetadata)
-    }
-
-    fn exec(&self, context: &Context) -> Result<(), IrError> {
-        let static_metadata = context.static_metadata.get();
-        let master = selected_master(&self.0)?;
-        let metrics = &master.metrics;
-        let info = &self.0.font.info;
-        let location = default_location();
-        let mut builder = GlobalMetricsBuilder::new();
-        for (metric, value) in [
-            (GlobalMetric::Ascender, Some(metrics.ascender)),
-            (GlobalMetric::Descender, Some(metrics.descender)),
-            (GlobalMetric::HheaAscender, metrics.hhea_ascender),
-            (GlobalMetric::HheaDescender, metrics.hhea_descender),
-            (GlobalMetric::HheaLineGap, metrics.hhea_line_gap),
-            (GlobalMetric::Os2TypoAscender, metrics.typo_ascender),
-            (GlobalMetric::Os2TypoDescender, metrics.typo_descender),
-            (GlobalMetric::Os2TypoLineGap, metrics.typo_line_gap),
-            (GlobalMetric::Os2WinAscent, metrics.win_ascent),
-            (GlobalMetric::Os2WinDescent, metrics.win_descent),
-            (GlobalMetric::CapHeight, Some(metrics.cap_height)),
-            (GlobalMetric::XHeight, Some(metrics.x_height)),
-            (GlobalMetric::VheaAscender, metrics.vhea_ascender),
-            (GlobalMetric::VheaDescender, metrics.vhea_descender),
-            (GlobalMetric::VheaLineGap, metrics.vhea_line_gap),
-            (
-                GlobalMetric::CaretSlopeRise,
-                info.open_type_hhea_caret_slope_rise.map(f64::from),
-            ),
-            (
-                GlobalMetric::CaretSlopeRun,
-                info.open_type_hhea_caret_slope_run.map(f64::from),
-            ),
-            (
-                GlobalMetric::CaretOffset,
-                info.open_type_hhea_caret_offset.map(f64::from),
-            ),
-            (
-                GlobalMetric::VheaCaretSlopeRise,
-                info.open_type_vhea_caret_slope_rise.map(f64::from),
-            ),
-            (
-                GlobalMetric::VheaCaretSlopeRun,
-                info.open_type_vhea_caret_slope_run.map(f64::from),
-            ),
-            (
-                GlobalMetric::VheaCaretOffset,
-                info.open_type_vhea_caret_offset.map(f64::from),
-            ),
-            (
-                GlobalMetric::UnderlineThickness,
-                info.postscript_underline_thickness,
-            ),
-            (
-                GlobalMetric::UnderlinePosition,
-                info.postscript_underline_position,
-            ),
-            (
-                GlobalMetric::SubscriptXSize,
-                info.open_type_os2_subscript_x_size,
-            ),
-            (
-                GlobalMetric::SubscriptYSize,
-                info.open_type_os2_subscript_y_size,
-            ),
-            (
-                GlobalMetric::SubscriptXOffset,
-                info.open_type_os2_subscript_x_offset,
-            ),
-            (
-                GlobalMetric::SubscriptYOffset,
-                info.open_type_os2_subscript_y_offset,
-            ),
-            (
-                GlobalMetric::SuperscriptXSize,
-                info.open_type_os2_superscript_x_size,
-            ),
-            (
-                GlobalMetric::SuperscriptYSize,
-                info.open_type_os2_superscript_y_size,
-            ),
-            (
-                GlobalMetric::SuperscriptXOffset,
-                info.open_type_os2_superscript_x_offset,
-            ),
-            (
-                GlobalMetric::SuperscriptYOffset,
-                info.open_type_os2_superscript_y_offset,
-            ),
-            (
-                GlobalMetric::StrikeoutSize,
-                info.open_type_os2_strikeout_size,
-            ),
-            (
-                GlobalMetric::StrikeoutPosition,
-                info.open_type_os2_strikeout_position,
-            ),
-        ] {
-            builder.set_if_some(metric, location.clone(), value);
-        }
-        builder.populate_defaults(
-            &location,
-            static_metadata.units_per_em,
-            Some(metrics.x_height),
-            Some(metrics.ascender),
-            Some(metrics.descender),
-            Some(metrics.italic_angle),
-        );
-        context
-            .global_metrics
-            .set(builder.build(&static_metadata.axes)?);
-        Ok(())
-    }
-}
-
-#[derive(Debug)]
 struct GlyphWork {
     glyph: fc_model::Glyph,
-    master: MasterId,
+    layers: Vec<(NormalizedLocation, fc_model::Layer)>,
     model_anchors: bool,
     fontc_safe_bmp_codepoints: Option<Arc<HashSet<(GlyphName, u32)>>>,
 }
@@ -469,30 +496,39 @@ impl Work<Context, WorkId, IrError> for GlyphWork {
 
     fn exec(&self, context: &Context) -> Result<(), IrError> {
         let name = IrGlyphName::new(self.glyph.name.as_ref());
-        let layer = self.glyph.master_layer(&self.master).ok_or_else(|| {
-            IrError::NoSuchLayer(format!("{} / {}", self.glyph.name, self.master))
-        })?;
-        let contours = layer
-            .contours
-            .iter()
-            .map(|contour| contour.to_bezpath())
-            .collect();
-        let components = layer
-            .components
-            .iter()
-            .map(|component| IrComponent {
-                base: IrGlyphName::new(component.base.as_ref()),
-                transform: component.transform,
-                anchor: None,
-            })
-            .collect();
-        let instance = GlyphInstance {
-            width: layer.width,
-            height: layer.vertical_width,
-            vertical_origin: layer.vertical_origin,
-            contours,
-            components,
-        };
+        let mut instances = HashMap::new();
+        let mut anchors = AnchorBuilder::new(name.clone());
+        for (location, layer) in &self.layers {
+            let contours = layer
+                .contours
+                .iter()
+                .map(|contour| contour.to_bezpath())
+                .collect();
+            let components = layer
+                .components
+                .iter()
+                .map(|component| IrComponent {
+                    base: IrGlyphName::new(component.base.as_ref()),
+                    transform: component.transform,
+                    anchor: None,
+                })
+                .collect();
+            let instance = GlyphInstance {
+                width: layer.width,
+                height: layer.vertical_width,
+                vertical_origin: layer.vertical_origin,
+                contours,
+                components,
+            };
+            instances.insert(location.clone(), instance);
+            for anchor in layer.anchors.iter().filter(|_| self.model_anchors) {
+                anchors.add(
+                    anchor.name.clone().into(),
+                    location.clone(),
+                    Point::new(anchor.x, anchor.y),
+                )?;
+            }
+        }
         // The final large-font cmap is rebuilt from every model codepoint. The
         // bounded BMP set here only keeps write-fonts 0.52's temporary format
         // 4 builder away from its signed-delta and 16-bit-offset panics.
@@ -507,22 +543,9 @@ impl Work<Context, WorkId, IrError> for GlyphWork {
                     .is_none_or(|allowed| allowed.contains(&(self.glyph.name.clone(), *codepoint)))
             })
             .collect();
-        let glyph = IrGlyph::new(
-            name.clone(),
-            self.glyph.export,
-            codepoints,
-            HashMap::from([(default_location(), instance)]),
-        )?;
+        let glyph = IrGlyph::new(name.clone(), self.glyph.export, codepoints, instances)?;
         context.glyphs.set(glyph);
 
-        let mut anchors = AnchorBuilder::new(name);
-        for anchor in layer.anchors.iter().filter(|_| self.model_anchors) {
-            anchors.add(
-                anchor.name.clone().into(),
-                default_location(),
-                Point::new(anchor.x, anchor.y),
-            )?;
-        }
         context.anchors.set(anchors.build()?);
         Ok(())
     }
@@ -542,17 +565,18 @@ impl Work<Context, WorkId, IrError> for FeatureWork {
     }
 }
 
-fn feature_source(font: &Font) -> IrFeaturesSource {
-    let source = font.features.to_fea();
+fn feature_source(data: &SourceData) -> Result<IrFeaturesSource, IrError> {
+    let source = crate::vertical::feature_source(&data.font, &data.master, data.variable)
+        .map_err(|error| IrError::InvalidEntry("vertical kerning", error.to_string()))?;
     if source.trim().is_empty() {
-        IrFeaturesSource::Empty
+        Ok(IrFeaturesSource::Empty)
     } else {
-        IrFeaturesSource::from_string(source)
+        Ok(IrFeaturesSource::from_string(source))
     }
 }
 
 #[derive(Debug)]
-struct KerningLocationsWork;
+struct KerningLocationsWork(BTreeSet<NormalizedLocation>);
 
 impl Work<Context, WorkId, IrError> for KerningLocationsWork {
     fn id(&self) -> WorkId {
@@ -561,7 +585,7 @@ impl Work<Context, WorkId, IrError> for KerningLocationsWork {
 
     fn exec(&self, context: &Context) -> Result<(), IrError> {
         context.kerning_locations.set(KerningLocations {
-            locations: BTreeSet::from([default_location()]),
+            locations: self.0.clone(),
         });
         Ok(())
     }
@@ -579,7 +603,13 @@ impl Work<Context, WorkId, IrError> for KerningInstanceWork {
     }
 
     fn exec(&self, context: &Context) -> Result<(), IrError> {
-        let master = selected_master(&self.data)?;
+        let master = self
+            .data
+            .master_locations()
+            .into_iter()
+            .find(|(_, loc)| *loc == self.location)
+            .map(|(m, _)| m)
+            .ok_or(IrError::NoDefaultMaster)?;
         let prepared = crate::kerning::prepare(&self.data.font, &master.id);
         let kerns = prepared
             .pairs

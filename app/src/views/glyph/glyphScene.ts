@@ -82,6 +82,7 @@ export interface GlyphScene {
 /** The master a layer belongs to, or `null` for a free-standing custom layer. */
 export function layerMasterId(kind: LayerKind): string | null {
   if ('Master' in kind) return kind.Master
+  if ('Smart' in kind) return kind.Smart.master
   if ('Brace' in kind) return kind.Brace.master
   if ('Bracket' in kind) return kind.Bracket.master
   if ('Background' in kind) return kind.Background

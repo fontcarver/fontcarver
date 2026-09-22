@@ -31,6 +31,7 @@ export interface LayerRow {
 export function layerKindKey(kind: LayerKind): string {
   if ('Master' in kind) return 'master'
   if ('Brace' in kind) return 'brace'
+  if ('Smart' in kind) return 'smart'
   if ('Bracket' in kind) return 'bracket'
   if ('Background' in kind) return 'background'
   if ('Backup' in kind) return 'backup'
@@ -41,6 +42,7 @@ export function layerKindKey(kind: LayerKind): string {
 export function layerMaster(kind: LayerKind): string | null {
   if ('Master' in kind) return kind.Master
   if ('Brace' in kind) return kind.Brace.master
+  if ('Smart' in kind) return kind.Smart.master
   if ('Bracket' in kind) return kind.Bracket.master
   if ('Background' in kind) return kind.Background
   if ('Backup' in kind) return kind.Backup.of

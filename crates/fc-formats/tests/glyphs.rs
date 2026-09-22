@@ -30,6 +30,57 @@ fn sample() -> Font {
 }
 
 #[test]
+fn native_bracket_rules_roundtrip_and_external_edits_take_precedence() {
+    let input = NATIVE_V2.replace("name = Regular;", "name = Regular; weightValue = 100;")
+        .replace("fontMaster = ({", "fontMaster = ({ id = M2; name = Bold; weightValue = 900; },{")
+        .replace("layers = ({ layerId = M1;", "layers = ({ layerId = M2; width = 700; }, { layerId = ALT; associatedMasterId = M1; name = \"[500]\"; width = 650; },{ layerId = M1;");
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("conditional.glyphs");
+    std::fs::write(&path, input).unwrap();
+    let font = read_glyphs(&path).unwrap();
+    let kind = &font
+        .glyph("A")
+        .unwrap()
+        .layers
+        .iter()
+        .find(|l| l.name == "[500]")
+        .unwrap()
+        .kind;
+    assert!(matches!(
+        kind,
+        fc_model::LayerKind::Bracket {
+            min: Some(500.),
+            max: None,
+            ..
+        }
+    ));
+    write_glyphs(&font, &path).unwrap();
+    let text = std::fs::read_to_string(&path).unwrap();
+    assert!(text.contains("axisRules"));
+    let reopened = read_glyphs(&path).unwrap();
+    assert_eq!(
+        &reopened
+            .glyph("A")
+            .unwrap()
+            .layers
+            .iter()
+            .find(|l| l.name == "[500]")
+            .unwrap()
+            .kind,
+        kind
+    );
+    std::fs::write(&path, text.replace("min = 500;", "min = 600;")).unwrap();
+    let edited = read_glyphs(&path).unwrap();
+    assert!(edited.glyph("A").unwrap().layers.iter().any(|l| matches!(
+        l.kind,
+        fc_model::LayerKind::Bracket {
+            min: Some(600.),
+            ..
+        }
+    )));
+}
+
+#[test]
 fn reads_native_v2_and_writes_native_v3_with_layout() {
     let font = sample();
     assert_eq!(font.info.family_name, "Native");

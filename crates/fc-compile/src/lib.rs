@@ -5,10 +5,12 @@
 
 #![warn(missing_docs)]
 
+mod bracket;
 mod error;
 mod export;
 mod feature_generation;
 mod feature_validation;
+mod instance;
 mod kerning;
 mod large_font;
 mod metadata;
@@ -19,6 +21,9 @@ mod otf_vertical;
 mod preserve;
 mod shaping;
 mod source;
+mod variable;
+mod variable_cff;
+mod vertical;
 mod webfont;
 
 pub use error::Error;
@@ -33,10 +38,14 @@ pub use feature_validation::{
     validate_feature_candidate, FeatureDiagnostic, FeatureDiagnosticSeverity,
     FeatureDiagnosticSpan, FeatureValidation,
 };
+pub use instance::instantiate;
 pub use kerning::horizontal_kerning_warnings;
 pub use preserve::preserve_merge;
 pub use shaping::shaping_fingerprint;
 pub use source::{
-    compile_static, compile_static_with_metadata, CompileOptions, FcSource, StaticCompile,
+    compile_static, compile_static_with_metadata, compile_variable, CompileOptions, FcSource,
+    StaticCompile,
 };
 pub use webfont::{wrap_woff1, wrap_woff2};
+
+mod instance_metrics;

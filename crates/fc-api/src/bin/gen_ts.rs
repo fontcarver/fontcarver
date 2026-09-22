@@ -19,6 +19,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     add_imports(
         &output_dir.join("Command.ts"),
         &[
+            "CidInfo",
             "Anchor",
             "Component",
             "Contour",
@@ -41,6 +42,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         &["BitmapStrike", "BitmapGlyph"],
     )?;
     add_imports(&output_dir.join("BitmapStrike.ts"), &["BitmapGlyph"])?;
+    add_imports(
+        &output_dir.join("DesignSpaceCommand.ts"),
+        &["Axis", "Master", "Instance", "LayerKind", "SmartAxis"],
+    )?;
     add_imports(&output_dir.join("Kerning.ts"), &["KernPair"])?;
     write_methods(&output_dir)?;
     write_index(&output_dir)?;
@@ -64,6 +69,10 @@ fn repair_command_double_option(path: &Path) -> Result<(), std::io::Error> {
 }
 
 fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
+    VariationState::export_all(config)?;
+    VariationApplyParams::export_all(config)?;
+    VariationPreviewParams::export_all(config)?;
+    VariationPreview::export_all(config)?;
     BitmapRasterParams::export_all(config)?;
     BitmapTraceParams::export_all(config)?;
     BitmapPreviewParams::export_all(config)?;
@@ -122,6 +131,15 @@ fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
     TableInfo::export_all(config)?;
     FontInfoView::export_all(config)?;
     SidebarCounts::export_all(config)?;
+    CjkBatchParams::export_all(config)?;
+    CjkBatchResult::export_all(config)?;
+    CjkBatchExample::export_all(config)?;
+    CjkFilter::export_all(config)?;
+    fc_model::CidInfo::export_all(config)?;
+    CidState::export_all(config)?;
+    CidApplyParams::export_all(config)?;
+    UnihanParams::export_all(config)?;
+    UnihanInfo::export_all(config)?;
     GlyphFilter::export_all(config)?;
     GlyphSort::export_all(config)?;
     GlyphListParams::export_all(config)?;

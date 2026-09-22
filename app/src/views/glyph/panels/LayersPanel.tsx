@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { MasterSummary } from '../../../api'
@@ -6,6 +7,8 @@ import { commitField } from '../commitField'
 import { backgroundLayer } from '../glyphScene'
 
 import { LayerList } from './LayerList'
+import { SmartGlyphEditor } from './SmartGlyphEditor'
+import { SourceLayerEditor } from './SourceLayerEditor'
 import styles from './panels.module.css'
 import type { PanelContext } from './panelContext'
 import {
@@ -38,6 +41,9 @@ export function LayersPanel({
   const overlays = useEditorStore((state) => state.overlays)
   const toggleOverlay = useEditorStore((state) => state.toggleOverlay)
   const background = backgroundLayer(glyph, master)
+  const [smartEditor, setSmartEditor] = useState(false)
+  const [sourceEditor, setSourceEditor] = useState<'copy' | 'edit' | null>(null)
+  const current = glyph.layers.find((layer) => layer.id === outline.layer)
 
   const run = (
     command: Parameters<typeof commitField>[1],
@@ -46,6 +52,26 @@ export function LayersPanel({
 
   return (
     <>
+      {smartEditor && (
+        <SmartGlyphEditor
+          doc={target.doc}
+          glyph={glyph}
+          onClose={() => setSmartEditor(false)}
+          onApplied={reload}
+        />
+      )}
+      {sourceEditor && current && master && (
+        <SourceLayerEditor
+          doc={target.doc}
+          glyph={glyph.name}
+          source={current}
+          smartAxes={glyph.smart_axes}
+          master={master}
+          duplicate={sourceEditor === 'copy'}
+          onClose={() => setSourceEditor(null)}
+          onApplied={reload}
+        />
+      )}
       <LayerList
         doc={target.doc}
         layers={glyph.layers}
@@ -73,6 +99,33 @@ export function LayersPanel({
       />
 
       <div className={styles.actions}>
+        <button
+          type="button"
+          className={styles.actionButton}
+          onClick={() => setSmartEditor(true)}
+        >
+          {t('variation.smartAxes')}
+        </button>
+        <button
+          type="button"
+          className={styles.actionButton}
+          disabled={!master || !current}
+          onClick={() => setSourceEditor('copy')}
+        >
+          {t('variation.addSource')}
+        </button>
+        {current &&
+          ('Brace' in current.kind ||
+            'Bracket' in current.kind ||
+            'Smart' in current.kind) && (
+            <button
+              type="button"
+              className={styles.actionButton}
+              onClick={() => setSourceEditor('edit')}
+            >
+              {t('variation.editSource')}
+            </button>
+          )}
         <button
           type="button"
           className={styles.actionButton}

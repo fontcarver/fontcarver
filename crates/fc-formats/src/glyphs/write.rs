@@ -302,6 +302,7 @@ fn write_glyph(font: &Font, glyph: &Glyph, source: &Plist) -> Result<Plist, Erro
             "productionName",
         ],
     );
+    super::smart::write_axes(&mut raw, glyph)?;
     set(&mut raw, "glyphname", string(glyph.name.to_string()));
     set(&mut raw, "export", boolean(glyph.export));
     if glyph.unicodes.iter().any(|v| char::from_u32(*v).is_none()) {
@@ -341,7 +342,9 @@ fn write_glyph(font: &Font, glyph: &Glyph, source: &Plist) -> Result<Plist, Erro
         }
         let (id, associated) = match &layer.kind {
             LayerKind::Master(master) => (master.to_string(), None),
-            LayerKind::Brace { master, .. } => (layer.id.to_string(), Some(master.to_string())),
+            LayerKind::Smart { master, .. }
+            | LayerKind::Brace { master, .. }
+            | LayerKind::Bracket { master, .. } => (layer.id.to_string(), Some(master.to_string())),
             LayerKind::Backup { of, .. } => (layer.id.to_string(), Some(of.to_string())),
             LayerKind::Custom(master) => (
                 layer.id.to_string(),
@@ -353,28 +356,14 @@ fn write_glyph(font: &Font, glyph: &Glyph, source: &Plist) -> Result<Plist, Erro
                     },
                 ),
             ),
-            LayerKind::Bracket { .. } => {
-                return Err(error("conditional bracket layers are not yet supported"))
-            }
             LayerKind::Background(_) => continue,
         };
         let source_layer = find(&original, "layers", "layerId", &id);
         let mut raw = write_layer(layer, source_layer)?;
         set(&mut raw, "layerId", string(&id));
         optional_string(&mut raw, "associatedMasterId", associated.as_deref());
-        if let LayerKind::Brace { location, .. } = &layer.kind {
-            let mut attr = raw.get("attr").cloned().unwrap_or_else(dict);
-            set(
-                &mut attr,
-                "coordinates",
-                numbers(
-                    font.axes
-                        .iter()
-                        .map(|a| location.get(&a.tag).copied().unwrap_or(a.default)),
-                )?,
-            );
-            set(&mut raw, "attr", attr);
-        }
+        super::conditional::write(&mut raw, font, layer)?;
+        super::smart::write_layer(&mut raw, glyph, layer)?;
         if let LayerKind::Master(master) = &layer.kind {
             let background = glyph
                 .layers

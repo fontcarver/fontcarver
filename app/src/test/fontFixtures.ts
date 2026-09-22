@@ -68,6 +68,7 @@ export function makeLayer(overrides: Partial<Layer> = {}): Layer {
 /** A glyph with one master layer. */
 export function makeGlyph(overrides: Partial<Glyph> = {}): Glyph {
   return {
+    smart_axes: [],
     name: 'a',
     unicodes: [0x61],
     variation_selectors: [],

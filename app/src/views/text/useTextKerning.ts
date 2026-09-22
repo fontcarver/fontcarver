@@ -33,6 +33,7 @@ import { useStoredKerning } from './kerningQuery'
 /** TextView supplies document identity and captures old controller work. */
 export interface UseTextKerningOptions {
   doc: DocId
+  vertical?: boolean
   master: string | null
   generation: number
   selectedPair?: KerningPairNames | null
@@ -73,6 +74,7 @@ export function useTextKerning(options: UseTextKerningOptions) {
   const key = JSON.stringify([
     options.doc,
     options.master,
+    options.vertical,
     pair.left,
     pair.right,
   ])
@@ -83,6 +85,7 @@ export function useTextKerning(options: UseTextKerningOptions) {
     options.generation,
     pair,
     revision,
+    options.vertical,
   )
   const resolution = loaded?.resolution ?? null
   const status = loaded?.status ?? null
@@ -148,11 +151,14 @@ export function useTextKerning(options: UseTextKerningOptions) {
           after,
           label: t(removing ? 'kerningText.undoRemove' : 'kerningText.undo'),
           refreshStart: async () => {
-            const fresh = await call('kerning.resolve', {
-              doc: target.doc,
-              master: target.master,
-              ...capturedPair,
-            })
+            const fresh = await call(
+              target.vertical ? 'kerning.resolve_vertical' : 'kerning.resolve',
+              {
+                doc: target.doc,
+                master: target.master,
+                ...capturedPair,
+              },
+            )
             if (!fresh.status.editable || fresh.value === null)
               throw new ApiCallError(
                 'kerning_unavailable',
@@ -292,6 +298,7 @@ export function useTextKerning(options: UseTextKerningOptions) {
       target: {
         doc: current.options.doc,
         master: current.options.master,
+        vertical: current.options.vertical,
         ...current.sides,
       },
     }
@@ -316,6 +323,7 @@ export function useTextKerning(options: UseTextKerningOptions) {
       {
         doc: current.options.doc,
         master: current.options.master,
+        vertical: current.options.vertical,
         ...current.sides,
       },
       current.pair,
@@ -363,6 +371,7 @@ export function useTextKerning(options: UseTextKerningOptions) {
         {
           doc: current.options.doc,
           master: current.options.master,
+          vertical: current.options.vertical,
           ...current.sides,
         },
         current.pair,

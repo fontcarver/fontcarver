@@ -33,6 +33,9 @@ pub struct MetricsKeys {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub struct Glyph {
+    /// Named local axes for reusable smart-component geometry.
+    #[serde(default)]
+    pub smart_axes: Vec<crate::SmartAxis>,
     /// Persistent glyph name.
     #[serde(default)]
     pub name: GlyphName,
@@ -90,6 +93,7 @@ pub struct Glyph {
 impl Default for Glyph {
     fn default() -> Self {
         Self {
+            smart_axes: Vec::new(),
             name: GlyphName::default(),
             unicodes: Vec::new(),
             variation_selectors: Vec::new(),

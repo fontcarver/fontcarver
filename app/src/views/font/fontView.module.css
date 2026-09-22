@@ -8,15 +8,12 @@
   flex-direction: column;
 }
 
-/* The toolbar keeps its controls at full size and scrolls when the content
-   column is too narrow, rather than pushing the inspector off screen. */
+/* Keep search and batch actions reachable when both side panels are open. */
 .toolbarRow {
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.toolbarRow::-webkit-scrollbar {
-  display: none;
+  height: auto;
+  min-height: 28px;
+  flex-wrap: wrap;
+  padding-block: var(--space-1);
 }
 
 .toolbarSpacer {

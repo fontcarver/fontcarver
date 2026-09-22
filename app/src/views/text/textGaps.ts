@@ -11,6 +11,8 @@ export interface TextGap {
   left: string | null
   right: string | null
   x: number
+  /** Present only for top-to-bottom boundaries, measured in font space. */
+  y?: number
   reason: TextGapReason | null
 }
 
@@ -20,6 +22,7 @@ export function identifyTextGaps(
   glyphs: readonly PositionedGlyph[],
   direction: string | null,
 ): TextGap[] {
+  const vertical = direction === 'ttb'
   const characters = new Map<
     number,
     { end: number; token: number; simple: boolean }
@@ -56,9 +59,9 @@ export function identifyTextGaps(
       character?.simple &&
       counts.get(glyph.sourceByte) === 1 &&
       nextBoundary.get(glyph.sourceByte) === character.end &&
-      glyph.xAdvance > 0 &&
-      glyph.yAdvance === 0 &&
-      glyph.y === 0
+      (vertical
+        ? glyph.yAdvance < 0 && glyph.xAdvance === 0
+        : glyph.xAdvance > 0 && glyph.yAdvance === 0 && glyph.y === 0)
     )
   }
   return glyphs.slice(0, -1).map((left, index): TextGap => {
@@ -70,7 +73,8 @@ export function identifyTextGaps(
         ? 'rtl'
         : left.sourceKind === 'named' || right.sourceKind === 'named'
           ? 'named'
-          : !left.editable ||
+          : (vertical && right.penY === undefined) ||
+              !left.editable ||
               !right.editable ||
               left.documentGid === null ||
               right.documentGid === null ||
@@ -81,10 +85,17 @@ export function identifyTextGaps(
                 !simple(right) ||
                 first?.token !== second?.token ||
                 first?.end !== right.sourceByte ||
-                right.x <= left.x
+                (vertical ? right.y >= left.y : right.x <= left.x)
               ? 'cluster'
               : null
-    return { index, left: left.name, right: right.name, x: right.x, reason }
+    return {
+      index,
+      left: left.name,
+      right: right.name,
+      x: right.x,
+      reason,
+      ...(vertical ? { y: right.penY, x: right.penX ?? right.x } : {}),
+    }
   })
 }
 
@@ -95,13 +106,24 @@ export function hitTextGap(
   unitsPerEm: number,
   scale: number,
 ): number | null {
-  if (point.y < -unitsPerEm * 0.2 || point.y > unitsPerEm * 0.8) return null
+  const vertical = gaps.some((gap) => gap.y !== undefined)
+  if (!vertical && (point.y < -unitsPerEm * 0.2 || point.y > unitsPerEm * 0.8))
+    return null
   const tolerance = 6 / Math.max(scale, 0.0005)
   let closest: TextGap | undefined
   for (const gap of gaps) {
-    if (gap.reason !== null || Math.abs(point.x - gap.x) > tolerance) continue
-    if (!closest || Math.abs(point.x - gap.x) < Math.abs(point.x - closest.x))
-      closest = gap
+    const distance = (candidate: TextGap) =>
+      candidate.y === undefined
+        ? Math.abs(point.x - candidate.x)
+        : Math.abs(point.y - candidate.y)
+    if (
+      gap.reason !== null ||
+      distance(gap) > tolerance ||
+      (gap.y !== undefined &&
+        (point.x < gap.x - unitsPerEm / 2 || point.x > gap.x + unitsPerEm / 2))
+    )
+      continue
+    if (!closest || distance(gap) < distance(closest)) closest = gap
   }
   return closest?.index ?? null
 }

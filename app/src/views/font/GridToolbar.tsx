@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { DocSummary, GlyphSort } from '../../api'
@@ -14,9 +15,19 @@ import {
 } from '../../stores/documentStore'
 
 import styles from './fontView.module.css'
+import { CjkBatchDialog } from './CjkBatchDialog'
 import { GlyphSearch } from './GlyphSearch'
 
-const SORTS: readonly GlyphSort[] = ['Order', 'Unicode', 'Name', 'Width']
+const SORTS: readonly GlyphSort[] = [
+  'Order',
+  'Unicode',
+  'Name',
+  'Width',
+  'Radical',
+  'Strokes',
+  'Reading',
+  'Cid',
+]
 const LABEL_MODES: readonly LabelMode[] = ['name', 'unicode', 'index']
 
 /** The whole Unicode range; used to express "encoded glyphs only". */
@@ -30,6 +41,7 @@ export interface GridToolbarProps {
 /** Display controls above the glyph grid, plus the search field. */
 export function GridToolbar({ summary, view }: GridToolbarProps) {
   const { t } = useTranslation()
+  const [batch, setBatch] = useState<number[] | null>(null)
   const doc = summary.doc
   const setMaster = useDocumentStore((state) => state.setMaster)
   const setSort = useDocumentStore((state) => state.setSort)
@@ -42,83 +54,100 @@ export function GridToolbar({ summary, view }: GridToolbarProps) {
   const shown = view.matchCount ?? summary.glyph_count
 
   return (
-    <Toolbar label={t('fontView.toolbar')} className={styles.toolbarRow}>
-      <span className={styles.toolbarGroup}>
-        <span className={styles.toolbarLabel}>{t('inspector.master')}</span>
-        <span className={styles.toolbarSelect}>
-          <Select
-            label={t('inspector.master')}
-            value={masterId}
-            disabled={summary.masters.length < 2}
-            options={summary.masters.map((master) => ({
-              value: master.id,
-              label: master.name,
-            }))}
-            onChange={(value) => setMaster(doc, value)}
-          />
+    <>
+      {batch && (
+        <CjkBatchDialog
+          doc={doc}
+          glyphs={batch}
+          master={masterId}
+          upem={summary.units_per_em}
+          onClose={() => setBatch(null)}
+        />
+      )}
+      <Toolbar label={t('fontView.toolbar')} className={styles.toolbarRow}>
+        <span className={styles.toolbarGroup}>
+          <span className={styles.toolbarLabel}>{t('inspector.master')}</span>
+          <span className={styles.toolbarSelect}>
+            <Select
+              label={t('inspector.master')}
+              value={masterId}
+              disabled={summary.masters.length < 2}
+              options={summary.masters.map((master) => ({
+                value: master.id,
+                label: master.name,
+              }))}
+              onChange={(value) => setMaster(doc, value)}
+            />
+          </span>
         </span>
-      </span>
 
-      <span className={styles.toolbarGroup}>
-        <span className={styles.toolbarLabel}>{t('inspector.sort')}</span>
-        <span className={styles.toolbarSelect}>
-          <Select
-            label={t('inspector.sort')}
-            value={view.sort}
-            options={SORTS.map((sort) => ({
-              value: sort,
-              label: t(`inspector.sortMode.${sort}`),
-            }))}
-            onChange={(value) => setSort(doc, value)}
-          />
+        <span className={styles.toolbarGroup}>
+          <span className={styles.toolbarLabel}>{t('inspector.sort')}</span>
+          <span className={styles.toolbarSelect}>
+            <Select
+              label={t('inspector.sort')}
+              value={view.sort}
+              options={SORTS.map((sort) => ({
+                value: sort,
+                label: t(`inspector.sortMode.${sort}`),
+              }))}
+              onChange={(value) => setSort(doc, value)}
+            />
+          </span>
         </span>
-      </span>
 
-      <span className={styles.toolbarGroup}>
-        <span className={styles.toolbarLabel}>{t('inspector.labels')}</span>
-        <span className={styles.toolbarSelect}>
-          <Select
-            label={t('inspector.labels')}
-            value={view.labelMode}
-            options={LABEL_MODES.map((mode) => ({
-              value: mode,
-              label: t(`inspector.labelMode.${mode}`),
-            }))}
-            onChange={(value) => setLabelMode(doc, value)}
-          />
+        <span className={styles.toolbarGroup}>
+          <span className={styles.toolbarLabel}>{t('inspector.labels')}</span>
+          <span className={styles.toolbarSelect}>
+            <Select
+              label={t('inspector.labels')}
+              value={view.labelMode}
+              options={LABEL_MODES.map((mode) => ({
+                value: mode,
+                label: t(`inspector.labelMode.${mode}`),
+              }))}
+              onChange={(value) => setLabelMode(doc, value)}
+            />
+          </span>
         </span>
-      </span>
 
-      <Button
-        aria-pressed={encodedOnly}
-        onClick={() =>
-          setFilter(doc, {
-            unicode_ranges: encodedOnly ? [] : [ANY_UNICODE],
-            unencoded_only: false,
-          })
-        }
-      >
-        {t('fontView.encodedOnly')}
-      </Button>
+        <Button
+          aria-pressed={encodedOnly}
+          onClick={() =>
+            setFilter(doc, {
+              unicode_ranges: encodedOnly ? [] : [ANY_UNICODE],
+              unencoded_only: false,
+            })
+          }
+        >
+          {t('fontView.encodedOnly')}
+        </Button>
 
-      <span className={styles.toolbarGroup}>
-        <span className={styles.toolbarSlider}>
-          <Slider
-            label={t('inspector.cellSize')}
-            min={CELL_SIZE_MIN}
-            max={CELL_SIZE_MAX}
-            value={view.cellSize}
-            onChange={(value) => setCellSize(doc, value)}
-          />
+        <span className={styles.toolbarGroup}>
+          <span className={styles.toolbarSlider}>
+            <Slider
+              label={t('inspector.cellSize')}
+              min={CELL_SIZE_MIN}
+              max={CELL_SIZE_MAX}
+              value={view.cellSize}
+              onChange={(value) => setCellSize(doc, value)}
+            />
+          </span>
+          <span className={styles.toolbarCount}>{view.cellSize} px</span>
         </span>
-        <span className={styles.toolbarCount}>{view.cellSize} px</span>
-      </span>
 
-      <span className={styles.toolbarSpacer} />
-      <span className={styles.toolbarCount}>
-        {t('status.glyphs', { count: shown })}
-      </span>
-      <GlyphSearch doc={doc} value={view.filter.query} />
-    </Toolbar>
+        <Button
+          disabled={view.selection.size === 0}
+          onClick={() => setBatch([...view.selection])}
+        >
+          {t('cjk.batchTitle')}
+        </Button>
+        <span className={styles.toolbarSpacer} />
+        <span className={styles.toolbarCount}>
+          {t('status.glyphs', { count: shown })}
+        </span>
+        <GlyphSearch doc={doc} value={view.filter.query} />
+      </Toolbar>
+    </>
   )
 }

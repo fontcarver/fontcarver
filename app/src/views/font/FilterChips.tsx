@@ -69,6 +69,12 @@ export function filterChips(
       label: label('fontView.encodedOnly'),
       patch: { unicode_ranges: [] },
     })
+  if (filter.cjk)
+    chips.push({
+      key: 'cjk',
+      label: label('cjk.filters'),
+      patch: { cjk: null },
+    })
   return chips
 }
 

@@ -105,3 +105,30 @@ describe('editable shaped gaps', () => {
     expect(gaps[0]?.x).toBe(520)
   })
 })
+
+it('selects a top-to-bottom boundary without accepting horizontal hits', () => {
+  const a = {
+    ...glyph('A', 0),
+    x: -300,
+    y: -800,
+    xAdvance: 0,
+    yAdvance: -950,
+    penX: 0,
+    penY: 0,
+  }
+  const v = {
+    ...glyph('V', 1),
+    x: -300,
+    y: -1850,
+    penX: 0,
+    penY: -950,
+    xAdvance: 0,
+    yAdvance: -1000,
+  }
+  const gaps = identifyTextGaps('AV', [a, v], 'ttb')
+  expect(gaps[0]?.reason).toBeNull()
+  expect(gaps[0]?.y).toBe(-950)
+  expect(hitTextGap(gaps, { x: 200, y: -950 }, 1000, 0.5)).toBe(0)
+  expect(hitTextGap(gaps, { x: 200, y: -990 }, 1000, 0.5)).toBeNull()
+  expect(hitTextGap(gaps, { x: 900, y: -950 }, 1000, 0.5)).toBeNull()
+})

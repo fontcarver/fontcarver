@@ -126,12 +126,6 @@ pub(super) fn component(raw: &Plist) -> Result<Component, Error> {
     if alignment != 0. && alignment != -1. {
         return Err(error("forced or partial component alignment is not yet represented by the model; use explicit transforms"));
     }
-    if raw
-        .get("piece")
-        .is_some_and(|v| v.as_dict().is_none_or(|v| !v.is_empty()))
-    {
-        return Err(error("smart components are not yet supported"));
-    }
     if raw.get("masterId").is_some() {
         return Err(error("cross-master components are not yet supported"));
     }
@@ -167,6 +161,18 @@ pub(super) fn component(raw: &Plist) -> Result<Component, Error> {
     }
     let mut result: Component =
         extras::restore(raw, &["use_my_metrics", "round_to_grid", "point_match"])?;
+    result.smart = raw
+        .get("piece")
+        .map(|value| {
+            let entries = value
+                .as_dict()
+                .ok_or_else(|| error("smart component values must be a dictionary"))?;
+            entries
+                .iter()
+                .map(|(name, value)| Ok((name.to_string(), as_number(value)?)))
+                .collect::<Result<_, Error>>()
+        })
+        .transpose()?;
     result.base = base.into();
     result.transform = transform;
     result.anchor = text(raw, "anchor").map(str::to_owned);
@@ -175,9 +181,6 @@ pub(super) fn component(raw: &Plist) -> Result<Component, Error> {
 }
 
 pub(super) fn write_component(component: &Component, raw: Option<&Plist>) -> Result<Plist, Error> {
-    if component.smart.as_ref().is_some_and(|v| !v.is_empty()) {
-        return Err(error("smart components are not yet supported"));
-    }
     let mut raw = raw.cloned().unwrap_or_else(dict);
     remove(
         &mut raw,
@@ -193,6 +196,13 @@ pub(super) fn write_component(component: &Component, raw: Option<&Plist>) -> Res
         ],
     );
     set(&mut raw, "ref", string(component.base.to_string()));
+    if let Some(values) = &component.smart {
+        let mut piece = dict();
+        for (name, value) in values {
+            set(&mut piece, name, number(*value)?);
+        }
+        set(&mut raw, "piece", piece);
+    }
     let [a, b, c, d, x, y] = component.transform.as_coeffs();
     if [a, b, c, d, x, y].iter().any(|v| !v.is_finite()) {
         return Err(error("nonfinite component transform"));

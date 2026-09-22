@@ -15,6 +15,8 @@ mod layout_conversion;
 mod problems;
 mod session;
 mod shaping;
+mod variation;
+pub use variation::*;
 
 pub use commands::*;
 pub use editing::*;
@@ -32,3 +34,9 @@ pub use shaping::*;
 
 mod bitmap_config;
 pub use bitmap_config::*;
+
+mod cjk;
+pub use cjk::*;
+
+mod cjk_batch;
+pub use cjk_batch::*;

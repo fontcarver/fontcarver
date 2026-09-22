@@ -86,7 +86,7 @@ export function TextBar({
         className={styles.textInput}
         type="text"
         value={text}
-        dir={direction}
+        dir={direction === 'rtl' ? 'rtl' : 'ltr'}
         aria-label={t('textControls.text')}
         placeholder={t('textControls.textPlaceholder')}
         onChange={(event) => onTextChange(event.currentTarget.value)}
@@ -176,7 +176,17 @@ export function TextBar({
           role="group"
           aria-label={t('textControls.features')}
         >
-          {features.map(([tag, enabled], index) => (
+          {(direction === 'ttb'
+            ? [
+                ...features,
+                ...(['vert', 'vkrn'] as const)
+                  .filter((tag) => !features.some(([key]) => key === tag))
+                  .map((tag) => [tag, true] as [string, boolean]),
+              ]
+            : features.filter(
+                ([tag]) => !['vert', 'vrt2', 'vkrn'].includes(tag),
+              )
+          ).map(([tag, enabled], index) => (
             <button
               key={`${tag}-${index}`}
               className={styles.toggle}
@@ -185,11 +195,12 @@ export function TextBar({
               aria-pressed={enabled}
               onClick={() =>
                 onFeaturesChange(
-                  features.map(([featureTag, featureEnabled], featureIndex) =>
-                    featureIndex === index
-                      ? [featureTag, !featureEnabled]
-                      : [featureTag, featureEnabled],
-                  ),
+                  features.some(([key]) => key === tag)
+                    ? features.map(([featureTag, featureEnabled]) => [
+                        featureTag,
+                        featureTag === tag ? !enabled : featureEnabled,
+                      ])
+                    : [...features, [tag, !enabled]],
                 )
               }
             >
@@ -225,7 +236,8 @@ export function TextBar({
         <button
           className={styles.toggle}
           type="button"
-          disabled
+          aria-pressed={direction === 'ttb'}
+          onClick={() => changeDirection('ttb')}
           aria-label={t('textControls.directionVertical')}
           title={t('textControls.directionVertical')}
         >

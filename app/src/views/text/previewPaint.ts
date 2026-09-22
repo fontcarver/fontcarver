@@ -10,6 +10,8 @@ const PREVIEW_PADDING = 8
 export interface PreviewGeometry {
   cssWidth: number
   minX: number
+  cssHeight?: number
+  maxY?: number
 }
 
 /** Bounds a horizontal run while retaining a useful scrollable preview width. */
@@ -25,6 +27,13 @@ export function previewGeometry(
     maxX = Math.max(maxX, glyph.x, glyph.x + glyph.xAdvance)
   }
   const scale = size / unitsPerEm
+  const vertical = glyphs.some((g) => g.yAdvance !== 0)
+  const minY = Math.min(
+    0,
+    ...glyphs.map((g) => g.y + Math.min(0, g.yAdvance) - unitsPerEm * 0.2),
+  )
+  const maxY = Math.max(0, ...glyphs.map((g) => g.y + unitsPerEm))
+  if (vertical) maxX = Math.max(maxX, minX + unitsPerEm)
   const contentWidth = Math.ceil((maxX - minX) * scale + PREVIEW_PADDING * 2)
   return {
     cssWidth: Math.min(
@@ -32,6 +41,18 @@ export function previewGeometry(
       Math.max(PREVIEW_CANVAS_MIN_WIDTH, contentWidth),
     ),
     minX,
+    ...(vertical
+      ? {
+          cssHeight: Math.min(
+            PREVIEW_CANVAS_MAX_WIDTH,
+            Math.max(
+              PREVIEW_CANVAS_HEIGHT,
+              Math.ceil((maxY - minY) * scale + PREVIEW_PADDING * 2),
+            ),
+          ),
+          maxY,
+        }
+      : {}),
   }
 }
 
@@ -42,6 +63,7 @@ export interface PaintPreviewOptions {
   height: number
   pixelRatio: number
   minX: number
+  maxY?: number
   ink: string
 }
 
@@ -57,10 +79,10 @@ export function paintPreview(
   context.fillStyle = ink
 
   const scale = size / unitsPerEm
-  const baseline = Math.min(
-    height - PREVIEW_PADDING,
-    Math.round((height + size) / 2),
-  )
+  const baseline =
+    options.maxY !== undefined
+      ? PREVIEW_PADDING + options.maxY * scale
+      : Math.min(height - PREVIEW_PADDING, Math.round((height + size) / 2))
   context.setTransform(
     scale * pixelRatio,
     0,

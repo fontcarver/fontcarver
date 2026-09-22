@@ -236,9 +236,7 @@ describe('App shell', () => {
     expect(screen.queryByText('Letter')).toBeNull()
     expect(screen.queryAllByLabelText('Cell size')).toHaveLength(0)
     expect(
-      screen.getByText(
-        'Font Info is read-only in this release; editing arrives with the next phase.',
-      ),
+      screen.getByRole('button', { name: 'CID mapping' }),
     ).toBeInTheDocument()
     // The Font Info tab itself renders the read-only field list.
     expect(

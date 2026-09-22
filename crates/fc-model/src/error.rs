@@ -9,6 +9,9 @@ use crate::{GlyphName, LayerId, MasterId};
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub enum Error {
+    /// Axes, locations or master identities violate the design-space contract.
+    #[error("invalid design space: {0}")]
+    InvalidDesignSpace(String),
     /// Bitmap storage, metrics, identity or references are invalid.
     #[error("invalid bitmap: {0}")]
     InvalidBitmap(String),

@@ -311,6 +311,7 @@ fn glyph(raw: &Plist, font: &Font, version: f64) -> Result<Glyph, Error> {
             }
         }
     }
+    super::smart::read_axes(raw, &mut glyph, version)?;
     let mut layer_ids = BTreeSet::new();
     for raw_layer in array(raw, "layers")? {
         let id = required(raw_layer, "layerId")?;
@@ -333,7 +334,11 @@ fn glyph(raw: &Plist, font: &Font, version: f64) -> Result<Glyph, Error> {
         if id != master {
             layer.id = fc_model::LayerId(id.into());
         }
-        if let Some(coordinates) = raw_layer.get("attr").and_then(|a| a.get("coordinates")) {
+        if let Some(kind) = super::smart::read_layer(raw_layer, &glyph, &master_id, version)? {
+            layer.kind = kind;
+        } else if let Some(kind) = super::conditional::read(raw_layer, font, &master_id, version)? {
+            layer.kind = kind;
+        } else if let Some(coordinates) = raw_layer.get("attr").and_then(|a| a.get("coordinates")) {
             let values = coordinates
                 .as_array()
                 .ok_or_else(|| error("brace coordinates must be an array"))?;
@@ -482,18 +487,9 @@ pub(super) fn check_supported(raw: &Plist) -> Result<(), Error> {
         ));
     }
     for glyph in array(raw, "glyphs")? {
-        if !array(glyph, "partsSettings")?.is_empty() {
-            return Err(error("smart component axes are not yet supported"));
-        }
         for layer in array(glyph, "layers")? {
-            let name = text(layer, "name").unwrap_or("");
-            if layer.get("associatedMasterId").is_some()
-                && (name.contains('[') || name.contains(']'))
-            {
-                return Err(error("conditional bracket layers are not yet supported"));
-            }
             if let Some(attr) = layer.get("attr") {
-                for key in ["axisRules", "color", "colorPalette", "svg", "sbixSize"] {
+                for key in ["color", "colorPalette", "svg", "sbixSize"] {
                     if attr.get(key).is_some() {
                         return Err(error(format!("layer attribute {key} is not yet supported")));
                     }
@@ -508,13 +504,6 @@ pub(super) fn check_supported(raw: &Plist) -> Result<(), Error> {
             }
             for key in ["shapes", "components", "paths"] {
                 for shape in array(layer, key)? {
-                    if shape
-                        .get("piece")
-                        .and_then(Plist::as_dict)
-                        .is_some_and(|v| !v.is_empty())
-                    {
-                        return Err(error("smart components are not yet supported"));
-                    }
                     if shape.get("attr").and_then(Plist::as_dict).is_some_and(|a| {
                         [
                             "fill",

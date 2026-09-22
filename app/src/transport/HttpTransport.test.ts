@@ -54,6 +54,7 @@ describe('HttpTransport.call', () => {
       path: '/tmp/test.ttf',
       options: {
         format: 'Ttf',
+        variable: false,
         master: null,
         remove_overlap: false,
         keep_tt_instructions: false,
@@ -97,6 +98,7 @@ describe('HttpTransport.call', () => {
       path: '/tmp/test.ttf',
       options: {
         format: 'Ttf',
+        variable: false,
         master: null,
         remove_overlap: false,
         keep_tt_instructions: false,

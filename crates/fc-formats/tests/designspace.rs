@@ -426,3 +426,39 @@ fn master_fontinfo_year(font: &Font, index: usize) -> Option<i64> {
         .and_then(|fontinfo| fontinfo.get("year"))
         .and_then(serde_json::Value::as_i64)
 }
+
+#[test]
+fn maps_defaults_and_user_values_between_mapping_knots() {
+    let temp = tempfile::tempdir().unwrap();
+    let path = write_source_designspace(temp.path());
+    let mut document = DesignSpaceDocument::load(&path).unwrap();
+    document.axes[0].map = Some(vec![
+        norad::designspace::AxisMapping {
+            input: 100.,
+            output: 0.,
+        },
+        norad::designspace::AxisMapping {
+            input: 900.,
+            output: 100.,
+        },
+    ]);
+    document.sources[0].location = vec![Dimension {
+        name: "Weight".into(),
+        uservalue: Some(400.),
+        xvalue: None,
+        yvalue: None,
+    }];
+    document.sources[1].location = vec![dimension("Weight", 100.)];
+    document.sources[2].location = vec![dimension("Weight", 75.)];
+    document.sources.swap(0, 1);
+    document.save(&path).unwrap();
+    let mut font = read_designspace(&path).unwrap();
+    assert_eq!(font.masters[0].name, "Regular");
+    assert_eq!(font.masters[0].location[&Tag(*b"wght")], 37.5);
+    font.masters[0].location.clear();
+    let output = write_designspace(&font, &temp.path().join("output")).unwrap();
+    let written = DesignSpaceDocument::load(&output).unwrap();
+    assert_eq!(written.sources[0].location[0].xvalue, Some(37.5));
+    let roundtrip = read_designspace(&output).unwrap();
+    assert_eq!(roundtrip.masters[0].location[&Tag(*b"wght")], 37.5);
+}

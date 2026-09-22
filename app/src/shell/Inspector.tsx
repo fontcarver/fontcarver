@@ -18,7 +18,16 @@ import { EditInspector } from '../views/glyph/panels/EditInspector'
 
 import styles from './panels.module.css'
 
-const SORTS: readonly GlyphSort[] = ['Order', 'Unicode', 'Name', 'Width']
+const SORTS: readonly GlyphSort[] = [
+  'Order',
+  'Unicode',
+  'Name',
+  'Width',
+  'Radical',
+  'Strokes',
+  'Reading',
+  'Cid',
+]
 const LABEL_MODES: readonly LabelMode[] = ['name', 'unicode', 'index']
 
 /**
@@ -56,7 +65,10 @@ export function Inspector() {
         aria-label={t('a11y.inspector')}
       >
         {tab.kind === 'glyph' ? (
-          <EditInspector masters={summary.masters} />
+          <EditInspector
+            masters={summary.masters}
+            hasAxes={summary.axes.length > 0}
+          />
         ) : null}
         <Panel title={t('inspector.document')}>
           <Field label={t('inspector.family')} readOnly>

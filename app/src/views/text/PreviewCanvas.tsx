@@ -50,18 +50,23 @@ export function PreviewCanvas({
     const pixelRatio = Math.min(
       requestedRatio,
       PREVIEW_CANVAS_MAX_WIDTH / geometry.cssWidth,
+      PREVIEW_CANVAS_MAX_WIDTH / (geometry.cssHeight ?? PREVIEW_CANVAS_HEIGHT),
     )
     canvas.width = Math.max(1, Math.round(geometry.cssWidth * pixelRatio))
-    canvas.height = Math.max(1, Math.round(PREVIEW_CANVAS_HEIGHT * pixelRatio))
+    canvas.height = Math.max(
+      1,
+      Math.round((geometry.cssHeight ?? PREVIEW_CANVAS_HEIGHT) * pixelRatio),
+    )
     const context = canvas.getContext('2d')
     if (!context) return
     paintPreview(context, glyphs, {
       size,
       unitsPerEm: safeUnitsPerEm,
       width: geometry.cssWidth,
-      height: PREVIEW_CANVAS_HEIGHT,
+      height: geometry.cssHeight ?? PREVIEW_CANVAS_HEIGHT,
       pixelRatio,
       minX: geometry.minX,
+      maxY: geometry.maxY,
       ink: getComputedStyle(canvas).color || 'CanvasText',
     })
   }, [geometry, glyphs, safeUnitsPerEm, size, theme])
@@ -79,7 +84,10 @@ export function PreviewCanvas({
         <canvas
           ref={attachCanvas}
           className={styles.canvas}
-          style={{ width: geometry.cssWidth, height: PREVIEW_CANVAS_HEIGHT }}
+          style={{
+            width: geometry.cssWidth,
+            height: geometry.cssHeight ?? PREVIEW_CANVAS_HEIGHT,
+          }}
           aria-hidden="true"
         />
       </div>

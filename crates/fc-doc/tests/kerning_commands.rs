@@ -205,7 +205,7 @@ fn groups_membership_moves_and_undo_are_atomic_without_outline_changes() {
 }
 
 #[test]
-fn group_rename_updates_all_horizontal_masters_and_keeps_vertical_pairs() {
+fn group_rename_updates_both_directions_in_all_masters() {
     document(|doc| {
         doc.apply(group(Side::Side1, "public.kern1.A", &["A"]), "Group")
             .unwrap();
@@ -227,12 +227,16 @@ fn group_rename_updates_all_horizontal_masters_and_keeps_vertical_pairs() {
             "Rename",
         )
         .unwrap();
-        for (master, old) in doc.font.masters.iter().zip(&before.masters) {
+        for master in &doc.font.masters {
             assert_eq!(
                 master.kerning_h.0.keys().next().unwrap().0,
                 KernSide::Group("public.kern1.New".into())
             );
-            assert_eq!(master.kerning_v, old.kerning_v);
+            assert_eq!(
+                master.kerning_v.0.keys().next().unwrap().0,
+                KernSide::Group("public.kern1.New".into())
+            );
+            assert_eq!(*master.kerning_v.0.values().next().unwrap(), -200.0);
         }
         assert_eq!(
             doc.font.glyph("A").unwrap().kern_group_side1.as_deref(),

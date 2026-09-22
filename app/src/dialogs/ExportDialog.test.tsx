@@ -73,6 +73,7 @@ describe('ExportDialog', () => {
       path: '/fonts/DejaVuSans.ttf',
       options: {
         format: 'Ttf',
+        variable: false,
         master: 'm1',
         remove_overlap: true,
         keep_tt_instructions: true,

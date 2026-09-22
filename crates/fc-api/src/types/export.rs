@@ -56,6 +56,17 @@ pub enum ExportFormat {
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
 #[ts(export)]
 pub struct ExportOptions {
+    /// Index of a named static instance to interpolate for compiled output.
+    #[serde(default)]
+    #[ts(optional)]
+    pub instance: Option<usize>,
+    /// Compile all selected masters as a variable font.
+    #[serde(default)]
+    pub variable: bool,
+    /// Optional variable source subset, including the default master.
+    #[serde(default)]
+    #[ts(optional)]
+    pub master_subset: Option<Vec<MasterId>>,
     /// Bitmap strike identity for single-strike outputs.
     #[serde(default)]
     #[ts(optional)]
@@ -92,6 +103,9 @@ const fn default_true() -> bool {
 impl Default for ExportOptions {
     fn default() -> Self {
         Self {
+            instance: None,
+            variable: false,
+            master_subset: None,
             bitmap_strike: None,
             format: ExportFormat::Ttf,
             master: None,

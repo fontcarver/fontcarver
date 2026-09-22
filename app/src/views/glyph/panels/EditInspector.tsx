@@ -11,6 +11,8 @@ import { GlyphPanel } from './GlyphPanel'
 import { GuidesPanel } from './GuidesPanel'
 import { KerningGroupsPanel } from './KerningGroupsPanel'
 import { LayersPanel } from './LayersPanel'
+import { UnihanPanel } from './UnihanPanel'
+import { GlyphVariationPanel } from './GlyphVariationPanel'
 import { MetricsPanel } from './MetricsPanel'
 import { PanelSection } from './PanelSection'
 import type { PanelContext } from './panelContext'
@@ -18,6 +20,7 @@ import { TransformPanel } from './TransformPanel'
 
 export interface EditInspectorProps {
   masters: readonly MasterSummary[]
+  hasAxes?: boolean
 }
 
 /**
@@ -29,7 +32,10 @@ export interface EditInspectorProps {
  * publishes, so the panels never issue a second request for data the canvas
  * already has.
  */
-export function EditInspector({ masters }: EditInspectorProps) {
+export function EditInspector({
+  masters,
+  hasAxes = false,
+}: EditInspectorProps) {
   const { t } = useTranslation()
   const active = useEditorStore((state) => state.activeGlyph)
   const tab = useUiStore(selectActiveTab)
@@ -67,6 +73,14 @@ export function EditInspector({ masters }: EditInspectorProps) {
       <PanelSection id="glyph" title={t('glyphInspector.glyph')}>
         <GlyphPanel {...context} />
       </PanelSection>
+      <UnihanPanel unicodes={active.glyph.unicodes} />
+      {hasAxes && (
+        <GlyphVariationPanel
+          key={`${active.doc}:${active.gid}`}
+          doc={active.doc}
+          glyph={active.glyph.name}
+        />
+      )}
       <PanelSection id="metrics" title={t('glyphInspector.metrics')}>
         <MetricsPanel {...context} />
       </PanelSection>

@@ -1,7 +1,7 @@
 use crate::{
     kerning::{
-        check_horizontal_editing, group_membership, validate_group, validate_pair_side,
-        KerningGroupSide as Side,
+        check_horizontal_editing, check_vertical_editing, group_membership, validate_group,
+        validate_pair_side, KerningGroupSide as Side,
     },
     Command, Error,
 };
@@ -11,6 +11,7 @@ use std::collections::BTreeSet;
 pub(crate) fn is_kerning(command: &Command) -> bool {
     match command {
         Command::SetHorizontalKerning { .. }
+        | Command::SetVerticalKerning { .. }
         | Command::CreateKerningGroup { .. }
         | Command::SetKerningGroup { .. }
         | Command::AssignKerningGroup { .. }
@@ -22,9 +23,22 @@ pub(crate) fn is_kerning(command: &Command) -> bool {
 }
 
 pub(super) fn apply(font: &mut Font, command: &Command) -> Result<(), Error> {
-    check_horizontal_editing(font)?;
+    match command {
+        Command::SetVerticalKerning { .. } => check_vertical_editing(font)?,
+        Command::SetHorizontalKerning { .. } => check_horizontal_editing(font)?,
+        _ => {
+            check_horizontal_editing(font)?;
+            check_vertical_editing(font)?;
+        }
+    }
     match command {
         Command::SetHorizontalKerning {
+            master,
+            left,
+            right,
+            value,
+        }
+        | Command::SetVerticalKerning {
             master,
             left,
             right,
@@ -43,13 +57,18 @@ pub(super) fn apply(font: &mut Font, command: &Command) -> Result<(), Error> {
                 .iter_mut()
                 .find(|candidate| candidate.id == *master)
                 .ok_or_else(|| Error::MissingMaster(master.clone()))?;
+            let records = if matches!(command, Command::SetVerticalKerning { .. }) {
+                &mut target.kerning_v.0
+            } else {
+                &mut target.kerning_h.0
+            };
             let key = (left.clone(), right.clone());
             match value {
                 Some(value) => {
-                    target.kerning_h.0.insert(key, *value);
+                    records.insert(key, *value);
                 }
                 None => {
-                    target.kerning_h.0.remove(&key);
+                    records.remove(&key);
                 }
             }
             Ok(())
@@ -155,6 +174,7 @@ fn rename(font: &mut Font, side: Side, from: &str, to: &str) -> Result<(), Error
             .kerning_h
             .0
             .keys()
+            .chain(master.kerning_v.0.keys())
             .any(|key| references(key, side, to))
         {
             return Err(Error::InvalidCommand(format!(
@@ -171,18 +191,20 @@ fn rename(font: &mut Font, side: Side, from: &str, to: &str) -> Result<(), Error
     }
     side.groups_mut(font).insert(to.into(), members);
     for master in &mut font.masters {
-        master.kerning_h.0 = std::mem::take(&mut master.kerning_h.0)
-            .into_iter()
-            .map(|(mut key, value)| {
-                if references(&key, side, from) {
-                    match side {
-                        Side::Side1 => key.0 = KernSide::Group(to.into()),
-                        Side::Side2 => key.1 = KernSide::Group(to.into()),
+        for kerning in [&mut master.kerning_h, &mut master.kerning_v] {
+            kerning.0 = std::mem::take(&mut kerning.0)
+                .into_iter()
+                .map(|(mut key, value)| {
+                    if references(&key, side, from) {
+                        match side {
+                            Side::Side1 => key.0 = KernSide::Group(to.into()),
+                            Side::Side2 => key.1 = KernSide::Group(to.into()),
+                        }
                     }
-                }
-                (key, value)
-            })
-            .collect();
+                    (key, value)
+                })
+                .collect();
+        }
     }
     Ok(())
 }
@@ -195,6 +217,7 @@ fn remove(font: &mut Font, side: Side, name: &str, remove_pairs: bool) -> Result
                 .kerning_h
                 .0
                 .keys()
+                .chain(master.kerning_v.0.keys())
                 .any(|key| references(key, side, name))
         })
     {
@@ -207,10 +230,9 @@ fn remove(font: &mut Font, side: Side, name: &str, remove_pairs: bool) -> Result
         side.set_membership(font, &member, None);
     }
     for master in &mut font.masters {
-        master
-            .kerning_h
-            .0
-            .retain(|key, _| !references(key, side, name));
+        for kerning in [&mut master.kerning_h, &mut master.kerning_v] {
+            kerning.0.retain(|key, _| !references(key, side, name));
+        }
     }
     Ok(())
 }

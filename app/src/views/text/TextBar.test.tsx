@@ -72,15 +72,17 @@ describe('TextBar', () => {
     expect(callbacks.onSample).toHaveBeenLastCalledWith('all-encoded')
   })
 
-  it('keeps future sample and direction options disabled', () => {
-    render(<TextBar {...props()} />)
+  it('enables vertical direction while retaining the future sample placeholder', async () => {
+    const onDirectionChange = vi.fn()
+    render(<TextBar {...props({ onDirectionChange })} />)
 
     expect(
       screen.getByRole('option', { name: 'Kerning pairs — coming later' }),
     ).toBeDisabled()
-    expect(
-      screen.getByRole('button', { name: 'Vertical text — coming later' }),
-    ).toBeDisabled()
+    const vertical = screen.getByRole('button', { name: 'Vertical text' })
+    expect(vertical).toBeEnabled()
+    await userEvent.click(vertical)
+    expect(onDirectionChange).toHaveBeenCalledWith('ttb')
   })
 
   it('cancels a focused size edit on Escape without committing on blur', async () => {
@@ -118,4 +120,13 @@ describe('TextBar', () => {
     fireEvent.keyDown(size, { key: 'Enter' })
     expect(onSizeChange).toHaveBeenLastCalledWith(1)
   })
+})
+
+it('shows default vertical features and allows them to be disabled independently', async () => {
+  const onFeaturesChange = vi.fn()
+  render(<TextBar {...props({ direction: 'ttb', onFeaturesChange })} />)
+  const vkrn = screen.getByRole('button', { name: 'vkrn' })
+  expect(vkrn).toHaveAttribute('aria-pressed', 'true')
+  await userEvent.click(vkrn)
+  expect(onFeaturesChange.mock.calls[0]![0]).toContainEqual(['vkrn', false])
 })

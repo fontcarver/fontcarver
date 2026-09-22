@@ -196,6 +196,8 @@ fn preview_cell((name, unicode): &(GlyphName, Option<u32>)) -> GlyphCell {
         sub_category,
         script,
         width: 0.0,
+        vertical_advance: None,
+        vertical_origin: None,
         bbox: None,
         path: None,
         color_label: None,
@@ -262,6 +264,11 @@ fn component_views(
                 [bounds.x0, bounds.y0, bounds.x1, bounds.y1]
             });
             Ok(ComponentView {
+                smart_axes: document
+                    .font
+                    .glyph(&component.base)
+                    .filter(|g| !g.smart_axes.is_empty())
+                    .map(|g| g.smart_axes.clone()),
                 component: component.clone(),
                 path: rounded_svg(&path),
                 bbox,
@@ -275,11 +282,40 @@ fn component_path(
     master: &MasterId,
     component: &fc_model::Component,
 ) -> Result<BezPath, ApiError> {
+    if component.smart.as_ref().is_some_and(|p| !p.is_empty())
+        || document
+            .font
+            .glyph(&component.base)
+            .is_some_and(|g| !g.smart_axes.is_empty())
+    {
+        return fc_model::flatten_smart_component(
+            &document.font,
+            &component.base,
+            master,
+            component.smart.as_ref().unwrap_or(&Default::default()),
+        )
+        .and_then(|path| {
+            let transformed = component.transform * path;
+            if !transformed.is_finite() {
+                return Err(fc_model::Error::InvalidDesignSpace(
+                    "component transform overflows outline coordinates".into(),
+                ));
+            }
+            Ok(transformed)
+        })
+        .map_err(|e| ApiError::invalid_params(e.to_string()));
+    }
     let base = document
         .glyph_id(&component.base)
         .ok_or_else(|| ApiError::not_found(format!("glyph `{}` does not exist", component.base)))?;
     let flattened = document.flattened_path(base, master)?;
-    Ok(component.transform * flattened.as_ref())
+    let transformed = component.transform * flattened.as_ref();
+    if !transformed.is_finite() {
+        return Err(ApiError::invalid_params(
+            "component transform overflows outline coordinates",
+        ));
+    }
+    Ok(transformed)
 }
 
 /// Returns the exact bounds of a layer, components included.

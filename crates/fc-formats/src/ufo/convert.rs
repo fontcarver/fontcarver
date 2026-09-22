@@ -75,6 +75,9 @@ pub(crate) fn from_norad(source: &norad::Font, path: &Path) -> Result<Font, Erro
             continue;
         };
         let mut glyph = Glyph::new(glyph_name.as_str());
+        if let Some(axes) = representative.lib.get("com.fontcarver.smartAxes") {
+            glyph.smart_axes = serde_json::from_value(plist_to_json(axes)?)?;
+        }
         glyph.unicodes = representative.codepoints.iter().map(u32::from).collect();
         glyph.note = representative.note.clone().unwrap_or_default();
         if !representative.lib.is_empty() {
@@ -258,6 +261,37 @@ pub(crate) fn to_norad(font: &Font, master: &Master) -> Result<norad::Font, Erro
             if let Some(lib) = glyph_lib(glyph, &layer_name)? {
                 ufo_glyph.lib = lib;
             }
+            ufo_glyph.lib.remove("com.fontcarver.smartAxes");
+            if layer_name == "public.default" && !glyph.smart_axes.is_empty() {
+                ufo_glyph.lib.insert(
+                    "com.fontcarver.smartAxes".into(),
+                    json_to_plist(&serde_json::to_value(&glyph.smart_axes)?)?,
+                );
+            }
+            ufo_glyph.lib.remove("com.fontcarver.sourceLayer");
+            if matches!(
+                layer.kind,
+                LayerKind::Smart { .. } | LayerKind::Bracket { .. }
+            ) {
+                ufo_glyph.lib.insert(
+                    "com.fontcarver.sourceLayer".into(),
+                    Value::String(serde_json::json!({"kind":layer.kind,"id":layer.id}).to_string()),
+                );
+            }
+            ufo_glyph.lib.remove("com.fontcarver.componentData");
+            if layer.components.iter().any(|component| {
+                component.anchor.is_some()
+                    || component.auto_align
+                    || component.use_my_metrics
+                    || component.round_to_grid
+                    || component.smart.is_some()
+                    || component.point_match.is_some()
+            }) {
+                ufo_glyph.lib.insert(
+                    "com.fontcarver.componentData".into(),
+                    Value::String(extra::build_component_data(&layer.components).to_string()),
+                );
+            }
             let ufo_layer = target
                 .layers
                 .get_mut(&layer_name)
@@ -343,6 +377,36 @@ fn layer_from_norad(
         );
     }
     metadata::record_glyph_objects(glyph, glyph_name, layer_name, metadata_entries)?;
+    if let Some(data) = glyph.lib.get("com.fontcarver.sourceLayer") {
+        let data: serde_json::Value = serde_json::from_str(data.as_string().ok_or_else(|| {
+            Error::UnsupportedPlist("source layer metadata must be JSON text".into())
+        })?)?;
+        let mut kind: LayerKind = serde_json::from_value(data["kind"].clone())?;
+        match &mut kind {
+            LayerKind::Smart { master, .. } | LayerKind::Bracket { master, .. }
+                if matches!(layer.kind, LayerKind::Custom(_)) =>
+            {
+                *master = master_id.clone()
+            }
+            _ => {
+                return Err(Error::UnsupportedPlist(
+                    "invalid supplemental source role".into(),
+                ))
+            }
+        }
+        layer.kind = kind;
+        if let Some(id) = data.get("id") {
+            layer.id = serde_json::from_value(id.clone())?;
+        }
+    }
+    if let Some(data) = glyph.lib.get("com.fontcarver.componentData") {
+        extra::import_component_data(
+            &mut layer.components,
+            &serde_json::from_str(data.as_string().ok_or_else(|| {
+                Error::UnsupportedPlist("component metadata must be JSON text".into())
+            })?)?,
+        )?;
+    }
     Ok(layer)
 }
 
@@ -625,7 +689,9 @@ fn collect_layer_names(font: &Font, master: &MasterId) -> Vec<String> {
 pub(crate) fn layer_belongs(font: &Font, layer: &Layer, master: &MasterId) -> bool {
     match &layer.kind {
         LayerKind::Master(id) | LayerKind::Background(id) => id == master,
-        LayerKind::Brace { master: id, .. } | LayerKind::Bracket { master: id, .. } => id == master,
+        LayerKind::Smart { master: id, .. }
+        | LayerKind::Brace { master: id, .. }
+        | LayerKind::Bracket { master: id, .. } => id == master,
         LayerKind::Backup { of, .. } => of == master,
         LayerKind::Custom(_) => layer
             .user_data
@@ -644,6 +710,7 @@ pub(crate) fn model_layer_name(layer: &Layer, master: &MasterId) -> String {
         LayerKind::Background(_) => "public.background".to_owned(),
         LayerKind::Custom(name) if !name.is_empty() => name.clone(),
         _ if !layer.name.is_empty() => layer.name.clone(),
+        LayerKind::Smart { .. } => format!("smart.{}", layer.id),
         LayerKind::Brace { .. } => format!("brace.{}", layer.id),
         LayerKind::Bracket { .. } => format!("bracket.{}", layer.id),
         LayerKind::Backup { .. } => format!("backup.{}", layer.id),

@@ -439,6 +439,27 @@ pub fn widths_for_text(font: &Font, master: &MasterId, text: &str) -> ModelWidth
         .collect()
 }
 
+/// Collect current advances through a session's maintained reverse character map.
+/// Work is proportional to text and matching glyphs, rather than font size.
+#[must_use]
+pub fn widths_for_text_indexed(
+    font: &Font,
+    index: &fc_model::UnicodeIndex,
+    master: &MasterId,
+    text: &str,
+) -> ModelWidths {
+    let scalars: HashSet<_> = text.chars().map(u32::from).collect();
+    scalars
+        .into_iter()
+        .flat_map(|scalar| index.glyphs(scalar))
+        .filter_map(|name| {
+            font.glyph(name)?
+                .master_layer(master)
+                .map(|layer| (name.clone(), layer.width))
+        })
+        .collect()
+}
+
 struct Entry {
     key: FontKey,
     state: Mutex<EntryState>,

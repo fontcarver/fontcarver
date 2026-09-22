@@ -321,3 +321,38 @@ fn group_and_member_continuation_pages_are_generation_bound() {
         );
     }
 }
+
+#[test]
+fn vertical_queries_and_commands_keep_directions_separate() {
+    let (api, session, doc, master) = setup();
+    apply(
+        &api,
+        doc,
+        json!({"SetVerticalKerning":{"master":master,"left":{"glyph":"A"},"right":{"glyph":"V"},"value":-75}}),
+    );
+    let query = json!({"doc":doc,"master":master,"left":"A","right":"V"});
+    assert_eq!(
+        api.call("kerning.resolve_vertical", query.clone()).unwrap()["value"],
+        -75.
+    );
+    assert_eq!(
+        api.call("kerning.resolve", query.clone()).unwrap()["value"],
+        0.
+    );
+    let page = api
+        .call(
+            "kerning.pairs_vertical",
+            json!({"doc":doc,"master":master,"offset":0,"limit":20}),
+        )
+        .unwrap();
+    assert_eq!(page["total"], 1);
+    session
+        .with_doc_mut(doc, |d| {
+            d.undo().unwrap();
+        })
+        .unwrap();
+    assert_eq!(
+        api.call("kerning.resolve_vertical", query).unwrap()["value"],
+        0.
+    );
+}

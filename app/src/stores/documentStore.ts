@@ -37,7 +37,8 @@ export function isFiltered(filter: GlyphFilter): boolean {
     filter.unicode_ranges.length > 0 ||
     filter.unencoded_only ||
     filter.changed_only ||
-    filter.has_components !== null
+    filter.has_components !== null ||
+    filter.cjk != null
   )
 }
 
@@ -45,6 +46,7 @@ export function isFiltered(filter: GlyphFilter): boolean {
 export function emptyFilter(): GlyphFilter {
   return {
     query: null,
+    cjk: null,
     categories: [],
     scripts: [],
     blocks: [],

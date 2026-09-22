@@ -6,6 +6,7 @@ mod anchor;
 mod bitmap;
 mod component;
 mod contour;
+mod designspace;
 pub mod error;
 mod extra;
 mod feature_draft;
@@ -20,6 +21,7 @@ mod kerning;
 mod layer;
 mod master;
 pub mod query;
+mod smart;
 
 pub use anchor::{Anchor, AnchorKind};
 pub use bitmap::{
@@ -51,6 +53,9 @@ pub use kerning::{KernPair, KernSide, Kerning, KerningGroups};
 pub use layer::{ColorLayer, DiagonalHint, HintMask, Image, Layer, LayerKind, PsHints, StemHint};
 pub use master::{Master, MasterMetrics, PsPrivate, Stem, TtMasterData, Zone};
 pub use query::{
-    dependents, flatten_layer, flatten_layer_by_id, glyph_for_unicode, layer_bbox,
-    masters_compatible, validate, Incompatibility, Issue,
+    dependents, flatten_layer, flatten_layer_by_id, flatten_smart_component, glyph_for_unicode,
+    layer_bbox, masters_compatible, validate, Incompatibility, Issue,
 };
+pub use smart::{smart_layer, SmartAxis};
+
+pub use query::UnicodeIndex;

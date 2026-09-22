@@ -382,6 +382,7 @@ fn layer_master(layer: &Layer) -> Option<MasterId> {
     match &layer.kind {
         LayerKind::Master(master)
         | LayerKind::Background(master)
+        | LayerKind::Smart { master, .. }
         | LayerKind::Brace { master, .. }
         | LayerKind::Bracket { master, .. } => Some(master.clone()),
         LayerKind::Backup { of, .. } => Some(of.clone()),

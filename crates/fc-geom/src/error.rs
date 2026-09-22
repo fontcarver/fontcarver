@@ -3,6 +3,9 @@ use crate::Incompatibility;
 /// Errors returned by geometry operations.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Invalid coordinates or sources prevent interpolation.
+    #[error("invalid design space: {0}")]
+    DesignSpace(String),
     /// A tolerance, grid step, stroke width, or distance was not finite and positive.
     #[error("{parameter} must be finite and positive")]
     InvalidParameter {

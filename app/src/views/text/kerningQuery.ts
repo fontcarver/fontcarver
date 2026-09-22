@@ -21,14 +21,22 @@ export function useStoredKerning(
   generation: number,
   pair: KerningPairNames,
   revision: number,
+  vertical = false,
 ) {
-  const key = JSON.stringify([doc, master, generation, pair.left, pair.right])
+  const key = JSON.stringify([
+    doc,
+    master,
+    generation,
+    pair.left,
+    pair.right,
+    vertical,
+  ])
   const [query, setQuery] = useState<Query | null>(null)
   useEffect(() => {
     let current = true
     const request =
       master && pair.left && pair.right
-        ? call('kerning.resolve', {
+        ? call(vertical ? 'kerning.resolve_vertical' : 'kerning.resolve', {
             doc,
             master,
             left: pair.left,
@@ -39,7 +47,9 @@ export function useStoredKerning(
             resolution: result,
             failed: false,
           }))
-        : call('kerning.status', { doc }).then((status) => ({
+        : call(vertical ? 'kerning.status_vertical' : 'kerning.status', {
+            doc,
+          }).then((status) => ({
             key,
             status,
             resolution: null,
@@ -56,6 +66,6 @@ export function useStoredKerning(
     return () => {
       current = false
     }
-  }, [doc, master, generation, pair.left, pair.right, key, revision])
+  }, [doc, master, generation, pair.left, pair.right, key, revision, vertical])
   return query?.key === key ? query : null
 }

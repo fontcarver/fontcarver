@@ -17,6 +17,7 @@ fontc = { version = "1.0", default-features = false, features = ["rayon"] }
 fontdrasil = "1.0"
 fontir = "1.0"
 fc-model = { path = "../fc-model" }
+fc-geom = { path = "../fc-geom" }
 fc-sfnt = { path = "../fc-sfnt" }
 fea-rs = "1.0"
 harfrust = "0.13"

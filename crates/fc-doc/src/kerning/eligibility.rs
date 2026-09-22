@@ -26,7 +26,7 @@ pub enum HorizontalKerningEditBlock {
     #[error("the imported font's spacing rules cannot yet be edited")]
     ImportedLayout,
     /// Active source or its writer policy reserves kerning from model editing.
-    #[error("horizontal kerning is controlled by feature source")]
+    #[error("kerning is controlled by feature source")]
     SourceOwnedKerning,
     /// Source syntax or includes prevent reliable ownership inspection.
     #[error("feature source could not be parsed to establish kerning ownership")]
@@ -45,6 +45,15 @@ pub enum HorizontalKerningEditBlock {
 /// or establish a shaped advance. Future authoring queries and commands must
 /// both call it against their current font, before exposing or mutating pairs.
 pub fn check_horizontal_editing(font: &Font) -> Result<(), HorizontalKerningEditBlock> {
+    check_editing(font, "kern")
+}
+
+/// Check whether active source permits model-owned vertical kerning.
+pub fn check_vertical_editing(font: &Font) -> Result<(), HorizontalKerningEditBlock> {
+    check_editing(font, "vkrn")
+}
+
+fn check_editing(font: &Font, owned_tag: &str) -> Result<(), HorizontalKerningEditBlock> {
     use HorizontalKerningEditBlock as Block;
 
     if font.features.source_of_truth == FeaturesSource::ImportedTables {
@@ -88,7 +97,7 @@ pub fn check_horizontal_editing(font: &Font) -> Result<(), HorizontalKerningEdit
                 .and_then(NodeOrToken::token_text)
         });
         match tag {
-            Some("kern") => return Err(Block::SourceOwnedKerning),
+            Some(tag) if tag == owned_tag => return Err(Block::SourceOwnedKerning),
             None => return Err(Block::InvalidFeatureSource),
             _ => {}
         }

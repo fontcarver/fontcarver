@@ -7,7 +7,8 @@ use crate::{
 };
 use fc_doc::{
     kerning::{
-        check_horizontal_editing, group_membership, resolve_stored_horizontal, validate_group,
+        check_horizontal_editing, check_vertical_editing, group_membership,
+        resolve_stored_horizontal, resolve_stored_vertical, validate_group,
         validate_horizontal_record, KerningGroupSide as Side,
     },
     Document,
@@ -15,7 +16,15 @@ use fc_doc::{
 use fc_model::{GlyphName, KernPair, KernSide};
 
 fn current_status(document: &Document) -> KerningStatus {
-    let reason = check_horizontal_editing(&document.font).err();
+    direction_status(document, false)
+}
+fn direction_status(document: &Document, vertical: bool) -> KerningStatus {
+    let reason = if vertical {
+        check_vertical_editing(&document.font)
+    } else {
+        check_horizontal_editing(&document.font)
+    }
+    .err();
     KerningStatus {
         generation: document.generation,
         editable: reason.is_none(),
@@ -26,6 +35,23 @@ pub(crate) fn status(api: &Api, params: DocParams) -> Result<KerningStatus, ApiE
     api.session
         .with_doc(params.doc, current_status)
         .map_err(ApiError::from)
+}
+pub(crate) fn status_vertical(api: &Api, params: DocParams) -> Result<KerningStatus, ApiError> {
+    api.session
+        .with_doc(params.doc, |document| direction_status(document, true))
+        .map_err(ApiError::from)
+}
+pub(crate) fn resolve_vertical(
+    api: &Api,
+    params: KerningResolveParams,
+) -> Result<KerningResolution, ApiError> {
+    resolve_direction(api, params, true)
+}
+pub(crate) fn pairs_vertical(
+    api: &Api,
+    params: KerningPairsParams,
+) -> Result<KerningPairs, ApiError> {
+    pairs_direction(api, params, true)
 }
 pub(crate) fn glyph(api: &Api, params: GlyphKerningParams) -> Result<GlyphKerning, ApiError> {
     api.session
@@ -66,6 +92,13 @@ pub(crate) fn resolve(
     api: &Api,
     params: KerningResolveParams,
 ) -> Result<KerningResolution, ApiError> {
+    resolve_direction(api, params, false)
+}
+fn resolve_direction(
+    api: &Api,
+    params: KerningResolveParams,
+    vertical: bool,
+) -> Result<KerningResolution, ApiError> {
     api.session
         .with_doc(params.doc, |document| {
             let font = &document.font;
@@ -81,7 +114,7 @@ pub(crate) fn resolve(
                     )));
                 }
             }
-            let status = current_status(document);
+            let status = direction_status(document, vertical);
             let mut result = KerningResolution {
                 status,
                 master: params.master,
@@ -98,7 +131,16 @@ pub(crate) fn resolve(
             }
             result.left_group = group_membership(font, &left, Side::Side1)?.map(str::to_owned);
             result.right_group = group_membership(font, &right, Side::Side2)?.map(str::to_owned);
-            result.rule = resolve_stored_horizontal(font, &left, &right, &result.master)?;
+            result.rule = if vertical {
+                resolve_stored_vertical(font, &left, &right, &result.master)
+            } else {
+                resolve_stored_horizontal(font, &left, &right, &result.master)
+            }?;
+            let kerning = if vertical {
+                &master.kerning_v
+            } else {
+                &master.kerning_h
+            };
             result.value = Some(result.rule.as_ref().map_or(0.0, |pair| pair.value));
             let l = KernSide::Glyph(left);
             let r = KernSide::Glyph(right);
@@ -122,7 +164,7 @@ pub(crate) fn resolve(
                 .into_iter()
                 .flatten()
                 .filter_map(|(left, right)| {
-                    let value = *master.kerning_h.0.get(&(left.clone(), right.clone()))?;
+                    let value = *kerning.0.get(&(left.clone(), right.clone()))?;
                     let record = KernPair { left, right, value };
                     validate_horizontal_record(font, &record)
                         .is_ok()
@@ -158,14 +200,25 @@ fn page(
     Ok(())
 }
 pub(crate) fn pairs(api: &Api, params: KerningPairsParams) -> Result<KerningPairs, ApiError> {
+    pairs_direction(api, params, false)
+}
+fn pairs_direction(
+    api: &Api,
+    params: KerningPairsParams,
+    vertical: bool,
+) -> Result<KerningPairs, ApiError> {
     api.session
         .with_doc(params.doc, |document| {
             page(document, params.generation, params.offset, params.limit)?;
             let master = document.font.master(&params.master).ok_or_else(|| {
                 ApiError::not_found(format!("master `{}` does not exist", params.master))
             })?;
-            let items = master
-                .kerning_h
+            let kerning = if vertical {
+                &master.kerning_v
+            } else {
+                &master.kerning_h
+            };
+            let items = kerning
                 .0
                 .iter()
                 .skip(params.offset as usize)
@@ -190,8 +243,8 @@ pub(crate) fn pairs(api: &Api, params: KerningPairsParams) -> Result<KerningPair
                 })
                 .collect();
             Ok(KerningPairs {
-                status: current_status(document),
-                total: count(master.kerning_h.0.len()),
+                status: direction_status(document, vertical),
+                total: count(kerning.0.len()),
                 items,
             })
         })
@@ -225,7 +278,9 @@ pub(crate) fn groups(
                         .font
                         .masters
                         .iter()
-                        .flat_map(|master| master.kerning_h.0.keys())
+                        .flat_map(|master| {
+                            master.kerning_h.0.keys().chain(master.kerning_v.0.keys())
+                        })
                         .filter(|(left, right)| {
                             let value = match params.side {
                                 Side::Side1 => left,

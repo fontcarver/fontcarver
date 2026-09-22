@@ -156,3 +156,31 @@ describe('KerningEditRunner', () => {
     expect(onError).toHaveBeenCalledOnce()
   })
 })
+
+it('captures vertical direction in the edit target through an asynchronous flush', async () => {
+  const mock = createEditingTransport()
+  setTransport(mock)
+  const run = new KerningEditRunner({
+    ...target,
+    vertical: true,
+    label: 'Vertical kerning',
+    refreshStart: async () => -40,
+    onEnd: vi.fn(),
+    onError: vi.fn(),
+  })
+  run.press(-10)
+  await run.end()
+  expect(
+    (
+      mock.calls.find((call) => call.method === 'doc.edit_apply')!
+        .params as EditApplyParams
+    ).command,
+  ).toEqual({
+    SetVerticalKerning: {
+      master: 'm1',
+      left: { glyph: 'A' },
+      right: { glyph: 'V' },
+      value: -50,
+    },
+  })
+})

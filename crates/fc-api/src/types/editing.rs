@@ -24,6 +24,10 @@ pub struct LayerOutlineParams {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize, TS)]
 #[ts(export)]
 pub struct ComponentView {
+    /// Editable local axes exposed by the component's base glyph.
+    #[serde(default)]
+    #[ts(optional)]
+    pub smart_axes: Option<Vec<fc_model::SmartAxis>>,
     /// Stored component reference.
     pub component: Component,
     /// Rounded SVG path of the transformed, fully flattened base outline.

@@ -11,7 +11,10 @@ use ts_rs::TS;
 
 mod apply;
 mod bitmap;
+mod cid;
 pub use bitmap::BitmapCommand;
+mod designspace;
+pub use designspace::DesignSpaceCommand;
 mod features;
 mod glyphs;
 mod kerning;
@@ -34,6 +37,14 @@ pub use options::{
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 pub enum Command {
+    /// Set or disable CID metadata; incomplete mappings may be authored but cannot export.
+    SetCidInfo {
+        /// Registry, ordering, supplement and numeric mapping, or null to disable.
+        #[ts(type = "CidInfo | null")]
+        cid: Option<fc_model::CidInfo>,
+    },
+    /// Edit axes, masters and named instances as one validated operation.
+    DesignSpace(DesignSpaceCommand),
     /// Edit bitmap pixels and strikes independently of outline data.
     Bitmap(BitmapCommand),
     /// Save source text without compiling or changing effective layout authority.
@@ -56,6 +67,20 @@ pub enum Command {
     },
     /// Set or remove one horizontal kerning record in a master.
     SetHorizontalKerning {
+        /// Persistent master identifier.
+        #[ts(type = "string")]
+        master: MasterId,
+        /// First glyph or first-side group.
+        #[ts(type = "KernSide")]
+        left: fc_model::KernSide,
+        /// Second glyph or second-side group.
+        #[ts(type = "KernSide")]
+        right: fc_model::KernSide,
+        /// Explicit adjustment, including zero; null removes the record.
+        value: Option<f64>,
+    },
+    /// Set or remove one vertical kerning record in a master.
+    SetVerticalKerning {
         /// Persistent master identifier.
         #[ts(type = "string")]
         master: MasterId,
@@ -144,6 +169,19 @@ pub enum Command {
         glyph: GlyphName,
         /// New scalar values.
         unicodes: Vec<u32>,
+    },
+    /// Set a layer's vertical advance and origin; null restores master defaults.
+    SetVerticalMetrics {
+        /// Glyph to update.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Editable source layer.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Vertical advance, between zero and 65535 font units.
+        advance: Option<f64>,
+        /// Vertical origin in signed font units.
+        origin: Option<f64>,
     },
     /// Update selected glyph metadata.
     SetGlyphMeta {
@@ -519,6 +557,17 @@ pub enum Command {
         master: Option<MasterId>,
         /// Guide index.
         index: usize,
+    },
+    /// Center the resolved outline within an advance, using current component geometry.
+    CenterMetrics {
+        /// Glyph containing the layer.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to mutate.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Final horizontal advance.
+        width: f64,
     },
     /// Set width and sidebearings in that order.
     SetMetrics {

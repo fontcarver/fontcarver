@@ -8,6 +8,9 @@ import { useFontInfo } from '../../stores/fontInfoCache'
 import { invalidateFor } from '../font/invalidation'
 
 import { AxesTable } from './AxesTable'
+import { CidEditor } from './CidEditor'
+import { DesignSpaceEditor } from './DesignSpaceEditor'
+import { Button } from '../../components/Button'
 import styles from './fontInfo.module.css'
 import { fontGroups, otherGroups } from './fontInfoRows'
 import { InfoGroups } from './InfoGroups'
@@ -33,7 +36,7 @@ export interface FontInfoPanelProps {
 }
 
 /**
- * The Font Info tab: everything the kernel knows about the font, read-only.
+ * Font metadata inspection, with an atomic editor for axes, masters and instances.
  *
  * A search box filters fields across *every* section at once — the single
  * biggest quality-of-life gap in the incumbent editors, where finding
@@ -43,6 +46,8 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
   const { t } = useTranslation()
   const [section, setSection] = useState<SectionId>('font')
   const [query, setQuery] = useState('')
+  const [designSpaceOpen, setDesignSpaceOpen] = useState(false)
+  const [cidOpen, setCidOpen] = useState(false)
   const { info, error, loading } = useFontInfo(summary.doc)
 
   // The panel is the only view mounted while it is the active tab, so it is
@@ -108,13 +113,20 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
         )
       case 'axes':
         return (
-          <AxesTable
-            heading={heading}
-            axes={summary.axes}
-            masters={info.masters}
-            instances={info.instances}
-            query={query}
-          />
+          <>
+            {!searching && (
+              <Button onClick={() => setDesignSpaceOpen(true)}>
+                {t('variation.edit')}
+              </Button>
+            )}
+            <AxesTable
+              heading={heading}
+              axes={summary.axes}
+              masters={info.masters}
+              instances={info.instances}
+              query={query}
+            />
+          </>
         )
       case 'tables':
         return (
@@ -134,7 +146,17 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
 
   return (
     <div className={styles.view}>
+      {cidOpen && (
+        <CidEditor doc={summary.doc} onClose={() => setCidOpen(false)} />
+      )}
+      {designSpaceOpen && (
+        <DesignSpaceEditor
+          doc={summary.doc}
+          onClose={() => setDesignSpaceOpen(false)}
+        />
+      )}
       <Toolbar label={t('fontInfo.toolbar')} className={styles.toolbar}>
+        <Button onClick={() => setCidOpen(true)}>{t('cid.title')}</Button>
         <span role="tablist" aria-label={t('fontInfo.sections')}>
           {SECTIONS.map((id) => (
             <button

@@ -272,11 +272,15 @@ export class GlyphPager {
  * force the reload.
  */
 export function requiresFullReload(
-  change: { glyph_order: boolean; glyphs: readonly number[] },
+  change: {
+    glyph_order: boolean
+    glyphs: readonly number[]
+    font_info?: boolean
+  },
   sort: string,
   filtered: boolean,
 ): boolean {
-  if (change.glyph_order) return true
+  if (change.glyph_order || (sort === 'Cid' && change.font_info)) return true
   if (change.glyphs.length === 0) return false
   return sort !== 'Order' || filtered
 }

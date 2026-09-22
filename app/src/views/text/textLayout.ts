@@ -42,6 +42,9 @@ export interface PositionedGlyph {
   y: number
   xAdvance: number
   yAdvance: number
+  /** Vertical run pen position before glyph placement offsets. */
+  penX?: number
+  penY?: number
   sourceByte: number
   sourceKind: 'literal' | 'named'
 }
@@ -90,6 +93,7 @@ export function positionShapedRun(
       documentGid: null,
       name: run.names[index] ?? null,
       editable: false,
+      ...(glyph.y_advance !== 0 ? { penX, penY } : {}),
       x: penX + glyph.x_offset * scale,
       y: penY + glyph.y_offset * scale,
       xAdvance: glyph.x_advance * scale,
@@ -256,7 +260,19 @@ export async function buildTextLayout(
         doc: context.doc,
         text: token.text,
         master: context.master,
-        features: context.features,
+        features:
+          context.direction === 'ttb'
+            ? [
+                ...(['vert', 'vkrn'] as const)
+                  .filter(
+                    (tag) => !context.features.some(([key]) => key === tag),
+                  )
+                  .map((tag) => [tag, true] as [string, boolean]),
+                ...context.features,
+              ]
+            : context.features.filter(
+                ([tag]) => !['vert', 'vrt2', 'vkrn'].includes(tag),
+              ),
         script: context.script,
         language: context.language,
         direction: context.direction,
@@ -301,20 +317,27 @@ export async function buildTextLayout(
           sourceByte: token.sourceByteStart,
         })
       }
-      const advance = cell?.width ?? 0
+      const vertical = context.direction === 'ttb'
+      const advance = vertical
+        ? (cell?.vertical_advance ?? context.unitsPerEm)
+        : (cell?.width ?? 0)
+      const origin = cell?.vertical_origin ?? context.unitsPerEm * 0.8
       glyphs.push({
         compiledGid: null,
         documentGid: cell?.gid ?? null,
         name: token.name,
         editable: cell !== null,
-        x: pen.x,
-        y: pen.y,
-        xAdvance: advance,
-        yAdvance: 0,
+        ...(vertical ? { penX: pen.x, penY: pen.y } : {}),
+        x: pen.x - (vertical ? (cell?.width ?? 0) / 2 : 0),
+        y: pen.y - (vertical ? origin : 0),
+        xAdvance: vertical ? 0 : advance,
+        yAdvance: vertical ? -advance : 0,
         sourceByte: token.sourceByteStart,
         sourceKind: 'named',
       })
-      pen = { x: pen.x + advance, y: pen.y }
+      pen = vertical
+        ? { x: pen.x, y: pen.y - advance }
+        : { x: pen.x + advance, y: pen.y }
       continue
     }
 

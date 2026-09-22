@@ -13,12 +13,10 @@ use norad::designspace::{
     Axis as NoradAxis, AxisMapping, DesignSpaceDocument, Dimension, Instance as NoradInstance,
     Source,
 };
-use tracing::warn;
 
 use super::{convert, extra::feature_metadata, value, writer, UfoWriteOptions};
 use crate::Error;
 
-const RULES_KEY: &str = "ufo.designspace.rules";
 const LIB_KEY: &str = "ufo.designspace.lib";
 const AXIS_MAPPINGS_KEY: &str = "ufo.designspace.axis_mappings";
 const AXES_KEY: &str = "ufo.designspace.axes";
@@ -109,15 +107,7 @@ pub(crate) fn read(path: &Path) -> Result<Font, Error> {
         import_brace_layer(&mut font, source, &document.axes, &masters_by_file)?;
     }
 
-    if !document.rules.rules.is_empty() {
-        warn!(
-            count = document.rules.rules.len(),
-            "designspace rules are preserved but not interpreted"
-        );
-        font.extra
-            .lib
-            .insert(RULES_KEY.to_owned(), serde_json::to_value(&document.rules)?);
-    }
+    super::conditional::read(&mut font, &document.rules, &document.lib)?;
     if !document.lib.is_empty() {
         font.extra
             .lib
@@ -169,6 +159,8 @@ pub(crate) fn write(font: &Font, dir: &Path) -> Result<PathBuf, Error> {
         super::write_ufo(font, &master.id, &ufo_path, &UfoWriteOptions::default())?;
         return Err(Error::NoAxes);
     }
+    let (expanded, rules, rule_lib) = super::conditional::prepare(font)?;
+    let font = &expanded;
     let mut sources = Vec::new();
     let mut file_name_counts = HashMap::<String, usize>::new();
     for (index, master) in font.masters.iter().enumerate() {
@@ -209,7 +201,12 @@ pub(crate) fn write(font: &Font, dir: &Path) -> Result<PathBuf, Error> {
                 name: Some(layer_name.clone()),
                 filename: file_name.clone(),
                 layer: Some(layer_name),
-                location: location_to_norad(location, &font.axes),
+                location: location_to_norad(
+                    &font
+                        .intermediate_location(&master.id, location)
+                        .map_err(|error| Error::UnsupportedPlist(error.to_string()))?,
+                    &font.axes,
+                ),
             });
         }
     }
@@ -224,14 +221,6 @@ pub(crate) fn write(font: &Font, dir: &Path) -> Result<PathBuf, Error> {
         .iter()
         .map(|instance| instance_to_norad(instance, &font.axes))
         .collect();
-    let rules = font
-        .extra
-        .lib
-        .get(RULES_KEY)
-        .cloned()
-        .map(serde_json::from_value)
-        .transpose()?
-        .unwrap_or_default();
     let axis_mappings = font
         .extra
         .lib
@@ -246,6 +235,8 @@ pub(crate) fn write(font: &Font, dir: &Path) -> Result<PathBuf, Error> {
         .map(value::json_to_dict)
         .transpose()?
         .unwrap_or_default();
+    lib.remove("com.fontcarver.bracketAliases");
+    lib.extend(rule_lib);
     feature_metadata::write_policy(&font.feature_settings.writer_policy, &mut lib);
     let document = DesignSpaceDocument {
         format: 5.0,
@@ -326,7 +317,9 @@ fn replace_master_id(font: &mut Font, old: &MasterId, new: &MasterId) {
     {
         match &mut layer.kind {
             LayerKind::Master(id) | LayerKind::Background(id) if id == old => *id = new.clone(),
-            LayerKind::Brace { master, .. } | LayerKind::Bracket { master, .. }
+            LayerKind::Smart { master, .. }
+            | LayerKind::Brace { master, .. }
+            | LayerKind::Bracket { master, .. }
                 if master == old =>
             {
                 *master = new.clone();
@@ -420,12 +413,7 @@ fn source_is_default(source: &Source, axes: &[NoradAxis]) -> bool {
 }
 
 fn map_axis_default(axis: &NoradAxis) -> f32 {
-    axis.map
-        .as_deref()
-        .unwrap_or_default()
-        .iter()
-        .find(|mapping| (mapping.input - axis.default).abs() <= f32::EPSILON)
-        .map_or(axis.default, |mapping| mapping.output)
+    map_user_value(axis, axis.default)
 }
 
 fn location_from_norad(
@@ -459,7 +447,12 @@ fn location_to_norad(location: &DesignLocation, axes: &[Axis]) -> Vec<Dimension>
         .map(|axis| Dimension {
             name: axis.name.clone(),
             uservalue: None,
-            xvalue: Some(location.get(&axis.tag).copied().unwrap_or(axis.default) as f32),
+            xvalue: Some(
+                location
+                    .get(&axis.tag)
+                    .copied()
+                    .unwrap_or_else(|| axis.user_to_design(axis.default)) as f32,
+            ),
             yvalue: None,
         })
         .collect()
@@ -533,12 +526,17 @@ fn instance_metadata_string(metadata: Option<&serde_json::Value>, key: &str) -> 
 }
 
 fn map_user_value(axis: &NoradAxis, value: f32) -> f32 {
-    axis.map
-        .as_deref()
-        .unwrap_or_default()
-        .iter()
-        .find(|mapping| (mapping.input - value).abs() <= f32::EPSILON)
-        .map_or(value, |mapping| mapping.output)
+    let model = Axis {
+        map: axis
+            .map
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .map(|mapping| (f64::from(mapping.input), f64::from(mapping.output)))
+            .collect(),
+        ..Axis::default()
+    };
+    model.user_to_design(f64::from(value)) as f32
 }
 
 fn resolve_source(base: &Path, filename: &str) -> PathBuf {

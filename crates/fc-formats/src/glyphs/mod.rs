@@ -11,11 +11,13 @@ use std::{
     path::Path,
 };
 
+mod conditional;
 mod extras;
 mod metadata;
 mod outlines;
 mod plist;
 mod read;
+mod smart;
 mod write;
 
 const MAX_BYTES: u64 = 64 * 1024 * 1024;

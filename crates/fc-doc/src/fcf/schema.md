@@ -109,3 +109,35 @@ image, 256 MiB decoded pixels and 256 strikes per font). Pixel undo records one
 image; strike changes record the strike collection. Neither changes outline
 hint-program eligibility. Glyph rename/duplicate/delete update strike ownership;
 deleting a referenced glyph resolves surviving dependants before removal.
+
+## P4 local smart components
+
+Glyphs have `smart_axes` (default `[]`), each with `name`, `min`, `default`, and
+`max`. The ordinary master layer is the local default. Supplemental sources use
+`{"Smart":{"master":"master-id","location":{"Width":100}}}` as their layer
+kind. Coordinates use local axis names and are independent of the font axes.
+Component `smart` dictionaries select these local values; omitted keys use defaults.
+Smart source grids require all neighboring corners at the requested position.
+The axes and source layers are editable data; evaluated component outlines are derived.
+
+## P4 design-space, vertical and CID metadata
+
+Existing `axes`, `masters` and `instances` store user-coordinate axis bounds and
+maps, with master/instance locations in mapped design coordinates. Supplemental
+layers use `Brace {master,location}` or `Bracket {master,axis,min,max}`; bracket
+bounds are inclusive design coordinates. Native schema version 1 is unchanged.
+Explicit axis rename commands migrate supplemental references in the same undo
+transaction as axis/master/instance metadata.
+
+Master metrics add nullable `default_vertical_origin` and
+`default_vertical_advance`, both defaulting to null in older documents. Layer
+`vertical_width` and `vertical_origin` remain nullable overrides; null inherits
+master defaults. Existing horizontal and vertical kerning dictionaries share
+named groups, so group renames and deletion update both directions.
+
+The existing optional `cid` object contains `registry`, `ordering`, `supplement`
+and a `cid_map` from decimal CID strings to glyph names. Editing, renaming and
+deleting glyphs preserve map consistency and undo restores it. Mapping and
+numeric glyph order are separate values committed together when requested.
+Unihan records, reverse Unicode indexes, preview paths and captured batch
+previews are derived data and are not serialized.

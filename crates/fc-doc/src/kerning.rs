@@ -3,7 +3,9 @@
 mod eligibility;
 mod groups;
 
-pub use eligibility::{check_horizontal_editing, HorizontalKerningEditBlock};
+pub use eligibility::{
+    check_horizontal_editing, check_vertical_editing, HorizontalKerningEditBlock,
+};
 pub use groups::validate_group;
 pub(crate) use groups::validate_pair_side;
 pub use groups::{group_membership, KerningGroupSide};
@@ -59,6 +61,27 @@ pub fn resolve_stored_horizontal(
     second: &GlyphName,
     master: &MasterId,
 ) -> Result<Option<KernPair>, Error> {
+    resolve_stored(font, first, second, master, false)
+}
+
+/// Resolve vertical records with the same exception priority as horizontal pairs.
+/// Values are changes in positive advance distance: negative values tighten.
+pub fn resolve_stored_vertical(
+    font: &Font,
+    first: &GlyphName,
+    second: &GlyphName,
+    master: &MasterId,
+) -> Result<Option<KernPair>, Error> {
+    resolve_stored(font, first, second, master, true)
+}
+
+fn resolve_stored(
+    font: &Font,
+    first: &GlyphName,
+    second: &GlyphName,
+    master: &MasterId,
+    vertical: bool,
+) -> Result<Option<KernPair>, Error> {
     let master = font
         .master(master)
         .ok_or_else(|| Error::MissingMaster(master.clone()))?;
@@ -82,11 +105,16 @@ pub fn resolve_stored_horizontal(
             )
         }),
     ];
+    let records = if vertical {
+        &master.kerning_v
+    } else {
+        &master.kerning_h
+    };
     for pair in candidates.into_iter().flatten() {
-        if let Some(&value) = master.kerning_h.0.get(&pair) {
+        if let Some(&value) = records.0.get(&pair) {
             if !value.is_finite() {
                 return Err(Error::InvalidCommand(format!(
-                    "non-finite horizontal kerning for `{first}` / `{second}`"
+                    "non-finite kerning for `{first}` / `{second}`"
                 )));
             }
             let record = KernPair {

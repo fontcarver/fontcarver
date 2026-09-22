@@ -28,6 +28,7 @@ import {
   suggestPath,
 } from './exportFormats'
 import { ExportResult } from './ExportResult'
+import { ExportVariationOptions } from './ExportVariationOptions'
 
 /** The four checkboxes of the dialog and the `ExportOptions` field each writes. */
 const OPTION_FIELDS = [
@@ -60,6 +61,11 @@ export function ExportDialog({ summary }: ExportDialogProps) {
   const setDialog = useUiStore((state) => state.setDialog)
   const formats = formatsFor(summary.masters.length)
   const [format, setFormat] = useState<ExportFormat>('Ttf')
+  const [variable, setVariable] = useState(false)
+  const [instance, setInstance] = useState<number>()
+  const [masterSubset, setMasterSubset] = useState<string[]>()
+  const canVary =
+    ['Ttf', 'Otf', 'Woff', 'Woff2'].includes(format) && summary.axes.length > 0
   const [path, setPath] = useState(() => suggestPath(summary, 'Ttf'))
   const [master, setMaster] = useState<string | null>(
     summary.masters[0]?.id ?? null,
@@ -135,6 +141,9 @@ export function ExportDialog({ summary }: ExportDialogProps) {
     setFailure(null)
     setReport(null)
     const exportOptions: ExportOptions = {
+      instance: canVary && !variable ? instance : undefined,
+      master_subset: canVary && variable ? masterSubset : undefined,
+      variable: canVary && variable,
       format,
       bitmap_strike:
         bitmapFormat && bitmapKey
@@ -142,7 +151,10 @@ export function ExportDialog({ summary }: ExportDialogProps) {
           : undefined,
       master: allMasters ? null : master,
       remove_overlap: options.remove_overlap,
-      keep_tt_instructions: format !== 'Otf' && options.keep_tt_instructions,
+      keep_tt_instructions:
+        !(canVary && (variable || instance !== undefined)) &&
+        format !== 'Otf' &&
+        options.keep_tt_instructions,
       preserve_untouched_tables: options.preserve_untouched_tables,
       production_names: options.production_names,
       autohint: false,
@@ -267,7 +279,9 @@ export function ExportDialog({ summary }: ExportDialogProps) {
         </div>
 
         {format === 'Otf' ? (
-          <p className={styles.hint}>{t('dialog.export.cffHint')}</p>
+          <p className={styles.hint}>
+            {t(variable ? 'variation.cff2Hint' : 'dialog.export.cffHint')}
+          </p>
         ) : null}
         {format === 'Pfa' || format === 'Pfb' ? (
           <p role="note" className={styles.formatWarning}>
@@ -306,7 +320,21 @@ export function ExportDialog({ summary }: ExportDialogProps) {
           </div>
         </div>
 
-        {!allMasters && summary.masters.length > 0 ? (
+        {canVary && (
+          <ExportVariationOptions
+            doc={summary.doc}
+            busy={busy}
+            variable={variable}
+            onVariable={setVariable}
+            instance={instance}
+            onInstance={setInstance}
+            subset={masterSubset}
+            onSubset={setMasterSubset}
+          />
+        )}
+        {!allMasters &&
+        !(canVary && (variable || instance !== undefined)) &&
+        summary.masters.length > 0 ? (
           <label className={styles.row}>
             <span className={styles.rowLabel}>{t('dialog.export.master')}</span>
             <select
@@ -336,8 +364,19 @@ export function ExportDialog({ summary }: ExportDialogProps) {
                 <input
                   id={`export-${field}`}
                   type="checkbox"
-                  disabled={busy}
-                  checked={options[field]}
+                  disabled={
+                    busy ||
+                    (field === 'keep_tt_instructions' &&
+                      canVary &&
+                      (variable || instance !== undefined))
+                  }
+                  checked={
+                    field === 'keep_tt_instructions' &&
+                    canVary &&
+                    (variable || instance !== undefined)
+                      ? false
+                      : options[field]
+                  }
                   onChange={(event) =>
                     setOptions((current) => ({
                       ...current,

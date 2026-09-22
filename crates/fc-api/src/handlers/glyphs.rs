@@ -21,6 +21,10 @@ pub(crate) struct Candidate {
     first_unicode: Option<u32>,
     width: f64,
     search_rank: u8,
+    radical: (u16, i16, u8),
+    strokes: u16,
+    reading: String,
+    cid: u32,
 }
 
 pub(crate) fn list(api: &Api, params: GlyphListParams) -> Result<GlyphListResult, ApiError> {
@@ -120,6 +124,18 @@ pub(crate) fn matching_candidates(
     filter: &GlyphFilter,
     search_query: Option<&str>,
 ) -> Result<Vec<Candidate>, ApiError> {
+    if filter.query.as_ref().is_some_and(|q| q.len() > 4096) {
+        return Err(ApiError::invalid_params("glyph search exceeds 4096 bytes"));
+    }
+    if let Some(cjk) = &filter.cjk {
+        super::cjk::validate(cjk)?;
+    }
+    let cid_map: std::collections::BTreeMap<_, _> = document
+        .font
+        .cid
+        .iter()
+        .flat_map(|c| c.cid_map.iter().map(|(id, name)| (name, *id)))
+        .collect();
     let mut matches = Vec::new();
     for (order, name) in document.font.glyph_order().enumerate() {
         let glyph = document.font.glyph(name).ok_or_else(|| {
@@ -130,11 +146,25 @@ pub(crate) fn matching_candidates(
             .glyph_id(name)
             .ok_or_else(|| ApiError::internal(format!("glyph `{name}` has no session handle")))?;
         if matches_filter(glyph, layer, document.glyph_generation(gid), filter) {
+            let unihan = glyph
+                .unicodes
+                .first()
+                .and_then(|cp| fc_glyphdata::unihan(*cp));
             matches.push(Candidate {
                 order,
                 gid,
                 name: name.to_string(),
                 first_unicode: glyph.unicodes.first().copied(),
+                radical: unihan
+                    .and_then(|d| d.radicals().next())
+                    .map(|r| (r.radical, r.residual, r.simplified))
+                    .unwrap_or((u16::MAX, i16::MAX, u8::MAX)),
+                strokes: unihan.and_then(|d| d.strokes().next()).unwrap_or(u16::MAX),
+                reading: unihan.filter(|d| !d.mandarin.is_empty()).map_or_else(
+                    || "\u{10ffff}".into(),
+                    |d| fc_glyphdata::normalize_reading(d.mandarin),
+                ),
+                cid: cid_map.get(name).copied().unwrap_or(u32::MAX),
                 width: layer.map_or(0.0, |layer| layer.width),
                 search_rank: search_query
                     .and_then(|query| query_rank(glyph, query))
@@ -170,6 +200,14 @@ fn matches_filter(
         .as_deref()
         .is_some_and(|query| !query_matches(glyph, query))
     {
+        return false;
+    }
+    if filter.cjk.as_ref().is_some_and(|filter| {
+        !glyph
+            .unicodes
+            .iter()
+            .any(|cp| super::cjk::matches(*cp, filter))
+    }) {
         return false;
     }
     let first_unicode = glyph.unicodes.first().copied();
@@ -249,6 +287,9 @@ fn query_matches(glyph: &Glyph, query: &str) -> bool {
 }
 
 fn query_rank(glyph: &Glyph, query: &str) -> Option<u8> {
+    if let Some(matches) = super::cjk::query(glyph, query) {
+        return matches.then_some(0);
+    }
     let query = query.trim();
     let lower = query.to_lowercase();
     if let Some(digits) = lower.strip_prefix("u+") {
@@ -289,6 +330,22 @@ fn parse_scalar(digits: &str) -> Option<u32> {
 
 pub(crate) fn sort_candidates(candidates: &mut [Candidate], sort: GlyphSort) {
     candidates.sort_by(|left, right| match sort {
+        GlyphSort::Radical => left
+            .radical
+            .cmp(&right.radical)
+            .then_with(|| unicode_order(left, right)),
+        GlyphSort::Strokes => left
+            .strokes
+            .cmp(&right.strokes)
+            .then_with(|| unicode_order(left, right)),
+        GlyphSort::Reading => left
+            .reading
+            .cmp(&right.reading)
+            .then_with(|| unicode_order(left, right)),
+        GlyphSort::Cid => left
+            .cid
+            .cmp(&right.cid)
+            .then_with(|| unicode_order(left, right)),
         GlyphSort::Order => left.order.cmp(&right.order),
         GlyphSort::Unicode => unicode_order(left, right),
         GlyphSort::Name => left
@@ -341,6 +398,8 @@ pub(crate) fn build_cell(
             sub_category,
             script,
             width: 0.0,
+            vertical_advance: None,
+            vertical_origin: None,
             bbox: None,
             path: include_path.then(String::new),
             color_label: glyph.color_label,
@@ -401,6 +460,29 @@ pub(crate) fn build_cell(
         sub_category,
         script,
         width: layer.width,
+        vertical_advance: Some(
+            layer
+                .vertical_width
+                .or_else(|| {
+                    document
+                        .font
+                        .master(master)
+                        .and_then(|m| m.metrics.default_vertical_advance)
+                })
+                .unwrap_or(f64::from(document.font.info.units_per_em)),
+        ),
+        vertical_origin: Some(
+            layer
+                .vertical_origin
+                .or_else(|| {
+                    document.font.master(master).and_then(|m| {
+                        m.metrics
+                            .default_vertical_origin
+                            .or(Some(m.metrics.ascender))
+                    })
+                })
+                .unwrap_or_default(),
+        ),
         bbox,
         path: include_path.then(|| rounded_svg(&flattened)),
         color_label: glyph.color_label,
@@ -491,6 +573,7 @@ pub(crate) fn layer_master(layer: &Layer) -> Option<MasterId> {
         LayerKind::Master(master)
         | LayerKind::Background(master)
         | LayerKind::Brace { master, .. }
+        | LayerKind::Smart { master, .. }
         | LayerKind::Bracket { master, .. } => Some(master.clone()),
         LayerKind::Backup { of, .. } => Some(of.clone()),
         LayerKind::Custom(_) => None,

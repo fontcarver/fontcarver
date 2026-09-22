@@ -9,6 +9,10 @@ use ts_rs::TS;
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize, TS)]
 #[ts(export)]
 pub struct GlyphFilter {
+    /// Optional Unihan and CJK repertoire filters.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional = nullable)]
+    pub cjk: Option<super::CjkFilter>,
     /// Name or Unicode query.
     #[serde(default)]
     pub query: Option<String>,
@@ -54,6 +58,14 @@ pub enum GlyphSort {
     Name,
     /// Horizontal advance width.
     Width,
+    /// First Unihan radical and residual stroke count; unknown values last.
+    Radical,
+    /// First recorded total stroke count; unknown values last.
+    Strokes,
+    /// Mandarin reading; unknown values last.
+    Reading,
+    /// Numeric CID order; unmapped glyphs last.
+    Cid,
 }
 
 /// Parameters for a filtered, sorted page of glyph cells.
@@ -97,6 +109,14 @@ pub struct GlyphCell {
     pub script: String,
     /// Horizontal advance width in the selected master.
     pub width: f64,
+    /// Effective vertical advance, including master defaults.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub vertical_advance: Option<f64>,
+    /// Effective vertical origin, including master defaults.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub vertical_origin: Option<f64>,
     /// Exact flattened outline bounds as `[xmin, ymin, xmax, ymax]`.
     pub bbox: Option<[f64; 4]>,
     /// Rounded component-flattened SVG path data when requested.

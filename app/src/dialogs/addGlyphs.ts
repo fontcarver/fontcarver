@@ -24,6 +24,11 @@ export const CHARSETS: readonly CharsetOption[] = [
   { id: 'latinExtA', recipe: 'U+0100-U+017F' },
   { id: 'latin1', recipe: STARTER_RECIPES.latin1 },
   { id: 'gb2312', recipe: STARTER_RECIPES.gb2312 },
+  { id: 'big5', recipe: '@charset:big5' },
+  { id: 'jisx0208', recipe: '@charset:jisx0208' },
+  { id: 'ksx1001', recipe: '@charset:ksx1001' },
+  { id: 'iicore', recipe: '@charset:iicore' },
+  { id: 'gb18030level1', recipe: '@charset:gb18030level1' },
 ]
 
 /** Why the kernel skipped one item of a recipe. */

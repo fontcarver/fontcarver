@@ -9,8 +9,8 @@ export interface TextMasterOption {
 /** An OpenType feature tag paired with its enabled state. */
 export type TextFeature = [tag: string, enabled: boolean]
 
-/** Directions available to the P1 text shaper. */
-export type TextDirection = 'ltr' | 'rtl'
+/** Directions available to the text shaper. */
+export type TextDirection = 'ltr' | 'rtl' | 'ttb'
 
 /** Sample-menu actions. All-encoded resolution remains the caller's job. */
 export type TextSampleId = 'latin' | 'chinese' | 'all-encoded'

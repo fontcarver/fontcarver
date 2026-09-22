@@ -21,6 +21,15 @@ pub(crate) struct Args {
     /// Compile from the model alone, without imported tables or hinting.
     #[arg(long)]
     pub(crate) no_preserve: bool,
+    /// Compile all masters into a variable TrueType or CFF2 font.
+    #[arg(long, conflicts_with_all = ["master", "instance"])]
+    pub(crate) variable: bool,
+    /// Export a named static instance by zero-based index.
+    #[arg(long, conflicts_with = "master")]
+    pub(crate) instance: Option<usize>,
+    /// Select variable source masters by name or identifier (repeatable).
+    #[arg(long, requires = "variable", value_name = "NAME")]
+    pub(crate) source_master: Vec<String>,
     /// Master to compile, by name or identifier.
     #[arg(long, value_name = "NAME")]
     pub(crate) master: Option<String>,
@@ -31,6 +40,19 @@ pub(crate) fn run(args: Args) -> Result<(), Error> {
     let opened = open_document(&args.input, None)?;
     let options = ExportOptions {
         format,
+        variable: args.variable,
+        instance: args.instance,
+        master_subset: (!args.source_master.is_empty())
+            .then(|| {
+                args.source_master
+                    .iter()
+                    .map(|name| {
+                        master_id(&opened, Some(name))?
+                            .ok_or_else(|| Error::UnknownMaster { name: name.clone() })
+                    })
+                    .collect::<Result<Vec<_>, Error>>()
+            })
+            .transpose()?,
         master: master_id(&opened, args.master.as_deref())?,
         remove_overlap: args.remove_overlap,
         keep_tt_instructions: !args.no_preserve,

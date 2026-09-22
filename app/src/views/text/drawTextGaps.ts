@@ -21,15 +21,21 @@ export function drawTextGaps(
     )
       continue
     const point = viewport.toScreen({
-      x: gap.x - run.activeOrigin.x,
-      y: -run.unitsPerEm * 0.12 - run.activeOrigin.y,
+      x:
+        gap.x -
+        (gap.y === undefined ? 0 : run.unitsPerEm / 2) -
+        run.activeOrigin.x,
+      y: (gap.y ?? -run.unitsPerEm * 0.12) - run.activeOrigin.y,
     })
     const selected = run.selectedGap === gap.index
     ctx.fillStyle = selected ? theme.accent : theme.metricStrong
     if (selected) {
       const top = viewport.toScreen({
-        x: gap.x - run.activeOrigin.x,
-        y: run.unitsPerEm * 0.8 - run.activeOrigin.y,
+        x:
+          gap.x +
+          (gap.y === undefined ? 0 : run.unitsPerEm / 2) -
+          run.activeOrigin.x,
+        y: (gap.y ?? run.unitsPerEm * 0.8) - run.activeOrigin.y,
       })
       ctx.strokeStyle = theme.accent
       ctx.lineWidth = 1

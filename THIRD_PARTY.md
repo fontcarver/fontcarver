@@ -357,3 +357,20 @@ Specifications: [Adobe BDF](https://adobe-type-tools.github.io/font-tech-notes/p
 [OpenType EBDT](https://learn.microsoft.com/en-us/typography/opentype/spec/ebdt),
 [CBDT](https://learn.microsoft.com/en-us/typography/opentype/spec/cbdt),
 [sbix](https://learn.microsoft.com/en-us/typography/opentype/spec/sbix).
+
+### P4 Unicode data and variation implementation — 2026-09-22
+
+- `fc-glyphdata/data/Unihan-17-plane*.tsv` derives from Unicode 17.0.0 Unihan
+  (Copyright 2025 Unicode, Inc.; Unicode License v3).
+- `JIS0208.TXT` and `KSX1001.TXT` retain Unicode's original permission notices.
+- `GB18030-2022-Level1.txt` derives from ICU 77.1 `gb18030-2022.ucm`
+  (Unicode License v3; Copyright 2016 and later Unicode, Inc. and others;
+  Copyright 2000–2012 International Business Machines Corporation and others).
+- Complete Unicode license: `crates/fc-glyphdata/data/UNICODE-LICENSE.txt`.
+  Pinned URLs, source hashes, extraction commands and repertoire qualifications:
+  `crates/fc-glyphdata/data/README.md`.
+- Existing `fontdrasil 1.0.0` (MIT OR Apache-2.0) is used directly by `fc-geom`
+  for the same variation model as the fontc compiler. Existing workspace
+  `fc-geom` is now used directly by `fc-api` and `fc-compile` for preview and
+  compile-time interpolation. No additional third-party variation dependency
+  or FontForge source is introduced.

@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 
 import type { MetricsKeys } from '../../../api'
+import { Button } from '../../../components/Button'
 import { NumberField } from '../../../components/NumberField'
 import { setMetricsCommand } from '../../../editor/pointCommands'
 import { commitField } from '../commitField'
@@ -60,6 +61,22 @@ export function MetricsPanel({
       t('editor.undo.setMetrics'),
       reload,
     )
+
+  const writeVertical = (advance: number | null, origin: number | null) =>
+    commitField(
+      target,
+      {
+        SetVerticalMetrics: {
+          glyph: glyph.name,
+          layer: target.layer,
+          advance,
+          origin,
+        },
+      },
+      t('variation.verticalMetrics'),
+      reload,
+    )
+  const layer = glyph.layers.find((layer) => layer.id === target.layer)
 
   const writeKeys = (next: MetricsKeys) =>
     commitField(
@@ -149,26 +166,28 @@ export function MetricsPanel({
         </button>
       </div>
 
-      {scene.metrics.verticalOrigin === null ? null : (
-        <div className={styles.row}>
-          <span className={styles.rowLabel}>
-            {t('glyphView.metric.verticalOrigin')}
-          </span>
-          <span className={styles.rowValue}>
-            {round(scene.metrics.verticalOrigin)}
-          </span>
-        </div>
-      )}
-      {scene.metrics.verticalWidth === null ? null : (
-        <div className={styles.row}>
-          <span className={styles.rowLabel}>
-            {t('glyphView.metric.verticalAdvance')}
-          </span>
-          <span className={styles.rowValue}>
-            {round(scene.metrics.verticalWidth)}
-          </span>
-        </div>
-      )}
+      <NumberField
+        label={t('glyphView.metric.verticalAdvance')}
+        value={scene.metrics.verticalWidth ?? scene.metrics.upem}
+        onCommit={(advance) =>
+          writeVertical(advance, layer?.vertical_origin ?? null)
+        }
+      />
+      <NumberField
+        label={t('glyphView.metric.verticalOrigin')}
+        value={scene.metrics.verticalOrigin ?? scene.metrics.ascender}
+        onCommit={(origin) =>
+          writeVertical(layer?.vertical_width ?? null, origin)
+        }
+      />
+      <Button
+        disabled={
+          layer?.vertical_width == null && layer?.vertical_origin == null
+        }
+        onClick={() => writeVertical(null, null)}
+      >
+        {t('variation.useMasterMetrics')}
+      </Button>
     </>
   )
 }
