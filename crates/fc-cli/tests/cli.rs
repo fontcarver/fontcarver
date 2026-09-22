@@ -91,6 +91,36 @@ fn build_compiles_a_ufo_into_a_truetype_font() {
 }
 
 #[test]
+fn build_autohint_emits_cff_stems_and_rejects_variable_requests_before_writing() {
+    let directory = tempfile::tempdir().unwrap();
+    let output = directory.path().join("hinted.otf");
+    fontcarver()
+        .arg("build")
+        .arg(fc_fixtures::path("SourceSans3Min.otf"))
+        .arg(&output)
+        .arg("--autohint")
+        .assert()
+        .success();
+    let font = fc_sfnt::read_bytes(&std::fs::read(&output).unwrap(), &Default::default())
+        .unwrap()
+        .fonts
+        .remove(0);
+    assert!(font
+        .glyphs
+        .values()
+        .any(|glyph| !glyph.layers[0].hints.is_empty()));
+    let rejected = directory.path().join("rejected.ttf");
+    fontcarver()
+        .arg("build")
+        .arg(fc_fixtures::path("SourceSans3Min.otf"))
+        .arg(&rejected)
+        .args(["--autohint", "--variable"])
+        .assert()
+        .failure();
+    assert!(!rejected.exists());
+}
+
+#[test]
 fn build_rejects_a_source_output_format_with_exit_code_two() {
     let directory = tempfile::tempdir().expect("create temporary directory");
 

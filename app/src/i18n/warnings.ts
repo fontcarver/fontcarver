@@ -16,6 +16,7 @@ export type WarningTranslator = (
 const WARNING_KEYS: Readonly<Record<string, string>> = {
   // Import warnings.
   'cff-hints-not-imported': 'warning.cffHintsNotImported',
+  'cff-private-dicts-flattened': 'warning.cffPrivateDictsFlattened',
   'cff-unhinted-outlines': 'warning.cffUnhintedOutlines',
   'type1-layout-loss': 'warning.type1LayoutLoss',
   'type1-hinting-loss': 'warning.type1HintingLoss',

@@ -374,3 +374,15 @@ Specifications: [Adobe BDF](https://adobe-type-tools.github.io/font-tech-notes/p
   `fc-geom` is now used directly by `fc-api` and `fc-compile` for preview and
   compile-time interpolation. No additional third-party variation dependency
   or FontForge source is introduced.
+
+### P5 hinting implementation (2026-09-22)
+
+`fc-hint` reuses the already locked permissive `read-fonts`, `kurbo`, `tempfile`
+and `thiserror` packages. TrueType opcode names/decoding come from the public
+fontations API. PostScript geometry analysis and the assembly text parser are
+original implementations; no FontForge source or executable is used.
+
+The optional `ttfautohint` integration launches a user-installed executable in a
+separate process. No ttfautohint or FreeType binary, source or library is added to
+the shipped dependency graph. Users obtain and license that tool separately;
+see its [official distribution](https://freetype.org/ttfautohint/).

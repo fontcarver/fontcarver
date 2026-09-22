@@ -20,6 +20,7 @@ mod info;
 mod kerning;
 mod layer;
 mod master;
+mod ps;
 pub mod query;
 mod smart;
 

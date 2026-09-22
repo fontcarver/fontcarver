@@ -16,6 +16,7 @@ sfnt = ["dep:fc-sfnt"]
 fea-rs = "1.0"
 flate2.workspace = true
 fc-geom = { path = "../fc-geom" }
+fc-hint = { path = "../fc-hint" }
 fc-model = { path = "../fc-model" }
 fc-sfnt = { path = "../fc-sfnt", optional = true }
 kurbo.workspace = true

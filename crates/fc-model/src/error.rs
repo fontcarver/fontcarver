@@ -9,6 +9,9 @@ use crate::{GlyphName, LayerId, MasterId};
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub enum Error {
+    /// Hint coordinates, program references or private-dictionary values are invalid.
+    #[error("invalid hint data: {0}")]
+    InvalidHints(String),
     /// Axes, locations or master identities violate the design-space contract.
     #[error("invalid design space: {0}")]
     InvalidDesignSpace(String),

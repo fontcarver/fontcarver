@@ -333,11 +333,25 @@ impl Document {
         } else {
             affected_names(&impact, None, None)
         };
+        // Dependent hints describe resolved geometry and must participate in undo
+        // when a component base changes, even if their own points stay unchanged.
+        if impact.affects_dependents {
+            for name in &affected_before {
+                if self
+                    .font
+                    .glyph(name)
+                    .is_some_and(|g| g.layers.iter().any(|l| !l.hints.is_empty()))
+                {
+                    impact.glyph(name);
+                }
+            }
+        }
         let inverse = undo::capture(&self.font, &impact);
         let inverse_handles = self.capture_handles(&impact.glyphs);
         let before_state = self.current_state;
 
         command::apply_to_font(&mut self.font, &command, &inverse)?;
+        command::invalidate_stale_ps_hints(&mut self.font, &inverse);
         if (command::is_kerning(&command) || command::is_draft(&command))
             && inverse == undo::capture(&self.font, &impact)
         {

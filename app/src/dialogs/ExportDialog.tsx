@@ -30,9 +30,10 @@ import {
 import { ExportResult } from './ExportResult'
 import { ExportVariationOptions } from './ExportVariationOptions'
 
-/** The four checkboxes of the dialog and the `ExportOptions` field each writes. */
+/** Export option checkboxes and the `ExportOptions` fields they write. */
 const OPTION_FIELDS = [
   'remove_overlap',
+  'autohint',
   'keep_tt_instructions',
   'preserve_untouched_tables',
   'production_names',
@@ -42,6 +43,7 @@ type OptionField = (typeof OPTION_FIELDS)[number]
 
 const OPTION_KEYS: Record<OptionField, string> = {
   remove_overlap: 'removeOverlap',
+  autohint: 'autohint',
   keep_tt_instructions: 'keepTtInstructions',
   preserve_untouched_tables: 'preserveUntouchedTables',
   production_names: 'productionNames',
@@ -72,6 +74,7 @@ export function ExportDialog({ summary }: ExportDialogProps) {
   )
   const [options, setOptions] = useState<Record<OptionField, boolean>>({
     remove_overlap: false,
+    autohint: false,
     keep_tt_instructions: true,
     preserve_untouched_tables: true,
     production_names: false,
@@ -150,14 +153,20 @@ export function ExportDialog({ summary }: ExportDialogProps) {
           ? (bitmapKey.split(':').map(Number) as [number, number])
           : undefined,
       master: allMasters ? null : master,
-      remove_overlap: options.remove_overlap,
+      remove_overlap:
+        SFNT_FORMATS.includes(format) &&
+        !(canVary && variable) &&
+        options.remove_overlap,
       keep_tt_instructions:
         !(canVary && (variable || instance !== undefined)) &&
         format !== 'Otf' &&
         options.keep_tt_instructions,
       preserve_untouched_tables: options.preserve_untouched_tables,
       production_names: options.production_names,
-      autohint: false,
+      autohint:
+        SFNT_FORMATS.includes(format) &&
+        !(canVary && variable) &&
+        options.autohint,
       table_subset: null,
     }
     // Show the busy line at once: the first kernel progress event only arrives
@@ -179,6 +188,11 @@ export function ExportDialog({ summary }: ExportDialogProps) {
   }
 
   const showOptions = SFNT_FORMATS.includes(format)
+  const unavailable = (field: OptionField) =>
+    canVary &&
+    ((field === 'keep_tt_instructions' &&
+      (variable || instance !== undefined)) ||
+      (variable && (field === 'autohint' || field === 'remove_overlap')))
 
   return (
     <Dialog
@@ -364,19 +378,8 @@ export function ExportDialog({ summary }: ExportDialogProps) {
                 <input
                   id={`export-${field}`}
                   type="checkbox"
-                  disabled={
-                    busy ||
-                    (field === 'keep_tt_instructions' &&
-                      canVary &&
-                      (variable || instance !== undefined))
-                  }
-                  checked={
-                    field === 'keep_tt_instructions' &&
-                    canVary &&
-                    (variable || instance !== undefined)
-                      ? false
-                      : options[field]
-                  }
+                  disabled={busy || unavailable(field)}
+                  checked={!unavailable(field) && options[field]}
                   onChange={(event) =>
                     setOptions((current) => ({
                       ...current,

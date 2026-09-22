@@ -9,6 +9,7 @@ mod export;
 mod features;
 mod font;
 mod glyphs;
+mod hints;
 mod kerning;
 mod layout;
 mod layout_conversion;
@@ -16,6 +17,7 @@ mod problems;
 mod session;
 mod shaping;
 mod variation;
+pub use hints::*;
 pub use variation::*;
 
 pub use commands::*;

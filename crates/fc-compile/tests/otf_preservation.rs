@@ -51,6 +51,26 @@ fn assert_rejected(tag: [u8; 4], table: &(impl FontWrite + Validate), detail: &s
     // This incompatibility is specific to conversion to CFF. Existing TTF
     // preservation remains available, and disabling raw preservation is useful.
     export(&font, &|_| 0, &ExportOptions::default()).expect("export original TTF layout");
+    let error = export(
+        &font,
+        &|_| 0,
+        &ExportOptions {
+            remove_overlap: true,
+            ..ExportOptions::default()
+        },
+    )
+    .expect_err("overlap removal must not preserve stale point indices or uninstantiated layout");
+    assert!(error.to_string().contains(detail), "{error}");
+    export(
+        &font,
+        &|_| 0,
+        &ExportOptions {
+            remove_overlap: true,
+            preserve_untouched_tables: false,
+            ..ExportOptions::default()
+        },
+    )
+    .expect("overlap removal can regenerate layout when preservation is explicitly disabled");
     export(
         &font,
         &|_| 0,

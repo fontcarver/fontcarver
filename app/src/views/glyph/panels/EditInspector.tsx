@@ -17,6 +17,7 @@ import { MetricsPanel } from './MetricsPanel'
 import { PanelSection } from './PanelSection'
 import type { PanelContext } from './panelContext'
 import { TransformPanel } from './TransformPanel'
+import { HintPanel } from '../../hints/HintPanel'
 
 export interface EditInspectorProps {
   masters: readonly MasterSummary[]
@@ -74,6 +75,11 @@ export function EditInspector({
         <GlyphPanel {...context} />
       </PanelSection>
       <UnihanPanel unicodes={active.glyph.unicodes} />
+      <HintPanel
+        target={context.target}
+        master={context.master}
+        reload={context.reload}
+      />
       {hasAxes && (
         <GlyphVariationPanel
           key={`${active.doc}:${active.gid}`}

@@ -5,7 +5,7 @@ use kurbo::Affine;
 use read_fonts::{
     ps::{
         cff::{dict, index::Index, CffFontRef},
-        cs::{self, NopFilterSink},
+        cs,
         transform::Transform,
     },
     types::{Fixed, GlyphId},
@@ -13,10 +13,12 @@ use read_fonts::{
 };
 
 use crate::Error;
+mod hints;
 
 pub(crate) struct CffSource<'a> {
     font: CffFontRef<'a>,
     has_hints: Cell<bool>,
+    lost_hints: Cell<bool>,
 }
 
 impl<'a> CffSource<'a> {
@@ -30,6 +32,7 @@ impl<'a> CffSource<'a> {
         Ok(Some(Self {
             font,
             has_hints: Cell::new(private_dict_has_hints),
+            lost_hints: Cell::new(false),
         }))
     }
 
@@ -45,16 +48,27 @@ impl<'a> CffSource<'a> {
             .map_err(|error| Error::parse("CFF/CFF2 Private DICT", error))?;
         let mut pen = CffPen::new(self.font.transform(&subfont, None));
         self.font
-            .evaluate_charstring(&subfont, gid, &[], &mut NopFilterSink::new(&mut pen))
+            .evaluate_charstring(&subfont, gid, &[], &mut pen)
             .map_err(|error| Error::parse("CFF/CFF2 CharString", error))?;
         pen.finish_open();
+        pen.hints.finish();
         self.has_hints.set(self.has_hints.get() || pen.saw_hint);
+        self.lost_hints.set(self.lost_hints.get() || pen.hints.lost);
         layer.contours = pen.contours;
+        layer.hints = pen.hints.values;
         Ok(())
     }
 
     pub(crate) fn has_hints(&self) -> bool {
         self.has_hints.get()
+    }
+
+    pub(crate) fn lost_hints(&self) -> bool {
+        self.has_hints() && self.lost_hints.get()
+    }
+
+    pub(crate) fn multiple_private_dicts(&self) -> bool {
+        self.font.num_subfonts() > 1
     }
 }
 
@@ -313,6 +327,7 @@ struct CffPen {
     points: Vec<Point>,
     transform: Affine,
     saw_hint: bool,
+    hints: hints::Hints,
 }
 
 impl CffPen {
@@ -340,6 +355,9 @@ impl CffPen {
     }
 
     fn push(&mut self, x: Fixed, y: Fixed, kind: PointKind) {
+        if kind != PointKind::OffCurve {
+            self.hints.point(self.contours.len(), self.points.len());
+        }
         let position = self.transform * kurbo::Point::new(x.to_f64(), y.to_f64());
         self.points.push(Point {
             x: position.x,
@@ -369,6 +387,14 @@ impl cs::CommandSink for CffPen {
     }
 
     fn line_to(&mut self, x: Fixed, y: Fixed) {
+        let position = self.transform * kurbo::Point::new(x.to_f64(), y.to_f64());
+        if self
+            .points
+            .last()
+            .is_some_and(|p| p.x == position.x && p.y == position.y)
+        {
+            return;
+        }
         self.push(x, y, PointKind::Line);
     }
 
@@ -388,6 +414,7 @@ impl cs::CommandSink for CffPen {
                 .then_some(last.kind)
         });
         if let Some(kind) = closing_kind {
+            self.hints.close(self.contours.len(), self.points.len() - 1);
             self.points.pop();
             if let Some(first) = self.points.first_mut() {
                 first.kind = kind;
@@ -403,20 +430,35 @@ impl cs::CommandSink for CffPen {
         });
     }
 
-    fn hstem(&mut self, _y: Fixed, _dy: Fixed) {
+    fn hstem(&mut self, y: Fixed, dy: Fixed) {
         self.saw_hint = true;
+        // fontations emits the two absolute edges, despite the trait's dy label.
+        self.hints
+            .stem(true, y.to_f64(), dy.to_f64() - y.to_f64(), self.transform);
     }
 
-    fn vstem(&mut self, _x: Fixed, _dx: Fixed) {
+    fn vstem(&mut self, x: Fixed, dx: Fixed) {
         self.saw_hint = true;
+        self.hints
+            .stem(false, x.to_f64(), dx.to_f64() - x.to_f64(), self.transform);
     }
 
-    fn hint_mask(&mut self, _mask: &[u8]) {
+    fn hint_mask(&mut self, mask: &[u8]) {
         self.saw_hint = true;
+        self.hints.mask(false, mask);
     }
 
-    fn counter_mask(&mut self, _mask: &[u8]) {
+    fn counter_mask(&mut self, mask: &[u8]) {
         self.saw_hint = true;
+        self.hints.mask(true, mask);
+    }
+
+    fn clear_hints(&mut self) {
+        self.hints.clear();
+    }
+
+    fn finish(&mut self) {
+        self.close();
     }
 }
 

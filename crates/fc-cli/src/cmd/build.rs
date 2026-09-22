@@ -18,6 +18,9 @@ pub(crate) struct Args {
     /// Remove overlapping contours before compiling.
     #[arg(long)]
     pub(crate) remove_overlap: bool,
+    /// Automatically hint a static sfnt export (TrueType requires ttfautohint on PATH).
+    #[arg(long, conflicts_with = "variable")]
+    pub(crate) autohint: bool,
     /// Compile from the model alone, without imported tables or hinting.
     #[arg(long)]
     pub(crate) no_preserve: bool,
@@ -55,6 +58,7 @@ pub(crate) fn run(args: Args) -> Result<(), Error> {
             .transpose()?,
         master: master_id(&opened, args.master.as_deref())?,
         remove_overlap: args.remove_overlap,
+        autohint: args.autohint,
         keep_tt_instructions: !args.no_preserve,
         preserve_untouched_tables: !args.no_preserve,
         ..ExportOptions::default()

@@ -2,13 +2,19 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { setTransport, type ExportParams, type ExportReport } from '../api'
+import {
+  setTransport,
+  type ExportParams,
+  type ExportReport,
+  type Tag,
+} from '../api'
 import { i18n } from '../i18n'
 import { initialDocumentState, useDocumentStore } from '../stores/documentStore'
 import { initialProgressState, useProgressStore } from '../stores/progressStore'
 import { initialSessionState, useSessionStore } from '../stores/sessionStore'
 import { initialUiState, useUiStore } from '../stores/uiStore'
 import { cellFor } from '../test/glyphFixtures'
+import { makeMaster } from '../test/fontFixtures'
 import { createMockTransport, makeSummary } from '../test/mockTransport'
 import { ApiCallError } from '../transport'
 
@@ -34,6 +40,17 @@ function setup(
   const transport = createMockTransport({
     'session.export': () => (typeof report === 'function' ? report() : report),
     'glyphs.search': ({ query }) => [cellFor(7, { name: query })],
+    'variation.state': () => ({
+      generation: 0,
+      axes: summary.axes.map((axis) => ({
+        ...axis,
+        tag: Array.from(axis.tag, (c) => c.charCodeAt(0)) as Tag,
+        map: [],
+      })),
+      masters: summary.masters.map((master) => makeMaster(master)),
+      instances: [],
+      first_glyph: null,
+    }),
   })
   setTransport(transport)
   useSessionStore.setState({ docs: [summary] })
@@ -56,11 +73,59 @@ afterEach(() => {
 })
 
 describe('ExportDialog', () => {
+  it('omits static preprocessing on variable exports and restores the static preferences', async () => {
+    const user = userEvent.setup()
+    const transport = setup(
+      makeSummary({
+        axes: [
+          {
+            tag: 'wght',
+            name: 'Weight',
+            min: 400,
+            default: 400,
+            max: 700,
+            hidden: false,
+          },
+        ],
+      }),
+    )
+    const autohint = screen.getByRole('checkbox', { name: 'Automatic hinting' })
+    const overlap = screen.getByRole('checkbox', { name: 'Remove overlap' })
+    await user.click(autohint)
+    await user.click(overlap)
+    const variable = screen.getByRole('checkbox', {
+      name: 'Export a variable font',
+    })
+    await user.click(variable)
+    expect(autohint).toBeDisabled()
+    expect(autohint).not.toBeChecked()
+    expect(overlap).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Export' }))
+    await waitFor(() =>
+      expect(
+        transport.calls.find((c) => c.method === 'session.export')?.params,
+      ).toMatchObject({
+        options: {
+          variable: true,
+          autohint: false,
+          remove_overlap: false,
+          keep_tt_instructions: false,
+        },
+      }),
+    )
+    await user.click(variable)
+    expect(autohint).toBeEnabled()
+    expect(autohint).toBeChecked()
+    expect(overlap).toBeChecked()
+  })
   it('maps the form onto session.export parameters', async () => {
     const user = userEvent.setup()
     const transport = setup()
 
     await user.click(screen.getByRole('checkbox', { name: 'Remove overlap' }))
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Automatic hinting' }),
+    )
     await user.click(
       screen.getByRole('checkbox', { name: 'Preserve untouched tables' }),
     )
@@ -79,7 +144,7 @@ describe('ExportDialog', () => {
         keep_tt_instructions: true,
         preserve_untouched_tables: false,
         production_names: false,
-        autohint: false,
+        autohint: true,
         table_subset: null,
       },
     })
@@ -88,6 +153,10 @@ describe('ExportDialog', () => {
   it('follows the format tab into the file extension and the options', async () => {
     const user = userEvent.setup()
     const transport = setup()
+    await user.click(
+      screen.getByRole('checkbox', { name: 'Automatic hinting' }),
+    )
+    await user.click(screen.getByRole('checkbox', { name: 'Remove overlap' }))
 
     await user.click(screen.getByRole('tab', { name: 'WOFF2' }))
     expect(screen.getByLabelText('Destination path')).toHaveValue(
@@ -108,6 +177,10 @@ describe('ExportDialog', () => {
     expect((transport.calls[0]?.params as ExportParams).options.format).toBe(
       'Ufo',
     )
+    expect((transport.calls[0]?.params as ExportParams).options).toMatchObject({
+      autohint: false,
+      remove_overlap: false,
+    })
   })
 
   it('offers the Designspace tab only for a multiple-master document', () => {
@@ -140,9 +213,7 @@ describe('ExportDialog', () => {
     expect(
       screen.queryByRole('checkbox', { name: 'Keep TrueType instructions' }),
     ).not.toBeInTheDocument()
-    expect(
-      screen.getByText(/CFF outlines are exported without hinting/),
-    ).toBeVisible()
+    expect(screen.getByText(/PostScript stems, masks and zones/)).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Export' }))
     await waitFor(() => expect(transport.calls).toHaveLength(1))
     expect((transport.calls[0]?.params as ExportParams).options).toMatchObject({

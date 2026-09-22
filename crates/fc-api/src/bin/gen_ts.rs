@@ -43,6 +43,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     )?;
     add_imports(&output_dir.join("BitmapStrike.ts"), &["BitmapGlyph"])?;
     add_imports(
+        &output_dir.join("HintCommand.ts"),
+        &["PsHints", "PsPrivate", "Zone", "Stem"],
+    )?;
+    add_imports(
         &output_dir.join("DesignSpaceCommand.ts"),
         &["Axis", "Master", "Instance", "LayerKind", "SmartAxis"],
     )?;
@@ -69,6 +73,11 @@ fn repair_command_double_option(path: &Path) -> Result<(), std::io::Error> {
 }
 
 fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
+    HintStateParams::export_all(config)?;
+    HintState::export_all(config)?;
+    HintApplyParams::export_all(config)?;
+    HintAnalyzeParams::export_all(config)?;
+    HintAnalysis::export_all(config)?;
     VariationState::export_all(config)?;
     VariationApplyParams::export_all(config)?;
     VariationPreviewParams::export_all(config)?;

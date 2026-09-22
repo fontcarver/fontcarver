@@ -18,6 +18,7 @@ fontdrasil = "1.0"
 fontir = "1.0"
 fc-model = { path = "../fc-model" }
 fc-geom = { path = "../fc-geom" }
+fc-hint = { path = "../fc-hint" }
 fc-sfnt = { path = "../fc-sfnt" }
 fea-rs = "1.0"
 harfrust = "0.13"

@@ -85,7 +85,7 @@ describe('sessionStore.open', () => {
     expect(useUiStore.getState().toasts[0]).toMatchObject({
       kind: 'info',
       message:
-        'CFF outlines were imported without per-glyph stem and hint-mask data',
+        'Some CFF hints could not be represented after font-matrix or seac transformation.',
     })
     expect(useUiStore.getState().toasts[1]).toMatchObject({
       kind: 'info',

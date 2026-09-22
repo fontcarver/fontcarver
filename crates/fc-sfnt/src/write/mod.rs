@@ -4,6 +4,7 @@ mod cff;
 mod cff2;
 mod charstring;
 mod encoding;
+mod hints;
 
 pub use cff::{write_cff, CffOutput};
 pub use cff2::{cff2_outline, write_cff2, Cff2Delta, Cff2Glyph, Cff2Outline};

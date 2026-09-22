@@ -141,3 +141,24 @@ deleting glyphs preserve map consistency and undo restores it. Mapping and
 numeric glyph order are separate values committed together when requested.
 Unihan records, reverse Unicode indexes, preview paths and captured batch
 previews are derived data and are not serialized.
+
+## P5 PostScript hint authoring
+
+Existing `layer.hints` stores horizontal/vertical stems (`start`, `width`,
+`ranges`), diagonal hints, point-bound `hint_masks`, and the `flex` preference.
+Hint masks add two optional booleans, both defaulting to `false`:
+
+- `counter` distinguishes a Type 2 `cntrmask` from an active `hintmask`.
+- `closing` binds the mask to the segment closing onto the first explicit
+  on-curve point. Without this flag, that point identifies the initial move.
+
+`contour` and `point` remain stored contour/point indices. Mask bytes are a JSON
+byte array, MSB first, with horizontal stems followed by vertical stems and zero
+padding bits. Off-curve and missing points are invalid mask targets. Widths `-20` and `-21` retain PostScript ghost hints. Ordinary widths are positive.
+
+Master alignment zones, named preferred stems and `private_dict` retain their
+existing version-1 shapes. The editor validates format limits before applying
+changes. Hint edits, save/reopen and undo preserve these values. Geometry changes
+invalidate unchanged hint sets on affected layers and components within the same
+master; hints on independent master layers remain intact. Hint previews and
+export-only automatic hinting never mutate saved hint data.

@@ -1,18 +1,51 @@
-//! Unhinted Type 2 charstrings from checked model paths.
+//! Type 2 charstrings with optional stems and point-bound hint replacement.
 
 use kurbo::{BezPath, PathEl, Point, QuadBez, Rect, Shape};
 
 use super::{encoding::number, WriteError};
 
-pub(super) fn encode(path: &BezPath, width: f64) -> Result<(Vec<u8>, Option<Rect>), WriteError> {
+pub(super) fn encode(
+    path: &BezPath,
+    width: f64,
+    layer: Option<&fc_model::Layer>,
+) -> Result<(Vec<u8>, Option<Rect>), WriteError> {
     let mut bytes = Vec::new();
     number(&mut bytes, width)?;
+    let masks = if let Some(layer) = layer {
+        super::hints::stems(&mut bytes, layer)?;
+        super::hints::masks(layer)?
+    } else {
+        Default::default()
+    };
+    if !masks.is_empty()
+        && !masks
+            .get(&0)
+            .is_some_and(|m| m.iter().any(|(counter, _)| !counter))
+    {
+        if let Some(layer) = layer {
+            let count = layer.hints.h_stems.len() + layer.hints.v_stems.len();
+            let mut initial = vec![255u8; count.div_ceil(8)];
+            if !count.is_multiple_of(8) {
+                if let Some(last) = initial.last_mut() {
+                    *last <<= 8 - count % 8;
+                }
+            }
+            bytes.push(19);
+            bytes.extend(initial);
+        }
+    }
     let mut current = Point::ZERO;
     let mut source_current = Point::ZERO;
     let mut source_start = Point::ZERO;
     let mut encoded_path = BezPath::new();
     let mut open = false;
-    for element in path.elements() {
+    for (index, element) in path.elements().iter().enumerate() {
+        if let Some(masks) = masks.get(&index) {
+            for (counter, mask) in masks {
+                bytes.push(if *counter { 20 } else { 19 });
+                bytes.extend_from_slice(mask);
+            }
+        }
         match *element {
             PathEl::MoveTo(point) => {
                 if open {
@@ -49,6 +82,12 @@ pub(super) fn encode(path: &BezPath, width: f64) -> Result<(Vec<u8>, Option<Rect
                 bytes.push(8);
             }
             PathEl::ClosePath => {
+                // Type 2 has no closepath operator. A closing-edge mask needs an
+                // explicit endpoint so readers can retain its point association.
+                if masks.contains_key(&index) && source_current != source_start {
+                    encoded_path.line_to(delta(&mut bytes, &mut current, source_start)?);
+                    bytes.push(5);
+                }
                 open = false;
                 encoded_path.close_path();
                 source_current = source_start;

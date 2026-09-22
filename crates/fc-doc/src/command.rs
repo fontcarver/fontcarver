@@ -17,6 +17,8 @@ mod designspace;
 pub use designspace::DesignSpaceCommand;
 mod features;
 mod glyphs;
+mod hints;
+pub use hints::HintCommand;
 mod kerning;
 mod layers;
 mod metrics;
@@ -26,6 +28,7 @@ mod structure;
 
 pub(crate) use apply::{apply_to_font, impact, Impact};
 pub(crate) use features::{bump_revision as bump_feature_revision, is_draft};
+pub(crate) use hints::invalidate_stale_ps_hints;
 pub(crate) use kerning::is_kerning;
 
 pub use options::{
@@ -37,6 +40,8 @@ pub use options::{
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 pub enum Command {
+    /// Edit hints or infer stems and zones without changing outline geometry.
+    Hints(HintCommand),
     /// Set or disable CID metadata; incomplete mappings may be authored but cannot export.
     SetCidInfo {
         /// Registry, ordering, supplement and numeric mapping, or null to disable.

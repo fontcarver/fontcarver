@@ -1271,6 +1271,7 @@ dependencies = [
  "fc-formats",
  "fc-geom",
  "fc-glyphdata",
+ "fc-hint",
  "fc-layout",
  "fc-model",
  "fc-raster",
@@ -1314,6 +1315,7 @@ dependencies = [
  "criterion",
  "fc-fixtures",
  "fc-geom",
+ "fc-hint",
  "fc-model",
  "fc-sfnt",
  "fea-rs",
@@ -1362,6 +1364,7 @@ version = "0.1.0"
 dependencies = [
  "fc-fixtures",
  "fc-geom",
+ "fc-hint",
  "fc-model",
  "fc-sfnt",
  "fea-rs",
@@ -1431,6 +1434,17 @@ name = "fc-glyphdata"
 version = "0.1.0"
 dependencies = [
  "icu_properties",
+]
+
+[[package]]
+name = "fc-hint"
+version = "0.1.0"
+dependencies = [
+ "fc-model",
+ "kurbo",
+ "read-fonts",
+ "tempfile",
+ "thiserror 2.0.20",
 ]
 
 [[package]]

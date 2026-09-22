@@ -6,6 +6,7 @@ pub(crate) mod editing;
 pub(crate) mod export;
 pub(crate) mod features;
 pub(crate) mod glyphs;
+pub(crate) mod hints;
 pub(crate) mod kerning;
 pub(crate) mod layout;
 pub(crate) mod layout_conversion;

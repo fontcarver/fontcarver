@@ -102,8 +102,12 @@ pub fn write_cff(
                 "advance {width} for {name} exceeds the supported CFF 0..=32767 width range"
             )));
         }
-        let (encoded, bound) = charstring::encode(&path, width.round())
-            .map_err(|error| WriteError(format!("{name}: {}", error.0)))?;
+        let (encoded, bound) = charstring::encode(
+            &path,
+            width.round(),
+            glyph.and_then(|g| g.master_layer(master)),
+        )
+        .map_err(|error| WriteError(format!("{name}: {}", error.0)))?;
         if let Some(bound) = bound {
             if [
                 bound.x0.floor(),
@@ -141,7 +145,12 @@ pub fn write_cff(
     let name_index = index(&[font_name.as_bytes().to_vec()])?;
     let string_index = index(&strings.custom)?;
     let charstring_index = index(&charstrings)?;
-    let private = vec![139, 20, 139, 21]; // defaultWidthX = nominalWidthX = 0
+    let private = super::hints::private(
+        &font
+            .master(master)
+            .ok_or_else(|| WriteError("missing CFF master".into()))?
+            .private_dict,
+    )?;
     let bbox = bbox.unwrap_or(Rect::ZERO);
     let top = top_dict(
         font.info.units_per_em,

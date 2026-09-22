@@ -17,6 +17,7 @@ import { InfoGroups } from './InfoGroups'
 import { MetricsTable } from './MetricsTable'
 import { NamesTable } from './NamesTable'
 import { TablesTable } from './TablesTable'
+import { MasterHints } from '../hints/MasterHints'
 
 /** The sections of the Font Info tab, in order. */
 export const SECTIONS = [
@@ -105,11 +106,16 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
         )
       case 'masters':
         return (
-          <MetricsTable
-            heading={heading}
-            masters={info.masters}
-            query={query}
-          />
+          <>
+            {!searching && (
+              <MasterHints doc={summary.doc} masters={info.masters} />
+            )}
+            <MetricsTable
+              heading={heading}
+              masters={info.masters}
+              query={query}
+            />
+          </>
         )
       case 'axes':
         return (

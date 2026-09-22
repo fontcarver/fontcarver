@@ -224,11 +224,20 @@ fn read_face(face: &FontRef<'_>, warnings: &mut Vec<Warning>) -> Result<Font, Er
         font.glyphs.insert(glyph.name.clone(), glyph);
     }
     metrics::apply_height_fallbacks(&mut font);
-    if cff_source.as_ref().is_some_and(cff::CffSource::has_hints) {
+    if cff_source.as_ref().is_some_and(cff::CffSource::lost_hints) {
         warnings.push(Warning {
             code: "cff-hints-not-imported",
-            message: "CFF outlines were imported without per-glyph stem and hint-mask data"
+            message: "Some CFF stem data could not be represented after font-matrix or seac transformation"
                 .to_owned(),
+        });
+    }
+    if cff_source
+        .as_ref()
+        .is_some_and(cff::CffSource::multiple_private_dicts)
+    {
+        warnings.push(Warning {
+            code: "cff-private-dicts-flattened",
+            message: "The source has multiple CFF private dictionaries; only the first is editable as master parameters. Per-glyph stems are retained, but exporting uses that single private dictionary.".into(),
         });
     }
     font.extra.raw_tables = raw::raw_tables(face);

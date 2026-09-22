@@ -77,7 +77,7 @@ pub struct ExportOptions {
     pub format: ExportFormat,
     /// Master to compile; the first master is used when absent.
     pub master: Option<MasterId>,
-    /// Request overlap removal. P1 reports that geometry support is unavailable.
+    /// Remove overlaps in a static export copy before compilation and hinting.
     pub remove_overlap: bool,
     /// Preserve TrueType programs when no glyph has been touched.
     pub keep_tt_instructions: bool,
@@ -85,7 +85,7 @@ pub struct ExportOptions {
     pub preserve_untouched_tables: bool,
     /// Use production glyph names where the model supplies them.
     pub production_names: bool,
-    /// Request automatic hinting. P1 reports that hinting support is unavailable.
+    /// Infer CFF hints or run the optional external TrueType hinter.
     pub autohint: bool,
     /// Optional allowlist for non-core tables in the output.
     pub table_subset: Option<Vec<Tag>>,
@@ -175,6 +175,16 @@ pub fn export_with_progress(
     options: &ExportOptions,
     progress: &mut dyn FnMut(ExportStage, u8),
 ) -> Result<ExportReport, Error> {
+    export_inner(font, glyph_generations, options, progress, false)
+}
+
+fn export_inner(
+    font: &Font,
+    glyph_generations: &dyn Fn(&GlyphName) -> u64,
+    options: &ExportOptions,
+    progress: &mut dyn FnMut(ExportStage, u8),
+    outline_changed: bool,
+) -> Result<ExportReport, Error> {
     let started = Instant::now();
     if options.format == ExportFormat::Fcf {
         return Err(Error::UnsupportedFormat("FCF"));
@@ -196,7 +206,7 @@ pub fn export_with_progress(
             fc_geom::resolve_smart_font(font).map_err(|e| Error::InvalidSource(e.to_string()))?;
         let mut options = options.clone();
         options.keep_tt_instructions = false;
-        return export_with_progress(&resolved, &|_| 1, &options, progress);
+        return export_inner(&resolved, &|_| 1, &options, progress, outline_changed);
     }
     if let Some(index) = options.instance {
         if options.variable || options.master_subset.is_some() {
@@ -213,7 +223,7 @@ pub fn export_with_progress(
         options.instance = None;
         options.master = Some(resolved.default_master().id.clone());
         options.keep_tt_instructions = false;
-        return export_with_progress(&resolved, &|_| 1, &options, progress);
+        return export_inner(&resolved, &|_| 1, &options, progress, outline_changed);
     }
     if !options.variable && options.master_subset.is_some() {
         return Err(Error::InvalidSource(
@@ -225,7 +235,13 @@ pub fn export_with_progress(
             let selected = crate::variable::master_subset(font, subset)?;
             let mut options = options.clone();
             options.master_subset = None;
-            return export_with_progress(&selected, glyph_generations, &options, progress);
+            return export_inner(
+                &selected,
+                glyph_generations,
+                &options,
+                progress,
+                outline_changed,
+            );
         }
         crate::variable::validate_export(font)?;
     }
@@ -258,23 +274,37 @@ pub fn export_with_progress(
         let mut options = options.clone();
         options.master = Some(resolved.default_master().id.clone());
         options.keep_tt_instructions = false;
-        return export_with_progress(&resolved, &|_| 1, &options, progress);
+        return export_inner(&resolved, &|_| 1, &options, progress, outline_changed);
     }
 
-    let mut warnings = Vec::new();
     if options.remove_overlap {
-        warnings.push(ExportWarning {
-            code: "remove-overlap-unavailable",
-            message: "Overlap removal is unavailable until fc-geom is connected in Task 5"
-                .to_owned(),
-        });
+        if options.variable {
+            return Err(Error::InvalidSource("remove overlaps in compatible source masters before variable export, or export a static instance".into()));
+        }
+        let prepared = crate::preprocess::overlap(font, master)?;
+        let mut options = options.clone();
+        options.remove_overlap = false;
+        options.keep_tt_instructions = false;
+        return export_inner(&prepared, &|_| 1, &options, progress, true);
     }
-    if options.autohint {
-        warnings.push(ExportWarning {
-            code: "autohint-unavailable",
-            message: "Automatic hinting is deferred to P5 and was not applied".to_owned(),
-        });
+    if options.autohint && options.variable {
+        return Err(Error::InvalidSource(
+            "automatic hinting currently requires a static master or instance".into(),
+        ));
     }
+    if options.autohint && options.format == ExportFormat::Otf {
+        let prepared = crate::preprocess::ps_autohint(font, master)?;
+        let mut options = options.clone();
+        options.autohint = false;
+        return export_inner(
+            &prepared,
+            glyph_generations,
+            &options,
+            progress,
+            outline_changed,
+        );
+    }
+    let mut warnings = Vec::new();
     warnings.extend(crate::metadata::name_warnings(&font.info));
     warnings.extend(crate::horizontal_kerning_warnings(font, master));
     if font
@@ -324,22 +354,38 @@ pub fn export_with_progress(
     let (merged, preservation_warnings) =
         preserve_merge(&compiled.bytes, font, &touched, &preservation_options)?;
     warnings.extend(preservation_warnings);
+    if outline_changed {
+        crate::otf_preservation::check_geometry_independent_layout(&merged)
+            .and_then(|()| crate::otf_preservation_aat::check(&merged))
+            .map_err(|error| {
+                Error::InvalidSource(format!(
+                    "overlap removal cannot preserve this layout: {error}"
+                ))
+            })?;
+    }
     let merged = if options.format == ExportFormat::Otf && options.variable {
         crate::variable_cff::convert(&merged, font, &compiled.glyph_order)?
     } else if let Some(prepared) = prepared_cff {
-        let bytes = crate::otf::convert(
+        crate::otf::convert(
             &merged,
             font,
             master,
             &compiled.glyph_order,
             options.production_names,
             prepared,
-        )?;
-        warnings.push(ExportWarning {
-            code: "cff-unhinted-outlines",
-            message: "OTF export regenerates unhinted CFF outlines; imported TrueType and PostScript hints are not retained.".into(),
-        });
-        bytes
+        )?
+    } else {
+        merged
+    };
+    let merged = if options.autohint {
+        match fc_hint::external::autohint(&merged) {
+            Ok(bytes) => bytes,
+            Err(fc_hint::Error::Unavailable) => {
+                warnings.push(ExportWarning {code:"autohint-unavailable",message:"ttfautohint is not installed on PATH; the exported TrueType font was not automatically hinted".into()});
+                merged
+            }
+            Err(error) => return Err(Error::InvalidSource(error.to_string())),
+        }
     } else {
         merged
     };

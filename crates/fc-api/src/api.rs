@@ -41,6 +41,9 @@ pub const FAILED_STAGE: &str = "failed";
 
 /// Method name, parameter TypeScript type, and result TypeScript type.
 pub const METHODS: &[(&str, &str, &str)] = &[
+    ("hints.state", "HintStateParams", "HintState"),
+    ("hints.analyze", "HintAnalyzeParams", "HintAnalysis"),
+    ("hints.apply", "HintApplyParams", "Change"),
     ("cjk.batch", "CjkBatchParams", "CjkBatchResult"),
     ("cid.state", "DocParams", "CidState"),
     ("cid.apply", "CidApplyParams", "Change"),
@@ -405,6 +408,9 @@ macro_rules! define_dispatch {
 }
 
 define_dispatch! {
+    "hints.state"=>handlers::hints::state,
+    "hints.analyze"=>handlers::hints::analyze,
+    "hints.apply"=>handlers::hints::apply,
     "cjk.batch"=>handlers::cjk_batch::run,
     "cid.state"=>handlers::cid::state,
     "cid.apply"=>handlers::cid::apply,

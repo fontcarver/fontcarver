@@ -187,6 +187,8 @@ fn populated_font_round_trips_semantically() {
         });
         layer.hints.flex = true;
         layer.hints.hint_masks.push(HintMask {
+            counter: false,
+            closing: false,
             contour: 0,
             point: 0,
             mask: vec![0x80],

@@ -18,6 +18,7 @@ mod otf;
 mod otf_preservation;
 mod otf_preservation_aat;
 mod otf_vertical;
+mod preprocess;
 mod preserve;
 mod shaping;
 mod source;

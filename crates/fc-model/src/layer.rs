@@ -130,6 +130,12 @@ pub struct DiagonalHint {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub struct HintMask {
+    /// Counter-control mask (`cntrmask`) rather than an active hint mask.
+    #[serde(default)]
+    pub counter: bool,
+    /// Activate before the closing segment ending at the first on-curve point.
+    #[serde(default)]
+    pub closing: bool,
     /// Contour index.
     #[serde(default)]
     pub contour: usize,
@@ -164,7 +170,8 @@ pub struct PsHints {
 }
 
 impl PsHints {
-    fn is_empty(&self) -> bool {
+    /// Whether the layer contains no PostScript hint metadata.
+    pub fn is_empty(&self) -> bool {
         self.h_stems.is_empty()
             && self.v_stems.is_empty()
             && self.d_stems.is_empty()

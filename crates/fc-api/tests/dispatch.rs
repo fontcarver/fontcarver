@@ -418,7 +418,7 @@ fn collection_warning_uses_file_contents_not_extension() {
 }
 
 #[test]
-fn cff_import_warning_reaches_document_summary() {
+fn representable_cff_hints_import_without_a_loss_warning() {
     let _env_guard = config_env_guard();
     let config_dir = test_config_dir("cff-warning");
     std::env::set_var("FC_CONFIG_DIR", &config_dir);
@@ -434,7 +434,7 @@ fn cff_import_warning_reaches_document_summary() {
         )
         .expect("open CFF fixture");
 
-    assert!(opened["warnings"]
+    assert!(!opened["warnings"]
         .as_array()
         .expect("warning array")
         .iter()

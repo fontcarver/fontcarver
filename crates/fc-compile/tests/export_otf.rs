@@ -147,7 +147,7 @@ fn real_cff_fonts_reexport_with_matching_layout_and_outlines() {
                 }
             }
         }
-        assert!(report
+        assert!(!report
             .warnings
             .iter()
             .any(|warning| warning.code == "cff-unhinted-outlines"));

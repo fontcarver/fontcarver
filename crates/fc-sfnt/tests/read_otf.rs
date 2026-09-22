@@ -42,10 +42,15 @@ fn reads_cff_names_and_cubic_contours() {
         .collect();
     assert!(!points.is_empty());
     assert!(points.iter().all(|point| point.kind != PointKind::QCurve));
-    assert!(outcome
+    assert!(!outcome
         .warnings
         .iter()
         .any(|warning| warning.code == "cff-hints-not-imported"));
+    assert!(outcome.fonts[0]
+        .glyphs
+        .values()
+        .flat_map(|glyph| &glyph.layers)
+        .any(|layer| !layer.hints.h_stems.is_empty() || !layer.hints.v_stems.is_empty()));
 }
 
 fn assert_round_o(font: &Font) {
@@ -97,10 +102,15 @@ fn reads_hinted_curve_bearing_cff() {
     )
     .expect("read Source Sans 3 subset");
     assert_round_o(&outcome.fonts[0]);
-    assert!(outcome
+    assert!(!outcome
         .warnings
         .iter()
         .any(|warning| warning.code == "cff-hints-not-imported"));
+    assert!(outcome.fonts[0]
+        .glyphs
+        .values()
+        .flat_map(|glyph| &glyph.layers)
+        .any(|layer| !layer.hints.h_stems.is_empty() || !layer.hints.v_stems.is_empty()));
 }
 
 fn assert_contour_invariants(font: &Font, source: &str) {

@@ -9,6 +9,7 @@ members = [
     "crates/fc-formats",
     "crates/fc-glyphdata",
     "crates/fc-geom",
+    "crates/fc-hint",
     "crates/fc-layout",
     "crates/fc-model",
     "crates/fc-raster",

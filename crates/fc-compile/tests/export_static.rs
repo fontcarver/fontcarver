@@ -53,21 +53,24 @@ fn exports_dejavu_within_release_budget() {
 }
 
 #[test]
-fn overlap_and_autohint_options_report_deferred_work() {
+fn overlap_is_applied_and_optional_hinter_availability_is_reported() {
     let font = common::scratch_font();
     let report = export(
         &font,
         &|_| 0,
         &ExportOptions {
             remove_overlap: true,
-            autohint: true,
+            autohint: fc_hint::external::executable().is_none(),
             ..ExportOptions::default()
         },
     )
-    .expect("export with deferred options");
+    .expect("export with overlap removal");
     let codes: Vec<_> = report.warnings.iter().map(|warning| warning.code).collect();
-    assert!(codes.contains(&"remove-overlap-unavailable"));
-    assert!(codes.contains(&"autohint-unavailable"));
+    assert!(!codes.contains(&"remove-overlap-unavailable"));
+    assert_eq!(
+        codes.contains(&"autohint-unavailable"),
+        fc_hint::external::executable().is_none()
+    );
 }
 
 #[test]

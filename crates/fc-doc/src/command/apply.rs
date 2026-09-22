@@ -53,6 +53,18 @@ pub(crate) fn impact(font: &Font, command: &Command) -> Impact {
 
 fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
     match command {
+        Command::Hints(super::HintCommand::Ps { glyph, .. }) => impact.glyph(glyph),
+        Command::Hints(super::HintCommand::Private { master, .. }) => {
+            impact.master(master);
+            impact.font_info = true;
+        }
+        Command::Hints(super::HintCommand::AutohintPs { master, glyphs }) => {
+            impact.master(master);
+            impact.font_info = true;
+            for name in glyphs {
+                impact.glyph(name);
+            }
+        }
         Command::SetCidInfo { .. } => {
             impact.cid = true;
             impact.font_info = true;
@@ -321,6 +333,7 @@ fn apply_batch(
 
 fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
     match command {
+        Command::Hints(command) => super::hints::apply(font, command),
         Command::SetCidInfo { cid } => super::cid::set(font, cid),
         Command::DesignSpace(command) => super::designspace::apply(font, command),
         Command::Bitmap(command) => super::bitmap::apply(font, command),
