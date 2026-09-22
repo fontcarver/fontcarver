@@ -1,8 +1,11 @@
 # P5 professional finish
 
-Status: in progress. Authorized by the user immediately after P4, without further
-confirmation. P4 checkpoint: `a3b2f8f`; its supported boundaries and evidence are
-recorded in `docs/p4-acceptance.md`.
+Status: paused at the user's explicit request on 2026-09-22, after the current
+MATH model and standalone codec step. Resume only when requested. The P5 scope
+was authorized immediately after P4; it is not complete. Current progress and
+next actions: [MATH checkpoint](../../p5-math-checkpoint.md).
+P4 checkpoint: `a3b2f8f`; its supported boundaries and evidence are recorded in
+`docs/p4-acceptance.md`.
 
 ## Scope and completion rule
 

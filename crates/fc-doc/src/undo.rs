@@ -8,6 +8,7 @@ use crate::{command::Impact, Change};
 
 mod features;
 mod kerning;
+mod math;
 pub use features::FeatureSnapshot;
 pub use kerning::HorizontalKerningSnapshot;
 
@@ -17,6 +18,8 @@ pub const DEFAULT_MEMORY_BUDGET: usize = 512 * 1024 * 1024;
 /// A structurally shared value restored by undo or redo.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Snapshot {
+    /// Editable mathematical typesetting data and raw-table ownership.
+    Math(Option<Arc<fc_model::MathTable>>, bool),
     /// CID identity and numeric mappings, including absence.
     Cid(Option<Arc<fc_model::CidInfo>>),
     /// Axes, complete master list and instances, including source additions/removals.
@@ -216,6 +219,12 @@ impl UndoStack {
 
 pub(crate) fn capture(font: &Font, impact: &Impact) -> Vec<Snapshot> {
     let mut snapshots = Vec::new();
+    if impact.math {
+        snapshots.push(Snapshot::Math(
+            font.math.clone().map(Arc::new),
+            font.math_table_owned,
+        ));
+    }
     if impact.bitmap_strikes {
         snapshots.push(Snapshot::BitmapStrikes(
             Arc::new(font.bitmap_strikes.clone()),
@@ -283,6 +292,10 @@ pub(crate) fn capture(font: &Font, impact: &Impact) -> Vec<Snapshot> {
 pub(crate) fn restore(font: &mut Font, snapshots: &[Snapshot]) {
     for snapshot in snapshots {
         match snapshot {
+            Snapshot::Math(math, owned) => {
+                font.math = math.as_ref().map(|value| (**value).clone());
+                font.math_table_owned = *owned;
+            }
             Snapshot::Cid(cid) => font.cid = cid.as_ref().map(|value| (**value).clone()),
             Snapshot::DesignSpace(space) => {
                 font.axes = space.0.clone();
@@ -467,6 +480,7 @@ fn restore_bitmap_glyph(
 
 fn same_snapshot_key(left: &Snapshot, right: &Snapshot) -> bool {
     match (left, right) {
+        (Snapshot::Math(..), Snapshot::Math(..)) => true,
         (Snapshot::Cid(_), Snapshot::Cid(_)) => true,
         (Snapshot::DesignSpace(_), Snapshot::DesignSpace(_)) => true,
         (Snapshot::BitmapStrikes(..), Snapshot::BitmapStrikes(..)) => true,
@@ -526,6 +540,9 @@ fn estimate_entry(inverse: &[Snapshot], forward: &[Snapshot]) -> usize {
 
 fn estimate_snapshot(snapshot: &Snapshot) -> usize {
     match snapshot {
+        Snapshot::Math(value, _) => value
+            .as_ref()
+            .map_or(8, |value| math::estimated_bytes(value)),
         Snapshot::Cid(cid) => cid.as_ref().map_or(8, |info| {
             info.registry.len()
                 + info.ordering.len()

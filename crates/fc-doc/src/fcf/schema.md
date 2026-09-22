@@ -77,6 +77,30 @@ entire glyph value is compact JSON on one physical line. This hybrid layout
 makes a glyph edit appear as a focused per-glyph line change in Git instead of
 expanding every contour and point across a large multi-line diff.
 
+## P5 mathematical typesetting
+
+`font.math` (default null) is font-wide editable MATH 1.0 data. It contains
+nullable `constants`, `min_connector_overlap` and a `glyphs` dictionary keyed by
+persistent glyph names. Constants include all 51 device-adjustable values, two
+minimum heights and three signed percentage fields. Font-unit values are finite
+numbers, rounded only at binary export.
+
+A mathematical value is `{value, device}`; an optional device stores
+`{start_size, deltas}` with consecutive signed pixel corrections. Per-glyph
+records contain nullable `italic_correction` and `top_accent`, `extended_shape`,
+four nullable `kern` corner functions, and nullable `vertical`/`horizontal`
+constructions. Each kern function has ascending `heights` and one more `values`
+entry. Constructions hold `variants: [{glyph,advance}]` and an optional
+`assembly: {italic_correction,parts}`. Parts contain `glyph`,
+`start_connector`, `end_connector`, `full_advance` and `extender`, in left-to-right
+or bottom-to-top order.
+
+`font.math_table_owned` (default false) records explicit semantic ownership.
+When true, a null `math` means deletion and old raw MATH must not reappear.
+A non-null `math` always takes precedence over raw bytes. Legacy documents
+without these fields retain their previous raw-table preservation semantics.
+The additive fields do not change the FCF version.
+
 ## P5 TrueType instruction bindings
 
 Layers may contain `tt_binding: {fingerprint, authored}` beside the existing

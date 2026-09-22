@@ -4,6 +4,7 @@
 
 pub mod bitmap;
 pub mod error;
+pub mod math;
 mod read;
 pub mod tt;
 pub mod write;

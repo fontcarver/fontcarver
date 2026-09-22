@@ -173,6 +173,12 @@ pub struct Font {
     /// Decoded/edited strikes own embedded tables, including an empty collection.
     #[serde(default)]
     pub bitmap_tables_owned: bool,
+    /// Editable font-wide mathematical typesetting data.
+    #[serde(default)]
+    pub math: Option<crate::MathTable>,
+    /// Whether editable MATH, including deletion, supersedes imported bytes.
+    #[serde(default)]
+    pub math_table_owned: bool,
     /// CID metadata when this is a CID-keyed font.
     #[serde(default)]
     pub cid: Option<CidInfo>,
@@ -204,6 +210,8 @@ impl Default for Font {
             layout_conversion: None,
             bitmap_strikes: Vec::new(),
             bitmap_tables_owned: false,
+            math: None,
+            math_table_owned: false,
             cid: None,
             guides: Vec::new(),
             extra: Extra::default(),
@@ -335,6 +343,15 @@ impl Font {
         let Some(index) = self.glyphs.get_index_of(from) else {
             return Err(Error::MissingGlyph { glyph: from.into() });
         };
+        if self
+            .math
+            .as_ref()
+            .is_some_and(|math| math.glyphs.contains_key(to))
+        {
+            return Err(Error::InvalidMath(format!(
+                "rename would overwrite unresolved MATH data for `{to}`"
+            )));
+        }
         let Some((_, mut glyph)) = self.glyphs.shift_remove_entry(from) else {
             return Err(Error::MissingGlyph { glyph: from.into() });
         };
@@ -362,6 +379,9 @@ impl Font {
             rename_kerning(&mut master.kerning_v, from, &new_name);
         }
         rename_group_members(&mut self.kerning_groups.side1, from, &new_name);
+        if let Some(math) = &mut self.math {
+            math.rename_glyph(from, &new_name);
+        }
         rename_group_members(&mut self.kerning_groups.side2, from, &new_name);
         for strike in &mut self.bitmap_strikes {
             if let Some(bitmap) = strike.glyphs.remove(from) {

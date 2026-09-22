@@ -10,6 +10,7 @@ use super::{features, glyphs, kerning, layers, metrics, outline, structure, Comm
 
 #[derive(Default)]
 pub(crate) struct Impact {
+    pub(crate) math: bool,
     pub(crate) cid: bool,
     pub(crate) design_space: bool,
     pub(crate) bitmap_strikes: bool,
@@ -148,6 +149,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.component_graph_changed = true;
         }
         Command::RenameGlyph { from, to } => {
+            impact.math = font.math.is_some();
             impact.cid = font.cid.is_some();
             impact.bitmap_strikes = !font.bitmap_strikes.is_empty();
             impact.layout = true;
