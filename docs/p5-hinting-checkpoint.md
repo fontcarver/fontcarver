@@ -59,7 +59,7 @@ hinting milestone remain open. The complete exit audit is
 
 ## Remaining hinting work
 
-Type 1 path-bound hint import/output; TT source-index binding, instruction/CVT/fpgm/prep
+Advanced Type 1 hint mechanisms; TT source-index binding, instruction/CVT/fpgm/prep
 editing, authored-program export and hinted preview; variable hinting; multiple
 editable CID private dictionaries; broader PS analysis quality and format-aware
 handling of diagonal hints, active ranges and flex. These remain open and are
@@ -230,3 +230,44 @@ pedantic glyph execution but compatibility-mode global initialization, and may
 tolerate some global stack errors. Neither preview success nor successful assembly
 proves universal interpreter compatibility. FreeType zero-contour execution is
 still not claimed. Complex Type 1, per-FD parameters and the rest of P5 remain open.
+
+## Type 1 replacement and counter triples
+
+Standard OtherSubrs 3 replacement sequences now import as point-bound active
+masks, including nested local subroutines, cubic endpoints, subsequent contours,
+explicit closing segments and closepath edges. Horizontal-first mask bits are
+assigned after all stems are known. Repeated stem definitions reuse their identity.
+Whole-glyph sets remain compact. The tested outline evaluator already handles
+the canonical replacement sequence; no speculative outline adapter was added.
+
+PFA/PFB export validates every active set, writes deduplicated replacement
+subroutines and reserves the standard first four subroutine slots. CFF and Type 1
+share the model's point-to-path mask mapping, including quadratic implied points
+and closing curves. Type 1 additionally validates its quantized 16.16 stem values.
+The OtherSubrs 3 callback is original PostScript code implementing the format's
+lock-operator selection and old-interpreter fallback; no FontForge or restricted
+Adobe routine was copied.
+
+Representable hstem3/vstem3 groups import and export through counter masks.
+Triples require positive nonoverlapping stems, equal outer widths and equally
+spaced centers, with at most one fixed triple on each axis and no ordinary stems
+on that axis. All three members must be active together. General counter control,
+flex, dot sections, seac hint inheritance, per-FD dictionaries, Type 1 automatic
+hinting and overlap preprocessing remain open. The full P5 milestone is not done.
+
+Verification for this slice:
+
+- Full `fc-compile` test binaries: **150 passed**. Full `fc-model`, `fc-sfnt`
+  and `fc-formats` regression: **234 passed, 0 failed**. The final `fc-formats`
+  repeat after stricter sequence and byte-budget guards: **117 passed** (included
+  in that 234 total, not counted twice).
+- FontTools verifies the exact replacement call sequences, deduplicated subroutines
+  and counter operands. FreeType performs **24 native-hinted and 24 unhinted
+  renders** for the replacement/counter fixture across both containers.
+- Ghostscript executes both exported fonts and tests the original callback's five
+  lock-operator/fallback cases. The callback test makes only its test array
+  readable; the exported font retains the required access restrictions.
+- Workspace all-target Clippy with `-D warnings`, Rust formatting, Markdown
+  formatting and `git diff --check` pass.
+- No frontend behavior changed in this slice. Advanced Type 1 mechanisms and the
+  rest of P5 remain open; this is not a full-workspace-test completion claim.

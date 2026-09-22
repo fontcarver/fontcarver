@@ -4,6 +4,8 @@ mod brackets;
 mod compatibility;
 pub use brackets::{expand_brackets, BracketRule};
 mod curves;
+mod hint_masks;
+pub use hint_masks::{path_hint_masks, PathHintMasks};
 mod outline;
 mod relationships;
 mod unicode_index;

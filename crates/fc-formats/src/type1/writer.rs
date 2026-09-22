@@ -2,7 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use fc_model::{Font, MasterId, PsHints};
+use fc_model::{Contour, Font, MasterId, PsHints};
 use kurbo::{BezPath, PathEl, Point, Rect, Shape};
 
 use super::{source_error, MAX_FILE_BYTES};
@@ -62,7 +62,13 @@ pub(super) fn encode(font: &Font, master: &MasterId, binary: bool) -> Result<Vec
     let mut glyphs = Vec::new();
     let mut bbox: Option<Rect> = None;
     let mut total_size = 0usize;
-    let mut add = |name: &str, width: f64, path: BezPath, hints: &PsHints| -> Result<(), Error> {
+    let mut subrs = super::hint_writer::Subrs::default();
+    let mut add = |name: &str,
+                   width: f64,
+                   path: BezPath,
+                   hints: &PsHints,
+                   contours: &[Contour]|
+     -> Result<(), Error> {
         validate_name(name)?;
         if !width.is_finite() || !(0.0..=32000.0).contains(&width) {
             return Err(source_error(format!(
@@ -70,7 +76,9 @@ pub(super) fn encode(font: &Font, master: &MasterId, binary: bool) -> Result<Vec
             )));
         }
         let path = quantized_path(&path)?;
-        let data = charstring(&path, width, hints)
+        let plan = super::hint_writer::Plan::new(hints, contours)
+            .map_err(|e| source_error(format!("glyph {name}: {e}")))?;
+        let data = charstring(&path, width, &plan, &mut subrs)
             .map_err(|e| source_error(format!("glyph {name}: {e}")))?;
         if !path.elements().is_empty() {
             let bounds = path.bounding_box();
@@ -84,7 +92,7 @@ pub(super) fn encode(font: &Font, master: &MasterId, binary: bool) -> Result<Vec
         Ok(())
     };
     if font.glyph(".notdef").is_none_or(|g| !g.export) {
-        add(".notdef", 0.0, BezPath::new(), &PsHints::default())?;
+        add(".notdef", 0.0, BezPath::new(), &PsHints::default(), &[])?;
     }
     for (name, glyph) in &font.glyphs {
         if !glyph.export {
@@ -98,7 +106,7 @@ pub(super) fn encode(font: &Font, master: &MasterId, binary: bool) -> Result<Vec
         })?;
         let path = fc_model::query::flatten_layer(font, name, master)
             .map_err(|e| source_error(e.to_string()))?;
-        add(name, layer.width, path, &layer.hints)?;
+        add(name, layer.width, path, &layer.hints, &layer.contours)?;
     }
     if glyphs.len() > 65535 {
         return Err(source_error("more than 65535 exported glyphs"));
@@ -122,7 +130,8 @@ pub(super) fn encode(font: &Font, master: &MasterId, binary: bool) -> Result<Vec
         clear.push_str(&format!("dup {code} /{name} put\n"));
     }
     clear.push_str("readonly def\ncurrentdict end\ncurrentfile eexec\n");
-    let mut private = b"FC01dup /Private 24 dict dup begin\n/RD {string currentfile exch readstring pop} executeonly def\n/ND {noaccess def} executeonly def\n/NP {noaccess put} executeonly def\n/lenIV 4 def\n/MinFeature {16 16} def\n/password 5839 def\n/Subrs 0 array ND\n".to_vec();
+    let mut private = b"FC01dup /Private 24 dict dup begin\n/RD {string currentfile exch readstring pop} executeonly def\n/ND {noaccess def} executeonly def\n/NP {noaccess put} executeonly def\n/lenIV 4 def\n/MinFeature {16 16} def\n/password 5839 def\n".to_vec();
+    subrs.write(&mut private);
     private.extend_from_slice(super::private::write(&master_data.private_dict)?.as_bytes());
     private.extend_from_slice(
         format!("2 index /CharStrings {} dict dup begin\n", glyphs.len()).as_bytes(),
@@ -271,7 +280,7 @@ fn segment(out: &mut Vec<u8>, kind: u8, data: &[u8]) -> Result<(), Error> {
     Ok(())
 }
 
-fn encrypt(bytes: &[u8], mut state: u16) -> Vec<u8> {
+pub(super) fn encrypt(bytes: &[u8], mut state: u16) -> Vec<u8> {
     bytes
         .iter()
         .map(|byte| {
@@ -285,16 +294,22 @@ fn encrypt(bytes: &[u8], mut state: u16) -> Vec<u8> {
         .collect()
 }
 
-fn charstring(path: &BezPath, width: f64, hints: &PsHints) -> Result<Vec<u8>, Error> {
+fn charstring(
+    path: &BezPath,
+    width: f64,
+    hints: &super::hint_writer::Plan,
+    subrs: &mut super::hint_writer::Subrs,
+) -> Result<Vec<u8>, Error> {
     let mut out = vec![0, 0, 0, 0];
     number(&mut out, 0.0)?;
     number(&mut out, width)?;
     out.push(13); // hsbw
-    super::hints::write(&mut out, hints)?;
+    hints.initial(&mut out);
     let mut current = Point::ZERO;
     let mut source_current = Point::ZERO;
     let mut open = false;
-    for element in path.elements() {
+    for (index, element) in path.elements().iter().enumerate() {
+        hints.at(index, &mut out, subrs)?;
         match *element {
             PathEl::MoveTo(point) => {
                 if open {

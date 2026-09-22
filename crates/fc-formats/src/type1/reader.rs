@@ -102,7 +102,13 @@ pub(super) fn read(path: &Path) -> Result<Font, Error> {
         }
         layer.contours = Contour::from_bezpath(&(transform * sink.path));
         if let Some(program) = data.glyphs.get(name) {
-            match super::hints::read(program, &source, transform, &mut hint_budget) {
+            match super::hints::read(
+                program,
+                &source,
+                transform,
+                &layer.contours,
+                &mut hint_budget,
+            ) {
                 Ok(hints) => layer.hints = hints,
                 Err(reason) => {
                     tracing::debug!(glyph = name, reason, "Type 1 hints not retained");

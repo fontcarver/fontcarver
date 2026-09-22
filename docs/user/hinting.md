@@ -95,27 +95,39 @@ not yet supported in the point view. These are remaining hinting boundaries.
 
 ## Type 1 hints
 
-Static PFA/PFB export writes the selected layer's whole-glyph horizontal and
-vertical stems, including fractional positions and `-20`/`-21` ghost hints.
-It also writes blue zones, family zones, standard stem widths, stem snaps,
+Static PFA/PFB export writes the selected layer's horizontal and vertical stems,
+including fractional positions, `-20`/`-21` ghost hints and point-bound active
+masks. It also writes blue zones, family zones, standard stem widths, stem snaps,
 BlueScale/BlueShift/BlueFuzz, ForceBold and LanguageGroup. Zone pairs keep their
 original order; only the values within each pair must be low-to-high.
 Component outlines are expanded; their base glyphs' hint sets are not inherited.
 
-The importer retains whole-glyph stems from direct charstrings and ordinary
-subroutines, adds the original sidebearing to vertical positions and normalizes
-representable hint coordinates with FontMatrix. It reads literal private values
-without executing PostScript. A literal private value followed by runtime
-PostScript is omitted with a warning; malformed numeric arrays are rejected. Source glyphs
-using hint replacement, counter stems, dot sections, flex or seac currently import
-with editable outlines but without their stem sets. An import warning identifies
-this limitation; affected glyph names remain in source metadata. Private values
-that cannot be represented after reflection or an out-of-range transform remain
-in source metadata and produce a separate warning.
+The importer follows ordinary and standard hint-replacement subroutines, adds the
+original sidebearing to vertical positions and normalizes representable hint
+coordinates with FontMatrix. Replacement masks refer to the next segment's
+on-curve endpoint, including closing edges. Export uses native replacement
+subroutines; quadratic outlines become cubics while retaining the mask's segment
+association. Stems may overlap only when every active mask selects a nonoverlapping
+set. Values are also validated at the output's 16.16 precision.
 
-Export rejects overlapping stems, point masks, counter masks, diagonal stems,
-active ranges and flex metadata until they are converted to supported whole-glyph
-stems or removed. A failed export leaves an existing destination unchanged.
+Type 1 counter hints use `hstem3` or `vstem3`: three nonoverlapping positive-width
+stems with equal outer widths and equally spaced centers. Declare the counter
+mask before the first contour. A counter axis cannot contain ordinary stems,
+and each active mask must enable the complete triple or none of it. The same
+triple must be used throughout the glyph. General counter-control procedures
+are not yet supported.
+
+The importer reads literal private values without executing PostScript. A literal
+private value followed by runtime PostScript is omitted with a warning; malformed
+numeric arrays are rejected. Glyphs using dot sections, flex, seac, general
+counter-control procedures or invalid replacement metadata retain their supported
+outlines without a partial stem set. An import warning identifies the limitation;
+affected glyph names remain in source metadata. Private values that cannot be
+represented after reflection or an out-of-range transform remain in source
+metadata and produce a separate warning.
+
+Export rejects invalid active sets, unsupported counter groups, diagonal stems,
+active ranges and flex metadata before replacing an existing destination.
 Automatic hinting and overlap removal through the Type 1 export options are still
 pending. These boundaries are part of the unfinished Type 1 hinting work.
 

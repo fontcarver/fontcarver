@@ -81,14 +81,15 @@ checks, authored program export and interpreter preview are now integrated. Vari
 hinting, multiple editable CID private dictionaries and broader PS analysis
 quality remain open. The full P5 checklist is still open.
 
-The Type 1 follow-up retains literal private values and whole-glyph H/V stems,
-including ghosts, fractional operands and ordinary subroutine hints. Import
-normalizes sidebearings and representable matrices; runtime private-field
+The Type 1 follow-up retains literal private values, H/V stems, ghosts, fractional
+operands, point-bound hint replacement and representable stem3 counter groups.
+Import normalizes sidebearings and representable matrices; runtime private-field
 computation and unsupported glyph mechanisms produce persistent diagnostics.
-Native output rejects unsupported path-bound hints before replacing a file.
-The real Nimbus Sans fixture verifies unsorted BlueValues and nonzero sidebearings;
-independent FontTools/FreeType checks cover both PFA and PFB output. This remains a
-partial Type 1 implementation rather than a completed hinting checklist item.
+Native output validates every active set and rejects unsupported mechanisms
+before replacing a file. The real Nimbus Sans fixture verifies unsorted BlueValues,
+nonzero sidebearings and replacement hints. FontTools, FreeType and Ghostscript
+checks cover both PFA and PFB output. Flex, dot sections, general counter control,
+seac hint inheritance and per-FD dictionaries remain open.
 
 The TT follow-up adds a separate bilingual editor for glyph/fpgm/prep assembly,
 CVT and interpreter maxima, with actual compiled point indices and phantom points.

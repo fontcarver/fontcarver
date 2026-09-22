@@ -82,7 +82,7 @@ fn unsupported_or_overlapping_hints_do_not_replace_output() {
             1 => layer.hints.flex = true,
             2 => layer.hints.v_stems[0].ranges.push((0.0, 700.0)),
             _ => layer.hints.hint_masks.push(fc_model::HintMask {
-                mask: vec![0xf8],
+                mask: vec![0xff],
                 ..Default::default()
             }),
         }
@@ -100,11 +100,29 @@ fn native(
     subr: &[u8],
     matrix: &str,
 ) -> std::path::PathBuf {
-    let mut private = format!("TESTdup /Private 20 dict dup begin\n/lenIV -1 def\n{private_fields}\n/Subrs 1 array dup 0 {} RD ", subr.len()).into_bytes();
-    private.extend_from_slice(subr);
+    native_subrs(dir, private_fields, glyph, &[subr], matrix)
+}
+
+fn native_subrs(
+    dir: &std::path::Path,
+    private_fields: &str,
+    glyph: &[u8],
+    subrs: &[&[u8]],
+    matrix: &str,
+) -> std::path::PathBuf {
+    let mut private = format!(
+        "TESTdup /Private 20 dict dup begin\n/lenIV -1 def\n{private_fields}\n/Subrs {} array ",
+        subrs.len()
+    )
+    .into_bytes();
+    for (index, subr) in subrs.iter().enumerate() {
+        private.extend_from_slice(format!("dup {index} {} RD ", subr.len()).as_bytes());
+        private.extend_from_slice(subr);
+        private.extend_from_slice(b" NP\n");
+    }
     private.extend_from_slice(
         format!(
-            " NP\n2 index /CharStrings 1 dict dup begin\n/H {} RD ",
+            " ND\n2 index /CharStrings 1 dict dup begin\n/H {} RD ",
             glyph.len()
         )
         .as_bytes(),
@@ -138,6 +156,106 @@ fn native(
     let path = dir.join("native.pfb");
     std::fs::write(&path, bytes).unwrap();
     path
+}
+
+#[test]
+fn standard_hint_replacement_does_not_break_outline_import() {
+    let dir = tempfile::tempdir().unwrap();
+    // 30 600 hsbw; 0 40 vstem; move; line; 4 1 3 callothersubr pop callsubr;
+    // two more lines; closepath; endchar. Subr 4 contains replacement hints only.
+    let glyph = [
+        169, 248, 236, 13, 139, 179, 3, 139, 139, 21, 139, 239, 5, 143, 140, 142, 12, 16, 12, 17,
+        10, 179, 139, 5, 139, 39, 5, 9, 14,
+    ];
+    let path = native_subrs(
+        dir.path(),
+        "",
+        &glyph,
+        &[&[11], &[11], &[11], &[11], &[149, 159, 3, 11]],
+        "0.001 0 0 0.001 0 0",
+    );
+    let font = read_type1(&path).unwrap();
+    let layer = &font.glyph("H").unwrap().layers[0];
+    assert_eq!(layer.width, 600.0);
+    assert_eq!(layer.hints.v_stems, stems(&[(30.0, 40.0), (40.0, 20.0)]));
+    assert_eq!(
+        layer.hints.hint_masks,
+        vec![
+            fc_model::HintMask {
+                mask: vec![0x80],
+                ..Default::default()
+            },
+            fc_model::HintMask {
+                point: 2,
+                mask: vec![0x40],
+                ..Default::default()
+            },
+        ]
+    );
+    assert!(read_warnings(&font).is_empty());
+    for binary in [false, true] {
+        let output = dir.path().join(if binary {
+            "replacement.pfb"
+        } else {
+            "replacement.pfa"
+        });
+        write_type1(&font, &font.default_master().id, &output, binary).unwrap();
+        let reopened = read_type1(&output).unwrap();
+        let actual = &reopened.glyph("H").unwrap().layers[0];
+        assert_eq!(actual.hints, layer.hints);
+        assert_eq!(actual.contours, layer.contours);
+        assert!(read_warnings(&reopened).is_empty());
+    }
+    assert_eq!(
+        layer.contours[0]
+            .points
+            .iter()
+            .map(|p| (p.x, p.y))
+            .collect::<Vec<_>>(),
+        vec![(30.0, 0.0), (30.0, 100.0), (70.0, 100.0), (70.0, 0.0)]
+    );
+}
+
+#[test]
+fn native_counter_triplets_survive_replacement_and_roundtrip() {
+    let dir = tempfile::tempdir().unwrap();
+    // The same vstem3 group is reactivated midway through the path.
+    let glyph = [
+        169, 248, 236, 13, 139, 179, 239, 179, 247, 92, 179, 12, 1, 139, 139, 21, 139, 239, 5, 143,
+        140, 142, 12, 16, 12, 17, 10, 247, 132, 139, 5, 139, 39, 5, 9, 14,
+    ];
+    let triple = [139, 179, 239, 179, 247, 92, 179, 12, 1, 11];
+    let path = native_subrs(
+        dir.path(),
+        "",
+        &glyph,
+        &[&[11], &[11], &[11], &[11], &triple],
+        "0.001 0 0 0.001 0 0",
+    );
+    let font = read_type1(&path).unwrap();
+    let layer = &font.glyph("H").unwrap().layers[0];
+    assert_eq!(
+        layer.hints.v_stems,
+        stems(&[(30.0, 40.0), (130.0, 40.0), (230.0, 40.0)])
+    );
+    assert_eq!(
+        layer.hints.hint_masks,
+        vec![fc_model::HintMask {
+            counter: true,
+            mask: vec![0xe0],
+            ..Default::default()
+        }]
+    );
+    assert!(read_warnings(&font).is_empty());
+    for binary in [false, true] {
+        let path = dir
+            .path()
+            .join(if binary { "counter.pfb" } else { "counter.pfa" });
+        write_type1(&font, &font.default_master().id, &path, binary).unwrap();
+        let result = read_type1(&path).unwrap();
+        assert_eq!(result.glyph("H").unwrap().layers[0].hints, layer.hints);
+        assert!(read_warnings(&result).is_empty());
+    }
 }
 
 #[test]
@@ -305,17 +423,31 @@ fn real_type1_hints_preserve_sidebearings_and_unsorted_blue_pairs() {
         font.user_data["org.fontcarver.type1"]["unretained_glyph_hints"]
             .as_array()
             .unwrap()
-            .contains(&serde_json::json!("a"))
+            .iter()
+            .all(|name| name != "a")
     );
-    font.glyphs.retain(|name, _| name.as_ref() == "H");
+    assert!(!font.glyph("a").unwrap().layers[0]
+        .hints
+        .hint_masks
+        .is_empty());
+    font.glyphs
+        .retain(|name, _| matches!(name.as_ref(), "H" | "a"));
     let dir = tempfile::tempdir().unwrap();
     let output = dir.path().join("H.pfb");
     write_type1(&font, &font.default_master().id, &output, true).unwrap();
     let roundtrip = read_type1(&output).unwrap();
-    assert_eq!(
-        font.glyph("H").unwrap().layers[0].hints,
-        roundtrip.glyph("H").unwrap().layers[0].hints
-    );
+    for name in ["H", "a"] {
+        assert_eq!(
+            font.glyph(name).unwrap().layers[0].hints,
+            roundtrip.glyph(name).unwrap().layers[0].hints,
+            "{name}"
+        );
+        assert_eq!(
+            font.glyph(name).unwrap().layers[0].contours,
+            roundtrip.glyph(name).unwrap().layers[0].contours,
+            "{name}"
+        );
+    }
 }
 
 #[test]
@@ -382,5 +514,129 @@ assert changed, 'native hints did not affect any tested size'
             "{}",
             String::from_utf8_lossy(&output.stderr)
         );
+    }
+}
+
+#[test]
+fn nested_replacements_bind_to_cubic_endpoints_and_both_closing_encodings() {
+    let dir = tempfile::tempdir().unwrap();
+    let prefix = [139, 248, 236, 13, 139, 179, 3, 139, 139, 21];
+    let curve = [139, 239, 239, 139, 139, 39, 8];
+    let replacement = [143, 140, 142, 12, 16, 12, 17, 10];
+    for case in 0..3 {
+        let mut glyph = prefix.to_vec();
+        if case == 0 {
+            glyph.extend(replacement);
+        }
+        glyph.extend(curve);
+        if case != 0 {
+            glyph.extend(replacement);
+        }
+        if case != 2 {
+            glyph.extend([39, 139, 5]);
+        }
+        glyph.extend([9, 14]);
+        let path = native_subrs(
+            dir.path(),
+            "",
+            &glyph,
+            &[
+                &[11],
+                &[11],
+                &[11],
+                &[11],
+                &[144, 10, 11],
+                &[149, 159, 3, 11],
+            ],
+            "0.001 0 0 0.001 0 0",
+        );
+        let font = read_type1(&path).unwrap();
+        let layer = &font.glyph("H").unwrap().layers[0];
+        assert!(read_warnings(&font).is_empty(), "case {case}");
+        assert_eq!(layer.hints.hint_masks.len(), 2);
+        assert_eq!(
+            layer.hints.hint_masks[1],
+            fc_model::HintMask {
+                point: if case == 0 { 3 } else { 0 },
+                closing: case != 0,
+                mask: vec![0x40],
+                ..Default::default()
+            }
+        );
+        let output = dir.path().join("closing.pfb");
+        write_type1(&font, &font.default_master().id, &output, true).unwrap();
+        let result = read_type1(&output).unwrap();
+        let actual = &result.glyph("H").unwrap().layers[0];
+        assert_eq!(actual.hints, layer.hints, "case {case}");
+        assert_eq!(actual.contours, layer.contours, "case {case}");
+    }
+}
+
+#[test]
+fn replacement_orders_horizontal_bits_first_and_keeps_subsequent_contours() {
+    let dir = tempfile::tempdir().unwrap();
+    let glyph = [
+        169, 248, 236, 13, 139, 179, 3, 139, 139, 21, 139, 239, 5, 179, 139, 5, 139, 39, 5, 9, 143,
+        140, 142, 12, 16, 12, 17, 10, 239, 139, 21, 139, 239, 5, 179, 139, 5, 139, 39, 5, 9, 14,
+    ];
+    let path = native_subrs(
+        dir.path(),
+        "",
+        &glyph,
+        &[&[11], &[11], &[11], &[11], &[169, 159, 1, 149, 159, 3, 11]],
+        "0.002 0 0 0.001 0.010 0.020",
+    );
+    let font = read_type1(&path).unwrap();
+    let layer = &font.glyph("H").unwrap().layers[0];
+    assert!(read_warnings(&font).is_empty());
+    assert_eq!(layer.hints.h_stems, stems(&[(50.0, 20.0)]));
+    assert_eq!(layer.hints.v_stems, stems(&[(70.0, 80.0), (90.0, 40.0)]));
+    assert_eq!(
+        layer.hints.hint_masks,
+        vec![
+            fc_model::HintMask {
+                mask: vec![0x40],
+                ..Default::default()
+            },
+            fc_model::HintMask {
+                contour: 1,
+                mask: vec![0xa0],
+                ..Default::default()
+            },
+        ]
+    );
+    let output = dir.path().join("contours.pfa");
+    write_type1(&font, &font.default_master().id, &output, false).unwrap();
+    let result = read_type1(&output).unwrap();
+    assert_eq!(result.glyph("H").unwrap().layers[0].hints, layer.hints);
+}
+
+#[test]
+fn malformed_replacement_results_and_counter_groups_are_disclosed() {
+    let dir = tempfile::tempdir().unwrap();
+    for hints in [
+        vec![143, 141, 142, 12, 16],                    // Wrong argument count.
+        vec![12, 17],                                   // No OtherSubrs result.
+        vec![143, 140, 142, 12, 16],                    // Result never consumed.
+        vec![139, 179, 239, 179, 247, 92, 180, 12, 1],  // Unequal outer widths.
+        vec![139, 179, 239, 179, 247, 100, 179, 12, 1], // Unequal spacing.
+        vec![139, 179, 239, 179, 247, 92, 179, 12, 1, 139, 179, 3], // Mixed axis mechanisms.
+    ] {
+        let mut glyph = vec![139, 248, 236, 13];
+        glyph.extend(hints);
+        glyph.extend([139, 139, 21, 139, 239, 5, 179, 139, 5, 9, 14]);
+        let path = native_subrs(
+            dir.path(),
+            "",
+            &glyph,
+            &[&[11], &[11], &[11], &[11], &[11]],
+            "0.001 0 0 0.001 0 0",
+        );
+        let font = read_type1(&path).unwrap();
+        assert!(!font.glyph("H").unwrap().layers[0].contours.is_empty());
+        assert!(font.glyph("H").unwrap().layers[0].hints.is_empty());
+        assert!(read_warnings(&font)
+            .iter()
+            .any(|w| w.code == "type1-import-hints-partial"));
     }
 }

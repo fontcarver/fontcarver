@@ -5,6 +5,7 @@
 //! OpenType layout, editable component relationships and extra layers are omitted.
 
 mod guards;
+mod hint_writer;
 mod hints;
 mod private;
 mod reader;
@@ -42,8 +43,9 @@ pub fn read_type1(path: &Path) -> Result<Font, Error> {
 
 /// Writes a selected master as a static PFA (`false`) or PFB (`true`).
 ///
-/// Private hint parameters and whole-glyph horizontal/vertical stems are retained.
-/// Unsupported path-bound hint mechanisms produce an error before replacing output.
+/// Retains private parameters, horizontal/vertical stems, point-bound replacement
+/// masks and representable stem3 counter groups. Unsupported mechanisms produce
+/// an error before replacing output.
 ///
 /// Validation and complete serialization precede the atomic destination replace.
 /// Call [`loss_warnings`] before exporting to disclose Type 1's format limitations.
