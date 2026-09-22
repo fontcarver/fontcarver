@@ -5,6 +5,7 @@
 pub mod bitmap;
 pub mod error;
 mod read;
+pub mod tt;
 pub mod write;
 
 pub use error::Error;

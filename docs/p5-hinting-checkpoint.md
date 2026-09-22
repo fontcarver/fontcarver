@@ -37,7 +37,7 @@ hinting milestone remain open. The complete exit audit is
   workspace Clippy with denied warnings, Rust formatting and production build
   pass. The existing large JavaScript chunk warning remains.
 - Embedded Linux desktop build passes with the production assets (`cargo build
-  -p fontcarver --features tauri/custom-protocol`). The desktop was not launched.
+-p fontcarver --features tauri/custom-protocol`). The desktop was not launched.
 - Headless browser session `fontcarver-p5-hints20260922`: edit/apply/save/export
   and reopen a 70-unit stem, inspect the outline overlay, analyze/cancel and
   reopen without changing the source, export automatic hints and independently
@@ -119,3 +119,52 @@ Follow-up verification:
   `/tmp/fontcarver-p5-type1-frontend-final.log`,
   `/tmp/fontcarver-p5-type1-independent.log`, and
   `/tmp/fontcarver-p5-type1-cjk-recheck.log`.
+
+## TrueType binary foundation
+
+`fc-sfnt::tt` now reads actual compiled point order, including off-curve controls
+and expanded components, and computes versioned bindings over geometry and
+metrics. Bindings include component dependencies and metric-selection flags, but
+exclude instruction bytes. Reads reject cycles, truncated streams, conflicting
+component transforms and excessive expansion. Empty, header-only and explicitly
+zero-contour glyphs share equivalent point identities.
+
+The instruction writer checks bindings before replacing all glyph programs and
+CVT/fpgm/prep. It preserves coordinate and component encoding, rebuilds loca and
+padding, updates interpreter maxima and removes obsolete signatures and device
+metric caches. Unsupported point bindings and malformed pushes fail before output
+is returned. Glyph instruction limits and interpreter maxima are bounded. Runtime
+program correctness is not inferred from successful bytecode framing.
+
+This is a library foundation, not a completed editor or export-pipeline feature.
+Model persistence, revision-checked API, undo/redo, UI and preview integration
+remain open. Variable inputs are rejected. Point views currently reject the rare
+case of components aligned through phantom points; ordinary point matching works.
+Reported horizontal phantom coordinates are nominal parent hmtx coordinates:
+`USE_MY_METRICS` is exposed separately because the interpreter can replace them.
+
+Verification:
+
+- `cargo test -p fc-sfnt -- --test-threads=1`: **57 passed**, including **16** TT
+  binding/writer/interpreter tests. Clippy with denied warnings, Rust formatting,
+  Python Ruff checks/formatting and `git diff --check` pass.
+- The `tt_instruction_acceptance` example and
+  `scripts/p5_tt_instruction_acceptance.py` independently compare **6,253** DejaVu
+  Sans outlines, **252** indexed point arrays and **3** exact authored programs.
+  FontTools also checks globals and maxima. Native FreeType 2.13.2 and 2.14.3 each
+  complete **36** hinted/unhinted renders, with ordinary and composite programs
+  affecting native outlines compared with an otherwise identical control font.
+- Zero-contour instructions are legal under the
+  [glyf specification](https://learn.microsoft.com/en-us/typography/opentype/spec/glyf),
+  but FontTools 4.63 skips parsing them and both tested FreeType versions skip
+  executing them. The Python check reads their exact bytes through the raw table
+  reader. A separate pedantic Skrifa interpreter regression proves that the
+  authored phantom-only program increases an empty glyph's advance by one pixel.
+  Native FreeType execution of that case is **not** claimed.
+- FreeType 2.14.3 was built only under `/tmp/fontcarver-p5-freetype-2.14.3` for
+  verification; the system library and application dependencies are unchanged.
+- Evidence: `/tmp/fontcarver-p5-tt-regression-final.log`,
+  `/tmp/fontcarver-p5-tt-clippy-final.log`,
+  `/tmp/fontcarver-p5-tt-native-2.13.2.log`,
+  `/tmp/fontcarver-p5-tt-native-2.14.3.log` and
+  `/tmp/fontcarver-p5-tt-phantom.log`.
