@@ -122,6 +122,13 @@ pub(crate) fn import(font: &mut Font) -> Result<(), Error> {
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(!font.bitmap_strikes.is_empty());
     }
+    if let Some(math) = extra.get("math") {
+        font.math = Some(serde_json::from_value(math.clone())?);
+    }
+    font.math_table_owned = extra
+        .get("math_table_owned")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(font.math.is_some());
     let master_id = font.default_master().id.clone();
     if let Some(instructions) = extra
         .get("tt_instructions")
@@ -298,6 +305,8 @@ pub(crate) fn build(font: &Font, master: &Master) -> Result<Option<Value>, Error
     let has_data = !raw_tables.is_empty()
         || font.bitmap_tables_owned
         || !font.bitmap_strikes.is_empty()
+        || font.math_table_owned
+        || font.math.is_some()
         || !tt_instructions.is_empty()
         || !hints.is_empty()
         || tt_indices.is_some()
@@ -310,6 +319,8 @@ pub(crate) fn build(font: &Font, master: &Master) -> Result<Option<Value>, Error
         "raw_tables": raw_tables,
         "bitmap_strikes": font.bitmap_strikes,
         "bitmap_tables_owned": font.bitmap_tables_owned,
+        "math": font.math,
+        "math_table_owned": font.math_table_owned,
         "tt_instructions": tt_instructions,
         "hints": hints,
         "tt_indices": tt_indices,

@@ -564,6 +564,7 @@ impl Document {
         glyphs.dedup();
         Change {
             bitmaps: impact.bitmap_strikes || !impact.bitmap_glyphs.is_empty(),
+            math: impact.math,
             feature_source: impact.feature_source,
             layout: impact.layout,
             glyphs,

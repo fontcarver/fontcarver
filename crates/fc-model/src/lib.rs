@@ -56,8 +56,9 @@ pub use kerning::{KernPair, KernSide, Kerning, KerningGroups};
 pub use layer::{ColorLayer, DiagonalHint, HintMask, Image, Layer, LayerKind, PsHints, StemHint};
 pub use master::{Master, MasterMetrics, PsPrivate, Stem, TtMasterData, Zone};
 pub use math::{
-    MathAssembly, MathConstants, MathConstruction, MathDevice, MathGlyphInfo, MathKern, MathKerns,
-    MathPart, MathTable, MathValue, MathVariant, MAX_MATH_ITEMS,
+    MathAssembly, MathAssemblyLayout, MathConstants, MathConstruction, MathDevice, MathGlyphInfo,
+    MathKern, MathKerns, MathPart, MathTable, MathValue, MathVariant, PlacedMathPart,
+    MAX_MATH_ITEMS,
 };
 pub use query::{
     dependents, flatten_layer, flatten_layer_by_id, flatten_smart_component, glyph_for_unicode,

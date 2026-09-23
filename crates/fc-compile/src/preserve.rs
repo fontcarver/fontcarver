@@ -169,6 +169,10 @@ fn merge_raw_tables(
         if !imported_layout && IMPORT_LAYOUT_DEPENDENTS.contains(tag) {
             continue;
         }
+        // Editable MATH, including an explicit deletion, supersedes imported bytes.
+        if *tag == Tag(*b"MATH") && crate::math::owned(font) {
+            continue;
+        }
         if LAYOUT_TAGS.contains(tag) {
             if imported_layout && verified_order == OrderVerification::Verified {
                 builder.add_raw(read_tag(*tag), data.clone());

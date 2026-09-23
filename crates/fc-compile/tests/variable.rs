@@ -636,3 +636,54 @@ fn overlapping_conditional_component_dependencies_fail_instead_of_losing_one_alt
         .to_string()
         .contains("conditional component dependencies"));
 }
+
+#[test]
+fn variable_ttf_and_cff2_exports_write_editable_math() {
+    use fc_model::{MathConstruction, MathGlyphInfo, MathTable, MathValue, MathVariant};
+    let mut font = variable_font();
+    let mut math = MathTable {
+        min_connector_overlap: 12.0,
+        ..Default::default()
+    };
+    math.glyphs.insert(
+        "A".into(),
+        MathGlyphInfo {
+            italic_correction: Some(MathValue::from(15.0)),
+            vertical: Some(MathConstruction {
+                variants: vec![MathVariant {
+                    glyph: "V".into(),
+                    advance: 800.0,
+                }],
+                assembly: None,
+            }),
+            ..Default::default()
+        },
+    );
+    font.math = Some(math.clone());
+    font.math_table_owned = true;
+    for format in [fc_compile::ExportFormat::Ttf, fc_compile::ExportFormat::Otf] {
+        let report = fc_compile::export(
+            &font,
+            &|_| 0,
+            &fc_compile::ExportOptions {
+                variable: true,
+                format,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let output = fc_sfnt::read_bytes(&report.bytes, &Default::default())
+            .unwrap()
+            .fonts
+            .remove(0);
+        // CFF2 output uses post 3.0, so names are synthesized; compare by ID.
+        let mut decoded = output.math.clone().expect("MATH");
+        let names: Vec<_> = output.glyph_order().cloned().collect();
+        for (name, source) in names.iter().zip(font.glyph_order()) {
+            if name != source {
+                decoded.rename_glyph(name, source);
+            }
+        }
+        assert_eq!(decoded, math, "{format:?}");
+    }
+}

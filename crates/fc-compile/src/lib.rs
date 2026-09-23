@@ -13,6 +13,7 @@ mod feature_validation;
 mod instance;
 mod kerning;
 mod large_font;
+mod math;
 mod metadata;
 mod otf;
 mod otf_preservation;

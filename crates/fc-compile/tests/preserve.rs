@@ -311,6 +311,10 @@ fn changed_order_drops_all_gid_indexed_and_variation_raw_tables() {
         .remove(0);
     font.features.source_of_truth = FeaturesSource::ImportedTables;
     font.glyph_mut("V").expect("V").export = false;
+    // Exercise the legacy raw-table policy, as in documents saved before
+    // MATH became editable.
+    font.math = None;
+    font.math_table_owned = false;
     for tag in GID_TAGS.into_iter().chain(VAR_TAGS) {
         font.extra.raw_tables.insert(Tag(tag), vec![0, 1, 2, 3]);
     }

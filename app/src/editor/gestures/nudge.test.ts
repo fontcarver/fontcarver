@@ -21,6 +21,7 @@ function transport(): MockTransport {
       masters: false,
       layout: false,
       bitmaps: false,
+      math: false,
       feature_source: false,
       glyph_order: false,
       metrics: false,

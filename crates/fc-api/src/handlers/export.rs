@@ -85,6 +85,8 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
         // OTB is bitmap-only; source outlines and layout remain in the native document.
         font.extra = Default::default();
         font.features = Default::default();
+        font.math = None;
+        font.math_table_owned = true;
         for glyph in font.glyphs.values_mut() {
             for layer in &mut glyph.layers {
                 layer.contours.clear();
@@ -97,6 +99,17 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
 
     let mut warnings = Vec::new();
     let mut tables = Vec::new();
+    if font.math.is_some()
+        && matches!(
+            params.options.format,
+            ExportFormat::Glyphs | ExportFormat::Sfd | ExportFormat::Pfa | ExportFormat::Pfb
+        )
+    {
+        warnings.push(ExportWarning {
+            code: "math-not-exported".into(),
+            message: "This format does not store the editable MATH table; keep the native document or export an OpenType font to retain it.".into(),
+        });
+    }
     match params.options.format {
         ExportFormat::Bdf
         | ExportFormat::Pcf

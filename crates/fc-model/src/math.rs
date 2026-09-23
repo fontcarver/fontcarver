@@ -4,8 +4,10 @@ use crate::GlyphName;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+mod assembly;
 mod constants;
 mod validation;
+pub use assembly::{MathAssemblyLayout, PlacedMathPart};
 pub use constants::MathConstants;
 pub use validation::MAX_MATH_ITEMS;
 
@@ -191,6 +193,40 @@ pub struct MathTable {
 }
 
 impl MathTable {
+    /// Remove records and references for glyphs rejected by `keep`.
+    ///
+    /// A variant naming a removed glyph is dropped. An assembly containing a
+    /// removed part is dropped as a whole, because a partial assembly builds a
+    /// different shape. Constructions left without variants or an assembly are
+    /// removed. Returns how many records, variants and assemblies were dropped.
+    pub fn retain_glyphs(&mut self, mut keep: impl FnMut(&GlyphName) -> bool) -> usize {
+        let before = self.glyphs.len();
+        self.glyphs.retain(|name, _| keep(name));
+        let mut dropped = before - self.glyphs.len();
+        for info in self.glyphs.values_mut() {
+            for slot in [&mut info.vertical, &mut info.horizontal] {
+                let Some(construction) = slot else {
+                    continue;
+                };
+                let variants = construction.variants.len();
+                construction.variants.retain(|variant| keep(&variant.glyph));
+                dropped += variants - construction.variants.len();
+                if construction
+                    .assembly
+                    .as_ref()
+                    .is_some_and(|assembly| !assembly.parts.iter().all(|part| keep(&part.glyph)))
+                {
+                    construction.assembly = None;
+                    dropped += 1;
+                }
+                if construction.variants.is_empty() && construction.assembly.is_none() {
+                    *slot = None;
+                }
+            }
+        }
+        dropped
+    }
+
     /// Rename a covered glyph and all variant/assembly references.
     pub fn rename_glyph(&mut self, from: &str, to: &GlyphName) {
         if let Some(info) = self.glyphs.remove(from) {

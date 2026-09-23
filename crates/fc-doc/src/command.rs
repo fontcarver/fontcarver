@@ -21,6 +21,8 @@ mod hints;
 pub use hints::HintCommand;
 mod kerning;
 mod layers;
+mod math;
+pub use math::MathCommand;
 mod metrics;
 mod options;
 mod outline;
@@ -52,6 +54,8 @@ pub enum Command {
     DesignSpace(DesignSpaceCommand),
     /// Edit bitmap pixels and strikes independently of outline data.
     Bitmap(BitmapCommand),
+    /// Edit font-wide mathematical typesetting data.
+    Math(MathCommand),
     /// Save source text without compiling or changing effective layout authority.
     SetFeatureDraft {
         /// Current persistent feature editor revision.
@@ -674,6 +678,9 @@ pub struct Change {
     /// Bitmap pixels, references or strike metadata changed.
     #[serde(default)]
     pub bitmaps: bool,
+    /// Font-wide MATH data changed.
+    #[serde(default)]
+    pub math: bool,
     /// Whether feature editor source, settings or conversion metadata changed.
     #[serde(default)]
     pub feature_source: bool,

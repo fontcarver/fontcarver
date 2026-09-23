@@ -1,10 +1,10 @@
 # P5 MATH checkpoint
 
-Status: paused at the user's explicit request on 2026-09-22, after completing
-the current model and standalone binary-codec step. Resume only when requested.
+Status: paused at the user's explicit request on 2026-09-23, after the
+import/export/API/editor integration step. Resume only when requested.
 P4 is complete; P5 and MATH authoring are not complete.
 
-## Completed in this step
+## Model and codec step (2026-09-22)
 
 - Font-wide named MATH model: all 51 adjustable constants, two minimum heights,
   three percentages, devices, italic corrections, top accent attachments,
@@ -22,8 +22,8 @@ P4 is complete; P5 and MATH authoring are not complete.
   FCF schema. Legacy documents default to absent/unowned MATH.
 - Glyph rename updates covered names and variant/part references. Rename
   snapshots restore MATH on undo/redo. Native FCF and gzip round trips verified.
-- Existing sfnt open/export still uses the previous raw MATH preservation
-  path. The new semantic codec is deliberately not activated in that path yet.
+- At that step, sfnt open/export still used the previous raw MATH preservation
+  path (superseded by the integration step below). The new semantic codec is deliberately not activated in that path yet.
   An export preflight rejects explicitly authored/deleted MATH until integration
   is complete, preventing silent data loss or restoration of stale raw bytes.
 
@@ -60,40 +60,77 @@ The 10 focused tests above are included in the 292 regression tests, not
 additional tests. No frontend behavior changed, so browser/UI regression was
 not repeated for this standalone foundation.
 
+## Integration step (2026-09-23)
+
+Paused again at the user's request after finishing this step.
+
+- **Open:** sfnt import decodes MATH atomically with the imported glyph names.
+  Success yields owned editable data and removes the raw copy; failure keeps
+  the raw bytes and reports `math-not-editable`.
+- **Export:** `fc-compile/src/math.rs` writes owned MATH using the actual
+  compiled glyph order after all other table rewrites. It covers TTF, OTF/CFF,
+  WOFF/WOFF2, variable TTF/CFF2, static instances and production names. The
+  temporary export preflight is removed. Explicit deletion stays absent and
+  stale raw bytes are never restored. Table selection can omit MATH.
+  References to non-exported glyphs are dropped from the output only, with a
+  `math-references-dropped` warning. Invalid data fails the export.
+  Legacy raw MATH keeps the old preservation policy.
+- **Glyph set:** deleting glyphs removes their records, variants, and whole
+  assemblies that use them. Duplicating a glyph copies its record. Both are
+  undoable. UFO extras persist `math`/`math_table_owned`. Glyphs, SFD and
+  Type 1 exports warn with `math-not-exported`; OTB omits MATH.
+- **Model:** `MathTable::retain_glyphs` and bounded
+  `MathAssembly::layout` (same repeat count for all extenders, interpolated
+  overlaps, short-connector and part-limit reporting).
+- **Document/API:** undoable `Command::Math(MathCommand)`: `Replace`,
+  `SetGlobals`, `SetGlyph`, validated against the full glyph set.
+  `Change.math` flag. API methods `math.state`, `math.apply`
+  (revision-checked), `math.decode_imported` (for legacy raw tables, using
+  provenance glyph order) and `math.preview` (variant/assembly/fallback
+  choice with outlines and ink bounds).
+- **UI:** `app/src/views/math/`: a MATH dialog from the Font Info toolbar.
+  It has grouped constants with device corrections, filterable glyph records,
+  italic/accent/extended-shape fields, four-corner kerning, variants,
+  assembly parts and a live construction preview. Diffs are applied as one
+  undo step and the session joins document save handovers. English strings
+  are in `en.json`; zh-CN comes from a separate translation pass.
+
+Verification for this step: core crates `fc-model/fc-doc/fc-sfnt/fc-formats`
+416 passed; `fc-compile` + `fc-api` 394 passed with 2 pre-existing
+release-only ignores; clippy and rustfmt clean. Frontend `pnpm check`, lint
+and the full Vitest suite passed (1,131 tests) after merging the zh-CN
+strings from a separate Sonnet translation pass. One full run hit a transient
+`GlyphView` canvas-focus failure. That test is unrelated to this change and
+passed in three isolated reruns and the next full run.
+
+Localization review should confirm three terms the translator marked as
+uncertain: “cramped” → 局促样式, “corner kerning” → 角点紧排 and
+“stretch stack” → 伸缩堆叠.
+
 ## Resume here
 
-1. Integrate semantic MATH decoding in sfnt open. On malformed input retain the
-   raw table and emit a diagnostic; never return partial editable data.
-2. Integrate the writer with actual compiled glyph order and table ownership.
-   Replace the temporary export preflight once authored data and deletion work.
-   Cover TTF, OTF/CFF, WOFF/WOFF2, production names, excluded glyphs, table
-   selection and unchanged legacy raw preservation. Avoid misleading raw-table
-   loss warnings once semantic ownership has taken over.
-3. Finish glyph deletion/duplication policy and snapshots. Rename is covered,
-   but deletion/duplication are not yet integrated with the new data.
-4. Add revision-checked MATH API commands and complete undo/redo transactions.
-5. Build the English/zh-CN editor and bounded assembly preview; test browser
-   editing, validation failures, save/reopen, undo and export.
-6. Expand real-font and independent HarfBuzz checks, then mark the MATH task
-   complete only after the integrated workflow passes.
-
-Full task: [p5-04-math-authoring](superpowers/plans/tasks/p5-04-math-authoring.md).
-Remaining P5 work remains in the
-[professional finish plan](superpowers/plans/2026-09-22-p5-professional-finish.md)
-and [feature audit](p5-feature-audit.md). In particular, advanced hinting,
-COLR/CPAL/SVG, geometry/construction gaps, comparison/merge, scripts/plugins,
-remaining formats/profiles, shell UX, packaging and final acceptance remain open.
-The previously known Tibetan layout expansion-budget test failure remains
-unresolved; this checkpoint does not claim a passing full-workspace test suite.
+1. Browser-verify the MATH dialog with agent-browser on DejaVu Sans: edit
+   constants and a record, apply, undo, save and reopen, export, and check the
+   assembly preview and validation messages. Add a component test for the
+   dialog.
+2. Independent checks: compare exported MATH with FontTools and, if
+   available, HarfBuzz (`hb_ot_math_*` via uharfbuzz) for constants,
+   variants and assemblies. Test a larger real math font such as Latin Modern
+   or STIX Two Math by external path, checking time and memory.
+3. Add user documentation (`docs/user/`) and mark the MATH task and audit
+   entries complete only after steps 1-2 pass.
 
 ## Local working state
 
 - Branch: `p2a-kerning-resolution`.
-- Previous checkpoint: `cb87321` (Type 1 export preprocessing), following
+- Previous checkpoint: `9fc94b8` (MATH model and codec), following `cb87321`
+  (Type 1 export preprocessing),
   `46092d4` (Type 1 hint replacement) and `ee30400` (static TT authoring).
 - QA devserver port 8894 and Vite port 1494 were stopped for this pause.
   Isolated browser sessions had already been closed.
-- Focused logs: `/tmp/fontcarver-p5-math-model.log`,
+- Integration logs: `/tmp/fontcarver-p5-math-int-core.log`,
+  `/tmp/fontcarver-p5-math-int-compile-api.log`.
+- Earlier focused logs: `/tmp/fontcarver-p5-math-model.log`,
   `/tmp/fontcarver-p5-math-sfnt.log`, `/tmp/fontcarver-p5-math-doc.log`.
 - Broad-check logs use `/tmp/fontcarver-p5-math-*.log`.
 - Fast mode was not re-enabled; the last verified service tier was `default`.

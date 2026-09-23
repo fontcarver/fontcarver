@@ -28,6 +28,7 @@ function setup() {
       masters: true,
       layout: false,
       bitmaps: false,
+      math: false,
       feature_source: false,
       glyph_order: false,
       metrics: false,

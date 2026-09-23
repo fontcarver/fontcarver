@@ -231,3 +231,62 @@ sys.stdout.buffer.write(table.compile(font))
         source
     );
 }
+
+fn with_math_table(source: &[u8], math: &[u8]) -> Vec<u8> {
+    use read_fonts::FontRef;
+    let face = FontRef::new(source).unwrap();
+    let mut builder = write_fonts::FontBuilder::new();
+    for record in face.table_directory().table_records() {
+        if record.tag() != read_fonts::types::Tag::new(b"MATH") {
+            builder.add_raw(
+                record.tag(),
+                face.table_data(record.tag()).unwrap().as_bytes(),
+            );
+        }
+    }
+    builder.add_raw(write_fonts::types::Tag::new(b"MATH"), math.to_vec());
+    builder.build()
+}
+
+#[test]
+fn opening_a_font_decodes_math_into_owned_editable_data() {
+    use read_fonts::FontRef;
+    let bytes = std::fs::read(fc_fixtures::path("DejaVuSans.ttf")).unwrap();
+    let outcome = fc_sfnt::read_bytes(&bytes, &Default::default()).unwrap();
+    let font = &outcome.fonts[0];
+    let order: Vec<_> = font.glyph_order().cloned().collect();
+    let raw = FontRef::new(&bytes)
+        .unwrap()
+        .table_data(read_fonts::types::Tag::new(b"MATH"))
+        .unwrap();
+    let expected = fc_sfnt::math::read_table(raw.as_bytes(), &order).unwrap();
+    assert_eq!(font.math.as_ref(), Some(&expected));
+    assert!(font.math_table_owned);
+    assert!(!font.extra.raw_tables.contains_key(&fc_model::Tag(*b"MATH")));
+    assert!(outcome.warnings.iter().all(|w| !w.code.starts_with("math")));
+    // Provenance still records that the source contained a MATH table.
+    let source = font.extra.source.as_ref().unwrap();
+    assert!(source.table_tags.contains(&fc_model::Tag(*b"MATH")));
+}
+
+#[test]
+fn malformed_math_keeps_raw_bytes_with_a_diagnostic() {
+    let bytes = std::fs::read(fc_fixtures::path("DejaVuSans.ttf")).unwrap();
+    // Version 1.0 with a constants offset beyond the table.
+    let broken = [0, 1, 0, 0, 0x7f, 0xff, 0, 0, 0, 0];
+    let patched = with_math_table(&bytes, &broken);
+    let outcome = fc_sfnt::read_bytes(&patched, &Default::default()).unwrap();
+    let font = &outcome.fonts[0];
+    assert_eq!(font.math, None);
+    assert!(!font.math_table_owned);
+    assert_eq!(
+        font.extra.raw_tables.get(&fc_model::Tag(*b"MATH")),
+        Some(&broken.to_vec())
+    );
+    let warning = outcome
+        .warnings
+        .iter()
+        .find(|w| w.code == "math-not-editable")
+        .expect("diagnostic for undecodable MATH");
+    assert!(warning.message.contains("MATH"), "{}", warning.message);
+}

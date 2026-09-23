@@ -221,6 +221,8 @@ fn extras_are_compact_first_class_and_not_duplicated_in_ufo_lib() {
         depth: 1,
         ..BitmapStrike::default()
     });
+    font.math = Some(sample_math());
+    font.math_table_owned = true;
     {
         let layer = font
             .glyph_mut("A")
@@ -262,6 +264,8 @@ fn extras_are_compact_first_class_and_not_duplicated_in_ufo_lib() {
     let round_trip = read_ufo(&output).unwrap();
     assert_eq!(round_trip.extra.raw_tables, font.extra.raw_tables);
     assert_eq!(round_trip.bitmap_strikes, font.bitmap_strikes);
+    assert_eq!(round_trip.math, font.math);
+    assert!(round_trip.math_table_owned);
     let round_layer = round_trip
         .glyph("A")
         .unwrap()
@@ -550,4 +554,52 @@ fn file_times(root: &Path) -> BTreeMap<std::path::PathBuf, std::time::SystemTime
     let mut result = BTreeMap::new();
     visit(root, root, &mut result);
     result
+}
+
+fn sample_math() -> fc_model::MathTable {
+    use fc_model::{MathConstants, MathDevice, MathGlyphInfo, MathKern, MathValue};
+    let mut glyph = MathGlyphInfo {
+        italic_correction: Some(MathValue {
+            value: 12.5,
+            device: Some(MathDevice {
+                start_size: 9,
+                deltas: vec![-1, 0, 2],
+            }),
+        }),
+        extended_shape: true,
+        ..Default::default()
+    };
+    glyph.kern.top_left = Some(MathKern {
+        heights: vec![MathValue::from(100.0)],
+        values: vec![MathValue::from(-5.0), MathValue::from(0.0)],
+    });
+    fc_model::MathTable {
+        constants: Some(MathConstants {
+            script_percent_scale_down: 70,
+            ..Default::default()
+        }),
+        min_connector_overlap: 8.0,
+        glyphs: [("A".into(), glyph)].into(),
+    }
+}
+
+#[test]
+fn explicit_math_deletion_survives_ufo_round_trip() {
+    let mut font = read_ufo(&fc_fixtures::ufo_path("Minimal.ufo")).unwrap();
+    font.math_table_owned = true;
+    font.extra
+        .raw_tables
+        .insert(Tag(*b"MATH"), vec![0, 1, 0, 0]);
+    let temp = tempfile::tempdir().unwrap();
+    let output = temp.path().join("Deleted.ufo");
+    write_ufo(
+        &font,
+        &font.default_master().id,
+        &output,
+        &UfoWriteOptions::default(),
+    )
+    .unwrap();
+    let round_trip = read_ufo(&output).unwrap();
+    assert_eq!(round_trip.math, None);
+    assert!(round_trip.math_table_owned);
 }

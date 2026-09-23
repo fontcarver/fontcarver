@@ -1,6 +1,7 @@
 # Editable OpenType MATH
 
-Status: paused at the user's request after the model and standalone codec step.
+Status: paused at the user's request after the import/export, API and editor
+integration step; zh-CN review, browser and HarfBuzz verification remain.
 See [checkpoint and resume checklist](../../../p5-math-checkpoint.md).
 MATH authoring and P5 remain incomplete.
 

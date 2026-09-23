@@ -249,6 +249,7 @@ fn read_face(face: &FontRef<'_>, warnings: &mut Vec<Warning>) -> Result<Font, Er
         });
     }
     font.extra.raw_tables = raw::raw_tables(face);
+    decode_math(&mut font, &glyph_names, warnings);
     if [
         *b"GSUB", *b"GPOS", *b"GDEF", *b"BASE", *b"kern", *b"kerx", *b"morx", *b"mort", *b"JSTF",
     ]
@@ -258,6 +259,30 @@ fn read_face(face: &FontRef<'_>, warnings: &mut Vec<Warning>) -> Result<Font, Er
         font.features.source_of_truth = FeaturesSource::ImportedTables;
     }
     Ok(font)
+}
+
+/// Replace raw MATH with owned editable data when the whole table decodes.
+///
+/// Decoding is atomic: malformed or unsupported input keeps the raw bytes for
+/// the existing preservation policy and never produces partial editable data.
+fn decode_math(font: &mut Font, glyph_names: &[fc_model::GlyphName], warnings: &mut Vec<Warning>) {
+    let tag = Tag(*b"MATH");
+    let Some(bytes) = font.extra.raw_tables.get(&tag) else {
+        return;
+    };
+    match crate::math::read_table(bytes, glyph_names) {
+        Ok(math) => {
+            font.math = Some(math);
+            font.math_table_owned = true;
+            font.extra.raw_tables.remove(&tag);
+        }
+        Err(error) => warnings.push(Warning {
+            code: "math-not-editable",
+            message: format!(
+                "The MATH table was kept as imported bytes and is not editable: {error}"
+            ),
+        }),
+    }
 }
 
 fn infer_smooth_points(contours: &mut [fc_model::Contour]) {

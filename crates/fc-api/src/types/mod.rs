@@ -15,6 +15,8 @@ pub use tt_hints::*;
 mod kerning;
 mod layout;
 mod layout_conversion;
+mod math;
+pub use math::*;
 mod problems;
 mod session;
 mod shaping;

@@ -198,14 +198,6 @@ fn export_inner(
     if options.format == ExportFormat::Fcf {
         return Err(Error::UnsupportedFormat("FCF"));
     }
-    // The semantic codec is available, but normal export integration is a
-    // separate checkpoint. Never silently discard saved authored MATH or
-    // resurrect raw bytes after an explicit deletion in the meantime.
-    if font.math.is_some() || font.math_table_owned {
-        return Err(Error::InvalidSource(
-            "editable MATH is saved in the document; its font export integration is not yet available".into(),
-        ));
-    }
     if font.has_unapplied_feature_draft() {
         return Err(Error::InvalidSource(
             "apply or discard the feature draft before exporting a font".to_owned(),
@@ -423,6 +415,7 @@ fn export_inner(
     };
     let merged = fc_sfnt::bitmap::replace_tables(&merged, font, &compiled.glyph_order)
         .map_err(|e| Error::write("embedded bitmaps", e))?;
+    let merged = crate::math::apply(&merged, font, &compiled.glyph_order, &mut warnings)?;
     progress(ExportStage::Write, WRITE_PERCENT);
     let sfnt = if let Some(subset) = &options.table_subset {
         subset_tables(&merged, subset)?

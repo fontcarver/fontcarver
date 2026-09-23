@@ -117,6 +117,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             }
         }
         Command::Bitmap(_) => impact.bitmap_strikes = true,
+        Command::Math(_) => impact.math = true,
         Command::SetFeatureDraft { .. } | Command::DiscardFeatureDraft { .. } => {
             impact.feature_source = true
         }
@@ -136,6 +137,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.component_graph_changed = true;
         }
         Command::RemoveGlyphs { names } => {
+            impact.math = font.math.is_some();
             impact.cid = font.cid.is_some();
             impact.bitmap_strikes = !font.bitmap_strikes.is_empty();
             impact.layout = true;
@@ -250,6 +252,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.component_graph_changed = true;
         }
         Command::DuplicateGlyph { name, .. } => {
+            impact.math = font.math.is_some();
             impact.bitmap_strikes = !font.bitmap_strikes.is_empty();
             impact.glyph(name);
             impact.glyph_order = true;
@@ -341,6 +344,7 @@ fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
         Command::SetCidInfo { cid } => super::cid::set(font, cid),
         Command::DesignSpace(command) => super::designspace::apply(font, command),
         Command::Bitmap(command) => super::bitmap::apply(font, command),
+        Command::Math(command) => super::math::apply(font, command),
         Command::SetFeatureDraft {
             expected_revision,
             source,

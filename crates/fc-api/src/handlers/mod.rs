@@ -10,6 +10,7 @@ pub(crate) mod hints;
 pub(crate) mod kerning;
 pub(crate) mod layout;
 pub(crate) mod layout_conversion;
+pub(crate) mod math;
 pub(crate) mod prefs;
 pub(crate) mod problems;
 pub(crate) mod recipe;

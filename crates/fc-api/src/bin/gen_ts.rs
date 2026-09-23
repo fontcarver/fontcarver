@@ -51,6 +51,10 @@ fn main() -> Result<(), Box<dyn Error>> {
         &["Axis", "Master", "Instance", "LayerKind", "SmartAxis"],
     )?;
     add_imports(&output_dir.join("Kerning.ts"), &["KernPair"])?;
+    add_imports(
+        &output_dir.join("MathCommand.ts"),
+        &["MathTable", "MathConstants", "MathGlyphInfo"],
+    )?;
     write_methods(&output_dir)?;
     write_index(&output_dir)?;
     Ok(())
@@ -151,6 +155,12 @@ fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
     CjkFilter::export_all(config)?;
     fc_model::CidInfo::export_all(config)?;
     CidState::export_all(config)?;
+    MathState::export_all(config)?;
+    MathApplyParams::export_all(config)?;
+    MathDecodeParams::export_all(config)?;
+    MathPreviewParams::export_all(config)?;
+    MathPreview::export_all(config)?;
+    fc_model::MathTable::export_all(config)?;
     CidApplyParams::export_all(config)?;
     UnihanParams::export_all(config)?;
     UnihanInfo::export_all(config)?;
