@@ -4,7 +4,7 @@ Date: 2026-09-19. Status: complete within the documented static scope.
 
 Scope: the remaining P2c/P2d work from the binding roadmap, following
 [the completion design](superpowers/specs/2026-09-19-p2-completion.md) and
-[implementation plan](superpowers/plans/2026-09-19-p2-completion.md).
+[implementation plan](superpowers/specs/2026-09-19-p2-completion.md#implementation-plan).
 P2a and P2b remain the accepted authoring baseline. Implementation, independent
 review, isolated browser acceptance and Sol Chinese localization used separate
 agents, as requested by the user.
@@ -117,19 +117,19 @@ for errors, including errors omitted from a truncated response.
 The following integrated batches passed; final focused reviews cover the later
 FEA work-budget and Type 1 arithmetic guards without double-counting reruns:
 
-| Gate | Result |
-| --- | --- |
-| `cargo test -p fc-compile -p fc-doc -p fc-model -p fc-geom -p fc-layout -p fc-sfnt -p fc-glyphdata -p fc-devserver -- --skip source_han_export_meets_release_budget_when_available` | 592 passed; 1 explicitly filtered performance gate |
-| `cargo test -p fc-api -p fc-cli -p fc-formats` | 304 passed; 2 existing release-only acceptance tests ignored |
-| Feature validation/generation/source/writer/export/work-budget focused suites | 30 passed; final 5 work-budget cases passed again under a 512 MiB process limit; CID range unit passed |
-| Final Type 1 independent rerun | 19 integration + 1 arithmetic-guard unit passed; external native fontTools/FreeType probes passed |
-| Final `cargo clippy --workspace --all-targets -- -D warnings` | Passed, including desktop shell type-checking |
-| `cargo fmt --all -- --check`, `git diff --check` | Passed |
-| API generation | Passed; generated files remain uncommitted/ignored by policy |
-| `pnpm test` | 128 files / 1,096 tests passed; final localization/export warning addition passed 16 focused tests |
-| `pnpm check`, `pnpm lint`, `pnpm build` | Passed; existing Vite large-chunk advisory remains |
-| Sol localization | 1,184 leaf keys in each language, no missing/extra keys or placeholder mismatches |
-| `pnpm exec playwright test --config e2e/p2cd.config.ts` | 8 passed (1.0 minute), against the final rebuilt backend |
+| Gate                                                                                                                                                                                | Result                                                                                                 |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `cargo test -p fc-compile -p fc-doc -p fc-model -p fc-geom -p fc-layout -p fc-sfnt -p fc-glyphdata -p fc-devserver -- --skip source_han_export_meets_release_budget_when_available` | 592 passed; 1 explicitly filtered performance gate                                                     |
+| `cargo test -p fc-api -p fc-cli -p fc-formats`                                                                                                                                      | 304 passed; 2 existing release-only acceptance tests ignored                                           |
+| Feature validation/generation/source/writer/export/work-budget focused suites                                                                                                       | 30 passed; final 5 work-budget cases passed again under a 512 MiB process limit; CID range unit passed |
+| Final Type 1 independent rerun                                                                                                                                                      | 19 integration + 1 arithmetic-guard unit passed; external native fontTools/FreeType probes passed      |
+| Final `cargo clippy --workspace --all-targets -- -D warnings`                                                                                                                       | Passed, including desktop shell type-checking                                                          |
+| `cargo fmt --all -- --check`, `git diff --check`                                                                                                                                    | Passed                                                                                                 |
+| API generation                                                                                                                                                                      | Passed; generated files remain uncommitted/ignored by policy                                           |
+| `pnpm test`                                                                                                                                                                         | 128 files / 1,096 tests passed; final localization/export warning addition passed 16 focused tests     |
+| `pnpm check`, `pnpm lint`, `pnpm build`                                                                                                                                             | Passed; existing Vite large-chunk advisory remains                                                     |
+| Sol localization                                                                                                                                                                    | 1,184 leaf keys in each language, no missing/extra keys or placeholder mismatches                      |
+| `pnpm exec playwright test --config e2e/p2cd.config.ts`                                                                                                                             | 8 passed (1.0 minute), against the final rebuilt backend                                               |
 
 The final browser suite covers OTF/Glyphs/SFD export and reopening, all-master
 Glyphs versus selected-master SFD output, both Type 1 containers and loss

@@ -11,7 +11,7 @@ group impact, and ambiguous text gaps.
 ## Owned files
 
 - `app/src/i18n/zh-CN.json`
-- `docs/p2a-localization-qa.md`
+- `docs/p2a-acceptance.md` (section “Localization QA”)
 - This task file.
 
 English catalogues and frontend behavior remain owned by the feature authors.
@@ -48,4 +48,4 @@ Group sides refer to pair order, so label them `第一侧` and `第二侧`.
 - [x] Send terminology and missing-message findings to feature authors.
 - [x] Translate final English keys.
 - [x] Validate key/placeholder parity and review feature-code label coverage.
-- [x] Record final QA results in `docs/p2a-localization-qa.md`.
+- [x] Record final QA results in `docs/p2a-acceptance.md` (section “Localization QA”).

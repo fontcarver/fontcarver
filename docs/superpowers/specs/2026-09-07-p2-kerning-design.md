@@ -30,7 +30,7 @@ imported-table authority, active source-owned `kern`, and unparseable source.
 The [implementation plan](../plans/2026-09-16-p2a-authoring.md) and
 [acceptance report](../../p2a-acceptance.md) record the completed milestone.
 P2a–P2d are now complete within their documented boundaries; see the
-[current TODO](../plans/2026-09-05-p1-resume-todo.md). The earlier
+[project status](../../STATUS.md). The earlier
 pauses on performance, comparison and native desktop automation remain in effect.
 
 The user tried the P1 desktop version, found its current usability acceptable

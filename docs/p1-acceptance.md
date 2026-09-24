@@ -25,8 +25,8 @@ P2 preparation is recorded in
 `docs/superpowers/specs/2026-09-07-p2-kerning-design.md`.
 After discussing that proposal, the user deferred P2 until a later session in
 a few days. The draft is saved, no P2 implementation has begun, and work waits
-for the user's next instruction. The current resume checklist is at the top of
-`docs/superpowers/plans/2026-09-05-p1-resume-todo.md`.
+for the user's next instruction. (Historical note; current status is in
+`docs/STATUS.md`.)
 
 ## Kernel and CLI workflows
 

@@ -56,5 +56,5 @@ test remained excluded. No new runtime or third-party dependency was added.
 
 This task did not implement drafts, the editor, validation API or imported
 conversion; subsequent tasks completed them. Details:
-[task 01 acceptance](../../../p2b-01-acceptance.md) and
+[task 01 acceptance](../../../p2b-acceptance.md#appendix-p2b-01-mapped-fea-assembly-and-ufo-compatibility-2026-09-17) and
 [final P2b acceptance](../../../p2b-acceptance.md).

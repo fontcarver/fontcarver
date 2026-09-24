@@ -4,7 +4,7 @@ The single entry point for "where is the project". Update this file at every
 pause and every milestone commit. It links to the detailed records; it does
 not repeat them.
 
-Last updated: 2026-09-24. Branch: `p2a-kerning-resolution` (no push, no main
+Last updated: 2026-09-24 (documentation consolidation). Branch: `p2a-kerning-resolution` (no push, no main
 merge). Latest checkpoint commit: `1402098`.
 
 ## Phases
@@ -67,5 +67,4 @@ continue down the P5 plan's work sequence.
 | Detailed progress of an unfinished P5 block | `docs/p5-*-checkpoint.md`                                                                                 |
 | How do I use feature X?                     | `docs/user/`                                                                                              |
 | Background research (FontForge, crates, UX) | `docs/research/`                                                                                          |
-| Agent work logs from P0/P1 (historical)     | `docs/superpowers/ledgers/`                                                                               |
-| Historical status log up to 2026-09-24      | [resume TODO](superpowers/plans/2026-09-05-p1-resume-todo.md) (superseded by this file)                   |
+| Agent work logs from P0/P1 (historical)     | `docs/archive/ledgers/` (unreferenced; kept as the review audit trail)                                    |

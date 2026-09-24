@@ -62,46 +62,6 @@ separately and must be diagnosed during professional finish rather than hidden.
 
 ## Hinting implementation checkpoint
 
-The first slice adds `fc-hint`, exact TT opcode assembly/disassembly and bounded
-external ttfautohint execution. PS editing supports stems, ghosts, masks, counter
-masks, closing edges, zones and private values through revision-checked API
-transactions, undo and FCF persistence. Curve extrema supplement straight-edge
-stem analysis. Static CFF writes these values; static export preprocessing now
-supports overlap removal and automatic hinting through both UI and CLI.
-
-Focused verification found and corrected mask point offsets, implicit closing
-edge masks, cross-master hint invalidation and missing curved-bowl stems.
-Invalid active sets containing overlapping stems are rejected at CFF export.
-Independent FontTools/FreeType acceptance produced 2,460 successful glyph/size
-renders and 125 TT glyph programs for each of TTF, WOFF and WOFF2; decoded web
-containers match the TTF rendering digest. WOFF2 was decoded by FontTools because
-the host FreeType cannot load that container directly. A separate browser export
-added 30 renders and verified the editable source remained unchanged.
-
-This is not the full hinting milestone. Complex Type 1 hint import/output needs
-further implementation. Static-master TT editing, persistence, compiled-point
-checks, authored program export and interpreter preview are now integrated. Variable
-hinting, multiple editable CID private dictionaries and broader PS analysis
-quality remain open. The full P5 checklist is still open.
-
-The Type 1 follow-up retains literal private values, H/V stems, ghosts, fractional
-operands, point-bound hint replacement and representable stem3 counter groups.
-Import normalizes sidebearings and representable matrices; runtime private-field
-computation and unsupported glyph mechanisms produce persistent diagnostics.
-Native output validates every active set and rejects unsupported mechanisms
-before replacing a file. The real Nimbus Sans fixture verifies unsorted BlueValues,
-nonzero sidebearings and replacement hints. FontTools, FreeType and Ghostscript
-checks cover both PFA and PFB output. Flex, dot sections, general counter control,
-seac hint inheritance and per-FD dictionaries remain open.
-PFA/PFB automatic hinting and overlap removal now run on export copies through
-the API, CLI and bilingual export dialog. Old PS hints cleared without rehinting
-are disclosed; failed preprocessing preserves the existing destination.
-
-The TT follow-up adds a separate bilingual editor for glyph/fpgm/prep assembly,
-CVT and interpreter maxima, with actual compiled point indices and phantom points.
-Revision-checked apply, undo/redo, save/reopen, stale-binding failures and native
-TTF/WOFF/WOFF2 export are verified. WOFF2 null transforms preserve zero-contour
-programs that the ordinary encoder discards. Smart/bracket resolution, generated
-instances, variable TT programs and simultaneous automatic hinting/overlap removal
-remain unsupported for authored TT programs. See `docs/user/hinting.md` for exact
-interpreter and source-resolution limits.
+Progress and verification for the hinting block are recorded in
+[p5-hinting-checkpoint](../../p5-hinting-checkpoint.md); this plan keeps only
+the work sequence above.

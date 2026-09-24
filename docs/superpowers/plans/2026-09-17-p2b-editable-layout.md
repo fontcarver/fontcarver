@@ -11,7 +11,7 @@ design, scoped implementation tasks and a safe starting order. It does not mark
 any P2b production feature complete or resume the paused investigations.
 
 The user subsequently authorized the next implementation step. Task 01 is now
-implemented and verified: see [P2b-01 acceptance](../../p2b-01-acceptance.md).
+implemented and verified: see [P2b-01 acceptance](../../p2b-acceptance.md#appendix-p2b-01-mapped-fea-assembly-and-ufo-compatibility-2026-09-17).
 
 The user has now authorized completion of all remaining P2b tasks, retaining
 the earlier approval for delegated implementation, independent translation and
@@ -20,19 +20,19 @@ report records actual results and conservative conversion boundaries.
 
 ## Delivery sequence
 
-| Task | Deliverable | Depends on | Primary owner/files |
-| --- | --- | --- | --- |
-| [01](tasks/p2b-01-source-assembly.md) | Shared mapped FEA assembly and UFO compatibility | P2a | `fc-model`, `fc-formats`, compiler/eligibility call sites |
-| [02](tasks/p2b-02-draft-transactions.md) | Persisted drafts, feature snapshots, compile revisions | 01 | `fc-model`, `fc-doc`, FCF schema |
-| [03](tasks/p2b-03-validation-api.md) | Diagnostics and guarded source activation API | 01, 02 | `fc-compile`, `fc-api`, trusted `fc-doc` apply path |
-| [04](tasks/p2b-04-automatic-features.md) | Automatic source, freeze and writer ownership | 01, 03 | `fc-compile`, feature policy types |
-| [05](tasks/p2b-05-layout-inventory.md) | Imported inventory, graph, limits, inspector queries | 01 | `fc-layout`, `fc-sfnt`, `fc-api` |
-| [06](tasks/p2b-06-simple-decompiler.md) | Simple static GSUB/GPOS decompilation and comparison | 03, 05 | `fc-layout` and synthetic fixtures |
-| [07](tasks/p2b-07-complete-static-decompiler.md) | Remaining static lookups, GDEF/BASE coverage | 06 | `fc-layout` |
-| [08](tasks/p2b-08-conversion-and-lifting.md) | Atomic conversion/revert and proven kerning/anchor lift | 02–07 | `fc-doc`, `fc-layout`, `fc-compile`, `fc-api` |
-| [09](tasks/p2b-09-features-editor.md) | Features/Lookups UI and generic edit handovers | 02–05 API contracts; integrate 08 | `app` shell/editor/features view |
-| [10](tasks/p2b-10-localization.md) | Independent Chinese translation and terminology QA | 09 strings stable | `zh-CN.json`; translator owns it |
-| [11](tasks/p2b-11-acceptance-review.md) | Corpus, headless acceptance and independent review | 01–10 | tests, fixtures and acceptance report |
+| Task                                             | Deliverable                                             | Depends on                        | Primary owner/files                                       |
+| ------------------------------------------------ | ------------------------------------------------------- | --------------------------------- | --------------------------------------------------------- |
+| [01](tasks/p2b-01-source-assembly.md)            | Shared mapped FEA assembly and UFO compatibility        | P2a                               | `fc-model`, `fc-formats`, compiler/eligibility call sites |
+| [02](tasks/p2b-02-draft-transactions.md)         | Persisted drafts, feature snapshots, compile revisions  | 01                                | `fc-model`, `fc-doc`, FCF schema                          |
+| [03](tasks/p2b-03-validation-api.md)             | Diagnostics and guarded source activation API           | 01, 02                            | `fc-compile`, `fc-api`, trusted `fc-doc` apply path       |
+| [04](tasks/p2b-04-automatic-features.md)         | Automatic source, freeze and writer ownership           | 01, 03                            | `fc-compile`, feature policy types                        |
+| [05](tasks/p2b-05-layout-inventory.md)           | Imported inventory, graph, limits, inspector queries    | 01                                | `fc-layout`, `fc-sfnt`, `fc-api`                          |
+| [06](tasks/p2b-06-simple-decompiler.md)          | Simple static GSUB/GPOS decompilation and comparison    | 03, 05                            | `fc-layout` and synthetic fixtures                        |
+| [07](tasks/p2b-07-complete-static-decompiler.md) | Remaining static lookups, GDEF/BASE coverage            | 06                                | `fc-layout`                                               |
+| [08](tasks/p2b-08-conversion-and-lifting.md)     | Atomic conversion/revert and proven kerning/anchor lift | 02–07                             | `fc-doc`, `fc-layout`, `fc-compile`, `fc-api`             |
+| [09](tasks/p2b-09-features-editor.md)            | Features/Lookups UI and generic edit handovers          | 02–05 API contracts; integrate 08 | `app` shell/editor/features view                          |
+| [10](tasks/p2b-10-localization.md)               | Independent Chinese translation and terminology QA      | 09 strings stable                 | `zh-CN.json`; translator owns it                          |
+| [11](tasks/p2b-11-acceptance-review.md)          | Corpus, headless acceptance and independent review      | 01–10                             | tests, fixtures and acceptance report                     |
 
 Completed **tasks 01–11**; measured results and remaining format boundaries are
 recorded in [P2b acceptance](../../p2b-acceptance.md). The next milestone is P2c
@@ -126,9 +126,9 @@ generated-type commit is needed. Record actual commit/check results at handoff.
 
 - [x] Read engineering conventions and binding P2/product scope.
 - [x] Independently audit imported tables/compiler ownership and editor/source
-  persistence; record BASE-only, legacy kern, JSTF and point-index dependencies.
+      persistence; record BASE-only, legacy kern, JSTF and point-index dependencies.
 - [x] Specify whole-file UFO normalization, draft/active separation, generic edit
-  barriers, source-map encoding and compiler dependency direction.
+      barriers, source-map encoding and compiler dependency direction.
 - [x] Write scoped task contracts with explicit supported/blocked cases.
 - [x] Complete independent final design review and resolve findings.
 - [x] Validate document links and prepare all three local checkpoints.

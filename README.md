@@ -73,7 +73,7 @@ crates/       Rust kernel: model, geometry, formats, sfnt, layout, compile, api,
 src-tauri/    Tauri 2 desktop shell (thin wiring layer)
 app/          React 19 + TypeScript + Vite frontend
 fixtures/     test fonts
-docs/         specs, plans, research, design
+docs/         status, acceptance records, specs, plans, research, design, user docs
 ```
 
 ## Documentation

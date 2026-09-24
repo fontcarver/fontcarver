@@ -7,7 +7,7 @@ remains in the [design draft](../specs/2026-09-07-p2-kerning-design.md).
 ## Interface and decisions
 
 - Add `fc_doc::kerning::check_horizontal_editing(&Font) ->
-  Result<(), HorizontalKerningEditBlock>`. Reasons are `ImportedLayout`,
+Result<(), HorizontalKerningEditBlock>`. Reasons are `ImportedLayout`,
   `SourceOwnedKerning`, and `InvalidFeatureSource`.
 - Imported-table authority always blocks authoring, even if FEA text is empty
   or the document was saved as FCF. Do not mutate source or tables.
@@ -39,7 +39,7 @@ remains in the [design draft](../specs/2026-09-07-p2-kerning-design.md).
    lookups, both stored class spellings, and disabled features.
 4. Run formatting, focused crate Clippy, complete `fc-doc`/`fc-model` tests,
    and relevant compiler/preservation tests. Review the final diff and record
-   results in `docs/p2a-eligibility-acceptance.md`.
+   results in `docs/p2a-acceptance.md` (section “Eligibility slice”).
 
 ## Following slices
 

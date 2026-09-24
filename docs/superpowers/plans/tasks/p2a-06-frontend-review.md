@@ -5,7 +5,7 @@
 Read-only review of text kerning controls, shaped gap identity and rendering,
 edit sessions, group inspector commands, and editor/document handover. Exclude
 unrelated existing workspace changes. Product fixes remain with the feature
-authors; this task owns only this task file and `docs/p2a-frontend-review.md`.
+authors; this task owns only this task file and the “Independent frontend review” section of `docs/p2a-acceptance.md`.
 
 ## Interfaces
 
