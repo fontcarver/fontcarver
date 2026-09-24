@@ -1,12 +1,13 @@
 # FontCarver — 可行性评估与实施计划
 
-> **Historical feasibility document.** P0, P1, P2a and P2b have since been implemented;
+> **Historical feasibility document.** P0 through P4 have since been implemented;
 > the original phase numbering and next steps below are obsolete. Use the
 > [binding design](docs/superpowers/specs/2026-09-03-fontcarver-design.md),
-> [P1 acceptance](docs/p1-acceptance.md), [P2a acceptance](docs/p2a-acceptance.md),
-> [P2b acceptance](docs/p2b-acceptance.md), and
-> [current TODO](docs/superpowers/plans/2026-09-05-p1-resume-todo.md)
-> for current scope and status. The next milestone is P2c static OTF/CFF export.
+> the per-phase acceptance reports in `docs/` (`p1`–`p4-acceptance.md`), the
+> [current TODO](docs/superpowers/plans/2026-09-05-p1-resume-todo.md) and the
+> [P5 plan](docs/superpowers/plans/2026-09-22-p5-professional-finish.md) for
+> current scope and status. The current milestone is P5 professional finish,
+> tracked row by row in [the feature audit](docs/p5-feature-audit.md).
 >
 > 用 Claude Code（+ Codex）把字体编辑器重写为 TypeScript / Tauri 桌面应用，目标对标 FontLab / Glyphs / FontCreator 的可用性与专业度。
 >

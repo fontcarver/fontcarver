@@ -1,6 +1,27 @@
 # FontCarver — resume TODO (written 2026-09-05, session paused by the user)
 
-## Current status — P2 complete, 2026-09-19
+## Current status — P5 in progress, paused 2026-09-24
+
+P3 (bitmap fonts) and P4 (variable fonts and CJK) are complete; see
+[P3 acceptance](../../p3-acceptance.md) and
+[P4 acceptance](../../p4-acceptance.md). P5 (professional finish) is
+authorized and in progress under the
+[P5 plan](2026-09-22-p5-professional-finish.md) and the
+[feature audit](../../p5-feature-audit.md), which is the row-by-row exit
+checklist; almost all of its 112 rows are still open.
+
+Within P5, hinting (TT/PS editing, Type 1 hints, export preprocessing) has
+its own checkpoint in [p5-hinting-checkpoint](../../p5-hinting-checkpoint.md).
+MATH authoring is integrated end to end (import, export, glyph-set
+follow-up, revision-checked API, bilingual editor) as of `5a36e93` and the
+review fixes in `1402098`; the remaining MATH steps (browser verification,
+HarfBuzz/large-font checks, user docs) are listed under “Resume here” in
+[p5-math-checkpoint](../../p5-math-checkpoint.md). Resume from that list.
+
+No release packaging, FontForge execution or native desktop automation was
+started. No push or main merge occurred. The sections below are historical.
+
+## Previous checkpoint — P2 complete, 2026-09-19
 
 The user authorized all remaining P2 work with separate implementation/review
 agents and Sol Chinese translation. P2c static OTF/CFF export and P2d
@@ -105,7 +126,7 @@ disabled blocks and comments do not falsely reserve kerning.
 - [x] Write the [bounded plan](2026-09-16-p2a-kerning-eligibility.md).
 - [x] Implement the pure check and 13 ownership/syntax regression tests.
 - [x] Share existing FEA assembly between the check and compiler; retain the
-  existing class-spelling regression test in `fc-model`.
+      existing class-spelling regression test in `fc-model`.
 - [x] Pass all 92 `fc-doc` and 37 `fc-model` tests.
 - [x] Pass 14 compiler/preservation tests, focused Clippy and formatting.
 - [x] Review the final diff and update status/acceptance documentation.
