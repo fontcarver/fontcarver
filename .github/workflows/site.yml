@@ -1,0 +1,67 @@
+name: Site
+
+# Separate from `ci.yml` on purpose: the website has no Rust and no npm, so it
+# must not wait behind a 45-minute workspace build, and a change to the kernel
+# must not redeploy the site.
+
+on:
+  push:
+    paths:
+      - 'site/**'
+      - 'scripts/check_site.py'
+      - '.github/workflows/site.yml'
+  pull_request:
+    paths:
+      - 'site/**'
+      - 'scripts/check_site.py'
+      - '.github/workflows/site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # No dependencies to install: the site is hand-written static files and
+      # the checker is standard-library Python.
+      - name: Check the site
+        run: python3 scripts/check_site.py
+
+  deploy:
+    needs: verify
+    # Three conditions, all of which have to be arranged deliberately: a push
+    # rather than a pull request, the default branch, and a repository
+    # variable naming the Cloudflare Pages project. Until someone sets that
+    # variable this job does not run, which is how "built but not published"
+    # is enforced by the workflow instead of by memory.
+    if: >-
+      github.event_name != 'pull_request'
+      && github.ref == 'refs/heads/main'
+      && vars.CLOUDFLARE_PAGES_PROJECT != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production
+      url: https://fontcarver.com
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check the site again against what is about to be published
+        run: python3 scripts/check_site.py
+
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: >-
+            pages deploy site
+            --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+            --branch=main
