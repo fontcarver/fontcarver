@@ -239,6 +239,25 @@ samp {
   text-wrap: balance;
 }
 
+/* Chinese breaks between any two characters, which reads badly in a
+   headline; each clause stays whole and the line breaks at the commas. */
+.clause {
+  white-space: nowrap;
+}
+
+/* Han characters carry far more ink per em than Latin ones, so the display
+   size that suits the English headline overwhelms the Chinese one. */
+html[lang='zh-Hans'] .hero h1 {
+  font-size: clamp(2rem, 1.3rem + 2.4vw, 3.25rem);
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+html[lang='zh-Hans'] .section h2 {
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
 .hero__lede {
   font-size: var(--size-lede);
   color: var(--ink-muted);
@@ -586,6 +605,15 @@ samp {
   font-variation-settings: 'opsz' 32;
   margin-bottom: var(--space-4);
   text-wrap: balance;
+}
+
+/* A subheading that belongs to the section itself, rather than to a card or
+   a step, needs room above it — it follows a grid of panels. */
+.section__grid > div > h3 {
+  margin-top: var(--space-7);
+  margin-bottom: var(--space-3);
+  font-size: var(--size-h3);
+  font-variation-settings: 'opsz' 20;
 }
 
 .section__lede {

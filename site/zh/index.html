@@ -67,19 +67,16 @@
       <section class="hero">
         <div class="shell hero__grid">
           <div class="hero__text">
-            <h1>绘制轮廓，编辑点阵，导出 OpenType。</h1>
+            <h1><span class="clause">绘制轮廓，</span><span class="clause">编辑点阵，</span><span class="clause">导出</span> OpenType。</h1>
             <p class="hero__lede">
-              FontCarver 是一款内核以 Rust 写成的桌面字体编辑器。轮廓与点阵字型存在于同一份
-              文档；一套 65,535 字的中日韩字库，用的是与单母版拉丁字体相同的工具；你没有动过的
-              表，会原样从导出器里出来。
+              FontCarver 是一款内核以 Rust 写成的桌面字体编辑器。轮廓与点阵字型存在于同一份文档；一套 65,535 字的中日韩字库，用的是与单母版拉丁字体相同的工具；你没有动过的表，会原样从导出器里出来。
             </p>
             <div class="actions">
               <a class="button" href="#download">获取 FontCarver</a>
               <a class="button button--quiet" href="https://github.com/fontcarver/fontcarver" rel="noopener">在 GitHub 查看源码</a>
             </div>
             <p class="status-note">
-              早期开发阶段。P0 至 P4 已在各自验收报告界定的范围内完成，P5 仍在进行，目前还没有
-              打包发布。
+              早期开发阶段。P0 至 P4 已在各自验收报告界定的范围内完成，P5 仍在进行，目前还没有打包发布。
               <a href="https://github.com/fontcarver/fontcarver/blob/main/docs/STATUS.md" rel="noopener">查看状态记录</a>
             </p>
           </div>
@@ -131,8 +128,7 @@
           <div>
             <h2>四件不被当作后补功能来对待的事。</h2>
             <p class="section__lede">
-              多数编辑器围绕一种字体形态建成，其余的后来再补。这里的文档模型从一开始就同时包含
-              这四者。
+              多数编辑器围绕一种字体形态建成，其余的后来再补。这里的文档模型从一开始就同时包含这四者。
             </p>
             <div class="panels">
               <article class="panel">
@@ -154,8 +150,7 @@
                 </figure>
                 <h3>曲线与点阵，同一份文档</h3>
                 <p>
-                  三次与二次曲线的轮廓编辑，和点阵字型编辑，是同一份文档，而不是两个程序。可以把
-                  点阵描摹成轮廓，把轮廓栅格化成字型，再逐像素手工修整。
+                  三次与二次曲线的轮廓编辑，和点阵字型编辑，是同一份文档，而不是两个程序。可以把点阵描摹成轮廓，把轮廓栅格化成字型，再逐像素手工修整。
                 </p>
               </article>
 
@@ -174,8 +169,7 @@
                 </figure>
                 <h3>拉丁与中日韩，同一套工具</h3>
                 <p>
-                  字形网格、搜索、批量操作与文件读写，都是按 65,535 字的规模设计的。部件、纵向
-                  度量与纵排布局特性属于模型本身，而不是插件。
+                  字形网格、搜索、批量操作与文件读写，都是按 65,535 字的规模设计的。部件、纵向度量与纵排布局特性属于模型本身，而不是插件。
                 </p>
               </article>
 
@@ -195,8 +189,7 @@
                 </figure>
                 <h3>读得懂的 OpenType 布局</h3>
                 <p>
-                  GSUB、GPOS、GDEF、BASE、MATH、STAT、COLR 与 CPAL，既可以作为特性文件源码编辑，
-                  也可以通过界面编辑，由 fea-rs 与 fontc 编译，诊断信息定位到你自己的源码行上。
+                  GSUB、GPOS、GDEF、BASE、MATH、STAT、COLR 与 CPAL，既可以作为特性文件源码编辑，也可以通过界面编辑，由 fea-rs 与 fontc 编译，诊断信息定位到你自己的源码行上。
                 </p>
               </article>
 
@@ -229,8 +222,7 @@
                 </figure>
                 <h3>没动过的地方，不会被改写</h3>
                 <p>
-                  模型未涵盖的表，在打开与导出之间原样保留；你没有编辑过的字形，保留其 hinting。
-                  打开一份字体，不是一次有损操作。
+                  模型未涵盖的表，在打开与导出之间原样保留；你没有编辑过的字形，保留其 hinting。打开一份字体，不是一次有损操作。
                 </p>
               </article>
             </div>
@@ -277,8 +269,7 @@
               </div>
             </div>
             <p class="footnote">
-              以上是产品目标。逐个格式的覆盖情况记录在验收报告中，而且转换保持保守：不受支持或
-              尚未验证的部分会保留原始的表，而不会被重写。在依赖某个具体格式之前，请先查阅
+              以上是产品目标。逐个格式的覆盖情况记录在验收报告中，而且转换保持保守：不受支持或尚未验证的部分会保留原始的表，而不会被重写。在依赖某个具体格式之前，请先查阅
               <a href="https://github.com/fontcarver/fontcarver/tree/main/docs" rel="noopener">验收记录</a>。
             </p>
           </div>
@@ -291,16 +282,14 @@
           <div>
             <h2>一次完整的上手过程。</h2>
             <p class="section__lede">
-              四步，从一份现成的字体，到一份你自己导出的字体。按键以 Windows 与 Linux 标注；
-              在 macOS 上，Ctrl 即 ⌘。
+              四步，从一份现成的字体，到一份你自己导出的字体。按键以 Windows 与 Linux 标注；在 macOS 上，Ctrl 即 ⌘。
             </p>
             <div class="steps">
               <article class="step">
                 <div>
                   <h3>打开字体</h3>
                   <p>
-                    打开 TTF、OTF、UFO、Glyphs 或 SFD 文件，也可以打开 FontCarver 文档。模型
-                    无法表达的部分会原样保留而不是丢弃，所以你可以只为了看一眼而打开一份字体。
+                    打开 TTF、OTF、UFO、Glyphs 或 SFD 文件，也可以打开 FontCarver 文档。模型无法表达的部分会原样保留而不是丢弃，所以你可以只为了看一眼而打开一份字体。
                   </p>
                   <ul class="keys">
                     <li><kbd>Ctrl</kbd><kbd>O</kbd> 打开</li>
@@ -313,8 +302,7 @@
                 <div>
                   <h3>编辑轮廓</h3>
                   <p>
-                    用钢笔绘制，用刻刀切割，用方向键微调节点。平滑点的两条控制柄保持共线，角点
-                    则不必，所有编辑都走同一个撤销栈。
+                    用钢笔绘制，用刻刀切割，用方向键微调节点。平滑点的两条控制柄保持共线，角点则不必，所有编辑都走同一个撤销栈。
                   </p>
                   <ul class="keys">
                     <li><kbd>V</kbd> 选择</li>
@@ -330,8 +318,7 @@
                 <div>
                   <h3>先调字距，再加特性</h3>
                   <p>
-                    在文本标签页里，直接在两个字形之间的空隙上调字距，支持共享分组与逐母版的
-                    字偶对。其余的部分写成特性文件源码，编译器的诊断会落在你自己的行上。
+                    在文本标签页里，直接在两个字形之间的空隙上调字距，支持共享分组与逐母版的字偶对。其余的部分写成特性文件源码，编译器的诊断会落在你自己的行上。
                   </p>
                   <ul class="keys">
                     <li><kbd>Ctrl</kbd><kbd>I</kbd> 字体信息</li>
@@ -344,8 +331,7 @@
                 <div>
                   <h3>导出</h3>
                   <p>
-                    写回 TTF 或 OTF。你没有编辑过的字形保留其 hinting，被保留的表会合并回去。
-                    目前编辑轮廓会丢掉该字形的 hinting，状态记录里写明了这一项的进展。
+                    写回 TTF 或 OTF。你没有编辑过的字形保留其 hinting，被保留的表会合并回去。目前编辑轮廓会丢掉该字形的 hinting，状态记录里写明了这一项的进展。
                   </p>
                   <ul class="keys">
                     <li><kbd>Ctrl</kbd><kbd>S</kbd> 保存</li>
@@ -371,8 +357,7 @@
             <h2>三个平台，同一个 Rust 内核。</h2>
             <div class="notice" id="release-notice">
               <p>
-                <strong>目前还没有打包发布。</strong>发布打包是 P5 的最后一个工作块，尚未验证，
-                因此没有任何签名、公证或已发布的产物。下面列出的是首个版本将会包含的文件。
+                <strong>目前还没有打包发布。</strong>发布打包是 P5 的最后一个工作块，尚未验证，因此没有任何签名、公证或已发布的产物。下面列出的是首个版本将会包含的文件。
               </p>
               <p>在此之前，从源码构建是受支持的方式，三个平台的步骤相同。</p>
             </div>
@@ -420,8 +405,7 @@
 
             <h3 id="build-from-source">从源码构建</h3>
             <p>
-              需要 <code>rust-toolchain.toml</code> 中固定的 Rust 版本、Node 24 及以上、pnpm，
-              以及 Tauri 的系统库。在 Debian 与 Ubuntu 上是 <code>libwebkit2gtk-4.1-dev</code>、
+              需要 <code>rust-toolchain.toml</code> 中固定的 Rust 版本、Node 24 及以上、pnpm，以及 Tauri 的系统库。在 Debian 与 Ubuntu 上是 <code>libwebkit2gtk-4.1-dev</code>、
               <code>libgtk-3-dev</code>、<code>libayatana-appindicator3-dev</code> 和
               <code>librsvg2-dev</code>。
             </p>
@@ -440,8 +424,7 @@
           <div>
             <h2>工作实际进展到哪里。</h2>
             <p class="section__lede">
-              「完成」指的是在该阶段验收报告界定的边界内完成，而不是穷尽所有情况。到目前为止，
-              原生桌面输入自动化与发布打包在每个阶段都尚未验证。
+              「完成」指的是在该阶段验收报告界定的边界内完成，而不是穷尽所有情况。到目前为止，原生桌面输入自动化与发布打包在每个阶段都尚未验证。
             </p>
             <ol class="phases">
               <li data-state="done"><b>P0</b><span>外壳、无损往返、字形网格</span></li>
@@ -452,8 +435,7 @@
               <li data-state="active"><b>P5</b><span>专业收尾、hinting、打包</span></li>
             </ol>
             <p>
-              有一个已知缺陷尚未解决：一项藏文布局扩展预算测试失败，在诊断清楚之前，工作区测试
-              套件不被称作全绿。这一项以及其他所有事项，都记录在
+              有一个已知缺陷尚未解决：一项藏文布局扩展预算测试失败，在诊断清楚之前，工作区测试套件不被称作全绿。这一项以及其他所有事项，都记录在
               <a href="https://github.com/fontcarver/fontcarver/blob/main/docs/STATUS.md" rel="noopener">状态记录</a>里。
             </p>
           </div>
@@ -491,8 +473,7 @@
         </div>
         <p class="footer__fine">
           FontCarver 是从零实现的，不是移植。FontForge 仅作为行为与格式参考被研究；FontCarver
-          从不链接、嵌入或分发 FontForge，也与 FontForge 项目没有隶属、背书或赞助关系。本页中的
-          字样取自 Source Serif 4 与 Noto Serif CJK SC，二者均采用 SIL 开放字体许可证。
+          从不链接、嵌入或分发 FontForge，也与 FontForge 项目没有隶属、背书或赞助关系。本页中的字样取自 Source Serif 4 与 Noto Serif CJK SC，二者均采用 SIL 开放字体许可证。
         </p>
       </div>
     </footer>

@@ -291,3 +291,42 @@ Blog, changelog, documentation hosting, search, newsletter, analytics,
 telemetry, a downloads API, release automation, and regenerating the product
 screenshots. Each is a separate piece of work; the roadmap section links to
 the repository for what it does not host.
+
+---
+
+## 11. What the implementation changed, and why
+
+The site was built from this specification on 2026-09-24. Six things ended up
+different from §5 to §9, all decided while building and recorded here so the
+document and the site agree.
+
+1. **The strike is rasterised in the browser, not extracted.** §5 had the
+   extraction tool precompute bitmap strikes. It did — and then dragging a
+   point changed the outline while the pixels stayed put, which contradicted
+   the one claim the figure exists to make. The scanline fill moved into
+   `hero.js`, so the strike is rasterised from whatever outline is on screen.
+   `specimens.js` got smaller as a result.
+2. **Implied points are first-class.** The Latin specimen is quadratic and has
+   38 implied on-curve points beside its 35 explicit ones. They are drawn in
+   the application's own `--cv-node-implied` colour, they are not draggable,
+   and they follow their two controls — which is what they are.
+3. **No component outlining in the CJK specimen.** §5 said components would be
+   drawn in `--cv-component`. `永` in Noto Serif CJK SC is a single outline
+   with no components, so there was nothing true to draw. The claim stayed in
+   the capability card, where the repository backs it; the figure does not
+   illustrate it.
+4. **No read/write markers on the format wall.** §4 said markers would come
+   from the acceptance records. They are not recorded format by format, so
+   marking them would have meant inventing them. The wall groups the formats
+   and the footnote states the limitation in the README's own terms.
+5. **No screenshot-gallery slot.** §2 kept a slot for real screenshots later.
+   An empty slot is a hole in a page; when screenshots exist, a section is
+   easy to add. Nothing was left half-built.
+6. **The figure is injected into the markup, not written as standalone SVG
+   files.** §5 wrote `site/assets/svg/hero-<key>.svg`. An external SVG cannot
+   inherit the page's theme or be edited in place, so the tool writes the
+   figure between markers in both pages instead.
+
+Two numbers were set to what the site actually weighs rather than to round
+guesses: first load is capped at 200 KiB and the whole directory at 320 KiB,
+against 257 KiB served today.

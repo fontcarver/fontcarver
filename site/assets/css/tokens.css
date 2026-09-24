@@ -41,9 +41,13 @@
   --font-serif:
     'Source Serif 4', 'Source Han Serif SC', 'Noto Serif CJK SC', 'Songti SC',
     SimSun, serif;
+  /* IBM Plex Mono has no Han glyphs. Left to `monospace` the fallback is
+     whatever the platform picks — SimSun on Windows, a serif, next to a sans
+     Latin — so the CJK face is named here instead. */
   --font-mono:
     'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas,
-    'Liberation Mono', monospace;
+    'Liberation Mono', monospace, 'PingFang SC', 'Microsoft YaHei',
+    'Noto Sans CJK SC', 'Noto Sans SC', sans-serif;
 
   /* Type scale, from a 16 px body at a 1.25 ratio, rounded to whole pixels
      and clamped so the display sizes track the viewport. */

@@ -29,8 +29,8 @@ REQUIRED_META = ("description", "og:title", "og:description", "og:image", "og:ur
 
 # First load: the document, its stylesheets, its scripts and the faces it
 # preloads. The whole directory is checked separately.
-FIRST_LOAD_BUDGET = 260 * 1024
-DIRECTORY_BUDGET = 700 * 1024
+FIRST_LOAD_BUDGET = 200 * 1024
+DIRECTORY_BUDGET = 320 * 1024
 
 
 class Page(HTMLParser):
