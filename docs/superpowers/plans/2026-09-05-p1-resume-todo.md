@@ -1,5 +1,8 @@
 # FontCarver — resume TODO (written 2026-09-05, session paused by the user)
 
+> Superseded on 2026-09-24 by [`docs/STATUS.md`](../../STATUS.md), which is
+> now the only place current status is kept. This file is a historical log.
+
 ## Current status — P5 in progress, paused 2026-09-24
 
 P3 (bitmap fonts) and P4 (variable fonts and CJK) are complete; see

@@ -78,6 +78,8 @@ docs/         specs, plans, research, design
 
 ## Documentation
 
+- [`docs/STATUS.md`](docs/STATUS.md) — where the project stands: phase status,
+  work in progress, next step and a map of every other document.
 - [`docs/superpowers/specs/2026-09-03-fontcarver-design.md`](docs/superpowers/specs/2026-09-03-fontcarver-design.md)
   — the binding design specification: product definition, architecture, document
   model, crate boundaries.
