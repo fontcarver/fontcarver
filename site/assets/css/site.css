@@ -89,6 +89,19 @@ samp {
   top: var(--space-3);
 }
 
+/* A grid item defaults to min-width: auto, so one wide child — a terminal
+   block, a long format row — widens its whole column and scrolls the page
+   sideways. Every grid on this page wants the other behaviour. */
+.hero__grid > *,
+.section__grid > *,
+.panels > *,
+.downloads > *,
+.steps > *,
+.formats > *,
+.footer__grid > * {
+  min-width: 0;
+}
+
 .shell {
   width: 100%;
   max-width: var(--page-max);
@@ -178,12 +191,20 @@ samp {
   border-color: var(--rule);
 }
 
-.nav--compact {
-  display: none;
+.masthead__inner {
+  flex-wrap: wrap;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 900px) {
   .nav a[data-optional] {
+    display: none;
+  }
+}
+
+/* Below this the section links are only a second way to reach what the page
+   already scrolls through; the language, source and theme controls are not. */
+@media (max-width: 640px) {
+  .nav a[data-section] {
     display: none;
   }
 }
@@ -293,6 +314,7 @@ samp {
 
 .stage__bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--stage-pad);
@@ -329,6 +351,12 @@ samp {
   margin-left: auto;
 }
 
+@media (max-width: 560px) {
+  [data-stage-source] {
+    display: none;
+  }
+}
+
 .stage__canvas {
   display: block;
   width: 100%;
@@ -350,7 +378,8 @@ samp {
 
 .stage__foot dl {
   display: flex;
-  gap: var(--space-4);
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
   margin: 0;
 }
 
@@ -419,7 +448,12 @@ samp {
 .cv-label {
   fill: var(--cv-metric-label);
   font-family: var(--font-mono);
-  font-size: 11px;
+}
+
+@media (max-width: 760px) {
+  .cv-label {
+    display: none;
+  }
 }
 
 .cv-outline {
@@ -456,6 +490,28 @@ samp {
   fill: var(--cv-handle);
 }
 
+.cv-node--implied {
+  fill: none;
+  stroke: var(--cv-node-implied);
+  stroke-width: 2;
+  cursor: default;
+}
+
+.cv-node--selected {
+  stroke: var(--cv-selection);
+  stroke-width: 3;
+}
+
+.cv-hit {
+  fill: transparent;
+  cursor: grab;
+}
+
+.stage__canvas:focus-visible {
+  outline: 2px solid var(--cv-selection);
+  outline-offset: -2px;
+}
+
 .cv-node:focus-visible {
   outline: none;
   stroke: var(--cv-selection);
@@ -465,6 +521,12 @@ samp {
 .cv-node--dragging {
   fill: var(--cv-selection);
   cursor: grabbing;
+}
+
+/* While a strike is shown the points stay live — the outline is still
+   editable and the pixels follow it — but they step back. */
+.stage[data-strike='on'] .cv-node {
+  opacity: 0.5;
 }
 
 .cv-pixel {
@@ -704,6 +766,7 @@ kbd {
 }
 
 .terminal {
+  max-width: 100%;
   margin: var(--space-5) 0 0;
   padding: var(--space-4);
   background: var(--cv-bg);
