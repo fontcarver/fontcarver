@@ -108,7 +108,7 @@ pub(crate) fn decode(api: &Api, params: MathDecodeParams) -> Result<Change, ApiE
                 })?;
             doc.apply(
                 fc_doc::Command::Math(fc_doc::command::MathCommand::Replace { math: Some(math) }),
-                "Make MATH editable",
+                params.label,
             )
             .map_err(ApiError::from)
         })
@@ -224,7 +224,7 @@ fn outline(font: &Font, name: &str) -> Result<MathPreviewGlyph, ApiError> {
     };
     Ok(MathPreviewGlyph {
         name: name.to_owned(),
-        path: outline.to_svg(),
+        path: super::glyphs::rounded_svg(&outline),
         width: layer.width,
         bounds,
     })

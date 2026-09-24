@@ -56,6 +56,8 @@ pub struct MathDecodeParams {
     /// Revision from the MATH state.
     #[ts(type = "number")]
     pub expected_generation: u64,
+    /// Undo history label.
+    pub label: String,
 }
 
 /// Request a size preview for one glyph's construction.

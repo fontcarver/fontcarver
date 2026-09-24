@@ -3,6 +3,7 @@ import type {
   MathConstants,
   MathDevice,
   MathGlyphInfo,
+  MathState,
   MathTable,
   MathValue,
 } from '../../api'
@@ -151,17 +152,23 @@ export function parseDevice(text: string): MathDevice | null | undefined {
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
 /**
- * Commands that turn `source` into `draft` with the fewest whole records.
+ * Commands that turn the document's table into `draft` with the fewest
+ * whole records.
  *
- * Creating or deleting the table replaces it; otherwise changed constants
- * and changed glyph records are sent individually.
+ * Creating or deleting the table replaces it; deleting also covers an
+ * imported raw table, which exists although `state.math` is null. Otherwise
+ * changed constants and changed glyph records are sent individually.
  */
 export function diffCommands(
-  source: MathTable | null,
+  state: Pick<MathState, 'math' | 'status'>,
   draft: MathTable | null,
 ): MathCommand[] {
-  if (source === null || draft === null)
-    return same(source, draft) ? [] : [{ Replace: { math: draft } }]
+  const source = state.math
+  if (source === null || draft === null) {
+    if (draft === null && source === null && state.status !== 'Imported')
+      return []
+    return [{ Replace: { math: draft } }]
+  }
   const commands: MathCommand[] = []
   if (
     !same(source.constants, draft.constants) ||

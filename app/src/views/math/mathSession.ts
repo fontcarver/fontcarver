@@ -71,7 +71,9 @@ export class MathSession {
     this.update({ busy: true })
     this.pending = request()
       .then(() => {
-        this.update({ dirty: false, source: null })
+        // Keep the stale source until `load` replaces it so the form stays
+        // mounted and the selected record survives an apply.
+        this.update({ dirty: false })
       })
       .catch((error: unknown) => {
         this.update({ error })
@@ -87,7 +89,7 @@ export class MathSession {
     if (this.pending) return this.pending
     const { source, draft, dirty } = this.state
     if (!source || !dirty) return Promise.resolve()
-    const commands = diffCommands(source.math, draft)
+    const commands = diffCommands(source, draft)
     if (commands.length === 0) {
       this.update({ dirty: false })
       return Promise.resolve()
@@ -109,6 +111,7 @@ export class MathSession {
       call('math.decode_imported', {
         doc: this.doc,
         expected_generation: source.generation,
+        label: this.labels.decode,
       }),
     )
   }

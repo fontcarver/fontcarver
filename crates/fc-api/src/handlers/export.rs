@@ -76,6 +76,7 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
             );
         }
     }
+    let math_authored = font.math.is_some();
     if params.options.format == ExportFormat::Otb {
         if font.bitmap_strikes.is_empty() {
             return Err(ApiError::invalid_params(
@@ -99,12 +100,7 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
 
     let mut warnings = Vec::new();
     let mut tables = Vec::new();
-    if font.math.is_some()
-        && matches!(
-            params.options.format,
-            ExportFormat::Glyphs | ExportFormat::Sfd | ExportFormat::Pfa | ExportFormat::Pfb
-        )
-    {
+    if math_authored && !carries_math(params.options.format) {
         warnings.push(ExportWarning {
             code: "math-not-exported".into(),
             message: "This format does not store the editable MATH table; keep the native document or export an OpenType font to retain it.".into(),
@@ -244,6 +240,22 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
         touched_glyphs,
         timing_ms: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
+}
+
+/// Whether an output format stores the editable MATH table.
+fn carries_math(format: ExportFormat) -> bool {
+    matches!(
+        format,
+        ExportFormat::Ttf
+            | ExportFormat::Otf
+            | ExportFormat::Woff
+            | ExportFormat::Woff2
+            | ExportFormat::Cbdt
+            | ExportFormat::Sbix
+            | ExportFormat::Ufo
+            | ExportFormat::Designspace
+            | ExportFormat::Fcf
+    )
 }
 
 fn check_features_for_export(

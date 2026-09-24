@@ -1771,6 +1771,7 @@
     "create": "创建 MATH 表",
     "replaceImported": "替换为新的 MATH 表",
     "delete": "删除 MATH 表",
+    "deleteImported": "删除导入的 MATH 表",
     "pendingDeletion": "应用后，导出字体中将移除 MATH 表。",
     "importError": "导入的表无法编辑：{{error}}",
     "status": {

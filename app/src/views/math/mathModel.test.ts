@@ -45,16 +45,22 @@ it('parses device corrections strictly and formats them back', () => {
 
 it('sends whole-table replacement only for creation and deletion', () => {
   const table = emptyTable()
-  expect(diffCommands(null, null)).toEqual([])
-  expect(diffCommands(null, table)).toEqual([{ Replace: { math: table } }])
-  expect(diffCommands(table, null)).toEqual([{ Replace: { math: null } }])
+  const absent = { math: null, status: 'Absent' } as const
+  const imported = { math: null, status: 'Imported' } as const
+  const editable = (math: MathTable) => ({ math, status: 'Editable' }) as const
+  expect(diffCommands(absent, null)).toEqual([])
+  expect(diffCommands(imported, null)).toEqual([{ Replace: { math: null } }])
+  expect(diffCommands(absent, table)).toEqual([{ Replace: { math: table } }])
+  expect(diffCommands(editable(table), null)).toEqual([
+    { Replace: { math: null } },
+  ])
   const edited: MathTable = {
     ...table,
     min_connector_overlap: 5,
     glyphs: { A: { ...emptyGlyph(), extended_shape: true } },
   }
   const source: MathTable = { ...table, glyphs: { B: emptyGlyph() } }
-  expect(diffCommands(source, edited)).toEqual([
+  expect(diffCommands(editable(source), edited)).toEqual([
     {
       SetGlobals: {
         constants: table.constants,
@@ -64,7 +70,7 @@ it('sends whole-table replacement only for creation and deletion', () => {
     { SetGlyph: { glyph: 'A', info: edited.glyphs.A } },
     { SetGlyph: { glyph: 'B', info: null } },
   ])
-  expect(diffCommands(edited, edited)).toEqual([])
+  expect(diffCommands(editable(edited), edited)).toEqual([])
 })
 
 it('retains failed drafts and applies revision-checked diffs on handover', async () => {
@@ -96,8 +102,12 @@ it('retains failed drafts and applies revision-checked diffs on handover', async
   )
   const session = new MathSession(802, { edit: 'MATH', decode: 'Decode' })
   const dispose = session.connect()
+  let seenNullSource = false
   try {
     await session.load()
+    session.subscribe(() => {
+      if (session.snapshot().source === null) seenNullSource = true
+    })
     session.edit(emptyTable())
     await expect(flushDocumentEditParticipants(802)).rejects.toThrow('stale')
     expect(session.snapshot().dirty).toBe(true)
@@ -106,6 +116,7 @@ it('retains failed drafts and applies revision-checked diffs on handover', async
     await flushDocumentEditParticipants(802)
     expect(applied).toEqual([[{ Replace: { math: emptyTable() } }]])
     expect(session.snapshot().dirty).toBe(false)
+    expect(seenNullSource).toBe(false)
     expect(session.snapshot().source?.generation).toBe(4)
     // A no-op draft clears without a request.
     session.edit(emptyTable())
@@ -129,7 +140,11 @@ it('decodes imported bytes with the current revision', async () => {
     createMockTransport({
       'math.state': () => value,
       'math.decode_imported': (params) => {
-        expect(params).toEqual({ doc: 5, expected_generation: 7 })
+        expect(params).toEqual({
+          doc: 5,
+          expected_generation: 7,
+          label: 'Decode',
+        })
         value = {
           ...value,
           status: 'Editable',

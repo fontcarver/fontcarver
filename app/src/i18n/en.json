@@ -1771,6 +1771,7 @@
     "create": "Create MATH table",
     "replaceImported": "Replace with a new MATH table",
     "delete": "Delete MATH table",
+    "deleteImported": "Delete imported MATH table",
     "pendingDeletion": "The MATH table will be removed from exported fonts when you apply.",
     "importError": "The imported table cannot be edited: {{error}}",
     "status": {

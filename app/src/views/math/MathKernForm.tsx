@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { MathKern, MathKerns, MathValue } from '../../api'
 import { Button } from '../../components/Button'
@@ -47,6 +48,8 @@ function CornerKern({
   onChange: (value: MathKern | null) => void
 }) {
   const { t } = useTranslation()
+  // Remount rows after a removal so unparsed text never shifts rows.
+  const [epoch, setEpoch] = useState(0)
   return (
     <fieldset className={styles.card}>
       <legend>
@@ -67,7 +70,7 @@ function CornerKern({
         value.values.map((kernValue, index) => {
           const height = value.heights[index]
           return (
-            <div key={index} className={styles.kernRow}>
+            <div key={`${epoch}:${index}`} className={styles.kernRow}>
               <MathValueField
                 label={t('math.kernValue', { index: index + 1 })}
                 value={kernValue}
@@ -98,12 +101,13 @@ function CornerKern({
               )}
               {height && (
                 <Button
-                  onClick={() =>
+                  onClick={() => {
+                    setEpoch((e) => e + 1)
                     onChange({
                       heights: value.heights.filter((_, i) => i !== index),
                       values: value.values.filter((_, i) => i !== index),
                     })
-                  }
+                  }}
                 >
                   {t('math.removeRow')}
                 </Button>

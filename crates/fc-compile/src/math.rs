@@ -32,6 +32,10 @@ pub(crate) fn apply(
         return Ok(sfnt.to_vec());
     }
     let face = FontRef::new(sfnt).map_err(|error| Error::parse("sfnt before MATH", error))?;
+    // An explicit deletion of a table that is already absent changes nothing.
+    if font.math.is_none() && face.table_data(MATH).is_none() {
+        return Ok(sfnt.to_vec());
+    }
     let mut builder = FontBuilder::new();
     for record in face.table_directory().table_records() {
         if record.tag() == MATH {

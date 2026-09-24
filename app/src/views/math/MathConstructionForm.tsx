@@ -1,4 +1,4 @@
-import { useContext } from 'react'
+import { useContext, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { MathAssembly, MathConstruction, MathPart } from '../../api'
 import { Button } from '../../components/Button'
@@ -34,6 +34,13 @@ export function MathConstructionForm({
 }) {
   const { t } = useTranslation()
   const suggest = useContext(GlyphQueryContext)
+  // Rows have no identity; remounting them after a removal or move keeps a
+  // row's unparsed text from attaching to the value that shifted into place.
+  const [epoch, setEpoch] = useState(0)
+  const restructure = (next: MathConstruction) => {
+    setEpoch((e) => e + 1)
+    onChange(next)
+  }
   return (
     <fieldset className={styles.card}>
       <legend>
@@ -55,7 +62,7 @@ export function MathConstructionForm({
           <h4>{t('math.variants')}</h4>
           <p>{t('math.variantsHelp')}</p>
           {value.variants.map((variant, index) => (
-            <div key={index} className={styles.itemRow}>
+            <div key={`${epoch}:${index}`} className={styles.itemRow}>
               <ParsedInput<string>
                 label={t('math.variantGlyph', { index: index + 1 })}
                 value={variant.glyph}
@@ -94,13 +101,13 @@ export function MathConstructionForm({
                 index={index}
                 count={value.variants.length}
                 onMove={(delta) =>
-                  onChange({
+                  restructure({
                     ...value,
                     variants: move(value.variants, index, delta),
                   })
                 }
                 onRemove={() =>
-                  onChange({
+                  restructure({
                     ...value,
                     variants: value.variants.filter((_, i) => i !== index),
                   })
@@ -160,6 +167,11 @@ function AssemblyForm({
 }) {
   const { t } = useTranslation()
   const suggest = useContext(GlyphQueryContext)
+  const [epoch, setEpoch] = useState(0)
+  const restructure = (next: MathAssembly) => {
+    setEpoch((e) => e + 1)
+    onChange(next)
+  }
   const setPart = (index: number, patch: Partial<MathPart>) =>
     onChange({
       ...assembly,
@@ -179,7 +191,7 @@ function AssemblyForm({
         }
       />
       {assembly.parts.map((part, index) => (
-        <div key={index} className={styles.itemRow}>
+        <div key={`${epoch}:${index}`} className={styles.itemRow}>
           <ParsedInput<string>
             label={t('math.partGlyph', { index: index + 1 })}
             value={part.glyph}
@@ -218,13 +230,13 @@ function AssemblyForm({
             index={index}
             count={assembly.parts.length}
             onMove={(delta) =>
-              onChange({
+              restructure({
                 ...assembly,
                 parts: move(assembly.parts, index, delta),
               })
             }
             onRemove={() =>
-              onChange({
+              restructure({
                 ...assembly,
                 parts: assembly.parts.filter((_, i) => i !== index),
               })

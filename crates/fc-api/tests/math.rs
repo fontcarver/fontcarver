@@ -209,7 +209,7 @@ fn legacy_imported_bytes_can_be_made_editable_and_undone() {
     assert!(imported["import_error"].is_null());
     api.call(
         "math.decode_imported",
-        json!({ "doc": doc, "expected_generation": imported["generation"] }),
+        json!({ "doc": doc, "expected_generation": imported["generation"], "label": "解码" }),
     )
     .unwrap();
     let editable = state(&api, &doc);
@@ -233,7 +233,7 @@ fn legacy_imported_bytes_can_be_made_editable_and_undone() {
     let error = api
         .call(
             "math.decode_imported",
-            json!({ "doc": doc, "expected_generation": imported["generation"] }),
+            json!({ "doc": doc, "expected_generation": imported["generation"], "label": "x" }),
         )
         .unwrap_err();
     assert_eq!(error.code, "invalid_params");
@@ -254,9 +254,22 @@ fn formats_without_math_disclose_the_loss() {
     font.math = Some(fc_model::MathTable::default());
     font.math_table_owned = true;
     let session = Arc::new(Session::new());
-    let doc = session.open_font(font, None);
+    let doc = session.open_font(font.clone(), None);
+    // Bitmap formats need a strike, which source formats refuse.
+    font.bitmap_strikes.push(fc_model::BitmapStrike {
+        ppem: 12,
+        depth: 1,
+        ..Default::default()
+    });
+    let bitmap_doc = session.open_font(font, None);
     let api = Api::new(session);
-    for (format, extension) in [("Glyphs", "glyphs"), ("Sfd", "sfd"), ("Pfa", "pfa")] {
+    for (format, extension) in [
+        ("Glyphs", "glyphs"),
+        ("Sfd", "sfd"),
+        ("Pfa", "pfa"),
+        ("Bdf", "bdf"),
+    ] {
+        let doc = if format == "Bdf" { bitmap_doc } else { doc };
         let path = dir.path().join(format!("loss.{extension}"));
         let report = api
             .call(

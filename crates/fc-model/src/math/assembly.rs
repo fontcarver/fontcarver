@@ -64,10 +64,14 @@ impl MathAssembly {
                     ..layout
                 });
             }
-            let layout = self.arrange(repeats, target, min_overlap.max(0.0));
+            let mut layout = self.arrange(repeats, target, min_overlap.max(0.0));
             let reached = layout.size >= target;
+            if extenders == 0 {
+                layout.limited = !reached;
+                return Some(layout);
+            }
             best = Some(layout);
-            if reached || extenders == 0 {
+            if reached {
                 return best;
             }
             repeats += 1;

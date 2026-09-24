@@ -56,7 +56,14 @@ export function MathAssemblyPreview({
   const [target, setTarget] = useState(upem * 2)
   const [preview, setPreview] = useState<MathPreview | null>(null)
   const [error, setError] = useState('')
-  const request = JSON.stringify(construction)
+  // Rows whose glyph name is still being typed cannot be resolved yet.
+  const request = JSON.stringify({
+    variants: construction.variants.filter((v) => v.glyph !== ''),
+    assembly: construction.assembly && {
+      ...construction.assembly,
+      parts: construction.assembly.parts.filter((p) => p.glyph !== ''),
+    },
+  } satisfies MathConstruction)
   useEffect(() => {
     let stale = false
     const timer = window.setTimeout(() => {

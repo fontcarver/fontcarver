@@ -232,7 +232,11 @@ fn warn_tables_not_preserved(font: &Font, warnings: &mut Vec<ExportWarning>) {
         .raw_tables
         .keys()
         .copied()
-        .filter(|tag| *tag != DSIG && !VARIATION_TAGS.contains(tag))
+        .filter(|tag| {
+            *tag != DSIG
+                && !VARIATION_TAGS.contains(tag)
+                && !(*tag == Tag(*b"MATH") && crate::math::owned(font))
+        })
         .collect();
     if !tags.is_empty() {
         warnings.push(ExportWarning {

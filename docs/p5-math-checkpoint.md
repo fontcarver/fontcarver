@@ -107,6 +107,25 @@ Localization review should confirm three terms the translator marked as
 uncertain: “cramped” → 局促样式, “corner kerning” → 角点紧排 and
 “stretch stack” → 伸缩堆叠.
 
+## Review of the integration step
+
+An automated high-effort review of `5a36e93` plus a manual read produced
+ten findings. Eight were fixed: a missing `limited` flag for assemblies
+without extenders, unparsed row text surviving row removal, the editor
+unmounting on every apply, a hard-coded English undo label for decoding,
+a redundant sfnt rebuild when nothing changes, MATH-loss disclosure now
+driven by a format capability predicate covering bitmap formats, preview
+paths using the shared rounded SVG helper, and preview requests skipping
+rows whose glyph name is still empty. Two manual findings were also fixed:
+`tables-not-preserved` no longer lists owned MATH, and an imported raw table
+can be deleted directly. Two findings were declined with reasons: gating the
+editor reload on `change.math` would break the revision check because any
+document edit changes the generation (`math.state` re-decoding a raw table
+only affects legacy documents and is bounded); and a malformed `math` entry
+in UFO extras keeps aborting the import, consistent with the other extras
+and safer than silently dropping data since UFO import has no warning
+channel.
+
 ## Resume here
 
 1. Browser-verify the MATH dialog with agent-browser on DejaVu Sans: edit

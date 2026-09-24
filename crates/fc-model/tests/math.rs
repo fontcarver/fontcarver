@@ -150,6 +150,15 @@ fn assembly_layout_repeats_extenders_and_interpolates_overlaps() {
     assert_eq!(limited.repeats, 2);
     assert!(limited.limited);
     assert!(assembly.layout(10., 10., 1).is_none());
+    // Fixed parts alone report a shortfall too.
+    let fixed = MathAssembly {
+        parts: vec![part("bottom", false), part("top", false)],
+        ..Default::default()
+    };
+    let layout = fixed.layout(1_000., 10., 10).unwrap();
+    assert_eq!(layout.size, 390.);
+    assert!(layout.limited);
+    assert!(!fixed.layout(300., 10., 10).unwrap().limited);
     assert!(MathAssembly::default().layout(10., 0., 10).is_none());
     // Connectors shorter than the minimum overlap are reported and used fully.
     let mut short = assembly.clone();

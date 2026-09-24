@@ -125,6 +125,14 @@ export function MathEditor({
                     : 'math.create',
                 )}
               </Button>
+              {source.status === 'Imported' && (
+                <Button
+                  disabled={disabled || state.dirty}
+                  onClick={() => session.edit(null)}
+                >
+                  {t('math.deleteImported')}
+                </Button>
+              )}
             </div>
             {state.dirty && <p>{t('math.pendingDeletion')}</p>}
           </div>
