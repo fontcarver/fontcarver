@@ -6,7 +6,7 @@ use axum::{
     extract::{
         rejection::JsonRejection,
         ws::{Message, WebSocket},
-        Path, State, WebSocketUpgrade,
+        DefaultBodyLimit, Path, State, WebSocketUpgrade,
     },
     http::{header::CONTENT_TYPE, HeaderValue, Method, StatusCode},
     response::{IntoResponse, Response},
@@ -52,6 +52,9 @@ pub fn router(api: Arc<Api>) -> Router {
         .route("/health", get(health))
         .route("/api/{method}", post(api_call))
         .route("/events", get(events))
+        // Font-wide color drafts for real emoji fonts exceed Axum's 2 MiB
+        // default. Keep a transport bound as well as the model's item limits.
+        .layer(DefaultBodyLimit::max(64 * 1024 * 1024))
         .layer(cors)
         .with_state(api)
 }

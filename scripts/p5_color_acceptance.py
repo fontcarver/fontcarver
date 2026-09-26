@@ -126,6 +126,12 @@ def main():
     fixture = args.output / "color-acceptance.ttf"
     synthetic(fixture)
     timings = []
+    report = {"fonttools": fontTools.__version__, "complete": False,
+              "operation_budget_seconds": args.max_operation_seconds,
+              "fonts": [], "timings": timings}
+
+    def save_report():
+        (args.output / "report.json").write_text(json.dumps(report, indent=2) + "\n")
 
     def call(method, **params):
         start = time.perf_counter()
@@ -140,16 +146,23 @@ def main():
         assert "error" not in envelope, envelope
         elapsed = time.perf_counter() - start
         assert elapsed < args.max_operation_seconds, (method, elapsed)
-        timings.append({"method": method, "seconds": round(elapsed, 3)})
-        print(f"{method}: {elapsed:.3f}s", flush=True)
+        timing = {"method": method, "seconds": round(elapsed, 3)}
+        if method == "session.export":
+            timing.update(format=params["options"]["format"], path=params["path"])
+        timings.append(timing)
+        save_report()
+        print(f"{method} {timing.get('format', '')}: {elapsed:.3f}s", flush=True)
         return envelope["result"]
 
-    report = {"fonttools": fontTools.__version__, "fonts": []}
     for index, source in enumerate([fixture, *args.fonts]):
         source = source.resolve()
         directory = args.output / f"{index}-{source.stem}"
         directory.mkdir(exist_ok=True)
         start = len(timings)
+        summary = {"source": str(source), "sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+                   "complete": False, "verified_exports": []}
+        report["fonts"].append(summary)
+        save_report()
         doc = call("session.open", path=str(source))["doc"]
         try:
             initial = call("color.state", doc=doc)
@@ -171,6 +184,8 @@ def main():
                     path = directory / f"baseline.{extension}"
                     call("session.export", doc=doc, path=str(path), options={"format": format_, "preserve_untouched_tables": format_ != "Otf"})
                     verify(expected, path)
+                    summary["verified_exports"].append(path.name)
+                    save_report()
                 draft = copy.deepcopy(table)
                 color = {"red": 215, "green": 35, "blue": 105, "alpha": 117}
                 draft["palettes"][0]["colors"][0] = color
@@ -200,20 +215,25 @@ def main():
                     path = directory / f"edited.{extension}"
                     call("session.export", doc=doc, path=str(path), options={"format": format_, "preserve_untouched_tables": format_ != "Otf"})
                     verify(expected, path)
+                    summary["verified_exports"].append(path.name)
+                    save_report()
                 preview = call("color.preview", doc=doc, glyph=base, layers=None, palette=None, palette_index=0)
                 assert [l["glyph"] for l in preview["layers"]] == [l["glyph"] for l in draft["glyphs"][base]]
                 assert preview["layers"][0]["color"] is None
                 assert call("color.state", doc=doc)["color"] == draft
-                summary = {"source": str(source), "sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
-                           "glyphs": len(names), "color_glyphs": len(table["glyphs"]),
+                summary.update({"complete": True, "glyphs": len(names), "color_glyphs": len(table["glyphs"]),
                            "layers": sum(map(len, table["glyphs"].values())),
                            "palettes": len(table["palettes"]), "palette_entries": len(table["palettes"][0]["colors"]),
-                           "timings": timings[start:]}
-                report["fonts"].append(summary)
+                           "timings": timings[start:]})
                 print(json.dumps(summary), flush=True)
+        except Exception as error:
+            summary["error"] = f"{type(error).__name__}: {error}"
+            raise
         finally:
+            save_report()
             call("session.close", doc=doc)
-    (args.output / "report.json").write_text(json.dumps(report, indent=2) + "\n")
+    report["complete"] = True
+    save_report()
     print(f"COLR/CPAL verified with FontTools: {len(report['fonts'])} fonts")
 
 

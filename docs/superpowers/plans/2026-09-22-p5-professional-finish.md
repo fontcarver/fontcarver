@@ -24,8 +24,12 @@ by the earlier user instruction; headless browser testing and builds are allowed
       external ttfautohint bridge with honest availability/results.
 - [x] MATH authoring: constants, glyph data and assemblies; semantic import/export,
       persistence, editor and independent acceptance. See [record](../../p5-math-acceptance.md).
-- [ ] Remaining OpenType authoring: COLR/CPAL palettes and layers, SVG documents,
-      semantic binary import/export and persistence.
+- [x] COLR v0 / CPAL authoring: palettes, layers, persistence, four export
+      containers, independent FontTools and bilingual browser acceptance.
+      See [record](../../p5-color-acceptance.md).
+- [ ] Remaining OpenType authoring: SVG documents and COLRv1 paint graphs,
+      semantic binary import/export and persistence. Queued; stop after COLR/CPAL
+      acceptance per the user's 2026-09-26 instruction.
 - [ ] Geometry and construction: style effects, non-destructive effects and smart
       geometry, raster-image trace, background images, optical spacing/kerning, CJK
       construction helpers and remaining editor/metrics/variable requirements.

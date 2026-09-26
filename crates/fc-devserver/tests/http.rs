@@ -59,6 +59,47 @@ async fn post(client: &Client, address: SocketAddr, method: &str, params: Value)
 }
 
 #[tokio::test]
+async fn accepts_font_wide_color_drafts_larger_than_two_megabytes() {
+    let server = spawn_server().await;
+    let client = Client::new();
+    let opened = post(
+        &client,
+        server.address,
+        "session.open",
+        json!({
+            "path": fc_fixtures::ufo_path("Minimal.ufo")
+        }),
+    )
+    .await;
+    let doc = opened["result"]["doc"].clone();
+    let state = post(
+        &client,
+        server.address,
+        "color.state",
+        json!({ "doc": doc }),
+    )
+    .await;
+    let colors = vec![json!({"red": 1, "green": 2, "blue": 3, "alpha": 255}); 60_000];
+    let color = json!({
+        "palette_version": 0,
+        "palettes": [{"colors": colors, "flags": 0, "label": null}],
+        "entry_labels": [],
+        "glyphs": {"A": [{"glyph": "A", "palette_index": 59_999}]}
+    });
+    let params = json!({"doc": doc, "expected_generation": state["result"]["generation"], "color": color, "label": "Large palette"});
+    assert!(serde_json::to_vec(&params).unwrap().len() > 2 * 1024 * 1024);
+    post(&client, server.address, "color.apply", params).await;
+    let state = post(
+        &client,
+        server.address,
+        "color.state",
+        json!({ "doc": doc }),
+    )
+    .await;
+    assert_eq!(state["result"]["color"], color);
+}
+
+#[tokio::test]
 async fn serves_http_errors_and_document_events() {
     let server = spawn_server().await;
     let address = server.address;

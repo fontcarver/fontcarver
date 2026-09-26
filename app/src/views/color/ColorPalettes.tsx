@@ -135,7 +135,11 @@ export function ColorPalettes({
         </Button>
       </div>
       <p>{t('color.entryHelp')}</p>
-      <div className={styles.entries} aria-label={t('color.entries')}>
+      <div
+        className={styles.entries}
+        role="group"
+        aria-label={t('color.entries')}
+      >
         {palette.colors.slice(start, start + PAGE).map((color, offset) => {
           const index = start + offset
           const used = usedEntries.has(index)

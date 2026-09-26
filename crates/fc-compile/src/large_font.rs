@@ -127,12 +127,11 @@ pub(crate) fn compiled_glyph_order(
             .iter()
             .map(|(identity, post_name)| (post_name.as_str(), identity.clone()))
             .collect();
-        return (0..glyph_count)
-            .map(|gid| {
-                let gid = u16::try_from(gid).map_err(|_| Error::Limit("glyph ID"))?;
-                let name = post
-                    .glyph_name(read_fonts::types::GlyphId16::new(gid))
-                    .ok_or_else(|| Error::parse("compiled post", "missing format 2 glyph name"))?;
+        // Random access rescans Pascal strings from the start for every name.
+        // The iterator reuses offsets while preserving the actual emitted GIDs.
+        let order: Vec<_> = post
+            .glyph_names()
+            .map(|(_, name)| {
                 by_post_name.get(name).cloned().ok_or_else(|| {
                     Error::parse(
                         "compiled glyph order",
@@ -140,7 +139,11 @@ pub(crate) fn compiled_glyph_order(
                     )
                 })
             })
-            .collect();
+            .collect::<Result<_, _>>()?;
+        if order.len() != glyph_count {
+            return Err(Error::parse("compiled post", "missing format 2 glyph name"));
+        }
+        return Ok(order);
     }
 
     Ok(expected.into_iter().map(|(identity, _)| identity).collect())
@@ -403,6 +406,49 @@ mod tests {
     use read_fonts::{tables::cmap::CmapSubtable, FontData, FontRead};
 
     use super::{cmap_formats_4_and_12, post_names_fit_capacity};
+
+    #[test]
+    fn large_post_order_is_exact_and_bounded() {
+        use read_fonts::FontRef;
+        use write_fonts::{
+            tables::{maxp::Maxp, post::Post},
+            FontBuilder,
+        };
+        let mut font = Font::new_empty("Color glyph order", 1_000);
+        for index in 0..20_000 {
+            font.insert_glyph(Glyph::new(format!("color.layer.custom.{index:05}")))
+                .expect("insert glyph");
+        }
+        let mut order = super::fontir_glyph_order(&font);
+        order[1..].reverse();
+        let post = Post::new_v2(order.iter().map(|name| name.as_ref()));
+        let mut builder = FontBuilder::new();
+        builder
+            .add_table(&Maxp {
+                num_glyphs: order.len() as u16,
+                ..Default::default()
+            })
+            .unwrap();
+        builder.add_table(&post).unwrap();
+        let bytes = builder.build();
+        let face = FontRef::new(&bytes).unwrap();
+        let started = std::time::Instant::now();
+        let actual = super::compiled_glyph_order(&face, &font, false).unwrap();
+        let elapsed = started.elapsed();
+        assert_eq!(actual, order);
+        assert!(
+            elapsed < std::time::Duration::from_secs(2),
+            "post order exceeded 2s: {elapsed:?}"
+        );
+
+        // A stopped name iterator must not silently accept a truncated table.
+        use read_fonts::TableProvider;
+        let mut truncated = face.post().unwrap().offset_data().as_bytes().to_vec();
+        truncated.pop();
+        builder.add_raw(read_fonts::types::Tag::new(b"post"), truncated);
+        let bytes = builder.build();
+        assert!(super::compiled_glyph_order(&FontRef::new(&bytes).unwrap(), &font, false).is_err());
+    }
 
     #[test]
     fn post_capacity_uses_unique_nonstandard_name_count() {

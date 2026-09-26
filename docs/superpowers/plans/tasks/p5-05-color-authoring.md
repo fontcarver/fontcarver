@@ -24,3 +24,14 @@ FontTools decoding and browser visual checks in both themes and languages.
 
 Translation-only delegation, if authorized: edit only the new `color` keys in
 `app/src/i18n/zh-CN.json`, translating their completed English counterparts.
+
+## Completion TODO — 2026-09-26
+
+- [x] Model, bounded codecs and undoable revision-checked API.
+- [x] Palette/layer editor, independent Chinese translation and bounded controls.
+- [x] Native/UFO persistence and semantic TTF/OTF/WOFF/WOFF2 exports.
+- [x] Independent FontTools acceptance on original and real-world fixtures.
+- [x] English/light and Chinese/dark browser checks, edits, undo and export.
+- [x] Regression checks, [user guide](../../../user/color.md) and
+      [acceptance report](../../../p5-color-acceptance.md).
+- [x] Update the P5 TODOs and stop here as requested; do not start the next task.

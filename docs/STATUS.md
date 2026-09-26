@@ -4,10 +4,10 @@ The single entry point for "where is the project". Update this file at every
 pause and every milestone commit. It links to the detailed records; it does
 not repeat them.
 
-Last updated: 2026-09-26 (color authoring checkpoint). Branch: `p5-color-authoring`
+Last updated: 2026-09-26 (COLR v0 / CPAL acceptance complete). Branch: `p5-color-authoring`
 (no push, no main merge). MATH acceptance is committed as `6f4ef4f`.
-Paused explicitly by the user after partial FontTools and browser acceptance; see the
-[COLR/CPAL continuation record](p5-color-checkpoint.md).
+Stopped at the user's requested task boundary after completing COLR/CPAL
+acceptance and updating the TODOs. See the [acceptance record](p5-color-acceptance.md).
 
 ## Phases
 
@@ -30,15 +30,17 @@ release packaging are unverified for every phase.
 
 The [feature audit](p5-feature-audit.md) is the exit gate: a row is marked
 complete only after a working editing path, persistence/export and direct
-verification. Currently two rows are `Partial` (61 autohinting, 98 manual PS
-hints) and the rest of the 112-row checklist are `Pending verification`. MATH is a
+verification. Row 104 is complete within static COLR v0/CPAL boundaries; two
+rows are `Partial` (61 autohinting, 98 manual PS hints), and the other 109 rows
+are `Pending verification`. MATH is a
 separate P5 design requirement, now verified in the audit’s supplemental section.
 
 | Work block                       | State                                                                                                                         | Detail                                            |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | Hinting (TT/PS editors, Type 1)  | Static TT and PS editing, Type 1 hint round trips and export preprocessing done; variable hinting, flex, per-FD dicts open    | [p5-hinting-checkpoint](p5-hinting-checkpoint.md) |
 | MATH authoring                   | Complete within the acceptance boundaries: editor, undo/save/reopen/export, FontTools/HarfBuzz and large-font checks verified | [p5-math-acceptance](p5-math-acceptance.md)       |
-| COLR/CPAL, SVG colour fonts      | Synthetic FontTools checks and initial bilingual UI checks passed; real-font export timing and remaining browser acceptance open; paused; SVG not started | [p5-color-checkpoint](p5-color-checkpoint.md) |
+| COLR/CPAL authoring              | Complete within static COLR v0 / CPAL v0/v1 boundaries; synthetic/real-font exports, browser editing and persistence verified | [p5-color-acceptance](p5-color-acceptance.md) |
+| SVG colour documents            | Not started; pending user resumption | plan block "Remaining OpenType authoring" |
 | Geometry and construction        | Not started                                                                                                                   | plan block "Geometry and construction"            |
 | Compare/merge/paste special      | Not started                                                                                                                   | plan block "Document workflows"                   |
 | Scripting and plugins            | Not started                                                                                                                   | plan block "Automation"                           |
@@ -53,9 +55,10 @@ until it is diagnosed.
 
 ## Next step
 
-Resume COLR/CPAL independent FontTools checks and browser acceptance
-from [the checkpoint](p5-color-checkpoint.md), then SVG colour documents.
-MATH acceptance is complete; see
+No further task is active. Per the user's instruction, stop after the completed
+COLR/CPAL task. SVG colour documents are the next queued item when resumed.
+See the [color user guide](user/color.md) and [acceptance record](p5-color-acceptance.md).
+MATH acceptance is also complete; see
 [the user guide](user/math.md) and [verification record](p5-math-acceptance.md).
 
 The bilingual website is also complete, with deployment still pending. Its

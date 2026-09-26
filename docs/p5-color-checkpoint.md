@@ -1,10 +1,11 @@
 # P5 color authoring checkpoint — 2026-09-26
 
-Status: **paused explicitly by the user** on 2026-09-26 after resuming from
-`a14c1e9`. This is implementation and test progress, **not completed color
-acceptance**. Branch: `p5-color-authoring`; MATH acceptance is complete at
-`6f4ef4f`. Website work is complete except deployment. No push or main merge
-has been performed.
+Status: **COLR v0 / CPAL acceptance complete** on 2026-09-26. Work stopped at
+the user's requested task boundary after updating the TODOs. See the final
+[acceptance report](p5-color-acceptance.md) and [user guide](user/color.md).
+The checkpoints below are historical, including their then-unfinished checks.
+Branch: `p5-color-authoring`; MATH acceptance is complete at `6f4ef4f`.
+Website work is complete except deployment. No push or main merge was performed.
 
 ## Saved implementation
 
@@ -143,31 +144,29 @@ compared with FontTools. No product-code change was made in this third session.
 Pause checks: acceptance script parses; Rust formatting and diff whitespace
 checks pass. No new full-suite or clippy run is claimed for this checkpoint.
 
-## Resume here
+## Final completion and next task boundary
 
-1. Read this file, `CONVENTIONS.md` and
-   [task scope](superpowers/plans/tasks/p5-05-color-authoring.md). Check git status
-   and regenerate API types if needed. Preserve the current implementation.
-2. Finish the existing independent acceptance script run with the prepared
-   real Twemoji font. Investigate the variable debug export timings before
-   deciding whether a larger operation budget is justified. Record timings
-   by export format and retain partial results on failure. Obtain a complete
-   report for both fixtures; do not repeat already successful checks without
-   a reason. The script already compares by GID and pages `glyphs.list`.
-3. Finish browser acceptance using `agent-browser` in English/light and
-   Chinese/dark. The skill stub and CLI `skills get core` were read. The named
-   session is `fontcarver-color-p5`; the saved screenshots and partial checks
-   above are complete. Resume the remaining checks and address HTML language.
-   Do not automate the native desktop. Start isolated servers:
-   ```sh
-   FC_CONFIG_DIR=/tmp/fontcarver-color-qa/config XDG_DATA_HOME=/tmp/fontcarver-color-qa/data cargo run -p fc-devserver -- --port 8894
-   FC_DEV_PROXY=http://127.0.0.1:8894 VITE_FC_API=http://127.0.0.1:1494 pnpm -C app exec vite --port 1494 --strictPort
-   ```
-   The named browser and the two isolated servers were stopped at this pause.
-   Preferences are isolated in the directory above (currently Chinese/dark).
-   Existing logs under `/tmp/fontcarver-color-qa/` and
-   `/tmp/fontcarver-color-{api,codec,ui}-tests.log` are diagnostic only.
-4. Review the final diff, run affected-crate regressions and the full frontend
-   suite after acceptance fixes, write a user guide and acceptance report,
-   update STATUS/audit, and commit. COLRv1/SVG editing remains future work;
-   do not mark the entire color-font requirement complete.
+- Fixed quadratic compiled post-name lookup, the development transport's 2 MiB
+  request limit for large color drafts, document language and palette group role.
+- FontTools verified all 16 baseline/edited exports across two fixtures. The
+  final report is `/tmp/fontcarver-color-qa/acceptance-final/report.json`, with
+  `complete: true`. It records the explicit 240-second operation budget and
+  per-format timings; real-font exports completed in 22.803–39.593 seconds.
+- Finished browser invalid-input, close-flush, undo/redo, save/reopen, export,
+  language/theme and large palette/stack paging checks. Saved screenshots show
+  the settled preview for the selected palette, with validation notices dismissed.
+- Frontend: 141 files / 1,146 tests passed. `fc-compile`: 164 tests passed.
+  Color API/doc/codec: 7 + 2 + 6 passed. Development HTTP server: 3 passed.
+  Type checking, lint, clippy, Rust/TSX formatting and whitespace checks passed.
+- User guide, acceptance record, STATUS, feature audit and task TODOs updated.
+  Static COLR v0/CPAL row 104 is complete within the documented boundaries.
+
+The named browser `fontcarver-color-p5` and isolated servers on ports 8894/1494
+were closed at completion. Local evidence and the original geometric UI file
+remain under `/tmp/fontcarver-color-qa/`; preferences there are English/light.
+No native desktop automation, release packaging, remote push or main merge.
+
+**Stop here per the user's instruction.** SVG color documents and COLRv1 are
+queued future tasks; begin one only after the user resumes. Existing known
+workspace limitations, including the Tibetan layout budget failure, remain
+tracked in STATUS. No need to repeat completed MATH or color acceptance.

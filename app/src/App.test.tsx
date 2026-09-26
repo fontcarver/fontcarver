@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -17,12 +17,12 @@ import { initialUiState, useUiStore } from './stores/uiStore'
 import { makeFontInfoView } from './test/fontFixtures'
 import { createMockTransport, makeSummary } from './test/mockTransport'
 
-function emptySession() {
+function emptySession(language = DEFAULT_PREFS.language) {
   return createMockTransport({
     'session.list': () => [],
     'session.recent': () => ['/fonts/DejaVuSans.ttf'],
     'session.recover_list': () => [],
-    'prefs.get': () => DEFAULT_PREFS,
+    'prefs.get': () => ({ ...DEFAULT_PREFS, language }),
     'prefs.set': ({ prefs }) => prefs,
   })
 }
@@ -44,6 +44,18 @@ afterEach(() => {
 })
 
 describe('App shell', () => {
+  it('keeps the document language aligned with loaded and changed preferences', async () => {
+    setTransport(emptySession('zh-CN'))
+    render(<App />)
+
+    await screen.findByRole('menuitem', { name: '文件' })
+    expect(document.documentElement.lang).toBe('zh-CN')
+
+    act(() => useUiStore.getState().setLanguage('en'))
+    await screen.findByRole('menuitem', { name: 'File' })
+    expect(document.documentElement.lang).toBe('en')
+  })
+
   it('renders every specified menu from the command registry', async () => {
     setTransport(emptySession())
     render(<App />)
