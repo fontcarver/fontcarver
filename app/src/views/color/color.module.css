@@ -136,3 +136,20 @@
       );
   }
 }
+
+.paint {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.paint label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.editor .paint input[type='checkbox'] {
+  height: auto;
+}
+.paint input:not([type='checkbox']) {
+  width: 100%;
+}

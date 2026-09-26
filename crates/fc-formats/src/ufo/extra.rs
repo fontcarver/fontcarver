@@ -122,7 +122,9 @@ pub(crate) fn import(font: &mut Font) -> Result<(), Error> {
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(!font.bitmap_strikes.is_empty());
     }
-    if let Some(color) = extra.get("color").filter(|v| !v.is_null()) {
+    if let Some(color) = extra.get("color_json").and_then(serde_json::Value::as_str) {
+        font.color = Some(serde_json::from_str(color)?);
+    } else if let Some(color) = extra.get("color").filter(|v| !v.is_null()) {
         font.color = Some(serde_json::from_value(color.clone())?);
     }
     font.color_tables_owned = extra
@@ -323,12 +325,15 @@ pub(crate) fn build(font: &Font, master: &Master) -> Result<Option<Value>, Error
     if !has_data {
         return Ok(None);
     }
+    // Plists cannot represent null array items such as CPAL entry label gaps.
+    // A JSON string preserves both these positions and optional fields exactly.
+    let color_json = font.color.as_ref().map(serde_json::to_string).transpose()?;
     let json = serde_json::json!({
         "version": 1,
         "raw_tables": raw_tables,
         "bitmap_strikes": font.bitmap_strikes,
         "bitmap_tables_owned": font.bitmap_tables_owned,
-        "color": font.color,
+        "color_json": color_json,
         "color_tables_owned": font.color_tables_owned,
         "math": font.math,
         "math_table_owned": font.math_table_owned,

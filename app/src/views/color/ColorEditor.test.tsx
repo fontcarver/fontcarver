@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
-import { setTransport, type ColorState } from '../../api'
+import { setTransport, type ColorState, type ColorTable } from '../../api'
 import {
   flushDocumentEditParticipants,
   suspendDocumentEditParticipants,
@@ -12,27 +12,54 @@ import { emptyTable, parseColor, removeEntry } from './colorModel'
 
 afterEach(() => setTransport(undefined))
 
-function setup() {
+function setup(color: ColorTable = emptyTable()) {
   let state: ColorState = {
     generation: 2,
     status: 'Editable',
-    color: emptyTable(),
+    color,
     import_error: null,
     units_per_em: 1000,
   }
   const mock = createMockTransport({
     'color.state': () => state,
     'color.apply': ({ color, expected_generation }) => {
-      expect(expected_generation).toBe(state.generation)
+      if (expected_generation !== state.generation)
+        throw {
+          code: 'invalid_params',
+          message: 'Color data changed; reload the editor before applying',
+        }
       state = { ...state, color, generation: state.generation + 1 }
       return { ...noChange(), color: true }
     },
+    'color.preview': ({ glyph, layers, palette }) => ({
+      generation: state.generation,
+      width: 600,
+      units_per_em: 1000,
+      layers: (layers ?? state.color?.glyphs[glyph] ?? []).map((layer) => ({
+        glyph: layer.glyph,
+        path:
+          layer.glyph === 'A' ? 'M0 0L100 0L100 100Z' : 'M50 0L150 0L150 100Z',
+        bounds: [0, 0, 150, 100],
+        color:
+          layer.palette_index === null
+            ? null
+            : (palette ?? state.color!.palettes[0].colors)[layer.palette_index],
+      })),
+    }),
     'glyphs.list': () => ({ total: 0, items: [] }),
   })
   setTransport(mock)
   const close = vi.fn()
   render(<ColorEditor doc={902} onClose={close} />)
-  return { mock, close, state: () => state, user: userEvent.setup() }
+  return {
+    mock,
+    close,
+    state: () => state,
+    changeRevision: () => {
+      state = { ...state, generation: state.generation + 1 }
+    },
+    user: userEvent.setup(),
+  }
 }
 
 it('applies an RGBA palette edit and retains selection', async () => {
@@ -108,4 +135,103 @@ it('reindexes unused entries without changing foreground or used entries', () =>
     alpha: 255,
   })
   expect(parseColor('#12abcg')).toBeUndefined()
+})
+
+it('reorders outline layers and previews alpha and foreground in paint order', async () => {
+  const table = emptyTable()
+  table.palettes[0].colors[0].alpha = 128
+  table.glyphs.A = [
+    { glyph: 'A', palette_index: 0 },
+    { glyph: 'B', palette_index: null },
+  ]
+  const { user, state } = setup(table)
+  await screen.findByLabelText('Layer 1 outline glyph')
+  const image = screen.getByRole('img', { name: 'Color preview' })
+  await waitFor(() => expect(image.querySelectorAll('path')).toHaveLength(2))
+  expect(image.querySelectorAll('path')[0]).toHaveAttribute(
+    'fill-opacity',
+    String(128 / 255),
+  )
+  expect(image.querySelectorAll('path')[1]).toHaveAttribute('fill', '#202020')
+  await user.click(screen.getByRole('button', { name: 'Move layer 2 down' }))
+  expect(screen.getByLabelText('Layer 1 outline glyph')).toHaveValue('B')
+  await user.selectOptions(
+    screen.getByRole('combobox', { name: 'Layer 1 color' }),
+    '0',
+  )
+  await user.click(screen.getByRole('button', { name: 'Apply changes' }))
+  await waitFor(() =>
+    expect(state().color?.glyphs.A[0]).toEqual({
+      glyph: 'B',
+      palette_index: 0,
+    }),
+  )
+})
+
+it('does not switch palettes or glyphs over invalid RGBA text', async () => {
+  const table = emptyTable()
+  table.palettes.push(structuredClone(table.palettes[0]))
+  table.glyphs.A = [{ glyph: 'A', palette_index: 0 }]
+  table.glyphs.B = [{ glyph: 'B', palette_index: null }]
+  const { user } = setup(table)
+  const input = await screen.findByRole('textbox', { name: 'Entry 0 RGBA' })
+  fireEvent.change(input, { target: { value: '#X' } })
+  await user.selectOptions(
+    screen.getByRole('combobox', { name: 'Choose palette' }),
+    '1',
+  )
+  expect(screen.getByRole('combobox', { name: 'Choose palette' })).toHaveValue(
+    '0',
+  )
+  await user.selectOptions(
+    screen.getByRole('listbox', { name: 'Choose layered glyph' }),
+    'B',
+  )
+  expect(screen.getByLabelText('Layer 1 outline glyph')).toHaveValue('A')
+  expect(input).toHaveValue('#X')
+})
+
+it('keeps a rejected stale draft visible until explicit reload', async () => {
+  const { user, changeRevision, close, state } = setup()
+  const input = await screen.findByRole('textbox', { name: 'Entry 0 RGBA' })
+  fireEvent.change(input, { target: { value: '#FF000077' } })
+  changeRevision()
+  await user.click(screen.getByRole('button', { name: 'Close' }))
+  await screen.findByRole('alert')
+  expect(close).not.toHaveBeenCalled()
+  expect(input).toHaveValue('#FF000077')
+  expect(state().color?.palettes[0].colors[0].alpha).toBe(255)
+  await user.click(
+    screen.getByRole('button', { name: 'Discard draft and reload' }),
+  )
+  await waitFor(() => expect(input).toHaveValue('#2A70DCFF'))
+})
+
+it('bounds large palette and layer controls while retaining invalid page input', async () => {
+  const table = emptyTable()
+  table.palettes[0].colors = Array.from({ length: 1000 }, () => ({
+    red: 1,
+    green: 2,
+    blue: 3,
+    alpha: 255,
+  }))
+  table.glyphs.A = Array.from({ length: 40 }, () => ({
+    glyph: 'A',
+    palette_index: 999,
+  }))
+  const { user } = setup(table)
+  const paint = await screen.findByRole('textbox', { name: 'Layer 1 color' })
+  expect(screen.getAllByLabelText(/outline glyph/)).toHaveLength(16)
+  expect(document.querySelectorAll('option').length).toBeLessThan(20)
+  fireEvent.change(paint, { target: { value: '1000' } })
+  expect(paint).toBeInvalid()
+  await user.click(screen.getByRole('button', { name: 'Next layers' }))
+  expect(paint).toBeInTheDocument()
+  fireEvent.change(paint, { target: { value: '500' } })
+  await user.click(screen.getByRole('button', { name: 'Next layers' }))
+  expect(screen.getByRole('textbox', { name: 'Layer 17 color' })).toHaveValue(
+    '999',
+  )
+  await user.click(screen.getByRole('button', { name: 'Next layers' }))
+  expect(screen.getAllByLabelText(/outline glyph/)).toHaveLength(8)
 })

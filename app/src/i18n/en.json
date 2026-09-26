@@ -1976,6 +1976,11 @@
     "preview": "Color preview",
     "previewForeground": "Preview foreground",
     "previewNote": "Preview uses the default master and the selected palette. Foreground color affects this preview only.",
-    "emptyPreview": "Add a layered glyph to preview its colors."
+    "emptyPreview": "Add a layered glyph to preview its colors.",
+    "invalidEntryIndex": "Enter a whole entry index from 0 to {{max}}.",
+    "invalidPaletteIndex": "Enter a palette number from 1 to {{max}}.",
+    "layerRange": "Layers {{first}}–{{last}} of {{total}}",
+    "previousLayers": "Previous layers",
+    "nextLayers": "Next layers"
   }
 }

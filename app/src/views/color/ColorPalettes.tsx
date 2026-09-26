@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ColorTable, PaletteColor } from '../../api'
 import { Button } from '../../components/Button'
@@ -27,6 +27,15 @@ export function ColorPalettes({
   const palette = table.palettes[selected]
   const length = palette.colors.length
   const start = Math.min(page, Math.floor((length - 1) / PAGE)) * PAGE
+  const usedEntries = useMemo(
+    () =>
+      new Set(
+        Object.values(table.glyphs).flatMap((layers) =>
+          layers.map((l) => l.palette_index),
+        ),
+      ),
+    [table.glyphs],
+  )
   const setColor = (index: number, value: PaletteColor) =>
     onChange({
       ...table,
@@ -40,19 +49,42 @@ export function ColorPalettes({
     <section className={styles.section} aria-label={t('color.palettes')}>
       <h3>{t('color.palettes')}</h3>
       <div className={styles.row}>
-        <select
-          aria-label={t('color.choosePalette')}
-          value={selected}
-          onChange={(e) => {
-            if (validate()) onSelect(Number(e.target.value))
-          }}
-        >
-          {table.palettes.map((_, i) => (
-            <option key={i} value={i}>
-              {t('color.palette', { number: i + 1 })}
-            </option>
-          ))}
-        </select>
+        {table.palettes.length > 256 ? (
+          <ParsedInput
+            label={t('color.choosePalette')}
+            value={selected + 1}
+            format={String}
+            parse={(text) =>
+              /^\d+$/.test(text) &&
+              Number(text) >= 1 &&
+              Number(text) <= table.palettes.length
+                ? Number(text)
+                : undefined
+            }
+            invalid={t('color.invalidPaletteIndex', {
+              max: table.palettes.length,
+            })}
+            required
+            inputMode="numeric"
+            onChange={(next) => {
+              if (validate()) onSelect(next - 1)
+            }}
+          />
+        ) : (
+          <select
+            aria-label={t('color.choosePalette')}
+            value={selected}
+            onChange={(e) => {
+              if (validate()) onSelect(Number(e.target.value))
+            }}
+          >
+            {table.palettes.map((_, i) => (
+              <option key={i} value={i}>
+                {t('color.palette', { number: i + 1 })}
+              </option>
+            ))}
+          </select>
+        )}
         <Button
           disabled={table.palettes.length >= 65535}
           onClick={() => {
@@ -106,9 +138,7 @@ export function ColorPalettes({
       <div className={styles.entries} aria-label={t('color.entries')}>
         {palette.colors.slice(start, start + PAGE).map((color, offset) => {
           const index = start + offset
-          const used = Object.values(table.glyphs).some((layers) =>
-            layers.some((l) => l.palette_index === index),
-          )
+          const used = usedEntries.has(index)
           return (
             <div className={styles.entry} key={`${selected}:${index}`}>
               <span>{t('color.entry', { number: index })}</span>
