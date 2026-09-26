@@ -36,3 +36,20 @@ fn assert_tables_equal(left: &[u8], right: &[u8]) {
         );
     }
 }
+
+#[test]
+fn external_color_font_webfont_work_budget() {
+    let Ok(path) = std::env::var("FONTCARVER_COLOR_FONT") else {
+        return;
+    };
+    let sfnt = std::fs::read(path).expect("read external color font");
+    let started = std::time::Instant::now();
+    let woff = wrap_woff1(&sfnt).expect("encode color WOFF");
+    let elapsed = started.elapsed();
+    eprintln!("Color WOFF: {} bytes in {elapsed:?}", woff.len());
+    assert_tables_equal(&sfnt, &wuff::decompress_woff1(&woff).unwrap());
+    assert!(
+        elapsed < std::time::Duration::from_secs(30),
+        "color WOFF compression exceeded 30s: {elapsed:?}"
+    );
+}

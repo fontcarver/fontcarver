@@ -6,7 +6,7 @@ not repeat them.
 
 Last updated: 2026-09-26 (color authoring checkpoint). Branch: `p5-color-authoring`
 (no push, no main merge). MATH acceptance is committed as `6f4ef4f`.
-Paused explicitly by the user after API, UFO and editor-scaling checks; see the
+Paused explicitly by the user after partial FontTools and browser acceptance; see the
 [COLR/CPAL continuation record](p5-color-checkpoint.md).
 
 ## Phases
@@ -38,7 +38,7 @@ separate P5 design requirement, now verified in the audit’s supplemental secti
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | Hinting (TT/PS editors, Type 1)  | Static TT and PS editing, Type 1 hint round trips and export preprocessing done; variable hinting, flex, per-FD dicts open    | [p5-hinting-checkpoint](p5-hinting-checkpoint.md) |
 | MATH authoring                   | Complete within the acceptance boundaries: editor, undo/save/reopen/export, FontTools/HarfBuzz and large-font checks verified | [p5-math-acceptance](p5-math-acceptance.md)       |
-| COLR/CPAL, SVG colour fonts      | COLR v0/CPAL API and persistence tests passed; paused before independent/browser acceptance; SVG not started | [p5-color-checkpoint](p5-color-checkpoint.md) |
+| COLR/CPAL, SVG colour fonts      | Synthetic FontTools checks and initial bilingual UI checks passed; real-font export timing and remaining browser acceptance open; paused; SVG not started | [p5-color-checkpoint](p5-color-checkpoint.md) |
 | Geometry and construction        | Not started                                                                                                                   | plan block "Geometry and construction"            |
 | Compare/merge/paste special      | Not started                                                                                                                   | plan block "Document workflows"                   |
 | Scripting and plugins            | Not started                                                                                                                   | plan block "Automation"                           |

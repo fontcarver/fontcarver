@@ -1,7 +1,7 @@
 # P5 color authoring checkpoint — 2026-09-26
 
 Status: **paused explicitly by the user** on 2026-09-26 after resuming from
-`8b1b3d3`. This is implementation and test progress, **not completed color
+`a14c1e9`. This is implementation and test progress, **not completed color
 acceptance**. Branch: `p5-color-authoring`; MATH acceptance is complete at
 `6f4ef4f`. Website work is complete except deployment. No push or main merge
 has been performed.
@@ -83,7 +83,7 @@ The previous checkpoint's 1141-test full frontend run is historical. This
 second checkpoint reran the 8 color UI tests; it has not rerun the full suite
 or completed browser/independent-engine acceptance.
 
-## External fixture prepared, not yet verified
+## External fixture
 
 `/tmp/fontcarver-color-qa/Twemoji.Mozilla.ttf` was downloaded from the upstream
 [v0.7.0 release](https://github.com/mozilla/twemoji-colr/releases/tag/v0.7.0):
@@ -95,35 +95,76 @@ attributes the Twemoji art under CC-BY-4.0, with Apache-2.0 tooling. It is an
 external, uncommitted test input; do not redistribute it or screenshots of its
 art without appropriate attribution. No FontForge tool/code was used.
 
-FontTools 4.63 is installed. A `uharfbuzz.Face` introspection command was still
-running at pause and was terminated; **no independent color verification has
-run yet**. No acceptance script has been written. The Bungee v2.001 archive and
-current Bungee/googlefonts-color-fonts trees did not provide the searched v0
-font; no reason to repeat those searches.
+FontTools 4.63 is installed. No HarfBuzz color verification is claimed. The
+Bungee v2.001 archive and current Bungee/googlefonts-color-fonts trees did not
+provide the searched v0 font; no reason to repeat those searches.
+
+## Third checkpoint: partial independent and browser acceptance
+
+The user requested another pause on 2026-09-26. Saved work since `a14c1e9`:
+
+- Added `scripts/p5_color_acceptance.py`. It generates an original geometric
+  CPAL v1 fixture with two palettes, sparse name labels, alpha and foreground.
+  FontTools independently verified import semantics, baseline and edited
+  TTF/OTF/WOFF/WOFF2 exports, referenced name strings, native save/reopen,
+  undo/redo and read-only preview. All eight synthetic exports passed.
+- For Twemoji, import and baseline TTF/OTF semantics passed. The first baseline
+  WOFF request exceeded the script's 120-second limit, so the full run failed
+  and **no complete `report.json` was produced**. Edited real-font exports and
+  WOFF2 remain unverified. The script currently writes its report only after
+  every font passes; preserve partial evidence when improving it.
+- A separate repeat WOFF export completed in **63.381 seconds** in the debug
+  server. Progress timestamps put approximately 33.7 seconds in compilation,
+  28.4 seconds in preservation/post-processing and 1.2 seconds in final writing.
+  This does not establish a WOFF compression defect: direct compression took
+  **0.920 seconds**, and decompressed tables matched. The cause of the earlier
+  timeout is still unconfirmed; do not claim a performance fix.
+- Added an opt-in compression budget integration test in
+  `crates/fc-compile/tests/webfont.rs`, using `FONTCARVER_COLOR_FONT` and a
+  30-second assertion. It passed with the externally generated baseline TTF.
+- Actual browser checks passed for invalid RGBA retention across close/palette
+  navigation; apply; palette duplication; shared entry insertion; alpha,
+  foreground and layer reorder preview; and native Save As. Saved UI document:
+  `/tmp/fontcarver-color-qa/ui-accepted.fcf`.
+- Saved English/light and Chinese/dark screenshots using only the original
+  geometric fixture: [palettes](screenshots/p5-color-palettes-en-light.png) and
+  [layers](screenshots/p5-color-layers-zh-dark.png). Wait for the debounced SVG
+  preview to update before taking further screenshots.
+- Observed an accessibility issue: Chinese UI still leaves `<html lang="en">`.
+  No fix made yet; inspect the language effect in `app/src/shell/AppShell.tsx`.
+  Browser undo/redo, reopen, export, invalid glyph drafts and large-font editor
+  controls still need final acceptance.
+
+Evidence under `/tmp/fontcarver-color-qa/`: `independent.log`,
+`profile-export.log`, `profile-export.mjs`, `acceptance/0-color-acceptance/`,
+`acceptance/1-Twemoji.Mozilla/`, and `profile.woff`. These are local diagnostics,
+not committed artifacts. The profile WOFF completed but has not been separately
+compared with FontTools. No product-code change was made in this third session.
+Pause checks: acceptance script parses; Rust formatting and diff whitespace
+checks pass. No new full-suite or clippy run is claimed for this checkpoint.
 
 ## Resume here
 
 1. Read this file, `CONVENTIONS.md` and
    [task scope](superpowers/plans/tasks/p5-05-color-authoring.md). Check git status
    and regenerate API types if needed. Preserve the current implementation.
-2. Write `scripts/p5_color_acceptance.py`, analogous to the MATH script, using
-   independent FontTools COLR/CPAL decoding. Generate a small original v1 CPAL
-   fixture with multiple palettes, sparse entry labels, alpha and foreground;
-   also verify the prepared real Twemoji font. Compare records by glyph ID
-   because FontTools and FontCarver can synthesize different names for post v3.
-   `glyphs.list` supports `sort: "Order"` and bounded paging for the source-name
-   to GID mapping. Verify all four containers, edits, undo, FCF save/reopen,
-   palette metadata and paint order; inspect source/exports independently.
+2. Finish the existing independent acceptance script run with the prepared
+   real Twemoji font. Investigate the variable debug export timings before
+   deciding whether a larger operation budget is justified. Record timings
+   by export format and retain partial results on failure. Obtain a complete
+   report for both fixtures; do not repeat already successful checks without
+   a reason. The script already compares by GID and pages `glyphs.list`.
 3. Finish browser acceptance using `agent-browser` in English/light and
    Chinese/dark. The skill stub and CLI `skills get core` were read. The named
-   session `fontcarver-color-p5` opened the empty app only, then was closed at
-   pause. **No color dialog visual acceptance or screenshots were completed.**
+   session is `fontcarver-color-p5`; the saved screenshots and partial checks
+   above are complete. Resume the remaining checks and address HTML language.
    Do not automate the native desktop. Start isolated servers:
    ```sh
    FC_CONFIG_DIR=/tmp/fontcarver-color-qa/config XDG_DATA_HOME=/tmp/fontcarver-color-qa/data cargo run -p fc-devserver -- --port 8894
    FC_DEV_PROXY=http://127.0.0.1:8894 VITE_FC_API=http://127.0.0.1:1494 pnpm -C app exec vite --port 1494 --strictPort
    ```
-   Both servers and their descendants were stopped at the user-requested pause.
+   The named browser and the two isolated servers were stopped at this pause.
+   Preferences are isolated in the directory above (currently Chinese/dark).
    Existing logs under `/tmp/fontcarver-color-qa/` and
    `/tmp/fontcarver-color-{api,codec,ui}-tests.log` are diagnostic only.
 4. Review the final diff, run affected-crate regressions and the full frontend
