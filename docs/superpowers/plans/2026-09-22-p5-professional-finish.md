@@ -1,9 +1,9 @@
 # P5 professional finish
 
-Status: paused at the user's explicit request on 2026-09-23, after the MATH
-import/export, API and editor integration step. Resume only when requested. The P5 scope
-was authorized immediately after P4; it is not complete. Current progress and
-next actions: [MATH checkpoint](../../p5-math-checkpoint.md).
+Status: resumed on 2026-09-26 for MATH acceptance, now complete within
+[its verified boundaries](../../p5-math-acceptance.md). The P5 scope was
+authorized immediately after P4; the remaining work is not complete. Current
+progress and next actions: [STATUS](../../STATUS.md).
 P4 checkpoint: `a3b2f8f`; its supported boundaries and evidence are recorded in
 `docs/p4-acceptance.md`.
 
@@ -22,8 +22,10 @@ by the earlier user instruction; headless browser testing and builds are allowed
 - [ ] Hinting: bounded TT assembler/disassembler, editable programs/CVT/maxima,
       source-index validation, hinted preview, PS stems/zones/masks, CFF/Type 1 output,
       external ttfautohint bridge with honest availability/results.
-- [ ] OpenType authoring: MATH constants/glyph data/assemblies, COLR/CPAL palettes
-      and layers, SVG documents, semantic binary import/export and persistence.
+- [x] MATH authoring: constants, glyph data and assemblies; semantic import/export,
+      persistence, editor and independent acceptance. See [record](../../p5-math-acceptance.md).
+- [ ] Remaining OpenType authoring: COLR/CPAL palettes and layers, SVG documents,
+      semantic binary import/export and persistence.
 - [ ] Geometry and construction: style effects, non-destructive effects and smart
       geometry, raster-image trace, background images, optical spacing/kerning, CJK
       construction helpers and remaining editor/metrics/variable requirements.

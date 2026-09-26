@@ -40,9 +40,14 @@ export class MathSession {
     this.state = { ...this.state, ...patch }
     for (const listener of this.listeners) listener()
   }
-  connect() {
+  connect(validate: () => void = () => {}) {
     return registerDocumentEditParticipant(this.doc, {
-      flush: () => this.flush(),
+      flush: async () => {
+        // Unparsed text still lives in the form, outside the semantic draft.
+        // Save/navigation must reject it just as the Apply button does.
+        validate()
+        await this.flush()
+      },
       hasPendingEdits: () => this.state.dirty,
       setSuspended: (suspended) => this.update({ suspended }),
     })

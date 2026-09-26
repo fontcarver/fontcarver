@@ -77,11 +77,9 @@ impl Check<'_> {
                 for value in [part.start_connector, part.end_connector, part.full_advance] {
                     units(value, true)?;
                 }
-                if part.start_connector.round() > part.full_advance.round()
-                    || part.end_connector.round() > part.full_advance.round()
-                {
-                    return Err(invalid("assembly connector exceeds the part advance"));
-                }
+                // OpenType specifies these as independent UFWORD values.
+                // A connector may extend beyond the part's advance (for
+                // example, the radical top in DejaVu Math TeX Gyre).
             }
         }
         Ok(())

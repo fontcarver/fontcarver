@@ -1,8 +1,10 @@
 # P5 MATH checkpoint
 
-Status: paused at the user's explicit request on 2026-09-23, after the
-import/export/API/editor integration step. Resume only when requested.
-P4 is complete; P5 and MATH authoring are not complete.
+Status: resumed at the user’s request on 2026-09-26; MATH authoring and its
+acceptance are now complete within the documented boundaries. See
+[the acceptance record](p5-math-acceptance.md) and [user guide](user/math.md).
+P4 is complete; the remaining P5 work is not complete. Earlier pauses below are
+historical.
 
 ## Model and codec step (2026-09-22)
 
@@ -126,20 +128,23 @@ in UFO extras keeps aborting the import, consistent with the other extras
 and safer than silently dropping data since UFO import has no warning
 channel.
 
+## Acceptance step (2026-09-26)
+
+Completed the browser workflow, independent FontTools/HarfBuzz comparisons,
+large-font timing/memory checks, component regression coverage and user guide.
+Acceptance found and fixed invalid-text loss/bypassed validation in the dialog
+and an overly strict assembly connector/advance relationship that prevented
+DejaVu Math TeX Gyre from becoming editable. Detailed commands, evidence and
+remaining format/preview boundaries are in [MATH acceptance](p5-math-acceptance.md).
+
 ## Resume here
 
-1. Browser-verify the MATH dialog with agent-browser on DejaVu Sans: edit
-   constants and a record, apply, undo, save and reopen, export, and check the
-   assembly preview and validation messages. Add a component test for the
-   dialog.
-2. Independent checks: compare exported MATH with FontTools and, if
-   available, HarfBuzz (`hb_ot_math_*` via uharfbuzz) for constants,
-   variants and assemblies. Test a larger real math font such as Latin Modern
-   or STIX Two Math by external path, checking time and memory.
-3. Add user documentation (`docs/user/`) and mark the MATH task and audit
-   entries complete only after steps 1-2 pass.
+MATH needs no further acceptance work within that scope. The next P5 block is
+COLR/CPAL palette/layer authoring, followed by SVG colour documents. The
+112-row feature audit remains open; MATH is recorded separately because the
+original competitor checklist has no dedicated MATH row.
 
-## Local working state
+## Local working state at the integration pause (historical)
 
 - Branch: `p2a-kerning-resolution`.
 - Previous checkpoint: `9fc94b8` (MATH model and codec), following `cb87321`

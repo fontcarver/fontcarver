@@ -14,11 +14,13 @@ export function MathGlyphsPanel({
   doc,
   table,
   upem,
+  validate,
   onChange,
 }: {
   doc: DocId
   table: MathTable
   upem: number
+  validate: () => boolean
   onChange: (table: MathTable) => void
 }) {
   const { t } = useTranslation()
@@ -37,6 +39,7 @@ export function MathGlyphsPanel({
   const hint = useGlyphSuggestions(doc, suggestQuery)
   const current = selected !== null ? table.glyphs[selected] : undefined
   const add = () => {
+    if (!validate()) return
     const name = adding.trim()
     if (!name) return
     if (!(name in table.glyphs))
@@ -92,7 +95,9 @@ export function MathGlyphsPanel({
           size={8}
           aria-label={t('math.records')}
           value={selected ?? ''}
-          onChange={(event) => setSelected(event.target.value)}
+          onChange={(event) => {
+            if (validate()) setSelected(event.target.value)
+          }}
         >
           {matches.slice(0, VISIBLE_LIMIT).map((name) => (
             <option key={name} value={name}>
@@ -116,6 +121,7 @@ export function MathGlyphsPanel({
               </Button>
             </div>
             <MathGlyphForm
+              key={selected}
               doc={doc}
               glyph={selected}
               info={current}

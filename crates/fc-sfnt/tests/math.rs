@@ -72,6 +72,38 @@ fn every_math_field_roundtrips_across_glyph_orders() {
 }
 
 #[test]
+fn assembly_connectors_can_extend_beyond_the_part_advance() {
+    // DejaVu Math TeX Gyre uses a 502-unit start connector on its 287-unit
+    // radical top. OpenType defines connector lengths and advance separately;
+    // rejecting their relationship prevents editing the whole valid table.
+    let mut source = sample();
+    let construction = source
+        .glyphs
+        .get_mut("base")
+        .unwrap()
+        .vertical
+        .as_mut()
+        .unwrap();
+    let assembly = construction.assembly.as_mut().unwrap();
+    assembly.parts[0].start_connector = 502.;
+    assembly.parts[0].full_advance = 287.;
+    let order = vec!["base".into(), "part".into()];
+    let binary = fc_sfnt::math::write_table(&source, &order).unwrap();
+    let decoded = fc_sfnt::math::read_table(&binary, &order).unwrap();
+    assert_eq!(decoded, source);
+    let assembly = decoded.glyphs["base"]
+        .vertical
+        .as_ref()
+        .unwrap()
+        .assembly
+        .as_ref()
+        .unwrap();
+    let preview = assembly.layout(2000., 20., 64).unwrap();
+    assert!(preview.size >= 2000. && !preview.limited);
+    assert!(preview.parts.iter().all(|part| part.offset.is_finite()));
+}
+
+#[test]
 fn device_formats_and_boundary_sizes_roundtrip() {
     for deltas in [vec![-2, 1, 0], vec![-8, 7, 2], vec![-128, 127, 8]] {
         let mut source = sample();

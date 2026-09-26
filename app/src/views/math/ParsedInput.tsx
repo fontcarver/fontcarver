@@ -47,6 +47,7 @@ export function ParsedInput<T>({
     <input
       ref={input}
       aria-label={label}
+      data-validation-message={invalid}
       placeholder={placeholder}
       inputMode={inputMode}
       list={list}

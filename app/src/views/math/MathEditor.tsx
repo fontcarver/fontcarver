@@ -30,7 +30,21 @@ export function MathEditor({
   const [tab, setTab] = useState<Tab>('constants')
   const form = useRef<HTMLFormElement>(null)
   useEffect(() => {
-    const dispose = session.connect()
+    const dispose = session.connect(() => {
+      // Close handovers suspend the form. Disabled controls are excluded from
+      // reportValidity(), but their unparsed text still needs validation.
+      const invalid = [...(form.current?.querySelectorAll('input') ?? [])].find(
+        (input) =>
+          !input.validity.valid ||
+          (input.required && input.value.trim() === ''),
+      )
+      if (invalid) {
+        invalid.reportValidity()
+        throw new Error(
+          invalid.dataset.validationMessage || invalid.validationMessage,
+        )
+      }
+    })
     void session.load().catch(reportError)
     const off = onDocumentEvent((event) => {
       if (event.doc === doc) void session.load().catch(reportError)
@@ -46,8 +60,9 @@ export function MathEditor({
     if (valid()) void session.flush().catch(reportError)
   }
   const close = () => {
+    if (disabled || !valid()) return
     if (!state.dirty) return onClose()
-    if (valid()) void session.flush().then(onClose).catch(reportError)
+    void session.flush().then(onClose).catch(reportError)
   }
   const error = state.error ? errorNotice(state.error, t) : null
   const source = state.source
@@ -154,7 +169,9 @@ export function MathEditor({
                       role="tab"
                       aria-selected={tab === id}
                       className={styles.tab}
-                      onClick={() => setTab(id)}
+                      onClick={() => {
+                        if (valid()) setTab(id)
+                      }}
                     >
                       {t(`math.tab.${id}`)}
                     </button>
@@ -175,6 +192,7 @@ export function MathEditor({
                   doc={doc}
                   table={draft}
                   upem={source.units_per_em}
+                  validate={valid}
                   onChange={(next) => session.edit(next)}
                 />
               )}
