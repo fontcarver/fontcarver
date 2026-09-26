@@ -70,6 +70,9 @@ pub(super) fn remove(font: &mut Font, names: &[GlyphName]) -> Result<(), Error> 
     if let Some(math) = &mut font.math {
         math.retain_glyphs(|name| !seen.contains(name));
     }
+    if let Some(color) = &mut font.color {
+        color.retain_glyphs(|name| !seen.contains(name));
+    }
     for name in names {
         font.remove_glyph(name);
         for members in font
@@ -135,6 +138,11 @@ pub(super) fn duplicate(
     for strike in &mut font.bitmap_strikes {
         if let Some(bitmap) = strike.glyphs.get(source).cloned() {
             strike.glyphs.insert(name.clone(), bitmap);
+        }
+    }
+    if let Some(color) = &mut font.color {
+        if let Some(layers) = color.glyphs.get(source).cloned() {
+            color.glyphs.insert(name.clone(), layers);
         }
     }
     // The copy has the same shape, so its placement data applies unchanged.

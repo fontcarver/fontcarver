@@ -4,6 +4,7 @@
 
 mod anchor;
 mod bitmap;
+mod color;
 mod component;
 mod contour;
 mod designspace;
@@ -31,6 +32,7 @@ pub use bitmap::{
     BdfValue, Bitmap, BitmapGlyph, BitmapRef, BitmapStrike, MAX_BITMAP_BYTES, MAX_BITMAP_SIZE,
     MAX_FONT_BITMAP_BYTES,
 };
+pub use color::{ColorPalette, ColorTable, ColrLayer, PaletteColor, MAX_COLOR_ITEMS};
 pub use component::Component;
 pub use contour::{Contour, Point, PointKind, TtIndex};
 pub use error::Error;

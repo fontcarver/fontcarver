@@ -1,6 +1,7 @@
 //! Typed API handler groups.
 
 pub(crate) mod bitmap;
+pub(crate) mod color;
 pub(crate) mod doc;
 pub(crate) mod editing;
 pub(crate) mod export;

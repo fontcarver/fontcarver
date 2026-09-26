@@ -565,6 +565,7 @@ impl Document {
         Change {
             bitmaps: impact.bitmap_strikes || !impact.bitmap_glyphs.is_empty(),
             math: impact.math,
+            color: impact.color,
             feature_source: impact.feature_source,
             layout: impact.layout,
             glyphs,

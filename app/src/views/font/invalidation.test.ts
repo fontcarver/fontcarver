@@ -39,6 +39,7 @@ function change(overrides: Partial<Change> = {}): Change {
     layout: false,
     bitmaps: false,
     math: false,
+    color: false,
     feature_source: false,
     glyph_order: false,
     metrics: false,

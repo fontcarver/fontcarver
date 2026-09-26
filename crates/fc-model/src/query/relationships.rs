@@ -28,6 +28,19 @@ pub fn dependents(font: &Font) -> HashMap<GlyphName, Vec<GlyphName>> {
             }
         }
     }
+    if let Some(color) = &font.color {
+        for (name, layers) in &color.glyphs {
+            for layer in layers {
+                if layer.glyph == *name {
+                    continue;
+                }
+                let dependents = result.entry(layer.glyph.clone()).or_default();
+                if !dependents.contains(name) {
+                    dependents.push(name.clone());
+                }
+            }
+        }
+    }
     result
 }
 

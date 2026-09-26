@@ -6,6 +6,7 @@ use fc_model::{Font, FontInfo, Glyph, GlyphId, GlyphName, Guide, Master, MasterI
 
 use crate::{command::Impact, Change};
 
+mod color;
 mod features;
 mod kerning;
 mod math;
@@ -20,6 +21,8 @@ pub const DEFAULT_MEMORY_BUDGET: usize = 512 * 1024 * 1024;
 pub enum Snapshot {
     /// Editable mathematical typesetting data and raw-table ownership.
     Math(Option<Arc<fc_model::MathTable>>, bool),
+    /// Editable COLR/CPAL data and raw-table ownership.
+    Color(Option<Arc<fc_model::ColorTable>>, bool),
     /// CID identity and numeric mappings, including absence.
     Cid(Option<Arc<fc_model::CidInfo>>),
     /// Axes, complete master list and instances, including source additions/removals.
@@ -219,6 +222,12 @@ impl UndoStack {
 
 pub(crate) fn capture(font: &Font, impact: &Impact) -> Vec<Snapshot> {
     let mut snapshots = Vec::new();
+    if impact.color {
+        snapshots.push(Snapshot::Color(
+            font.color.clone().map(Arc::new),
+            font.color_tables_owned,
+        ));
+    }
     if impact.math {
         snapshots.push(Snapshot::Math(
             font.math.clone().map(Arc::new),
@@ -292,6 +301,10 @@ pub(crate) fn capture(font: &Font, impact: &Impact) -> Vec<Snapshot> {
 pub(crate) fn restore(font: &mut Font, snapshots: &[Snapshot]) {
     for snapshot in snapshots {
         match snapshot {
+            Snapshot::Color(color, owned) => {
+                font.color = color.as_ref().map(|value| (**value).clone());
+                font.color_tables_owned = *owned;
+            }
             Snapshot::Math(math, owned) => {
                 font.math = math.as_ref().map(|value| (**value).clone());
                 font.math_table_owned = *owned;
@@ -481,6 +494,7 @@ fn restore_bitmap_glyph(
 fn same_snapshot_key(left: &Snapshot, right: &Snapshot) -> bool {
     match (left, right) {
         (Snapshot::Math(..), Snapshot::Math(..)) => true,
+        (Snapshot::Color(..), Snapshot::Color(..)) => true,
         (Snapshot::Cid(_), Snapshot::Cid(_)) => true,
         (Snapshot::DesignSpace(_), Snapshot::DesignSpace(_)) => true,
         (Snapshot::BitmapStrikes(..), Snapshot::BitmapStrikes(..)) => true,
@@ -540,6 +554,9 @@ fn estimate_entry(inverse: &[Snapshot], forward: &[Snapshot]) -> usize {
 
 fn estimate_snapshot(snapshot: &Snapshot) -> usize {
     match snapshot {
+        Snapshot::Color(value, _) => value
+            .as_ref()
+            .map_or(8, |value| color::estimated_bytes(value)),
         Snapshot::Math(value, _) => value
             .as_ref()
             .map_or(8, |value| math::estimated_bytes(value)),

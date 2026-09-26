@@ -250,6 +250,7 @@ fn read_face(face: &FontRef<'_>, warnings: &mut Vec<Warning>) -> Result<Font, Er
     }
     font.extra.raw_tables = raw::raw_tables(face);
     decode_math(&mut font, &glyph_names, warnings);
+    decode_color(&mut font, &glyph_names, warnings);
     if [
         *b"GSUB", *b"GPOS", *b"GDEF", *b"BASE", *b"kern", *b"kerx", *b"morx", *b"mort", *b"JSTF",
     ]
@@ -281,6 +282,29 @@ fn decode_math(font: &mut Font, glyph_names: &[fc_model::GlyphName], warnings: &
             message: format!(
                 "The MATH table was kept as imported bytes and is not editable: {error}"
             ),
+        }),
+    }
+}
+
+fn decode_color(font: &mut Font, order: &[fc_model::GlyphName], warnings: &mut Vec<Warning>) {
+    let colr = font.extra.raw_tables.get(&Tag(*b"COLR"));
+    let cpal = font.extra.raw_tables.get(&Tag(*b"CPAL"));
+    if colr.is_none() && cpal.is_none() {
+        return;
+    }
+    let result = cpal
+        .ok_or_else(|| crate::Error::parse("COLR/CPAL", "missing CPAL table"))
+        .and_then(|bytes| crate::color::read_tables(colr.map(Vec::as_slice), bytes, order));
+    match result {
+        Ok(color) => {
+            font.color = Some(color);
+            font.color_tables_owned = true;
+            font.extra.raw_tables.remove(&Tag(*b"COLR"));
+            font.extra.raw_tables.remove(&Tag(*b"CPAL"));
+        }
+        Err(error) => warnings.push(Warning {
+            code: "color-not-editable",
+            message: format!("COLR/CPAL were kept as imported bytes and are not editable: {error}"),
         }),
     }
 }

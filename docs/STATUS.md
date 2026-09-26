@@ -4,9 +4,10 @@ The single entry point for "where is the project". Update this file at every
 pause and every milestone commit. It links to the detailed records; it does
 not repeat them.
 
-Last updated: 2026-09-26 (MATH acceptance). Branch: `p5-math-acceptance`
-(no push, no main merge). This checkpoint completes MATH acceptance on top of
-the website checkpoint `99aa3ed`.
+Last updated: 2026-09-26 (color authoring checkpoint). Branch: `p5-color-authoring`
+(no push, no main merge). MATH acceptance is committed as `6f4ef4f`.
+The user requested saving progress before session usage ran out; see the
+[COLR/CPAL continuation record](p5-color-checkpoint.md).
 
 ## Phases
 
@@ -37,7 +38,7 @@ separate P5 design requirement, now verified in the audit’s supplemental secti
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | Hinting (TT/PS editors, Type 1)  | Static TT and PS editing, Type 1 hint round trips and export preprocessing done; variable hinting, flex, per-FD dicts open    | [p5-hinting-checkpoint](p5-hinting-checkpoint.md) |
 | MATH authoring                   | Complete within the acceptance boundaries: editor, undo/save/reopen/export, FontTools/HarfBuzz and large-font checks verified | [p5-math-acceptance](p5-math-acceptance.md)       |
-| COLR/CPAL, SVG colour fonts      | Not started                                                                                                                   | plan block "OpenType authoring"                   |
+| COLR/CPAL, SVG colour fonts      | COLR v0/CPAL implementation checkpoint saved; independent/browser acceptance pending; SVG not started | [p5-color-checkpoint](p5-color-checkpoint.md) |
 | Geometry and construction        | Not started                                                                                                                   | plan block "Geometry and construction"            |
 | Compare/merge/paste special      | Not started                                                                                                                   | plan block "Document workflows"                   |
 | Scripting and plugins            | Not started                                                                                                                   | plan block "Automation"                           |
@@ -52,8 +53,9 @@ until it is diagnosed.
 
 ## Next step
 
-Continue the P5 OpenType authoring block with COLR/CPAL palettes and layers,
-then SVG colour documents. MATH acceptance is complete; see
+Resume COLR/CPAL API tests, independent FontTools checks and browser acceptance
+from [the checkpoint](p5-color-checkpoint.md), then SVG colour documents.
+MATH acceptance is complete; see
 [the user guide](user/math.md) and [verification record](p5-math-acceptance.md).
 
 The bilingual website is also complete, with deployment still pending. Its

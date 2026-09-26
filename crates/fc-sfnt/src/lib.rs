@@ -3,6 +3,7 @@
 #![warn(missing_docs)]
 
 pub mod bitmap;
+pub mod color;
 pub mod error;
 pub mod math;
 mod read;

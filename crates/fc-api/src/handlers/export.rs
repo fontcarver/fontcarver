@@ -77,6 +77,7 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
         }
     }
     let math_authored = font.math.is_some();
+    let color_authored = font.color.is_some();
     if params.options.format == ExportFormat::Otb {
         if font.bitmap_strikes.is_empty() {
             return Err(ApiError::invalid_params(
@@ -86,6 +87,8 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
         // OTB is bitmap-only; source outlines and layout remain in the native document.
         font.extra = Default::default();
         font.features = Default::default();
+        font.color = None;
+        font.color_tables_owned = true;
         font.math = None;
         font.math_table_owned = true;
         for glyph in font.glyphs.values_mut() {
@@ -100,6 +103,12 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
 
     let mut warnings = Vec::new();
     let mut tables = Vec::new();
+    if color_authored && !carries_math(params.options.format) {
+        warnings.push(ExportWarning {
+            code: "color-not-exported".into(),
+            message: "This format does not store editable COLR/CPAL data; keep the native document or export an OpenType font to retain it.".into(),
+        });
+    }
     if math_authored && !carries_math(params.options.format) {
         warnings.push(ExportWarning {
             code: "math-not-exported".into(),

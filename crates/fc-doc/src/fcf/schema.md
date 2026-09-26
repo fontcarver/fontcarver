@@ -202,3 +202,24 @@ changes. Hint edits, save/reopen and undo preserve these values. Geometry change
 invalidate unchanged hint sets on affected layers and components within the same
 master; hints on independent master layers remain intact. Hint previews and
 export-only automatic hinting never mutate saved hint data.
+
+## P5 COLR v0 / CPAL colors
+
+`font.color` defaults to null. A `ColorTable` contains `palette_version` (0 or
+1), equally sized nonempty `palettes`, optional `entry_labels`, and `glyphs`
+(mapping base glyph names to nonempty, bottom-to-top `ColrLayer` arrays).
+Each layer stores `glyph` (a monochrome outline reference) and
+`palette_index` (null means text foreground / binary 0xFFFF). Nested COLR
+compositions are not followed, and a self-reference is valid.
+
+Each `ColorPalette` contains `colors` with eight-bit `red`, `green`, `blue`,
+`alpha` channels (unpremultiplied sRGB), CPAL v1 `flags` (0..3), and optional
+`label` name ID. `entry_labels` is empty when absent, otherwise one optional
+name ID per shared entry. Label IDs refer to preserved `font.info.names`.
+
+`font.color_tables_owned` defaults to false. When true, null `color` means
+explicit deletion of both COLR and CPAL. Non-null editable color data always
+supersedes raw tables. Unsupported COLRv1 and malformed inputs retain both
+original tables atomically under the existing raw preservation policy. Legacy
+`Layer.color_layers` remains an opaque outline/paint container; it is not the
+named COLR v0 model and is not synthesized into these tables.

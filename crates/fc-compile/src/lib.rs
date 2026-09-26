@@ -6,6 +6,7 @@
 #![warn(missing_docs)]
 
 mod bracket;
+mod color;
 mod error;
 mod export;
 mod feature_generation;

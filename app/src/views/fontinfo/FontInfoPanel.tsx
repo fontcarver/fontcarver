@@ -18,6 +18,7 @@ import { MetricsTable } from './MetricsTable'
 import { NamesTable } from './NamesTable'
 import { TablesTable } from './TablesTable'
 import { MasterHints } from '../hints/MasterHints'
+import { ColorEditor } from '../color/ColorEditor'
 import { MathEditor } from '../math/MathEditor'
 
 /** The sections of the Font Info tab, in order. */
@@ -51,6 +52,7 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
   const [designSpaceOpen, setDesignSpaceOpen] = useState(false)
   const [cidOpen, setCidOpen] = useState(false)
   const [mathOpen, setMathOpen] = useState(false)
+  const [colorOpen, setColorOpen] = useState(false)
   const { info, error, loading } = useFontInfo(summary.doc)
 
   // The panel is the only view mounted while it is the active tab, so it is
@@ -157,6 +159,9 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
       {cidOpen && (
         <CidEditor doc={summary.doc} onClose={() => setCidOpen(false)} />
       )}
+      {colorOpen && (
+        <ColorEditor doc={summary.doc} onClose={() => setColorOpen(false)} />
+      )}
       {mathOpen && (
         <MathEditor doc={summary.doc} onClose={() => setMathOpen(false)} />
       )}
@@ -169,6 +174,7 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
       <Toolbar label={t('fontInfo.toolbar')} className={styles.toolbar}>
         <Button onClick={() => setCidOpen(true)}>{t('cid.title')}</Button>
         <Button onClick={() => setMathOpen(true)}>{t('math.title')}</Button>
+        <Button onClick={() => setColorOpen(true)}>{t('color.title')}</Button>
         <span role="tablist" aria-label={t('fontInfo.sections')}>
           {SECTIONS.map((id) => (
             <button

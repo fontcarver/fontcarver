@@ -122,6 +122,13 @@ pub(crate) fn import(font: &mut Font) -> Result<(), Error> {
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(!font.bitmap_strikes.is_empty());
     }
+    if let Some(color) = extra.get("color").filter(|v| !v.is_null()) {
+        font.color = Some(serde_json::from_value(color.clone())?);
+    }
+    font.color_tables_owned = extra
+        .get("color_tables_owned")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(font.color.is_some());
     if let Some(math) = extra.get("math") {
         font.math = Some(serde_json::from_value(math.clone())?);
     }
@@ -305,6 +312,8 @@ pub(crate) fn build(font: &Font, master: &Master) -> Result<Option<Value>, Error
     let has_data = !raw_tables.is_empty()
         || font.bitmap_tables_owned
         || !font.bitmap_strikes.is_empty()
+        || font.color_tables_owned
+        || font.color.is_some()
         || font.math_table_owned
         || font.math.is_some()
         || !tt_instructions.is_empty()
@@ -319,6 +328,8 @@ pub(crate) fn build(font: &Font, master: &Master) -> Result<Option<Value>, Error
         "raw_tables": raw_tables,
         "bitmap_strikes": font.bitmap_strikes,
         "bitmap_tables_owned": font.bitmap_tables_owned,
+        "color": font.color,
+        "color_tables_owned": font.color_tables_owned,
         "math": font.math,
         "math_table_owned": font.math_table_owned,
         "tt_instructions": tt_instructions,

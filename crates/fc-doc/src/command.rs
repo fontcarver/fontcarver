@@ -19,8 +19,10 @@ mod features;
 mod glyphs;
 mod hints;
 pub use hints::HintCommand;
+mod color;
 mod kerning;
 mod layers;
+pub use color::ColorCommand;
 mod math;
 pub use math::MathCommand;
 mod metrics;
@@ -56,6 +58,8 @@ pub enum Command {
     Bitmap(BitmapCommand),
     /// Edit font-wide mathematical typesetting data.
     Math(MathCommand),
+    /// Edit font-wide color palettes and outline compositions.
+    Color(ColorCommand),
     /// Save source text without compiling or changing effective layout authority.
     SetFeatureDraft {
         /// Current persistent feature editor revision.
@@ -681,6 +685,9 @@ pub struct Change {
     /// Font-wide MATH data changed.
     #[serde(default)]
     pub math: bool,
+    /// Font-wide COLR/CPAL data changed.
+    #[serde(default)]
+    pub color: bool,
     /// Whether feature editor source, settings or conversion metadata changed.
     #[serde(default)]
     pub feature_source: bool,

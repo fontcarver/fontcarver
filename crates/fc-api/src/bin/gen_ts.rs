@@ -55,6 +55,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         &output_dir.join("MathCommand.ts"),
         &["MathTable", "MathConstants", "MathGlyphInfo"],
     )?;
+    add_imports(&output_dir.join("ColorCommand.ts"), &["ColorTable"])?;
     write_methods(&output_dir)?;
     write_index(&output_dir)?;
     Ok(())
@@ -155,6 +156,11 @@ fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
     CjkFilter::export_all(config)?;
     fc_model::CidInfo::export_all(config)?;
     CidState::export_all(config)?;
+    ColorState::export_all(config)?;
+    ColorApplyParams::export_all(config)?;
+    ColorDecodeParams::export_all(config)?;
+    ColorPreviewParams::export_all(config)?;
+    ColorPreview::export_all(config)?;
     MathState::export_all(config)?;
     MathApplyParams::export_all(config)?;
     MathDecodeParams::export_all(config)?;

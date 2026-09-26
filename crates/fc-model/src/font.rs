@@ -179,6 +179,12 @@ pub struct Font {
     /// Whether editable MATH, including deletion, supersedes imported bytes.
     #[serde(default)]
     pub math_table_owned: bool,
+    /// Editable COLR v0 compositions and CPAL palettes.
+    #[serde(default)]
+    pub color: Option<crate::ColorTable>,
+    /// Editable color data, including deletion, supersedes imported COLR/CPAL.
+    #[serde(default)]
+    pub color_tables_owned: bool,
     /// CID metadata when this is a CID-keyed font.
     #[serde(default)]
     pub cid: Option<CidInfo>,
@@ -212,6 +218,8 @@ impl Default for Font {
             bitmap_tables_owned: false,
             math: None,
             math_table_owned: false,
+            color: None,
+            color_tables_owned: false,
             cid: None,
             guides: Vec::new(),
             extra: Extra::default(),
@@ -381,6 +389,9 @@ impl Font {
         rename_group_members(&mut self.kerning_groups.side1, from, &new_name);
         if let Some(math) = &mut self.math {
             math.rename_glyph(from, &new_name);
+        }
+        if let Some(color) = &mut self.color {
+            color.rename_glyph(from, &new_name);
         }
         rename_group_members(&mut self.kerning_groups.side2, from, &new_name);
         for strike in &mut self.bitmap_strikes {

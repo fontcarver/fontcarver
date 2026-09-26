@@ -11,6 +11,7 @@ use super::{features, glyphs, kerning, layers, metrics, outline, structure, Comm
 #[derive(Default)]
 pub(crate) struct Impact {
     pub(crate) math: bool,
+    pub(crate) color: bool,
     pub(crate) cid: bool,
     pub(crate) design_space: bool,
     pub(crate) bitmap_strikes: bool,
@@ -118,6 +119,15 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
         }
         Command::Bitmap(_) => impact.bitmap_strikes = true,
         Command::Math(_) => impact.math = true,
+        Command::Color(super::ColorCommand::Replace { color }) => {
+            impact.color = true;
+            impact.component_graph_changed = true;
+            for table in font.color.iter().chain(color.iter()) {
+                for name in table.glyphs.keys() {
+                    impact.glyph(name);
+                }
+            }
+        }
         Command::SetFeatureDraft { .. } | Command::DiscardFeatureDraft { .. } => {
             impact.feature_source = true
         }
@@ -138,6 +148,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
         }
         Command::RemoveGlyphs { names } => {
             impact.math = font.math.is_some();
+            impact.color = font.color.is_some();
             impact.cid = font.cid.is_some();
             impact.bitmap_strikes = !font.bitmap_strikes.is_empty();
             impact.layout = true;
@@ -152,6 +163,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
         }
         Command::RenameGlyph { from, to } => {
             impact.math = font.math.is_some();
+            impact.color = font.color.is_some();
             impact.cid = font.cid.is_some();
             impact.bitmap_strikes = !font.bitmap_strikes.is_empty();
             impact.layout = true;
@@ -253,6 +265,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
         }
         Command::DuplicateGlyph { name, .. } => {
             impact.math = font.math.is_some();
+            impact.color = font.color.is_some();
             impact.bitmap_strikes = !font.bitmap_strikes.is_empty();
             impact.glyph(name);
             impact.glyph_order = true;
@@ -345,6 +358,7 @@ fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
         Command::DesignSpace(command) => super::designspace::apply(font, command),
         Command::Bitmap(command) => super::bitmap::apply(font, command),
         Command::Math(command) => super::math::apply(font, command),
+        Command::Color(command) => super::color::apply(font, command),
         Command::SetFeatureDraft {
             expected_revision,
             source,

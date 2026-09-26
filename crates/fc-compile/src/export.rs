@@ -416,6 +416,7 @@ fn export_inner(
     let merged = fc_sfnt::bitmap::replace_tables(&merged, font, &compiled.glyph_order)
         .map_err(|e| Error::write("embedded bitmaps", e))?;
     let merged = crate::math::apply(&merged, font, &compiled.glyph_order, &mut warnings)?;
+    let merged = crate::color::apply(&merged, font, &compiled.glyph_order, &mut warnings)?;
     progress(ExportStage::Write, WRITE_PERCENT);
     let sfnt = if let Some(subset) = &options.table_subset {
         subset_tables(&merged, subset)?
@@ -459,7 +460,10 @@ fn subset_tables(sfnt: &[u8], requested: &[Tag]) -> Result<Vec<u8>, Error> {
         *b"head", *b"hhea", *b"maxp", *b"OS/2", *b"hmtx", *b"cmap", *b"loca", *b"glyf", *b"name",
         *b"post", *b"fpgm", *b"prep", *b"cvt ", *b"CFF ",
     ];
-    let requested: HashSet<_> = requested.iter().copied().collect();
+    let mut requested: HashSet<_> = requested.iter().copied().collect();
+    if requested.contains(&Tag(*b"COLR")) {
+        requested.insert(Tag(*b"CPAL"));
+    }
     let face = FontRef::new(sfnt).map_err(|error| Error::parse("sfnt subset", error))?;
     let mut builder = FontBuilder::new();
     for record in face.table_directory().table_records() {
