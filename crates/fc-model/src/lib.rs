@@ -10,6 +10,7 @@ pub use colrv1::{ColrColorLine, ColrColorStop, ColrGraph, ColrPaint, ColrTransfo
 mod component;
 mod contour;
 mod designspace;
+mod effects;
 pub mod error;
 mod extra;
 mod feature_draft;
@@ -38,6 +39,10 @@ pub use bitmap::{
 pub use color::{ColorPalette, ColorTable, ColrLayer, PaletteColor, MAX_COLOR_ITEMS};
 pub use component::Component;
 pub use contour::{Contour, Point, PointKind, TtIndex};
+pub use effects::{
+    validate_effect_mask, EffectBoolean, EffectCap, EffectJoin, EffectNib, LayerEffect,
+    LayerEffectKind, MAX_LAYER_EFFECTS,
+};
 pub use error::Error;
 pub use extra::{Extra, SourceProvenance};
 pub use feature_draft::{

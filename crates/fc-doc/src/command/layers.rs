@@ -6,6 +6,18 @@ use super::{apply::glyph_mut, Command};
 
 pub(super) fn apply(font: &mut Font, command: &Command) -> Result<(), Error> {
     match command {
+        Command::SetLayerEffects {
+            glyph,
+            layer,
+            effects,
+        } => {
+            let target = super::apply::layer_mut(font, glyph, layer)?;
+            let mut proposed = target.clone();
+            proposed.effects.clone_from(effects);
+            proposed.validate_effects()?;
+            target.effects.clone_from(effects);
+            Ok(())
+        }
         Command::AddLayer { glyph, layer } => add(font, glyph, layer),
         Command::RemoveLayer { glyph, layer } => remove(font, glyph, layer),
         Command::CopyLayer { glyph, from, to } => copy(font, glyph, from, to),
@@ -170,6 +182,7 @@ fn swap(font: &mut Font, glyph_name: &GlyphName, master: &fc_model::MasterId) ->
     let (master_layer, background_layer) =
         two_mut(&mut glyph.layers, master_index, background_index);
     std::mem::swap(&mut master_layer.contours, &mut background_layer.contours);
+    std::mem::swap(&mut master_layer.effects, &mut background_layer.effects);
     std::mem::swap(
         &mut master_layer.components,
         &mut background_layer.components,

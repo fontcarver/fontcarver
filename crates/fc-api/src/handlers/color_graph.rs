@@ -102,7 +102,7 @@ fn subset(source: &Font, params: ColorGraphPreviewParams) -> Result<Font, ApiErr
             .glyph(&name)
             .and_then(|g| g.master_layer(source_master))
             .ok_or_else(|| invalid("preview outline has no default-master layer"))?;
-        let path = fc_model::flatten_layer(source, &name, source_master).map_err(invalid)?;
+        let path = fc_geom::flatten_layer(source, &name, source_master).map_err(invalid)?;
         points = points.saturating_add(path.elements().len());
         if points > 100_000 {
             return Err(invalid("COLRv1 preview outline work limit"));

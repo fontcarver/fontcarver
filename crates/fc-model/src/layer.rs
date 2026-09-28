@@ -228,6 +228,10 @@ pub struct Layer {
     /// Pure component references.
     #[serde(default)]
     pub components: Vec<Component>,
+    /// Ordered effects applied to resolved source geometry.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[cfg_attr(feature = "ts", ts(as = "Option<Vec<crate::LayerEffect>>", optional))]
+    pub effects: Vec<crate::LayerEffect>,
     /// Named anchors.
     #[serde(default)]
     pub anchors: Vec<Anchor>,
@@ -267,6 +271,7 @@ impl Default for Layer {
             vertical_origin: None,
             contours: Vec::new(),
             components: Vec::new(),
+            effects: Vec::new(),
             anchors: Vec::new(),
             guides: Vec::new(),
             background_image: None,
@@ -292,6 +297,7 @@ impl Layer {
     pub fn is_empty(&self) -> bool {
         self.contours.is_empty()
             && self.components.is_empty()
+            && self.effects.is_empty()
             && self.anchors.is_empty()
             && self.guides.is_empty()
             && self.background_image.is_none()

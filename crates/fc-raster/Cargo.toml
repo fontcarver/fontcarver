@@ -8,6 +8,7 @@ repository.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+fc-geom = { path = "../fc-geom" }
 fc-model = { path = "../fc-model" }
 kurbo.workspace = true
 skrifa.workspace = true

@@ -161,11 +161,28 @@ export function renderGlyph(
   drawTextRun(ctx, viewport, options.surrounding ?? [], theme.outline)
 
   if (!options.hideActive) {
+    const effects =
+      scene.layer?.effects?.some((effect) => effect.enabled) ?? false
+    if (effects && options.flattened) {
+      ctx.save()
+      ctx.translate(viewport.offset.x, viewport.offset.y)
+      ctx.scale(viewport.scale, -viewport.scale)
+      if (overlays.filled) {
+        ctx.fillStyle = theme.fill
+        ctx.fill(options.flattened, 'nonzero')
+      } else {
+        ctx.strokeStyle = theme.outline
+        ctx.lineWidth = 1 / viewport.scale
+        ctx.stroke(options.flattened)
+      }
+      ctx.restore()
+    }
     drawComponents(
       ctx,
       viewport,
       {
         path: options.flattened,
+        hidePaths: effects,
         components:
           options.components ??
           scene.components.map((component) => ({
@@ -186,6 +203,7 @@ export function renderGlyph(
       viewport,
       {
         contours: scene.contours,
+        hidePath: effects,
         filled: overlays.filled,
         showPoints: overlays.points,
         selected: options.selected,

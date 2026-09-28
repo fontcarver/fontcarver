@@ -308,6 +308,9 @@ impl Font {
 
     /// Inserts a glyph, filling in missing main layers for every master.
     pub fn insert_glyph(&mut self, mut glyph: Glyph) -> Result<(), Error> {
+        for layer in &glyph.layers {
+            layer.validate_effects()?;
+        }
         let name = glyph.name.clone();
         if self.glyphs.contains_key(name.as_ref()) {
             return Err(Error::DuplicateGlyph { glyph: name });

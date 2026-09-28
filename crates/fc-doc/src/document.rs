@@ -282,7 +282,7 @@ impl Document {
                 return Ok(path);
             }
         }
-        let path = Arc::new(fc_model::flatten_layer(&self.font, name, master)?);
+        let path = Arc::new(fc_geom::flatten_layer(&self.font, name, master)?);
         self.cache
             .lock()
             .map_err(|_| Error::LockPoisoned)?
@@ -351,6 +351,33 @@ impl Document {
         let before_state = self.current_state;
 
         command::apply_to_font(&mut self.font, &command, &inverse)?;
+        // Reject edits that would make an enabled filled effect unevaluable.
+        // Checking dependents also catches a component edit under a parent mask.
+        if impact.affects_dependents {
+            let validation = affected_before
+                .iter()
+                .chain(&impact.glyphs)
+                .try_for_each(|name| {
+                    let Some(glyph) = self.font.glyph(name) else {
+                        return Ok(());
+                    };
+                    for layer in &glyph.layers {
+                        if layer.effects.iter().any(|effect| effect.enabled) {
+                            fc_geom::evaluate_layer(&self.font, name, &layer.id)?;
+                        }
+                    }
+                    Ok::<_, fc_model::Error>(())
+                });
+            if let Err(error) = validation {
+                for (from, to) in impact.renames.iter().rev() {
+                    rename_references(&mut self.font, to, from);
+                }
+                undo::restore(&mut self.font, &inverse);
+                return Err(Error::InvalidCommand(format!(
+                    "{error}; disable or repair the layer effect before this source edit"
+                )));
+            }
+        }
         command::invalidate_stale_ps_hints(&mut self.font, &inverse);
         if (command::is_kerning(&command) || command::is_draft(&command))
             && inverse == undo::capture(&self.font, &impact)

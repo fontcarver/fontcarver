@@ -89,6 +89,8 @@ export interface ComponentsData {
    * single dragged component moving.
    */
   path: Path2D | null
+  /** Keep selectable component markers without painting pre-effect geometry. */
+  hidePaths?: boolean
   components: readonly ComponentDraw[]
   /** Flattened bounds per component, in the same order. */
   bounds?: readonly ([number, number, number, number] | null)[]
@@ -148,7 +150,7 @@ export function drawComponents(
   if (data.components.length === 0) return
 
   const own = data.components.filter((entry) => entry.path !== null)
-  if (own.length > 0)
+  if (!data.hidePaths && own.length > 0)
     for (const entry of own)
       paintPath(
         ctx,
@@ -158,7 +160,7 @@ export function drawComponents(
         data.filled,
         theme,
       )
-  else if (data.path)
+  else if (!data.hidePaths && data.path)
     paintPath(ctx, viewport, data.path, IDENTITY, data.filled, theme)
 
   // The hatch marks a hovered component the pointer cannot move.

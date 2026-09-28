@@ -50,6 +50,7 @@ pub fn read_type1(path: &Path) -> Result<Font, Error> {
 /// Validation and complete serialization precede the atomic destination replace.
 /// Call [`loss_warnings`] before exporting to disclose Type 1's format limitations.
 pub fn write_type1(font: &Font, master: &MasterId, path: &Path, binary: bool) -> Result<(), Error> {
+    crate::check_layer_effects(font)?;
     let bytes = writer::encode(font, master, binary)?;
     let parent = path
         .parent()

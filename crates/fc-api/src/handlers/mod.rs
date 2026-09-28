@@ -28,3 +28,5 @@ pub(crate) mod cid;
 
 pub(crate) mod cjk_batch;
 pub(crate) mod style;
+
+pub(crate) mod effects;

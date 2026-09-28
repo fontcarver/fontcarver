@@ -384,6 +384,8 @@ function drawSelectedSegments(
 /** What `drawOutline` renders. */
 export interface OutlineData {
   contours: readonly Contour[]
+  /** Draw editable nodes while a separately evaluated effect path supplies the ink. */
+  hidePath?: boolean
   /** Fill the outline instead of stroking it (the space-bar preview). */
   filled: boolean
   /** Draw nodes, handles, start markers and direction arrows. */
@@ -410,7 +412,9 @@ export function drawOutline(
   ctx.save()
   ctx.beginPath()
   traceContours(ctx, data.contours, map)
-  if (data.filled) {
+  if (data.hidePath) {
+    // Source nodes and handles remain visible below.
+  } else if (data.filled) {
     ctx.fillStyle = theme.fill
     ctx.fill('nonzero')
   } else {

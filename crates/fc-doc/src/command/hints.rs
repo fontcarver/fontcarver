@@ -202,6 +202,7 @@ pub(crate) fn invalidate_stale_ps_hints(font: &mut Font, before: &[crate::Snapsh
             if now.is_none_or(|now| {
                 now.contours != layer.contours
                     || now.components != layer.components
+                    || now.effects != layer.effects
                     || now.kind != layer.kind
             }) || current.is_some_and(|g| g.smart_axes != previous.smart_axes)
             {

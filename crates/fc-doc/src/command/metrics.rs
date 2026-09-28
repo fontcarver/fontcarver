@@ -16,7 +16,7 @@ pub(super) fn center(
             "horizontal advance exceeds the OpenType range".into(),
         ));
     }
-    let path = fc_model::query::flatten_layer_by_id(font, glyph, layer)?;
+    let path = fc_geom::flatten_layer_by_id(font, glyph, layer)?;
     if path.elements().is_empty() {
         return set(font, glyph, layer, Some(width), None, None);
     }
@@ -38,7 +38,7 @@ pub(super) fn set(
     // Sidebearings follow the bounds of the command's own layer, not the
     // master layer, so background and brace layers keep their own metrics.
     let bounds = if lsb.is_some() || rsb.is_some() {
-        let flattened = fc_model::query::flatten_layer_by_id(font, glyph, layer)?;
+        let flattened = fc_geom::flatten_layer_by_id(font, glyph, layer)?;
         (!flattened.elements().is_empty()).then(|| flattened.bounding_box())
     } else {
         None
@@ -62,17 +62,25 @@ pub(super) fn set(
 
     ensure_finite(&[final_width, delta], "resolved metrics")?;
     let target = layer_mut(font, glyph, layer)?;
+    let mut proposed = target.clone();
     if delta != 0.0 {
         let translation = Affine::translate(Vec2::new(delta, 0.0));
-        target.contours = fc_geom::transform(&target.contours, translation);
-        for component in &mut target.components {
+        proposed.contours = fc_geom::transform(&proposed.contours, translation);
+        for entry in &mut proposed.effects {
+            if let fc_model::LayerEffectKind::Boolean { path, .. } = &mut entry.effect {
+                *path = (translation * fc_model::validate_effect_mask(path)?).to_svg();
+            }
+        }
+        proposed.validate_effects()?;
+        for component in &mut proposed.components {
             component.transform = translation * component.transform;
         }
-        for anchor in &mut target.anchors {
+        for anchor in &mut proposed.anchors {
             anchor.x += delta;
         }
     }
-    target.width = final_width;
+    proposed.width = final_width;
+    *target = proposed;
     Ok(())
 }
 

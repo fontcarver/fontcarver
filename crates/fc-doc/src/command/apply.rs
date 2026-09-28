@@ -272,6 +272,12 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
                 impact.font_guides = true;
             }
         }
+        Command::SetLayerEffects { glyph, layer, .. } => {
+            impact.glyph(glyph);
+            impact.layers = true;
+            impact.metrics |= is_master_layer(font, glyph, layer);
+            impact.affects_dependents = true;
+        }
         Command::AddLayer { glyph, .. }
         | Command::RemoveLayer { glyph, .. }
         | Command::CopyLayer { glyph, .. }
@@ -480,7 +486,8 @@ fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
             glyph_mut(font, glyph)?.metrics_keys = keys.clone();
             Ok(())
         }
-        Command::AddLayer { .. }
+        Command::SetLayerEffects { .. }
+        | Command::AddLayer { .. }
         | Command::RemoveLayer { .. }
         | Command::CopyLayer { .. }
         | Command::SwapWithBackground { .. }

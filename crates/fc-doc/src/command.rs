@@ -226,6 +226,18 @@ pub enum Command {
         /// New width.
         width: f64,
     },
+    /// Replace an ordered non-destructive effect stack, retaining source geometry.
+    SetLayerEffects {
+        /// Glyph containing the layer.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to update.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Complete ordered stack, including disabled operations.
+        #[ts(type = "Array<LayerEffect>")]
+        effects: Vec<fc_model::LayerEffect>,
+    },
     /// Replace all editable outline content in a layer.
     ReplaceLayerOutline {
         /// Glyph containing the layer.

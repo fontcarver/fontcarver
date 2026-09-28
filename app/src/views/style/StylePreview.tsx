@@ -6,9 +6,11 @@ import styles from './styleEffects.module.css'
 export function StylePreview({
   example,
   upem,
+  showSource = false,
 }: {
   example: StyleBatchExample
   upem: number
+  showSource?: boolean
 }) {
   const { t } = useTranslation()
   const margin = upem * 0.08
@@ -16,12 +18,13 @@ export function StylePreview({
   const x0 = Math.min(0, left) - margin
   const y0 = Math.min(0, bottom) - margin
   const x1 = Math.max(example.before_width, example.after_width, right) + margin
-  const y1 = Math.max(upem, top) + margin
+  const y1 = Math.max(showSource ? upem * 0.25 : upem, top) + margin
   const viewBox = `${x0} ${-y1} ${x1 - x0} ${y1 - y0}`
   return (
     <figure className={styles.example}>
       <figcaption>
-        {example.glyph} · {example.master}
+        {example.glyph}
+        {example.master && <> · {example.master}</>}
       </figcaption>
       <div className={styles.comparison}>
         {(['before', 'after'] as const).map((which) => (
@@ -33,7 +36,17 @@ export function StylePreview({
               className={styles.canvas}
             >
               <g transform="scale(1,-1)">
-                <path d={example[which]} className={styles.ink} />
+                <path
+                  d={example[which]}
+                  className={styles.ink}
+                  stroke={
+                    showSource && which === 'before'
+                      ? 'var(--color-text)'
+                      : undefined
+                  }
+                  strokeWidth={1}
+                  vectorEffect="non-scaling-stroke"
+                />
                 <path
                   d={`M ${x0} 0 H ${x1} M 0 ${y0} V ${y1} M ${example[`${which}_width`]} ${y0} V ${y1}`}
                   className={styles.metrics}

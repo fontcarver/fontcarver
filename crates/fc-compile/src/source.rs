@@ -91,8 +91,10 @@ impl FcSource {
         }
         crate::feature_validation::check_writer_conflicts(font)?;
         let large_font = crate::large_font::requires_workaround(font, options.production_names);
+        let (baked, _) =
+            fc_geom::bake_effects_font(font).map_err(|e| Error::InvalidSource(e.to_string()))?;
         let mut resolved =
-            fc_geom::resolve_smart_font(font).map_err(|e| Error::InvalidSource(e.to_string()))?;
+            fc_geom::resolve_smart_font(&baked).map_err(|e| Error::InvalidSource(e.to_string()))?;
         crate::vertical::apply_metric_defaults(&mut resolved);
         Ok(Self {
             data: Arc::new(SourceData {

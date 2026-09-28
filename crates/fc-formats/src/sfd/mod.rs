@@ -62,6 +62,7 @@ pub fn read_sfd(path: &Path) -> Result<Font, Error> {
 /// Contextual/state-machine layout, device adjustments, color, bitmap and CID
 /// structures are rejected. Mixed curve flavors are elevated exactly to cubic.
 pub fn write_sfd(font: &Font, master: &MasterId, path: &Path) -> Result<(), Error> {
+    crate::check_layer_effects(font)?;
     if font.has_unapplied_feature_draft() {
         return Err(Error::UnappliedFeatureDraft);
     }

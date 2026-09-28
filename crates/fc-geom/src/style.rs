@@ -1,5 +1,5 @@
 //! Bounded affine and filled-outline weight effects.
-mod filled;
+use crate::filled;
 use crate::{
     expand_stroke_with_fallback, transform, BooleanOp, CurveKind, Error, FallbackKind,
     StrokeOptions,

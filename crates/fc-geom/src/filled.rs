@@ -11,7 +11,9 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 type Polygons = Vec<Vec<[f64; 2]>>;
 type Shapes = Vec<Polygons>;
 fn invalid(message: &str) -> Error {
-    Error::InvalidStyle(message.into())
+    Error::BooleanFailed {
+        reason: message.into(),
+    }
 }
 
 fn polygons(contours: &[Contour]) -> Result<Polygons, Error> {
@@ -31,7 +33,7 @@ fn polygons(contours: &[Contour]) -> Result<Polygons, Error> {
             }
         });
         if exceeded {
-            return Err(invalid("style polygon verification point budget exceeded"));
+            return Err(invalid("filled polygon verification point budget exceeded"));
         }
         if polygon.len() >= 3 {
             result.push(polygon);
@@ -41,7 +43,7 @@ fn polygons(contours: &[Contour]) -> Result<Polygons, Error> {
 }
 fn overlay(a: &Polygons, b: &Polygons, rule: OverlayRule) -> Result<Shapes, Error> {
     catch_unwind(AssertUnwindSafe(|| a.overlay(b, rule, FillRule::NonZero)))
-        .map_err(|_| invalid("style polygon verification failed"))
+        .map_err(|_| invalid("filled polygon verification failed"))
 }
 fn area(shapes: &Shapes) -> f64 {
     shapes
@@ -65,7 +67,7 @@ fn matches(expected: &Polygons, output: &[Contour], budget: f64) -> Result<bool,
     let actual = polygons(output)?;
     Ok(area(&overlay(expected, &actual, OverlayRule::Xor)?) <= budget)
 }
-pub(super) fn combine(
+pub(crate) fn combine(
     a: &[Contour],
     b: &[Contour],
     op: BooleanOp,
@@ -109,7 +111,7 @@ pub(super) fn combine(
     let result = crate::correct_direction(&result, clockwise);
     if !matches(&expected, &result, budget)? {
         return Err(invalid(
-            "style curve refitting disagrees with the filled polygon result",
+            "filled curve refitting disagrees with the filled polygon result",
         ));
     }
     Ok((result, true))

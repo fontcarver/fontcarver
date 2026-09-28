@@ -204,6 +204,43 @@ fn export_inner(
         ));
     }
     crate::tt::preflight(font, options)?;
+    if font
+        .glyphs
+        .values()
+        .flat_map(|g| &g.layers)
+        .any(|l| !l.effects.is_empty())
+    {
+        let (baked, approximated) =
+            fc_geom::bake_effects_font(font).map_err(|e| Error::InvalidSource(e.to_string()))?;
+        if !font
+            .glyphs
+            .values()
+            .flat_map(|g| &g.layers)
+            .any(|l| l.effects.iter().any(|e| e.enabled))
+        {
+            return export_inner(
+                &baked,
+                glyph_generations,
+                options,
+                progress,
+                outline_changed,
+            );
+        }
+        let mut options = options.clone();
+        options.keep_tt_instructions = false;
+        let mut report = export_inner(&baked, &|_| 1, &options, progress, true)?;
+        report.warnings.push(ExportWarning { code: "layer-effects-baked", message: "Live layer effects were evaluated on the export copy; source contours and stacks remain editable".into() });
+        if !approximated.is_empty() {
+            report.warnings.push(ExportWarning {
+                code: "layer-effects-refitted",
+                message: format!(
+                    "{} effect layers required polygon curve refitting",
+                    approximated.len()
+                ),
+            });
+        }
+        return Ok(report);
+    }
     if font.glyphs.values().any(|glyph| {
         !glyph.smart_axes.is_empty()
             || glyph
@@ -383,7 +420,7 @@ fn export_inner(
             .and_then(|()| crate::otf_preservation_aat::check(&merged))
             .map_err(|error| {
                 Error::InvalidSource(format!(
-                    "overlap removal cannot preserve this layout: {error}"
+                    "outline preprocessing cannot preserve this layout: {error}"
                 ))
             })?;
     }

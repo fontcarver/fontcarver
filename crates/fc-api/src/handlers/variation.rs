@@ -109,7 +109,7 @@ pub(crate) fn preview(
                     }
                 }
                 if result.sources.len() < 16 {
-                    match fc_model::query::flatten_layer_by_id(font, &params.glyph, &layer.id) {
+                    match fc_geom::flatten_layer_by_id(font, &params.glyph, &layer.id) {
                         Ok(path) => {
                             preview_elements =
                                 preview_elements.saturating_add(path.elements().len());

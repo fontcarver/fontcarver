@@ -27,6 +27,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             "Glyph",
             "Guide",
             "Layer",
+            "LayerEffect",
             "LayerKind",
             "Master",
             "MasterMetrics",
@@ -154,6 +155,9 @@ fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
     CjkBatchParams::export_all(config)?;
     CjkBatchResult::export_all(config)?;
     CjkBatchExample::export_all(config)?;
+    LayerEffectsParams::export_all(config)?;
+    LayerEffectsResult::export_all(config)?;
+    EffectMaskParams::export_all(config)?;
     StyleBatchParams::export_all(config)?;
     StyleBatchResult::export_all(config)?;
     CjkFilter::export_all(config)?;

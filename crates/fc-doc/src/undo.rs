@@ -618,8 +618,20 @@ fn estimate_snapshot(snapshot: &Snapshot) -> usize {
                     .sum::<usize>();
                 let points = outline_points.saturating_add(color_points);
                 let components = layer.components.len().saturating_add(color_components);
+                let effects = layer
+                    .effects
+                    .iter()
+                    .map(|e| {
+                        std::mem::size_of::<fc_model::LayerEffect>()
+                            + match &e.effect {
+                                fc_model::LayerEffectKind::Boolean { path, .. } => path.len(),
+                                _ => 0,
+                            }
+                    })
+                    .sum::<usize>();
                 points
                     .saturating_mul(32)
+                    .saturating_add(effects)
                     .saturating_add(components.saturating_mul(64))
             })
             .sum(),

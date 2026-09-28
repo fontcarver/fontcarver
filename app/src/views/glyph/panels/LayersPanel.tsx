@@ -7,6 +7,7 @@ import { commitField } from '../commitField'
 import { backgroundLayer } from '../glyphScene'
 
 import { LayerList } from './LayerList'
+import { LayerEffectsEditor } from './LayerEffectsEditor'
 import { SmartGlyphEditor } from './SmartGlyphEditor'
 import { SourceLayerEditor } from './SourceLayerEditor'
 import styles from './panels.module.css'
@@ -33,6 +34,7 @@ export function LayersPanel({
   target,
   glyph,
   outline,
+  scene,
   master,
   masters,
   reload,
@@ -41,6 +43,7 @@ export function LayersPanel({
   const overlays = useEditorStore((state) => state.overlays)
   const toggleOverlay = useEditorStore((state) => state.toggleOverlay)
   const background = backgroundLayer(glyph, master)
+  const [effectsEditor, setEffectsEditor] = useState(false)
   const [smartEditor, setSmartEditor] = useState(false)
   const [sourceEditor, setSourceEditor] = useState<'copy' | 'edit' | null>(null)
   const current = glyph.layers.find((layer) => layer.id === outline.layer)
@@ -52,6 +55,16 @@ export function LayersPanel({
 
   return (
     <>
+      {effectsEditor && current && (
+        <LayerEffectsEditor
+          doc={target.doc}
+          glyph={glyph}
+          layer={current}
+          upem={scene.metrics.upem}
+          onClose={() => setEffectsEditor(false)}
+          onApplied={reload}
+        />
+      )}
       {smartEditor && (
         <SmartGlyphEditor
           doc={target.doc}
@@ -99,6 +112,14 @@ export function LayersPanel({
       />
 
       <div className={styles.actions}>
+        <button
+          type="button"
+          className={styles.actionButton}
+          disabled={!current || glyph.locked}
+          onClick={() => setEffectsEditor(true)}
+        >
+          {t('layerEffects.title')}
+        </button>
         <button
           type="button"
           className={styles.actionButton}

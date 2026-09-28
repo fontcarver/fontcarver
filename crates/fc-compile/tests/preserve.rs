@@ -8,6 +8,39 @@ use read_fonts::{types::GlyphId, FontRef, TableProvider};
 use write_fonts::FontBuilder;
 
 #[test]
+fn disabled_effects_keep_untouched_hinting_and_point_bound_layout() {
+    let original = std::fs::read(fc_fixtures::path("DejaVuSans.ttf")).unwrap();
+    let mut font = fc_sfnt::read_bytes(&original, &Default::default())
+        .unwrap()
+        .fonts
+        .remove(0);
+    font.glyph_mut("A").unwrap().layers[0]
+        .effects
+        .push(fc_model::LayerEffect {
+            enabled: false,
+            effect: fc_model::LayerEffectKind::RemoveOverlap,
+        });
+    let report = export(&font, &|_| 0, &ExportOptions::default()).unwrap();
+    let output = FontRef::new(&report.bytes).unwrap();
+    let input = FontRef::new(&original).unwrap();
+    for tag in [
+        *b"glyf", *b"loca", *b"maxp", *b"fpgm", *b"prep", *b"cvt ", *b"GPOS",
+    ] {
+        let tag = read_fonts::types::Tag::new(&tag);
+        assert_eq!(
+            output.table_data(tag).unwrap().as_bytes(),
+            input.table_data(tag).unwrap().as_bytes(),
+            "disabled effect changed {tag}"
+        );
+    }
+    assert!(!report
+        .warnings
+        .iter()
+        .any(|w| w.code == "layer-effects-baked"));
+    assert_eq!(font.glyph("A").unwrap().layers[0].effects.len(), 1);
+}
+
+#[test]
 fn untouched_dejavu_preserves_raw_tables_hinting_and_shaping() {
     let original = std::fs::read(fc_fixtures::path("DejaVuSans.ttf")).expect("read fixture");
     let font = fc_sfnt::read_bytes(&original, &fc_sfnt::ReadOptions::default())

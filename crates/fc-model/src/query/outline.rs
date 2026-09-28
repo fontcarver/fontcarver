@@ -9,7 +9,13 @@ use std::{
 const MAX_COMPONENT_DEPTH: usize = 64;
 const MAX_PATH_ELEMENTS: usize = 1_000_000;
 
-/// Resolve a master layer and its ordinary or smart components into one path.
+/// Optional geometry-stage filter, called after a layer's components resolve.
+/// The callback must not mutate the font and returns a bounded finite path.
+pub type LayerPathFilter<'a> = dyn Fn(&Layer, BezPath) -> Result<BezPath, Error> + 'a;
+
+/// Resolve raw source geometry, including ordinary and smart components.
+/// Persistent layer effects are evaluated only by geometry consumers via the
+/// explicit filter variants; this model-only query leaves them unapplied.
 pub fn flatten_layer(font: &Font, glyph: &str, master: &MasterId) -> Result<BezPath, Error> {
     let mut budget = MAX_PATH_ELEMENTS;
     flatten_inner(
@@ -19,6 +25,27 @@ pub fn flatten_layer(font: &Font, glyph: &str, master: &MasterId) -> Result<BezP
         None,
         &mut HashSet::new(),
         &mut budget,
+        None,
+    )
+}
+
+/// Resolve sources with a layer filter, including every nested component source.
+/// Child filters run before component transforms; the parent filter runs last.
+pub fn flatten_layer_with(
+    font: &Font,
+    glyph: &str,
+    master: &MasterId,
+    filter: &LayerPathFilter<'_>,
+) -> Result<BezPath, Error> {
+    let mut budget = MAX_PATH_ELEMENTS;
+    flatten_inner(
+        font,
+        &glyph.into(),
+        master,
+        None,
+        &mut HashSet::new(),
+        &mut budget,
+        Some(filter),
     )
 }
 
@@ -37,11 +64,51 @@ pub fn flatten_smart_component(
         Some(values),
         &mut HashSet::new(),
         &mut budget,
+        None,
+    )
+}
+
+/// Resolve a local smart instance, then filter its geometry and nested sources.
+pub fn flatten_smart_component_with(
+    font: &Font,
+    glyph: &str,
+    master: &MasterId,
+    values: &BTreeMap<String, f64>,
+    filter: &LayerPathFilter<'_>,
+) -> Result<BezPath, Error> {
+    let mut budget = MAX_PATH_ELEMENTS;
+    flatten_inner(
+        font,
+        &glyph.into(),
+        master,
+        Some(values),
+        &mut HashSet::new(),
+        &mut budget,
+        Some(filter),
     )
 }
 
 /// Resolve a specific layer; its components use the associated master.
 pub fn flatten_layer_by_id(font: &Font, glyph: &str, layer: &LayerId) -> Result<BezPath, Error> {
+    flatten_selected_layer(font, glyph, layer, None)
+}
+
+/// Resolve a specific layer and filter it after its component sources resolve.
+pub fn flatten_layer_by_id_with(
+    font: &Font,
+    glyph: &str,
+    layer: &LayerId,
+    filter: &LayerPathFilter<'_>,
+) -> Result<BezPath, Error> {
+    flatten_selected_layer(font, glyph, layer, Some(filter))
+}
+
+fn flatten_selected_layer(
+    font: &Font,
+    glyph: &str,
+    layer: &LayerId,
+    filter: Option<&LayerPathFilter<'_>>,
+) -> Result<BezPath, Error> {
     let name = GlyphName::from(glyph);
     let glyph_data = font.glyph(&name).ok_or_else(|| Error::MissingGlyph {
         glyph: name.clone(),
@@ -66,10 +133,11 @@ pub fn flatten_layer_by_id(font: &Font, glyph: &str, layer: &LayerId) -> Result<
         master,
         &mut HashSet::from([name]),
         &mut budget,
+        filter,
     )
 }
 
-/// Return the exact curve bounds of a flattened master layer.
+/// Return exact bounds of raw source geometry, without layer effects.
 pub fn layer_bbox(font: &Font, glyph: &str, master: &MasterId) -> Result<Option<Rect>, Error> {
     let path = flatten_layer(font, glyph, master)?;
     Ok((!path.elements().is_empty()).then(|| path.bounding_box()))
@@ -82,6 +150,7 @@ fn flatten_inner(
     smart: Option<&BTreeMap<String, f64>>,
     visited: &mut HashSet<GlyphName>,
     budget: &mut usize,
+    filter: Option<&LayerPathFilter<'_>>,
 ) -> Result<BezPath, Error> {
     if visited.len() >= MAX_COMPONENT_DEPTH {
         return Err(Error::ComponentDepthLimit {
@@ -112,7 +181,7 @@ fn flatten_inner(
                 })?,
         )
     };
-    let result = flatten_contents(font, &layer, master, visited, budget);
+    let result = flatten_contents(font, &layer, master, visited, budget, filter);
     visited.remove(name);
     result
 }
@@ -123,6 +192,7 @@ fn flatten_contents(
     master: &MasterId,
     visited: &mut HashSet<GlyphName>,
     budget: &mut usize,
+    filter: Option<&LayerPathFilter<'_>>,
 ) -> Result<BezPath, Error> {
     let mut path = BezPath::new();
     for contour in &layer.contours {
@@ -150,6 +220,7 @@ fn flatten_contents(
             component.smart.as_ref(),
             visited,
             budget,
+            filter,
         )?;
         let transformed = component.transform * base;
         if !transformed.is_finite() {
@@ -158,6 +229,17 @@ fn flatten_contents(
             ));
         }
         path.extend(transformed);
+    }
+    if let Some(filter) = filter {
+        path = filter(layer, path)?;
+        if !path.is_finite() {
+            return Err(Error::InvalidDesignSpace(
+                "layer outline filter returned nonfinite coordinates".into(),
+            ));
+        }
+        *budget = budget
+            .checked_sub(path.elements().len())
+            .ok_or_else(|| Error::InvalidDesignSpace("filtered outline work limit".into()))?;
     }
     Ok(path)
 }

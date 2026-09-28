@@ -597,7 +597,9 @@
     "type1ImportPrivateComputed": "部分 Type 1 私有提示参数由运行时 PostScript 代码计算，暂不支持导入。参数名称仍保存在源元数据中；直接声明的参数会保留。",
     "ttInstructionBindingsPartial": "部分导入的 TrueType 程序无法与原始点顺序建立对应关系。程序字节已保留，但编辑前需要核对。",
     "ttImportedProgramsOmitted": "部分导入的 TrueType 程序因编译后的点发生变化而无法保留。用户编写的程序已保留。{{message}}",
-    "ttAuthoredProgramsOmitted": "用户编写的 TrueType 程序保留在源文档中，但无法写入 CFF 轮廓。"
+    "ttAuthoredProgramsOmitted": "用户编写的 TrueType 程序保留在源文档中，但无法写入 CFF 轮廓。",
+    "layerEffectsBaked": "已在导出副本中计算图层效果。源轮廓和效果栈仍可编辑。",
+    "layerEffectsRefitted": "导出时部分图层效果使用了多边形合并和曲线重新拟合。{{message}}"
   },
   "a11y": {
     "menubar": "应用程序菜单",
@@ -2063,5 +2065,57 @@
     "advanceValue": "字宽 {{value}}",
     "selectFirst": "请在字体标签页中选择 1–512 个字形。",
     "approximated": "{{count}} 个图层的曲线布尔运算失败，已使用多边形并集并重新拟合曲线。请在应用前检查这些图层的轮廓。"
+  },
+  "layerEffects": {
+    "title": "图层效果",
+    "description": "保留可编辑的源轮廓和组件。组件解析后，按顺序计算效果。提交源轮廓编辑后，画布会更新结果。",
+    "bakeHelp": "应用会保留效果栈；烘焙会用结果替换源轮廓并清空效果栈，可一步撤销。FCF 保留动态效果，其他源文件格式需先烘焙。",
+    "stack": "效果顺序",
+    "empty": "暂无效果。添加一个操作开始编辑。",
+    "add": {
+      "stroke": "添加描边",
+      "remove_overlap": "添加去重叠",
+      "boolean": "添加布尔遮罩"
+    },
+    "kind": {
+      "stroke": "描边",
+      "remove_overlap": "去除重叠",
+      "boolean": "布尔遮罩"
+    },
+    "up": "上移第 {{index}} 个效果",
+    "down": "下移第 {{index}} 个效果",
+    "remove": "删除第 {{index}} 个效果",
+    "bake": "烘焙结果",
+    "working": "正在计算图层…",
+    "reviewed": "预览已就绪。可应用或烘焙此版本。",
+    "fallback": "{{count}} 个源图层使用了多边形合并和曲线重新拟合。请检查结果后再应用。",
+    "overlapHelp": "按非零填充规则去除内部边界。开放轮廓保持开放。",
+    "nib": "笔尖形状",
+    "ellipse": "椭圆",
+    "rectangle": "矩形",
+    "width": "笔尖宽度",
+    "height": "笔尖高度",
+    "angle": "笔尖角度（°）",
+    "miter_limit": "斜接限制",
+    "cap": "端点样式",
+    "join": "转角样式",
+    "round": "圆角",
+    "butt": "平头",
+    "square": "方头",
+    "bevel": "斜角",
+    "miter": "斜接",
+    "penHelp": "笔尖完整尺寸：0.1–8192 单位，宽高比不超过 100。角度：−360° 至 360°。斜接限制：1–100。",
+    "operation": "运算",
+    "union": "并集",
+    "intersect": "交集",
+    "subtract": "减去遮罩",
+    "xor": "异或",
+    "path": "保存的 SVG 遮罩路径",
+    "maskGlyph": "遮罩字形",
+    "maskLayer": "遮罩图层",
+    "defaultMaster": "默认主版",
+    "capture": "捕获遮罩",
+    "maskHelp": "捕获会在图层坐标中保存副本。后续修改遮罩字形不会更新此副本。布尔运算要求源轮廓和遮罩都闭合。",
+    "layer": "源图层"
   }
 }

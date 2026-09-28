@@ -220,7 +220,19 @@ pub fn interpolate_glyph(font: &Font, glyph: &Glyph, at: &DesignLocation) -> Res
                 || master.metrics.default_vertical_origin.is_some()
         });
     let resolve = |layer: &Layer| -> Result<Layer, Error> {
-        let mut resolved = crate::resolve_smart_layer(font, layer)?;
+        let mut resolved = if crate::effects::has_effects(font, layer) {
+            let evaluated = crate::evaluate_layer(font, &glyph.name, &layer.id).map_err(invalid)?;
+            let mut baked = layer.clone();
+            baked.contours = fc_model::Contour::from_bezpath(&evaluated.path);
+            baked.components.clear();
+            baked.effects.clear();
+            baked.hints = Default::default();
+            baked.tt_instructions = None;
+            baked.tt_binding = None;
+            baked
+        } else {
+            crate::resolve_smart_layer(font, layer)?
+        };
         if vertical {
             let id = match &layer.kind {
                 LayerKind::Master(id)

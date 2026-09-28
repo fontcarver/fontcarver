@@ -167,7 +167,7 @@ fn decompose(
     let mut components = target.components.clone();
     let anchors = target.anchors.clone();
     for component in selected {
-        let path = fc_model::flatten_smart_component(
+        let path = fc_geom::flatten_smart_component(
             font,
             &component.base,
             &master,

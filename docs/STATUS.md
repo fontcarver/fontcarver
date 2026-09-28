@@ -6,8 +6,8 @@ not repeat them.
 
 Last updated: 2026-09-28 (remaining P5 work resumed). Branch: `p5-color-authoring`
 (no push, no main merge). Static SVG and COLRv1 authoring are implemented within
-their acceptance boundaries. Batch style effects are now verified too.
-Frontend checks passed: 144 test files, 1,156 tests;
+their acceptance boundaries. Batch styles and non-destructive layer effects are verified.
+Frontend checks passed: 145 test files, 1,158 tests;
 TypeScript, lint, production build and formatting are clean.
 The user requested continuing all remaining tasks without confirmation.
 
@@ -32,25 +32,27 @@ release packaging are unverified for every phase.
 
 The [feature audit](p5-feature-audit.md) is the exit gate: a row is marked
 complete only after a working editing path, persistence/export and direct
-verification. Row 104 is complete within static COLR v0/CPAL boundaries; two
-rows are `Partial` (61 autohinting, 98 manual PS hints), and the other 109 rows
-are `Pending verification`. MATH is a
+verification. Rows 88 (stored boolean layer masks) and 104 (static COLR v0/CPAL) are
+complete within their recorded boundaries. Three rows are `Partial` (61
+autohinting, 87 uniform strokes with variable pen points pending, 98 manual PS
+hints); the other 107 rows are `Pending verification`. Pending verification
+does not mean no implementation exists; earlier phase evidence must be checked. MATH is a
 separate P5 design requirement, now verified in the audit’s supplemental section.
 
-| Work block                       | State                                                                                                                         | Detail                                            |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Hinting (TT/PS editors, Type 1)  | Static TT and PS editing, Type 1 hint round trips and export preprocessing done; variable hinting, flex, per-FD dicts open    | [p5-hinting-checkpoint](p5-hinting-checkpoint.md) |
-| MATH authoring                   | Complete within the acceptance boundaries: editor, undo/save/reopen/export, FontTools/HarfBuzz and large-font checks verified | [p5-math-acceptance](p5-math-acceptance.md)       |
-| COLR/CPAL authoring              | Complete within static COLR v0 / CPAL v0/v1 boundaries; synthetic/real-font exports, browser editing and persistence verified | [p5-color-acceptance](p5-color-acceptance.md) |
-| SVG colour documents            | Static subset verified; independent export/browser and regression checks passed | [p5-svg-acceptance](p5-svg-acceptance.md) |
-| COLRv1 paint graphs              | Static graph editor, shared codecs, palettes, persistence and independent binary/pixel checks verified | [p5-colrv1-acceptance](p5-colrv1-acceptance.md) |
-| Geometry and construction        | Batch style effects verified; non-destructive effects and remaining smart geometry next | [p5-style-effects-acceptance](p5-style-effects-acceptance.md) |
-| Compare/merge/paste special      | Not started                                                                                                                   | plan block "Document workflows"                   |
-| Scripting and plugins            | Not started                                                                                                                   | plan block "Automation"                           |
-| Remaining formats, profiles, CLI | Not started                                                                                                                   | plan block "Formats/export"                       |
-| Shell/UX checklist gaps          | Not started                                                                                                                   | plan block "Shell/UX"                             |
-| Release packaging and CI         | Not started                                                                                                                   | plan block "Release"                              |
-| Final acceptance                 | Not started                                                                                                                   | plan block "Final row-by-row acceptance"          |
+| Work block                       | State                                                                                                                         | Detail                                                                                               |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Hinting (TT/PS editors, Type 1)  | Static TT and PS editing, Type 1 hint round trips and export preprocessing done; variable hinting, flex, per-FD dicts open    | [p5-hinting-checkpoint](p5-hinting-checkpoint.md)                                                    |
+| MATH authoring                   | Complete within the acceptance boundaries: editor, undo/save/reopen/export, FontTools/HarfBuzz and large-font checks verified | [p5-math-acceptance](p5-math-acceptance.md)                                                          |
+| COLR/CPAL authoring              | Complete within static COLR v0 / CPAL v0/v1 boundaries; synthetic/real-font exports, browser editing and persistence verified | [p5-color-acceptance](p5-color-acceptance.md)                                                        |
+| SVG colour documents             | Static subset verified; independent export/browser and regression checks passed                                               | [p5-svg-acceptance](p5-svg-acceptance.md)                                                            |
+| COLRv1 paint graphs              | Static graph editor, shared codecs, palettes, persistence and independent binary/pixel checks verified                        | [p5-colrv1-acceptance](p5-colrv1-acceptance.md)                                                      |
+| Geometry and construction        | Batch styles and non-destructive layer effects verified; live smart corners next                                              | [style acceptance](p5-style-effects-acceptance.md) · [layer effects](p5-layer-effects-acceptance.md) |
+| Compare/merge/paste special      | Not started                                                                                                                   | plan block "Document workflows"                                                                      |
+| Scripting and plugins            | Not started                                                                                                                   | plan block "Automation"                                                                              |
+| Remaining formats, profiles, CLI | Not started                                                                                                                   | plan block "Formats/export"                                                                          |
+| Shell/UX checklist gaps          | Not started                                                                                                                   | plan block "Shell/UX"                                                                                |
+| Release packaging and CI         | Not started                                                                                                                   | plan block "Release"                                                                                 |
+| Final acceptance                 | Not started                                                                                                                   | plan block "Final row-by-row acceptance"                                                             |
 
 The Tibetan layout expansion-budget defect is fixed: conversion eligibility
 now checks the compiler's work budget while retaining the imported lookup
@@ -60,11 +62,15 @@ native-platform run.
 
 ## Next step
 
-Continue with non-destructive layer effects, smart geometry and the remaining
-P5 work sequence. Batch styles passed 658 Rust tests, 32 independent synthetic
-exports, 19,212 real-font sampling checks and bilingual browser verification. Do not repeat the earlier task-boundary stop: the
-2026-09-28 instruction supersedes it. See [COLRv1 acceptance](p5-colrv1-acceptance.md), [SVG usage](user/svg.md),
-[acceptance](p5-svg-acceptance.md) and the [P5 plan](superpowers/plans/2026-09-22-p5-professional-finish.md).
+Continue with [P5-10 live smart corners](superpowers/plans/tasks/p5-10-smart-corners.md)
+and the remaining P5 sequence. P5-09 passed 947 affected-crate tests; a subsequent
+disabled-effect regression and focused checks passed too (948 distinct tests,
+two pre-existing ignored). Independent checks passed 60 synthetic exports with
+128,640 samples and eight real-font exports with 29,438 samples. Bilingual
+headless-browser editing, bake/undo/native persistence and whole-dialog axe checks
+passed. See [layer-effect acceptance](p5-layer-effects-acceptance.md).
+The user's request to continue all tasks remains active; progress questions do
+not cancel development. Do not stop at this milestone.
 
 The bilingual website is also complete, with deployment still pending. Its
 [completion record](superpowers/plans/2026-09-24-website.md) covers the website

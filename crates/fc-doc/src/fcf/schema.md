@@ -26,6 +26,30 @@ Glyph `metrics_keys` (`left`, `right`, `width`, `vertical_origin`, and
 unchanged; resolved metrics and edit-session state are derived and are not
 written to the document.
 
+P5-09 adds optional `Layer.effects`, an ordered array (default `[]`, omitted
+when empty). Each entry is `{enabled: bool, effect: {...}}`; missing `enabled`
+means `true`. Source contours, components, anchors and metrics remain unchanged.
+The tagged `effect` value is one of:
+
+- `{kind: "stroke", nib: "ellipse" | "rectangle", width, height, angle,
+  cap: "round" | "butt" | "square", join: "round" | "bevel" | "miter",
+  miter_limit}`. Dimensions are full pen sizes in font units, in `[0.1,8192]`,
+  with aspect ratio at most 100. Angle is counterclockwise degrees in
+  `[-360,360]`; miter limit is in `[1,100]`. All numbers must be finite.
+- `{kind: "remove_overlap"}`, using nonzero fill and retaining open paths.
+- `{kind: "boolean", operation: "union" | "intersect" | "subtract" | "xor",
+  path: string}`. The SVG path is a stored mask in layer coordinates, not a
+  live reference. It has at most 256 KiB and 4096 path elements, explicitly
+  closed contours, and finite coordinates of magnitude at most 32767.
+
+A layer may have at most 16 effects, including disabled entries. Native read,
+write and autosave validate them. Effects apply after local smart interpolation
+and component resolution, before the parent component's transform. Smart source
+corners require identical stacks. Preview caches and refitting warnings are
+derived. Compiled fonts evaluate a copy; native documents retain sources and
+stacks. Baking replaces source contours and clears the stack in one undo step.
+Other source formats currently reject unbaked stacks before touching output.
+
 Feature prefixes/blocks and classes carry a persistent string `id`, independent
 of their tag, name, code or ordering. New items receive UUID v4 IDs without
 separators. Older documents may omit IDs; reading assigns missing IDs and

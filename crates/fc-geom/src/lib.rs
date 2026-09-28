@@ -9,7 +9,13 @@ mod boolean;
 mod compatibility;
 mod convert;
 mod edit;
+mod effects;
 mod error;
+mod filled;
+pub use effects::{
+    bake_effects_font, evaluate_layer, flatten_layer, flatten_layer_by_id, flatten_smart_component,
+    layer_bbox, EffectOutcome,
+};
 mod interpolate;
 mod smart;
 mod stroke;

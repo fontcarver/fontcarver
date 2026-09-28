@@ -107,7 +107,9 @@ pub(crate) fn run(api: &Api, params: StyleBatchParams) -> Result<StyleBatchResul
                         Some(CurveFormat::Quadratic) => CurveKind::Quadratic { max_err: 0.1 },
                         _ => CurveKind::Cubic,
                     };
-                    let contours = if layer.components.is_empty() {
+                    let contours = if layer.components.is_empty()
+                        && !layer.effects.iter().any(|e| e.enabled)
+                    {
                         if layer.contours.len() > 4096
                             || layer.contours.iter().map(|c| c.points.len()).sum::<usize>() > 4096
                         {
@@ -115,9 +117,18 @@ pub(crate) fn run(api: &Api, params: StyleBatchParams) -> Result<StyleBatchResul
                         }
                         layer.contours.clone()
                     } else {
-                        result.decomposed_layers += 1;
-                        let flat = fc_model::flatten_layer_by_id(&doc.font, name, &layer.id)
-                            .map_err(invalid)?;
+                        if !layer.components.is_empty() {
+                            result.decomposed_layers += 1;
+                        }
+                        let evaluated =
+                            fc_geom::evaluate_layer(&doc.font, name, &layer.id).map_err(invalid)?;
+                        if !evaluated.approximated_layers.is_empty() {
+                            result.approximated_layers += 1;
+                            result
+                                .approximated_sources
+                                .push(format!("{name} / {} (live effects)", master.name));
+                        }
+                        let flat = evaluated.path;
                         if flat.elements().len() > 4096 {
                             return Err(invalid(format!("{name} exceeds 4096 resolved segments")));
                         }
@@ -256,6 +267,11 @@ pub(crate) fn run(api: &Api, params: StyleBatchParams) -> Result<StyleBatchResul
             contours: outcome.contours,
             components: Vec::new(),
             anchors,
+        });
+        commands.push(Command::SetLayerEffects {
+            glyph: source.glyph.clone(),
+            layer: source.layer.clone(),
+            effects: Vec::new(),
         });
         commands.push(Command::SetWidth {
             glyph: source.glyph,

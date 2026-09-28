@@ -597,7 +597,9 @@
     "type1ImportPrivateComputed": "Some Type 1 private hint fields use runtime PostScript and were not imported. Their field names remain in source metadata; literal parameters are retained.",
     "ttInstructionBindingsPartial": "Some imported TrueType programs could not be matched to their original point order. Their bytes are retained, but must be reviewed before editing.",
     "ttImportedProgramsOmitted": "Some imported TrueType programs could not be retained because their points changed during compilation. Authored programs were retained. {{message}}",
-    "ttAuthoredProgramsOmitted": "Authored TrueType programs remain in the source document but cannot be written to CFF outlines."
+    "ttAuthoredProgramsOmitted": "Authored TrueType programs remain in the source document but cannot be written to CFF outlines.",
+    "layerEffectsBaked": "Live layer effects were evaluated on the export copy. Source contours and effect stacks remain editable.",
+    "layerEffectsRefitted": "Some layer effects required polygon union and curve refitting during export. {{message}}"
   },
   "a11y": {
     "menubar": "Application menu",
@@ -2063,5 +2065,57 @@
     "advanceValue": "Advance {{value}}",
     "selectFirst": "Select 1–512 glyphs in a Font tab.",
     "approximated": "{{count}} layers required polygon union and curve refitting after the curve boolean failed. Inspect their contours before applying."
+  },
+  "layerEffects": {
+    "title": "Layer effects",
+    "description": "Keep source contours and components editable. Effects run in order after component resolution. The canvas updates the result when a source edit is committed.",
+    "bakeHelp": "Apply keeps the stack. Bake replaces the source with the result and removes the stack in one undo step. FCF preserves live effects; other source formats require baking first.",
+    "stack": "Ordered effects",
+    "empty": "No effects. Add an operation to begin.",
+    "add": {
+      "stroke": "Add stroke",
+      "remove_overlap": "Add overlap removal",
+      "boolean": "Add boolean mask"
+    },
+    "kind": {
+      "stroke": "Stroke",
+      "remove_overlap": "Remove overlap",
+      "boolean": "Boolean mask"
+    },
+    "up": "Move effect {{index}} up",
+    "down": "Move effect {{index}} down",
+    "remove": "Remove effect {{index}}",
+    "bake": "Bake result",
+    "working": "Evaluating layer…",
+    "reviewed": "Preview ready. Apply or bake this reviewed revision.",
+    "fallback": "{{count}} source layers required polygon union and curve refitting. Review the result before applying.",
+    "overlapHelp": "Remove interior edges using nonzero fill. Open contours stay open.",
+    "nib": "Pen shape",
+    "ellipse": "Ellipse",
+    "rectangle": "Rectangle",
+    "width": "Pen width",
+    "height": "Pen height",
+    "angle": "Pen angle (°)",
+    "miter_limit": "Miter limit",
+    "cap": "End caps",
+    "join": "Corners",
+    "round": "Round",
+    "butt": "Butt",
+    "square": "Square",
+    "bevel": "Bevel",
+    "miter": "Miter",
+    "penHelp": "Full pen dimensions: 0.1–8192 units, aspect ratio ≤100. Angle: −360° to 360°. Miter limit: 1–100.",
+    "operation": "Operation",
+    "union": "Union",
+    "intersect": "Intersection",
+    "subtract": "Subtract mask",
+    "xor": "Exclusive or",
+    "path": "Stored SVG mask path",
+    "maskGlyph": "Mask glyph",
+    "maskLayer": "Mask layer",
+    "defaultMaster": "Default master",
+    "capture": "Capture mask",
+    "maskHelp": "Capture stores a copy in layer coordinates. Later edits to the mask glyph do not update it. Boolean operations require closed source and mask contours.",
+    "layer": "Source layer"
   }
 }

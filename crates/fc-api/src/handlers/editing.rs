@@ -5,7 +5,7 @@ use fc_model::{
     query::{declared_curve_format, CurveFormat},
     Glyph, GlyphId, GlyphName, Layer, LayerId, MasterId,
 };
-use kurbo::{BezPath, PathEl, Point, Rect, Shape};
+use kurbo::{BezPath, PathEl, Point, Shape};
 
 use crate::{
     handlers::{
@@ -25,7 +25,13 @@ pub(crate) fn outline(api: &Api, params: LayerOutlineParams) -> Result<LayerOutl
         .with_doc(params.doc, |document| {
             let selection = Selection::resolve(document, params.gid, params.layer.as_ref())?;
             let components = component_views(document, &selection)?;
-            let bbox = layer_bounds(selection.layer, &components);
+            let path =
+                fc_geom::flatten_layer_by_id(&document.font, &selection.name, &selection.layer.id)
+                    .map_err(|e| ApiError::geometry(e.to_string()))?;
+            let bbox = (!path.is_empty()).then(|| {
+                let b = path.bounding_box();
+                [b.x0, b.y0, b.x1, b.y1]
+            });
             let width = selection.layer.width;
             Ok(LayerOutline {
                 layer: selection.layer.id.clone(),
@@ -288,7 +294,7 @@ fn component_path(
             .glyph(&component.base)
             .is_some_and(|g| !g.smart_axes.is_empty())
     {
-        return fc_model::flatten_smart_component(
+        return fc_geom::flatten_smart_component(
             &document.font,
             &component.base,
             master,
@@ -316,20 +322,6 @@ fn component_path(
         ));
     }
     Ok(transformed)
-}
-
-/// Returns the exact bounds of a layer, components included.
-fn layer_bounds(layer: &Layer, components: &[ComponentView]) -> Option<[f64; 4]> {
-    let mut path = BezPath::new();
-    for contour in &layer.contours {
-        path.extend(contour.to_bezpath().elements().iter().copied());
-    }
-    let mut bounds = (!path.elements().is_empty()).then(|| path.bounding_box());
-    for component in components.iter().filter_map(|view| view.bbox) {
-        let rect = Rect::new(component[0], component[1], component[2], component[3]);
-        bounds = Some(bounds.map_or(rect, |bounds| bounds.union(rect)));
-    }
-    bounds.map(|bounds| [bounds.x0, bounds.y0, bounds.x1, bounds.y1])
 }
 
 fn collect_points(path: &BezPath, points: &mut Vec<[f64; 2]>) {

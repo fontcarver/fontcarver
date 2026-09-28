@@ -514,10 +514,12 @@ fn build_detail(document: &Document, gid: GlyphId) -> Result<GlyphDetail, ApiErr
         .layers
         .iter()
         .map(|layer| {
-            flatten_detail_layer(document, layer).map(|path| LayerPath {
-                layer: layer.id.clone(),
-                flattened: rounded_svg(&path),
-            })
+            fc_geom::flatten_layer_by_id(&document.font, name, &layer.id)
+                .map_err(|e| ApiError::geometry(e.to_string()))
+                .map(|path| LayerPath {
+                    layer: layer.id.clone(),
+                    flattened: rounded_svg(&path),
+                })
         })
         .collect::<Result<Vec<_>, _>>()?;
     Ok(GlyphDetail { glyph, paths })
@@ -545,27 +547,6 @@ pub(crate) fn glyph_classification(glyph: &Glyph) -> (String, String, String) {
             .to_owned()
     });
     (category, sub_category, script)
-}
-
-fn flatten_detail_layer(document: &Document, layer: &Layer) -> Result<BezPath, ApiError> {
-    let master = layer_master(layer).unwrap_or_else(|| document.font.default_master().id.clone());
-    let mut path = BezPath::new();
-    for contour in &layer.contours {
-        path.extend(contour.to_bezpath().elements().iter().copied());
-    }
-    for component in &layer.components {
-        let base = document.glyph_id(&component.base).ok_or_else(|| {
-            ApiError::not_found(format!("glyph `{}` does not exist", component.base))
-        })?;
-        let flattened = document.flattened_path(base, &master)?;
-        path.extend(
-            (component.transform * flattened.as_ref())
-                .elements()
-                .iter()
-                .copied(),
-        );
-    }
-    Ok(path)
 }
 
 pub(crate) fn layer_master(layer: &Layer) -> Option<MasterId> {

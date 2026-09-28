@@ -180,7 +180,7 @@ pub(crate) fn preview(api: &Api, params: ColorPreviewParams) -> Result<ColorPrev
                 let source = glyph
                     .master_layer(master)
                     .ok_or_else(|| ApiError::not_found("outline glyph has no master layer"))?;
-                let outline = fc_model::query::flatten_layer_by_id(font, &glyph.name, &source.id)
+                let outline = fc_geom::flatten_layer_by_id(font, &glyph.name, &source.id)
                     .map_err(|e| ApiError::invalid_params(e.to_string()))?;
                 let bounds = if outline.elements().is_empty() {
                     [0.; 4]

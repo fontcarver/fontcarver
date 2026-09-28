@@ -1486,6 +1486,7 @@ dependencies = [
 name = "fc-raster"
 version = "0.1.0"
 dependencies = [
+ "fc-geom",
  "fc-model",
  "kurbo",
  "skrifa",

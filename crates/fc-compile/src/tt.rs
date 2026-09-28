@@ -33,6 +33,14 @@ pub(crate) fn preflight(font: &Font, options: &ExportOptions) -> Result<(), Erro
     if options.format == ExportFormat::Otf || !selected_authored(font, options) {
         return Ok(());
     }
+    if font
+        .glyphs
+        .values()
+        .flat_map(|g| &g.layers)
+        .any(|l| l.effects.iter().any(|e| e.enabled))
+    {
+        return Err(Error::InvalidSource("authored TrueType programs require reviewing the compiled points after baking live layer effects".into()));
+    }
     if options.variable || options.instance.is_some() || options.remove_overlap || options.autohint
     {
         return Err(Error::InvalidSource("authored TrueType programs currently require static master export without overlap removal or automatic hinting; retain the source programs and choose compatible export options".into()));

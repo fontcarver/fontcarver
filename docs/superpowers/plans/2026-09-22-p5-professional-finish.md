@@ -34,7 +34,10 @@ by the earlier user instruction; headless browser testing and builds are allowed
 - [x] Batch style effects: eight editable presets, captured selection/master preview,
       atomic undo/backups and independent native/export acceptance. See
       [record](../../p5-style-effects-acceptance.md).
-- [ ] Geometry and construction: non-destructive effects and smart
+- [x] Non-destructive layer effects: uniform strokes, overlap removal, stored
+      boolean masks, source-preserving editing, bake/undo and independent export
+      acceptance. See [record](../../p5-layer-effects-acceptance.md).
+- [ ] Geometry and construction: variable pen points and smart
       geometry, raster-image trace, background images, optical spacing/kerning, CJK
       construction helpers and remaining editor/metrics/variable requirements.
 - [ ] Document workflows: compare/family comparison, merge, paste special,

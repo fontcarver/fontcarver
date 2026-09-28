@@ -53,6 +53,7 @@ struct MetadataEnvelope {
 /// the native document unreadable. Finite unresolved references are retained.
 pub fn write(path: &Path, font: &Font) -> Result<(), Error> {
     font.validate_bitmaps()?;
+    font.validate_effects()?;
     write::write(path, font, None)
 }
 
@@ -67,6 +68,7 @@ pub(crate) fn write_autosave(
     document_path: Option<&Path>,
 ) -> Result<(), Error> {
     font.validate_bitmaps()?;
+    font.validate_effects()?;
     write::write(path, font, document_path)
 }
 
@@ -91,6 +93,7 @@ fn is_known_format(format: &str) -> bool {
 
 fn validate(envelope: ReadEnvelope) -> Result<ReadEnvelope, Error> {
     envelope.font.validate_bitmaps()?;
+    envelope.font.validate_effects()?;
     if !is_known_format(&envelope.format) {
         return Err(Error::InvalidFcfFormat(envelope.format));
     }

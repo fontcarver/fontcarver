@@ -88,7 +88,7 @@ pub(crate) fn run(api: &Api, params: CjkBatchParams) -> Result<CjkBatchResult, A
                         });
                     }
                     if params.center {
-                        let path = fc_model::flatten_layer(&doc.font, name, &master.id)
+                        let path = fc_geom::flatten_layer(&doc.font, name, &master.id)
                             .map_err(|e| ApiError::invalid_params(e.to_string()))?;
                         points = points.saturating_add(path.elements().len());
                         if points > 8_000_000 {

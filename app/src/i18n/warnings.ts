@@ -29,6 +29,8 @@ const WARNING_KEYS: Readonly<Record<string, string>> = {
   'type1-unicode-loss': 'warning.type1UnicodeLoss',
   'glyph-names-synthesized': 'warning.glyphNamesSynthesized',
   'collection-face-opened': 'warning.collectionFaceOpened',
+  'layer-effects-baked': 'warning.layerEffectsBaked',
+  'layer-effects-refitted': 'warning.layerEffectsRefitted',
   // Export warnings. `ExportWarning` has the same shape as `DocWarning`, so the
   // export dialog renders its diagnostics through the same mapping.
   'hinting-dropped': 'warning.hintingDropped',

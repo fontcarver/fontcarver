@@ -110,7 +110,7 @@ pub fn rasterize_options(
                 .cloned()
                 .ok_or_else(|| invalid("missing hinted glyph path"))?
         } else {
-            Affine::scale(scale) * fc_model::flatten_layer(font, name, master)?
+            Affine::scale(scale) * fc_geom::flatten_layer(font, name, master)?
         };
         if path.elements().len() > 100_000 {
             return Err(invalid("glyph rasterization work limit"));

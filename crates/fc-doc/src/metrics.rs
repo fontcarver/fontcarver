@@ -127,7 +127,7 @@ fn explicit_metric(
             "glyph `{glyph}` has no layer for master `{master}`"
         ))
     })?;
-    let bounds = fc_model::layer_bbox(font, glyph, master)?;
+    let bounds = fc_geom::layer_bbox(font, glyph, master)?;
     Ok(match metric {
         Metric::Left => bounds.map_or(0.0, |bounds| bounds.x0),
         Metric::Right => bounds.map_or(layer.width, |bounds| layer.width - bounds.x1),

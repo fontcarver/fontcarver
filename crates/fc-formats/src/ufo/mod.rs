@@ -49,6 +49,7 @@ pub fn write_ufo(
     dir: &Path,
     opts: &UfoWriteOptions,
 ) -> Result<(), Error> {
+    crate::check_layer_effects(font)?;
     check_feature_export(font)?;
     let master = font
         .master(master)
@@ -63,6 +64,7 @@ pub fn write_ufo(
 /// an axis-less font this writes the default master as UFO, does not create a designspace, and
 /// returns [`Error::NoAxes`]. Call [`write_ufo`] directly for static, single-master fonts.
 pub fn write_designspace(font: &Font, dir: &Path) -> Result<PathBuf, Error> {
+    crate::check_layer_effects(font)?;
     check_feature_export(font)?;
     designspace::write(font, dir)
 }

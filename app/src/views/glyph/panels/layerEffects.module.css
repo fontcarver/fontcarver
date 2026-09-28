@@ -1,0 +1,99 @@
+.editor,
+.form,
+.mask {
+  display: grid;
+  gap: var(--space-3);
+}
+.editor p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+}
+.form {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.legend {
+  padding: 0 0 var(--space-2);
+  font-weight: var(--text-weight-medium);
+}
+.actions,
+.row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.row {
+  justify-content: space-between;
+}
+.row label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.effect {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  display: grid;
+  gap: var(--space-3);
+}
+.numbers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-4);
+}
+.numbers label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.numbers select {
+  width: 144px;
+  max-width: 60%;
+}
+.numbers input {
+  width: 90px;
+}
+.editor input:not([type='checkbox']),
+.editor textarea {
+  color: var(--color-text);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  min-width: 0;
+}
+.editor input:not([type='checkbox']) {
+  height: var(--control-height);
+}
+.mask > label {
+  display: grid;
+  gap: var(--space-2);
+}
+.editor textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: var(--font-mono);
+}
+.mask .row input {
+  width: 110px;
+}
+.wide {
+  grid-column: 1 / -1;
+}
+.editor .error {
+  color: var(--color-danger);
+}
+.editor .warning {
+  color: var(--color-warning);
+}
+@media (max-width: 520px) {
+  .numbers {
+    grid-template-columns: 1fr;
+  }
+}

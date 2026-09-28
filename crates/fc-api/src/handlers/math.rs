@@ -214,7 +214,7 @@ fn outline(font: &Font, name: &str) -> Result<MathPreviewGlyph, ApiError> {
     let layer = glyph.master_layer(master).ok_or_else(|| {
         ApiError::not_found(format!("glyph `{name}` has no default master layer"))
     })?;
-    let outline = fc_model::query::flatten_layer_by_id(font, &glyph.name, &layer.id)
+    let outline = fc_geom::flatten_layer_by_id(font, &glyph.name, &layer.id)
         .map_err(|error| ApiError::invalid_params(error.to_string()))?;
     let bounds = if outline.elements().is_empty() {
         [0.0; 4]

@@ -9,6 +9,9 @@ use crate::{GlyphName, LayerId, MasterId};
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub enum Error {
+    /// Layer-effect parameters or stored mask outlines are invalid.
+    #[error("invalid layer effects: {0}")]
+    InvalidEffects(String),
     /// Mathematical typesetting values or references are invalid.
     #[error("invalid MATH data: {0}")]
     InvalidMath(String),

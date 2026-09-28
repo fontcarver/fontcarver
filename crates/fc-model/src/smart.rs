@@ -202,6 +202,11 @@ fn blend(template: &Layer, layers: &[(&Layer, f64)]) -> Result<Layer, Error> {
         return Err(invalid("smart interpolation exceeds geometry work limit"));
     }
     for (layer, _) in layers {
+        if layer.effects != template.effects {
+            return Err(invalid(
+                "smart sources must have identical layer-effect stacks",
+            ));
+        }
         if layer.contours.len() != template.contours.len()
             || layer.components.len() != template.components.len()
             || layer.anchors.len() != template.anchors.len()

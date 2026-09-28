@@ -58,6 +58,7 @@ pub fn read_glyphs(path: &Path) -> Result<Font, Error> {
 /// Invalid feature authority, unsupported semantics and nonfinite data are rejected
 /// before the destination is touched. Supplemental editing metadata lives in userData.
 pub fn write_glyphs(font: &Font, path: &Path) -> Result<(), Error> {
+    crate::check_layer_effects(font)?;
     if font.has_unapplied_feature_draft() {
         return Err(Error::UnappliedFeatureDraft);
     }
