@@ -99,6 +99,9 @@ FontCarver is licensed `MIT OR Apache-2.0` (`LICENSE-MIT`, `LICENSE-APACHE`). Fo
   the workspace (`CARGO_TARGET_DIR` is included automatically). Prefer
   automatic lifetime cleanup (`tempfile::TempDir`, Python `TemporaryDirectory`)
   in new tests. Do not scatter new outputs across the repository root or `/tmp`.
+  On Unix, give test commands an absolute `TMPDIR` under that task's scratch
+  directory so legacy tests that leave files behind remain visible to the budget
+  check and can be cleaned at the task boundary.
 - At the end of **each small task**, stop its own test/server/browser processes,
   retain the final acceptance report and necessary review screenshots in their
   documented locations, then remove that task's superseded exports, generated
