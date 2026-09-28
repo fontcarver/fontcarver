@@ -2023,5 +2023,45 @@
     "preview": "SVG preview: {{glyph}}",
     "previewUnavailable": "Enter valid SVG and a matching glyph binding to preview.",
     "previewNote": "Static image preview, using SVG coordinates (positive Y points down). Text and grid previews currently use monochrome outlines."
+  },
+  "styleEffects": {
+    "title": "Style effects",
+    "selection": "Apply to {{count}} selected glyphs.",
+    "scope": "These effects change master outlines and anchors. Components are decomposed from the original outlines; unselected composites that reference edited glyphs will also change.",
+    "preset": "Starting preset",
+    "custom": "Custom",
+    "presets": {
+      "weight": "Embolden",
+      "lighten": "Lighten",
+      "condense": "Condense",
+      "extend": "Extend",
+      "oblique": "Oblique",
+      "smallCaps": "Small caps",
+      "subscript": "Subscript",
+      "superscript": "Superscript"
+    },
+    "fields": {
+      "scaleX": "Width (%)",
+      "scaleY": "Height (%)",
+      "weightX": "Weight X (units)",
+      "weightY": "Weight Y (units)",
+      "oblique": "Oblique (degrees)",
+      "moveX": "Move X (units)",
+      "moveY": "Move Y (units)"
+    },
+    "weightHelp": "Weight offsets must both be zero or have the same sign, with magnitudes from 0.1 to 500. Positive offsets add weight; negative offsets remove it.",
+    "scaleAdvance": "Scale advance widths with the outlines",
+    "center": "Center outlines in their advance widths",
+    "backup": "Keep original outlines and anchors in backup layers",
+    "variableHelp": "All masters uses the same settings. Weight effects can change point counts; check master compatibility before variable export.",
+    "invalidNumber": "Enter a finite number in every field.",
+    "review": "Style preview",
+    "decomposed": "{{count}} layers will be decomposed.",
+    "examples": "Showing up to 12 affected layers. Metrics lines mark the baseline and advance.",
+    "before": "Before",
+    "after": "After",
+    "advanceValue": "Advance {{value}}",
+    "selectFirst": "Select 1–512 glyphs in a Font tab.",
+    "approximated": "{{count}} layers required polygon union and curve refitting after the curve boolean failed. Inspect their contours before applying."
   }
 }

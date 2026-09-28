@@ -17,6 +17,7 @@ import {
 import styles from './fontView.module.css'
 import { CjkBatchDialog } from './CjkBatchDialog'
 import { GlyphSearch } from './GlyphSearch'
+import { useUiStore } from '../../stores/uiStore'
 
 const SORTS: readonly GlyphSort[] = [
   'Order',
@@ -143,6 +144,19 @@ export function GridToolbar({ summary, view }: GridToolbarProps) {
           {t('cjk.batchTitle')}
         </Button>
         <span className={styles.toolbarSpacer} />
+        <Button
+          disabled={view.selection.size === 0 || view.selection.size > 512}
+          onClick={() =>
+            useUiStore.getState().setDialog({
+              kind: 'styleEffects',
+              doc,
+              glyphs: [...view.selection],
+              master: masterId,
+            })
+          }
+        >
+          {t('styleEffects.title')}
+        </Button>
         <span className={styles.toolbarCount}>
           {t('status.glyphs', { count: shown })}
         </span>

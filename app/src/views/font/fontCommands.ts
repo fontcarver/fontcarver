@@ -81,6 +81,33 @@ export async function writeClipboard(text: string): Promise<boolean> {
 export function registerFontViewCommands(): void {
   const commands: Command[] = [
     {
+      id: 'font.styleEffects',
+      title: 'styleEffects.title',
+      menu: 'font',
+      group: 'styles',
+      when: () => {
+        const doc = activeFontDoc()
+        return (
+          doc !== null &&
+          selectionOf(doc).size > 0 &&
+          selectionOf(doc).size <= 512
+        )
+      },
+      disabledReason: 'styleEffects.selectFirst',
+      run: () => {
+        const doc = activeFontDoc()
+        if (doc === null) return
+        const master = queryFor(doc).master
+        if (!master) return
+        useUiStore.getState().setDialog({
+          kind: 'styleEffects',
+          doc,
+          glyphs: [...selectionOf(doc)],
+          master,
+        })
+      },
+    },
+    {
       id: 'edit.selectAll',
       title: 'cmd.edit.selectAll',
       menu: 'edit',

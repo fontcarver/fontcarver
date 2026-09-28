@@ -13,6 +13,8 @@ mod error;
 mod interpolate;
 mod smart;
 mod stroke;
+mod style;
+pub use style::{style_effect, StyleOptions, StyleOutcome};
 pub mod variation;
 pub use smart::{resolve_smart_font, resolve_smart_layer};
 

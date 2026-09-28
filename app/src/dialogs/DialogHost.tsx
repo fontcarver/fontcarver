@@ -9,6 +9,7 @@ import { NewFontDialog } from './NewFontDialog'
 import { PreferencesDialog } from './PreferencesDialog'
 import { RecoveryDialog } from './RecoveryDialog'
 import { SimplifyDialog } from './SimplifyDialog'
+import { StyleEffectsDialog } from '../views/style/StyleEffectsDialog'
 
 /**
  * Mounts whichever modal dialog the UI store has open. Dialogs are mounted, not
@@ -42,5 +43,16 @@ export function DialogHost() {
       return <SimplifyDialog />
     case 'expandStroke':
       return <ExpandStrokeDialog />
+    case 'styleEffects':
+      return summary ? (
+        <StyleEffectsDialog
+          key={dialog.doc}
+          doc={dialog.doc}
+          glyphs={dialog.glyphs}
+          master={dialog.master}
+          upem={summary.units_per_em}
+          onClose={() => useUiStore.getState().setDialog(null)}
+        />
+      ) : null
   }
 }

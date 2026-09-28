@@ -6,7 +6,8 @@ not repeat them.
 
 Last updated: 2026-09-28 (remaining P5 work resumed). Branch: `p5-color-authoring`
 (no push, no main merge). Static SVG and COLRv1 authoring are implemented within
-their acceptance boundaries. Frontend checks passed: 143 test files, 1,153 tests;
+their acceptance boundaries. Batch style effects are now verified too.
+Frontend checks passed: 144 test files, 1,156 tests;
 TypeScript, lint, production build and formatting are clean.
 The user requested continuing all remaining tasks without confirmation.
 
@@ -43,7 +44,7 @@ separate P5 design requirement, now verified in the audit’s supplemental secti
 | COLR/CPAL authoring              | Complete within static COLR v0 / CPAL v0/v1 boundaries; synthetic/real-font exports, browser editing and persistence verified | [p5-color-acceptance](p5-color-acceptance.md) |
 | SVG colour documents            | Static subset verified; independent export/browser and regression checks passed | [p5-svg-acceptance](p5-svg-acceptance.md) |
 | COLRv1 paint graphs              | Static graph editor, shared codecs, palettes, persistence and independent binary/pixel checks verified | [p5-colrv1-acceptance](p5-colrv1-acceptance.md) |
-| Geometry and construction        | Not started                                                                                                                   | plan block "Geometry and construction"            |
+| Geometry and construction        | Batch style effects verified; non-destructive effects and remaining smart geometry next | [p5-style-effects-acceptance](p5-style-effects-acceptance.md) |
 | Compare/merge/paste special      | Not started                                                                                                                   | plan block "Document workflows"                   |
 | Scripting and plugins            | Not started                                                                                                                   | plan block "Automation"                           |
 | Remaining formats, profiles, CLI | Not started                                                                                                                   | plan block "Formats/export"                       |
@@ -59,7 +60,9 @@ native-platform run.
 
 ## Next step
 
-Continue geometry/construction and the remaining P5 work sequence. Do not repeat the earlier task-boundary stop: the
+Continue with non-destructive layer effects, smart geometry and the remaining
+P5 work sequence. Batch styles passed 658 Rust tests, 32 independent synthetic
+exports, 19,212 real-font sampling checks and bilingual browser verification. Do not repeat the earlier task-boundary stop: the
 2026-09-28 instruction supersedes it. See [COLRv1 acceptance](p5-colrv1-acceptance.md), [SVG usage](user/svg.md),
 [acceptance](p5-svg-acceptance.md) and the [P5 plan](superpowers/plans/2026-09-22-p5-professional-finish.md).
 

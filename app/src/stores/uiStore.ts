@@ -85,6 +85,12 @@ export type DialogState =
   | { readonly kind: 'recovery'; readonly entries: readonly RecoveryEntry[] }
   | { readonly kind: 'simplify' }
   | { readonly kind: 'expandStroke' }
+  | {
+      readonly kind: 'styleEffects'
+      readonly doc: DocId
+      readonly glyphs: GlyphId[]
+      readonly master: MasterId
+    }
 
 /** Inclusive pixel bounds of the resizable panels. */
 export const PANEL_BOUNDS: Record<PanelId, { min: number; max: number }> = {

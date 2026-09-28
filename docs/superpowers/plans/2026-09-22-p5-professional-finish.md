@@ -31,7 +31,10 @@ by the earlier user instruction; headless browser testing and builds are allowed
       and four-container independent acceptance. See [record](../../p5-svg-acceptance.md).
 - [x] Static COLRv1 paint graphs, semantic binary import/export and persistence.
       See [record](../../p5-colrv1-acceptance.md); variable paints remain raw.
-- [ ] Geometry and construction: style effects, non-destructive effects and smart
+- [x] Batch style effects: eight editable presets, captured selection/master preview,
+      atomic undo/backups and independent native/export acceptance. See
+      [record](../../p5-style-effects-acceptance.md).
+- [ ] Geometry and construction: non-destructive effects and smart
       geometry, raster-image trace, background images, optical spacing/kerning, CJK
       construction helpers and remaining editor/metrics/variable requirements.
 - [ ] Document workflows: compare/family comparison, merge, paste special,

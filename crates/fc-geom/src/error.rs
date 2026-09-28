@@ -3,6 +3,9 @@ use crate::Incompatibility;
 /// Errors returned by geometry operations.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Invalid or excessive style-effect input.
+    #[error("style effect: {0}")]
+    InvalidStyle(String),
     /// Invalid coordinates or sources prevent interpolation.
     #[error("invalid design space: {0}")]
     DesignSpace(String),

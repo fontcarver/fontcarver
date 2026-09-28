@@ -854,7 +854,7 @@ pub(crate) fn fallback_remove_overlap(
     Ok(interleave_open_contours(contours, output))
 }
 
-fn fit_polygon_to_cubics(polygon: &[[f64; 2]], accuracy: f64) -> Option<BezPath> {
+pub(crate) fn fit_polygon_to_cubics(polygon: &[[f64; 2]], accuracy: f64) -> Option<BezPath> {
     let fit = PolylineFit::new(polygon)?;
     let mut result = fit_to_bezpath(&fit, accuracy);
     result.close_path();

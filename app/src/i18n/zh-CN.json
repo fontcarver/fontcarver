@@ -2023,5 +2023,45 @@
     "preview": "SVG 预览：{{glyph}}",
     "previewUnavailable": "输入有效的 SVG 和对应的字形绑定以预览。",
     "previewNote": "静态图像预览使用 SVG 坐标（Y 轴正方向向下）。文本和字形网格目前显示单色轮廓。"
+  },
+  "styleEffects": {
+    "title": "样式效果",
+    "selection": "应用于所选的 {{count}} 个字形。",
+    "scope": "这些效果会修改主图层轮廓与锚点。组件会按修改前的轮廓分解；引用所修改字形的未选中复合字形也会随之变化。",
+    "preset": "起始预设",
+    "custom": "自定义",
+    "presets": {
+      "weight": "加重",
+      "lighten": "减重",
+      "condense": "压窄",
+      "extend": "加宽",
+      "oblique": "倾斜",
+      "smallCaps": "小型大写",
+      "subscript": "下标",
+      "superscript": "上标"
+    },
+    "fields": {
+      "scaleX": "宽度（%）",
+      "scaleY": "高度（%）",
+      "weightX": "横向加重（单位）",
+      "weightY": "纵向加重（单位）",
+      "oblique": "倾斜角度（度）",
+      "moveX": "横向移动（单位）",
+      "moveY": "纵向移动（单位）"
+    },
+    "weightHelp": "横纵加重值须同时为零，或同号且绝对值介于 0.1 与 500 之间。正值加重，负值减重。",
+    "scaleAdvance": "随轮廓缩放字宽",
+    "center": "在字宽内居中轮廓",
+    "backup": "将原始轮廓与锚点保存在备份图层中",
+    "variableHelp": "所有主图层将使用同一组参数。加减重可能改变节点数，请在导出可变字体前检查主图层兼容性。",
+    "invalidNumber": "请在每个数值字段中输入有限数值。",
+    "review": "样式预览",
+    "decomposed": "将分解 {{count}} 个图层。",
+    "examples": "最多显示 12 个受影响的图层。度量线标示基线与字宽。",
+    "before": "修改前",
+    "after": "修改后",
+    "advanceValue": "字宽 {{value}}",
+    "selectFirst": "请在字体标签页中选择 1–512 个字形。",
+    "approximated": "{{count}} 个图层的曲线布尔运算失败，已使用多边形并集并重新拟合曲线。请在应用前检查这些图层的轮廓。"
   }
 }

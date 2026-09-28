@@ -62,6 +62,20 @@ afterEach(() => {
 })
 
 describe('font view commands', () => {
+  it('captures style selection and master before later grid changes', async () => {
+    const doc = openFontTab()
+    expect(isCommandEnabled('font.styleEffects')).toBe(false)
+    useDocumentStore.getState().setMaster(doc, 'chosen-master')
+    useDocumentStore.getState().setSelection(doc, [1, 3])
+    await runCommandAndSettle('font.styleEffects')
+    useDocumentStore.getState().setSelection(doc, [5])
+    expect(useUiStore.getState().dialog).toEqual({
+      kind: 'styleEffects',
+      doc,
+      glyphs: [1, 3],
+      master: 'chosen-master',
+    })
+  })
   it('selects every glyph of the current filter, paging the kernel', async () => {
     const doc = openFontTab()
     useDocumentStore.getState().setMatchCount(doc, 2_500)

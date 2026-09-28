@@ -154,6 +154,8 @@ fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
     CjkBatchParams::export_all(config)?;
     CjkBatchResult::export_all(config)?;
     CjkBatchExample::export_all(config)?;
+    StyleBatchParams::export_all(config)?;
+    StyleBatchResult::export_all(config)?;
     CjkFilter::export_all(config)?;
     fc_model::CidInfo::export_all(config)?;
     CidState::export_all(config)?;
