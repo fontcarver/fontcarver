@@ -12,6 +12,7 @@ bench = false
 
 [dependencies]
 fc-model = { path = "../fc-model" }
+flate2.workspace = true
 kurbo.workspace = true
 read-fonts.workspace = true
 sha2.workspace = true

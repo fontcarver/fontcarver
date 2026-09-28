@@ -18,6 +18,44 @@ const MAX_DEPTH: usize = 64;
 const MAX_DIAGNOSTICS: usize = 100;
 const ROOT: &str = "fontcarver-memory.fea";
 
+/// Check generated FEA against the same parse and expansion budgets as the editor.
+/// This does not compile layout or resolve files, and never expands glyph classes.
+pub fn check_feature_source_budget(
+    source: &str,
+    names: &[fc_model::GlyphName],
+) -> Result<(), String> {
+    if let Some(message) = source_limit(source) {
+        return Err(message.to_owned());
+    }
+    let glyphs =
+        GlyphMap::new(names.iter().map(AsRef::<str>::as_ref)).map_err(|error| error.to_string())?;
+    let text: Arc<str> = source.into();
+    let resolver = move |path: &Path| {
+        if path == Path::new(ROOT) {
+            Ok(Arc::clone(&text))
+        } else {
+            Err(SourceLoadError::new(
+                path.to_path_buf(),
+                "External includes are disabled.",
+            ))
+        }
+    };
+    let (tree, diagnostics) =
+        fea_rs::parse::parse_root(ROOT.into(), Some(&glyphs), Box::new(resolver))
+            .map_err(|error| error.to_string())?;
+    if let Some(error) = diagnostics
+        .diagnostics()
+        .iter()
+        .find(|d| d.level == fea_rs::Level::Error)
+    {
+        return Err(error.text().to_owned());
+    }
+    if let Some(range) = work_budget::exceeded(&tree) {
+        return Err(format!("decompiled feature class/rule expansion exceeds the compiler work budget at bytes {}..{}", range.start, range.end));
+    }
+    Ok(())
+}
+
 /// Diagnostic severity independent of a particular parser implementation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FeatureDiagnosticSeverity {

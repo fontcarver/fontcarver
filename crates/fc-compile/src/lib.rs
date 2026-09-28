@@ -24,6 +24,7 @@ mod preprocess;
 mod preserve;
 mod shaping;
 mod source;
+mod svg;
 mod tt;
 mod variable;
 mod variable_cff;
@@ -39,8 +40,8 @@ pub use feature_generation::{
     freeze_feature_source, generate_feature_source, generation_is_stale, GeneratedFeatureSource,
 };
 pub use feature_validation::{
-    validate_feature_candidate, FeatureDiagnostic, FeatureDiagnosticSeverity,
-    FeatureDiagnosticSpan, FeatureValidation,
+    check_feature_source_budget, validate_feature_candidate, FeatureDiagnostic,
+    FeatureDiagnosticSeverity, FeatureDiagnosticSpan, FeatureValidation,
 };
 pub use instance::instantiate;
 pub use kerning::horizontal_kerning_warnings;

@@ -73,6 +73,9 @@ pub(super) fn remove(font: &mut Font, names: &[GlyphName]) -> Result<(), Error> 
     if let Some(color) = &mut font.color {
         color.retain_glyphs(|name| !seen.contains(name));
     }
+    if let Some(svg) = &mut font.svg {
+        svg.retain_glyphs(|name| !seen.contains(name));
+    }
     for name in names {
         font.remove_glyph(name);
         for members in font
@@ -144,6 +147,9 @@ pub(super) fn duplicate(
         if let Some(layers) = color.glyphs.get(source).cloned() {
             color.glyphs.insert(name.clone(), layers);
         }
+    }
+    if let Some(svg) = &mut font.svg {
+        svg.duplicate_glyph(source, name);
     }
     // The copy has the same shape, so its placement data applies unchanged.
     if let Some(math) = &mut font.math {

@@ -1982,5 +1982,33 @@
     "layerRange": "Layers {{first}}–{{last}} of {{total}}",
     "previousLayers": "Previous layers",
     "nextLayers": "Next layers"
+  },
+  "svg": {
+    "title": "SVG color glyphs",
+    "edit": "Edit SVG color glyphs",
+    "decode": "Make imported SVG editable",
+    "description": "Edit static SVG artwork and bind element IDs to glyph names. Glyph IDs are updated automatically during export.",
+    "status": {
+      "Absent": "This font has no SVG documents.",
+      "Deleted": "The SVG table has been deleted.",
+      "Imported": "The imported SVG table is preserved as original bytes.",
+      "Editable": "SVG documents are editable."
+    },
+    "create": "Create SVG document",
+    "replaceImported": "Replace imported SVG",
+    "delete": "Delete SVG table",
+    "pendingDeletion": "The SVG table will be removed when applied.",
+    "add": "Add document",
+    "remove": "Remove document",
+    "document": "Document",
+    "count": "of {{count}}",
+    "bindings": "Glyph bindings",
+    "bindingHelp": "One binding per line: glyphName = elementId. The element ID must exist in this document; a glyph can belong to only one document.",
+    "invalidBindings": "Enter one unique glyphName = elementId binding per line.",
+    "source": "SVG source",
+    "previewGlyph": "Preview glyph name",
+    "preview": "SVG preview: {{glyph}}",
+    "previewUnavailable": "Enter valid SVG and a matching glyph binding to preview.",
+    "previewNote": "Static image preview, using SVG coordinates (positive Y points down). Text and grid previews currently use monochrome outlines."
   }
 }

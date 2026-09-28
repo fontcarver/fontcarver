@@ -1982,5 +1982,33 @@
     "previewForeground": "预览前景色",
     "previewNote": "预览使用默认母版和所选调色板。前景色仅影响此预览。",
     "emptyPreview": "添加多层字形以预览其颜色。"
+  },
+  "svg": {
+    "title": "SVG 彩色字形",
+    "edit": "编辑 SVG 彩色字形",
+    "decode": "将导入的 SVG 转为可编辑数据",
+    "description": "编辑静态 SVG 图形，将元素 ID 绑定到字形名称。导出时会自动更新字形 ID。",
+    "status": {
+      "Absent": "此字体没有 SVG 文档。",
+      "Deleted": "SVG 表已删除。",
+      "Imported": "导入的 SVG 表以原始数据保留。",
+      "Editable": "SVG 文档可编辑。"
+    },
+    "create": "创建 SVG 文档",
+    "replaceImported": "替换导入的 SVG",
+    "delete": "删除 SVG 表",
+    "pendingDeletion": "应用后将删除 SVG 表。",
+    "add": "添加文档",
+    "remove": "移除文档",
+    "document": "文档",
+    "count": "共 {{count}} 个",
+    "bindings": "字形绑定",
+    "bindingHelp": "每行一个绑定：字形名称 = 元素ID。元素 ID 必须存在于此文档中；每个字形只能属于一个文档。",
+    "invalidBindings": "请每行输入一个“字形名称 = 元素ID”绑定，字形名称不能重复。",
+    "source": "SVG 源码",
+    "previewGlyph": "预览字形名称",
+    "preview": "SVG 预览：{{glyph}}",
+    "previewUnavailable": "输入有效的 SVG 和对应的字形绑定以预览。",
+    "previewNote": "静态图像预览使用 SVG 坐标（Y 轴正方向向下）。文本和字形网格目前显示单色轮廓。"
   }
 }

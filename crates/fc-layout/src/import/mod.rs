@@ -352,6 +352,10 @@ impl LayoutImport {
                 None,
                 "decompiled source byte limit exceeded".into(),
             );
+        } else if result.blockers.is_empty() {
+            if let Err(error) = fc_compile::check_feature_source_budget(&source, names) {
+                result.block("source", None, error);
+            }
         }
         result.source = source;
         result

@@ -142,7 +142,7 @@ describe('GlyphView', () => {
       name: 'Glyph aacute, U+00E1',
     })
 
-    expect(canvas).toHaveFocus()
+    await waitFor(() => expect(canvas).toHaveFocus())
     canvas.blur()
     expect(canvas).not.toHaveFocus()
     await user.click(canvas)

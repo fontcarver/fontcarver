@@ -13,6 +13,8 @@ mod hints;
 mod tt_hints;
 pub use tt_hints::*;
 mod color;
+mod svg;
+pub use svg::*;
 mod kerning;
 mod layout;
 mod layout_conversion;

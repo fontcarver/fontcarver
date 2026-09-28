@@ -223,3 +223,24 @@ supersedes raw tables. Unsupported COLRv1 and malformed inputs retain both
 original tables atomically under the existing raw preservation policy. Legacy
 `Layer.color_layers` remains an opaque outline/paint container; it is not the
 named COLR v0 model and is not synthesized into these tables.
+
+### SVG color documents
+
+`font.svg` defaults to null. `SvgTable.documents` is an ordered array of
+`{ source, glyphs }` records. `source` is UTF-8 SVG XML; `glyphs` maps persistent
+font glyph names to XML element IDs. Multiple glyphs may share a document or
+an element. Font glyph IDs are generated at binary export; document IDs need
+not match current glyph positions. Renaming, duplicating and deleting glyphs
+update the name bindings while preserving shared definitions in the source.
+
+`font.svg_table_owned` defaults to false. When true, null `svg` explicitly
+removes the `SVG ` table instead of restoring imported bytes. Unsupported or
+malformed imports retain their original raw table and leave ownership false.
+Undo captures both fields. UFO private metadata stores `svg_json` as JSON text
+and `svg_table_owned` independently, including explicit deletions.
+
+Editable XML is the bounded static subset documented in `docs/user/svg.md`.
+Documents are limited to 2 MiB each, 32 MiB total, 100,000 XML nodes and 128
+nesting levels. Cyclic references and expansion above 1,000,000 elements are
+rejected. The binary writer applies the same 32 MiB output budget after
+adapting shared documents to the compiled glyph order.

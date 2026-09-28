@@ -25,6 +25,7 @@ mod math;
 mod ps;
 pub mod query;
 mod smart;
+pub mod svg;
 mod tt;
 
 pub use anchor::{Anchor, AnchorKind};
@@ -67,6 +68,7 @@ pub use query::{
     layer_bbox, masters_compatible, validate, Incompatibility, Issue,
 };
 pub use smart::{smart_layer, SmartAxis};
+pub use svg::{SvgDocument, SvgTable};
 pub use tt::TtInstructionBinding;
 
 pub use query::UnicodeIndex;

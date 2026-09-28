@@ -1,0 +1,58 @@
+.editor,
+.editor fieldset,
+.editor label,
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.editor fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.editor p,
+.preview {
+  margin: 0;
+}
+.editor p,
+.editor figcaption {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.row label {
+  flex-direction: row;
+  align-items: center;
+}
+.editor input,
+.editor textarea {
+  box-sizing: border-box;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+  color: var(--color-text);
+  padding: var(--space-2);
+  font: var(--text-size-sm) var(--font-mono);
+}
+.editor textarea {
+  resize: vertical;
+  width: 100%;
+  tab-size: 2;
+}
+.editor input[type='number'] {
+  width: 90px;
+}
+.canvas {
+  width: 100%;
+  height: 220px;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}

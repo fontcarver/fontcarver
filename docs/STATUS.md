@@ -4,10 +4,11 @@ The single entry point for "where is the project". Update this file at every
 pause and every milestone commit. It links to the detailed records; it does
 not repeat them.
 
-Last updated: 2026-09-26 (COLR v0 / CPAL acceptance complete). Branch: `p5-color-authoring`
-(no push, no main merge). MATH acceptance is committed as `6f4ef4f`.
-Stopped at the user's requested task boundary after completing COLR/CPAL
-acceptance and updating the TODOs. See the [acceptance record](p5-color-acceptance.md).
+Last updated: 2026-09-28 (remaining P5 work resumed). Branch: `p5-color-authoring`
+(no push, no main merge). Static SVG authoring is implemented and verified within
+[the documented subset](p5-svg-acceptance.md). Frontend checks passed: 142 test
+files, 1,150 tests; TypeScript, lint, production build and formatting are clean.
+The user requested continuing all remaining tasks without confirmation.
 
 ## Phases
 
@@ -40,7 +41,8 @@ separate P5 design requirement, now verified in the audit’s supplemental secti
 | Hinting (TT/PS editors, Type 1)  | Static TT and PS editing, Type 1 hint round trips and export preprocessing done; variable hinting, flex, per-FD dicts open    | [p5-hinting-checkpoint](p5-hinting-checkpoint.md) |
 | MATH authoring                   | Complete within the acceptance boundaries: editor, undo/save/reopen/export, FontTools/HarfBuzz and large-font checks verified | [p5-math-acceptance](p5-math-acceptance.md)       |
 | COLR/CPAL authoring              | Complete within static COLR v0 / CPAL v0/v1 boundaries; synthetic/real-font exports, browser editing and persistence verified | [p5-color-acceptance](p5-color-acceptance.md) |
-| SVG colour documents            | Not started; pending user resumption | plan block "Remaining OpenType authoring" |
+| SVG colour documents            | Static subset verified; independent export/browser and regression checks passed | [p5-svg-acceptance](p5-svg-acceptance.md) |
+| COLRv1 paint graphs              | Next queued implementation | plan block "Remaining OpenType authoring" |
 | Geometry and construction        | Not started                                                                                                                   | plan block "Geometry and construction"            |
 | Compare/merge/paste special      | Not started                                                                                                                   | plan block "Document workflows"                   |
 | Scripting and plugins            | Not started                                                                                                                   | plan block "Automation"                           |
@@ -49,17 +51,18 @@ separate P5 design requirement, now verified in the audit’s supplemental secti
 | Release packaging and CI         | Not started                                                                                                                   | plan block "Release"                              |
 | Final acceptance                 | Not started                                                                                                                   | plan block "Final row-by-row acceptance"          |
 
-Known open defect: the pre-existing Tibetan layout expansion-budget test
-failure, tracked in the P5 plan; the workspace test suite is not claimed green
-until it is diagnosed.
+The Tibetan layout expansion-budget defect is fixed: conversion eligibility
+now checks the compiler's work budget while retaining the imported lookup
+inventory and original tables. Affected Rust regression checks passed (1,032
+tests; two pre-existing ignored acceptance tests). This was not a full-workspace
+native-platform run.
 
 ## Next step
 
-No further task is active. Per the user's instruction, stop after the completed
-COLR/CPAL task. SVG colour documents are the next queued item when resumed.
-See the [color user guide](user/color.md) and [acceptance record](p5-color-acceptance.md).
-MATH acceptance is also complete; see
-[the user guide](user/math.md) and [verification record](p5-math-acceptance.md).
+Continue COLRv1 and the
+remaining P5 work sequence. Do not repeat the earlier task-boundary stop: the
+2026-09-28 instruction supersedes it. See [SVG usage](user/svg.md),
+[acceptance](p5-svg-acceptance.md) and the [P5 plan](superpowers/plans/2026-09-22-p5-professional-finish.md).
 
 The bilingual website is also complete, with deployment still pending. Its
 [completion record](superpowers/plans/2026-09-24-website.md) covers the website

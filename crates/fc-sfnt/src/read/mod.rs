@@ -251,6 +251,7 @@ fn read_face(face: &FontRef<'_>, warnings: &mut Vec<Warning>) -> Result<Font, Er
     font.extra.raw_tables = raw::raw_tables(face);
     decode_math(&mut font, &glyph_names, warnings);
     decode_color(&mut font, &glyph_names, warnings);
+    decode_svg(&mut font, &glyph_names, warnings);
     if [
         *b"GSUB", *b"GPOS", *b"GDEF", *b"BASE", *b"kern", *b"kerx", *b"morx", *b"mort", *b"JSTF",
     ]
@@ -354,5 +355,23 @@ fn infer_smooth_points(contours: &mut [fc_model::Contour]) {
         for (point, smooth) in contour.points.iter_mut().zip(smooth) {
             point.smooth = smooth;
         }
+    }
+}
+
+fn decode_svg(font: &mut Font, order: &[fc_model::GlyphName], warnings: &mut Vec<Warning>) {
+    let tag = fc_model::Tag(*b"SVG ");
+    let Some(bytes) = font.extra.raw_tables.get(&tag) else {
+        return;
+    };
+    match crate::svg::read_table(bytes, order) {
+        Ok(svg) => {
+            font.svg = Some(svg);
+            font.svg_table_owned = true;
+            font.extra.raw_tables.remove(&tag);
+        }
+        Err(error) => warnings.push(Warning {
+            code: "svg-not-editable",
+            message: format!("SVG retained as imported bytes: {error}"),
+        }),
     }
 }

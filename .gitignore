@@ -29,3 +29,6 @@ app/playwright-report/
 /.superpowers/
 /.worktrees/
 crates/*/bindings/
+
+# Python tooling
+__pycache__/

@@ -73,7 +73,7 @@ uses the repository's existing licensed fixtures; no new binary fixture is added
 | --- | --- |
 | SourceSans3Min / SourceSerif4Min | Blocked: retained empty language/script structures and `size` FeatureParams |
 | NotoSans-Regular | Blocked: `ss03` FeatureParams; unconverted GPOS rendering may also exceed the source limit |
-| NotoSerifTibetan-Regular | 1182 lookups parsed; complete source compiles after class interning. GPOS canonical equivalence is conservatively unproven, so conversion is rejected |
+| NotoSerifTibetan-Regular | 1182 lookups parsed and inspectable; generated source exceeds the shared compiler expansion budget, so conversion is rejected before compilation |
 | DejaVuSans | Blocked: legacy `kern`, a contour-point anchor, and unused mark attachment dependencies |
 
 These corpus rejections are preservation results, not evidence of successful

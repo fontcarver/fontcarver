@@ -170,6 +170,9 @@ fn merge_raw_tables(
             continue;
         }
         // Editable MATH, including an explicit deletion, supersedes imported bytes.
+        if *tag == Tag(*b"SVG ") && crate::svg::owned(font) {
+            continue;
+        }
         if [Tag(*b"COLR"), Tag(*b"CPAL")].contains(tag) && crate::color::owned(font) {
             continue;
         }
@@ -239,7 +242,8 @@ fn warn_tables_not_preserved(font: &Font, warnings: &mut Vec<ExportWarning>) {
             !(*tag == DSIG
                 || VARIATION_TAGS.contains(tag)
                 || (*tag == Tag(*b"MATH") && crate::math::owned(font))
-                || ([Tag(*b"COLR"), Tag(*b"CPAL")].contains(tag) && crate::color::owned(font)))
+                || ([Tag(*b"COLR"), Tag(*b"CPAL")].contains(tag) && crate::color::owned(font))
+                || (*tag == Tag(*b"SVG ") && crate::svg::owned(font)))
         })
         .collect();
     if !tags.is_empty() {

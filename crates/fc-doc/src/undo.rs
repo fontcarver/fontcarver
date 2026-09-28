@@ -19,6 +19,8 @@ pub const DEFAULT_MEMORY_BUDGET: usize = 512 * 1024 * 1024;
 /// A structurally shared value restored by undo or redo.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Snapshot {
+    /// Editable SVG documents and raw-table ownership.
+    Svg(Option<Arc<fc_model::SvgTable>>, bool),
     /// Editable mathematical typesetting data and raw-table ownership.
     Math(Option<Arc<fc_model::MathTable>>, bool),
     /// Editable COLR/CPAL data and raw-table ownership.
@@ -222,6 +224,12 @@ impl UndoStack {
 
 pub(crate) fn capture(font: &Font, impact: &Impact) -> Vec<Snapshot> {
     let mut snapshots = Vec::new();
+    if impact.svg {
+        snapshots.push(Snapshot::Svg(
+            font.svg.clone().map(Arc::new),
+            font.svg_table_owned,
+        ));
+    }
     if impact.color {
         snapshots.push(Snapshot::Color(
             font.color.clone().map(Arc::new),
@@ -301,6 +309,10 @@ pub(crate) fn capture(font: &Font, impact: &Impact) -> Vec<Snapshot> {
 pub(crate) fn restore(font: &mut Font, snapshots: &[Snapshot]) {
     for snapshot in snapshots {
         match snapshot {
+            Snapshot::Svg(svg, owned) => {
+                font.svg = svg.as_ref().map(|value| (**value).clone());
+                font.svg_table_owned = *owned;
+            }
             Snapshot::Color(color, owned) => {
                 font.color = color.as_ref().map(|value| (**value).clone());
                 font.color_tables_owned = *owned;
@@ -494,6 +506,7 @@ fn restore_bitmap_glyph(
 fn same_snapshot_key(left: &Snapshot, right: &Snapshot) -> bool {
     match (left, right) {
         (Snapshot::Math(..), Snapshot::Math(..)) => true,
+        (Snapshot::Svg(..), Snapshot::Svg(..)) => true,
         (Snapshot::Color(..), Snapshot::Color(..)) => true,
         (Snapshot::Cid(_), Snapshot::Cid(_)) => true,
         (Snapshot::DesignSpace(_), Snapshot::DesignSpace(_)) => true,
@@ -554,6 +567,7 @@ fn estimate_entry(inverse: &[Snapshot], forward: &[Snapshot]) -> usize {
 
 fn estimate_snapshot(snapshot: &Snapshot) -> usize {
     match snapshot {
+        Snapshot::Svg(value, _) => value.as_ref().map_or(8, |value| value.estimated_bytes()),
         Snapshot::Color(value, _) => value
             .as_ref()
             .map_or(8, |value| color::estimated_bytes(value)),

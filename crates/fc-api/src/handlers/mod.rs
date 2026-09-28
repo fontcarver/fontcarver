@@ -17,6 +17,7 @@ pub(crate) mod problems;
 pub(crate) mod recipe;
 pub(crate) mod session;
 pub(crate) mod shaping;
+pub(crate) mod svg;
 pub(crate) mod tt_hints;
 pub(crate) mod variation;
 

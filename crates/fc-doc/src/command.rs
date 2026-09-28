@@ -20,6 +20,8 @@ mod glyphs;
 mod hints;
 pub use hints::HintCommand;
 mod color;
+mod svg;
+pub use svg::SvgCommand;
 mod kerning;
 mod layers;
 pub use color::ColorCommand;
@@ -60,6 +62,8 @@ pub enum Command {
     Math(MathCommand),
     /// Edit font-wide color palettes and outline compositions.
     Color(ColorCommand),
+    /// Edit font-wide SVG color glyph documents.
+    Svg(SvgCommand),
     /// Save source text without compiling or changing effective layout authority.
     SetFeatureDraft {
         /// Current persistent feature editor revision.

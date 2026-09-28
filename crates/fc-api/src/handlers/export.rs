@@ -78,6 +78,7 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
     }
     let math_authored = font.math.is_some();
     let color_authored = font.color.is_some();
+    let svg_authored = font.svg.is_some();
     if params.options.format == ExportFormat::Otb {
         if font.bitmap_strikes.is_empty() {
             return Err(ApiError::invalid_params(
@@ -87,6 +88,8 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
         // OTB is bitmap-only; source outlines and layout remain in the native document.
         font.extra = Default::default();
         font.features = Default::default();
+        font.svg = None;
+        font.svg_table_owned = true;
         font.color = None;
         font.color_tables_owned = true;
         font.math = None;
@@ -103,6 +106,9 @@ fn run(api: &Api, params: ExportParams) -> Result<ExportReport, ApiError> {
 
     let mut warnings = Vec::new();
     let mut tables = Vec::new();
+    if svg_authored && !carries_math(params.options.format) {
+        warnings.push(ExportWarning { code: "svg-not-exported".into(), message: "This format does not store editable SVG documents; keep the native document or export an OpenType font to retain them.".into() });
+    }
     if color_authored && !carries_math(params.options.format) {
         warnings.push(ExportWarning {
             code: "color-not-exported".into(),

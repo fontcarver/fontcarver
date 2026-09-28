@@ -1,7 +1,7 @@
 # P5 professional finish
 
-Status: resumed on 2026-09-26 for MATH acceptance, now complete within
-[its verified boundaries](../../p5-math-acceptance.md). The P5 scope was
+Status: resumed on 2026-09-28 for the remaining work. MATH, COLR v0/CPAL
+and the static SVG authoring subset have acceptance records. The P5 scope was
 authorized immediately after P4; the remaining work is not complete. Current
 progress and next actions: [STATUS](../../STATUS.md).
 P4 checkpoint: `a3b2f8f`; its supported boundaries and evidence are recorded in
@@ -27,9 +27,10 @@ by the earlier user instruction; headless browser testing and builds are allowed
 - [x] COLR v0 / CPAL authoring: palettes, layers, persistence, four export
       containers, independent FontTools and bilingual browser acceptance.
       See [record](../../p5-color-acceptance.md).
-- [ ] Remaining OpenType authoring: SVG documents and COLRv1 paint graphs,
-      semantic binary import/export and persistence. Queued; stop after COLR/CPAL
-      acceptance per the user's 2026-09-26 instruction.
+- [x] Static SVG documents: source/bindings editor, bounded codecs, persistence
+      and four-container independent acceptance. See [record](../../p5-svg-acceptance.md).
+- [ ] Remaining OpenType authoring: COLRv1 paint graphs, semantic binary
+      import/export and persistence.
 - [ ] Geometry and construction: style effects, non-destructive effects and smart
       geometry, raster-image trace, background images, optical spacing/kerning, CJK
       construction helpers and remaining editor/metrics/variable requirements.
@@ -63,8 +64,9 @@ Use independent FontTools/FreeType/HarfBuzz checks for emitted font structures a
 rendering. Test invalid/truncated/oversized binary input and stale revisions.
 Exercise user workflows in an isolated headless browser with the agent-browser
 skill, preserving the user's active desktop. Final broad checks run after feature
-integration. The pre-existing Tibetan layout expansion-budget failure is tracked
-separately and must be diagnosed during professional finish rather than hidden.
+integration. The Tibetan layout expansion-budget failure was diagnosed and fixed on
+2026-09-28: import conversion eligibility now applies the compiler budget gate,
+while the read-only lookup inventory and original tables remain available.
 
 ## Hinting implementation checkpoint
 

@@ -417,6 +417,7 @@ fn export_inner(
         .map_err(|e| Error::write("embedded bitmaps", e))?;
     let merged = crate::math::apply(&merged, font, &compiled.glyph_order, &mut warnings)?;
     let merged = crate::color::apply(&merged, font, &compiled.glyph_order, &mut warnings)?;
+    let merged = crate::svg::apply(&merged, font, &compiled.glyph_order, &mut warnings)?;
     progress(ExportStage::Write, WRITE_PERCENT);
     let sfnt = if let Some(subset) = &options.table_subset {
         subset_tables(&merged, subset)?

@@ -165,6 +165,17 @@ fn licensed_real_font_inventory_reports_actual_coverage_without_mutation() {
             layout.blockers.len(),
             layout.blockers
         );
+        if name == "NotoSerifTibetan-Regular.ttf" {
+            assert!(!layout.can_convert());
+            assert!(layout
+                .blockers
+                .iter()
+                .any(|block| block.table == "source" && block.reason.contains("work budget")));
+            assert!(
+                !layout.lookups.is_empty(),
+                "bounded inspector remains available"
+            );
+        }
         if layout.can_convert() {
             let source = layout.decompile().unwrap();
             let mut candidate = font.clone();

@@ -17,6 +17,7 @@ indexmap.workspace = true
 kurbo.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+roxmltree = "0.21.1"
 smol_str.workspace = true
 thiserror.workspace = true
 ts-rs = { workspace = true, optional = true }

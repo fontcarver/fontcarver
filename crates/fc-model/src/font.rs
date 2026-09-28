@@ -185,6 +185,12 @@ pub struct Font {
     /// Editable color data, including deletion, supersedes imported COLR/CPAL.
     #[serde(default)]
     pub color_tables_owned: bool,
+    /// Editable SVG documents and glyph bindings.
+    #[serde(default)]
+    pub svg: Option<crate::SvgTable>,
+    /// Editable SVG data, including deletion, supersedes imported bytes.
+    #[serde(default)]
+    pub svg_table_owned: bool,
     /// CID metadata when this is a CID-keyed font.
     #[serde(default)]
     pub cid: Option<CidInfo>,
@@ -220,6 +226,8 @@ impl Default for Font {
             math_table_owned: false,
             color: None,
             color_tables_owned: false,
+            svg: None,
+            svg_table_owned: false,
             cid: None,
             guides: Vec::new(),
             extra: Extra::default(),
@@ -389,6 +397,9 @@ impl Font {
         rename_group_members(&mut self.kerning_groups.side1, from, &new_name);
         if let Some(math) = &mut self.math {
             math.rename_glyph(from, &new_name);
+        }
+        if let Some(svg) = &mut self.svg {
+            svg.rename_glyph(from, &new_name);
         }
         if let Some(color) = &mut self.color {
             color.rename_glyph(from, &new_name);

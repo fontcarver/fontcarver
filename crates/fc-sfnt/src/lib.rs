@@ -7,6 +7,7 @@ pub mod color;
 pub mod error;
 pub mod math;
 mod read;
+pub mod svg;
 pub mod tt;
 pub mod write;
 
