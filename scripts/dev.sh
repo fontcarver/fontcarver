@@ -2,6 +2,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+python3 scripts/check_artifacts.py
+
 cargo run -p fc-devserver -- --port 8787 &
 devserver_pid=$!
 

@@ -105,6 +105,15 @@ pnpm --dir app check       # TypeScript
 pnpm tauri dev             # run the desktop app
 ```
 
+Local Rust builds omit debug information and incremental caches to keep the
+many integration-test executables from exhausting disk space. For debugger
+sessions, opt in with `CARGO_PROFILE_DEV_DEBUG=1` or `CARGO_PROFILE_TEST_DEBUG=1`.
+Run `python3 scripts/check_artifacts.py` before and after broad checks. The build
+budget is 20 GiB; inspect and clear old development artifacts with
+`cargo clean --profile dev` when necessary. Task scratch outputs belong under
+`.scratch/<task-id>/` and are cleaned after each small task. See the resource
+rules in [CONVENTIONS.md](CONVENTIONS.md) for retention and cleanup boundaries.
+
 ## License
 
 FontCarver is licensed under either of

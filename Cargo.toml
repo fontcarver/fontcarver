@@ -18,6 +18,18 @@ members = [
 ]
 resolver = "2"
 
+# The workspace links many integration-test binaries. Full debug information and
+# incremental caches can grow to hundreds of GiB during repeated local builds.
+# Keep normal development/test artifacts small; opt into debugger information
+# with CARGO_PROFILE_DEV_DEBUG=1 or CARGO_PROFILE_TEST_DEBUG=1 when needed.
+[profile.dev]
+debug = 0
+incremental = false
+
+[profile.test]
+debug = 0
+incremental = false
+
 [workspace.package]
 version = "0.1.0"
 edition = "2021"

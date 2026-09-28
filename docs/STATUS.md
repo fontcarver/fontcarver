@@ -11,6 +11,14 @@ Frontend checks passed: 145 test files, 1,158 tests;
 TypeScript, lint, production build and formatting are clean.
 The user requested continuing all remaining tasks without confirmation.
 
+P5-10 live smart corners are implemented and undergoing final acceptance.
+Independent checks passed 24 synthetic and eight real-font exports (369,468
+containment samples); browser bake/undo restored the four source nodes and radii.
+The broad Rust regression was interrupted to address disk use; it is not a full
+pass. [Resource maintenance](build-artifacts.md) released approximately 491 GiB of
+development artifacts, added budget checks and disabled default debug/incremental
+cache growth. Continue P5-10 verification using the new resource rules.
+
 ## Phases
 
 | Phase | Scope                                                    | Status      | Done       | Record                                                                                                                           |

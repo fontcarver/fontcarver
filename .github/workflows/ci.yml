@@ -45,7 +45,9 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-
 
       - name: Generate frontend API bindings
-        run: cargo run -p fc-api --bin gen_ts
+        run: |
+          python3 scripts/check_artifacts.py --min-free-gib 5
+          cargo run -p fc-api --bin gen_ts
 
       - name: Install pnpm 10
         uses: pnpm/action-setup@v4
@@ -60,11 +62,21 @@ jobs:
       - name: Check Rust formatting
         run: cargo fmt --all --check
 
+      - name: Test artifact-budget checks
+        run: python3 -m unittest discover -s scripts -p test_check_artifacts.py
+
       - name: Lint Rust
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: |
+          python3 scripts/check_artifacts.py --min-free-gib 5
+          cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Test Rust
-        run: cargo test --workspace
+        run: |
+          python3 scripts/check_artifacts.py --min-free-gib 5
+          cargo test --workspace
+
+      - name: Check Rust artifact budget
+        run: python3 scripts/check_artifacts.py --min-free-gib 5
 
       - name: Install frontend dependencies
         working-directory: app
@@ -121,3 +133,9 @@ jobs:
             app/test-results
           retention-days: 7
           if-no-files-found: ignore
+
+      # Hosted runners are disposable; use a smaller free-space floor than local
+      # development, with the same build and temporary-artifact capacity limits.
+      - name: Check final artifact budget
+        if: always()
+        run: python3 scripts/check_artifacts.py --min-free-gib 5
