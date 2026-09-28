@@ -186,12 +186,18 @@ fn round_stroke(
         .with_caps(opts.cap);
     let mut expanded = Vec::new();
     for (source, path) in contours.iter().zip(to_bezpaths(contours)) {
-        let stroked = stroke(
+        let mut stroked = stroke(
             path.iter(),
             &style,
             &StrokeOpts::default(),
             DEFAULT_BOOLEAN_TOLERANCE,
         );
+        // Kurbo returns round/square start caps to the first coordinate without
+        // emitting ClosePath. Stroke output is filled geometry: explicitly close
+        // it so booleans and outline writers include the resulting capsule.
+        if !stroked.is_empty() && !matches!(stroked.elements().last(), Some(PathEl::ClosePath)) {
+            stroked.close_path();
+        }
         let rings = crate::boolean::normalize_self_intersecting_contours(from_bezpaths(
             &[stroked],
             CurveKind::Cubic,

@@ -35,6 +35,7 @@ fn round_straight_stroke_is_a_stadium() {
         CurveKind::Cubic,
     )
     .expect("round stroke");
+    assert!(result.iter().all(|contour| contour.closed));
     let bounds = bbox(&result).expect("bounds");
     assert!((bounds.x0 + 10.0).abs() < 0.1);
     assert!((bounds.x1 - 110.0).abs() < 0.1);
