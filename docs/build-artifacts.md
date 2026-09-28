@@ -44,3 +44,12 @@ carried development-server acceptance directories included: 1.55 GiB of build
 artifacts and 0.18 GiB of temporary output. A first build after cleanup must rebuild
 its dependencies and will be slower; no full rebuild was needed to validate the
 read-only resource checker.
+
+At the P5-10 pause boundary, the rebuilt artifacts occupied 5.23 GiB (12,405
+files); the whole workspace occupied approximately 5.8 GiB and free space was
+692.25 GiB. Final acceptance evidence was saved in `docs/acceptance/` and
+`docs/screenshots/`. The completed P5-09/P5-10 QA directories, P5-10 scratch
+directory, 25 inventoried temporary logs and generated frontend bundle were
+removed; the shared development services on ports 8895 and 1435 were stopped.
+The final resource check passed, with the P5-10 scratch directory removed.
+Reusable Cargo artifacts were retained within budget.

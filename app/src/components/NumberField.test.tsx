@@ -5,6 +5,34 @@ import { describe, expect, it, vi } from 'vitest'
 import { NumberField } from './NumberField'
 
 describe('NumberField', () => {
+  it('reconciles a rejected value and lets the same value be retried', async () => {
+    const user = userEvent.setup()
+    const onCommit = vi.fn()
+    const { rerender } = render(
+      <NumberField
+        label="Radius"
+        value={20}
+        revision={1}
+        onCommit={onCommit}
+      />,
+    )
+    const field = screen.getByLabelText('Radius')
+    await user.clear(field)
+    await user.type(field, '800{Enter}')
+    rerender(
+      <NumberField
+        label="Radius"
+        value={20}
+        revision={2}
+        onCommit={onCommit}
+      />,
+    )
+    expect(field).toHaveValue('20')
+    await user.clear(field)
+    await user.type(field, '800{Enter}')
+    expect(onCommit).toHaveBeenCalledTimes(2)
+  })
+
   it('commits once for an edit confirmed with Enter and then blurred', async () => {
     // Enter commits, and the blur that follows commits again — by then the
     // kernel round trip has not finished, so the field still holds the old

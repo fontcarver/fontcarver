@@ -24,7 +24,7 @@ pub fn resolve_smart_layer(font: &Font, layer: &Layer) -> Result<Layer, Error> {
             remaining.push(component.clone());
             continue;
         }
-        let path = fc_model::flatten_smart_component(
+        let path = crate::flatten_smart_component(
             font,
             component.base.as_ref(),
             master,

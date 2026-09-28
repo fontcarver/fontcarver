@@ -64,7 +64,9 @@ impl Restore {
     /// Captures everything `command` is able to overwrite in `target`.
     fn capture(target: &Layer, command: &Command) -> Self {
         match command {
-            Command::MovePoints { points, .. } | Command::SetSmooth { points, .. } => {
+            Command::MovePoints { points, .. }
+            | Command::SetSmooth { points, .. }
+            | Command::SetSmartCorner { points, .. } => {
                 Self::contours(target, points.iter().map(|point| point.contour))
             }
             Command::SetPointPosition { point, .. } | Command::SetStartPoint { point, .. } => {
@@ -201,6 +203,7 @@ fn target(command: &Command) -> Option<(&GlyphName, &LayerId)> {
         Command::MovePoints { glyph, layer, .. }
         | Command::SetPointPosition { glyph, layer, .. }
         | Command::SetSmooth { glyph, layer, .. }
+        | Command::SetSmartCorner { glyph, layer, .. }
         | Command::InsertPointOnSegment { glyph, layer, .. }
         | Command::DeletePoints { glyph, layer, .. }
         | Command::ConvertSegment { glyph, layer, .. }
@@ -239,6 +242,25 @@ fn dispatch(font: &mut Font, command: &Command) -> Result<Touched, Error> {
             smooth,
             level_handles,
         } => points::set_smooth(font, glyph, layer, points, *smooth, *level_handles),
+        Command::SetSmartCorner {
+            glyph,
+            layer,
+            points,
+            radius,
+        } => {
+            if !radius.is_finite() || (*radius != 0. && radius.abs() > 8192.) {
+                return Err(Error::InvalidCommand(
+                    "smart corner radius must be finite with magnitude at most 8192".into(),
+                ));
+            }
+            let target = layer_mut(font, glyph, layer)?;
+            validate_points(&target.contours, points)?;
+            for point in points {
+                target.contours[point.contour].points[point.point].corner_radius = *radius;
+            }
+            target.validate_effects()?;
+            Ok(Touched::of_points(points))
+        }
         Command::TransformSelection {
             glyph,
             layer,

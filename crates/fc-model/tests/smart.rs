@@ -119,3 +119,23 @@ fn finite_component_transforms_cannot_overflow_resolved_coordinates() {
         .to_string()
         .contains("overflows"));
 }
+
+#[test]
+fn local_axes_blend_corner_intent_including_a_zero_crossing() {
+    let font = Font::new_empty("Smart corners", 1000);
+    let master = &font.default_master().id;
+    let mut part = glyph(master);
+    for layer in &mut part.layers {
+        layer.contours[0].points[1].corner_radius = layer.width - 250.;
+    }
+    for (width, radius) in [(25., -25.), (50., 0.), (75., 25.)] {
+        let resolved = fc_model::smart_layer(
+            &part,
+            master,
+            &[("Width".into(), width), ("Height".into(), 25.)].into(),
+        )
+        .unwrap();
+        assert_eq!(resolved.contours[0].points[1].corner_radius, radius);
+        resolved.validate_effects().unwrap();
+    }
+}

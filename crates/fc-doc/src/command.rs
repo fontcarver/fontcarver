@@ -316,6 +316,19 @@ pub enum Command {
         /// Level two adjacent handles.
         level_handles: bool,
     },
+    /// Set a live signed radius on selected source nodes; zero removes it.
+    SetSmartCorner {
+        /// Glyph containing the source nodes.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer containing the source nodes.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Stored on-curve node indexes.
+        points: Vec<PointRef>,
+        /// Positive circular radius, negative ink-trap depth, or zero to remove.
+        radius: f64,
+    },
     /// Split a geometric segment.
     InsertPointOnSegment {
         /// Glyph containing it.

@@ -7,6 +7,8 @@
 
 mod boolean;
 mod compatibility;
+mod corners;
+pub use corners::smart_corner_path;
 mod convert;
 mod edit;
 mod effects;

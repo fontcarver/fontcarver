@@ -366,7 +366,7 @@ fn pack_layer(layer: &Layer, template: &Layer) -> Result<Vec<f64>, Error> {
     values.extend(layer.vertical_origin);
     for contour in &layer.contours {
         for point in &contour.points {
-            values.extend([point.x, point.y]);
+            values.extend([point.x, point.y, point.corner_radius]);
         }
     }
     for (component, reference) in layer.components.iter().zip(&template.components) {
@@ -420,6 +420,7 @@ fn unpack_layer(layer: &mut Layer, values: &[f64]) -> Result<(), Error> {
         for point in &mut contour.points {
             point.x = next()?;
             point.y = next()?;
+            point.corner_radius = next()?;
         }
     }
     for component in &mut layer.components {

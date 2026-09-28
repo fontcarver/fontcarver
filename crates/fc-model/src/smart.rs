@@ -268,6 +268,7 @@ fn blend(template: &Layer, layers: &[(&Layer, f64)]) -> Result<Layer, Error> {
         for (pi, p) in c.points.iter_mut().enumerate() {
             p.x = value(&|l| l.contours[ci].points[pi].x)?;
             p.y = value(&|l| l.contours[ci].points[pi].y)?;
+            p.corner_radius = value(&|l| l.contours[ci].points[pi].corner_radius)?;
             p.tt_index = TtIndex::Unnumbered;
         }
     }

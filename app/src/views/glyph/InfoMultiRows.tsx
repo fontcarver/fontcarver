@@ -11,6 +11,7 @@ import {
 } from '../../editor/selection'
 
 import { commitField } from './commitField'
+import { SmartCornerField } from './SmartCornerField'
 import styles from './infoBox.module.css'
 import type { InfoRowsProps } from './infoBoxProps'
 
@@ -104,6 +105,12 @@ export function InfoMultiRows({
 
   return (
     <>
+      <SmartCornerField
+        target={target}
+        outline={outline}
+        points={points}
+        onCommitted={onCommitted}
+      />
       <NumberField
         label={t('infoBox.x')}
         value={box.x0}

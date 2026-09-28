@@ -139,6 +139,7 @@ fn populated_font_round_trips_semantically() {
         layer.contours.push(Contour {
             closed: true,
             points: vec![Point {
+                corner_radius: 0.,
                 x: 10.0,
                 y: 20.0,
                 kind: PointKind::Line,

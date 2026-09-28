@@ -8,6 +8,7 @@ use kurbo::{BezPath, PathEl};
 
 fn point(x: f64, y: f64, kind: PointKind) -> Point {
     Point {
+        corner_radius: 0.,
         x,
         y,
         kind,

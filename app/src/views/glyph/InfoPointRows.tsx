@@ -12,6 +12,7 @@ import {
 import { onlyTarget } from '../../editor/selection'
 
 import { commitField } from './commitField'
+import { SmartCornerField } from './SmartCornerField'
 import styles from './infoBox.module.css'
 import type { InfoRowsProps } from './infoBoxProps'
 
@@ -92,6 +93,12 @@ export function InfoPointRows({
           <span className={styles.rowLabel}>{t('infoBox.curve')}</span>
           <span className={styles.badge}>{t('infoBox.onCurve')}</span>
         </div>
+        <SmartCornerField
+          target={target}
+          outline={outline}
+          points={[ref]}
+          onCommitted={onCommitted}
+        />
       </>
     )
 

@@ -183,6 +183,7 @@ fn simple_contours(
                     PointKind::QCurve
                 };
                 Point {
+                    corner_radius: 0.,
                     x: f64::from(point.x),
                     y: f64::from(point.y),
                     kind,

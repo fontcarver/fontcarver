@@ -59,6 +59,43 @@ fn apply(api: &Api, params: &Value) -> Value {
 }
 
 #[test]
+fn batch_styles_bake_live_corners_and_source_writers_refuse_loss() {
+    let (api, session, doc, mut params) = fixture();
+    session
+        .with_doc_mut(doc, |d| {
+            for layer in &mut d.font.glyph_mut("A").unwrap().layers {
+                layer.contours[0].points[1].corner_radius = 40.;
+            }
+        })
+        .unwrap();
+    let before = font(&session, doc);
+    let dir = tempfile::tempdir().unwrap();
+    let sentinel = dir.path().join("retain-source");
+    std::fs::write(&sentinel, b"retain").unwrap();
+    let master = &before.default_master().id;
+    assert!(fc_formats::glyphs::write_glyphs(&before, &sentinel).is_err());
+    assert!(fc_formats::sfd::write_sfd(&before, master, &sentinel).is_err());
+    assert!(fc_formats::type1::write_type1(&before, master, &sentinel, true).is_err());
+    assert!(fc_formats::ufo::write_ufo(&before, master, &sentinel, &Default::default()).is_err());
+    assert_eq!(std::fs::read(&sentinel).unwrap(), b"retain");
+    params["options"] = json!({"scale":[1.,1.],"translate":[10.,0.],"oblique":0.,"weight":[0.,0.]});
+    apply(&api, &params);
+    let after = font(&session, doc);
+    for name in ["A", "B"] {
+        for master in &after.masters {
+            let layer = after.glyph(name).unwrap().master_layer(&master.id).unwrap();
+            assert!(!layer.has_smart_corners());
+            let shift = if name == "A" { 0. } else { 100. };
+            let path = fc_model::flatten_layer(&after, name, &master.id).unwrap();
+            assert_eq!(path.winding((359. + shift, 1.).into()), 0);
+            assert_ne!(path.winding((320. + shift, 40.).into()), 0);
+        }
+    }
+    api.call("doc.undo", json!({"doc":doc})).unwrap();
+    assert_eq!(font(&session, doc), before);
+}
+
+#[test]
 fn frozen_sources_backups_anchors_and_advances_survive_undo_native_and_export() {
     let (api, session, doc, params) = fixture();
     let before = font(&session, doc);

@@ -362,7 +362,7 @@ impl Document {
                         return Ok(());
                     };
                     for layer in &glyph.layers {
-                        if layer.effects.iter().any(|effect| effect.enabled) {
+                        if layer.has_live_geometry() {
                             fc_geom::evaluate_layer(&self.font, name, &layer.id)?;
                         }
                     }
@@ -374,7 +374,7 @@ impl Document {
                 }
                 undo::restore(&mut self.font, &inverse);
                 return Err(Error::InvalidCommand(format!(
-                    "{error}; disable or repair the layer effect before this source edit"
+                    "{error}; remove or repair the live corner or layer effect before this source edit"
                 )));
             }
         }

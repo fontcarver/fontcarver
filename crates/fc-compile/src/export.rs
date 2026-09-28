@@ -208,7 +208,7 @@ fn export_inner(
         .glyphs
         .values()
         .flat_map(|g| &g.layers)
-        .any(|l| !l.effects.is_empty())
+        .any(|l| !l.effects.is_empty() || l.has_smart_corners())
     {
         let (baked, approximated) =
             fc_geom::bake_effects_font(font).map_err(|e| Error::InvalidSource(e.to_string()))?;
@@ -216,7 +216,7 @@ fn export_inner(
             .glyphs
             .values()
             .flat_map(|g| &g.layers)
-            .any(|l| l.effects.iter().any(|e| e.enabled))
+            .any(fc_model::Layer::has_live_geometry)
         {
             return export_inner(
                 &baked,
@@ -229,7 +229,7 @@ fn export_inner(
         let mut options = options.clone();
         options.keep_tt_instructions = false;
         let mut report = export_inner(&baked, &|_| 1, &options, progress, true)?;
-        report.warnings.push(ExportWarning { code: "layer-effects-baked", message: "Live layer effects were evaluated on the export copy; source contours and stacks remain editable".into() });
+        report.warnings.push(ExportWarning { code: "layer-effects-baked", message: "Live corners and layer effects were evaluated on the export copy; source nodes and stacks remain editable".into() });
         if !approximated.is_empty() {
             report.warnings.push(ExportWarning {
                 code: "layer-effects-refitted",

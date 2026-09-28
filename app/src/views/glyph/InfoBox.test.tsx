@@ -86,6 +86,53 @@ afterEach(() => {
 })
 
 describe('InfoBox', () => {
+  it('commits a signed smart-corner radius to the source node', async () => {
+    const user = userEvent.setup()
+    const mock = transport()
+    show(selectionOf([{ kind: 'node', contour: 0, point: 1 }]))
+    const field = screen.getByLabelText('Corner radius')
+    await user.clear(field)
+    await user.type(field, '-20{Enter}')
+    await waitFor(() =>
+      expect(applied(mock)?.command).toEqual({
+        SetSmartCorner: {
+          glyph: 'a',
+          layer: 'layer-1',
+          points: [{ contour: 0, point: 1 }],
+          radius: -20,
+        },
+      }),
+    )
+  })
+
+  it('sets a shared radius on selected nodes without including anchors', async () => {
+    const user = userEvent.setup()
+    const mock = transport()
+    show(
+      selectionOf([
+        { kind: 'node', contour: 0, point: 1 },
+        { kind: 'node', contour: 0, point: 2 },
+        { kind: 'anchor', index: 0 },
+      ]),
+    )
+    const field = screen.getByLabelText('Corner radius')
+    await user.clear(field)
+    await user.type(field, '15{Enter}')
+    await waitFor(() =>
+      expect(applied(mock)?.command).toEqual({
+        SetSmartCorner: {
+          glyph: 'a',
+          layer: 'layer-1',
+          points: [
+            { contour: 0, point: 1 },
+            { contour: 0, point: 2 },
+          ],
+          radius: 15,
+        },
+      }),
+    )
+  })
+
   it('commits a node coordinate as one SetPointPosition', async () => {
     const user = userEvent.setup()
     const mock = transport()

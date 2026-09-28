@@ -2117,5 +2117,17 @@
     "capture": "Capture mask",
     "maskHelp": "Capture stores a copy in layer coordinates. Later edits to the mask glyph do not update it. Boolean operations require closed source and mask contours.",
     "layer": "Source layer"
+  },
+  "smartCorners": {
+    "bakeNotice": "This layer has live corners. Preview changes, then Bake result to turn them into ordinary curves. No additional effect is required.",
+    "radius": "Corner radius",
+    "undo": "Set smart corner",
+    "help": "Positive rounds the corner; negative cuts an ink trap; zero removes it. Bake from Layers → Layer effects.",
+    "mixed": "Mixed radii",
+    "trap": "Ink trap",
+    "round": "Round corner",
+    "none": "Source corner",
+    "remove": "Remove corner",
+    "unify": "Use the first radius for all selected nodes"
   }
 }

@@ -303,6 +303,19 @@ pub(super) fn path_op(
 ) -> Result<Touched, Error> {
     let layer_kind = layer_curve_kind(font, glyph, layer);
     let target = layer_mut(font, glyph, layer)?;
+    if target.has_smart_corners()
+        && matches!(
+            op,
+            PathOp::RemoveOverlap
+                | PathOp::Simplify(_)
+                | PathOp::ExpandStroke(_)
+                | PathOp::ConvertCurves(_)
+        )
+    {
+        return Err(Error::InvalidCommand(
+            "bake or remove smart corners before this path operation".into(),
+        ));
+    }
     let contours = &target.contours;
     let result = match op {
         PathOp::RemoveOverlap => fc_geom::remove_overlap(

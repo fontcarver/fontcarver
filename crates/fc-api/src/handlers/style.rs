@@ -107,9 +107,7 @@ pub(crate) fn run(api: &Api, params: StyleBatchParams) -> Result<StyleBatchResul
                         Some(CurveFormat::Quadratic) => CurveKind::Quadratic { max_err: 0.1 },
                         _ => CurveKind::Cubic,
                     };
-                    let contours = if layer.components.is_empty()
-                        && !layer.effects.iter().any(|e| e.enabled)
-                    {
+                    let contours = if layer.components.is_empty() && !layer.has_live_geometry() {
                         if layer.contours.len() > 4096
                             || layer.contours.iter().map(|c| c.points.len()).sum::<usize>() > 4096
                         {

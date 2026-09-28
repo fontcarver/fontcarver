@@ -14,6 +14,8 @@ export interface NumberFieldProps {
   step?: number
   /** Tooltip shown when the entry cannot be parsed. */
   invalidHint?: string
+  /** Changes after model reconciliation, including a rejected unchanged value. */
+  revision?: unknown
 }
 
 /**
@@ -29,6 +31,7 @@ export function NumberField({
   disabled = false,
   step = 1,
   invalidHint,
+  revision,
 }: NumberFieldProps) {
   const [text, setText] = useState(() => formatUnits(value))
   const [invalid, setInvalid] = useState(false)
@@ -46,8 +49,11 @@ export function NumberField({
   // Follow the model unless the user is mid-edit, which would fight them.
   useEffect(() => {
     if (pending.current === value) pending.current = null
-    if (!editing.current) setText(formatUnits(value))
-  }, [value])
+    if (!editing.current) {
+      pending.current = null
+      setText(formatUnits(value))
+    }
+  }, [value, revision])
 
   useEffect(() => {
     if (!invalid) return

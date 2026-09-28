@@ -65,12 +65,14 @@ wide-pen/small-counter regression and all independent cases still pass.
 Reproduce against an isolated development server:
 
 ```sh
-python3 scripts/p5_layer_effects_acceptance.py --output /tmp/effects-synthetic
-python3 scripts/p5_layer_effects_real_fonts.py --output /tmp/effects-real
+python3 scripts/p5_layer_effects_acceptance.py --output .scratch/p5-09/synthetic
+python3 scripts/p5_layer_effects_real_fonts.py --output .scratch/p5-09/real-fonts
 ```
 
-Reports from this run are in `/tmp/fontcarver-effects-qa/final/report.json` and
-`/tmp/fontcarver-effects-qa/real-fonts-final/real-font-results.json`.
+The [synthetic report](acceptance/p5-layer-effects/synthetic.json) and
+[real-font report](acceptance/p5-layer-effects/real-fonts.json) are retained in
+the repository. Generated fonts and isolated server data were removed when the
+shared QA service stopped at the P5-10 pause boundary.
 
 ## Browser and frontend checks
 
@@ -88,7 +90,8 @@ Axe 3.5.6 reports **zero violations and zero incomplete checks** for each dialog
 when the complete scroll body is visible at 1440×1800. Smaller scrollable views
 were also inspected visually. That older axe version misclassified clipped
 offscreen text against the dimmed page in earlier partial-scroll scans; those
-scans are retained rather than counted as clean full-dialog audits.
+scan summaries are retained in [acceptance/p5-layer-effects](acceptance/p5-layer-effects/)
+rather than counted as clean full-dialog audits.
 
 Frontend regression passed **1,158 tests in 145 files**. After final control
 layout and component extraction, the affected **18 tests** passed again, as did

@@ -50,6 +50,25 @@ derived. Compiled fonts evaluate a copy; native documents retain sources and
 stacks. Baking replaces source contours and clears the stack in one undo step.
 Other source formats currently reject unbaked stacks before touching output.
 
+P5-10 adds optional `Point.corner_radius` (default zero, omitted when zero).
+It is a finite signed font-unit distance with magnitude at most 8192. Positive
+values request a tangent circular fillet; negative values request a V-shaped ink
+trap with that mouth setback and tip depth. Only on-curve interior nodes accept
+radii; traps require closed contours. Each layer permits at most 1024 active
+corners. The original point list stays unchanged until an explicit bake.
+Magnitudes below 1e-7 font units retain metadata but evaluate as the source join,
+so interpolation can pass through zero without constructing sub-resolution arcs.
+Source-node affine edits retain the numeric radius in font units; placing a
+component transforms its already evaluated corner geometry.
+Corner metadata travels with its node through insertion/reversal and native
+history. Source-node geometry is evaluated before the layer-effect stack and
+before a parent component transform. Ink-trap direction uses the layer's nonzero
+fill, including counter contours. Colliding radii, singular tangents and corners
+that do not fit adjacent segments fail explicitly. Local smart interpolation
+interpolates signed radii; globally baked master topology must be compatible.
+Other editable source writers reject live corners before writing. Point-bound
+hint policies are the same as for other geometry-changing live effects.
+
 Feature prefixes/blocks and classes carry a persistent string `id`, independent
 of their tag, name, code or ordering. New items receive UUID v4 IDs without
 separators. Older documents may omit IDs; reading assigns missing IDs and

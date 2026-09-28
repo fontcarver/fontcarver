@@ -174,6 +174,9 @@ export function LayerEffectsEditor({
         </p>
         <p>{t('layerEffects.description')}</p>
         <p>{t('layerEffects.bakeHelp')}</p>
+        {layer.contours.some((c) =>
+          c.points.some((p) => (p.corner_radius ?? 0) !== 0),
+        ) && <p>{t('smartCorners.bakeNotice')}</p>}
         <fieldset disabled={busy} className={styles.form}>
           <legend className={styles.legend}>{t('layerEffects.stack')}</legend>
           <div className={styles.actions}>

@@ -590,6 +590,7 @@ fn restore_matching_point_metadata(result: &mut Contour, original: &Contour) {
                 && (source.y - point.y).abs() <= 1e-9
         }) {
             point.smooth = source.smooth;
+            point.corner_radius = source.corner_radius;
             point.name.clone_from(&source.name);
             point.tt_index = source.tt_index;
         }

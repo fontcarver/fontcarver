@@ -1286,6 +1286,7 @@ mod tests {
 
     fn model_point(x: f64, y: f64) -> ModelPoint {
         ModelPoint {
+            corner_radius: 0.,
             x,
             y,
             kind: PointKind::Line,

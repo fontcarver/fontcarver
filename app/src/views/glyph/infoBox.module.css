@@ -106,7 +106,7 @@
 .toggle[aria-pressed='true'] {
   border-color: transparent;
   background: var(--color-accent-soft);
-  color: var(--color-accent);
+  color: var(--color-text);
 }
 
 .badge {
@@ -114,7 +114,7 @@
   padding: 1px var(--space-1);
   border-radius: 3px;
   background: var(--color-accent-soft);
-  color: var(--color-accent);
+  color: var(--color-text);
   font-size: var(--text-size-xs);
 }
 
@@ -145,4 +145,9 @@
   color: var(--color-text-faint);
   font-size: var(--text-size-xs);
   font-variant-numeric: tabular-nums;
+}
+.cornerHelp {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
 }

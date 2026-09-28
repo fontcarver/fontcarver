@@ -17,9 +17,9 @@ fn check_layer_effects(font: &fc_model::Font) -> Result<(), Error> {
         .glyphs
         .values()
         .flat_map(|g| &g.layers)
-        .any(|l| !l.effects.is_empty())
+        .any(|l| !l.effects.is_empty() || l.has_smart_corners())
     {
-        return Err(Error::Source { format: "source export", reason: "live layer effects require native FCF save; bake or remove all stacks before exporting this source format".into() });
+        return Err(Error::Source { format: "source export", reason: "live corners and layer effects require native FCF save; bake or remove them before exporting this source format".into() });
     }
     Ok(())
 }

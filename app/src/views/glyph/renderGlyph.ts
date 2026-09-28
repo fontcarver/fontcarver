@@ -162,7 +162,11 @@ export function renderGlyph(
 
   if (!options.hideActive) {
     const effects =
-      scene.layer?.effects?.some((effect) => effect.enabled) ?? false
+      (scene.layer?.effects?.some((effect) => effect.enabled) ?? false) ||
+      (scene.layer?.contours.some((c) =>
+        c.points.some((p) => (p.corner_radius ?? 0) !== 0),
+      ) ??
+        false)
     if (effects && options.flattened) {
       ctx.save()
       ctx.translate(viewport.offset.x, viewport.offset.y)

@@ -224,6 +224,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
         Command::MovePoints { glyph, layer, .. }
         | Command::SetPointPosition { glyph, layer, .. }
         | Command::SetSmooth { glyph, layer, .. }
+        | Command::SetSmartCorner { glyph, layer, .. }
         | Command::InsertPointOnSegment { glyph, layer, .. }
         | Command::DeletePoints { glyph, layer, .. }
         | Command::ConvertSegment { glyph, layer, .. }
@@ -443,6 +444,7 @@ fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
         Command::MovePoints { .. }
         | Command::SetPointPosition { .. }
         | Command::SetSmooth { .. }
+        | Command::SetSmartCorner { .. }
         | Command::InsertPointOnSegment { .. }
         | Command::DeletePoints { .. }
         | Command::ConvertSegment { .. }

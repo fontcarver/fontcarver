@@ -115,8 +115,43 @@ pub enum EffectBoolean {
 }
 
 impl Layer {
+    /// Whether source-node corner intent contributes to the evaluated outline.
+    pub fn has_smart_corners(&self) -> bool {
+        self.contours
+            .iter()
+            .any(|c| c.points.iter().any(|p| p.corner_radius != 0.))
+    }
+
+    /// Whether local source geometry needs live construction or effect evaluation.
+    pub fn has_live_geometry(&self) -> bool {
+        self.has_smart_corners() || self.effects.iter().any(|effect| effect.enabled)
+    }
+
     /// Validate every stored operation, including disabled entries.
     pub fn validate_effects(&self) -> Result<(), Error> {
+        let mut corners = 0;
+        for contour in &self.contours {
+            for (index, point) in contour.points.iter().enumerate() {
+                let radius = point.corner_radius;
+                if radius == 0. {
+                    continue;
+                }
+                corners += 1;
+                if corners > 1024 || !radius.is_finite() || radius.abs() > 8192. {
+                    return Err(invalid(
+                        "at most 1024 smart corners per layer, with radius magnitude at most 8192",
+                    ));
+                }
+                if point.kind == crate::PointKind::OffCurve
+                    || (!contour.closed && (index == 0 || index + 1 == contour.points.len()))
+                {
+                    return Err(invalid("smart corners require an interior on-curve node"));
+                }
+                if radius < 0. && !contour.closed {
+                    return Err(invalid("ink traps require closed contours"));
+                }
+            }
+        }
         if self.effects.len() > MAX_LAYER_EFFECTS {
             return Err(invalid("a layer may contain at most 16 effects"));
         }

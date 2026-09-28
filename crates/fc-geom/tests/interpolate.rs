@@ -48,3 +48,15 @@ fn point_count_mismatch_names_the_contour() {
     let errors = compatible(&a, &b).expect_err("must be incompatible");
     assert!(errors.iter().any(|error| error.contour == Some(0)));
 }
+
+#[test]
+fn signed_corner_radii_interpolate_through_zero() {
+    let (mut a, mut b) = layers();
+    a.contours[0].points[1].corner_radius = -20.;
+    b.contours[0].points[1].corner_radius = 20.;
+    for (t, expected) in [(0.25, -10.), (0.5, 0.), (0.75, 10.)] {
+        let layer = interpolate(&a, &b, t).unwrap();
+        assert_eq!(layer.contours[0].points[1].corner_radius, expected);
+        fc_geom::smart_corner_path(&layer.contours[0]).unwrap();
+    }
+}

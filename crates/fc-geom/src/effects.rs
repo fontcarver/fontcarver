@@ -28,7 +28,7 @@ pub(crate) fn has_effects(font: &Font, layer: &Layer) -> bool {
             return true;
         }
         *remaining -= 1;
-        if layer.effects.iter().any(|e| e.enabled) || seen.len() >= 64 || seen.contains(&layer.id) {
+        if layer.has_live_geometry() || seen.len() >= 64 || seen.contains(&layer.id) {
             return true;
         }
         seen.push(layer.id.clone());
@@ -42,9 +42,13 @@ pub(crate) fn has_effects(font: &Font, layer: &Layer) -> bool {
             fc_model::LayerKind::Custom(_) => &font.default_master().id,
         };
         let found = layer.components.iter().any(|c| {
-            font.glyph(&c.base)
-                .and_then(|g| g.master_layer(master))
-                .is_none_or(|base| visit(font, base, seen, remaining))
+            font.glyph(&c.base).is_none_or(|glyph| {
+                glyph.master_layer(master).is_none_or(|base| visit(font, base, seen, remaining))
+                    || (!glyph.smart_axes.is_empty() && glyph.layers.iter().any(|source| {
+                        matches!(&source.kind, fc_model::LayerKind::Smart { master: id, .. } if id == master)
+                            && visit(font, source, seen, remaining)
+                    }))
+            })
         });
         seen.pop();
         found
@@ -91,7 +95,7 @@ pub fn evaluate_layer(font: &Font, glyph: &str, layer: &LayerId) -> Result<Effec
     let approximated = RefCell::new(Vec::new());
     let affected = std::cell::Cell::new(false);
     let path = fc_model::query::flatten_layer_by_id_with(font, glyph, layer, &|layer, path| {
-        affected.set(affected.get() || layer.effects.iter().any(|e| e.enabled));
+        affected.set(affected.get() || layer.has_live_geometry());
         let (path, fallback) = apply(layer, path)?;
         if fallback && !approximated.borrow().contains(&layer.id) {
             approximated.borrow_mut().push(layer.id.clone());
@@ -118,7 +122,7 @@ pub fn bake_effects_font(font: &Font) -> Result<(Font, Vec<LayerId>), Error> {
         .glyphs
         .values()
         .flat_map(|g| &g.layers)
-        .any(|l| l.effects.iter().any(|e| e.enabled))
+        .any(Layer::has_live_geometry)
     {
         for layer in result.glyphs.values_mut().flat_map(|g| &mut g.layers) {
             layer.effects.clear();
@@ -148,10 +152,27 @@ pub fn bake_effects_font(font: &Font) -> Result<(Font, Vec<LayerId>), Error> {
 
 fn apply(layer: &Layer, source: BezPath) -> Result<(BezPath, bool), Error> {
     layer.validate_effects()?;
-    if !layer.effects.iter().any(|e| e.enabled) {
+    if !layer.has_live_geometry() {
         return Ok((source, false));
     }
     check_path(&source, 4096)?;
+    let source = if layer.has_smart_corners() {
+        // Model traversal emits this layer's source contours first, followed by
+        // already evaluated component paths. Replace only that source prefix.
+        let mut prefix = 0;
+        let mut result = BezPath::new();
+        for contour in &layer.contours {
+            prefix += contour.try_to_bezpath()?.elements().len();
+            result.extend(
+                crate::corners::smart_corner_path_in_layer(contour, &source).map_err(invalid)?,
+            );
+        }
+        result.extend(source.iter().skip(prefix));
+        check_path(&result, 65_535)?;
+        result
+    } else {
+        source
+    };
     let mut contours = Contour::from_bezpath(&source);
     let mut fallback = false;
     let mut remaining = 262_144usize;

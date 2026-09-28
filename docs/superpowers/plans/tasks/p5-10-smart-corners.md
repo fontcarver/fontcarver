@@ -1,5 +1,9 @@
 # P5-10: live smart corners
 
+Status: complete within the numeric-editing scope on 2026-09-28. See
+[acceptance](../../../p5-smart-corners-acceptance.md). The user requested stopping
+after this task; subsequent work is recorded in [TODO](../../../TODO.md).
+
 Follow P5-09 with persistent per-node smart-corner radii. A positive radius rounds
 the join; a negative radius constructs an ink trap. Keep the original nodes and
 handles editable and evaluate the derived outline for preview, components,
@@ -41,4 +45,5 @@ headless-browser editing; native/global desktop input remains prohibited.
 
 Do not mark the full audit row complete solely from a geometry helper or a new
 control. Record supported corner constructions and remaining limitations in the
-acceptance report, then continue the rest of P5 without stopping at this boundary.
+acceptance report. The later user instruction supersedes automatic continuation:
+save this milestone, update TODO, clean temporary artifacts and stop.

@@ -54,6 +54,11 @@ pub struct Point {
     /// Whether neighboring handles should remain tangent.
     #[serde(default)]
     pub smooth: bool,
+    /// Live corner radius in font units: positive rounds, negative cuts an ink trap.
+    /// Zero keeps the source join unchanged.
+    #[serde(default, skip_serializing_if = "zero_radius")]
+    #[cfg_attr(feature = "ts", ts(as = "Option<f64>", optional))]
+    pub corner_radius: f64,
     /// Optional point name.
     #[serde(default)]
     pub name: Option<String>,
@@ -73,10 +78,15 @@ impl Point {
             y: point.y,
             kind,
             smooth: false,
+            corner_radius: 0.,
             name: None,
             tt_index: TtIndex::Unnumbered,
         }
     }
+}
+
+fn zero_radius(radius: &f64) -> bool {
+    *radius == 0.
 }
 
 /// One open or closed outline contour.

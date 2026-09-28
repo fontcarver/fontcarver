@@ -7,6 +7,7 @@ use kurbo::{Affine, PathEl, Shape};
 
 fn point(x: f64, y: f64, kind: PointKind) -> Point {
     Point {
+        corner_radius: 0.,
         x,
         y,
         kind,

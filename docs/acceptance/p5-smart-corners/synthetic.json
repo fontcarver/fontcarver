@@ -1,0 +1,709 @@
+{
+  "complete": true,
+  "fonttools": "4.63.0",
+  "exports": [
+    {
+      "case": "round-ccw",
+      "format": "Ttf",
+      "samples": 10478
+    },
+    {
+      "case": "round-ccw",
+      "format": "Otf",
+      "samples": 10478
+    },
+    {
+      "case": "round-ccw",
+      "format": "Woff",
+      "samples": 10478
+    },
+    {
+      "case": "round-ccw",
+      "format": "Woff2",
+      "samples": 10478
+    },
+    {
+      "case": "round-cw",
+      "format": "Ttf",
+      "samples": 10478
+    },
+    {
+      "case": "round-cw",
+      "format": "Otf",
+      "samples": 10478
+    },
+    {
+      "case": "round-cw",
+      "format": "Woff",
+      "samples": 10478
+    },
+    {
+      "case": "round-cw",
+      "format": "Woff2",
+      "samples": 10478
+    },
+    {
+      "case": "round-mask",
+      "format": "Ttf",
+      "samples": 10500
+    },
+    {
+      "case": "round-mask",
+      "format": "Otf",
+      "samples": 10500
+    },
+    {
+      "case": "round-mask",
+      "format": "Woff",
+      "samples": 10500
+    },
+    {
+      "case": "round-mask",
+      "format": "Woff2",
+      "samples": 10500
+    },
+    {
+      "case": "traps",
+      "format": "Ttf",
+      "samples": 10474
+    },
+    {
+      "case": "traps",
+      "format": "Otf",
+      "samples": 10474
+    },
+    {
+      "case": "traps",
+      "format": "Woff",
+      "samples": 10474
+    },
+    {
+      "case": "traps",
+      "format": "Woff2",
+      "samples": 10474
+    },
+    {
+      "case": "counter-trap",
+      "format": "Ttf",
+      "samples": 10366
+    },
+    {
+      "case": "counter-trap",
+      "format": "Otf",
+      "samples": 10366
+    },
+    {
+      "case": "counter-trap",
+      "format": "Woff",
+      "samples": 10366
+    },
+    {
+      "case": "counter-trap",
+      "format": "Woff2",
+      "samples": 10366
+    },
+    {
+      "case": "concave-round",
+      "format": "Ttf",
+      "samples": 10456
+    },
+    {
+      "case": "concave-round",
+      "format": "Otf",
+      "samples": 10456
+    },
+    {
+      "case": "concave-round",
+      "format": "Woff",
+      "samples": 10456
+    },
+    {
+      "case": "concave-round",
+      "format": "Woff2",
+      "samples": 10456
+    }
+  ],
+  "samples": 251008,
+  "timings": [
+    {
+      "method": "session.open",
+      "seconds": 0.025
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.002
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.002
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.002
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.018
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.023
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.025
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.025
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.018
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.014
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.023
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.025
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.024
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.003
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.018
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.003
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.02
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.025
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.025
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.03
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.018
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.013
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.015
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.024
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.026
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.018
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.01
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.003
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.002
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.002
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.003
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.014
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.023
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.023
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.024
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.019
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.016
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.024
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.024
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.025
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.019
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    }
+  ]
+}

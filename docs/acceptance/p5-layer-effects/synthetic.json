@@ -1,0 +1,1929 @@
+{
+  "complete": true,
+  "fonttools": "4.63.0",
+  "exports": [
+    {
+      "case": "ellipse-round-0",
+      "format": "Ttf",
+      "points": 1590,
+      "bounds": [
+        80.0,
+        -40,
+        520.0,
+        40
+      ]
+    },
+    {
+      "case": "ellipse-round-0",
+      "format": "Otf",
+      "points": 1590,
+      "bounds": [
+        80.0,
+        -40,
+        520.0,
+        40.0
+      ]
+    },
+    {
+      "case": "ellipse-round-0",
+      "format": "Woff",
+      "points": 1590,
+      "bounds": [
+        80.0,
+        -40,
+        520.0,
+        40
+      ]
+    },
+    {
+      "case": "ellipse-round-0",
+      "format": "Woff2",
+      "points": 1590,
+      "bounds": [
+        80.0,
+        -40,
+        520.0,
+        40
+      ]
+    },
+    {
+      "case": "ellipse-round-30",
+      "format": "Ttf",
+      "points": 1528,
+      "bounds": [
+        73.5,
+        -36,
+        526.5,
+        36
+      ]
+    },
+    {
+      "case": "ellipse-round-30",
+      "format": "Otf",
+      "points": 1528,
+      "bounds": [
+        73.53938204477174,
+        -36.055511474609375,
+        526.4606179552283,
+        36.055511474609375
+      ]
+    },
+    {
+      "case": "ellipse-round-30",
+      "format": "Woff",
+      "points": 1528,
+      "bounds": [
+        73.5,
+        -36,
+        526.5,
+        36
+      ]
+    },
+    {
+      "case": "ellipse-round-30",
+      "format": "Woff2",
+      "points": 1528,
+      "bounds": [
+        73.5,
+        -36,
+        526.5,
+        36
+      ]
+    },
+    {
+      "case": "ellipse-butt-0",
+      "format": "Ttf",
+      "points": 1598,
+      "bounds": [
+        100,
+        -40,
+        500,
+        40
+      ]
+    },
+    {
+      "case": "ellipse-butt-0",
+      "format": "Otf",
+      "points": 1598,
+      "bounds": [
+        100,
+        -40,
+        500,
+        40
+      ]
+    },
+    {
+      "case": "ellipse-butt-0",
+      "format": "Woff",
+      "points": 1598,
+      "bounds": [
+        100,
+        -40,
+        500,
+        40
+      ]
+    },
+    {
+      "case": "ellipse-butt-0",
+      "format": "Woff2",
+      "points": 1598,
+      "bounds": [
+        100,
+        -40,
+        500,
+        40
+      ]
+    },
+    {
+      "case": "ellipse-butt-30",
+      "format": "Ttf",
+      "points": 1530,
+      "bounds": [
+        86,
+        -36,
+        514,
+        36
+      ]
+    },
+    {
+      "case": "ellipse-butt-30",
+      "format": "Otf",
+      "points": 1530,
+      "bounds": [
+        85.58847045898438,
+        -36.055511474609375,
+        514.4115295410156,
+        36.055511474609375
+      ]
+    },
+    {
+      "case": "ellipse-butt-30",
+      "format": "Woff",
+      "points": 1530,
+      "bounds": [
+        86,
+        -36,
+        514,
+        36
+      ]
+    },
+    {
+      "case": "ellipse-butt-30",
+      "format": "Woff2",
+      "points": 1530,
+      "bounds": [
+        86,
+        -36,
+        514,
+        36
+      ]
+    },
+    {
+      "case": "ellipse-square-0",
+      "format": "Ttf",
+      "points": 1598,
+      "bounds": [
+        80,
+        -40,
+        520,
+        40
+      ]
+    },
+    {
+      "case": "ellipse-square-0",
+      "format": "Otf",
+      "points": 1598,
+      "bounds": [
+        80,
+        -40,
+        520,
+        40
+      ]
+    },
+    {
+      "case": "ellipse-square-0",
+      "format": "Woff",
+      "points": 1598,
+      "bounds": [
+        80,
+        -40,
+        520,
+        40
+      ]
+    },
+    {
+      "case": "ellipse-square-0",
+      "format": "Woff2",
+      "points": 1598,
+      "bounds": [
+        80,
+        -40,
+        520,
+        40
+      ]
+    },
+    {
+      "case": "ellipse-square-30",
+      "format": "Ttf",
+      "points": 1526,
+      "bounds": [
+        63,
+        -36,
+        537,
+        36
+      ]
+    },
+    {
+      "case": "ellipse-square-30",
+      "format": "Otf",
+      "points": 1526,
+      "bounds": [
+        63.40045166015625,
+        -36.055511474609375,
+        536.5995483398438,
+        36.055511474609375
+      ]
+    },
+    {
+      "case": "ellipse-square-30",
+      "format": "Woff",
+      "points": 1526,
+      "bounds": [
+        63,
+        -36,
+        537,
+        36
+      ]
+    },
+    {
+      "case": "ellipse-square-30",
+      "format": "Woff2",
+      "points": 1526,
+      "bounds": [
+        63,
+        -36,
+        537,
+        36
+      ]
+    },
+    {
+      "case": "rectangle-round-0",
+      "format": "Ttf",
+      "points": 1598,
+      "bounds": [
+        80,
+        -40,
+        520,
+        40
+      ]
+    },
+    {
+      "case": "rectangle-round-0",
+      "format": "Otf",
+      "points": 1598,
+      "bounds": [
+        80.0,
+        -40,
+        520.0,
+        40
+      ]
+    },
+    {
+      "case": "rectangle-round-0",
+      "format": "Woff",
+      "points": 1598,
+      "bounds": [
+        80,
+        -40,
+        520,
+        40
+      ]
+    },
+    {
+      "case": "rectangle-round-0",
+      "format": "Woff2",
+      "points": 1598,
+      "bounds": [
+        80,
+        -40,
+        520,
+        40
+      ]
+    },
+    {
+      "case": "rectangle-round-30",
+      "format": "Ttf",
+      "points": 1590,
+      "bounds": [
+        63,
+        -45,
+        537,
+        45
+      ]
+    },
+    {
+      "case": "rectangle-round-30",
+      "format": "Otf",
+      "points": 1590,
+      "bounds": [
+        62.67948913574219,
+        -44.641021728515625,
+        537.3205108642578,
+        44.641021728515625
+      ]
+    },
+    {
+      "case": "rectangle-round-30",
+      "format": "Woff",
+      "points": 1590,
+      "bounds": [
+        63,
+        -45,
+        537,
+        45
+      ]
+    },
+    {
+      "case": "rectangle-round-30",
+      "format": "Woff2",
+      "points": 1590,
+      "bounds": [
+        63,
+        -45,
+        537,
+        45
+      ]
+    },
+    {
+      "case": "mask-union",
+      "format": "Ttf",
+      "points": 1596,
+      "bounds": [
+        80.0,
+        -40,
+        600,
+        70
+      ]
+    },
+    {
+      "case": "mask-union",
+      "format": "Otf",
+      "points": 1596,
+      "bounds": [
+        80.0,
+        -40,
+        600.0,
+        70.0
+      ]
+    },
+    {
+      "case": "mask-union",
+      "format": "Woff",
+      "points": 1596,
+      "bounds": [
+        80.0,
+        -40,
+        600,
+        70
+      ]
+    },
+    {
+      "case": "mask-union",
+      "format": "Woff2",
+      "points": 1596,
+      "bounds": [
+        80.0,
+        -40,
+        600,
+        70
+      ]
+    },
+    {
+      "case": "mask-intersect",
+      "format": "Ttf",
+      "points": 1592,
+      "bounds": [
+        300,
+        -20,
+        520,
+        40
+      ]
+    },
+    {
+      "case": "mask-intersect",
+      "format": "Otf",
+      "points": 1592,
+      "bounds": [
+        300,
+        -20,
+        520.0,
+        40.0
+      ]
+    },
+    {
+      "case": "mask-intersect",
+      "format": "Woff",
+      "points": 1592,
+      "bounds": [
+        300,
+        -20,
+        520,
+        40
+      ]
+    },
+    {
+      "case": "mask-intersect",
+      "format": "Woff2",
+      "points": 1592,
+      "bounds": [
+        300,
+        -20,
+        520,
+        40
+      ]
+    },
+    {
+      "case": "mask-subtract",
+      "format": "Ttf",
+      "points": 1596,
+      "bounds": [
+        80.0,
+        -40,
+        517,
+        40
+      ]
+    },
+    {
+      "case": "mask-subtract",
+      "format": "Otf",
+      "points": 1596,
+      "bounds": [
+        80.0,
+        -40,
+        517.3243560791016,
+        40.0
+      ]
+    },
+    {
+      "case": "mask-subtract",
+      "format": "Woff",
+      "points": 1596,
+      "bounds": [
+        80.0,
+        -40,
+        517,
+        40
+      ]
+    },
+    {
+      "case": "mask-subtract",
+      "format": "Woff2",
+      "points": 1596,
+      "bounds": [
+        80.0,
+        -40,
+        517,
+        40
+      ]
+    },
+    {
+      "case": "mask-xor",
+      "format": "Ttf",
+      "points": 1590,
+      "bounds": [
+        80.0,
+        -40,
+        600,
+        70
+      ]
+    },
+    {
+      "case": "mask-xor",
+      "format": "Otf",
+      "points": 1590,
+      "bounds": [
+        80.0,
+        -40,
+        600.0,
+        70.0
+      ]
+    },
+    {
+      "case": "mask-xor",
+      "format": "Woff",
+      "points": 1590,
+      "bounds": [
+        80.0,
+        -40,
+        600,
+        70
+      ]
+    },
+    {
+      "case": "mask-xor",
+      "format": "Woff2",
+      "points": 1590,
+      "bounds": [
+        80.0,
+        -40,
+        600,
+        70
+      ]
+    },
+    {
+      "case": "thick-closed-round",
+      "format": "Ttf",
+      "points": 4412,
+      "bounds": [
+        80,
+        -20,
+        130,
+        30
+      ]
+    },
+    {
+      "case": "thick-closed-round",
+      "format": "Otf",
+      "points": 4412,
+      "bounds": [
+        80.0,
+        -20,
+        130.0,
+        30.0
+      ]
+    },
+    {
+      "case": "thick-closed-round",
+      "format": "Woff",
+      "points": 4412,
+      "bounds": [
+        80,
+        -20,
+        130,
+        30
+      ]
+    },
+    {
+      "case": "thick-closed-round",
+      "format": "Woff2",
+      "points": 4412,
+      "bounds": [
+        80,
+        -20,
+        130,
+        30
+      ]
+    },
+    {
+      "case": "thick-closed-bevel",
+      "format": "Ttf",
+      "points": 4434,
+      "bounds": [
+        80,
+        -20,
+        130,
+        30
+      ]
+    },
+    {
+      "case": "thick-closed-bevel",
+      "format": "Otf",
+      "points": 4434,
+      "bounds": [
+        80,
+        -20,
+        130,
+        30
+      ]
+    },
+    {
+      "case": "thick-closed-bevel",
+      "format": "Woff",
+      "points": 4434,
+      "bounds": [
+        80,
+        -20,
+        130,
+        30
+      ]
+    },
+    {
+      "case": "thick-closed-bevel",
+      "format": "Woff2",
+      "points": 4434,
+      "bounds": [
+        80,
+        -20,
+        130,
+        30
+      ]
+    },
+    {
+      "case": "thick-closed-miter",
+      "format": "Ttf",
+      "points": 4382,
+      "bounds": [
+        80,
+        -20,
+        130,
+        30
+      ]
+    },
+    {
+      "case": "thick-closed-miter",
+      "format": "Otf",
+      "points": 4382,
+      "bounds": [
+        80,
+        -20,
+        130,
+        30
+      ]
+    },
+    {
+      "case": "thick-closed-miter",
+      "format": "Woff",
+      "points": 4382,
+      "bounds": [
+        80,
+        -20,
+        130,
+        30
+      ]
+    },
+    {
+      "case": "thick-closed-miter",
+      "format": "Woff2",
+      "points": 4382,
+      "bounds": [
+        80,
+        -20,
+        130,
+        30
+      ]
+    }
+  ],
+  "samples": 128640,
+  "timings": [
+    {
+      "method": "session.open",
+      "seconds": 0.017
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.002
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.002
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.003
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.006
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.003
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.015
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.015
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.016
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.017
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.003
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.003
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.004
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.002
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.016
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.015
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.015
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.017
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.004
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.003
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.015
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.014
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.014
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.021
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.014
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.02
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.015
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.015
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.018
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.014
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.014
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.016
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.016
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.013
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.015
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.016
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.015
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.014
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.015
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.016
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.018
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.015
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.015
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.017
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.002
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.006
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.018
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.017
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.018
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.019
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.004
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.003
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.002
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.003
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.006
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.018
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.019
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.019
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.018
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.004
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.003
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.003
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.006
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.003
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.015
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.017
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.017
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.018
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.004
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.004
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.003
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.007
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.019
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.021
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.019
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.022
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.005
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.005
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.01
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.008
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.021
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.027
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.039
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.044
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.039
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.009
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.016
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.01
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.007
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.019
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.014
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.006
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.037
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.036
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.035
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.044
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.008
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.008
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.018
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.028
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "glyphs.list",
+      "seconds": 0.001
+    },
+    {
+      "method": "glyphs.detail",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.apply",
+      "seconds": 0.001
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.009
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.013
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.009
+    },
+    {
+      "method": "session.open",
+      "seconds": 0.002
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.008
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "doc.redo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.023
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.031
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.032
+    },
+    {
+      "method": "session.export",
+      "seconds": 0.033
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.008
+    },
+    {
+      "method": "effects.apply",
+      "seconds": 0.005
+    },
+    {
+      "method": "doc.undo",
+      "seconds": 0.001
+    },
+    {
+      "method": "session.save",
+      "seconds": 0.018
+    },
+    {
+      "method": "session.close",
+      "seconds": 0.001
+    }
+  ]
+}

@@ -337,6 +337,13 @@ function drawNodes(
       drawSquare(ctx, at, CORNER_SIZE)
       if (isSelected) drawSelectedRing(ctx, at, CORNER_SIZE, false, theme)
     }
+    if ((node.source?.corner_radius ?? 0) !== 0) {
+      ctx.strokeStyle = theme.selection
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.arc(at.x, at.y, CORNER_SIZE + 2, 0, Math.PI * 2)
+      ctx.stroke()
+    }
     // A node exactly on the baseline, the x-height, the cap height or an
     // ascender/descender is worth seeing at a glance: it is what keeps an
     // outline aligned, and what a nudge silently breaks.

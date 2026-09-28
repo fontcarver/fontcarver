@@ -37,7 +37,7 @@ pub(crate) fn preflight(font: &Font, options: &ExportOptions) -> Result<(), Erro
         .glyphs
         .values()
         .flat_map(|g| &g.layers)
-        .any(|l| l.effects.iter().any(|e| e.enabled))
+        .any(fc_model::Layer::has_live_geometry)
     {
         return Err(Error::InvalidSource("authored TrueType programs require reviewing the compiled points after baking live layer effects".into()));
     }

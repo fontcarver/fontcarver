@@ -1,6 +1,6 @@
 # P5 professional finish
 
-Status: resumed on 2026-09-28 for the remaining work. MATH, COLR v0/CPAL
+Status: paused at the user's request on 2026-09-28 after P5-10. MATH, COLR v0/CPAL
 and the static SVG/COLRv1 authoring subsets have acceptance records. The P5 scope was
 authorized immediately after P4; the remaining work is not complete. Current
 progress and next actions: [STATUS](../../STATUS.md).
@@ -40,6 +40,10 @@ by the earlier user instruction; headless browser testing and builds are allowed
 - [ ] Geometry and construction: variable pen points and smart
       geometry, raster-image trace, background images, optical spacing/kerning, CJK
       construction helpers and remaining editor/metrics/variable requirements.
+      Numeric live smart corners are complete: signed radii, source-node editing,
+      local smart interpolation, bake/undo/native persistence and independent
+      export checks. See [record](../../p5-smart-corners-acceptance.md);
+      radius drag handles remain in the interaction backlog.
 - [ ] Document workflows: compare/family comparison, merge, paste special,
       cross-document copy, visual diffs and reference binary handling.
 - [ ] Automation: generated TypeScript API, scripts console/reload, Python RPC,

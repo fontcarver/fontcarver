@@ -240,6 +240,7 @@ fn finish(
 
 fn model_point(point: Point, kind: PointKind) -> ModelPoint {
     ModelPoint {
+        corner_radius: 0.,
         x: point.x,
         y: point.y,
         kind,

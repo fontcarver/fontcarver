@@ -3,6 +3,9 @@ use crate::Incompatibility;
 /// Errors returned by geometry operations.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// A live corner cannot be represented on the supplied source segments.
+    #[error("smart corner: {0}")]
+    SmartCorner(String),
     /// Invalid or excessive style-effect input.
     #[error("style effect: {0}")]
     InvalidStyle(String),

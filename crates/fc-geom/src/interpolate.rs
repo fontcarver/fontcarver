@@ -126,6 +126,7 @@ pub fn interpolate(a: &Layer, b: &Layer, t: f64) -> Result<Layer, Error> {
         {
             point.x = lerp(left_point.x, right_point.x, t);
             point.y = lerp(left_point.y, right_point.y, t);
+            point.corner_radius = lerp(left_point.corner_radius, right_point.corner_radius, t);
             point.smooth = if t < 0.5 {
                 left_point.smooth
             } else {
