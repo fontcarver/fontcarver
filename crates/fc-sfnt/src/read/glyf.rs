@@ -32,6 +32,59 @@ impl<'a> GlyfSource<'a> {
         Ok(Some(Self { glyf, loca }))
     }
 
+    /// Normalize the phantom-point origin into the model's pen-origin coordinates.
+    /// Component references compensate for their child's own normalization, so
+    /// assembly geometry is unchanged. Matching-point components align after this.
+    pub(crate) fn normalize_origins(
+        &self,
+        face: &FontRef<'_>,
+        font: &mut fc_model::Font,
+    ) -> Result<(), Error> {
+        let hmtx = face.hmtx().map_err(|e| Error::parse("hmtx", e))?;
+        let offsets = font
+            .glyph_order()
+            .enumerate()
+            .map(|(id, name)| {
+                if font.glyphs[name]
+                    .layers
+                    .iter()
+                    .all(|l| l.contours.is_empty() && l.components.is_empty())
+                {
+                    return Ok((name.clone(), 0.));
+                }
+                let gid = GlyphId::new(id as u32);
+                let glyph = self
+                    .loca
+                    .get_glyf(gid, &self.glyf)
+                    .map_err(|e| Error::parse("glyf", e))?;
+                let x_min = match glyph {
+                    Some(Glyph::Simple(g)) => g.x_min(),
+                    Some(Glyph::Composite(g)) => g.x_min(),
+                    None => return Ok((name.clone(), 0.)),
+                };
+                let lsb = hmtx
+                    .side_bearing(gid)
+                    .ok_or_else(|| Error::parse("hmtx", "missing side bearing"))?;
+                Ok((name.clone(), f64::from(lsb) - f64::from(x_min)))
+            })
+            .collect::<Result<std::collections::HashMap<_, _>, Error>>()?;
+        for (name, glyph) in &mut font.glyphs {
+            let offset = offsets[name];
+            for layer in &mut glyph.layers {
+                for point in layer.contours.iter_mut().flat_map(|c| &mut c.points) {
+                    point.x += offset;
+                }
+                for component in &mut layer.components {
+                    let child = offsets.get(&component.base).copied().unwrap_or(0.);
+                    component.transform = Affine::translate((offset, 0.))
+                        * component.transform
+                        * Affine::translate((-child, 0.));
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn apply(
         &self,
         gid: u16,

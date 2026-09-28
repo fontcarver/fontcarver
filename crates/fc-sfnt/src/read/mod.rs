@@ -223,6 +223,9 @@ fn read_face(face: &FontRef<'_>, warnings: &mut Vec<Warning>) -> Result<Font, Er
         glyph.layers.push(layer);
         font.glyphs.insert(glyph.name.clone(), glyph);
     }
+    if let Some(source) = &glyf_source {
+        source.normalize_origins(face, &mut font)?;
+    }
     metrics::apply_height_fallbacks(&mut font);
     if let Err(error) = crate::tt::imported_bindings(face, &mut font) {
         warnings.push(Warning {

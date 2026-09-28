@@ -388,6 +388,13 @@ fn preserve_original_outlines(
         .head()
         .map_err(|error| Error::parse("compiled head", error))?
         .to_owned_table();
+    // Raw glyf coordinates keep their original phantom-point origin convention.
+    let original_flags = original
+        .head()
+        .map_err(|e| Error::parse("original head", e))?
+        .flags();
+    let origin_flag = write_fonts::tables::head::Flags::LSB_AT_X_0;
+    head.flags = (head.flags & !origin_flag) | (original_flags & origin_flag);
     head.index_to_loc_format = original
         .head()
         .map_err(|error| Error::parse("original head", error))?
