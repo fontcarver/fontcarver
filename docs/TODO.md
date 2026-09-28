@@ -19,11 +19,14 @@ main merge. Native/global desktop input automation remains prohibited.
 
 1. Read [STATUS](STATUS.md), [AGENTS.md](../AGENTS.md) and
    [CONVENTIONS.md](../CONVENTIONS.md); run `python3 scripts/check_artifacts.py`.
-2. Scope P5-11 around **variable pen points**: source positions, width, height,
+2. Refine the [whole-project estimate](progress-estimate.md) by reconciling earlier
+   acceptance evidence with pending audit rows and splitting the largest remaining
+   work areas. Current rough estimate: about 60%, with a 50–70% planning range.
+3. Scope P5-11 around **variable pen points**: source positions, width, height,
    angle and progression on top of the existing uniform live stroke evaluator.
    Write its task/acceptance plan before implementation. Row 87 stays partial
    until the complete editing, persistence and export path is verified.
-3. Continue the remaining work below. The future `P5-NN` count is not fixed;
+4. Continue the remaining work below. The future `P5-NN` count is not fixed;
    the original plan has fourteen broad work blocks and the exit audit has 112
    numbered requirements. A task number is not a completion percentage.
 
@@ -44,4 +47,5 @@ main merge. Native/global desktop input automation remains prohibited.
 
 The authoritative completion gate is [p5-feature-audit.md](p5-feature-audit.md).
 Its pending rows can include already implemented P1–P4 behavior awaiting scoped
-verification. No whole-project percentage or firm remaining duration is claimed.
+verification. The whole-project percentage is a rough weighted planning estimate;
+no firm remaining duration or verified completion percentage is claimed.

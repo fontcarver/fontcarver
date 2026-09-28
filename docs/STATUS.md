@@ -21,6 +21,11 @@ claimed as one full pass. See [acceptance](p5-smart-corners-acceptance.md).
 [Resource maintenance](build-artifacts.md) released approximately 491 GiB and
 introduced build/temp budgets. Current resume instructions are in [TODO](TODO.md).
 
+A documentation-only estimate on 2026-09-28 puts whole-product effort completion
+at **about 60%, with a 50–70% planning range**. This is a weighted engineering
+estimate, not measured hours or a change to acceptance status. See the
+[weights, evidence and sensitivity](progress-estimate.md). Development remains paused.
+
 ## Phases
 
 | Phase | Scope                                                    | Status      | Done       | Record                                                                                                                           |
@@ -75,7 +80,8 @@ native-platform run.
 The user requested stopping after the current task. P5-10 is saved and verified
 within its acceptance boundaries; temporary task outputs and owned services are
 cleaned/stopped. See [TODO](TODO.md) for the remaining work. On an explicit resume,
-start by scoping P5-11 variable pen points and running the resource-budget check.
+run the resource-budget check, refine the progress estimate against the audit,
+then scope P5-11 variable pen points.
 No P5-11 implementation has started. Native/global desktop input remains prohibited.
 
 The bilingual website is also complete, with deployment still pending. Its
