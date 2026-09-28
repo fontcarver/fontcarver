@@ -144,6 +144,9 @@ pub(super) fn duplicate(
         }
     }
     if let Some(color) = &mut font.color {
+        if let Some(graph) = &mut color.graph {
+            graph.duplicate_glyph(source, name);
+        }
         if let Some(layers) = color.glyphs.get(source).cloned() {
             color.glyphs.insert(name.clone(), layers);
         }

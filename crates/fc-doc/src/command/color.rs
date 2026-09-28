@@ -4,8 +4,8 @@ use ts_rs::TS;
 
 use crate::Error;
 
-/// Atomic edits to font-wide COLR v0 compositions and CPAL palettes.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+/// Atomic edits to font-wide COLR v0/v1 compositions and CPAL palettes.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 pub enum ColorCommand {
     /// Replace all editable data, or explicitly delete both tables.
     Replace {

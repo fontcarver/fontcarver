@@ -203,7 +203,7 @@ invalidate unchanged hint sets on affected layers and components within the same
 master; hints on independent master layers remain intact. Hint previews and
 export-only automatic hinting never mutate saved hint data.
 
-## P5 COLR v0 / CPAL colors
+## P5 COLR v0/v1 / CPAL colors
 
 `font.color` defaults to null. A `ColorTable` contains `palette_version` (0 or
 1), equally sized nonempty `palettes`, optional `entry_labels`, and `glyphs`
@@ -219,10 +219,24 @@ name ID per shared entry. Label IDs refer to preserved `font.info.names`.
 
 `font.color_tables_owned` defaults to false. When true, null `color` means
 explicit deletion of both COLR and CPAL. Non-null editable color data always
-supersedes raw tables. Unsupported COLRv1 and malformed inputs retain both
+supersedes raw tables. Unsupported variable COLRv1 and malformed inputs retain both
 original tables atomically under the existing raw preservation policy. Legacy
 `Layer.color_layers` remains an opaque outline/paint container; it is not the
 named COLR v0 model and is not synthesized into these tables.
+
+### Static COLRv1 graphs
+
+`ColorTable.graph` defaults to null for old documents. A non-null `ColrGraph`
+contains `glyphs` (named roots to zero-based paint indices), `paints` (shared
+nodes tagged by `kind`) and default-empty `clips` (named `[xMin,yMin,xMax,yMax]`
+boxes). This coexists with v0 fallback `ColorTable.glyphs` and shares CPAL.
+`Layers`, `Solid`, `Linear`, `Radial`, `Sweep`, `Glyph`, `ColrGlyph`, `Transform`
+and `Composite` nodes are described in [the graph reference](../../../../docs/user/colrv1.md).
+Named glyphs and palette entries are validated along with graph cycles, depth,
+expansion, boundedness and binary precision. Graph source JSON is a UI draft;
+only a structurally valid, kernel-validated graph enters the document.
+Graph deletion sets `graph` null and retains palettes/v0 fallbacks; whole-color
+deletion continues to use `font.color = null` with owned tables.
 
 ### SVG color documents
 

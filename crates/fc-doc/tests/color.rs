@@ -4,6 +4,7 @@ use fc_model::{ColorPalette, ColorTable, ColrLayer, PaletteColor};
 
 fn colors() -> ColorTable {
     ColorTable {
+        graph: None,
         palettes: vec![ColorPalette {
             colors: vec![PaletteColor {
                 red: 240,
@@ -127,6 +128,90 @@ fn edits_are_atomic_and_owned_deletion_survives_native_save() {
             doc.undo().unwrap();
             assert_eq!(doc.font, font);
             std::fs::remove_dir_all(dir).unwrap();
+        })
+        .unwrap();
+}
+
+#[test]
+fn graph_dependencies_follow_document_commands_and_undo() {
+    use fc_model::{ColrGraph, ColrPaint};
+    let session = Session::new();
+    let mut font = common::test_font();
+    let mut color = colors();
+    color.graph = Some(ColrGraph {
+        glyphs: [("base".into(), 0), ("composite".into(), 2)].into(),
+        paints: vec![
+            ColrPaint::Glyph {
+                glyph: "base".into(),
+                paint: 1,
+            },
+            ColrPaint::Solid {
+                palette_index: Some(0),
+                alpha: 1.,
+            },
+            ColrPaint::ColrGlyph {
+                glyph: "base".into(),
+            },
+        ],
+        clips: [("base".into(), [0, 0, 600, 700])].into(),
+    });
+    font.color = Some(color);
+    let original = font.clone();
+    let id = session.open_font(font, None);
+    session
+        .with_doc_mut(id, |doc| {
+            assert!(fc_model::query::dependents(&doc.font)["base"].contains(&"composite".into()));
+            doc.apply(
+                Command::RenameGlyph {
+                    from: "base".into(),
+                    to: "renamed".into(),
+                },
+                "Rename",
+            )
+            .unwrap();
+            let graph = doc.font.color.as_ref().unwrap().graph.as_ref().unwrap();
+            assert!(graph.glyphs.contains_key("renamed"));
+            assert!(graph.clips.contains_key("renamed"));
+            assert_eq!(
+                graph.paints[2],
+                ColrPaint::ColrGlyph {
+                    glyph: "renamed".into()
+                }
+            );
+            doc.undo().unwrap();
+            assert_eq!(doc.font, original);
+            doc.apply(
+                Command::DuplicateGlyph {
+                    source: "base".into(),
+                    name: "copy".into(),
+                },
+                "Copy",
+            )
+            .unwrap();
+            let graph = doc.font.color.as_ref().unwrap().graph.as_ref().unwrap();
+            assert_eq!(graph.glyphs["copy"], graph.glyphs["base"]);
+            assert_eq!(graph.clips["copy"], graph.clips["base"]);
+            doc.undo().unwrap();
+            assert_eq!(doc.font, original);
+            doc.apply(
+                Command::RemoveGlyphs {
+                    names: vec!["base".into()],
+                },
+                "Delete",
+            )
+            .unwrap();
+            assert!(doc
+                .font
+                .color
+                .as_ref()
+                .unwrap()
+                .graph
+                .as_ref()
+                .unwrap()
+                .glyphs
+                .is_empty());
+            doc.undo().unwrap();
+            assert_eq!(doc.font, original);
         })
         .unwrap();
 }

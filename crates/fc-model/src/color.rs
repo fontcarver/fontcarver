@@ -1,4 +1,4 @@
-//! Editable COLR v0 compositions and CPAL palettes.
+//! Editable COLR v0/v1 compositions and CPAL palettes.
 
 use crate::GlyphName;
 use serde::{Deserialize, Serialize};
@@ -46,10 +46,14 @@ pub struct ColrLayer {
     pub palette_index: Option<u16>,
 }
 
-/// Font-wide palettes and bottom-to-top COLR v0 outline compositions.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+/// Font-wide palettes, COLR v0 fallbacks and optional static COLRv1 paint graphs.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 pub struct ColorTable {
+    /// Static v1 paint graph, coexisting with optional v0 fallback layers.
+    #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(optional = nullable))]
+    pub graph: Option<crate::ColrGraph>,
     /// CPAL version, zero or one. Version one retains palette metadata.
     #[serde(default)]
     pub palette_version: u16,
@@ -128,11 +132,17 @@ impl ColorTable {
                 }
             }
         }
+        if let Some(graph) = &self.graph {
+            graph.validate(glyph_order, entries)?;
+        }
         Ok(())
     }
 
     /// Rename a base glyph and every monochrome outline reference.
     pub fn rename_glyph(&mut self, from: &str, to: &GlyphName) {
+        if let Some(graph) = &mut self.graph {
+            graph.rename_glyph(from, to);
+        }
         if let Some(layers) = self.glyphs.remove(from) {
             self.glyphs.insert(to.clone(), layers);
         }
@@ -158,6 +168,9 @@ impl ColorTable {
             });
             !layers.is_empty()
         });
+        if let Some(graph) = &mut self.graph {
+            removed += graph.retain_glyphs(keep);
+        }
         removed
     }
 }

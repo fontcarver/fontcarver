@@ -2,6 +2,7 @@ use fc_model::{ColorPalette, ColorTable, ColrLayer, GlyphName, PaletteColor};
 
 fn fixture() -> (ColorTable, Vec<GlyphName>) {
     let color = ColorTable {
+        graph: None,
         palette_version: 1,
         palettes: vec![ColorPalette {
             colors: vec![

@@ -163,6 +163,8 @@ fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
     ColorState::export_all(config)?;
     ColorApplyParams::export_all(config)?;
     ColorDecodeParams::export_all(config)?;
+    ColorGraphPreviewParams::export_all(config)?;
+    ColorGraphPreview::export_all(config)?;
     ColorPreviewParams::export_all(config)?;
     ColorPreview::export_all(config)?;
     MathState::export_all(config)?;

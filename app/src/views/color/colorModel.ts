@@ -1,3 +1,4 @@
+import { graphPaletteIndices, shiftGraphPalette } from './graphModel'
 import type { ColorTable, PaletteColor } from '../../api'
 
 export function emptyTable(): ColorTable {
@@ -41,6 +42,7 @@ export function parseColor(text: string): PaletteColor | undefined {
 export function removeEntry(table: ColorTable, index: number): ColorTable {
   if (
     table.palettes[0].colors.length < 2 ||
+    graphPaletteIndices(table.graph).includes(index) ||
     Object.values(table.glyphs).some((layers) =>
       layers.some((l) => l.palette_index === index),
     )
@@ -48,6 +50,7 @@ export function removeEntry(table: ColorTable, index: number): ColorTable {
     return table
   return {
     ...table,
+    graph: table.graph ? shiftGraphPalette(table.graph, index) : table.graph,
     palettes: table.palettes.map((p) => ({
       ...p,
       colors: p.colors.filter((_, i) => i !== index),

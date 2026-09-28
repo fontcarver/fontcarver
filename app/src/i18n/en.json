@@ -1934,7 +1934,7 @@
     "status": {
       "Absent": "This font has no COLR/CPAL color data. Create a palette, then add layered glyphs.",
       "Deleted": "Color data has been deleted. You can create it again or undo the deletion.",
-      "Imported": "Imported color tables are preserved. Convert supported COLR v0 data to edit it; replacing these tables discards their original color definitions.",
+      "Imported": "Imported color tables are preserved. Convert supported static COLR v0/v1 data to edit it; replacing these tables discards their original color definitions.",
       "Editable": "Color palettes and glyph layers are editable."
     },
     "importError": "Imported color data cannot be edited: {{error}}",
@@ -1981,7 +1981,20 @@
     "invalidPaletteIndex": "Enter a palette number from 1 to {{max}}.",
     "layerRange": "Layers {{first}}–{{last}} of {{total}}",
     "previousLayers": "Previous layers",
-    "nextLayers": "Next layers"
+    "nextLayers": "Next layers",
+    "graphTitle": "COLRv1 paint graph",
+    "graphHelp": "Add a gradient for an existing glyph, then edit its paint nodes, stops, transforms and composites below. Node references are zero-based indices; glyph references use names. V0 layers remain available as fallbacks.",
+    "graphNewGlyph": "Gradient glyph name",
+    "graphAdd": "Add gradient",
+    "graphDelete": "Remove paint graph",
+    "graphSource": "Paint graph JSON",
+    "graphInvalid": "Enter a paint graph object with glyphs, paints and optional clips. Check the JSON syntax and paint fields.",
+    "graphCounts": "{{roots}} color roots · {{paints}} paint nodes",
+    "graphPreviewGlyph": "Preview glyph name",
+    "graphPreview": "COLRv1 preview",
+    "graphRendererUnavailable": "This browser cannot load the color font preview.",
+    "graphLoading": "Rendering paint graph…",
+    "graphPreviewNote": "Preview uses the default master and selected palette in the browser’s color font renderer. The glyph grid and text tab still show monochrome outlines."
   },
   "svg": {
     "title": "SVG color glyphs",

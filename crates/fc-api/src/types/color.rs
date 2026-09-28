@@ -106,3 +106,26 @@ pub struct ColorPreview {
     /// Layers in source-over paint order; nested COLR is not followed.
     pub layers: Vec<ColorPreviewLayer>,
 }
+
+/// Build a bounded draft COLRv1 font for the browser's color font renderer.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+pub struct ColorGraphPreviewParams {
+    /// Open document providing outline geometry.
+    pub doc: DocId,
+    /// Root glyph to preview at U+E000 in the result.
+    pub glyph: String,
+    /// Draft graph and palettes; never written to the document.
+    pub color: ColorTable,
+    /// Palette copied to the sole output palette.
+    pub palette_index: u16,
+}
+
+/// Temporary static font containing only the requested color glyph and dependencies.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+pub struct ColorGraphPreview {
+    /// Geometry revision from which outlines were copied.
+    #[ts(type = "number")]
+    pub generation: u64,
+    /// TrueType sfnt bytes for an ephemeral FontFace.
+    pub bytes: Vec<u8>,
+}

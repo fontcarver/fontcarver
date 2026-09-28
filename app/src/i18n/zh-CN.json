@@ -1934,7 +1934,7 @@
     "status": {
       "Absent": "此字体没有 COLR/CPAL 颜色数据。请先创建调色板，再添加多层字形。",
       "Deleted": "颜色数据已删除。可以重新创建，也可以撤销删除。",
-      "Imported": "已保留导入的颜色表。可将支持的 COLR v0 数据转换后编辑；替换这些表将丢弃其中原有的颜色定义。",
+      "Imported": "已保留导入的颜色表。可将支持的 静态 COLR v0/v1 数据转换后编辑；替换这些表将丢弃其中原有的颜色定义。",
       "Editable": "调色板和字形图层可供编辑。"
     },
     "importError": "无法编辑导入的颜色数据：{{error}}",
@@ -1981,7 +1981,20 @@
     "preview": "颜色预览",
     "previewForeground": "预览前景色",
     "previewNote": "预览使用默认母版和所选调色板。前景色仅影响此预览。",
-    "emptyPreview": "添加多层字形以预览其颜色。"
+    "emptyPreview": "添加多层字形以预览其颜色。",
+    "graphTitle": "COLRv1 绘制图",
+    "graphHelp": "为已有字形添加渐变，然后在下方编辑绘制节点、色标、变换和合成。节点引用使用从零开始的索引，字形引用使用名称。V0 图层可继续用作回退显示。",
+    "graphNewGlyph": "渐变字形名称",
+    "graphAdd": "添加渐变",
+    "graphDelete": "移除绘制图",
+    "graphSource": "绘制图 JSON",
+    "graphInvalid": "请输入包含 glyphs、paints 及可选 clips 的绘制图对象，并检查 JSON 语法和绘制字段。",
+    "graphCounts": "{{roots}} 个彩色字形 · {{paints}} 个绘制节点",
+    "graphPreviewGlyph": "预览字形名称",
+    "graphPreview": "COLRv1 预览",
+    "graphRendererUnavailable": "此浏览器无法加载彩色字体预览。",
+    "graphLoading": "正在绘制预览…",
+    "graphPreviewNote": "预览使用默认母版、所选调色板和浏览器的彩色字体渲染器。字形网格和文本标签页仍显示单色轮廓。"
   },
   "svg": {
     "title": "SVG 彩色字形",

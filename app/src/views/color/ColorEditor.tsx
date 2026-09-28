@@ -5,6 +5,7 @@ import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
 import { errorNotice } from '../../i18n/errors'
 import { reportError } from '../../stores/uiStore'
+import { ColorGraphPanel } from './ColorGraphPanel'
 import { ColorPalettes } from './ColorPalettes'
 import { ColorGlyphsPanel } from './ColorGlyphsPanel'
 import { emptyTable } from './colorModel'
@@ -34,7 +35,11 @@ export function ColorEditor({
     const dispose = session.connect(() => {
       // Close handovers suspend the form. Disabled controls are excluded from
       // reportValidity(), but their unparsed text still needs validation.
-      const invalid = [...(form.current?.querySelectorAll('input') ?? [])].find(
+      const invalid = [
+        ...(form.current?.querySelectorAll<
+          HTMLInputElement | HTMLTextAreaElement
+        >('input, textarea') ?? []),
+      ].find(
         (input) =>
           !input.validity.valid ||
           (input.required && input.value.trim() === ''),
@@ -177,6 +182,14 @@ export function ColorEditor({
                 table={draft}
                 selected={Math.min(palette, draft.palettes.length - 1)}
                 onSelect={setPalette}
+                validate={valid}
+                onChange={(next) => session.edit(next)}
+              />
+              <ColorGraphPanel
+                doc={doc}
+                table={draft}
+                palette={Math.min(palette, draft.palettes.length - 1)}
+                generation={source.generation}
                 validate={valid}
                 onChange={(next) => session.edit(next)}
               />

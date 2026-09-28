@@ -134,6 +134,11 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.color = true;
             impact.component_graph_changed = true;
             for table in font.color.iter().chain(color.iter()) {
+                if let Some(graph) = &table.graph {
+                    for name in graph.glyphs.keys() {
+                        impact.glyph(name);
+                    }
+                }
                 for name in table.glyphs.keys() {
                     impact.glyph(name);
                 }

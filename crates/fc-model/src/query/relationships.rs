@@ -29,6 +29,18 @@ pub fn dependents(font: &Font) -> HashMap<GlyphName, Vec<GlyphName>> {
         }
     }
     if let Some(color) = &font.color {
+        if let Some(graph) = &color.graph {
+            for (name, root) in &graph.glyphs {
+                for dependency in graph.dependencies(*root) {
+                    if dependency != *name {
+                        let entries = result.entry(dependency).or_default();
+                        if !entries.contains(name) {
+                            entries.push(name.clone());
+                        }
+                    }
+                }
+            }
+        }
         for (name, layers) in &color.glyphs {
             for layer in layers {
                 if layer.glyph == *name {

@@ -1,7 +1,7 @@
 # P5 professional finish
 
 Status: resumed on 2026-09-28 for the remaining work. MATH, COLR v0/CPAL
-and the static SVG authoring subset have acceptance records. The P5 scope was
+and the static SVG/COLRv1 authoring subsets have acceptance records. The P5 scope was
 authorized immediately after P4; the remaining work is not complete. Current
 progress and next actions: [STATUS](../../STATUS.md).
 P4 checkpoint: `a3b2f8f`; its supported boundaries and evidence are recorded in
@@ -29,8 +29,8 @@ by the earlier user instruction; headless browser testing and builds are allowed
       See [record](../../p5-color-acceptance.md).
 - [x] Static SVG documents: source/bindings editor, bounded codecs, persistence
       and four-container independent acceptance. See [record](../../p5-svg-acceptance.md).
-- [ ] Remaining OpenType authoring: COLRv1 paint graphs, semantic binary
-      import/export and persistence.
+- [x] Static COLRv1 paint graphs, semantic binary import/export and persistence.
+      See [record](../../p5-colrv1-acceptance.md); variable paints remain raw.
 - [ ] Geometry and construction: style effects, non-destructive effects and smart
       geometry, raster-image trace, background images, optical spacing/kerning, CJK
       construction helpers and remaining editor/metrics/variable requirements.

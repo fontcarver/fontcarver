@@ -1,3 +1,4 @@
+import { graphPaletteIndices } from './graphModel'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ColorTable, PaletteColor } from '../../api'
@@ -29,12 +30,13 @@ export function ColorPalettes({
   const start = Math.min(page, Math.floor((length - 1) / PAGE)) * PAGE
   const usedEntries = useMemo(
     () =>
-      new Set(
-        Object.values(table.glyphs).flatMap((layers) =>
+      new Set([
+        ...Object.values(table.glyphs).flatMap((layers) =>
           layers.map((l) => l.palette_index),
         ),
-      ),
-    [table.glyphs],
+        ...graphPaletteIndices(table.graph),
+      ]),
+    [table.glyphs, table.graph],
   )
   const setColor = (index: number, value: PaletteColor) =>
     onChange({

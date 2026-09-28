@@ -235,3 +235,34 @@ it('bounds large palette and layer controls while retaining invalid page input',
   await user.click(screen.getByRole('button', { name: 'Next layers' }))
   expect(screen.getAllByLabelText(/outline glyph/)).toHaveLength(8)
 })
+
+it('retains invalid graph JSON through close and suspended save, then applies a corrected graph', async () => {
+  const { user, close, state, mock } = setup()
+  const name = await screen.findByRole('textbox', {
+    name: 'Gradient glyph name',
+  })
+  fireEvent.change(name, { target: { value: 'A' } })
+  await user.click(screen.getByRole('button', { name: 'Add gradient' }))
+  const source = screen.getByRole('textbox', { name: 'Paint graph JSON' })
+  const valid = (source as HTMLTextAreaElement).value
+  fireEvent.change(source, { target: { value: '{"glyphs":' } })
+  await user.click(screen.getByRole('button', { name: 'Close' }))
+  expect(close).not.toHaveBeenCalled()
+  let resume = () => {}
+  act(() => {
+    resume = suspendDocumentEditParticipants(902)
+  })
+  try {
+    await act(async () => {
+      await expect(flushDocumentEditParticipants(902)).rejects.toThrow()
+    })
+  } finally {
+    act(resume)
+  }
+  expect(source).toHaveValue('{"glyphs":')
+  expect(mock.calls.filter((c) => c.method === 'color.apply')).toHaveLength(0)
+  fireEvent.change(source, { target: { value: valid } })
+  await user.click(screen.getByRole('button', { name: 'Apply changes' }))
+  await waitFor(() => expect(state().color?.graph?.glyphs).toEqual({ A: 0 }))
+  expect(state().color?.graph?.paints[1].kind).toBe('Linear')
+})

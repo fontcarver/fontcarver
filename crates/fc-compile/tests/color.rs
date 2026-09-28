@@ -8,6 +8,7 @@ use read_fonts::FontRef;
 fn font() -> Font {
     let mut font = common::scratch_font();
     font.color = Some(ColorTable {
+        graph: None,
         palette_version: 1,
         palettes: vec![
             ColorPalette {

@@ -5,6 +5,8 @@
 mod anchor;
 mod bitmap;
 mod color;
+pub mod colrv1;
+pub use colrv1::{ColrColorLine, ColrColorStop, ColrGraph, ColrPaint, ColrTransform};
 mod component;
 mod contour;
 mod designspace;

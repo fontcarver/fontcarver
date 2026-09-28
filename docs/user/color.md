@@ -1,7 +1,7 @@
 # Color palettes and layered glyphs
 
 Open **Font Info** (`Ctrl+I`, or `Cmd+I` on macOS), then choose **Color fonts**.
-The editor supports COLR v0 compositions and CPAL palettes. Each composition
+The editor supports COLR v0 compositions, [static COLRv1 graphs](colrv1.md) and CPAL palettes. Each composition
 paints existing outline glyphs in order; edit those outlines in the glyph editor.
 
 ## Palettes
@@ -53,7 +53,7 @@ both COLR and CPAL when applied; Undo can restore them.
 
 ## Import and export
 
-Supported COLR v0 / CPAL v0 or v1 data becomes editable on import. Unsupported
+Supported static COLR v0/v1 / CPAL v0 or v1 data becomes editable on import. Unsupported
 or malformed tables stay together as original bytes with a diagnostic. Older
 native documents with original tables can offer **Make imported colors
 editable**. Replacing or deleting original data is an explicit edit.
@@ -64,9 +64,6 @@ COLR in table selection also includes CPAL. UFO and designspace store color
 data in FontCarver's private metadata; other editors may ignore that metadata.
 Formats without color preservation report the loss.
 
-This editor covers static COLR v0 compositions. COLRv1 paint graphs, SVG color
-documents, variable color authoring and bitmap-color authoring are separate
-features. Highly overlapping imported ranges may exceed the writer's 16-bit
-packing limits after editing and produce an explicit export error. The browser
-development transport accepts request bodies up to 64 MiB; model item limits
-apply independently.
+Static COLRv1 paint graphs are edited in the same dialog; see the
+[graph guide](colrv1.md). [SVG color documents](svg.md) have a separate editor.
+Variable color authoring and bitmap-color authoring remain separate work.

@@ -43,7 +43,8 @@
   flex: 1;
 }
 .editor input,
-.editor select {
+.editor select,
+.editor textarea {
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
@@ -152,4 +153,18 @@
 }
 .paint input:not([type='checkbox']) {
   width: 100%;
+}
+
+.editor .graphSource {
+  width: 100%;
+  min-height: 280px;
+  resize: vertical;
+  padding: var(--space-2);
+  font: var(--text-size-sm) var(--font-mono);
+}
+.graphSource:invalid {
+  border-color: var(--color-danger);
+}
+.canvas[hidden] {
+  display: none;
 }

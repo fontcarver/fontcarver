@@ -5,9 +5,9 @@ pause and every milestone commit. It links to the detailed records; it does
 not repeat them.
 
 Last updated: 2026-09-28 (remaining P5 work resumed). Branch: `p5-color-authoring`
-(no push, no main merge). Static SVG authoring is implemented and verified within
-[the documented subset](p5-svg-acceptance.md). Frontend checks passed: 142 test
-files, 1,150 tests; TypeScript, lint, production build and formatting are clean.
+(no push, no main merge). Static SVG and COLRv1 authoring are implemented within
+their acceptance boundaries. Frontend checks passed: 143 test files, 1,153 tests;
+TypeScript, lint, production build and formatting are clean.
 The user requested continuing all remaining tasks without confirmation.
 
 ## Phases
@@ -42,7 +42,7 @@ separate P5 design requirement, now verified in the audit’s supplemental secti
 | MATH authoring                   | Complete within the acceptance boundaries: editor, undo/save/reopen/export, FontTools/HarfBuzz and large-font checks verified | [p5-math-acceptance](p5-math-acceptance.md)       |
 | COLR/CPAL authoring              | Complete within static COLR v0 / CPAL v0/v1 boundaries; synthetic/real-font exports, browser editing and persistence verified | [p5-color-acceptance](p5-color-acceptance.md) |
 | SVG colour documents            | Static subset verified; independent export/browser and regression checks passed | [p5-svg-acceptance](p5-svg-acceptance.md) |
-| COLRv1 paint graphs              | Next queued implementation | plan block "Remaining OpenType authoring" |
+| COLRv1 paint graphs              | Static graph editor, shared codecs, palettes, persistence and independent binary/pixel checks verified | [p5-colrv1-acceptance](p5-colrv1-acceptance.md) |
 | Geometry and construction        | Not started                                                                                                                   | plan block "Geometry and construction"            |
 | Compare/merge/paste special      | Not started                                                                                                                   | plan block "Document workflows"                   |
 | Scripting and plugins            | Not started                                                                                                                   | plan block "Automation"                           |
@@ -59,9 +59,8 @@ native-platform run.
 
 ## Next step
 
-Continue COLRv1 and the
-remaining P5 work sequence. Do not repeat the earlier task-boundary stop: the
-2026-09-28 instruction supersedes it. See [SVG usage](user/svg.md),
+Continue geometry/construction and the remaining P5 work sequence. Do not repeat the earlier task-boundary stop: the
+2026-09-28 instruction supersedes it. See [COLRv1 acceptance](p5-colrv1-acceptance.md), [SVG usage](user/svg.md),
 [acceptance](p5-svg-acceptance.md) and the [P5 plan](superpowers/plans/2026-09-22-p5-professional-finish.md).
 
 The bilingual website is also complete, with deployment still pending. Its

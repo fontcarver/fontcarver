@@ -319,3 +319,67 @@ fn preview_ignores_nested_color_compositions() {
     assert_eq!(preview["layers"][1]["glyph"], "V");
     assert!(preview["layers"][1]["color"].is_null());
 }
+
+#[test]
+fn graph_drafts_preview_without_mutation_and_export_after_undo_save() {
+    let (api, doc) = setup(font());
+    let before = state(&api, &doc);
+    let mut draft = before["color"].clone();
+    draft["graph"] = json!({"glyphs": {"A": 0}, "paints": [
+        {"kind":"Glyph", "glyph":"V", "paint":1},
+        {"kind":"Sweep", "color_line": {"extend":0,"stops":[
+            {"offset":0,"palette_index":0,"alpha":1},
+            {"offset":1,"palette_index":1,"alpha":0.5}
+        ]}, "center":[300,300], "angles":[0,360]}
+    ], "clips":{"A":[0,0,800,800]}});
+    draft = serde_json::to_value(serde_json::from_value::<ColorTable>(draft).unwrap()).unwrap();
+    let preview = api
+        .call(
+            "color.graph_preview",
+            json!({"doc":doc,"glyph":"A","color":draft,"palette_index":1}),
+        )
+        .unwrap();
+    let bytes: Vec<u8> = serde_json::from_value(preview["bytes"].clone()).unwrap();
+    let output = fc_sfnt::read_bytes(&bytes, &Default::default())
+        .unwrap()
+        .fonts
+        .remove(0);
+    assert!(output.glyph("A").unwrap().unicodes.contains(&0xE000));
+    assert_eq!(output.color.as_ref().unwrap().palettes.len(), 1);
+    assert_eq!(
+        serde_json::to_value(output.color.unwrap().graph).unwrap(),
+        draft["graph"]
+    );
+    assert_eq!(state(&api, &doc), before);
+    let mut invalid = draft.clone();
+    invalid["graph"]["paints"][0]["paint"] = json!(0);
+    assert!(apply(&api, &doc, &before["generation"], invalid).is_err());
+    assert_eq!(state(&api, &doc), before);
+    let change = apply(&api, &doc, &before["generation"], draft.clone()).unwrap();
+    assert_eq!(change["color"], true);
+    let dir = tempfile::tempdir().unwrap();
+    for extension in ["fcf", "fcf.gz"] {
+        let path = dir.path().join(format!("graph.{extension}"));
+        api.call("session.save", json!({"doc":doc,"path":path}))
+            .unwrap();
+        let opened = api.call("session.open", json!({"path":path})).unwrap();
+        assert_eq!(state(&api, &opened["doc"])["color"], draft);
+    }
+    api.call("doc.undo", json!({"doc":doc})).unwrap();
+    assert_eq!(state(&api, &doc)["color"], before["color"]);
+    api.call("doc.redo", json!({"doc":doc})).unwrap();
+    assert_eq!(state(&api, &doc)["color"], draft);
+    for format in ["Ttf", "Otf", "Woff", "Woff2"] {
+        let path = dir.path().join(format!("graph.{format}"));
+        api.call(
+            "session.export",
+            json!({"doc":doc,"path":path,"options":{"format":format}}),
+        )
+        .unwrap();
+        let output = fc_sfnt::read_path(&path, &Default::default())
+            .unwrap()
+            .fonts
+            .remove(0);
+        assert_eq!(serde_json::to_value(output.color).unwrap(), draft);
+    }
+}

@@ -2,6 +2,7 @@
 
 pub(crate) mod bitmap;
 pub(crate) mod color;
+pub(crate) mod color_graph;
 pub(crate) mod doc;
 pub(crate) mod editing;
 pub(crate) mod export;

@@ -1,4 +1,6 @@
-//! Bounded COLR v0 / CPAL v0-v1 codecs, implemented from the OpenType specification.
+//! Bounded COLR v0/v1 / CPAL v0-v1 codecs, implemented from the OpenType specification.
+
+mod colrv1;
 
 use crate::Error;
 use fc_model::{ColorPalette, ColorTable, ColrLayer, GlyphName, PaletteColor, MAX_COLOR_ITEMS};
@@ -67,11 +69,8 @@ pub fn read_tables(
 ) -> Result<ColorTable, Error> {
     // Never take CPAL ownership while an unsupported COLR graph still needs it.
     if let Some(bytes) = colr {
-        if (Data { bytes, tag: "COLR" }).u16(0)? != 0 {
-            return Err(Error::parse(
-                "COLR",
-                "only version 0 compositions are editable",
-            ));
+        if (Data { bytes, tag: "COLR" }).u16(0)? > 1 {
+            return Err(Error::parse("COLR", "unsupported COLR version"));
         }
     }
     let data = Data {
@@ -143,6 +142,9 @@ pub fn read_tables(
     }
     if let Some(bytes) = colr {
         read_layers(bytes, order, &mut result)?;
+        if (Data { bytes, tag: "COLR" }).u16(0)? == 1 {
+            result.graph = Some(colrv1::read(bytes, order)?);
+        }
     }
     result
         .validate(order)
@@ -155,8 +157,9 @@ fn read_layers(bytes: &[u8], order: &[GlyphName], result: &mut ColorTable) -> Re
     data.range(0, 14, 1)?;
     let base_count = usize::from(data.u16(2)?);
     let layer_count = usize::from(data.u16(12)?);
-    let bases = data.array(4, base_count, 6, 14)?;
-    let layers = data.array(8, layer_count, 4, 14)?;
+    let header = if data.u16(0)? == 1 { 34 } else { 14 };
+    let bases = data.array(4, base_count, 6, header)?;
+    let layers = data.array(8, layer_count, 4, header)?;
     let name = |id: u16| {
         order
             .get(usize::from(id))
@@ -215,7 +218,7 @@ pub fn write_tables(
         .validate(order)
         .map_err(|e| Error::parse("COLR/CPAL", e))?;
     let cpal = write_palettes(color)?;
-    if color.glyphs.is_empty() {
+    if color.glyphs.is_empty() && color.graph.is_none() {
         return Ok((None, cpal));
     }
     let ids: HashMap<_, _> = order
@@ -251,6 +254,9 @@ pub fn write_tables(
     u16out(&mut colr, layers.len() / 4, "COLR")?;
     colr.extend(bases);
     colr.extend(layers);
+    if let Some(graph) = &color.graph {
+        colr = colrv1::upgrade(&colr, graph, order)?;
+    }
     Ok((Some(colr), cpal))
 }
 
