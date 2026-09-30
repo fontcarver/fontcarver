@@ -51,6 +51,11 @@ class ReleaseBundleTests(unittest.TestCase):
         icon = self.root / 'usr/share/icons/hicolor/32x32/apps/fontcarver-desktop.png'
         icon.parent.mkdir(parents=True)
         icon.write_bytes(b'\x89PNG\r\n\x1a\nicon')
+        # Debian policy 12.5 makes this mandatory, and the directory repeats the
+        # package name the real `Package` field carries.
+        self.copyright = self.root / 'usr/share/doc/fontcarver/copyright'
+        self.copyright.parent.mkdir(parents=True)
+        self.copyright.write_text('Files: *\nLicense: MIT or Apache-2.0\n')
         return resources
 
     def test_complete_payload_and_legal_fontforge_mentions_pass(self):
@@ -186,8 +191,59 @@ class ReleaseBundleTests(unittest.TestCase):
                     verifier.verify(self.root, ['deb'])
             self.assertFalse((self.root / '.scratch/p5-release-verify').exists())
 
-    @unittest.skipUnless(shutil.which('dpkg-deb'), 'dpkg-deb is required for native extraction')
+    def test_debian_package_without_a_copyright_document_is_rejected(self):
+        self.payload()
+        self.copyright.unlink()
+        with self.assertRaisesRegex(verifier.VerificationError, 'copyright'):
+            verifier.inspect_payload(self.root, 'deb')
+        self.copyright.write_bytes(b'')
+        with self.assertRaisesRegex(verifier.VerificationError, 'empty Debian copyright'):
+            verifier.inspect_payload(self.root, 'deb')
+
+    def test_copyright_document_must_be_in_the_installed_package_directory(self):
+        self.payload()
+        report = verifier.inspect_payload(self.root, 'deb', {'Package': 'fontcarver'})
+        self.assertEqual(report['debian_copyright']['path'],
+                         'usr/share/doc/fontcarver/copyright')
+        # A renamed product moves the installed directory; a document left at the
+        # old name is unreachable and must not pass.
+        with self.assertRaisesRegex(verifier.VerificationError, 'font-carver'):
+            verifier.inspect_payload(self.root, 'deb', {'Package': 'font-carver'})
+
+    def test_copyright_document_must_name_both_project_licenses(self):
+        self.payload()
+        self.copyright.write_text('Files: *\nLicense: MIT\n')
+        with self.assertRaisesRegex(verifier.VerificationError, 'Apache-2.0'):
+            verifier.inspect_payload(self.root, 'deb')
+        self.copyright.write_text('Files: *\nLicense: Apache-2.0\n')
+        with self.assertRaisesRegex(verifier.VerificationError, 'MIT'):
+            verifier.inspect_payload(self.root, 'deb')
+
+    def test_debian_expat_spelling_satisfies_the_mit_half(self):
+        self.payload()
+        # A DEP-5 document may use Debian's own short name for the MIT license.
+        self.copyright.write_text('Files: *\nLicense: Expat or Apache-2.0\n')
+        report = verifier.inspect_payload(self.root, 'deb')
+        self.assertEqual(report['debian_copyright']['path'],
+                         'usr/share/doc/fontcarver/copyright')
+
+    def test_appimage_does_not_require_the_debian_copyright_document(self):
+        self.payload()
+        self.copyright.unlink()
+        launcher = self.root / 'AppRun'
+        launcher.write_text('#!/bin/sh\nexec usr/bin/fontcarver-desktop\n')
+        launcher.chmod(0o755)
+        report = verifier.inspect_payload(self.root, 'appimage')
+        self.assertNotIn('debian_copyright', report)
+
     def test_real_deb_round_trip_checks_metadata_and_checksum(self):
+        # This is the only case that shells out to dpkg-deb, so it is the only
+        # one that may be skipped for a missing dpkg-deb. The guard lives in the
+        # body rather than in a decorator because a decorator silently transfers
+        # to whatever test is inserted after it, which would both skip a case
+        # that needs no dpkg-deb and leave this one to error without it.
+        if shutil.which('dpkg-deb') is None:
+            self.skipTest('dpkg-deb is required for native extraction')
         outer = self.root
         self.root = outer / 'source'
         self.payload()

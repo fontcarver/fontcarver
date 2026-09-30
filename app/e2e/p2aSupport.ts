@@ -102,6 +102,14 @@ export const test = base.extend<{ source: Source }>({
   source: async ({ page }, runTest) => {
     const files = sourceFixture(true)
     await page.goto('/')
+    // Whatever the session already held stays open: under the default
+    // configuration this spec shares a kernel that was started with the DejaVu
+    // fixture, and the specs that run after it need that document.
+    const inherited = new Set(
+      (await api<DocSummary[]>(page, 'session.list', {})).map(
+        (document) => document.doc,
+      ),
+    )
     try {
       const doc = await openSource(page, files.input)
       await runTest({ ...files, doc })
@@ -121,7 +129,8 @@ export const test = base.extend<{ source: Source }>({
       try {
         if (!page.isClosed())
           for (const doc of await api<DocSummary[]>(page, 'session.list', {})) {
-            await api(page, 'session.close', { doc: doc.doc, force: true })
+            if (!inherited.has(doc.doc))
+              await api(page, 'session.close', { doc: doc.doc, force: true })
           }
       } finally {
         files.cleanup()

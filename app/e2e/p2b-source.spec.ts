@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { copyFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect } from '@playwright/test'
 import { api } from './support'
@@ -43,7 +43,14 @@ test('retains invalid Unicode drafts through native save and separates validatio
   expect(saved.draft?.source.prefixes[0].code).toBe(INVALID)
   expect(saved.compile_revision).toBe(before.compile_revision)
   expect(saved.has_unapplied_changes).toBe(true)
-  const reopened = await openFont(page, native)
+  // The shell focuses a path it already has open instead of opening it twice,
+  // so the saved bytes are reopened through a copy: the draft still has to come
+  // back from disk rather than from the document in memory.
+  const copy = join(source.directory, 'InvalidDraftCopy.fcf')
+  // The dialog closes as soon as the save is accepted; wait for the bytes.
+  await expect.poll(() => existsSync(native), { timeout: 20_000 }).toBe(true)
+  copyFileSync(native, copy)
+  const reopened = await openFont(page, copy)
   await openFeatures(page)
   expect(
     (await featureState(page, reopened.doc)).draft?.source.prefixes[0].code,

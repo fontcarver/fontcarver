@@ -5,6 +5,8 @@ import { useEditorStore } from '../stores/editorStore'
 import type { FilterTarget } from './contracts'
 import { useFilterPreview } from './filterSession'
 import { FilterPreviewGraphic } from './FilterPreviewGraphic'
+import { usePluginStore } from './pluginStore'
+import { defaultSettings } from './registry'
 import styles from './plugins.module.css'
 
 /** Numeric Translate parameters and explicit Preview, Cancel and Apply actions. */
@@ -14,8 +16,11 @@ export function FilterControls({ pluginId }: { pluginId: string }) {
   const phase = useFilterPreview((state) => state.phase)
   const preview = useFilterPreview((state) => state.preview)
   const error = useFilterPreview((state) => state.error)
-  const [dx, setDx] = useState('20')
-  const [dy, setDy] = useState('0')
+  const stored = usePluginStore((state) => state.installed[pluginId]?.settings)
+  // Persisted offsets survive closing the manager and reopening the application.
+  const initial = stored ?? defaultSettings(pluginId)
+  const [dx, setDx] = useState(String(initial.dx ?? 0))
+  const [dy, setDy] = useState(String(initial.dy ?? 0))
   const layer = active?.scene.layer
   const target: FilterTarget | null =
     active?.outline &&
@@ -53,6 +58,11 @@ export function FilterControls({ pluginId }: { pluginId: string }) {
     useFilterPreview.getState().cancel()
     if (axis === 'x') setDx(value)
     else setDy(value)
+    const numeric = Number(value)
+    if (value.trim() !== '' && Number.isFinite(numeric))
+      usePluginStore
+        .getState()
+        .setSetting(pluginId, axis === 'x' ? 'dx' : 'dy', numeric)
   }
   const prepare = () => {
     if (!target || invalid) return

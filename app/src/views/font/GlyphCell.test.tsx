@@ -36,6 +36,7 @@ function props(cell: ReturnType<typeof cellFor> | undefined) {
     focused: false,
     theme: THEME,
     fontFamily: 'system-ui',
+    referenceCharacters: true,
   }
 }
 
@@ -52,6 +53,7 @@ describe('GlyphCell', () => {
     ['has_custom_glyph_info', 'Custom glyph information'],
     ['incompatible_masters', 'Incompatible masters'],
     ['locked', 'Locked'],
+    ['placeholder', 'Placeholder for a missing component base'],
   ])(
     'exposes the %s status visually and to assistive technology',
     (flag, label) => {

@@ -7,7 +7,7 @@ import {
   type BitmapState,
   type DocSummary,
   type ExportFormat,
-  type ExportOptions,
+  type ExportProfile,
   type ExportReport,
 } from '../api'
 import { Button } from '../components/Button'
@@ -29,7 +29,10 @@ import {
 } from './exportFormats'
 import { ExportResult } from './ExportResult'
 import { ExportFormatTabs } from './ExportFormatTabs'
-import { ExportVariationOptions } from './ExportVariationOptions'
+import {
+  ExportVariationOptions,
+  type VariableSubset,
+} from './ExportVariationOptions'
 import { ExportProfiles } from './ExportProfiles'
 import { ExportPreflight } from './ExportPreflight'
 import { ExportMatrixPanel } from './ExportMatrixPanel'
@@ -60,7 +63,11 @@ export function ExportDialog({ summary }: ExportDialogProps) {
   const [format, setFormat] = useState<ExportFormat>('Ttf')
   const [variable, setVariable] = useState(false)
   const [instance, setInstance] = useState<number>()
-  const [masterSubset, setMasterSubset] = useState<string[]>()
+  const [subset, setSubset] = useState<VariableSubset>({
+    masters: undefined,
+    axes: undefined,
+    instances: undefined,
+  })
   const canVary = SFNT_FORMATS.includes(format) && summary.axes.length > 0
   const canVariable = canVary && !['Cff', 'Type42'].includes(format)
   const effectiveVariable = canVariable && variable
@@ -136,29 +143,34 @@ export function ExportDialog({ summary }: ExportDialogProps) {
     canVary,
     variable: effectiveVariable,
     instance,
-    masterSubset,
+    masterSubset: subset.masters,
+    axisSubset: subset.axes,
+    instanceSubset: subset.instances,
     bitmapKey,
     master,
     glyph,
     options,
   })
-  const applyProfile = (profile: ExportOptions) => {
-    chooseFormat(profile.format)
-    setVariable(profile.variable)
-    setInstance(profile.instance)
-    setMasterSubset(
-      profile.master_subset?.filter((id) =>
+  const applyProfile = (profile: ExportProfile) => {
+    const stored = profile.options
+    chooseFormat(stored.format)
+    setVariable(stored.variable)
+    setInstance(stored.instance)
+    setSubset({
+      masters: stored.master_subset?.filter((id) =>
         summary.masters.some((entry) => entry.id === id),
       ),
-    )
+      axes: stored.axis_subset?.slice(),
+      instances: stored.instance_subset?.slice(),
+    })
     setMaster(
-      summary.masters.some((entry) => entry.id === profile.master)
-        ? profile.master
+      summary.masters.some((entry) => entry.id === stored.master)
+        ? stored.master
         : (summary.masters[0]?.id ?? null),
     )
-    setOptions(processingFromProfile(profile))
-    setBitmapKey(profile.bitmap_strike?.join(':') ?? '')
-    setGlyph(profile.glyph ?? '')
+    setOptions(processingFromProfile(stored))
+    setBitmapKey(stored.bitmap_strike?.join(':') ?? '')
+    setGlyph(stored.glyph ?? '')
   }
   const cannotRun =
     busy ||
@@ -233,6 +245,7 @@ export function ExportDialog({ summary }: ExportDialogProps) {
       )}
       <div className={styles.form}>
         <ExportProfiles
+          doc={summary.doc}
           options={exportOptions}
           busy={busy}
           onApply={applyProfile}
@@ -312,8 +325,8 @@ export function ExportDialog({ summary }: ExportDialogProps) {
             onVariable={setVariable}
             instance={instance}
             onInstance={setInstance}
-            subset={masterSubset}
-            onSubset={setMasterSubset}
+            subset={subset}
+            onSubset={setSubset}
           />
         )}
         {!allMasters &&

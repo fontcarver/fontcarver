@@ -152,3 +152,130 @@ fn new_draft_during_validation_is_retained() {
         "invalid newer text"
     );
 }
+
+/// Row 47: the per-entry automatic switch is one checked, undoable transaction.
+#[test]
+fn freezing_one_entry_keeps_its_text_and_leaves_the_recipe_enabled() {
+    let (session, api, params) = setup();
+    let doc = params.doc;
+    // Hand `smcp` to its recipe: drop the user block and enable small caps.
+    let state = set_draft(
+        &api,
+        SetFeatureDraftParams {
+            doc,
+            expected_generation: params.expected_generation,
+            expected_draft_revision: params.expected_draft_revision,
+            source: Features::default(),
+            settings: FeatureGenerationSettings {
+                small_caps: true,
+                stylistic_sets: true,
+                ..FeatureGenerationSettings::default()
+            },
+            token: None,
+        },
+    )
+    .unwrap();
+    let applied = apply(
+        &api,
+        FeatureValidationParams {
+            doc,
+            expected_generation: state.generation,
+            expected_compile_revision: state.compile_revision,
+            expected_draft_revision: state.draft_revision,
+        },
+    )
+    .unwrap();
+    assert!(applied.applied, "{:?}", applied.validation.diagnostics);
+    let state = applied.state;
+    let generated = state
+        .active_source
+        .features
+        .iter()
+        .find(|block| block.tag == "smcp")
+        .expect("generated smcp");
+    assert!(generated.automatic);
+    let code = generated.code.clone();
+    assert!(state
+        .active_settings
+        .generated
+        .iter()
+        .any(|record| record.generator == fc_model::FeatureGenerator::SmallCaps));
+    // Every recipe name is offered to the editor's per-entry switch.
+    assert!(state
+        .automatic_entries
+        .iter()
+        .any(|entry| entry.name == "smcp"));
+    assert!(
+        state
+            .automatic_entries
+            .iter()
+            .any(|entry| entry.name == "Uppercase"
+                && entry.kind == fc_model::GeneratedItemKind::Class)
+    );
+
+    let frozen = freeze(
+        &api,
+        FreezeFeatureParams {
+            doc,
+            expected_generation: state.generation,
+            expected_compile_revision: state.compile_revision,
+            expected_draft_revision: state.draft_revision,
+            generator: fc_model::FeatureGenerator::SmallCaps,
+            entry: Some("smcp".into()),
+        },
+    )
+    .unwrap();
+    let draft = frozen.draft.as_ref().expect("freezing writes a draft");
+    // The text survives, the entry stops regenerating, the recipe stays on.
+    let kept = draft
+        .source
+        .features
+        .iter()
+        .find(|block| block.tag == "smcp")
+        .expect("frozen smcp");
+    assert_eq!(kept.code, code);
+    assert!(!kept.automatic);
+    assert!(draft.settings.small_caps);
+    assert!(draft.settings.entry_is_manual("smcp"));
+    assert!(draft.settings.generated.is_empty());
+
+    // One gesture, one undo unit: undo restores the generated entry.
+    session
+        .with_doc_mut(doc, |document| document.undo().unwrap())
+        .unwrap();
+    let restored = get(&api, DocParams { doc }).unwrap();
+    assert!(restored
+        .active_settings
+        .generated
+        .iter()
+        .any(|record| record.generator == fc_model::FeatureGenerator::SmallCaps));
+    assert!(restored.draft.is_none());
+}
+
+/// Freezing an entry a recipe does not own is refused without mutating anything.
+#[test]
+fn freezing_an_unowned_entry_is_refused_and_leaves_the_document_intact() {
+    let (_session, api, params) = setup();
+    let doc = params.doc;
+    let before = get(&api, DocParams { doc }).unwrap();
+    let error = freeze(
+        &api,
+        FreezeFeatureParams {
+            doc,
+            expected_generation: before.generation,
+            expected_compile_revision: before.compile_revision,
+            expected_draft_revision: before.draft_revision,
+            generator: fc_model::FeatureGenerator::SmallCaps,
+            entry: Some("smcp".into()),
+        },
+    )
+    .unwrap_err();
+    assert_eq!(error.code, "feature-generation-not-generated");
+    let after = get(&api, DocParams { doc }).unwrap();
+    assert_eq!(after.generation, before.generation);
+    assert_eq!(after.draft_revision, before.draft_revision);
+    assert_eq!(
+        after.draft.map(|draft| draft.source),
+        before.draft.map(|draft| draft.source)
+    );
+}

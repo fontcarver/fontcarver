@@ -14,6 +14,7 @@ export type SourceFixture = ReturnType<typeof featureFixture> & {
 export const test = base.extend<{ source: SourceFixture }>({
   source: async ({ page }, runTest) => {
     const files = featureFixture()
+    let inherited = new Set<number>()
     try {
       // This suite owns the server/profile. Timed recovery snapshots must not
       // appear as unrelated startup dialogs between independent scenarios.
@@ -24,6 +25,15 @@ export const test = base.extend<{ source: SourceFixture }>({
         data: { prefs: { ...prefs, autosave_seconds: 0 } },
       })
       await page.goto('/')
+      await dismissRecovery(page)
+      // Whatever the session already held stays open: under the default
+      // configuration this suite shares a kernel that was started with the
+      // DejaVu fixture, and the specs that run after it need that document.
+      inherited = new Set(
+        (await api<DocSummary[]>(page, 'session.list', {})).map(
+          (document) => document.doc,
+        ),
+      )
       const doc = await openFont(page, files.input)
       await runTest({ ...files, doc })
     } finally {
@@ -43,7 +53,11 @@ export const test = base.extend<{ source: SourceFixture }>({
             'session.list',
             {},
           ))
-            await api(page, 'session.close', { doc: document.doc, force: true })
+            if (!inherited.has(document.doc))
+              await api(page, 'session.close', {
+                doc: document.doc,
+                force: true,
+              })
         }
       } finally {
         files.cleanup()
@@ -51,6 +65,23 @@ export const test = base.extend<{ source: SourceFixture }>({
     }
   },
 })
+
+/**
+ * Dismiss a recovery prompt left by an earlier scenario in this worker.
+ *
+ * Each test opens its own font; an unsaved document from the previous test must
+ * not block the menu bar with a modal.
+ */
+export async function dismissRecovery(page: Page) {
+  const later = page.getByRole('button', { name: 'Later', exact: true })
+  // The prompt is decided after the app asks the kernel, so wait briefly for
+  // it rather than racing the first render.
+  await later.waitFor({ state: 'visible', timeout: 4_000 }).catch(() => {})
+  if (await later.isVisible().catch(() => false)) {
+    await later.click()
+    await expect(later).toBeHidden()
+  }
+}
 
 export async function openFont(page: Page, path: string) {
   const before = new Set(
@@ -64,16 +95,19 @@ export async function openFont(page: Page, path: string) {
   await expect
     .poll(
       async () => {
-        opened = (await api<DocSummary[]>(page, 'session.list', {})).find(
-          (doc) => !before.has(doc.doc) && doc.path === path,
-        )
+        const documents = await api<DocSummary[]>(page, 'session.list', {})
+        // A path the shell already has open is focused rather than opened
+        // twice, so an existing document for it counts as the result.
+        opened =
+          documents.find((doc) => !before.has(doc.doc) && doc.path === path) ??
+          documents.find((doc) => doc.path === path)
         return opened?.doc
       },
       { timeout: 20_000 },
     )
     .toBeTruthy()
   await expect(
-    page.getByRole('tab', { name: basename(path), exact: true }).last(),
+    page.getByRole('tab', { name: basename(path) }).last(),
   ).toHaveAttribute('aria-selected', 'true')
   return opened!
 }
@@ -81,7 +115,7 @@ export async function openFont(page: Page, path: string) {
 export async function openFeatures(page: Page) {
   await menuItem(page, 'View', /^Features/)
   await expect(
-    page.getByRole('tab', { name: 'Features', exact: true }).last(),
+    page.getByRole('tab', { name: 'Features' }).last(),
   ).toHaveAttribute('aria-selected', 'true')
   await expect(
     page.getByRole('button', { name: 'Lookups', exact: true }),
@@ -185,6 +219,7 @@ export async function shape(
     ['liga', true],
   ],
   master: string | null = null,
+  direction: 'ltr' | 'ttb' = 'ltr',
 ) {
   let current: ShapedRun | undefined
   await expect
@@ -195,7 +230,7 @@ export async function shape(
           text,
           master,
           features,
-          direction: 'ltr',
+          direction,
         })
         return current.stale
       },

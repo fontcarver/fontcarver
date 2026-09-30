@@ -4,22 +4,24 @@ import {
   call,
   type DocId,
   type DocSummary,
+  type FontCompareFamilyResult,
   type FontCompareResult,
   type FontCompareGlyphResult,
-  type PasteSpecialParams,
-  type PasteSpecialResult,
 } from '../../api'
 import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
 import { withSettledDocument } from '../../editor/documentPersistence'
 import { errorNotice } from '../../i18n/errors'
-import { useSessionStore } from '../../stores/sessionStore'
+import { documentLabel, useSessionStore } from '../../stores/sessionStore'
 import { ComparisonResults } from './ComparisonResults'
 import { ComparisonOutline } from './ComparisonOutline'
 import { DocumentMasterFields } from './DocumentMasterFields'
+import { FamilyResults } from './FamilyResults'
+import { MergeControls } from './MergeControls'
+import { useFontMerge } from './useFontMerge'
 import styles from './crossDocument.module.css'
 
-/** Font differences, reference-binary overlays, family checks and reviewed merge. */
+/** Font differences, reference binaries, family checks and conflict-resolved merge. */
 export function CompareFontsDialog({
   target,
   onClose,
@@ -38,56 +40,58 @@ export function CompareFontsDialog({
   )
   const [targetMaster, setTargetMaster] = useState(target.masters[0]?.id ?? '')
   const [referencePath, setReferencePath] = useState('')
+  const [references, setReferences] = useState<Map<DocId, string>>(new Map())
   const [differencesOnly, setDifferencesOnly] = useState(true)
+  const [allMasters, setAllMasters] = useState(true)
   const [result, setResult] = useState<FontCompareResult | null>(null)
   const [outline, setOutline] = useState<FontCompareGlyphResult | null>(null)
-  const [family, setFamily] = useState<
-    { doc: DocSummary; result: FontCompareResult }[]
-  >([])
-  const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [merge, setMerge] = useState<{
-    params: PasteSpecialParams
-    result: PasteSpecialResult
-  } | null>(null)
+  const [family, setFamily] = useState<FontCompareFamilyResult | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const invalidate = () => {
-    setResult(null)
-    setOutline(null)
-    setFamily([])
-    setSelected(new Set())
-    setMerge(null)
-    setError(null)
-    setNotice(null)
-  }
   const failure = (reason: unknown) => {
     const message = errorNotice(reason, t)
     setError([message.message, message.details].filter(Boolean).join(' · '))
   }
-  const query = (doc: DocId, master: string, offset: number, limit = 100) =>
-    withSettledDocument(doc, () =>
-      withSettledDocument(target.doc, () =>
-        call('font.compare', {
-          doc: target.doc,
-          source_doc: doc,
-          master: targetMaster || null,
-          source_master: master || null,
-          offset,
-          limit,
-          differing_only: differencesOnly,
-        }),
-      ),
-    )
+  const session = useFontMerge({
+    doc: target.doc,
+    sourceDoc,
+    targetMaster,
+    sourceMaster,
+    result,
+    onFailure: failure,
+    onBusy: setBusy,
+  })
+  const invalidate = () => {
+    setResult(null)
+    setOutline(null)
+    setFamily(null)
+    setError(null)
+    setNotice(null)
+    session.reset()
+  }
   const compare = async (offset = 0) => {
     if (sourceDoc === null) return
     setBusy(true)
     setError(null)
-    setMerge(null)
     setOutline(null)
-    setSelected(new Set())
+    session.reset()
     try {
-      setResult(await query(sourceDoc, sourceMaster, offset))
+      setResult(
+        await withSettledDocument(sourceDoc, () =>
+          withSettledDocument(target.doc, () =>
+            call('font.compare', {
+              doc: target.doc,
+              source_doc: sourceDoc,
+              master: targetMaster || null,
+              source_master: sourceMaster || null,
+              offset,
+              limit: 100,
+              differing_only: differencesOnly,
+            }),
+          ),
+        ),
+      )
     } catch (reason) {
       setResult(null)
       failure(reason)
@@ -98,15 +102,18 @@ export function CompareFontsDialog({
   const compareFamily = async () => {
     setBusy(true)
     setError(null)
-    setFamily([])
+    setFamily(null)
     try {
-      const rows: { doc: DocSummary; result: FontCompareResult }[] = []
-      for (const doc of docs.filter((doc) => doc.doc !== target.doc))
-        rows.push({
-          doc,
-          result: await query(doc.doc, doc.masters[0]?.id ?? '', 0, 1),
-        })
-      setFamily(rows)
+      setFamily(
+        await call('font.compare_family', {
+          doc: target.doc,
+          master: targetMaster || null,
+          docs: docs
+            .filter((doc) => doc.doc !== target.doc)
+            .map((doc) => doc.doc),
+          all_masters: allMasters,
+        }),
+      )
     } catch (reason) {
       failure(reason)
     } finally {
@@ -118,14 +125,30 @@ export function CompareFontsDialog({
     setBusy(true)
     invalidate()
     try {
-      const summary = await useSessionStore
-        .getState()
-        .open(referencePath.trim())
-      if (summary) {
-        setSourceDoc(summary.doc)
-        setSourceMaster(summary.masters[0]?.id ?? '')
-        setReferencePath('')
-      }
+      const reference = await call('font.open_reference', {
+        path: referencePath.trim(),
+        face_index: null,
+      })
+      // `refreshSummary` only refreshes documents the store already knows, so a
+      // freshly opened reference is registered here before it can be selected.
+      const summary = await call('doc.summary', { doc: reference.doc })
+      useSessionStore.setState((state) =>
+        state.docs.some((entry) => entry.doc === summary.doc)
+          ? state
+          : { docs: [...state.docs, summary] },
+      )
+      setReferences((current) =>
+        new Map(current).set(reference.doc, reference.path),
+      )
+      setSourceDoc(reference.doc)
+      setSourceMaster(reference.masters[0]?.id ?? '')
+      setReferencePath('')
+      setNotice(
+        t('crossDocument.referenceOpened', {
+          family: reference.family,
+          path: reference.path,
+        }),
+      )
     } catch (reason) {
       failure(reason)
     } finally {
@@ -155,66 +178,22 @@ export function CompareFontsDialog({
       setBusy(false)
     }
   }
-  const previewMerge = async () => {
-    if (!result || sourceDoc === null) return
-    setBusy(true)
-    setError(null)
-    setNotice(null)
-    const params: PasteSpecialParams = {
-      doc: target.doc,
-      source_doc: sourceDoc,
-      mappings: result.glyphs
-        .filter((glyph) => selected.has(glyph.name) && glyph.source !== null)
-        .map((glyph) => ({ source: glyph.source!, target: null })),
-      destination: 'same_name',
-      content: 'all_data',
-      source_master: sourceMaster || null,
-      target_master: targetMaster || null,
-      missing_bases: 'copy',
-      dry_run: true,
-      expected_generation: result.generation,
-      expected_source_generation: result.source_generation,
-    }
-    try {
-      setMerge({ params, result: await call('doc.paste_special', params) })
-    } catch (reason) {
-      setMerge(null)
-      failure(reason)
-    } finally {
-      setBusy(false)
-    }
-  }
   const applyMerge = async () => {
-    if (!merge) return
-    setBusy(true)
-    setError(null)
-    try {
-      await withSettledDocument(merge.params.source_doc, () =>
-        withSettledDocument(target.doc, () =>
-          call('doc.paste_special', {
-            ...merge.params,
-            dry_run: false,
-            expected_generation: merge.result.generation,
-            expected_source_generation: merge.result.source_generation,
-          }),
-        ),
-      )
-      setNotice(
-        t('crossDocument.merged', { count: merge.result.pasted.length }),
-      )
-      setMerge(null)
-      setResult(null)
-      setOutline(null)
-      setFamily([])
-      setSelected(new Set())
-      await useSessionStore.getState().refreshSummary(target.doc)
-    } catch (reason) {
-      setMerge(null)
-      failure(reason)
-    } finally {
-      setBusy(false)
-    }
+    const applied = await session.apply()
+    if (!applied) return
+    setNotice(
+      t('crossDocument.merged', {
+        count: applied.replaced.length,
+        label: applied.label,
+      }),
+    )
+    setResult(null)
+    setOutline(null)
+    setFamily(null)
+    await useSessionStore.getState().refreshSummary(target.doc)
   }
+  const readOnlySource =
+    sourceDoc === null ? undefined : references.get(sourceDoc)
   return (
     <Dialog
       title={t('crossDocument.compareTitle')}
@@ -229,16 +208,16 @@ export function CompareFontsDialog({
             {t('common.close')}
           </Button>
           <Button
-            disabled={busy || selected.size === 0}
+            disabled={busy || !result || session.empty}
             onClick={() => {
-              void previewMerge()
+              void session.preview()
             }}
           >
             {t('crossDocument.previewMerge')}
           </Button>
           <Button
             variant="primary"
-            disabled={busy || !merge}
+            disabled={busy || !session.merge}
             onClick={() => {
               void applyMerge()
             }}
@@ -272,6 +251,11 @@ export function CompareFontsDialog({
             invalidate()
           }}
         />
+        {readOnlySource !== undefined && (
+          <p role="status" className={styles.help}>
+            {t('crossDocument.readOnlySource', { path: readOnlySource })}
+          </p>
+        )}
         <div className={styles.controls}>
           <label className={styles.field}>
             {t('crossDocument.referencePath')}
@@ -290,6 +274,7 @@ export function CompareFontsDialog({
             {t('crossDocument.openReference')}
           </Button>
         </div>
+        <p className={styles.help}>{t('crossDocument.referenceHelp')}</p>
         <div className={styles.controls}>
           <label>
             <input
@@ -303,6 +288,15 @@ export function CompareFontsDialog({
             />{' '}
             {t('crossDocument.differencesOnly')}
           </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={allMasters}
+              disabled={busy}
+              onChange={(event) => setAllMasters(event.target.checked)}
+            />{' '}
+            {t('crossDocument.allMasters')}
+          </label>
           <Button
             disabled={busy || sourceDoc === null}
             onClick={() => {
@@ -312,7 +306,7 @@ export function CompareFontsDialog({
             {t('crossDocument.compare')}
           </Button>
           <Button
-            disabled={busy || docs.length < 2}
+            disabled={busy}
             onClick={() => {
               void compareFamily()
             }}
@@ -326,15 +320,20 @@ export function CompareFontsDialog({
           </p>
         )}
         {notice && <p role="status">{notice}</p>}
+        {family && (
+          <FamilyResults
+            family={family}
+            labelFor={(doc) => {
+              const summary = docs.find((item) => item.doc === doc)
+              return summary ? documentLabel(summary) : String(doc)
+            }}
+          />
+        )}
         <ComparisonResults
-          family={family}
           result={result}
           busy={busy}
-          selected={selected}
-          onSelected={(names) => {
-            setSelected(names)
-            setMerge(null)
-          }}
+          choices={session.choices}
+          onChoice={session.resolve}
           onInspect={(name) => {
             void inspect(name)
           }}
@@ -343,20 +342,15 @@ export function CompareFontsDialog({
           }}
         />
         {outline && <ComparisonOutline outline={outline} />}
-        {merge && (
-          <section aria-label={t('crossDocument.review')}>
-            <p role="status">
-              {t('crossDocument.mergeReview', {
-                names: merge.result.pasted.join(', '),
-                bases: merge.result.added_bases.length,
-              })}
-            </p>
-            {merge.result.warnings.map((warning, index) => (
-              <p key={index} role="note">
-                {warning}
-              </p>
-            ))}
-          </section>
+        {result && (
+          <MergeControls
+            adopt={session.adopt}
+            disabled={busy}
+            onAdopt={session.setAdopt}
+            merge={session.merge?.result ?? null}
+            missingBases={session.missingBases}
+            onMissingBases={session.setMissingBases}
+          />
         )}
       </div>
     </Dialog>

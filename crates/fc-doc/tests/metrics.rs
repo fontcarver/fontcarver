@@ -422,3 +422,181 @@ fn local_formula_commands_are_undoable_and_reject_global_double_equals() {
         })
         .unwrap();
 }
+
+/// Formulas the grammar accepts, mirrored by `metricsKeyCommands.test.ts`.
+///
+/// The inspector validates a formula before sending a command, so the two
+/// grammars have to agree. Both sides assert this exact table; a change on one
+/// side that is not mirrored fails here or there.
+const VALID_KEYS: &[&str] = &[
+    "=H",
+    "=H+10",
+    "=H-10",
+    "=H*2",
+    "=H/2",
+    "=|H",
+    "=|",
+    "=50",
+    "=-25",
+    "=+25",
+    "==H",
+    "==50",
+    "=H@200",
+    "=|H@200",
+    "=H+10@200",
+    "=0.5",
+    "=.5",
+    // A trailing hyphen belongs to the glyph name, not to an arithmetic tail.
+    "=H-",
+];
+
+/// Formulas the grammar refuses, mirrored by `metricsKeyCommands.test.ts`.
+const INVALID_KEYS: &[&str] = &[
+    "=", "==", "=+", "=-x", "=H@", "=H@x", "=H/0", "=H+", "=H*", "=H V", "=H=V", "=@200",
+];
+
+#[test]
+fn the_formula_grammar_matches_the_inspector_field_grammar() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let layer = doc.font.glyph("base").unwrap().layers[0].id.clone();
+            // Every accepted formula is stored by the layer command, which is
+            // the only scope that may hold a local `==` formula.
+            for key in VALID_KEYS {
+                let keys = MetricsKeys {
+                    left: Some((*key).into()),
+                    ..Default::default()
+                };
+                doc.apply(
+                    Command::SetLayerMetricsKeys {
+                        glyph: "base".into(),
+                        layer: layer.clone(),
+                        keys: Some(keys),
+                    },
+                    "Valid",
+                )
+                .unwrap_or_else(|error| panic!("`{key}` should be accepted: {error}"));
+            }
+            for key in INVALID_KEYS {
+                let keys = MetricsKeys {
+                    left: Some((*key).into()),
+                    ..Default::default()
+                };
+                let before = doc.font.clone();
+                assert!(
+                    doc.apply(
+                        Command::SetLayerMetricsKeys {
+                            glyph: "base".into(),
+                            layer: layer.clone(),
+                            keys: Some(keys),
+                        },
+                        "Invalid",
+                    )
+                    .is_err(),
+                    "`{key}` should be refused"
+                );
+                assert_eq!(doc.font, before, "`{key}` must not change the document");
+            }
+        })
+        .unwrap();
+}
+
+#[test]
+fn vertical_formulas_are_refused_by_the_editing_commands_but_carried_through() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let layer = doc.font.glyph("base").unwrap().layers[0].id.clone();
+            for keys in [
+                MetricsKeys {
+                    vertical_origin: Some("=H".into()),
+                    ..Default::default()
+                },
+                MetricsKeys {
+                    vertical_width: Some("=1000".into()),
+                    ..Default::default()
+                },
+            ] {
+                let before = doc.font.clone();
+                // Nothing resolves these fields, so storing one would keep a
+                // formula that never takes effect.
+                assert!(doc
+                    .apply(
+                        Command::SetMetricsKeys {
+                            glyph: "base".into(),
+                            keys: keys.clone(),
+                        },
+                        "Vertical glyph formula",
+                    )
+                    .is_err());
+                assert!(doc
+                    .apply(
+                        Command::SetLayerMetricsKeys {
+                            glyph: "base".into(),
+                            layer: layer.clone(),
+                            keys: Some(keys),
+                        },
+                        "Vertical layer formula",
+                    )
+                    .is_err());
+                assert_eq!(doc.font, before);
+            }
+            // A value already stored on the glyph is carried through, so an
+            // unrelated horizontal edit on such a glyph still works.
+            doc.font
+                .glyph_mut("base")
+                .unwrap()
+                .metrics_keys
+                .vertical_origin = Some("=H".into());
+            doc.apply(
+                Command::SetMetricsKeys {
+                    glyph: "base".into(),
+                    keys: MetricsKeys {
+                        left: Some("=40".into()),
+                        vertical_origin: Some("=H".into()),
+                        ..Default::default()
+                    },
+                },
+                "Horizontal edit",
+            )
+            .unwrap();
+            assert_eq!(
+                doc.font.glyph("base").unwrap().metrics_keys.left.as_deref(),
+                Some("=40")
+            );
+        })
+        .unwrap();
+}
+
+#[test]
+fn the_beam_measures_the_same_cross_section_a_height_formula_uses() {
+    let mut font = test_font();
+    let master = font.default_master().id.clone();
+    let glyph = GlyphName::from("base");
+    let width = font.glyph(&glyph).unwrap().layers[0].width;
+    let bounds = {
+        let layer = &font.glyph(&glyph).unwrap().layers[0];
+        let path = fc_geom::flatten_layer_by_id(&font, &glyph, &layer.id).unwrap();
+        kurbo::Shape::bounding_box(&path)
+    };
+    let height = (bounds.y0 + bounds.y1) / 2.0;
+    let (left, right) = metrics::measure_beam(&font, &glyph, &master, None, height)
+        .unwrap()
+        .expect("the middle of the outline is crossed");
+    assert!((left + right - (width - bounds.width())).abs() < 1e-6);
+
+    // The same height in a formula resolves to the same left margin.
+    font.glyph_mut("base").unwrap().metrics_keys.left = Some(format!("=base@{height}"));
+    let resolved = metrics::resolve(&font, &glyph, &master).unwrap();
+    assert!((resolved.lsb - left).abs() < 1e-6);
+
+    // A height far above the outline is an ordinary "no measurement" answer.
+    assert!(
+        metrics::measure_beam(&font, &glyph, &master, None, bounds.y1 + 500.0)
+            .unwrap()
+            .is_none()
+    );
+}

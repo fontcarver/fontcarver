@@ -1,4 +1,5 @@
 import { call, type DocId, type GlyphId } from '../api'
+import { i18n } from '../i18n'
 import { emptyFilter, useDocumentStore } from '../stores/documentStore'
 import { useSessionStore } from '../stores/sessionStore'
 import { selectActiveDoc, useUiStore, type UiState } from '../stores/uiStore'
@@ -10,6 +11,7 @@ import {
 } from '../stores/workspaceStore'
 import { readWindowTarget } from '../transport/windows'
 import { glyphName } from '../views/font/glyphNames'
+import { reopenDetachedViews } from './windowActions'
 
 type Snapshot = ReturnType<typeof captureWorkspace>
 
@@ -147,6 +149,8 @@ export function installWorkspacePersistence(): () => void {
     snapshot: Snapshot,
     names?: ReadonlyMap<GlyphId, string>,
     tabs = true,
+    windows = false,
+    selectRemembered = true,
   ) => {
     const ui = useUiStore.getState()
     const ids = names
@@ -175,11 +179,33 @@ export function installWorkspacePersistence(): () => void {
             }
           : {}),
         ...(tabs ? { tabs: nextTabs } : {}),
-        ...(tabs && active ? { activeTab: restored.activeTab } : {}),
+        // Reopening a document restores the tab it was left on. Opening one
+        // while another document is already on screen does not: the user asked
+        // to see *this* document, so its pinned Overview stays selected and the
+        // remembered tabs are restored around it.
+        ...(tabs && active && selectRemembered
+          ? { activeTab: restored.activeTab }
+          : {}),
+        // Whatever this document had detached is replaced by what the saved
+        // arrangement says; other documents keep their own windows.
+        ...(windows
+          ? { detached: ui.detached.filter((view) => view.doc !== doc) }
+          : {}),
       })
     } finally {
       applying = false
     }
+    if (!windows || restored.detached.length === 0) return
+    void reopenDetachedViews(restored.detached).then((failures) => {
+      // Restoring happens as a document opens, without a user gesture, so a
+      // browser may refuse the windows. That is a platform limit, not an error
+      // in the document: say it once instead of one error per refused window.
+      if (failures.length > 0)
+        useUiStore.getState().pushToast({
+          kind: 'info',
+          message: i18n.t('shellWindow.blocked'),
+        })
+    })
   }
 
   const initialize = () => {
@@ -197,8 +223,12 @@ export function installWorkspacePersistence(): () => void {
         save(doc, useUiStore.getState())
         continue
       }
-      if (!snapshot.tabs.some((tab) => tab.glyphName !== undefined)) {
-        apply(doc, snapshot)
+      const alone = !useUiStore.getState().tabs.some((tab) => tab.doc !== doc)
+      if (
+        !snapshot.tabs.some((tab) => tab.glyphName !== undefined) &&
+        !(snapshot.detached ?? []).some((view) => view.kind === 'tab')
+      ) {
+        apply(doc, snapshot, undefined, true, true, alone)
         continue
       }
       entry.pending = true
@@ -211,7 +241,7 @@ export function installWorkspacePersistence(): () => void {
             .tabs.some((tab) => tab.doc === doc && tab.kind === 'font')
         )
           return
-        apply(doc, snapshot, names)
+        apply(doc, snapshot, names, true, true, alone)
       })
     }
   }

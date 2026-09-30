@@ -226,9 +226,62 @@ describe('metrics synchronization', () => {
     show()
     const field = screen.getByLabelText('LSB key')
     await userEvent.clear(field)
-    await userEvent.type(field, '=H+{Enter}')
+    // Syntactically valid, so it is sent; the kernel refuses it and the field
+    // returns to the stored formula once the model has been refetched.
+    await userEvent.type(field, '=absent{Enter}')
     await waitFor(() => expect(reporter).toHaveBeenCalledOnce())
     expect(field).toHaveValue('=H')
+  })
+
+  it('refuses a malformed formula in place without touching the document', async () => {
+    const transport = setup()
+    show()
+    const field = screen.getByLabelText('LSB key')
+    await userEvent.clear(field)
+    await userEvent.type(field, '=H+{Enter}')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'needs a number after the operator',
+    )
+    expect(field).toHaveAttribute('aria-invalid', 'true')
+    // The draft stays on screen to be corrected, and nothing was applied.
+    expect(field).toHaveValue('=H+')
+    expect(applied(transport)).toEqual([])
+    await userEvent.type(field, '10{Enter}')
+    await waitFor(() => expect(applied(transport)).toHaveLength(1))
+    expect(applied(transport)[0]?.command).toEqual({
+      SetMetricsKeys: {
+        glyph: 'a',
+        keys: { ...keys, left: '=H+10' },
+      },
+    })
+  })
+
+  it('accepts a bare glyph name as the =n formula it stands for', async () => {
+    const transport = setup()
+    show()
+    const field = screen.getByLabelText('RSB key')
+    await userEvent.clear(field)
+    await userEvent.type(field, 'O{Enter}')
+    await waitFor(() => expect(applied(transport)).toHaveLength(1))
+    expect(applied(transport)[0]?.command).toEqual({
+      SetMetricsKeys: {
+        glyph: 'a',
+        keys: { ...keys, right: '=O' },
+      },
+    })
+  })
+
+  it('explains the whole formula syntax next to the fields', () => {
+    show()
+    const field = screen.getByLabelText('LSB key')
+    expect(field).toHaveAttribute('aria-describedby', 'metrics-key-syntax')
+    expect(document.getElementById('metrics-key-syntax')).toHaveTextContent(
+      '=H@200 measures H at height 200',
+    )
+    expect(field).toHaveAttribute(
+      'title',
+      expect.stringContaining('=|H mirrors it'),
+    )
   })
 
   it('shows the effective local formula and changes its scope without dropping unrelated keys', async () => {

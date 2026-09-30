@@ -38,6 +38,8 @@ import type { ProofEntry } from './proofLibrary'
 import { useTextContext } from './useTextContext'
 import { detachPanel } from '../../shell/windowActions'
 import { useKerningGhosts } from './useKerningGhosts'
+import { useSpacingOverlay } from './useSpacingOverlay'
+import { useKerningExceptions } from './useKerningExceptions'
 import styles from './TextView.module.css'
 
 /** The shaped Text tab surrounds one persistent glyph editor/controller. */
@@ -191,6 +193,23 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
     pending,
     transition,
   })
+  // Spacing panel and its canvas overlays share one bounded metrics request.
+  const spacing = useSpacingOverlay({
+    tab: tab.id,
+    doc: summary.doc,
+    master: state.master,
+    generation: view.generation,
+    unitsPerEm: summary.units_per_em,
+    glyphs,
+  })
+  const kerningExceptions = useKerningExceptions({
+    doc: summary.doc,
+    master: state.master,
+    generation: view.generation,
+    gaps: kerning.gaps,
+    vertical: state.direction === 'ttb',
+    enabled: !pending && kerningMode !== 'off',
+  })
   const ghosts = useKerningGhosts({
     doc: summary.doc,
     master: state.master,
@@ -266,6 +285,13 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
       gaps: pending || kerningMode === 'off' ? [] : kerning.gaps,
       kerningGhosts: ghosts.outlines,
       selectedKerningValue: ghosts.value,
+      selectedKerningException: kerning.panel.resolution?.exception ?? false,
+      kerningExceptions,
+      beam: spacing.beam,
+      cutOff: spacing.cutOff,
+      onBeamGrab: spacing.onBeamGrab,
+      onBeamDrag: spacing.onBeamDrag,
+      onBeamRelease: spacing.onBeamRelease,
       selectedGap: kerning.selectedGap,
       onSelectGap: kerning.selectGap,
       onKerningKey: kerning.onKerningKey,
@@ -289,6 +315,13 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
     ghosts.value,
     kerningMode,
     kerning.gaps,
+    kerning.panel.resolution?.exception,
+    kerningExceptions,
+    spacing.beam,
+    spacing.cutOff,
+    spacing.onBeamGrab,
+    spacing.onBeamDrag,
+    spacing.onBeamRelease,
     kerning.selectedGap,
     kerning.selectGap,
     kerning.onKerningKey,
@@ -378,6 +411,7 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
         pending={pending}
         kerning={kerning}
         ghosts={ghosts}
+        spacing={spacing}
         onTextChange={changeText}
         onChange={(changes) =>
           void transition(() => patch(changes)).catch(reportError)

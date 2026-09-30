@@ -324,6 +324,7 @@ describe('GlyphView', () => {
           name: 'regular-guide',
           locked: false,
           color: null,
+          anchor: 'Origin' as const,
         },
       ],
     })
@@ -338,6 +339,7 @@ describe('GlyphView', () => {
           name: 'bold-guide',
           locked: false,
           color: null,
+          anchor: 'Origin' as const,
         },
       ],
     })

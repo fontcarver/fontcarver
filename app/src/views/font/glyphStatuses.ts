@@ -4,6 +4,7 @@ import {
   Info,
   LockKeyhole,
   MessageSquare,
+  PackageOpen,
   Ruler,
   type LucideIcon,
 } from 'lucide-react'
@@ -21,6 +22,7 @@ export interface GlyphStatus {
 const STATUSES = [
   ['metrics_out_of_sync', 'metricsOutOfSync', Ruler, 'warning'],
   ['incompatible_masters', 'incompatibleMasters', FileWarning, 'warning'],
+  ['placeholder', 'placeholder', PackageOpen, 'warning'],
   ['has_annotations', 'annotations', MessageSquare, 'neutral'],
   ['has_custom_glyph_info', 'customGlyphInfo', Info, 'neutral'],
   ['locked', 'locked', LockKeyhole, 'neutral'],

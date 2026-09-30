@@ -36,10 +36,23 @@ pub(super) fn names(info: &FontInfo) -> HashMap<NameKey, String> {
     let style = nonempty(&info.style_name, "Regular");
     insert_default_name(&mut names, NameId::FAMILY_NAME, family.to_owned());
     insert_default_name(&mut names, NameId::SUBFAMILY_NAME, style.to_owned());
+    // Name 4 is "a combination of strings 16 and 17" when a typographic pair
+    // exists, so an overridden preferred name has to reach the full name and,
+    // through it, the CFF FullName the OTF writer derives from it.
+    let typographic_family = typographic(info, 16, &info.open_type_name_preferred_family_name);
+    let typographic_style = typographic(info, 17, &info.open_type_name_preferred_subfamily_name);
     let full_name = info
         .postscript_full_name
         .clone()
-        .unwrap_or_else(|| format!("{family} {style}"));
+        .unwrap_or_else(|| match typographic_style {
+            // A typographic family on its own would drop the part of the legacy
+            // family that the legacy style carries, so the pair leads.
+            Some(typographic_style) => format!(
+                "{} {typographic_style}",
+                typographic_family.unwrap_or(family)
+            ),
+            None => format!("{family} {style}"),
+        });
     let postscript_name = info
         .postscript_font_name
         .clone()
@@ -87,7 +100,13 @@ pub(super) fn names(info: &FontInfo) -> HashMap<NameKey, String> {
         ),
         (
             NameId::TYPOGRAPHIC_FAMILY_NAME,
-            info.open_type_name_preferred_family_name.as_ref(),
+            // Name 17 without name 16 is invalid: a reader then pairs the
+            // typographic style with the legacy family. Fall back to that
+            // family explicitly instead of leaving the pair half-written.
+            typographic_family
+                .or_else(|| typographic_style.map(|_| family))
+                .map(str::to_owned)
+                .as_ref(),
         ),
         (
             NameId::TYPOGRAPHIC_SUBFAMILY_NAME,
@@ -206,6 +225,17 @@ fn windows_language_id(language: &str) -> Option<u16> {
         "vi" | "vi-vn" => 0x042A,
         _ => return None,
     })
+}
+
+/// The typographic name in effect: an explicit Windows record, else the field.
+fn typographic<'a>(info: &'a FontInfo, id: u16, field: &'a Option<String>) -> Option<&'a str> {
+    info.names
+        .iter()
+        .find(|record| {
+            record.name_id == id && record.platform != NamePlatform::Mac && !record.text.is_empty()
+        })
+        .map(|record| record.text.as_str())
+        .or_else(|| field.as_deref().filter(|value| !value.is_empty()))
 }
 
 fn nonempty<'a>(value: &'a str, fallback: &'a str) -> &'a str {

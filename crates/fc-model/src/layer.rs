@@ -29,7 +29,7 @@ pub enum LayerKind {
         #[cfg_attr(feature = "ts", ts(type = "Record<string, number>"))]
         location: DesignLocation,
     },
-    /// Conditional alternate layer active over an axis range.
+    /// Conditional alternate layer active over one or more axis ranges.
     Bracket {
         /// Associated master.
         master: MasterId,
@@ -39,6 +39,10 @@ pub enum LayerKind {
         min: Option<f64>,
         /// Inclusive upper bound, when present.
         max: Option<f64>,
+        /// Further axis ranges; the layer applies where every range holds.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        #[cfg_attr(feature = "ts", ts(optional, as = "Option<Vec<BracketCondition>>"))]
+        extra: Vec<BracketCondition>,
     },
     /// Background layer associated with a master.
     Background(MasterId),
@@ -51,6 +55,110 @@ pub enum LayerKind {
     },
     /// Application- or format-defined layer kind.
     Custom(String),
+}
+
+/// One axis range of an alternate layer's condition set.
+///
+/// A condition set is a conjunction: the layer applies where every one of its
+/// ranges holds, which is the OpenType `ConditionSet` model and the meaning of
+/// the Glyphs `[80‹wght, 25‹wdth‹50]` notation.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
+pub struct BracketCondition {
+    /// Axis this range constrains.
+    pub axis: Tag,
+    /// Inclusive lower bound in design units, when present.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub min: Option<f64>,
+    /// Inclusive upper bound in design units, when present.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub max: Option<f64>,
+}
+
+impl BracketCondition {
+    /// Whether `value` design units fall inside this inclusive range.
+    #[must_use]
+    pub fn contains(&self, value: f64) -> bool {
+        self.min.is_none_or(|min| value >= min) && self.max.is_none_or(|max| value <= max)
+    }
+
+    /// Whether the two ranges share at least one design coordinate.
+    #[must_use]
+    pub fn overlaps(&self, other: &Self) -> bool {
+        self.min.unwrap_or(f64::NEG_INFINITY) <= other.max.unwrap_or(f64::INFINITY)
+            && other.min.unwrap_or(f64::NEG_INFINITY) <= self.max.unwrap_or(f64::INFINITY)
+    }
+}
+
+impl LayerKind {
+    /// An alternate layer's complete condition set, in axis-tag order.
+    ///
+    /// The set is the canonical identity of a conditional region: two alternate
+    /// layers belong to the same region exactly when their sets are equal, which
+    /// is how repair, expansion and interpolation group them.
+    #[must_use]
+    pub fn bracket_conditions(&self) -> Option<Vec<BracketCondition>> {
+        let Self::Bracket {
+            axis,
+            min,
+            max,
+            extra,
+            ..
+        } = self
+        else {
+            return None;
+        };
+        let mut conditions = Vec::with_capacity(extra.len() + 1);
+        conditions.push(BracketCondition {
+            axis: *axis,
+            min: *min,
+            max: *max,
+        });
+        conditions.extend(extra.iter().copied());
+        conditions.sort_by_key(|condition| condition.axis);
+        Some(conditions)
+    }
+
+    /// Build an alternate-layer role from a complete condition set.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the set is empty, repeats an axis, or contains a
+    /// range with neither bound.
+    pub fn from_bracket_conditions(
+        master: MasterId,
+        conditions: &[BracketCondition],
+    ) -> Result<Self, crate::Error> {
+        let invalid = |reason: &str| crate::Error::InvalidDesignSpace(reason.to_owned());
+        let mut sorted = conditions.to_vec();
+        sorted.sort_by_key(|condition| condition.axis);
+        let Some((first, extra)) = sorted.split_first() else {
+            return Err(invalid("an alternate layer needs at least one axis range"));
+        };
+        if sorted.windows(2).any(|pair| pair[0].axis == pair[1].axis) {
+            return Err(invalid(
+                "an alternate layer condition set names an axis twice",
+            ));
+        }
+        if sorted
+            .iter()
+            .all(|condition| condition.min.is_none() && condition.max.is_none())
+        {
+            return Err(invalid(
+                "an alternate layer condition set needs at least one bound",
+            ));
+        }
+        Ok(Self::Bracket {
+            master,
+            axis: first.axis,
+            min: first.min,
+            max: first.max,
+            extra: extra.to_vec(),
+        })
+    }
 }
 
 impl Default for LayerKind {

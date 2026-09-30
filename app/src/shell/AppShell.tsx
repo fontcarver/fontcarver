@@ -8,6 +8,7 @@ import { DetachedWindowBar } from './DetachedWindowBar'
 import { registerWorkspaceTabCommands } from './workspaceTabCommands'
 import { installWindowLifecycle } from './windowLifecycle'
 import { installWorkspacePersistence } from './workspaceLifecycle'
+import { installWorkspaceProjectSync } from '../stores/workspaceProject'
 import { WorkspaceDialogHost } from './WorkspaceDialogHost'
 import { ShortcutSettingsDialog } from './ShortcutSettingsDialog'
 import { ContextHelpDialog } from './ContextHelpDialog'
@@ -67,6 +68,7 @@ export function AppShell() {
     setCommandErrorReporter(reportError)
     const stopWindows = installWindowLifecycle()
     const stopWorkspace = installWorkspacePersistence()
+    const stopWorkspaceProject = installWorkspaceProjectSync()
     const stopSession = useSessionStore.getState().start()
     const stopProgress = useProgressStore.getState().start()
     const stopShortcuts = installShortcuts()
@@ -75,6 +77,7 @@ export function AppShell() {
     void usePrefsStore.getState().load()
     if (readWindowTarget() === null) void checkForRecovery()
     return () => {
+      stopWorkspaceProject()
       stopWorkspace()
       stopWindows()
       stopSession()

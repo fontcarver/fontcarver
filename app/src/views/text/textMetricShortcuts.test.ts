@@ -70,7 +70,7 @@ describe('metricShortcut', () => {
   )
 
   it.each([false, true])(
-    'supports ×1, ×10, ×100 and true-one on macOS=%s',
+    'supports ×1 and ×10 and leaves modified brackets to navigation on macOS=%s',
     (isMac) => {
       const options = { side: 'both' as const, step: 2.5 }
       const mod = isMac ? { metaKey: true } : { ctrlKey: true }
@@ -81,16 +81,18 @@ describe('metricShortcut', () => {
         metricShortcut(event({ key: '}', shiftKey: true }), isMac, options)
           ?.delta,
       ).toBe(25)
+      // `Mod+[` and `Mod+]` step to the previous and next glyph, so a spacing
+      // step here moved the glyph the tab was leaving by 100 units.
       expect(
-        metricShortcut(event({ key: ']', ...mod }), isMac, options)?.delta,
-      ).toBe(250)
+        metricShortcut(event({ key: ']', ...mod }), isMac, options),
+      ).toBeNull()
       expect(
         metricShortcut(
           event({ key: '{', shiftKey: true, ...mod }),
           isMac,
           options,
-        )?.delta,
-      ).toBe(-1)
+        ),
+      ).toBeNull()
     },
   )
 

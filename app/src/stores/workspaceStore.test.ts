@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { initialUiState, type Tab, type TextTabState } from './uiStore'
+import {
+  initialUiState,
+  type DetachedView,
+  type Tab,
+  type TextTabState,
+} from './uiStore'
+import { readWorkspaceSnapshot } from './workspaceSnapshot'
 import {
   captureWorkspace,
   initialWorkspaceState,
@@ -229,5 +235,72 @@ describe('saved workspaces', () => {
     useWorkspaceStore.getState().saveCurrent('doc:1', snapshot())
     expect(useWorkspaceStore.getState().getCurrent('doc:1')).not.toBeNull()
     write.mockRestore()
+  })
+})
+
+describe('detached windows in a saved arrangement', () => {
+  const detached: DetachedView[] = [
+    { kind: 'panel', doc: 1, panel: 'inspector' },
+    { kind: 'tab', doc: 1, tab: 'glyph', gid: 9, tabId: 'glyph:1:9' },
+    { kind: 'tab', doc: 1, tab: 'features', tabId: 'features:1' },
+    // Another document's windows are not part of this document's arrangement.
+    { kind: 'panel', doc: 2, panel: 'sidebar' },
+  ]
+
+  it('stores glyph windows by name and reopens them under new handles', () => {
+    const ui = initialUiState()
+    const saved = captureWorkspace(
+      1,
+      { ...ui, tabs: [{ id: 'font:1', kind: 'font', doc: 1 }], detached },
+      new Map([[9, 'A']]),
+    )
+    expect(saved.detached).toEqual([
+      { kind: 'panel', panel: 'inspector' },
+      { kind: 'tab', tab: 'glyph', glyphName: 'A' },
+      { kind: 'tab', tab: 'features' },
+    ])
+
+    const restored = restoreWorkspace(saved, 77, new Map([['A', 501]]))
+    expect(restored.detached).toEqual([
+      { kind: 'panel', doc: 77, panel: 'inspector' },
+      { kind: 'tab', doc: 77, tab: 'glyph', gid: 501, tabId: 'glyph:77:501' },
+      { kind: 'tab', doc: 77, tab: 'features', tabId: 'features:77' },
+    ])
+  })
+
+  it('drops a glyph window whose glyph is gone rather than opening another one', () => {
+    const saved = captureWorkspace(
+      1,
+      { ...initialUiState(), detached },
+      new Map([[9, 'A']]),
+    )
+    expect(restoreWorkspace(saved, 77).detached).toEqual([
+      { kind: 'panel', doc: 77, panel: 'inspector' },
+      { kind: 'tab', doc: 77, tab: 'features', tabId: 'features:77' },
+    ])
+  })
+
+  it('validates stored lists and tolerates records saved without one', () => {
+    const base = captureWorkspace(1, initialUiState())
+    const parsed = readWorkspaceSnapshot({
+      ...base,
+      detached: [
+        { kind: 'panel', panel: 'inspector' },
+        { kind: 'panel', panel: 'inspector' },
+        { kind: 'panel', panel: 'nowhere' },
+        { kind: 'tab', tab: 'font' },
+        { kind: 'tab', tab: 'glyph' },
+        { kind: 'tab', tab: 'bitmap' },
+        'nonsense',
+      ],
+    })
+    expect(parsed?.detached).toEqual([
+      { kind: 'panel', panel: 'inspector' },
+      { kind: 'tab', tab: 'bitmap' },
+    ])
+
+    const legacy: Record<string, unknown> = { ...base }
+    delete legacy.detached
+    expect(readWorkspaceSnapshot(legacy)?.detached).toEqual([])
   })
 })

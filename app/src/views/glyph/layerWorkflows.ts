@@ -51,3 +51,38 @@ export function selectionToBackgroundCommand(
     },
   }
 }
+
+/**
+ * Empty a master's background layer without removing it.
+ *
+ * "Clear" means the background stops showing anything, not that the layer's
+ * identity goes away: the next *Copy to background* or *Selection to
+ * background* then starts from a clean sheet instead of appending to old ink,
+ * and the layer keeps its width and metadata. One batch, one undo entry, and
+ * `null` when there is nothing to clear so the command can disable itself.
+ */
+export function clearBackgroundCommand(
+  glyph: string,
+  background: Layer | null,
+): Command | null {
+  if (!background) return null
+  const commands: Command[] = []
+  if (background.contours.length > 0)
+    commands.push({
+      DeleteContours: {
+        glyph,
+        layer: background.id,
+        contours: background.contours.map((_, index) => index),
+      },
+    })
+  if (background.components.length > 0)
+    commands.push({
+      RemoveComponents: {
+        glyph,
+        layer: background.id,
+        indices: background.components.map((_, index) => index),
+      },
+    })
+  if (commands.length === 0) return null
+  return commands.length === 1 ? (commands[0] as Command) : { Batch: commands }
+}

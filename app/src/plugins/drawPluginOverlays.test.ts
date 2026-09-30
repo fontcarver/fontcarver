@@ -10,10 +10,15 @@ import {
 import { buildScene } from '../views/glyph/glyphScene'
 import { FALLBACK_GLYPH_THEME as theme } from '../views/glyph/glyphTheme'
 import type { FilterTarget } from './contracts'
-import { drawPluginOverlays } from './drawPluginOverlays'
+import {
+  drawPluginOverlays,
+  resetPluginFailures,
+  viewContext,
+} from './drawPluginOverlays'
 import { useFilterPreview, type FilterPreview } from './filterSession'
 import { usePluginStore } from './pluginStore'
-import { boundsReporter, translateFilter } from './registry'
+import { boundsReporter, metricsReporter } from './reporters'
+import { defaultSettings, translateFilter } from './registry'
 
 const scene = buildScene({
   detail: makeGlyphDetail(),
@@ -73,13 +78,20 @@ function canvas() {
     setLineDash: vi.fn(),
     strokeRect: vi.fn(),
     stroke: vi.fn(),
+    beginPath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
   }
   return ctx as unknown as CanvasRenderingContext2D
 }
 
-function install(id: string, enabled = true) {
+function install(
+  id: string,
+  enabled = true,
+  settings: Record<string, number> = defaultSettings(id),
+) {
   usePluginStore.setState({
-    installed: { [id]: { enabled, version: '1.0.0' } },
+    installed: { [id]: { enabled, version: '1.0.0', settings } },
   })
 }
 
@@ -262,4 +274,124 @@ describe('filter preview drawing', () => {
       expect(ctx.stroke).not.toHaveBeenCalled()
     },
   )
+})
+
+describe('reporter document and view context', () => {
+  it('reports the visible font-space rectangle and the current zoom', () => {
+    const viewport = new Viewport()
+    viewport.setSize(400, 300)
+    viewport.scale = 2
+    viewport.offset = { x: 20, y: 250 }
+    expect(viewContext(viewport)).toEqual({
+      scale: 2,
+      visible: { x0: -10, y0: -25, x1: 190, y1: 125 },
+    })
+  })
+
+  it('draws metric lines across exactly the visible region', () => {
+    install(metricsReporter.manifest.id, true, { zones: 1 })
+    const ctx = canvas()
+    const viewport = new Viewport()
+    viewport.setSize(400, 800)
+    viewport.scale = 1
+    viewport.offset = { x: 0, y: 700 }
+
+    drawPluginOverlays(ctx, viewport, { source, scene, theme })
+
+    // The baseline and both zone heights of the layer's own metrics.
+    expect(ctx.moveTo).toHaveBeenCalledWith(0, 0)
+    expect(ctx.lineTo).toHaveBeenCalledWith(400, 0)
+    expect(ctx.moveTo).toHaveBeenCalledWith(0, scene.metrics.xHeight)
+    expect(ctx.moveTo).toHaveBeenCalledWith(0, scene.metrics.capHeight)
+    expect(ctx.beginPath).toHaveBeenCalledTimes(3)
+  })
+
+  it('honours a persisted setting that suppresses the zone lines', () => {
+    install(metricsReporter.manifest.id, true, { zones: 0 })
+    const ctx = canvas()
+    const viewport = new Viewport()
+    viewport.setSize(400, 800)
+    viewport.offset = { x: 0, y: 700 }
+
+    drawPluginOverlays(ctx, viewport, { source, scene, theme })
+
+    expect(ctx.beginPath).toHaveBeenCalledOnce()
+    expect(ctx.moveTo).toHaveBeenCalledWith(0, 0)
+  })
+
+  it('gives the bounds reporter the document context its advance setting needs', () => {
+    install(boundsReporter.manifest.id, true, { advance: 1 })
+    const ctx = canvas()
+    const viewport = new Viewport()
+    viewport.setSize(400, 800)
+    viewport.offset = { x: 0, y: 700 }
+
+    drawPluginOverlays(ctx, viewport, { source, scene, theme })
+
+    expect(ctx.strokeRect).toHaveBeenCalledWith(20, -30, 180, 430)
+    expect(ctx.moveTo).toHaveBeenCalledWith(
+      scene.metrics.width,
+      scene.metrics.descender,
+    )
+    expect(ctx.lineTo).toHaveBeenCalledWith(
+      scene.metrics.width,
+      scene.metrics.ascender,
+    )
+  })
+
+  it('omits a metric line that is outside the visible region', () => {
+    install(metricsReporter.manifest.id, true, { zones: 1 })
+    const ctx = canvas()
+    const viewport = new Viewport()
+    viewport.setSize(40, 40)
+    viewport.scale = 1
+    // Only a band well above the baseline is visible.
+    viewport.offset = { x: 0, y: -600 }
+
+    drawPluginOverlays(ctx, viewport, { source, scene, theme })
+
+    expect(ctx.moveTo).not.toHaveBeenCalledWith(0, 0)
+  })
+})
+
+describe('reporter failure isolation', () => {
+  it('keeps painting when one reporter throws, and reports it once', () => {
+    const failing = vi
+      .spyOn(metricsReporter, 'report')
+      .mockImplementation(() => {
+        throw new Error('reporter exploded')
+      })
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    resetPluginFailures()
+    usePluginStore.setState({
+      installed: {
+        [boundsReporter.manifest.id]: {
+          enabled: true,
+          version: '1.0.0',
+          settings: defaultSettings(boundsReporter.manifest.id),
+        },
+        [metricsReporter.manifest.id]: {
+          enabled: true,
+          version: '1.0.0',
+          settings: defaultSettings(metricsReporter.manifest.id),
+        },
+      },
+    })
+    const ctx = canvas()
+    const viewport = new Viewport()
+    viewport.setSize(400, 400)
+
+    expect(() =>
+      drawPluginOverlays(ctx, viewport, { source, scene, theme }),
+    ).not.toThrow()
+    // The healthy reporter still drew its bounds.
+    expect(ctx.strokeRect).toHaveBeenCalledWith(20, -30, 180, 430)
+    expect(failing).toHaveBeenCalled()
+    expect(logged).toHaveBeenCalledOnce()
+
+    // Repainting does not flood the console with the same failure.
+    drawPluginOverlays(ctx, viewport, { source, scene, theme })
+    expect(logged).toHaveBeenCalledOnce()
+    resetPluginFailures()
+  })
 })

@@ -103,6 +103,7 @@ function show(options: ShowOptions = {}) {
           name: 'x-height',
           locked: false,
           color: null,
+          anchor: 'Origin' as const,
         },
       ],
       reload: options.reload ?? (() => undefined),
@@ -195,7 +196,15 @@ describe('the accordion', () => {
       outline: {
         anchors: [{ name: 'top', x: 300, y: 700 }],
         guides: [
-          { x: 0, y: 100, angle: 0, name: null, locked: false, color: null },
+          {
+            x: 0,
+            y: 100,
+            angle: 0,
+            name: null,
+            locked: false,
+            color: null,
+            anchor: 'Origin' as const,
+          },
         ],
       },
     })
@@ -568,7 +577,15 @@ describe('Guides panel', () => {
     show({
       outline: {
         guides: [
-          { x: 0, y: 100, angle: 0, name: 'over', locked: false, color: null },
+          {
+            x: 0,
+            y: 100,
+            angle: 0,
+            name: 'over',
+            locked: false,
+            color: null,
+            anchor: 'Origin' as const,
+          },
         ],
       },
     })

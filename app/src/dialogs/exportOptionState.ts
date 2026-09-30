@@ -26,6 +26,8 @@ export function exportOptionsFor(values: {
   variable: boolean
   instance: number | undefined
   masterSubset: string[] | undefined
+  axisSubset: string[] | undefined
+  instanceSubset: string[] | undefined
   bitmapKey: string
   master: string | null
   glyph: string
@@ -37,6 +39,8 @@ export function exportOptionsFor(values: {
     variable,
     instance,
     masterSubset,
+    axisSubset,
+    instanceSubset,
     bitmapKey,
     master,
     glyph,
@@ -48,6 +52,8 @@ export function exportOptionsFor(values: {
   return {
     instance: canVary && !variable ? instance : undefined,
     master_subset: canVary && variable ? masterSubset?.slice() : undefined,
+    axis_subset: canVary && variable ? axisSubset?.slice() : undefined,
+    instance_subset: canVary && variable ? instanceSubset?.slice() : undefined,
     variable: canVary && variable,
     format,
     glyph: format === 'Eps' && glyph.trim() ? glyph.trim() : undefined,

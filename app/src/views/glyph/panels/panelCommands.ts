@@ -381,5 +381,13 @@ export function removeGuideCommand(
 
 /** A guide through one point at one angle, unnamed and unlocked. */
 export function newGuide(x: number, y: number, angle: number): Guide {
-  return { x, y, angle, name: null, locked: false, color: null }
+  return {
+    x,
+    y,
+    angle,
+    name: null,
+    locked: false,
+    color: null,
+    anchor: 'Origin',
+  }
 }

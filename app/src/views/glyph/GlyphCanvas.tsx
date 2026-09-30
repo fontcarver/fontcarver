@@ -23,6 +23,7 @@ import { drawPluginOverlays } from '../../plugins/drawPluginOverlays'
 import { useFilterPreview } from '../../plugins/filterSession'
 import { usePluginStore } from '../../plugins/pluginStore'
 import { selectActiveTool, useEditorStore } from '../../stores/editorStore'
+import { useUiStore } from '../../stores/uiStore'
 import { usePrefsStore } from '../../stores/prefsStore'
 import { useVariationPreviewStore } from '../../stores/variationPreviewStore'
 import type { Selection } from '../../editor/selection'
@@ -38,6 +39,7 @@ import {
   localRunBox,
   shiftRunOrigin,
 } from '../text/textCanvasBridge'
+import { BeamPointer } from './beamPointer'
 
 import { componentDraws, type PathCache } from './componentDraws'
 import type { MetricLabels } from './drawMetrics'
@@ -362,6 +364,14 @@ export function GlyphCanvas({
       onPreview: (preview) => useEditorStore.getState().setPreview(preview),
       onShapeDialog,
       onError: reportError,
+      // A lock that does nothing and says nothing cannot be acted on, so a
+      // press on one explains itself once; repeats collapse into the one toast.
+      onRefused: (reason) => {
+        const ui = useUiStore.getState()
+        // Pressing a locked path repeatedly should say it once, not stack.
+        if (ui.toasts.some((toast) => toast.message === reason)) return
+        ui.pushToast({ kind: 'info', message: reason })
+      },
     })
   }, [controller, draw, onReload, onShapeDialog, onZoomChange])
 
@@ -558,6 +568,8 @@ export function GlyphCanvas({
 
   // Space is both "pan while held" and "toggle the fill preview when tapped".
   const spaceRef = useRef({ held: false, dragged: false })
+  // Whether the pointer is dragging the spacing beam rather than the outline.
+  const beamRef = useRef(new BeamPointer())
 
   const pointerInput = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>): PointerInput => {
@@ -596,6 +608,9 @@ export function GlyphCanvas({
           run.onSelectGap(gap)
           return
         }
+        // The beam is a thin band across the whole run, so it is offered after
+        // the gap handles and before the glyph under the pointer.
+        if (beamRef.current.down(run, viewport, input)) return
         const index = hitCanvasRun(run, viewport, input)
         if (
           index !== null &&
@@ -616,6 +631,7 @@ export function GlyphCanvas({
       const input = pointerInput(event)
       pointerRef.current = viewport.toFont({ x: input.x, y: input.y })
       onPointerFont(roundPoint(pointerRef.current))
+      if (beamRef.current.move(frame.current.textRun, viewport, input)) return
       // The controller repaints whatever the move changed; painting again
       // here would double the work of every pointer move.
       controller.pointerMove(input)
@@ -625,7 +641,8 @@ export function GlyphCanvas({
 
   const endPointer = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
-      controller.pointerUp(pointerInput(event))
+      if (!beamRef.current.up(frame.current.textRun))
+        controller.pointerUp(pointerInput(event))
       try {
         event.currentTarget.releasePointerCapture(event.pointerId)
       } catch {

@@ -30,6 +30,7 @@ fn fixture() -> Font {
             axis: Tag(*b"wght"),
             min: Some(0.5),
             max: None,
+            extra: Vec::new(),
         };
         alternate.width = 900. + index as f64 * 100.;
         glyph.layers.push(alternate);
@@ -114,4 +115,103 @@ fn external_rule_edits_take_precedence_and_unsupported_order_remains_lossless() 
             .rules,
         document.rules
     );
+}
+
+#[test]
+fn compound_condition_sets_round_trip_through_native_designspace_rules() {
+    let mut font = fixture();
+    font.axes.push(Axis {
+        tag: Tag(*b"wdth"),
+        name: "Width".into(),
+        min: 50.,
+        default: 100.,
+        max: 100.,
+        map: Vec::new(),
+        ..Default::default()
+    });
+    for master in &mut font.masters {
+        master.location.insert(Tag(*b"wdth"), 100.);
+    }
+    // A narrow pair of masters, so the width axis actually varies.
+    let narrow: Vec<MasterId> = font
+        .masters
+        .iter()
+        .map(|_| MasterId::new())
+        .collect::<Vec<_>>();
+    let wide: Vec<(MasterId, f64)> = font
+        .masters
+        .iter()
+        .map(|master| (master.id.clone(), master.location[&Tag(*b"wght")]))
+        .collect();
+    for (index, (source, wght)) in wide.iter().enumerate() {
+        let mut master = font.master(source).unwrap().clone();
+        master.id = narrow[index].clone();
+        master.name = format!("Narrow {index}");
+        master.location.insert(Tag(*b"wdth"), 50.);
+        master.location.insert(Tag(*b"wght"), *wght);
+        for glyph in font.glyphs.values_mut() {
+            let mut layer = glyph.master_layer(source).unwrap().clone();
+            layer.id = fc_model::LayerId::new();
+            layer.kind = LayerKind::Master(master.id.clone());
+            glyph.layers.push(layer);
+        }
+        font.masters.push(master);
+    }
+    // Replace the single-axis alternates with a compound region.
+    let conditions = [
+        fc_model::BracketCondition {
+            axis: Tag(*b"wght"),
+            min: Some(0.5),
+            max: None,
+        },
+        fc_model::BracketCondition {
+            axis: Tag(*b"wdth"),
+            min: Some(50.),
+            max: Some(75.),
+        },
+    ];
+    let masters: Vec<MasterId> = font.masters.iter().map(|m| m.id.clone()).collect();
+    {
+        let glyph = font.glyph_mut("A").unwrap();
+        glyph
+            .layers
+            .retain(|layer| !matches!(layer.kind, LayerKind::Bracket { .. }));
+        let mut alternates = Vec::new();
+        for master in &masters {
+            let mut layer = glyph.master_layer(master).unwrap().clone();
+            layer.id = fc_model::LayerId::new();
+            layer.kind = LayerKind::from_bracket_conditions(master.clone(), &conditions).unwrap();
+            layer.width = 950.;
+            alternates.push(layer);
+        }
+        glyph.layers.extend(alternates);
+    }
+    font.validate_designspace().unwrap();
+
+    let temp = tempfile::tempdir().unwrap();
+    let path = write_designspace(&font, temp.path()).unwrap();
+    let document = norad::designspace::DesignSpaceDocument::load(&path).unwrap();
+    assert_eq!(document.rules.rules.len(), 1);
+    let set = &document.rules.rules[0].condition_sets[0];
+    assert_eq!(set.conditions.len(), 2, "both axis ranges are written");
+    assert!(set
+        .conditions
+        .iter()
+        .any(|condition| condition.name == "Width" && condition.maximum == Some(75.)));
+
+    let imported = read_designspace(&path).unwrap();
+    assert!(!imported.extra.lib.contains_key("ufo.designspace.rules"));
+    let restored = imported
+        .glyph("A")
+        .unwrap()
+        .layers
+        .iter()
+        .filter_map(|layer| layer.kind.bracket_conditions())
+        .next()
+        .expect("a compound alternate survives the round trip");
+    assert_eq!(restored.len(), 2);
+    assert_eq!(restored[0].axis, Tag(*b"wdth"));
+    assert_eq!(restored[0].max, Some(75.));
+    assert_eq!(restored[1].axis, Tag(*b"wght"));
+    assert_eq!(restored[1].min, Some(0.5));
 }

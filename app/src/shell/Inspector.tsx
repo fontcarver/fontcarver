@@ -19,6 +19,7 @@ import {
 import { selectSummary, useSessionStore } from '../stores/sessionStore'
 import { selectActiveTab, useUiStore } from '../stores/uiStore'
 import { EditInspector } from '../views/glyph/panels/EditInspector'
+import { HistoryPanel } from './HistoryPanel'
 
 import styles from './panels.module.css'
 
@@ -120,6 +121,8 @@ export function Inspector() {
             {summary.path ?? '—'}
           </Field>
         </Panel>
+
+        <HistoryPanel doc={doc} />
 
         {tab.kind === 'fontinfo' ? (
           <p className={styles.hintBlock}>{t('inspector.fontInfoNote')}</p>

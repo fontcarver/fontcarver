@@ -42,16 +42,15 @@ test('persists pending drafts before master and tab handovers', async ({
   await replaceCode(page, `${CODE}\n# tab handover`)
   const tabWrite = await holdApi(page, 'features.set_draft')
   try {
-    await page
-      .getByRole('tab', { name: 'P2b.designspace', exact: true })
-      .click()
+    await page.getByRole('tab', { name: 'P2b.designspace' }).click()
     await tabWrite.wait()
-    await expect(
-      page.getByRole('tab', { name: 'Features', exact: true }),
-    ).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: 'Features' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
     tabWrite.release()
     await expect(
-      page.getByRole('tab', { name: 'P2b.designspace', exact: true }),
+      page.getByRole('tab', { name: 'P2b.designspace' }),
     ).toHaveAttribute('aria-selected', 'true')
     expect(
       (await featureState(page, source.doc.doc)).draft?.source.prefixes[0].code,
@@ -69,9 +68,7 @@ test('blocks a tab handover on a failed draft write and keeps the text available
   await addPrefix(page, 'Recovery', `${CODE}\n# unsaved 中文`)
   const held = await holdApi(page, 'features.set_draft', { fail: true })
   try {
-    await page
-      .getByRole('tab', { name: 'P2b.designspace', exact: true })
-      .click()
+    await page.getByRole('tab', { name: 'P2b.designspace' }).click()
     await held.wait()
     held.release()
     await expect(
@@ -79,17 +76,18 @@ test('blocks a tab handover on a failed draft write and keeps the text available
         hasText: 'Draft could not be saved. Your text is retained here.',
       }),
     ).toBeVisible()
-    await expect(
-      page.getByRole('tab', { name: 'Features', exact: true }),
-    ).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: 'Features' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
     await expect(editor(page)).toContainText('unsaved 中文')
     expect((await featureState(page, source.doc.doc)).draft).toBeNull()
   } finally {
     await held.dispose()
   }
-  await page.getByRole('tab', { name: 'P2b.designspace', exact: true }).click()
+  await page.getByRole('tab', { name: 'P2b.designspace' }).click()
   await expect(
-    page.getByRole('tab', { name: 'P2b.designspace', exact: true }),
+    page.getByRole('tab', { name: 'P2b.designspace' }),
   ).toHaveAttribute('aria-selected', 'true')
   expect(
     (await featureState(page, source.doc.doc)).draft?.source.prefixes[0].code,

@@ -29,7 +29,11 @@ import {
   DEFAULT_QUADRATIC_ERROR,
   joinCommand,
   joinEnds,
+  openCornerCommand,
+  openCornerPlan,
   pathOpCommand,
+  reconnectCommand,
+  reconnectPair,
   reverseCommand,
   scopedContours,
   setStartPointCommand,
@@ -69,6 +73,12 @@ export function pathContext(): PathContext | null {
 
 function hasLayer(): boolean {
   return pathContext() !== null
+}
+
+/** Units per em of the edited glyph's scene, for the Open Corner setback. */
+function editedUpem(): number {
+  const upem = useEditorStore.getState().activeGlyph?.scene.metrics.upem
+  return typeof upem === 'number' && upem > 0 ? upem : 1000
 }
 
 /** Applies one command against the edited layer, as its own undo entry. */
@@ -293,6 +303,76 @@ export function registerPathCommands(): void {
         const context = pathContext()
         const ends = context && joinEnds(context.contours, context.selection)
         if (!context || !ends) return
+        commitField(
+          context.target,
+          joinCommand(context.target, ends.a, ends.b),
+          i18n.t('editor.undo.joinContours'),
+          context.reload,
+        )
+      },
+    },
+    {
+      id: 'path.openCorner',
+      title: 'cmd.path.openCorner',
+      menu: 'path',
+      group: 'contours',
+      shortcut: 'Mod+Alt+O',
+      when: () => {
+        const context = pathContext()
+        return (
+          context !== null &&
+          openCornerPlan(context.contours, context.selection, editedUpem()) !==
+            null
+        )
+      },
+      disabledReason: 'cmd.reason.noCorner',
+      run: () => {
+        const context = pathContext()
+        const plan =
+          context &&
+          openCornerPlan(context.contours, context.selection, editedUpem())
+        if (!context || !plan) return
+        commitField(
+          context.target,
+          openCornerCommand(context.target, plan.point, plan.depth),
+          i18n.t('editor.undo.openCorner'),
+          context.reload,
+        )
+      },
+    },
+    {
+      id: 'path.reconnectNodes',
+      title: 'cmd.path.reconnectNodes',
+      menu: 'path',
+      group: 'contours',
+      shortcut: 'Mod+Alt+J',
+      when: () => {
+        const context = pathContext()
+        if (!context) return false
+        return (
+          reconnectPair(context.contours, context.selection) !== null ||
+          joinEnds(context.contours, context.selection) !== null
+        )
+      },
+      disabledReason: 'cmd.reason.noOpenCorner',
+      run: () => {
+        const context = pathContext()
+        if (!context) return
+        // Two nodes of one open corner merge at their tangent intersection;
+        // two open ends are the other reading of "reconnect", and the existing
+        // join is exactly that operation.
+        const pair = reconnectPair(context.contours, context.selection)
+        if (pair) {
+          commitField(
+            context.target,
+            reconnectCommand(context.target, pair.a, pair.b),
+            i18n.t('editor.undo.reconnectNodes'),
+            context.reload,
+          )
+          return
+        }
+        const ends = joinEnds(context.contours, context.selection)
+        if (!ends) return
         commitField(
           context.target,
           joinCommand(context.target, ends.a, ends.b),

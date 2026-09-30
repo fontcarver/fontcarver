@@ -151,6 +151,19 @@ export function installWindowLifecycle(): () => void {
       !useSessionStore.getState().docs.some((doc) => doc.doc === returned.doc)
     )
       return
+    // The window is gone either way, so the workspace must stop listing it.
+    useUiStore.getState().removeDetached(
+      returned.kind === 'tab'
+        ? {
+            kind: 'tab',
+            doc: returned.doc,
+            tab: returned.tab,
+            ...(returned.gid === undefined ? {} : { gid: returned.gid }),
+            tabId:
+              returned.tabId ?? tabId(returned.tab, returned.doc, returned.gid),
+          }
+        : { kind: 'panel', doc: returned.doc, panel: returned.panel },
+    )
     if (returned.kind === 'tab') {
       const tab = restoredTab(returned)
       if (tab) {
@@ -168,8 +181,40 @@ export function installWindowLifecycle(): () => void {
     }
   }
 
+  /**
+   * Publishes this window's active tab to its detached panels.
+   *
+   * A detached sidebar or Inspector is a view of whatever this window is
+   * editing, so when the active tab moves to another glyph the panel has to
+   * follow. Only the owning window publishes; the panel windows read.
+   */
+  const publishPanels = () => {
+    if (stopped || target) return
+    const ui = useUiStore.getState()
+    const active = ui.tabs.find((entry) => entry.id === ui.activeTab)
+    if (!active) return
+    for (const view of ui.detached) {
+      if (view.kind !== 'panel' || view.doc !== active.doc) continue
+      try {
+        writeWindowTab(
+          { kind: 'panel', doc: view.doc, panel: view.panel },
+          active,
+        )
+      } catch (error) {
+        // A tab this target cannot carry is not worth interrupting editing for.
+        void error
+      }
+    }
+  }
+
   const stopUi = useUiStore.subscribe((state, previous) => {
     if (state.tabs !== previous.tabs) reconcile()
+    if (
+      state.tabs !== previous.tabs ||
+      state.activeTab !== previous.activeTab ||
+      state.detached !== previous.detached
+    )
+      publishPanels()
   })
   const stopSession = useSessionStore.subscribe((state, previous) => {
     if (state.docs === previous.docs) return
@@ -184,6 +229,41 @@ export function installWindowLifecycle(): () => void {
     }
     reconcile()
   })
+  /**
+   * Adopts the tab payload the owning window publishes.
+   *
+   * A detached panel is a view of whatever the owner is editing, so when the
+   * owner steps to another glyph this window has to follow. The owner writes its
+   * current tab to storage on every tab change; a storage event is the one
+   * cross-window signal a browser gives us, and the native shell writes through
+   * the same store.
+   */
+  const adoptPayload = () => {
+    if (stopped || !target || target.kind === 'document') return
+    const tab = restoredTab(target)
+    if (!tab) return
+    const ui = useUiStore.getState()
+    const current = ui.tabs.find((entry) => entry.id === ui.activeTab)
+    if (current && current.id === tab.id && current.gid === tab.gid) return
+    const overview: Tab = {
+      id: tabId('font', target.doc),
+      kind: 'font',
+      doc: target.doc,
+    }
+    useUiStore.setState({
+      tabs: tab.id === overview.id ? [overview] : [overview, tab],
+      activeTab: tab.id,
+    })
+  }
+
+  const onStorage = (event: StorageEvent) => {
+    if (event.key !== null && !event.key.startsWith('fontcarver:window-tab:'))
+      return
+    adoptPayload()
+  }
+  if (target && target.kind !== 'document')
+    window.addEventListener('storage', onStorage)
+
   const stopRejoin = onWindowRejoin(restoreDetached)
   const stopClosed = onWindowClosed(restoreDetached)
   const stopGuard = installWindowCloseGuard({
@@ -281,6 +361,7 @@ export function installWindowLifecycle(): () => void {
     stopRejoin()
     stopClosed()
     stopGuard()
+    window.removeEventListener('storage', onStorage)
     window.removeEventListener('focus', onFocus)
   }
 }

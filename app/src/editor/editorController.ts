@@ -238,6 +238,8 @@ export class EditorController {
   setSnapSettings(settings: SnapSettings): void {
     this.snapping.setSettings(settings)
     this.geometry.hitDistance = settings.hitDistance
+    this.geometry.nodeSize = settings.nodeSize
+    this.geometry.handleSize = settings.handleSize
   }
 
   /** Arrow-key distances from the preferences: plain, Shift, Ctrl. */
@@ -386,6 +388,14 @@ export class EditorController {
 
     this.setSelection(selectionForClick(this.selection, hit, input.modifiers))
     if (!hit) {
+      // A press that found nothing may still have landed on a locked path,
+      // component or guide, which would otherwise be silent.
+      if (this.geometry.refusedAt(this.viewport, this.selection, at))
+        this.callbacks.onRefused(
+          this.geometry.source?.glyphLocked
+            ? this.labels.lockedGlyph
+            : this.labels.lockedTarget,
+        )
       this.view.beginMarquee(at, {
         additive: input.modifiers.shift || input.modifiers.mod,
         // Both halves of one gesture read the same moment: Alt decided when

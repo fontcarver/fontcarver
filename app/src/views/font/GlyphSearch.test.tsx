@@ -6,11 +6,15 @@ import {
   useDocumentStore,
 } from '../../stores/documentStore'
 
+import { ApiCallError } from '../../transport'
+
 import { GlyphSearch, SEARCH_DEBOUNCE_MS } from './GlyphSearch'
+import { useQueryErrors } from './queryErrors'
 
 beforeEach(() => {
   useDocumentStore.setState(initialDocumentState())
   useDocumentStore.getState().ensure(1)
+  useQueryErrors.setState({ byDoc: {} })
   vi.useFakeTimers()
 })
 
@@ -100,4 +104,40 @@ it('cancels an uncommitted query when the search is removed', () => {
   unmount()
   act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS))
   expect(useDocumentStore.getState().byDoc[1]?.filter.query).toBeNull()
+})
+
+it('reports a rejected regular expression under the field', () => {
+  useQueryErrors
+    .getState()
+    .report(
+      1,
+      new ApiCallError(
+        'invalid_params',
+        'invalid glyph search regex: unclosed group',
+      ),
+    )
+  render(<GlyphSearch doc={1} value="(" regex />)
+  const field = screen.getByRole('searchbox', { name: 'Search glyphs' })
+  expect(field).toHaveAttribute('aria-invalid', 'true')
+  const alert = screen.getByRole('alert')
+  expect(alert).toHaveTextContent('unclosed group')
+  expect(field).toHaveAccessibleDescription(
+    'That search was rejected: invalid glyph search regex: unclosed group',
+  )
+  // Another document's field is unaffected.
+  render(<GlyphSearch doc={2} value="(" regex />)
+  expect(screen.getAllByRole('alert')).toHaveLength(1)
+})
+
+it('drops the inline report once the query is accepted', () => {
+  const store = useQueryErrors.getState()
+  store.report(
+    1,
+    new ApiCallError('invalid_params', 'invalid glyph search regex: ['),
+  )
+  const { rerender } = render(<GlyphSearch doc={1} value="[" regex />)
+  expect(screen.getByRole('alert')).toBeInTheDocument()
+  act(() => store.clear(1))
+  rerender(<GlyphSearch doc={1} value="[a]" regex />)
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 })

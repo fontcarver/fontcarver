@@ -152,6 +152,39 @@ def check_notices(manifest: Path) -> dict:
     return {'packages': len(packages), 'license_files': count, 'checksums_verified': True}
 
 
+def debian_copyright(root: Path, files: list[Path], package: str | None) -> dict:
+    """Require the copyright document Debian policy 12.5 makes mandatory.
+
+    Tauri's deb bundler writes no `/usr/share/doc/<package>/copyright`, so the
+    file comes from `bundle.linux.deb.files` and its destination repeats the
+    package name that Tauri derives from `productName`. Checking both that the
+    document exists and that it sits in the installed package's own directory
+    is what keeps a renamed product from silently shipping an unreachable one.
+    """
+    documents = [path for path in files
+                 if path.name == 'copyright' and path.parent.parent == root / 'usr/share/doc']
+    owned = [path for path in documents if package is None or path.parent.name == package]
+    if not owned:
+        found = sorted(str(path.relative_to(root)) for path in documents)
+        raise VerificationError(
+            'missing Debian copyright document at '
+            f'usr/share/doc/{package or "<package>"}/copyright'
+            + (f'; found instead: {", ".join(found)}' if found else ''))
+    document = owned[0]
+    if not inside_file(document, root):
+        raise VerificationError(f'empty Debian copyright document: {document.relative_to(root)}')
+    text = document.read_text(encoding='utf-8', errors='replace')
+    # Debian's own short name for the MIT license is `Expat`, and a DEP-5
+    # document is free to use it, so either spelling satisfies the MIT half.
+    licenses = {'MIT': ('MIT', 'Expat'), 'Apache-2.0': ('Apache-2.0',)}
+    missing = [name for name, spellings in licenses.items()
+               if not any(spelling in text for spelling in spellings)]
+    if missing:
+        raise VerificationError('Debian copyright document does not name '
+                                f'{" and ".join(missing)} for a MIT OR Apache-2.0 package')
+    return {'path': str(document.relative_to(root)), 'sha256': sha256(document)}
+
+
 def platform_metadata(root: Path, files: list[Path], kind: str, binaries: list[Path]) -> dict:
     if kind in ('deb', 'appimage'):
         if kind == 'appimage' and (not inside_file(root / 'AppRun', root)
@@ -198,7 +231,7 @@ def platform_metadata(root: Path, files: list[Path], kind: str, binaries: list[P
     return {'executable_format': 'PE', 'icons': 'embedded in executable / installer'}
 
 
-def inspect_payload(root: Path, kind: str) -> dict:
+def inspect_payload(root: Path, kind: str, metadata: dict | None = None) -> dict:
     paths = sorted(root.rglob('*'))
     for path in paths:
         if forbidden_path(path, root):
@@ -242,11 +275,14 @@ def inspect_payload(root: Path, kind: str) -> dict:
     resource_paths = [resource_root / name for name in RESOURCES[:-1]] + [instructions]
     resources = [{'path': str(path.relative_to(root)), 'sha256': sha256(path)}
                  for path in resource_paths]
-    return {'executable': {'paths': [str(path.relative_to(root)) for path in valid_binaries],
-                           'valid_header': True},
-            'resources': resources, 'notices': check_notices(resource_root / 'DEPENDENCIES.json'),
-            'platform_metadata': platform_metadata(root, files, kind, valid_binaries),
-            'fontforge_paths_absent': True, 'file_count': len(files)}
+    report = {'executable': {'paths': [str(path.relative_to(root)) for path in valid_binaries],
+                             'valid_header': True},
+              'resources': resources, 'notices': check_notices(resource_root / 'DEPENDENCIES.json'),
+              'platform_metadata': platform_metadata(root, files, kind, valid_binaries),
+              'fontforge_paths_absent': True, 'file_count': len(files)}
+    if kind == 'deb':
+        report['debian_copyright'] = debian_copyright(root, files, (metadata or {}).get('Package'))
+    return report
 
 
 def verify(bundle: Path, expected: list[str]) -> list[dict]:
@@ -258,7 +294,7 @@ def verify(bundle: Path, expected: list[str]) -> list[dict]:
         for kind, artifact in artifacts:
             with tempfile.TemporaryDirectory(prefix=f'{kind}-', dir=scratch) as directory:
                 with extracted(artifact, kind, Path(directory)) as (root, metadata):
-                    payload = inspect_payload(root, kind)
+                    payload = inspect_payload(root, kind, metadata)
                 rows.append({'path': str(artifact.relative_to(bundle)), 'type': kind,
                              'bytes': artifact.stat().st_size, 'sha256': sha256(artifact),
                              'metadata': metadata, 'payload': payload})

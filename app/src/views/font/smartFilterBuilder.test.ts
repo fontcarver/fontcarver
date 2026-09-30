@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { SmartFilterNode } from '../../api'
+import { SMART_FILTER_FIELDS as GENERATED_FIELDS } from '../../api/generated/smartFilterFields'
 
 import {
   defaultSmartRule,
@@ -58,39 +59,25 @@ describe('smart filter builder expression formatting', () => {
     ).toBe('width>="500"')
   })
 
-  it('offers the complete predicate vocabulary with useful defaults', () => {
-    expect(SMART_FILTER_FIELDS.map(({ field }) => field)).toEqual(
-      expect.arrayContaining([
-        'name',
-        'paths',
-        'components',
-        'tags',
-        'script',
-        'category',
-        'subcategory',
-        'case',
-        'master_compatible',
-        'export',
-        'has_unicode',
-        'has_components',
-        'contains_component',
-        'has_hints',
-        'has_ps_hints',
-        'has_tt_hints',
-        'has_corners',
-        'has_anchors',
-        'has_special_layers',
-        'has_custom_glyph_info',
-        'has_annotations',
-        'is_auto_aligned',
-        'has_metrics_keys',
-        'metrics_out_of_sync',
-        'has_kerning_groups',
-        'color_label',
-        'layer_color_label',
-        'is_hangul_key',
-      ]),
+  it('offers exactly the vocabulary the kernel parses, with useful defaults', () => {
+    // One source: the builder re-exports the generated list, so this asserts
+    // that it is the generated list rather than a copy that can drift.
+    expect(SMART_FILTER_FIELDS).toBe(GENERATED_FIELDS)
+    expect(SMART_FILTER_FIELDS.map(({ field }) => field)).toContain('locked')
+    expect(SMART_FILTER_FIELDS.map(({ field }) => field)).toContain(
+      'is_placeholder',
     )
+    // Every field is offered with operators and a default that compile.
+    for (const { field, type } of SMART_FILTER_FIELDS) {
+      const operators = smartRuleOperators(field)
+      expect(operators.length).toBeGreaterThan(0)
+      const rule = defaultSmartRule(field)
+      expect(rule).toMatchObject({ kind: 'predicate', field })
+      expect(operators).toContain(
+        (rule as { operator: string }).operator as never,
+      )
+      if (type === 'boolean') expect(rule).toMatchObject({ value: 'true' })
+    }
     expect(defaultSmartRule('has_hints')).toMatchObject({
       operator: 'eq',
       value: 'true',

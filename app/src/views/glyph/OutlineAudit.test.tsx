@@ -15,7 +15,14 @@ import {
 } from '../../test/fontFixtures'
 import { createMockTransport, noChange } from '../../test/mockTransport'
 
-import { OutlineAudit, type OutlineAuditHandle } from './OutlineAudit'
+import {
+  AUDIT_DEBOUNCE_MS,
+  AUDIT_MAX_WAIT_MS,
+  OutlineAudit,
+  type OutlineAuditHandle,
+} from './OutlineAudit'
+import { DEFAULT_OUTLINE_AUDIT } from './outlineAudit'
+import { useOutlineAuditStore } from './outlineAuditStore'
 
 const outline = makeLayerOutline(
   makeLayer({
@@ -52,7 +59,13 @@ const source: EditorSource = {
   componentPoints: [],
 }
 
-beforeEach(() => useEditorStore.setState(initialEditorState()))
+beforeEach(() => {
+  useEditorStore.setState(initialEditorState())
+  // The per-check switches persist between sessions, so a test that turns one
+  // off has to put it back or it would silently disable the next test's fixes.
+  globalThis.localStorage?.clear()
+  useOutlineAuditStore.setState({ settings: { ...DEFAULT_OUTLINE_AUDIT } })
+})
 afterEach(() => setTransport(undefined))
 
 async function show(props: Partial<Parameters<typeof OutlineAudit>[0]> = {}) {
@@ -154,13 +167,61 @@ describe('outline audit controls', () => {
     expect(screen.getByRole('button', { name: 'Fix All' })).toBeEnabled()
   })
 
-  it('disables repairs during a live editing gesture', async () => {
+  it('keeps auditing a live gesture but refuses to repair mid-drag', async () => {
     useEditorStore.setState({ editing: true })
     await show()
-    expect(screen.getByRole('button', { name: 'Fix All' })).toBeDisabled()
+    // The markers stay: row 35 wants the audit on while the outline moves.
     expect(
-      screen.queryByRole('button', { name: /Fractional coordinates at/ }),
-    ).toBeNull()
+      screen.getAllByRole('button', { name: /Fractional coordinates at/ }),
+    ).not.toHaveLength(0)
+    // Repairs are not applied against geometry the kernel has not accepted.
+    expect(screen.getByRole('button', { name: 'Fix All' })).toBeDisabled()
+    for (const fix of screen.getAllByRole('button', { name: 'Fix' }))
+      expect(fix).toBeDisabled()
+  })
+
+  it('follows the gesture geometry once it settles, not the fetched outline', async () => {
+    vi.useFakeTimers()
+    try {
+      useEditorStore.setState({ editing: true })
+      const viewport = new Viewport()
+      viewport.offset = { x: 100, y: 300 }
+      render(
+        <OutlineAudit source={source} viewport={viewport} onReload={vi.fn()} />,
+      )
+      // A drag moved the fractional point to a whole number, so its marker has
+      // to go away once the geometry stops moving.
+      act(() => {
+        useEditorStore.setState({
+          preview: {
+            contours: [
+              makeContour([
+                makePoint(10, 20),
+                makePoint(100.7, 20.2),
+                makePoint(100, 200),
+              ]),
+            ],
+            components: [],
+            anchors: [],
+          },
+        })
+      })
+      act(() => {
+        vi.advanceTimersByTime(AUDIT_DEBOUNCE_MS + 10)
+      })
+      expect(
+        screen.queryByRole('button', {
+          name: 'Fractional coordinates at 10.2, 20.6',
+        }),
+      ).toBeNull()
+      expect(
+        screen.getByRole('button', {
+          name: 'Fractional coordinates at 100.7, 20.2',
+        }),
+      ).toBeVisible()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('keeps locked paths and glyphs read-only', async () => {
@@ -187,5 +248,54 @@ describe('outline audit controls', () => {
       />,
     )
     expect(screen.getByRole('button', { name: 'Fix All' })).toBeDisabled()
+  })
+})
+
+describe('a drag that never pauses still refreshes the markers', () => {
+  it('publishes on the ceiling even while every frame restarts the debounce', () => {
+    vi.useFakeTimers()
+    try {
+      useEditorStore.setState({ editing: true })
+      const viewport = new Viewport()
+      viewport.offset = { x: 100, y: 300 }
+      render(
+        <OutlineAudit source={source} viewport={viewport} onReload={vi.fn()} />,
+      )
+      const moved = (x: number) => ({
+        contours: [
+          makeContour([
+            makePoint(x, 20.6),
+            makePoint(100.7, 20.2),
+            makePoint(100, 200),
+          ]),
+        ],
+        components: [],
+        anchors: [],
+      })
+      // A frame every 40 ms: the 120 ms debounce alone would never fire.
+      for (let frame = 1; frame <= 8; frame += 1) {
+        act(() => {
+          useEditorStore.setState({ preview: moved(10.2 + frame) })
+        })
+        act(() => {
+          vi.advanceTimersByTime(40)
+        })
+      }
+      expect(8 * 40).toBeGreaterThan(AUDIT_MAX_WAIT_MS)
+      expect(AUDIT_MAX_WAIT_MS).toBeGreaterThan(AUDIT_DEBOUNCE_MS)
+      // The marker followed the drag rather than staying on its first frame.
+      expect(
+        screen.queryByRole('button', {
+          name: 'Fractional coordinates at 10.2, 20.6',
+        }),
+      ).toBeNull()
+      expect(
+        screen.getAllByRole('button', {
+          name: /^Fractional coordinates at 1[0-9](\.\d+)?, 20\.6$/,
+        }).length,
+      ).toBeGreaterThan(0)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

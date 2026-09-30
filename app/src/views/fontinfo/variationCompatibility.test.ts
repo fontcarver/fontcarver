@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { parseSourcePoints, samePointStructure } from './variationCompatibility'
+import {
+  nudgeOrder,
+  parseSourcePoints,
+  samePointStructure,
+  shapeColour,
+  shapeSegments,
+  swapOrder,
+} from './variationCompatibility'
 
 describe('variation SVG point inspection', () => {
   it('preserves contour, point and control-point ordering', () => {
@@ -64,5 +71,67 @@ describe('variation SVG point inspection', () => {
     expect(parseSourcePoints('M0 0' + 'L1 1'.repeat(2048))).toBeNull()
     expect(parseSourcePoints(' '.repeat(100001))).toBeNull()
     expect(parseSourcePoints('')).toEqual({ contours: [], pointCount: 0 })
+  })
+})
+
+describe('shape order helpers', () => {
+  it('gives the same colour to the same shape position in every source', () => {
+    expect(shapeColour(0)).toBe(0)
+    expect(shapeColour(6)).toBe(0)
+    expect(shapeColour(7)).toBe(1)
+  })
+
+  it('chords one closed shape in stored-point order with its statuses', () => {
+    const shape = {
+      index: 0,
+      closed: true,
+      path: '',
+      start: [0, 0] as [number, number],
+      center: [5, 5] as [number, number],
+      points: [
+        [0, 0],
+        [0, 10],
+        [10, 10],
+      ] as [number, number][],
+      on_curve: [true, true, true],
+    }
+    const segments = shapeSegments(shape, {
+      index: 0,
+      status: 'angle',
+      segments: ['compatible', 'angle', 'compatible'],
+      max_angle: 30,
+    })
+    expect(segments).toHaveLength(3)
+    expect(segments[1]).toEqual({
+      from: { x: 0, y: 10 },
+      to: { x: 10, y: 10 },
+      status: 'angle',
+    })
+    // The closing chord returns to the first point.
+    expect(segments[2]?.to).toEqual({ x: 0, y: 0 })
+    // An open shape has one chord fewer.
+    expect(shapeSegments({ ...shape, closed: false }, undefined)).toHaveLength(
+      2,
+    )
+    // A missing status reads as compatible rather than throwing.
+    expect(shapeSegments(shape, undefined)[0]?.status).toBe('compatible')
+  })
+
+  it('builds a permutation that swaps exactly two positions', () => {
+    expect(swapOrder(4, 0, 2)).toEqual([2, 1, 0, 3])
+    expect(swapOrder(4, 1, 1)).toEqual([0, 1, 2, 3])
+    for (const [from, to] of [
+      [-1, 0],
+      [0, 9],
+      [9, 0],
+    ])
+      expect(swapOrder(3, from!, to!)).toEqual([0, 1, 2])
+  })
+
+  it('nudges one shape by a single position and stops at the ends', () => {
+    expect(nudgeOrder(3, 1, -1)).toEqual([1, 0, 2])
+    expect(nudgeOrder(3, 1, 1)).toEqual([0, 2, 1])
+    expect(nudgeOrder(3, 0, -1)).toEqual([0, 1, 2])
+    expect(nudgeOrder(3, 2, 1)).toEqual([0, 1, 2])
   })
 })

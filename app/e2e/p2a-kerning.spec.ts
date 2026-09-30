@@ -22,7 +22,7 @@ import {
   sourceFixture,
   test,
 } from './p2aSupport'
-import { api, fixture } from './support'
+import { api, fixture, REPO_ROOT } from './support'
 
 async function seedGroups(page: Page, doc: DocSummary) {
   for (const [side, name, members] of [
@@ -193,9 +193,7 @@ test('creates, assigns, renames and explicitly removes an in-use shared group', 
     .getByRole('button', { name: 'Remove group…', exact: true })
     .click()
   await expect(
-    first.getByText(
-      /This also removes 1 horizontal pair records? across all masters\./,
-    ),
+    first.getByText(/Horizontal pair records removed across all masters: 1\./),
   ).toBeVisible()
   await page.screenshot({ path: test.info().outputPath('group-impact.png') })
   await first
@@ -310,13 +308,20 @@ test('saves a pending edit and keeps document handover isolated', async ({
   const secondFiles = sourceFixture()
   try {
     const second = await openSource(page, secondFiles.input)
-    await page.getByRole('tab', { name: 'AV', exact: true }).click()
+    // Reopening a saved document restores its own text tab, so more than one
+    // "AV" tab can exist; this test means the one of the edited document.
+    await page
+      .locator(`[role="tab"][data-tab^="glyph:${source.doc.doc}:"]`)
+      .first()
+      .click()
     await choosePair(page)
     const switching = await holdNextKerning(page)
     try {
       await setValue(page, 'glyph_glyph', -90)
       await switching.wait()
-      await page.getByRole('tab', { name: 'Regular.ufo', exact: true }).click()
+      // An unlabelled Overview tab renders as `Overview · <file>`, so match the
+      // file name at the start of the tab name or after that separator.
+      await page.getByRole('tab', { name: /(?:^|· )Regular\.ufo$/ }).click()
       switching.release()
       await expect
         .poll(async () => (await resolution(page, source.doc)).value)
@@ -354,4 +359,305 @@ test('keeps imported spacing previewable and explains unavailable authoring', as
   await expect(
     page.getByRole('tab', { name: 'Font Info', exact: true }),
   ).toBeVisible()
+})
+
+/** The stored metrics of one glyph in one master, read through the spacing API. */
+async function layerMetrics(
+  page: Page,
+  doc: DocSummary,
+  name: string,
+  master: string,
+) {
+  const answer = await api<{
+    rows: {
+      width: number
+      lsb: number | null
+      rsb: number | null
+      out_of_sync: boolean
+      beam_left: number | null
+    }[]
+  }>(page, 'metrics.spacing', {
+    doc: doc.doc,
+    master,
+    glyphs: [name],
+    beam: null,
+  })
+  const row = answer.rows[0]
+  if (!row) throw new Error(`no spacing row for ${name}`)
+  return row
+}
+
+test('edits metrics formulas with inline validation and synchronises every master', async ({
+  page,
+  source,
+}) => {
+  const [regular, bold] = source.doc.masters
+  await openGlyphFromGrid(page, 'A')
+  const field = page.getByRole('textbox', { name: 'LSB key' })
+  await expect(field).toBeVisible()
+
+  // A malformed formula is refused in place; nothing reaches the document.
+  await field.fill('=V+')
+  await field.press('Enter')
+  await expect(page.getByRole('alert')).toContainText(
+    'needs a number after the operator',
+  )
+  await expect(field).toHaveAttribute('aria-invalid', 'true')
+  const before = await layerMetrics(page, source.doc, 'A', regular!.id)
+  expect(before.lsb ?? 0).toBeGreaterThan(0)
+
+  // The bare spelling of a reference is accepted as the formula it stands for.
+  await field.fill('V')
+  await field.press('Enter')
+  await expect(field).toHaveValue('=V')
+  // Arithmetic on the reference, so the stored value cannot already agree.
+  await field.fill('=V+25')
+  await field.press('Enter')
+  await expect(field).toHaveValue('=V+25')
+  await expect(page.getByText('out of sync').first()).toBeVisible()
+
+  // Synchronising through the Glyph menu covers every master in one entry.
+  await menuItem(page, 'Glyph', /^Update Metrics in All Masters/)
+  await expect(page.getByText('In sync').first()).toBeVisible()
+  for (const master of [regular!, bold!]) {
+    const after = await layerMetrics(page, source.doc, 'A', master.id)
+    const reference = await layerMetrics(page, source.doc, 'V', master.id)
+    expect(Math.round(after.lsb ?? 0)).toBe(
+      Math.round((reference.lsb ?? 0) + 25),
+    )
+    expect(after.out_of_sync).toBe(false)
+  }
+  await menuItem(page, 'Edit', /^Undo/)
+  await expect
+    .poll(
+      async () => (await layerMetrics(page, source.doc, 'A', regular!.id)).lsb,
+    )
+    .toBe(before.lsb)
+})
+
+test('measures and edits the run through the spacing matrix, beam and cut-off', async ({
+  page,
+  source,
+}) => {
+  const master = source.doc.masters[0]!.id
+  await enterText(page, 'AV')
+  await page.getByText('Spacing matrix').click()
+  const cell = page.getByRole('textbox', { name: 'LSB of A' })
+  await expect(cell).toBeVisible()
+  const before = await layerMetrics(page, source.doc, 'A', master)
+
+  await cell.fill(String(Math.round(before.lsb ?? 0) + 30))
+  await cell.press('Enter')
+  await expect
+    .poll(async () => (await layerMetrics(page, source.doc, 'A', master)).width)
+    .toBe(before.width + 30)
+
+  // A formula typed into the same cell replaces the number.
+  await cell.fill('=V')
+  await cell.press('Enter')
+  await expect(
+    page.getByRole('button', { name: 'Update' }).first(),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Update' }).first().click()
+  await expect(cell).toHaveValue('=V')
+
+  // The beam reports each glyph's margins at its height, and the run redraws.
+  await page.getByRole('checkbox', { name: 'Beam' }).check()
+  await expect(
+    page.getByRole('columnheader', { name: 'Beam LSB' }),
+  ).toBeVisible()
+  const beamCells = page
+    .locator('tr[data-glyph="A"] td')
+    .filter({ hasText: /\d/ })
+  await expect
+    .poll(async () => (await beamCells.allTextContents()).join(' '))
+    .toMatch(/\d/)
+  await page.getByRole('slider', { name: 'Drag the beam height' }).fill('120')
+  await expect(
+    page.getByRole('spinbutton', { name: 'Beam height' }),
+  ).toHaveValue('120')
+
+  // The beam is also dragged on the canvas itself.
+  const canvas = page.getByRole('img', { name: /^Glyph / })
+  await page.getByRole('button', { name: 'Fit Glyph in Window' }).click()
+  const at = async (height: number) =>
+    canvas.evaluate((element, font) => {
+      const globals = globalThis as unknown as {
+        __fwTextRun?: { activeOrigin: { x: number; y: number } }
+        __fwEditor?: {
+          viewportForTest: {
+            toScreen: (point: { x: number; y: number }) => {
+              x: number
+              y: number
+            }
+          }
+        }
+      }
+      const run = globals.__fwTextRun
+      const editor = globals.__fwEditor
+      if (!run || !editor) throw new Error('the text run is not ready')
+      const point = editor.viewportForTest.toScreen({
+        x: 0,
+        y: font - run.activeOrigin.y,
+      })
+      const bounds = (
+        element as unknown as {
+          getBoundingClientRect: () => {
+            left: number
+            top: number
+            width: number
+          }
+        }
+      ).getBoundingClientRect()
+      // Well away from the gap handle, which is offered before the beam.
+      return { x: bounds.left + bounds.width * 0.15, y: bounds.top + point.y }
+    }, height)
+  const from = await at(120)
+  const to = await at(420)
+  await page.mouse.move(from.x, from.y)
+  await page.mouse.down()
+  await page.mouse.move(to.x, to.y, { steps: 4 })
+  await page.mouse.up()
+  await expect
+    .poll(async () =>
+      Number(
+        await page
+          .getByRole('spinbutton', { name: 'Beam height' })
+          .inputValue(),
+      ),
+    )
+    .toBeGreaterThan(380)
+
+  await page.getByRole('checkbox', { name: 'Cut off' }).check()
+  await expect(
+    page.getByRole('spinbutton', { name: 'Cut off from' }),
+  ).toBeVisible()
+  await page.screenshot({
+    path: join(REPO_ROOT, 'docs/screenshots/p5f-d-metrics/spacing-matrix.png'),
+  })
+  // The canvas alone, so the beam line, its measurement and the cut-off band
+  // are legible at the size the acceptance report embeds.
+  await page.getByRole('button', { name: 'Fit Glyph in Window' }).click()
+  await canvas.screenshot({
+    path: join(REPO_ROOT, 'docs/screenshots/p5f-d-metrics/beam-cutoff.png'),
+  })
+})
+
+test('marks kerning exceptions and maintains the table across masters', async ({
+  page,
+  source,
+}) => {
+  const [regular, bold] = source.doc.masters
+  await seedGroups(page, source.doc)
+  for (const [left, right, value] of [
+    [{ group: 'public.kern1.A' }, { group: 'public.kern2.V' }, -60],
+    [{ glyph: 'A' }, { group: 'public.kern2.V' }, -20],
+  ] as const) {
+    await api(page, 'doc.apply', {
+      doc: source.doc.doc,
+      label: 'Seed kerning',
+      command: {
+        SetHorizontalKerning: { master: regular!.id, left, right, value },
+      },
+    })
+  }
+  await enterText(page, 'AV')
+  await page.getByText('Kerning table').click()
+  const table = page.getByRole('table')
+  await expect(table).toBeVisible()
+  await expect(table.getByText('Exception')).toBeVisible()
+  await expect(table.getByText('Class')).toBeVisible()
+
+  await page
+    .getByRole('combobox', { name: 'Record kind' })
+    .selectOption('exceptions')
+  await expect(table.getByText('public.kern1.A')).toBeHidden()
+  await page.getByRole('combobox', { name: 'Record kind' }).selectOption('all')
+
+  // Copy this master's table, switch the table's master and keep existing.
+  await page.getByRole('button', { name: 'Copy table' }).click()
+  await page
+    .getByRole('combobox', { name: 'Table master' })
+    .selectOption(bold!.id)
+  await page.getByRole('combobox', { name: 'On conflict' }).selectOption('keep')
+  await page.getByRole('button', { name: 'Paste table' }).click()
+  await expect
+    .poll(async () => (await resolution(page, source.doc, bold!.id)).value)
+    .toBe(-20)
+
+  // Compress folds the agreeing pairs of that master back into one class rule.
+  await page.getByRole('button', { name: 'Compress' }).click()
+  await expect
+    .poll(async () => (await resolution(page, source.doc, bold!.id)).value)
+    .toBe(-20)
+  await expect
+    .poll(async () => (await resolution(page, source.doc, bold!.id)).exception)
+    .toBe(true)
+  await page.screenshot({
+    path: join(REPO_ROOT, 'docs/screenshots/p5f-d-metrics/kerning-table.png'),
+  })
+})
+
+test('locks every spacing control while kerning with spacing locked', async ({
+  page,
+  source,
+}) => {
+  const master = source.doc.masters[0]!.id
+  const canvas = await enterText(page, 'AV')
+  const before = await layerMetrics(page, source.doc, 'A', master)
+  await page
+    .getByRole('combobox', { name: 'Kerning mode' })
+    .selectOption('locked')
+  await expect(
+    page.getByRole('combobox', { name: 'Spacing side' }),
+  ).toBeDisabled()
+  // The matrix is the tab's own spacing surface; the inspector's fields are
+  // covered by MetricsPanel and InfoBox unit tests, which render in edit mode.
+  await page.getByText('Spacing matrix').click()
+  await expect(page.getByRole('textbox', { name: 'LSB of A' })).toBeDisabled()
+  await canvas.press(']')
+  await canvas.press(']')
+  await expect
+    .poll(async () => (await layerMetrics(page, source.doc, 'A', master)).width)
+    .toBe(before.width)
+})
+
+test('edits vertical kerning and vertical metrics in the vertical direction', async ({
+  page,
+  source,
+}) => {
+  const master = source.doc.masters[0]!.id
+  await enterText(page, 'AV')
+  await page.getByRole('button', { name: 'Vertical text', exact: true }).click()
+  await api(page, 'doc.apply', {
+    doc: source.doc.doc,
+    label: 'Seed vertical kerning',
+    command: {
+      SetVerticalKerning: {
+        master,
+        left: { glyph: 'A' },
+        right: { glyph: 'V' },
+        value: -35,
+      },
+    },
+  })
+  await expect
+    .poll(
+      async () =>
+        (
+          await api<{ value: number | null }>(
+            page,
+            'kerning.resolve_vertical',
+            {
+              doc: source.doc.doc,
+              master,
+              left: 'A',
+              right: 'V',
+            },
+          )
+        ).value,
+    )
+    .toBe(-35)
+  await page.getByText('Kerning table').click()
+  await expect(page.getByRole('table').getByText('-35')).toBeVisible()
 })

@@ -302,6 +302,22 @@ export function PasteSpecialDialog({
                 })}
               </p>
             )}
+            {preview.result.placeholders.length > 0 && (
+              <>
+                <p>
+                  {t('crossDocument.placeholders', {
+                    names: preview.result.placeholders
+                      .map((placeholder) => placeholder.name)
+                      .join(', '),
+                  })}
+                </p>
+                <p className={styles.help}>
+                  {t('crossDocument.placeholderFilter', {
+                    filter: `tags~"${preview.result.placeholders[0].tag}"`,
+                  })}
+                </p>
+              </>
+            )}
             {preview.result.warnings.map((warning, index) => (
               <p key={index} role="note">
                 {warning}

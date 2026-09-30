@@ -28,6 +28,8 @@ export interface GridCellsProps {
   hasFocus: boolean
   theme: CellTheme
   fontFamily: string
+  /** Whether an empty cell may show its character from a system face. */
+  referenceCharacters: boolean
   /** The rubber band being dragged, or `null`. */
   band: Band | null
 }
@@ -54,6 +56,7 @@ export function GridCells({
   hasFocus,
   theme,
   fontFamily,
+  referenceCharacters,
   band,
 }: GridCellsProps) {
   const cells = []
@@ -77,6 +80,7 @@ export function GridCells({
         focused={hasFocus && index === focusIndex}
         theme={theme}
         fontFamily={fontFamily}
+        referenceCharacters={referenceCharacters}
       />,
     )
   }

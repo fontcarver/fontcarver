@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type { AddGlyphsResult, DocId, GlyphCell } from '../api'
+import type { DocId, GlyphCell } from '../api'
 import { Button } from '../components/Button'
 import { Dialog } from '../components/Dialog'
 import { useSessionStore } from '../stores/sessionStore'
@@ -11,13 +11,15 @@ import {
   CHARSETS,
   PREVIEW_DEBOUNCE_MS,
   applyRecipe,
+  countRecipe,
   groupSkips,
   previewRecipe,
+  type RecipeOutcome,
 } from './addGlyphs'
 import styles from './dialogs.module.css'
 import { NameList } from './NameList'
 
-const EMPTY: AddGlyphsResult = { added: [], skipped: [] }
+const EMPTY: RecipeOutcome = { added: [], skipped: [], composed: [] }
 
 /** How many skipped tokens a reason's tooltip names before it stops. */
 const SKIP_SAMPLE = 20
@@ -25,7 +27,9 @@ const SKIP_SAMPLE = 20
 /** The last dry run that came back, together with the recipe it answered. */
 interface Preview {
   readonly recipe: string
-  readonly result: AddGlyphsResult
+  /** Whether the dry run built compositions, so a toggle invalidates it. */
+  readonly compose: boolean
+  readonly result: RecipeOutcome
 }
 
 /**
@@ -57,27 +61,30 @@ export function AddGlyphsDialog({
   const { t } = useTranslation()
   const setDialog = useUiStore((state) => state.setDialog)
   const [recipe, setRecipe] = useState(initialRecipe)
+  const [compose, setCompose] = useState(true)
   const [latest, setLatest] = useState<Preview | null>(null)
   const [busy, setBusy] = useState(false)
   const [counts, setCounts] = useState<Record<string, CharsetCounts | null>>({})
 
   const trimmed = recipe.trim()
-  // Derived rather than stored: the preview belongs to exactly one recipe, so
-  // "is a dry run still outstanding?" is a comparison, not a second state.
-  const preview = latest?.recipe === trimmed ? latest.result : EMPTY
-  const pending = trimmed.length > 0 && latest?.recipe !== trimmed
+  // Derived rather than stored: the preview belongs to exactly one recipe and
+  // one composition setting, so "is a dry run still outstanding?" is a
+  // comparison, not a second state.
+  const fresh = latest?.recipe === trimmed && latest.compose === compose
+  const preview = fresh ? latest.result : EMPTY
+  const pending = trimmed.length > 0 && !fresh
 
   useEffect(() => {
     if (!trimmed) return
     let live = true
     const timer = setTimeout(() => {
-      void previewRecipe(doc, trimmed)
+      void previewRecipe(doc, trimmed, compose)
         .then((result) => {
-          if (live) setLatest({ recipe: trimmed, result })
+          if (live) setLatest({ recipe: trimmed, compose, result })
         })
         .catch((error: unknown) => {
           if (!live) return
-          setLatest({ recipe: trimmed, result: EMPTY })
+          setLatest({ recipe: trimmed, compose, result: EMPTY })
           reportError(error)
         })
     }, PREVIEW_DEBOUNCE_MS)
@@ -85,7 +92,7 @@ export function AddGlyphsDialog({
       live = false
       clearTimeout(timer)
     }
-  }, [doc, trimmed])
+  }, [compose, doc, trimmed])
 
   useEffect(() => {
     let live = true
@@ -94,12 +101,12 @@ export function AddGlyphsDialog({
       // names, and the small Latin rows should not wait behind it.
       for (const charset of CHARSETS) {
         try {
-          const result = await previewRecipe(doc, charset.recipe)
+          const result = await countRecipe(doc, charset.recipe)
           if (!live) return
           setCounts((current) => ({
             ...current,
             [charset.id]: {
-              added: result.added.length,
+              added: result.added,
               skipped: groupSkips(result.skipped),
             },
           }))
@@ -118,13 +125,25 @@ export function AddGlyphsDialog({
 
   const close = () => setDialog(null)
   const cells: readonly GlyphCell[] = preview.added
+  const composedCount = preview.composed.filter(
+    (entry) => entry.components.length > 0,
+  ).length
+  const blocked = preview.composed.filter(
+    (entry) => entry.unavailable.length > 0,
+  )
+  const blockedCount = blocked.length
+  const blockedNames = [
+    ...new Set(blocked.flatMap((entry) => entry.unavailable)),
+  ]
+    .slice(0, SKIP_SAMPLE)
+    .join(' ')
   const canAdd = !busy && !pending && cells.length > 0
   const skipGroups = groupSkips(preview.skipped)
 
   const add = () => {
     if (!canAdd) return
     setBusy(true)
-    void applyRecipe(doc, trimmed)
+    void applyRecipe(doc, trimmed, compose)
       .then(async (result) => {
         await useSessionStore.getState().refreshSummary(doc)
         useUiStore.getState().pushToast({
@@ -168,6 +187,15 @@ export function AddGlyphsDialog({
             />
           </label>
           <p className={styles.hint}>{t('dialog.addGlyphs.recipeHint')}</p>
+          <label className={styles.checkRow}>
+            <input
+              type="checkbox"
+              checked={compose}
+              onChange={(event) => setCompose(event.currentTarget.checked)}
+            />
+            <span>{t('dialog.addGlyphs.compose')}</span>
+          </label>
+          <p className={styles.hint}>{t('dialog.addGlyphs.composeHint')}</p>
         </div>
 
         <div className={styles.section}>
@@ -223,6 +251,16 @@ export function AddGlyphsDialog({
           </h3>
           <div className={styles.counts}>
             <span>{t('dialog.addGlyphs.new', { count: cells.length })}</span>
+            {composedCount > 0 && (
+              <span>
+                {t('dialog.addGlyphs.composed', { count: composedCount })}
+              </span>
+            )}
+            {blockedCount > 0 && (
+              <span title={blockedNames}>
+                {t('dialog.addGlyphs.composeBlocked', { count: blockedCount })}
+              </span>
+            )}
             {skipGroups.map((group) => (
               <span
                 key={group.reason}

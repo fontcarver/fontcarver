@@ -17,7 +17,7 @@ import {
   effectiveMetricsKeys,
   metricsKeyCommand,
 } from './metricsKeyCommands'
-import { TextRow } from './TextRow'
+import { MetricsKeyField } from './MetricsKeyField'
 import { VerticalMetricsPanel } from './VerticalMetricsPanel'
 import { outOfSync, useResolvedMetrics } from './useResolvedMetrics'
 
@@ -157,7 +157,7 @@ export function MetricsPanel({
       </div>
 
       {KEY_FIELDS.map((entry) => (
-        <TextRow
+        <MetricsKeyField
           key={entry.field}
           disabled={locked}
           revision={revision}
@@ -171,6 +171,9 @@ export function MetricsPanel({
           onCommit={(value) => writeKeys(entry.field, value)}
         />
       ))}
+      <p className={styles.hint} id="metrics-key-syntax">
+        {t('panel.metrics.keySyntax')}
+      </p>
       <p className={styles.hint}>{t('panel.metrics.scopeHint')}</p>
       {locked && (
         <p className={styles.hint}>{t('kerningModes.spacingLocked')}</p>

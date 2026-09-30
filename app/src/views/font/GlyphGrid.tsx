@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { DocSummary } from '../../api'
 import { selectDocView, useDocumentStore } from '../../stores/documentStore'
 
+import { useFontViewPrefs } from './fontViewPrefs'
 import { GlyphContextMenu } from './GlyphContextMenu'
 import { GridCells } from './GridCells'
 import styles from './fontView.module.css'
@@ -24,6 +25,7 @@ export const GRID_GAP = 8
 /** Commands offered by the grid's context menu, in order. */
 const MENU_COMMANDS = [
   'glyph.open',
+  'glyph.updateInfo',
   'glyph.renameBatch',
   'edit.copyGlyphNames',
 ] as const
@@ -58,6 +60,9 @@ export function GlyphGrid({ summary, query }: GlyphGridProps) {
   const theme = useCellTheme()
   const em = useFontMetrics(doc, query.master, summary.units_per_em)
   const fontFamily = useMemo(() => uiFontFamily(), [])
+  const referenceCharacters = useFontViewPrefs(
+    (state) => state.referenceCharacters,
+  )
   const dpr = globalThis.devicePixelRatio || 1
 
   const { metrics, scrollTop, scrollTo, onScroll } = useVirtualGrid({
@@ -144,6 +149,7 @@ export function GlyphGrid({ summary, query }: GlyphGridProps) {
         hasFocus={hasFocus}
         theme={theme}
         fontFamily={fontFamily}
+        referenceCharacters={referenceCharacters}
         band={pointer.band}
       />
       {pointer.menu ? (
@@ -151,6 +157,7 @@ export function GlyphGrid({ summary, query }: GlyphGridProps) {
           x={pointer.menu.x}
           y={pointer.menu.y}
           commands={MENU_COMMANDS}
+          colorLabels
           onClose={pointer.closeMenu}
         />
       ) : null}

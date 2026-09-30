@@ -16,6 +16,8 @@ import type {
 import type { LayerTarget } from '../../editor/pointCommands'
 import type { Selection } from '../../editor/selection'
 
+import type { InkEdges } from './guideAnchor'
+
 /**
  * A layer as the Info box reads it.
  *
@@ -40,6 +42,8 @@ export interface InfoRowsProps {
   master: string | null
   /** The master's own guides, which the canvas can select just as well. */
   masterGuides: readonly Guide[]
+  /** Ink edges an anchored guide measures from; blank when the glyph is. */
+  inkEdges: InkEdges
   /** Called after a command was applied so the view refetches. */
   onCommitted: () => void
 }

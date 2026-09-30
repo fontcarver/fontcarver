@@ -103,3 +103,61 @@ fn stopping_a_worker_does_not_wait_for_its_autosave_interval() {
     handle.stop();
     assert!(started.elapsed() < Duration::from_secs(1));
 }
+
+/// Row 7's recovery half, end to end for a directory project: an interrupted
+/// session leaves a complete snapshot in the recovery location, it points back
+/// at the project it belongs to, reopening lists it, and recovering it produces
+/// the unsaved work as a dirty document that still knows its original path.
+///
+/// The snapshot deliberately lives outside the project so that damage to any
+/// project member — including the manifest a crash may have left unwritten —
+/// cannot take the recovery with it. The `document_path` pointer is what ties
+/// the two together.
+#[test]
+fn an_interrupted_project_session_is_offered_for_recovery_and_restores_its_work() {
+    let dir = TestDirectory::new();
+    let recovery = dir.0.join("recovery");
+    let project = dir.0.join("Work.fcfp");
+    let mut saved = Font::new_empty("Work", 1_000);
+    crate::fcf::write(&project, &saved).unwrap();
+
+    // The session edits the project without saving, then "crashes": the
+    // periodic pass has already written its snapshot.
+    let session = Session::new();
+    let doc = session.open_path(&project, None).unwrap();
+    session
+        .with_doc_mut(doc, |document| {
+            document.font.info.family_name = "Work in progress".into();
+            document.dirty = true;
+        })
+        .unwrap();
+    autosave_pass(&session, &recovery).unwrap();
+    drop(session);
+
+    // A fresh launch finds exactly one offer, pointing at the project.
+    let entries = list_recoverable(&recovery);
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0].doc_path.as_deref(), Some(project.as_path()));
+    assert!(entries[0].autosave_path.starts_with(&recovery));
+
+    // The committed project on disk still holds the last *saved* state.
+    assert_eq!(crate::fcf::read(&project).unwrap(), saved);
+
+    // Recovering reopens the unsaved work, keeping the original path so saving
+    // overwrites the project the snapshot belongs to.
+    let next = Session::new();
+    let recovered = next.open_path(&entries[0].autosave_path, None).unwrap();
+    next.with_doc_mut(recovered, |document| {
+        assert_eq!(document.font.info.family_name, "Work in progress");
+        document.path = Some(project.clone());
+        document.dirty = true;
+        document.save(&project)
+    })
+    .unwrap()
+    .unwrap();
+    saved.info.family_name = "Work in progress".into();
+    assert_eq!(crate::fcf::read(&project).unwrap(), saved);
+
+    // Once the project is newer than the snapshot, it is no longer offered.
+    assert!(list_recoverable(&recovery).is_empty());
+}

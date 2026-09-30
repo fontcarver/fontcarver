@@ -75,6 +75,41 @@ describe('workspace lifecycle', () => {
     },
   )
 
+  it('reopens the windows a restored arrangement had detached', async () => {
+    const layout = captureWorkspace(first.doc, {
+      ...initialUiState(),
+      tabs: [{ id: tabId('font', first.doc), kind: 'font', doc: first.doc }],
+      activeTab: tabId('font', first.doc),
+      detached: [
+        { kind: 'panel', doc: first.doc, panel: 'inspector' },
+        { kind: 'tab', doc: first.doc, tab: 'features', tabId: 'features:1' },
+      ],
+    })
+    expect(layout.detached).toHaveLength(2)
+    useWorkspaceStore.getState().saveCurrent(firstKey, layout)
+    const opened: unknown[] = []
+    const open = vi
+      .spyOn(window, 'open')
+      .mockImplementation((...args: unknown[]) => {
+        opened.push(args[0])
+        return { closed: false, focus: () => undefined } as unknown as Window
+      })
+
+    stop = installWorkspacePersistence()
+    useSessionStore.setState({ docs: [first] })
+    useUiStore.getState().openTab({ kind: 'font', doc: first.doc })
+
+    await vi.waitFor(() => expect(opened).toHaveLength(2))
+    expect(opened).toEqual([
+      '?fcWindow=panel&doc=1&panel=inspector',
+      '?fcWindow=tab&doc=1&tab=features&tabId=features%3A1',
+    ])
+    await vi.waitFor(() =>
+      expect(useUiStore.getState().detached).toHaveLength(2),
+    )
+    open.mockRestore()
+  })
+
   it('waits for a font tab, then restores tabs and the document layout', () => {
     useWorkspaceStore.getState().saveCurrent(firstKey, savedLayout())
     stop = installWorkspacePersistence()
@@ -263,4 +298,40 @@ describe('workspace lifecycle', () => {
       }
     },
   )
+
+  it('keeps a newly opened document on its Overview while restoring its tabs', async () => {
+    // A document whose arrangement was remembered with a Features tab selected.
+    const layout = captureWorkspace(second.doc, {
+      ...initialUiState(),
+      tabs: [
+        { id: tabId('font', second.doc), kind: 'font', doc: second.doc },
+        {
+          id: tabId('features', second.doc),
+          kind: 'features',
+          doc: second.doc,
+        },
+      ],
+      activeTab: tabId('features', second.doc),
+    })
+    useWorkspaceStore.getState().saveCurrent(secondKey, layout)
+
+    stop = installWorkspacePersistence()
+    useSessionStore.setState({ docs: [first] })
+    useUiStore.getState().openTab({ kind: 'font', doc: first.doc })
+    expect(useUiStore.getState().activeTab).toBe(tabId('font', first.doc))
+
+    // Opening the second document activates its Overview, exactly as the
+    // session store does; its remembered arrangement then takes over.
+    useSessionStore.setState({ docs: [first, second] })
+    useUiStore.getState().openTab({ kind: 'font', doc: second.doc })
+
+    // The document the user just asked for is the one on screen.
+    expect(useUiStore.getState().activeTab).toBe(tabId('font', second.doc))
+    expect(
+      useUiStore
+        .getState()
+        .tabs.filter((tab) => tab.doc === second.doc)
+        .map((tab) => tab.kind),
+    ).toEqual(['font', 'features'])
+  })
 })

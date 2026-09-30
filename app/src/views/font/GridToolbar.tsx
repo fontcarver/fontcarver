@@ -16,6 +16,7 @@ import {
 
 import styles from './fontView.module.css'
 import { CjkBatchDialog } from './CjkBatchDialog'
+import { useFontViewPrefs } from './fontViewPrefs'
 import { OpticalSpacingDialog } from './OpticalSpacingDialog'
 import { GlyphSearch } from './GlyphSearch'
 import { useUiStore } from '../../stores/uiStore'
@@ -25,6 +26,9 @@ const SORTS: readonly GlyphSort[] = [
   'Unicode',
   'Name',
   'Width',
+  'Category',
+  'Script',
+  'Status',
   'Radical',
   'Strokes',
   'Reading',
@@ -56,6 +60,12 @@ export function GridToolbar({ summary, view }: GridToolbarProps) {
   const setLabelMode = useDocumentStore((state) => state.setLabelMode)
   const setCellSize = useDocumentStore((state) => state.setCellSize)
   const setFilter = useDocumentStore((state) => state.setFilter)
+  const referenceCharacters = useFontViewPrefs(
+    (state) => state.referenceCharacters,
+  )
+  const setReferenceCharacters = useFontViewPrefs(
+    (state) => state.setReferenceCharacters,
+  )
 
   const masterId = view.master ?? summary.masters[0]?.id ?? ''
   const encodedOnly = view.filter.unicode_ranges.length > 0
@@ -135,6 +145,14 @@ export function GridToolbar({ summary, view }: GridToolbarProps) {
             />
           </span>
         </span>
+
+        <Button
+          aria-pressed={referenceCharacters}
+          title={t('fontView.referenceCharactersHint')}
+          onClick={() => setReferenceCharacters(!referenceCharacters)}
+        >
+          {t('fontView.referenceCharacters')}
+        </Button>
 
         <Button
           aria-pressed={encodedOnly}

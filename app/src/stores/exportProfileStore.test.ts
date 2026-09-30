@@ -1,225 +1,219 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, expect, it, vi } from 'vitest'
 
-import type { ExportOptions } from '../api'
+import type { ExportOptions, ExportProfile, VariableExportConfig } from '../api'
+import { setTransport } from '../api'
+import { createMockTransport, type MockTransport } from '../test/mockTransport'
 import {
+  ExportProfileError,
   MAX_EXPORT_PROFILES,
   useExportProfileStore,
 } from './exportProfileStore'
 
-const STORAGE_KEY = 'fontcarver.exportProfiles'
-
-function options(): ExportOptions {
-  const value = {
-    format: 'Ttf' as const,
-    variable: false,
+function options(overrides: Partial<ExportOptions> = {}): ExportOptions {
+  return {
+    format: 'Ttf',
     master: 'm1',
-    master_subset: ['m1', 'm2'],
-    bitmap_strike: [16, 1] as [number, number],
+    variable: false,
     remove_overlap: true,
     autohint: false,
     keep_tt_instructions: true,
     preserve_untouched_tables: true,
     production_names: false,
-    table_subset: ['DSIG'],
-    add_extrema: false,
-    round_coordinates: false,
-    decompose_components: false,
-    subroutinize: false,
+    table_subset: null,
+    ...overrides,
   }
-  return value
+}
+
+function profile(name: string, overrides: Partial<ExportProfile> = {}) {
+  return {
+    name,
+    subfolder: '',
+    file_name: '',
+    options: options(),
+    ...overrides,
+  }
+}
+
+/** A transport that keeps one collection per document, like the kernel does. */
+function projectTransport(): MockTransport {
+  const stored = new Map<
+    number,
+    { profiles: ExportProfile[]; variable_configs: VariableExportConfig[] }
+  >()
+  const empty = () => ({ profiles: [], variable_configs: [] })
+  return createMockTransport({
+    'export.profiles_get': (params) =>
+      structuredClone(stored.get(params.doc) ?? empty()),
+    'export.profiles_set': (params) => {
+      const next = {
+        profiles: structuredClone(params.profiles),
+        variable_configs: structuredClone(params.variable_configs),
+      }
+      stored.set(params.doc, next)
+      return structuredClone(next)
+    },
+  })
 }
 
 beforeEach(() => {
   vi.restoreAllMocks()
-  localStorage.clear()
-  useExportProfileStore.getState().reload()
+  useExportProfileStore.setState({
+    docs: {},
+    loading: {},
+    error: null,
+    detail: null,
+  })
 })
 
-describe('export profiles', () => {
-  it('persists versioned options-only snapshots and reloads independently', () => {
-    const source = options()
-    const saved = useExportProfileStore.getState().save(' Web ', source)
-    source.master_subset?.push('m3')
-    source.table_subset?.push('TEST')
-    saved.options.bitmap_strike![0] = 48
-    expect(useExportProfileStore.getState().profiles[0]?.options).toEqual(
-      options(),
-    )
+it('stores profiles per document through the kernel, not in browser storage', async () => {
+  const transport = projectTransport()
+  setTransport(transport)
+  const store = useExportProfileStore.getState()
+  await store.load(1)
+  expect(useExportProfileStore.getState().stored(1).profiles).toEqual([])
 
-    const record = JSON.parse(localStorage.getItem(STORAGE_KEY)!)
-    expect(record.version).toBe(1)
-    expect(Object.keys(record.profiles[0])).toEqual(['id', 'name', 'options'])
-    expect(record.profiles[0].name).toBe('Web')
-    useExportProfileStore.setState({ profiles: [] })
-    useExportProfileStore.getState().reload()
-    expect(useExportProfileStore.getState().profiles[0]?.options).toEqual(
-      options(),
-    )
-    useExportProfileStore.getState().remove(saved.id)
-    useExportProfileStore.getState().reload()
-    expect(useExportProfileStore.getState().profiles).toEqual([])
-  })
+  const source = profile(' Web ', { subfolder: 'web/', file_name: 'MyFont' })
+  const saved = await store.saveProfile(1, source)
+  expect(saved.name).toBe('Web')
+  expect(saved.subfolder).toBe('web')
+  expect(useExportProfileStore.getState().stored(1).profiles).toHaveLength(1)
+  // The write goes to the document, and nothing is left in localStorage.
+  expect(
+    transport.calls.filter((call) => call.method === 'export.profiles_set'),
+  ).toHaveLength(1)
+  expect(localStorage.getItem('fontcarver.exportProfiles')).toBeNull()
 
-  it('rejects blank and duplicate names and limits the number of profiles', () => {
-    const { save } = useExportProfileStore.getState()
-    expect(() => save('  ', options())).toThrow('blankName')
-    save('Web', options())
-    expect(() => save(' web ', options())).toThrow('duplicateName')
-    for (let index = 1; index < MAX_EXPORT_PROFILES; index += 1)
-      save(`Profile ${index}`, options())
-    expect(() => save('Overflow', options())).toThrow('limitReached')
-    expect(useExportProfileStore.getState().profiles).toHaveLength(
-      MAX_EXPORT_PROFILES,
-    )
-  })
+  // A second document has its own collection.
+  await store.load(2)
+  expect(useExportProfileStore.getState().stored(2).profiles).toEqual([])
+})
 
-  it.each([
-    '{bad json',
-    JSON.stringify({ version: 2, profiles: [] }),
-    JSON.stringify({
-      version: 1,
-      profiles: [
-        { id: 'x', name: 'Bad', options: { ...options(), format: 'Unknown' } },
-      ],
-    }),
-    JSON.stringify({
-      version: 1,
-      profiles: [
-        { id: 'x', name: 'Bad', options: { ...options(), variable: 'false' } },
-      ],
-    }),
-    JSON.stringify({
-      version: 1,
-      profiles: [
-        {
-          id: 'x',
-          name: 'Bad',
-          options: { ...options(), bitmap_strike: [0, 1] },
-        },
-      ],
-    }),
-    JSON.stringify({
-      version: 1,
-      profiles: [
-        { id: 'x', name: 'Bad', options: { ...options(), instance: -1 } },
-      ],
-    }),
-    JSON.stringify({
-      version: 1,
-      profiles: [
-        {
-          id: 'x',
-          name: 'Bad',
-          options: { ...options(), table_subset: ['NOT A TAG'] },
-        },
-      ],
-    }),
-  ])(
-    'reports invalid storage instead of exposing an unchecked profile: %s',
-    (raw) => {
-      localStorage.setItem(STORAGE_KEY, raw)
-      useExportProfileStore.getState().reload()
-      expect(useExportProfileStore.getState().profiles).toEqual([])
-      expect(useExportProfileStore.getState().error).toBe('invalidStorage')
-      expect(localStorage.getItem(STORAGE_KEY)).toBe(raw)
-    },
+it('rejects blank, overlong, duplicate and excess profile names', async () => {
+  setTransport(projectTransport())
+  const store = useExportProfileStore.getState()
+  await expect(store.saveProfile(1, profile('   '))).rejects.toThrow(
+    'blankName',
   )
+  await expect(store.saveProfile(1, profile('x'.repeat(81)))).rejects.toThrow(
+    'nameTooLong',
+  )
+  await store.saveProfile(1, profile('Web'))
+  await expect(store.saveProfile(1, profile(' web '))).rejects.toThrow(
+    'duplicateName',
+  )
+  for (let index = 1; index < MAX_EXPORT_PROFILES; index += 1)
+    await store.saveProfile(1, profile(`Profile ${index}`))
+  await expect(store.saveProfile(1, profile('Overflow'))).rejects.toThrow(
+    'limitReached',
+  )
+  expect(useExportProfileStore.getState().stored(1).profiles).toHaveLength(
+    MAX_EXPORT_PROFILES,
+  )
+})
 
-  it('defaults newly added processing options in older profiles', () => {
-    const legacy = { ...options() } as Record<string, unknown>
-    for (const key of [
-      'add_extrema',
-      'round_coordinates',
-      'decompose_components',
-      'subroutinize',
-    ])
-      delete legacy[key]
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        version: 1,
-        profiles: [{ id: 'legacy', name: 'Older', options: legacy }],
-      }),
-    )
-    useExportProfileStore.getState().reload()
-    expect(useExportProfileStore.getState().error).toBeNull()
-    expect(useExportProfileStore.getState().profiles[0]?.options).toEqual(
-      options(),
-    )
-  })
+it('replaces a profile only when the caller names the one it replaces', async () => {
+  setTransport(projectTransport())
+  const store = useExportProfileStore.getState()
+  await store.saveProfile(1, profile('Web'))
+  await store.saveProfile(
+    1,
+    profile('Web', { options: options({ format: 'Woff2' }) }),
+    'Web',
+  )
+  const stored = useExportProfileStore.getState().stored(1).profiles
+  expect(stored).toHaveLength(1)
+  expect(stored[0]?.options.format).toBe('Woff2')
+})
 
-  it('preserves a glyph selector and strips unrelated document and destination fields', () => {
-    const source = {
-      ...options(),
-      glyph: 'A',
-      doc: 99,
-      path: '/fonts/secret.ttf',
-    }
-    useExportProfileStore.getState().save('EPS glyph', source)
-    useExportProfileStore.getState().reload()
-    expect(useExportProfileStore.getState().profiles[0]?.options).toEqual({
-      ...options(),
-      glyph: 'A',
-    })
-  })
+it('refuses a subfolder or file name that could leave the destination', async () => {
+  setTransport(projectTransport())
+  const store = useExportProfileStore.getState()
+  for (const subfolder of [
+    '../up',
+    '/absolute',
+    'C:/drive',
+    'a//b',
+    './here',
+  ]) {
+    await expect(
+      store.saveProfile(1, profile('Escape', { subfolder })),
+    ).rejects.toThrow('invalidSubfolder')
+  }
+  for (const fileName of ['a/b', 'a\\b', 'C:name', '.hidden']) {
+    await expect(
+      store.saveProfile(1, profile('Escape', { file_name: fileName })),
+    ).rejects.toThrow('invalidFileName')
+  }
+  expect(useExportProfileStore.getState().stored(1).profiles).toEqual([])
+})
 
-  it('rejects duplicate stored names and ids instead of making ambiguous picker entries', () => {
-    for (const other of [
-      { id: 'a', name: 'Other' },
-      { id: 'b', name: ' web ' },
-    ]) {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          version: 1,
-          profiles: [
-            { id: 'a', name: 'Web', options: options() },
-            { ...other, options: options() },
-          ],
-        }),
-      )
-      useExportProfileStore.getState().reload()
-      expect(useExportProfileStore.getState().profiles).toEqual([])
-      expect(useExportProfileStore.getState().error).toBe('invalidStorage')
-    }
+it('does not report a saved profile when the kernel rejects the write', async () => {
+  const transport = createMockTransport({
+    'export.profiles_get': () => ({ profiles: [], variable_configs: [] }),
+    'export.profiles_set': () => {
+      throw new Error('invalid stored export profiles')
+    },
   })
+  setTransport(transport)
+  const store = useExportProfileStore.getState()
+  await expect(store.saveProfile(1, profile('Web'))).rejects.toMatchObject({
+    code: 'kernelRejected',
+  })
+  expect(useExportProfileStore.getState().stored(1).profiles).toEqual([])
+})
 
-  it('rejects malformed processing flags without replacing saved settings', () => {
-    useExportProfileStore.getState().save('Valid', options())
-    const previous = localStorage.getItem(STORAGE_KEY)
-    const malformed = {
-      ...options(),
-      add_extrema: null,
-    } as unknown as ExportOptions
-    expect(() =>
-      useExportProfileStore.getState().save('Broken', malformed),
-    ).toThrow('invalidOptions')
-    expect(localStorage.getItem(STORAGE_KEY)).toBe(previous)
-  })
+it('removes only an existing profile and reports a missing one', async () => {
+  setTransport(projectTransport())
+  const store = useExportProfileStore.getState()
+  await store.saveProfile(1, profile('Web'))
+  await expect(store.removeProfile(1, 'Nope')).rejects.toThrow('notFound')
+  await store.removeProfile(1, ' WEB ')
+  expect(useExportProfileStore.getState().stored(1).profiles).toEqual([])
+})
 
-  it('does not publish a save or deletion when writing to storage fails', () => {
-    const saved = useExportProfileStore.getState().save('Keep', options())
-    const record = localStorage.getItem(STORAGE_KEY)
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new DOMException('Full', 'QuotaExceededError')
-    })
-    expect(() =>
-      useExportProfileStore.getState().save('Lost', options()),
-    ).toThrow('storageUnavailable')
-    expect(() => useExportProfileStore.getState().remove(saved.id)).toThrow(
-      'storageUnavailable',
-    )
-    expect(
-      useExportProfileStore.getState().profiles.map((profile) => profile.name),
-    ).toEqual(['Keep'])
-    expect(localStorage.getItem(STORAGE_KEY)).toBe(record)
-  })
+it('stores variable-font configurations beside the profiles', async () => {
+  setTransport(projectTransport())
+  const store = useExportProfileStore.getState()
+  await store.saveProfile(1, profile('VF'))
+  const config: VariableExportConfig = {
+    name: 'Text',
+    file_name: 'MyFont-Text',
+    masters: ['m1'],
+    axes: ['wght'],
+    instances: ['Bold'],
+  }
+  await store.saveConfig(1, config)
+  const stored = useExportProfileStore.getState().stored(1)
+  expect(stored.profiles).toHaveLength(1)
+  expect(stored.variableConfigs).toEqual([config])
+  await expect(
+    store.saveConfig(1, { ...config, name: ' text ' }),
+  ).rejects.toThrow('duplicateName')
+  await store.removeConfig(1, 'Text')
+  expect(useExportProfileStore.getState().stored(1).variableConfigs).toEqual([])
+  expect(useExportProfileStore.getState().stored(1).profiles).toHaveLength(1)
+})
 
-  it('reports denied storage reads', () => {
-    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
-      throw new DOMException('Denied', 'SecurityError')
-    })
-    useExportProfileStore.getState().reload()
-    expect(useExportProfileStore.getState().error).toBe('storageUnavailable')
-  })
+it('drops a closed document\u2019s cached configurations', async () => {
+  setTransport(projectTransport())
+  const store = useExportProfileStore.getState()
+  await store.saveProfile(1, profile('Web'))
+  expect(useExportProfileStore.getState().stored(1).profiles).toHaveLength(1)
+  useExportProfileStore.getState().forget(1)
+  expect(useExportProfileStore.getState().stored(1).profiles).toEqual([])
+})
+
+it('surfaces a failed read without pretending the document has no profiles', async () => {
+  setTransport(
+    createMockTransport({
+      'export.profiles_get': () => {
+        throw new Error('invalid stored export profiles: bad shape')
+      },
+    }),
+  )
+  await expect(useExportProfileStore.getState().load(3)).rejects.toBeInstanceOf(
+    ExportProfileError,
+  )
+  expect(useExportProfileStore.getState().error).toBe('kernelRejected')
+  expect(useExportProfileStore.getState().detail).toContain('bad shape')
 })

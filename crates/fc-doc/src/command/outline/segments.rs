@@ -391,3 +391,41 @@ pub(super) fn path_op(
 fn same_position(a: Option<&Point>, b: Option<&Point>) -> bool {
     a.zip(b).is_some_and(|(a, b)| a.x == b.x && a.y == b.y)
 }
+
+/// Replaces one corner node with the two nodes of an open corner.
+pub(super) fn open_corner(
+    font: &mut Font,
+    glyph: &GlyphName,
+    layer: &LayerId,
+    point: PointRef,
+    depth: f64,
+) -> Result<Touched, Error> {
+    ensure_finite(&[depth], "corner setback")?;
+    let contours = &mut layer_mut(font, glyph, layer)?.contours;
+    validate_points(contours, &[point])?;
+    let opened = fc_geom::open_corner(&contours[point.contour], point.point, depth)
+        .map_err(|error| Error::InvalidCommand(error.to_string()))?;
+    contours[point.contour] = opened;
+    Ok(Touched::one(point.contour))
+}
+
+/// Merges the two nodes of an open corner back into one corner node.
+pub(super) fn reconnect(
+    font: &mut Font,
+    glyph: &GlyphName,
+    layer: &LayerId,
+    a: PointRef,
+    b: PointRef,
+) -> Result<Touched, Error> {
+    let contours = &mut layer_mut(font, glyph, layer)?.contours;
+    validate_points(contours, &[a, b])?;
+    if a.contour != b.contour {
+        return Err(Error::InvalidCommand(
+            "reconnecting a corner needs two nodes of one contour".to_owned(),
+        ));
+    }
+    let closed = fc_geom::reconnect_nodes(&contours[a.contour], a.point, b.point)
+        .map_err(|error| Error::InvalidCommand(error.to_string()))?;
+    contours[a.contour] = closed;
+    Ok(Touched::one(a.contour))
+}

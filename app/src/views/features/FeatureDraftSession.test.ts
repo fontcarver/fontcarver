@@ -1,23 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FeatureDraftSession } from './FeatureDraftSession'
+import { featureSettings } from './featureTestFixtures'
 import {
   call,
   type FeatureState,
   type FeatureValidationResult,
 } from '../../api'
 vi.mock('../../api', () => ({ call: vi.fn() }))
-const settings = {
-  small_caps: false,
-  stylistic_sets: false,
-  case_forms: false,
-  vertical_forms: false,
-  ligatures: false,
-  localized: [],
-  discretionary_ligatures: [],
-  writer_policy: { kerning: true, anchors: true },
-  generated: [],
-  glyph_fingerprint: null,
-}
+const settings = featureSettings()
 function initial(): FeatureState {
   return {
     doc: 1,
@@ -45,6 +35,7 @@ function initial(): FeatureState {
     has_unapplied_changes: false,
     generation_stale: false,
     original_layout_available: false,
+    automatic_entries: [],
   }
 }
 const deferred = <T>() => {

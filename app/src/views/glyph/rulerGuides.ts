@@ -77,6 +77,7 @@ export class RulerGuideDrag {
       name: null,
       locked: false,
       color: null,
+      anchor: 'Origin' as const,
     }
     return scope === 'layer'
       ? { AddGuide: { glyph, layer, master: null, guide } }

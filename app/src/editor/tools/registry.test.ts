@@ -22,18 +22,20 @@ describe('tool registry', () => {
       'zoom',
       'hand',
       'text',
+      'pixel',
     ])
   })
 
-  it('builds a state machine for every tool but Text', () => {
+  it('builds a state machine for every tool with canvas gestures of its own', () => {
     expect(
       TOOLS.filter((tool) => createTool(tool.id) === null).map(
         (tool) => tool.id,
       ),
-    ).toEqual(['select', 'zoom', 'hand', 'text'])
-    // Select, Zoom and Hand are the controller's own gestures; Text alone has
-    // no behaviour at all yet.
+    ).toEqual(['select', 'zoom', 'hand', 'text', 'pixel'])
+    // Select, Zoom and Hand are the controller's own gestures; Text switches
+    // the tab into shaped-text mode and Pixel opens the strike editor.
     expect(createTool('text')).toBeNull()
+    expect(createTool('pixel')).toBeNull()
     expect(createTool('pen')).not.toBeNull()
   })
 
@@ -44,6 +46,8 @@ describe('tool registry', () => {
     expect(toolForKey('Z', true)).toBe('zoom')
     expect(toolForKey('q', false)).toBe('lasso')
     expect(toolForKey('e', true)).toBe('eraser')
+    expect(toolForKey('x', false)).toBe('pixel')
+    expect(toolForKey('X', true)).toBe('pixel')
   })
 
   it('borrows a tool after 200 ms of holding its key', () => {

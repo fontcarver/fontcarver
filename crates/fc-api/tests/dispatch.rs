@@ -201,7 +201,19 @@ fn dispatches_session_open_and_reports_boundary_errors() {
                 "guides": true,
                 "metrics": true,
                 "grid": true,
-                "components": true
+                "components": true,
+                // Zero reach on every target means "use snap_distance".
+                "distances": {
+                    "nodes": 0.0,
+                    "handles": 0.0,
+                    "anchors": 0.0,
+                    "guides": 0.0,
+                    "metrics": 0.0,
+                    "grid": 0.0,
+                    "components": 0.0,
+                    "zones": 0.0,
+                    "background": 0.0
+                }
             },
             "nudge": [1.0, 10.0, 100.0]
         })
@@ -341,7 +353,19 @@ fn damaged_preferences_fall_back_and_do_not_block_opening() {
                 "guides": true,
                 "metrics": true,
                 "grid": true,
-                "components": true
+                "components": true,
+                // Zero reach on every target means "use snap_distance".
+                "distances": {
+                    "nodes": 0.0,
+                    "handles": 0.0,
+                    "anchors": 0.0,
+                    "guides": 0.0,
+                    "metrics": 0.0,
+                    "grid": 0.0,
+                    "components": 0.0,
+                    "zones": 0.0,
+                    "background": 0.0
+                }
             },
             "nudge": [1.0, 10.0, 100.0]
         })

@@ -58,6 +58,30 @@ pub enum Error {
         /// Master name or identifier that was requested.
         name: String,
     },
+    /// The requested named instance does not exist in the document.
+    #[error("unknown named instance '{name}'")]
+    UnknownInstance {
+        /// Instance name that was requested.
+        name: String,
+    },
+    /// A profile build was asked for instances the document does not define.
+    #[error("this document defines no active named instances")]
+    NoInstances,
+    /// A stored profile was combined with flags that would change its output.
+    #[error("--profile cannot be combined with {flags}; edit the stored profile instead")]
+    ProfileConflict {
+        /// Comma-separated list of the conflicting options.
+        flags: String,
+    },
+    /// No destination could be determined for an export.
+    #[error("give an output path, or --profile with --out-dir")]
+    MissingDestination,
+    /// At least one output of a multi-output build failed.
+    #[error("{count} of the requested exports failed")]
+    ExportsFailed {
+        /// Number of failed outputs.
+        count: usize,
+    },
 }
 
 impl Error {
@@ -66,7 +90,11 @@ impl Error {
     pub fn exit_code(&self) -> u8 {
         match self {
             Self::UnsupportedOutput { .. } => 2,
-            Self::UnknownMaster { .. } => 2,
+            Self::UnknownMaster { .. }
+            | Self::UnknownInstance { .. }
+            | Self::NoInstances
+            | Self::ProfileConflict { .. }
+            | Self::MissingDestination => 2,
             _ => 1,
         }
     }

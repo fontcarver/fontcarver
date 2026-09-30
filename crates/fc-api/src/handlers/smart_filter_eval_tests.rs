@@ -2,6 +2,11 @@ use super::*;
 use fc_model::{Anchor, Component, Contour, GlyphName, Point, PointKind, StemHint};
 use serde_json::json;
 
+/// The bundled database alone: these tests carry no project overlay.
+fn overlay() -> fc_glyphdata::GlyphDataOverlay {
+    fc_glyphdata::GlyphDataOverlay::default()
+}
+
 fn predicate(field: &str, operator: Op, value: &str) -> SmartFilterNode {
     SmartFilterNode::Predicate {
         field: field.into(),
@@ -65,7 +70,7 @@ fn test_match(font: &Font, field: &str, op: Op, value: &str) -> bool {
     let glyph = font.glyph("A.alt").unwrap();
     CompiledSmartFilter::new(&predicate(field, op, value))
         .unwrap()
-        .matches(font, glyph, glyph.layers.first(), 1)
+        .matches(font, &overlay(), glyph, glyph.layers.first(), 1)
 }
 
 #[test]
@@ -103,6 +108,7 @@ fn every_predicate_family_matches_model_data() {
         ("note", "needs polish"),
         ("unicode", "U+0041"),
         ("changed", "true"),
+        ("locked", "false"),
         ("width", "600"),
         ("block", "Basic Latin"),
     ] {
@@ -150,7 +156,7 @@ fn nesting_and_missing_selected_layer_are_deterministic() {
     };
     assert!(CompiledSmartFilter::new(&root)
         .unwrap()
-        .matches(&font, glyph, None, 0));
+        .matches(&font, &overlay(), glyph, None, 0));
 }
 
 #[test]
@@ -237,7 +243,7 @@ fn compiled_regex_filters_twenty_thousand_cells_within_budget() {
     let filter = CompiledSmartFilter::new(&predicate("name", Op::Regex, r"^A\..*$")).unwrap();
     let start = std::time::Instant::now();
     for _ in 0..20_000 {
-        assert!(filter.matches(&font, glyph, glyph.layers.first(), 0));
+        assert!(filter.matches(&font, &overlay(), glyph, glyph.layers.first(), 0));
     }
     assert!(start.elapsed() < std::time::Duration::from_secs(5));
 }
@@ -255,6 +261,24 @@ fn annotations_and_geometry_follow_selected_layer() {
     assert!(test_match(&font, "has_annotations", Op::Eq, "false"));
     assert!(test_match(&font, "is_auto_aligned", Op::Eq, "false"));
     assert!(test_match(&font, "has_components", Op::Eq, "false"));
+}
+
+#[test]
+fn locked_and_custom_glyph_info_follow_the_cell_badges() {
+    let mut font = fixture();
+    assert!(test_match(&font, "locked", Op::Eq, "false"));
+    let glyph = font.glyphs.get_mut("A.alt").unwrap();
+    glyph.locked = true;
+    assert!(test_match(&font, "locked", Op::Eq, "true"));
+    assert!(!test_match(&font, "locked", Op::Ne, "true"));
+    // The predicate and the badge share one rule, so database-supplied values
+    // are not custom while a divergent one is.
+    let glyph = font.glyphs.get_mut("A.alt").unwrap();
+    glyph.user_data = Value::Null;
+    assert!(test_match(&font, "has_custom_glyph_info", Op::Eq, "false"));
+    let glyph = font.glyphs.get_mut("A.alt").unwrap();
+    glyph.production_name = Some("uni0041.alt".into());
+    assert!(test_match(&font, "has_custom_glyph_info", Op::Eq, "true"));
 }
 
 #[test]

@@ -15,6 +15,7 @@ pub(crate) mod collection;
 pub(crate) mod convert;
 pub(crate) mod glyphs;
 pub(crate) mod inspect;
+pub(crate) mod profiles;
 pub(crate) mod shape;
 
 pub(crate) struct OpenedDocument {
@@ -197,4 +198,59 @@ where
     let params = serde_json::to_value(params)?;
     let result = api.call(method, params)?;
     serde_json::from_value(result).map_err(Error::from)
+}
+
+/// Prints one document problem the way `fontcarver check` prints it.
+pub(crate) fn print_problem(issue: &fc_api::ProblemIssue) {
+    let mut parts = Vec::new();
+    if let Some(name) = &issue.glyph_name {
+        parts.push(name.to_string());
+    }
+    if let Some(master) = &issue.master {
+        parts.push(format!("master={master}"));
+    }
+    if let Some(layer) = &issue.layer {
+        parts.push(format!("layer={layer}"));
+    }
+    for (label, index) in [
+        ("color", issue.color_layer),
+        ("contour", issue.contour),
+        ("point", issue.point),
+    ] {
+        if let Some(index) = index {
+            parts.push(format!("{label}={index}"));
+        }
+    }
+    let location = if parts.is_empty() {
+        String::new()
+    } else {
+        format!(" {}", parts.join(" "))
+    };
+    println!(
+        "{:?} [{}]{location}: {}",
+        issue.severity, issue.code, issue.message
+    );
+}
+
+/// Prints the same preflight report the export dialog shows; true when it has errors.
+pub(crate) fn preflight_report(opened: &OpenedDocument) -> Result<bool, Error> {
+    let report: fc_api::FindProblemsResult = api_call(
+        &opened.api,
+        "doc.find_problems",
+        fc_api::FindProblemsParams {
+            doc: opened.doc,
+            limit: Some(200),
+        },
+    )?;
+    println!("preflight:");
+    for issue in &report.issues {
+        print_problem(issue);
+    }
+    println!(
+        "{} problems detected; {} shown{}",
+        report.total,
+        report.issues.len(),
+        if report.truncated { " (truncated)" } else { "" }
+    );
+    Ok(report.has_errors)
 }

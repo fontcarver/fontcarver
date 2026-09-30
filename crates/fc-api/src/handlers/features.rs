@@ -4,9 +4,10 @@ use fc_doc::{Command, Document, EditToken, PreparedFeatureChange};
 use fc_model::{FeatureGenerationSettings, Features, FeaturesSource, Font};
 
 use crate::{
-    Api, ApiError, DiscardFeatureDraftParams, DocId, DocParams, FeatureApplyResult,
-    FeatureDiagnostic, FeatureDiagnosticSeverity, FeatureDiagnosticSpan, FeatureState,
-    FeatureValidationParams, FeatureValidationResult, FreezeFeatureParams, SetFeatureDraftParams,
+    Api, ApiError, AutomaticEntryOption, DiscardFeatureDraftParams, DocId, DocParams,
+    FeatureApplyResult, FeatureDiagnostic, FeatureDiagnosticSeverity, FeatureDiagnosticSpan,
+    FeatureState, FeatureValidationParams, FeatureValidationResult, FreezeFeatureParams,
+    SetFeatureDraftParams,
 };
 
 const MAX_DIAGNOSTICS: usize = 200;
@@ -28,7 +29,38 @@ pub(crate) fn current_state(doc: DocId, document: &Document) -> FeatureState {
             &document.font,
             &document.font.feature_settings,
         ),
+        automatic_entries: automatic_entries(&document.font.feature_settings),
     }
+}
+
+/// Every feature tag and glyph class name a recipe family can materialize.
+///
+/// Automatic classes are opt-in, so the registry names are offered even when the
+/// document has not requested them yet.
+fn automatic_entries(settings: &FeatureGenerationSettings) -> Vec<AutomaticEntryOption> {
+    let mut entries: Vec<AutomaticEntryOption> = Vec::new();
+    for generator in fc_model::FEATURE_GENERATORS {
+        let kind = fc_model::family_kind(generator);
+        let names = if generator == fc_model::FeatureGenerator::Classes {
+            fc_model::automatic_class_registry()
+                .iter()
+                .map(|name| (*name).to_owned())
+                .collect()
+        } else {
+            fc_model::family_names(generator, settings)
+        };
+        for name in names {
+            if entries.iter().any(|entry| entry.name == name) {
+                continue;
+            }
+            entries.push(AutomaticEntryOption {
+                name,
+                generator,
+                kind,
+            });
+        }
+    }
+    entries
 }
 
 pub(crate) fn get(api: &Api, params: DocParams) -> Result<FeatureState, ApiError> {
@@ -139,7 +171,18 @@ pub(crate) fn freeze(api: &Api, params: FreezeFeatureParams) -> Result<FeatureSt
             )?;
             require_source_authority(document)?;
             let (source, settings) = candidate(&document.font);
-            let frozen = fc_compile::freeze_feature_source(source, settings, params.generator);
+            let frozen = fc_compile::freeze_feature_source(
+                source,
+                settings,
+                params.generator,
+                params.entry.as_deref(),
+            );
+            if let Some(diagnostic) = frozen.diagnostics.first() {
+                return Err(ApiError {
+                    code: diagnostic.code.clone(),
+                    message: diagnostic.message.clone(),
+                });
+            }
             document.apply(
                 Command::SetFeatureDraft {
                     expected_revision: params.expected_draft_revision,

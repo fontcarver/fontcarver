@@ -49,6 +49,45 @@ pub enum DesignSpaceCommand {
         /// Display name.
         name: String,
     },
+    /// Replace one alternate region's condition set in every source that shares it.
+    ///
+    /// An alternate region is identified by its canonical condition set, so this
+    /// keeps the sources of one region consistent in a single undo entry instead
+    /// of leaving some of them behind on the previous condition.
+    Conditions {
+        /// Glyph whose alternate region changes.
+        #[ts(type = "string")]
+        glyph: fc_model::GlyphName,
+        /// Condition set to replace, in any order.
+        #[ts(type = "Array<BracketCondition>")]
+        from: Vec<fc_model::BracketCondition>,
+        /// Replacement condition set, in any order.
+        #[ts(type = "Array<BracketCondition>")]
+        to: Vec<fc_model::BracketCondition>,
+        /// Display name for every affected layer.
+        name: String,
+    },
+    /// Reorder one glyph's shapes, in one source or in every source.
+    ///
+    /// Shape order is the interpolation contract: reordering a single source is
+    /// how a "shape shifter" is repaired, and reordering every source at once is
+    /// the all-masters variant. A source with a different shape count is
+    /// reported instead of being reordered.
+    ReorderShapes {
+        /// Glyph whose shape order changes.
+        #[ts(type = "string")]
+        glyph: fc_model::GlyphName,
+        /// Source layer to reorder; absent reorders every source layer.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional, type = "string")]
+        layer: Option<LayerId>,
+        /// New positions: `order[i]` is the current index that moves to `i`.
+        order: Vec<usize>,
+        /// Reorder components instead of contours.
+        #[serde(default)]
+        #[ts(as = "Option<bool>", optional)]
+        components: bool,
+    },
     /// Align contour directions, ordering and starts while preserving all geometry.
     Repair {
         /// Glyphs to repair atomically; incompatible topology remains unchanged.
@@ -190,6 +229,137 @@ fn apply_candidate(font: &mut Font, command: &DesignSpaceCommand) -> Result<(), 
         font.validate_designspace()?;
         return Ok(());
     }
+    if let DesignSpaceCommand::Conditions {
+        glyph,
+        from,
+        to,
+        name,
+    } = command
+    {
+        let canonical = |conditions: &[fc_model::BracketCondition]| {
+            let mut sorted = conditions.to_vec();
+            sorted.sort_by_key(|condition| condition.axis);
+            sorted
+        };
+        let source = canonical(from);
+        let replacement =
+            LayerKind::from_bracket_conditions(font.design_default_master()?.id.clone(), to)?;
+        let Some(target) = replacement.bracket_conditions() else {
+            return Err(Error::InvalidCommand(
+                "an alternate region needs a condition set".into(),
+            ));
+        };
+        let glyph_data = font
+            .glyph_mut(glyph)
+            .ok_or_else(|| Error::MissingGlyph(glyph.clone()))?;
+        let mut changed = 0usize;
+        for layer in &mut glyph_data.layers {
+            if layer.kind.bracket_conditions().as_deref() != Some(source.as_slice()) {
+                continue;
+            }
+            let LayerKind::Bracket { master, .. } = &layer.kind else {
+                continue;
+            };
+            layer.kind = LayerKind::from_bracket_conditions(master.clone(), &target)?;
+            layer.name = name.clone();
+            changed += 1;
+        }
+        if changed == 0 {
+            return Err(Error::InvalidCommand(
+                "no alternate source uses that condition set".into(),
+            ));
+        }
+        font.validate_designspace()?;
+        return Ok(());
+    }
+    if let DesignSpaceCommand::ReorderShapes {
+        glyph,
+        layer,
+        order,
+        components,
+    } = command
+    {
+        let target = font
+            .glyph_mut(glyph)
+            .ok_or_else(|| Error::MissingGlyph(glyph.clone()))?;
+        let sources: Vec<usize> = match layer {
+            Some(selected) => vec![target
+                .layers
+                .iter()
+                .position(|candidate| candidate.id == *selected)
+                .ok_or_else(|| Error::MissingLayer {
+                    glyph: glyph.clone(),
+                    layer: selected.clone(),
+                })?],
+            None => target
+                .layers
+                .iter()
+                .enumerate()
+                .filter(|(_, layer)| {
+                    matches!(
+                        layer.kind,
+                        LayerKind::Master(_)
+                            | LayerKind::Brace { .. }
+                            | LayerKind::Bracket { .. }
+                            | LayerKind::Smart { .. }
+                    )
+                })
+                .map(|(index, _)| index)
+                .collect(),
+        };
+        if sources.is_empty() {
+            return Err(Error::InvalidCommand(
+                "the glyph has no source layers to reorder".into(),
+            ));
+        }
+        let count = |layer: &fc_model::Layer| {
+            if *components {
+                layer.components.len()
+            } else {
+                layer.contours.len()
+            }
+        };
+        let expected = count(&target.layers[sources[0]]);
+        if order.len() != expected
+            || order.iter().any(|index| *index >= expected)
+            || order.iter().collect::<std::collections::HashSet<_>>().len() != order.len()
+        {
+            return Err(Error::InvalidCommand(
+                "shape order must be a permutation of the current shapes".into(),
+            ));
+        }
+        if sources
+            .iter()
+            .any(|index| count(&target.layers[*index]) != expected)
+        {
+            return Err(Error::InvalidCommand(
+                "sources have different shape counts; repair topology before reordering".into(),
+            ));
+        }
+        for index in sources {
+            let layer = &mut target.layers[index];
+            if *components {
+                let current = layer.components.clone();
+                layer.components = order
+                    .iter()
+                    .map(|position| current[*position].clone())
+                    .collect();
+            } else {
+                let current = layer.contours.clone();
+                layer.contours = order
+                    .iter()
+                    .map(|position| current[*position].clone())
+                    .collect();
+                // Point-indexed data describes the old order.
+                layer.tt_instructions = None;
+                layer.hints.hint_masks.clear();
+                for point in layer.contours.iter_mut().flat_map(|c| &mut c.points) {
+                    point.tt_index = fc_model::TtIndex::Unnumbered;
+                }
+            }
+        }
+        return Ok(());
+    }
     if let DesignSpaceCommand::Repair { glyphs } = command {
         let default = font.design_default_master()?.id.clone();
         if glyphs.len() > 4096 {
@@ -206,34 +376,31 @@ fn apply_candidate(font: &mut Font, command: &DesignSpaceCommand) -> Result<(), 
                     .master_layer(&default)
                     .ok_or_else(|| Error::InvalidCommand("default source is missing".into()))?,
             );
-            let mut alternates = Vec::new();
+            let mut alternates: Vec<(Vec<fc_model::BracketCondition>, fc_model::Layer)> =
+                Vec::new();
             for layer in &glyph.layers {
-                if let LayerKind::Bracket {
-                    master,
-                    axis,
-                    min,
-                    max,
-                } = &layer.kind
-                {
-                    let key = (*axis, *min, *max);
-                    if let Some((_, existing)) = alternates.iter_mut().find(|(old, _)| *old == key)
-                    {
-                        if *master == default {
-                            *existing = fc_geom::canonical_source(layer);
-                        }
-                    } else {
-                        alternates.push((key, fc_geom::canonical_source(layer)));
+                let (LayerKind::Bracket { master, .. }, Some(key)) =
+                    (&layer.kind, layer.kind.bracket_conditions())
+                else {
+                    continue;
+                };
+                if let Some((_, existing)) = alternates.iter_mut().find(|(old, _)| *old == key) {
+                    if *master == default {
+                        *existing = fc_geom::canonical_source(layer);
                     }
+                } else {
+                    alternates.push((key, fc_geom::canonical_source(layer)));
                 }
             }
             for layer in &mut glyph.layers {
+                let conditions = layer.kind.bracket_conditions();
                 let source = match &layer.kind {
                     LayerKind::Master(_) | LayerKind::Brace { .. } | LayerKind::Smart { .. } => {
                         Some(&reference)
                     }
-                    LayerKind::Bracket { axis, min, max, .. } => alternates
+                    LayerKind::Bracket { .. } => alternates
                         .iter()
-                        .find(|(key, _)| *key == (*axis, *min, *max))
+                        .find(|(key, _)| Some(key.as_slice()) == conditions.as_deref())
                         .map(|(_, layer)| layer),
                     _ => None,
                 };
@@ -379,9 +546,14 @@ fn migrate_axis_references(
                 }
                 *location = migrated;
             }
-            LayerKind::Bracket { axis, .. } => {
+            LayerKind::Bracket { axis, extra, .. } => {
                 if let Some(new) = mapping.get(axis) {
                     *axis = *new;
+                }
+                for condition in extra.iter_mut() {
+                    if let Some(new) = mapping.get(&condition.axis) {
+                        condition.axis = *new;
+                    }
                 }
             }
             _ => {}

@@ -210,6 +210,7 @@ describe('guides', () => {
       name: null,
       locked: false,
       color: null,
+      anchor: 'Origin' as const,
     }
 
     expect(addGuideCommand(target, 'layer', 'm1', guide)).toEqual({

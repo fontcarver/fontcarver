@@ -375,3 +375,122 @@ describe('undo label flash', () => {
     stop()
   })
 })
+
+describe('opening a second document', () => {
+  it('selects the new document Overview so the shell shows what was opened', async () => {
+    const first = makeSummary({ doc: 1, path: '/fonts/First.ttf' })
+    const second = makeSummary({ doc: 2, path: '/fonts/Second.ttf' })
+    setTransport(
+      createMockTransport({
+        'session.open': (params) =>
+          params.path === first.path ? first : second,
+        'session.recent': () => [],
+      }),
+    )
+
+    await useSessionStore.getState().open(first.path as string)
+    expect(useUiStore.getState().activeTab).toBe(tabId('font', 1))
+
+    // A glyph tab of the first document is where the user was; opening another
+    // document still has to show that document.
+    useUiStore.getState().openTab({ kind: 'glyph', doc: 1, gid: 7 })
+    expect(useUiStore.getState().activeTab).toBe(tabId('glyph', 1, 7))
+
+    await useSessionStore.getState().open(second.path as string)
+
+    expect(useUiStore.getState().activeTab).toBe(tabId('font', 2))
+    expect(selectActiveDoc(useUiStore.getState())).toBe(2)
+    // Both documents keep their own contiguous run, Overview first.
+    expect(
+      useUiStore.getState().tabs.map((tab) => [tab.doc, tab.kind]),
+    ).toEqual([
+      [1, 'font'],
+      [1, 'glyph'],
+      [2, 'font'],
+    ])
+  })
+
+  it('selects a new and a recovered document the same way', async () => {
+    const created = makeSummary({ doc: 3, path: null })
+    const recovered = makeSummary({ doc: 4, path: '/fonts/Recovered.fcf' })
+    setTransport(
+      createMockTransport({
+        'session.new': () => created,
+        'session.recover': () => recovered,
+        'session.recent': () => [],
+      }),
+    )
+
+    await useSessionStore.getState().createDocument('New', 1000)
+    expect(useUiStore.getState().activeTab).toBe(tabId('font', 3))
+
+    await useSessionStore.getState().recover('/recovery/x.autosave.fcf')
+    expect(useUiStore.getState().activeTab).toBe(tabId('font', 4))
+  })
+})
+
+describe('opening a path that is already open', () => {
+  it('opens a second document, with one pinned Overview each', async () => {
+    const first = makeSummary({ doc: 1, path: '/fonts/Family.ttf' })
+    const second = makeSummary({ doc: 2, path: '/fonts/Family.ttf' })
+    let opens = 0
+    const transport = createMockTransport({
+      'session.open': () => (opens++ === 0 ? first : second),
+      'session.recent': () => [],
+    })
+    setTransport(transport)
+
+    await useSessionStore.getState().open(first.path as string)
+    useUiStore.getState().openTab({ kind: 'glyph', doc: 1, gid: 4 })
+    // Comparing a file with the copy you have edited is an accepted workflow,
+    // so this is a second document rather than a second view of the first.
+    await useSessionStore.getState().open(second.path as string)
+
+    expect(opens).toBe(2)
+    expect(useUiStore.getState().activeTab).toBe(tabId('font', 2))
+    // Overview insertion is idempotent per document: one each, not two for one.
+    const overviews = useUiStore
+      .getState()
+      .tabs.filter((tab) => tab.kind === 'font')
+    expect(overviews.map((tab) => tab.id)).toEqual([
+      tabId('font', 1),
+      tabId('font', 2),
+    ])
+  })
+
+  it('adds no second Overview when the same document is opened again', () => {
+    const ui = useUiStore.getState()
+    const overview = ui.openTab({ kind: 'font', doc: 1 })
+    ui.openTab({ kind: 'glyph', doc: 1, gid: 4 })
+    ui.openTab({ kind: 'font', doc: 1 })
+    ui.openTab({ kind: 'font', doc: 1 }, false)
+
+    expect(
+      useUiStore.getState().tabs.filter((tab) => tab.kind === 'font'),
+    ).toHaveLength(1)
+    expect(useUiStore.getState().tabs[0]?.id).toBe(overview)
+  })
+
+  it('reopens a file after it was closed, as a new document', async () => {
+    const first = makeSummary({ doc: 1, path: '/fonts/Family.ttf' })
+    const second = makeSummary({ doc: 2, path: '/fonts/Family.ttf' })
+    let opens = 0
+    setTransport(
+      createMockTransport({
+        'session.open': () => (opens++ === 0 ? first : second),
+        'session.close': () => null,
+        'session.recent': () => [],
+      }),
+    )
+
+    await useSessionStore.getState().open(first.path as string)
+    await useSessionStore.getState().close(1)
+    expect(useUiStore.getState().tabs).toHaveLength(0)
+
+    await useSessionStore.getState().open(second.path as string)
+    expect(opens).toBe(2)
+    expect(
+      useUiStore.getState().tabs.filter((tab) => tab.kind === 'font'),
+    ).toEqual([expect.objectContaining({ id: tabId('font', 2) })])
+  })
+})

@@ -263,6 +263,15 @@ export function LayersPanel({
         </button>
         <button
           type="button"
+          className={styles.actionButton}
+          disabled={master === null || background === null || glyph.locked}
+          title={t('panel.layers.clearBackgroundHint')}
+          onClick={() => runCommand('layer.clearBackground')}
+        >
+          {t('panel.layers.clearBackground')}
+        </button>
+        <button
+          type="button"
           className={styles.toggle}
           aria-pressed={overlays.background}
           onClick={() => toggleOverlay('background')}

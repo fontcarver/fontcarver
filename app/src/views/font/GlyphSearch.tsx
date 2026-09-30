@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { DocId } from '../../api'
 import { useDocumentStore } from '../../stores/documentStore'
 
 import styles from './glyphSearch.module.css'
+import { selectQueryError, useQueryErrors } from './queryErrors'
 
 /** Delay between the last keystroke and the filtered request, in milliseconds. */
 export const SEARCH_DEBOUNCE_MS = 150
@@ -26,7 +27,9 @@ export interface GlyphSearchProps {
 
 /**
  * Debounced glyph query with scope and matching controls. Regular expressions
- * are validated by the kernel, preserving its bounded matching semantics.
+ * are validated by the kernel, preserving its bounded matching semantics; a
+ * rejected pattern is reported under the field rather than thrown at the user as
+ * a toast, and the document is left exactly as it was.
  */
 export function GlyphSearch({
   doc,
@@ -39,7 +42,9 @@ export function GlyphSearch({
   onRegexChange,
 }: GlyphSearchProps) {
   const { t } = useTranslation()
+  const errorId = useId()
   const setFilter = useDocumentStore((state) => state.setFilter)
+  const queryError = useQueryErrors(selectQueryError(doc, 'search'))
   const storedScope = useDocumentStore(
     (state) => state.byDoc[doc]?.filter.query_scope,
   )
@@ -76,6 +81,8 @@ export function GlyphSearch({
         className={styles.search}
         aria-label={t('fontView.search')}
         placeholder={t(`glyphSearch.placeholder.${scope}`)}
+        aria-invalid={queryError === null ? undefined : true}
+        aria-describedby={queryError === null ? undefined : errorId}
         value={text}
         onChange={(event) => setDraft(event.target.value)}
       />
@@ -121,6 +128,15 @@ export function GlyphSearch({
       >
         {t('glyphSearch.regexSymbol')}
       </button>
+      {queryError !== null && (
+        <p id={errorId} role="alert" className={styles.error}>
+          {t('glyphSearch.invalidQuery', {
+            // The kernel names the offending part of the pattern; a translated
+            // sentence carries it rather than the raw message standing alone.
+            message: queryError.replace(/\s+/gu, ' ').trim(),
+          })}
+        </p>
+      )}
     </div>
   )
 }

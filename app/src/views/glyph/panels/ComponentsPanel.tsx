@@ -9,6 +9,7 @@ import { reportError } from '../../../shell/commands'
 import { useEditorStore } from '../../../stores/editorStore'
 import { commitField } from '../commitField'
 import { openGlyphByName } from '../openBase'
+import { alignComponentsCommand } from '../pathOps'
 
 import { ComponentRow } from './ComponentRow'
 import { GlyphPicker } from './GlyphPicker'
@@ -39,11 +40,17 @@ export function ComponentsPanel({ target, outline, reload }: PanelContext) {
   const run = (command: Parameters<typeof commitField>[1], label: string) =>
     commitField(target, command, label, reload)
 
-  const writeComponent = (index: number, component: Component) =>
+  const writeComponent = (index: number, component: Component) => {
+    // Turning automatic alignment on is only meaningful if the component then
+    // moves onto its anchors, so the two go in as one undo entry.
+    const aligning =
+      component.auto_align && !components[index]?.component.auto_align
+    const set = setComponentCommand(target, index, component)
     run(
-      setComponentCommand(target, index, component),
-      t('editor.undo.setComponent'),
+      aligning ? { Batch: [set, alignComponentsCommand(target)] } : set,
+      t(aligning ? 'editor.undo.alignComponents' : 'editor.undo.setComponent'),
     )
+  }
 
   const move = (from: number, to: number) => {
     const command = reorderComponentsCommand(

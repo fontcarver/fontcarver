@@ -10,6 +10,27 @@ import { kerningSideName } from './kerningModel'
 /** Columns sorted across the complete table before visual pagination. */
 export type KerningTableSort = 'left' | 'right' | 'value'
 
+/** How the filter text is compared with a pair side's name. */
+export type KerningMatchMode =
+  'contains' | 'is' | 'starts' | 'ends' | 'excludes'
+
+/** Which kind of record the table shows. */
+export type KerningRecordKind = 'all' | 'groups' | 'glyphs' | 'exceptions'
+
+/** Everything the table filters on, independent of sorting and paging. */
+export interface KerningTableFilter {
+  query: string
+  match: KerningMatchMode
+  kind: KerningRecordKind
+}
+
+/** The filter a freshly opened table uses. */
+export const DEFAULT_KERNING_FILTER: KerningTableFilter = {
+  query: '',
+  match: 'contains',
+  kind: 'all',
+}
+
 /** Read bounded pages at one generation, abandoning superseded requests. */
 export async function loadKerningTable(
   doc: DocId,
@@ -51,22 +72,68 @@ export async function loadKerningTable(
   return null
 }
 
-/** Case-insensitive pair-name filtering and stable numeric/name sorting. */
+function matches(
+  name: string,
+  needle: string,
+  mode: KerningMatchMode,
+): boolean {
+  switch (mode) {
+    case 'is':
+      return name === needle
+    case 'starts':
+      return name.startsWith(needle)
+    case 'ends':
+      return name.endsWith(needle)
+    case 'excludes':
+      return !name.includes(needle)
+    default:
+      return name.includes(needle)
+  }
+}
+
+function keepsKind(
+  record: KerningPairRecord,
+  kind: KerningRecordKind,
+): boolean {
+  switch (kind) {
+    case 'groups':
+      return 'group' in record.left || 'group' in record.right
+    case 'glyphs':
+      return 'glyph' in record.left && 'glyph' in record.right
+    case 'exceptions':
+      return record.exception === true
+    default:
+      return true
+  }
+}
+
+/**
+ * Filters by side name and record kind, then sorts the whole table.
+ *
+ * Sorting precedes pagination so a page is a window on the ordered table rather
+ * than a sorted window. "Excludes" is the negative match mode, so a name is
+ * compared once and the whole record is kept when *either* side matches — the
+ * useful reading for "show me everything about @O" — while "excludes" keeps a
+ * record only when neither side contains the text.
+ */
 export function visibleKerningRecords(
   records: readonly KerningPairRecord[],
-  query: string,
+  filter: KerningTableFilter,
   sort: KerningTableSort,
   descending: boolean,
 ): KerningPairRecord[] {
-  const needle = query.trim().toLocaleLowerCase()
+  const needle = filter.query.trim().toLocaleLowerCase()
   return records
-    .filter(
-      (record) =>
-        !needle ||
-        [record.left, record.right].some((side) =>
-          kerningSideName(side).toLocaleLowerCase().includes(needle),
-        ),
-    )
+    .filter((record) => {
+      if (!keepsKind(record, filter.kind)) return false
+      if (!needle) return true
+      const names = [record.left, record.right].map((side) =>
+        kerningSideName(side).toLocaleLowerCase(),
+      )
+      return filter.match === 'excludes'
+        ? names.every((name) => matches(name, needle, 'excludes'))
+        : names.some((name) => matches(name, needle, filter.match))
+    })
     .sort((a, b) => {
       const order =
         sort === 'value'

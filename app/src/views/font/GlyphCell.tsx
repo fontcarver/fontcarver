@@ -31,6 +31,8 @@ export interface GlyphCellProps {
   focused: boolean
   theme: CellTheme
   fontFamily: string
+  /** Whether an empty cell may show its character from a system face. */
+  referenceCharacters: boolean
 }
 
 /**
@@ -53,6 +55,7 @@ function GlyphCellView({
   focused,
   theme,
   fontFamily,
+  referenceCharacters,
 }: GlyphCellProps) {
   const { t } = useTranslation()
   const color = useCellGlyphColor(doc, cell)
@@ -109,6 +112,7 @@ function GlyphCellView({
       path: pathCache.get(doc, cell.gid, cell.generation, cell.path),
       color,
       fontFamily,
+      referenceCharacters,
     })
   }, [
     attached,
@@ -123,6 +127,7 @@ function GlyphCellView({
     fontFamily,
     index,
     labelMode,
+    referenceCharacters,
     selected,
     size,
     theme,

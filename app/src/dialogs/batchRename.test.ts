@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { planBatchRename, replaceGlyphNames } from './batchRename'
+import {
+  InvalidSearchError,
+  planBatchRename,
+  replaceGlyphNames,
+} from './batchRename'
 
 describe('batch glyph rename', () => {
   it('replaces every literal occurrence and omits unchanged names', () => {
@@ -89,5 +93,51 @@ describe('batch glyph rename', () => {
 
   it('does not create an empty undo action', () => {
     expect(planBatchRename(['A'], [{ from: 'A', to: 'A' }]).command).toBeNull()
+  })
+})
+
+describe('regular-expression replacement', () => {
+  it('replaces every match and inserts capture groups', () => {
+    expect(
+      replaceGlyphNames(['A.sc', 'B.sc', 'C'], '^(.)\\.sc$', '$1.small', {
+        regex: true,
+      }),
+    ).toEqual([
+      { from: 'A.sc', to: 'A.small' },
+      { from: 'B.sc', to: 'B.small' },
+    ])
+    expect(replaceGlyphNames(['a_a_a'], 'a', 'b', { regex: true })).toEqual([
+      { from: 'a_a_a', to: 'b_b_b' },
+    ])
+  })
+
+  it('ignores case only when asked, in both modes', () => {
+    expect(replaceGlyphNames(['Acute'], 'acute', 'grave')).toEqual([])
+    expect(
+      replaceGlyphNames(['Acute'], 'acute', 'grave', { ignoreCase: true }),
+    ).toEqual([{ from: 'Acute', to: 'grave' }])
+    // A literal search stays literal even when matching loosely.
+    expect(replaceGlyphNames(['a.sc'], '.', 'X', { ignoreCase: true })).toEqual(
+      [{ from: 'a.sc', to: 'aXsc' }],
+    )
+    expect(replaceGlyphNames(['a.sc'], '.', 'X', { regex: true })).toEqual([
+      { from: 'a.sc', to: 'XXXX' },
+    ])
+  })
+
+  it('reports a pattern that does not compile instead of throwing anonymously', () => {
+    expect(() =>
+      replaceGlyphNames(['A'], '(', 'x', { regex: true }),
+    ).toThrowError(InvalidSearchError)
+    try {
+      replaceGlyphNames(['A'], '(', 'x', { regex: true })
+    } catch (error) {
+      expect((error as Error).message).toMatch(/group|parenthes/i)
+    }
+  })
+
+  it('keeps an empty search inert and leaves unmatched names alone', () => {
+    expect(replaceGlyphNames(['A'], '', 'x', { regex: true })).toEqual([])
+    expect(replaceGlyphNames(['A'], 'Z+', 'x', { regex: true })).toEqual([])
   })
 })

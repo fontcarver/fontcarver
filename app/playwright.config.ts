@@ -1,4 +1,4 @@
-import { existsSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import { defineConfig } from '@playwright/test'
@@ -47,23 +47,50 @@ const devserver =
  */
 const configDir = `${repoRoot}target/e2e-config-${apiPort}`
 rmSync(configDir, { recursive: true, force: true })
+// Autosave is off for the run. The kernel starts its autosave worker once at
+// startup, and a snapshot of a document a spec left unsaved makes every later
+// page load open the Recover Documents dialog, whose overlay swallows the
+// clicks of every spec that follows. No spec needs a live autosave: the clean
+// launch is asserted by `dialogs.spec.ts`, and `draw.spec.ts` only dismisses
+// the dialog when one appears.
+mkdirSync(configDir, { recursive: true })
+writeFileSync(
+  `${configDir}/prefs.json`,
+  JSON.stringify({
+    autosave_seconds: 0,
+    recent_limit: 20,
+    language: 'en',
+    theme: 'light',
+  }),
+)
 
 /** The font every spec but the CJK one is written against. */
 const fixture = 'fixtures/fonts/DejaVuSans.ttf'
 
 export default defineConfig({
   testDir: './e2e',
+  // Every spec drives the one kernel document `fc-devserver` opened, so two
+  // workers fight over it and both time out; the suite runs one file at a time.
+  workers: 1,
+  fullyParallel: false,
   // A red CI run has to be diagnosable from the artifact alone: the default
   // reporter writes nothing to disk, so CI gets the HTML report the workflow
   // uploads, and one retry so `on-first-retry` can actually record a trace.
   reporter: process.env.CI ? [['html', { open: 'never' }], ['list']] : 'list',
   retries: process.env.CI ? 1 : 0,
   forbidOnly: !!process.env.CI,
-  // Bounds a hung suite well below the workflow's own step timeout; the
-  // slowest spec (CJK, when it runs at all) budgets four minutes of that.
-  globalTimeout: 15 * 60 * 1000,
+  // Bounds a hung suite below the workflow's own step timeout. One worker over
+  // eighty specs takes about nine minutes here, so the budget leaves room for a
+  // slower runner; the slowest spec (CJK, when it runs at all) budgets four
+  // minutes of it.
+  globalTimeout: 25 * 60 * 1000,
   use: {
     baseURL,
+    // The Edit tab stacks the text bar, the spacing and kerning chrome, the
+    // canvas floor and the preview strip: below about 950 px of height it
+    // scrolls, and a spec that computes canvas coordinates then drags off
+    // screen. The three P2 configurations already run at this size.
+    viewport: { width: 1440, height: 1000 },
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },

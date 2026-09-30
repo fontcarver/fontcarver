@@ -1,9 +1,9 @@
 //! Read-only, bounded views of stored horizontal kerning.
 use crate::{
-    Api, ApiError, DocParams, GlyphKerning, GlyphKerningParams, KerningGroupSummary,
-    KerningGroupsParams, KerningGroupsResult, KerningMembers, KerningMembersParams,
-    KerningPairRecord, KerningPairs, KerningPairsParams, KerningResolution, KerningResolveParams,
-    KerningStatus,
+    Api, ApiError, DocParams, GlyphKerning, GlyphKerningParams, KerningBoundaries,
+    KerningBoundariesParams, KerningBoundary, KerningGroupSummary, KerningGroupsParams,
+    KerningGroupsResult, KerningMembers, KerningMembersParams, KerningPairRecord, KerningPairs,
+    KerningPairsParams, KerningResolution, KerningResolveParams, KerningStatus,
 };
 use fc_doc::{
     kerning::{
@@ -125,6 +125,7 @@ fn resolve_direction(
                 value: None,
                 rule: None,
                 records: Vec::new(),
+                exception: false,
             };
             if !result.status.editable {
                 return Ok(result);
@@ -142,6 +143,14 @@ fn resolve_direction(
                 &master.kerning_h
             };
             result.value = Some(result.rule.as_ref().map_or(0.0, |pair| pair.value));
+            result.exception = result.rule.as_ref().is_some_and(|rule| {
+                is_exception(
+                    &rule.left,
+                    &rule.right,
+                    result.left_group.as_deref(),
+                    result.right_group.as_deref(),
+                )
+            });
             let l = KernSide::Glyph(left);
             let r = KernSide::Glyph(right);
             let candidates = [
@@ -175,6 +184,113 @@ fn resolve_direction(
         })
         .map_err(ApiError::from)?
 }
+/// Whether a rule departs from the class rule that would otherwise apply.
+///
+/// A side is an exception when the rule names a concrete glyph there and that
+/// glyph is a member of a kerning group on the same side, so a broader class
+/// rule could have covered it. This is the same notion the kerning table marks
+/// and the notion a held-modifier edit creates.
+fn is_exception(
+    left: &KernSide,
+    right: &KernSide,
+    left_group: Option<&str>,
+    right_group: Option<&str>,
+) -> bool {
+    (matches!(left, KernSide::Glyph(_)) && left_group.is_some())
+        || (matches!(right, KernSide::Glyph(_)) && right_group.is_some())
+}
+
+/// Exception flag for one stored record, resolving membership per side.
+fn record_exception(font: &fc_model::Font, left: &KernSide, right: &KernSide) -> bool {
+    let membership = |value: &KernSide, side: Side| match value {
+        KernSide::Glyph(name) => group_membership(font, name, side)
+            .ok()
+            .flatten()
+            .map(str::to_owned),
+        KernSide::Group(_) => None,
+    };
+    is_exception(
+        left,
+        right,
+        membership(left, Side::Side1).as_deref(),
+        membership(right, Side::Side2).as_deref(),
+    )
+}
+
+/// Exception flags for many boundaries of one run, in one bounded request.
+///
+/// The canvas marks every exception, not only the selected pair, so it needs an
+/// answer per boundary. Asking `kerning.resolve` once per boundary would be one
+/// request per letter on every keystroke; this answers the whole visible run
+/// at one generation. A boundary whose glyphs or groups cannot be read is
+/// reported as a null value rather than failing the run.
+pub(crate) fn boundaries(
+    api: &Api,
+    params: KerningBoundariesParams,
+) -> Result<KerningBoundaries, ApiError> {
+    if params.pairs.len() > crate::KERNING_BOUNDARY_LIMIT {
+        return Err(ApiError::invalid_params(format!(
+            "a kerning boundary request carries at most {} pairs",
+            crate::KERNING_BOUNDARY_LIMIT
+        )));
+    }
+    api.session
+        .with_doc(params.doc, |document| {
+            let font = &document.font;
+            if font.master(&params.master).is_none() {
+                return Err(ApiError::not_found(format!(
+                    "master `{}` does not exist",
+                    params.master
+                )));
+            }
+            let status = direction_status(document, params.vertical);
+            let items = params
+                .pairs
+                .iter()
+                .map(|[left, right]| {
+                    if !status.editable {
+                        return KerningBoundary {
+                            value: None,
+                            exception: false,
+                        };
+                    }
+                    let left = GlyphName::from(left.clone());
+                    let right = GlyphName::from(right.clone());
+                    let rule = if params.vertical {
+                        resolve_stored_vertical(font, &left, &right, &params.master)
+                    } else {
+                        resolve_stored_horizontal(font, &left, &right, &params.master)
+                    };
+                    let Ok(rule) = rule else {
+                        return KerningBoundary {
+                            value: None,
+                            exception: false,
+                        };
+                    };
+                    let membership = |name: &GlyphName, side: Side| {
+                        group_membership(font, name, side)
+                            .ok()
+                            .flatten()
+                            .map(str::to_owned)
+                    };
+                    KerningBoundary {
+                        value: Some(rule.as_ref().map_or(0.0, |pair| pair.value)),
+                        exception: rule.as_ref().is_some_and(|pair| {
+                            is_exception(
+                                &pair.left,
+                                &pair.right,
+                                membership(&left, Side::Side1).as_deref(),
+                                membership(&right, Side::Side2).as_deref(),
+                            )
+                        }),
+                    }
+                })
+                .collect();
+            Ok(KerningBoundaries { status, items })
+        })
+        .map_err(ApiError::from)?
+}
+
 fn page(
     document: &Document,
     generation: Option<u64>,
@@ -235,6 +351,7 @@ fn pairs_direction(
                     .err()
                     .map(|error| error.to_string());
                     KerningPairRecord {
+                        exception: record_exception(&document.font, left, right),
                         left: left.clone(),
                         right: right.clone(),
                         value: value.is_finite().then_some(*value),

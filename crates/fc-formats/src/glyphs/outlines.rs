@@ -315,6 +315,7 @@ pub(super) fn guides(raw: &Plist) -> Result<Vec<Guide>, Error> {
                 name: text(raw, "name").map(str::to_owned),
                 locked: flag(raw, "locked", false)?,
                 color: text(raw, "color").map(str::to_owned),
+                ..Guide::default()
             })
         })
         .collect()

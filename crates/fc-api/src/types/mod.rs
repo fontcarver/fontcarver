@@ -32,6 +32,8 @@ mod layout_conversion;
 pub use color::*;
 mod math;
 pub use math::*;
+mod metrics;
+pub use metrics::*;
 mod problems;
 mod session;
 mod shaping;
@@ -83,3 +85,6 @@ pub use font_compare::*;
 
 mod optical;
 pub use optical::*;
+
+mod inventory;
+pub use inventory::*;

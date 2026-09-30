@@ -26,5 +26,8 @@ thiserror.workspace = true
 [dev-dependencies]
 assert_cmd.workspace = true
 fc-fixtures = { path = "../fc-fixtures" }
+kurbo.workspace = true
 predicates.workspace = true
+# Independent decoding of the fonts the profile tests build.
+read-fonts.workspace = true
 tempfile.workspace = true

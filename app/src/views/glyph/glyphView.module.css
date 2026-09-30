@@ -1,9 +1,25 @@
 /* The glyph tab: toolbar, canvas stage and the corner readout. */
 
+/*
+ * The editor keeps a floor rather than collapsing.
+ *
+ * The Edit tab stacks the text bar, the spacing and kerning chrome and the
+ * preview strip around this column, and a flex item with `min-height: 0`
+ * happily shrinks to nothing: at 1280x577 the canvas had no height at all and
+ * every click landed in the chrome above it. The floor keeps the glyph
+ * clickable at any window size. The column around it has to scroll once the
+ * chrome no longer fits, which is `app/src/views/text/TextView.module.css`.
+ */
 .view {
   display: flex;
   min-width: 0;
-  min-height: 0;
+  /*
+   * Never shorter than the toolbar, the stage floor and the readout together.
+   * A fixed floor was too small once the toolbar wrapped: the stage kept its
+   * own 240 px floor, overflowed this box and painted the canvas over the
+   * preview strip's resize handle below it, which then took the pointer.
+   */
+  min-height: max-content;
   flex: 1;
   flex-direction: column;
 }
@@ -56,7 +72,7 @@
 
 .stage {
   position: relative;
-  min-height: 0;
+  min-height: 240px;
   flex: 1;
   overflow: hidden;
   background: var(--cv-bg);

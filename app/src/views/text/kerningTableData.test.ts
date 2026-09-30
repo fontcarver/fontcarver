@@ -1,7 +1,19 @@
 import { describe, expect, it, vi } from 'vitest'
 import { setTransport, type KerningPairRecord } from '../../api'
 import { createMockTransport } from '../../test/mockTransport'
-import { loadKerningTable, visibleKerningRecords } from './kerningTableData'
+import {
+  DEFAULT_KERNING_FILTER,
+  loadKerningTable,
+  visibleKerningRecords,
+  type KerningTableFilter,
+} from './kerningTableData'
+
+const filter = (
+  changes: Partial<KerningTableFilter> = {},
+): KerningTableFilter => ({
+  ...DEFAULT_KERNING_FILTER,
+  ...changes,
+})
 
 const pair = (
   left: string,
@@ -12,6 +24,7 @@ const pair = (
   right: { glyph: right },
   value,
   diagnostic: null,
+  exception: false,
 })
 
 describe('kerning table data', () => {
@@ -75,12 +88,86 @@ describe('kerning table data', () => {
       pair('T', 'o', 10),
     ]
     expect(
-      visibleKerningRecords(records, '', 'value', false).map(
+      visibleKerningRecords(records, filter(), 'value', false).map(
         (item) => item.value,
       ),
     ).toEqual([-20, 0, 10])
-    expect(visibleKerningRecords(records, 'KERN1', 'left', true)).toEqual([
-      records[1],
+    expect(
+      visibleKerningRecords(records, filter({ query: 'KERN1' }), 'left', true),
+    ).toEqual([records[1]])
+  })
+
+  it('offers every match mode over both sides of a pair', () => {
+    const records = [
+      pair('A', 'V', -20),
+      pair('Aacute', 'W', -10),
+      pair('T', 'o', 10),
+    ]
+    const names = (found: readonly KerningPairRecord[]) =>
+      found.map((record) => [record.left, record.right])
+    expect(
+      names(
+        visibleKerningRecords(records, filter({ query: 'a' }), 'left', false),
+      ),
+    ).toEqual([
+      [{ glyph: 'A' }, { glyph: 'V' }],
+      [{ glyph: 'Aacute' }, { glyph: 'W' }],
     ])
+    expect(
+      names(
+        visibleKerningRecords(
+          records,
+          filter({ query: 'a', match: 'is' }),
+          'left',
+          false,
+        ),
+      ),
+    ).toEqual([[{ glyph: 'A' }, { glyph: 'V' }]])
+    expect(
+      names(
+        visibleKerningRecords(
+          records,
+          filter({ query: 'aa', match: 'starts' }),
+          'left',
+          false,
+        ),
+      ),
+    ).toEqual([[{ glyph: 'Aacute' }, { glyph: 'W' }]])
+    expect(
+      names(
+        visibleKerningRecords(
+          records,
+          filter({ query: 'o', match: 'ends' }),
+          'left',
+          false,
+        ),
+      ),
+    ).toEqual([[{ glyph: 'T' }, { glyph: 'o' }]])
+    expect(
+      names(
+        visibleKerningRecords(
+          records,
+          filter({ query: 'a', match: 'excludes' }),
+          'left',
+          false,
+        ),
+      ),
+    ).toEqual([[{ glyph: 'T' }, { glyph: 'o' }]])
+  })
+
+  it('filters by record kind, including exceptions only', () => {
+    const records = [
+      { ...pair('A', 'V', -20), exception: true },
+      { ...pair('A', 'W', -10), left: { group: 'public.kern1.A' } },
+      pair('T', 'o', 10),
+    ]
+    const values = (kind: KerningTableFilter['kind']) =>
+      visibleKerningRecords(records, filter({ kind }), 'value', false).map(
+        (record) => record.value,
+      )
+    expect(values('all')).toEqual([-20, -10, 10])
+    expect(values('groups')).toEqual([-10])
+    expect(values('glyphs')).toEqual([-20, 10])
+    expect(values('exceptions')).toEqual([-20])
   })
 })

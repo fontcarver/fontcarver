@@ -1,7 +1,5 @@
 import { expect, it, vi } from 'vitest'
 import { Viewport } from '../../canvas/Viewport'
-import { FALLBACK_GLYPH_THEME } from '../glyph/glyphTheme'
-import { drawTextGaps } from './drawTextGaps'
 import { drawTextRun } from './drawTextRun'
 import { surroundingGlyphs } from './textCanvasBridge'
 import type { TextCanvasRun } from './textCanvas'
@@ -64,27 +62,3 @@ it('culls member ghosts with their owning glyph and uses active local coordinate
   expect(ctx.globalAlpha).toBe(0.35)
   expect(ctx.lineWidth).toBe(2)
 })
-
-it.each([
-  [-40, 'warning'],
-  [40, 'nodeSmooth'],
-  [0, 'accent'],
-  [null, 'accent'],
-] as const)(
-  'colors resolved value %s without changing the gap position',
-  (value, color) => {
-    const ctx = context()
-    const viewport = new Viewport()
-    drawTextGaps(
-      ctx,
-      viewport,
-      { ...run(), selectedKerningValue: value },
-      FALLBACK_GLYPH_THEME,
-      [0],
-    )
-    expect(ctx.strokeStyle).toBe(FALLBACK_GLYPH_THEME[color])
-    expect(ctx.fillStyle).toBe(FALLBACK_GLYPH_THEME[color])
-    const point = viewport.toScreen({ x: 400, y: -170 })
-    expect(ctx.moveTo).toHaveBeenCalledWith(point.x, point.y)
-  },
-)

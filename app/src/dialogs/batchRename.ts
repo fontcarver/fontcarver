@@ -20,17 +20,64 @@ export interface RenamePlan {
   readonly command: Command | null
 }
 
-/** Literal, case-sensitive find/replace; an empty search never changes names. */
+/** How the search text is interpreted. */
+export interface ReplaceOptions {
+  /** Treat the search as a JavaScript regular expression with capture groups. */
+  readonly regex?: boolean
+  /** Ignore case while matching. */
+  readonly ignoreCase?: boolean
+}
+
+/** A search the user has not finished typing, reported instead of thrown. */
+export class InvalidSearchError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'InvalidSearchError'
+  }
+}
+
+/**
+ * Find/replace over glyph names.
+ *
+ * Literal by default and case-sensitive, which is how glyph names compare. In
+ * regular-expression mode the pattern replaces every match and `$1` refers to a
+ * capture group, exactly as `String.replaceAll` defines it; a pattern that does
+ * not compile raises {@link InvalidSearchError} so the dialog can say what is
+ * wrong instead of leaving the preview empty. An empty search never changes a
+ * name, so the dialog opens with nothing staged.
+ */
 export function replaceGlyphNames(
   names: readonly string[],
   find: string,
   replacement: string,
+  options: ReplaceOptions = {},
 ): GlyphRename[] {
   if (!find) return []
+  if (!options.regex && !options.ignoreCase) {
+    return names.flatMap((from) => {
+      const to = from.split(find).join(replacement)
+      return from === to ? [] : [{ from, to }]
+    })
+  }
+  const flags = options.ignoreCase ? 'giu' : 'gu'
+  let pattern: RegExp
+  try {
+    pattern = new RegExp(options.regex ? find : escapeRegExp(find), flags)
+  } catch (error) {
+    throw new InvalidSearchError(
+      error instanceof Error ? error.message : String(error),
+    )
+  }
   return names.flatMap((from) => {
-    const to = from.split(find).join(replacement)
+    // A fresh index per name: the pattern is global and stateful.
+    pattern.lastIndex = 0
+    const to = from.replaceAll(pattern, replacement)
     return from === to ? [] : [{ from, to }]
   })
+}
+
+function escapeRegExp(text: string): string {
+  return text.replaceAll(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }
 
 /**

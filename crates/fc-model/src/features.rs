@@ -5,11 +5,16 @@ use std::{collections::HashSet, fmt};
 use serde::{Deserialize, Deserializer, Serialize};
 
 mod assembly;
+mod generators;
 mod numbers;
 mod predicates;
 mod preprocess;
 
 pub use assembly::{AssembledFea, FeaSourceLocation, FeaSourceMapping, FeatureSourceKind};
+pub use generators::{
+    aalt_feature_order, automatic_class_registry, family_kind, family_names, generate_family,
+    GeneratedFamily, GeneratedItemKind, GeneratedRules, GenerationIssue, GENERATED_NAME_PREFIX,
+};
 pub use preprocess::FeatureTokenError;
 
 /// Persistent identity of a prefix, glyph class or feature block.

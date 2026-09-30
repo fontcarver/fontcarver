@@ -127,3 +127,31 @@ export function hitTextGap(
   }
   return closest?.index ?? null
 }
+
+/**
+ * The kerning the shaped run actually applied after one glyph, in font units.
+ *
+ * The shaped advance already carries every positioning rule the compiled font
+ * contains, so the difference from the glyph's own stored advance is what was
+ * added at that boundary — regardless of whether it came from an editable pair,
+ * a class rule or an imported layout table. `null` means the glyph's advance is
+ * not known yet, which happens while its cell is still loading. Differences
+ * below half a unit read as zero so rounding never paints a colour.
+ */
+export function appliedKerning(
+  left: PositionedGlyph | undefined,
+  storedAdvance: number | undefined,
+  vertical: boolean,
+): number | null {
+  if (
+    !left ||
+    storedAdvance === undefined ||
+    !Number.isFinite(storedAdvance) ||
+    left.documentGid === null
+  )
+    return null
+  const shaped = vertical ? -left.yAdvance : left.xAdvance
+  if (!Number.isFinite(shaped)) return null
+  const delta = shaped - storedAdvance
+  return Math.abs(delta) < 0.5 ? 0 : delta
+}

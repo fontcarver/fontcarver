@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
+  AutomaticEntryOption,
   DocId,
   FeatureDiagnostic,
+  FeatureGenerationSettings,
   Features,
   GeneratedFeatureRecord,
   MasterId,
@@ -15,6 +17,11 @@ import {
 } from './FeatureCodeEditor'
 import { type FeatureDraftSession } from './FeatureDraftSession'
 import { FeatureClassPreview } from './FeatureClassPreview'
+import {
+  automaticEntryOption,
+  switchEntryToAutomatic,
+} from './automaticEntries'
+import { FeatureAutomaticSwitch } from './FeatureAutomaticSwitch'
 import { moveSource, updateSource, type SourceItem } from './featureSources'
 import styles from './FeaturesView.module.css'
 
@@ -23,6 +30,8 @@ export function FeatureSourceEditor({
   source,
   previewSource = source,
   item,
+  settings,
+  automaticEntries,
   generated,
   generatedSaved,
   readOnly,
@@ -38,6 +47,8 @@ export function FeatureSourceEditor({
   source: Features
   previewSource?: Features
   item: SourceItem
+  settings: FeatureGenerationSettings
+  automaticEntries: readonly AutomaticEntryOption[]
   generated: GeneratedFeatureRecord | undefined
   generatedSaved: boolean
   readOnly: boolean
@@ -134,6 +145,29 @@ export function FeatureSourceEditor({
         >
           {t('features.removeSource')}
         </button>
+        <FeatureAutomaticSwitch
+          item={item}
+          option={automaticEntryOption(automaticEntries, item)}
+          settings={settings}
+          generated={generated}
+          generatedSaved={generatedSaved}
+          readOnly={readOnly}
+          onManual={(option) =>
+            action(() => session.freeze(option.generator, option.name))
+          }
+          onAutomatic={(option) => {
+            const snapshot = session.getSnapshot()
+            if (!snapshot.source || !snapshot.settings) return
+            const next = switchEntryToAutomatic(
+              snapshot.source,
+              snapshot.settings,
+              item,
+              option,
+              automaticEntries,
+            )
+            session.change(next.source, next.settings)
+          }}
+        />
       </div>
       {generated && (
         <div className={styles.generatedInfo}>

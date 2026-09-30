@@ -221,6 +221,7 @@ impl Font {
             if instance.name.trim().is_empty() {
                 return Err(invalid("instance name is required"));
             }
+            instance.overrides.validate()?;
             self.complete_location(&instance.location)?;
         }
         for glyph in self.glyphs.values() {
@@ -272,30 +273,32 @@ impl Font {
                         }
                         self.intermediate_location(master, location)?;
                     }
-                    crate::LayerKind::Bracket {
-                        master,
-                        axis,
-                        min,
-                        max,
-                    } => {
-                        let a = self
-                            .axes
-                            .iter()
-                            .find(|a| a.tag == *axis)
-                            .ok_or_else(|| invalid("alternate layer axis is missing"))?;
+                    crate::LayerKind::Bracket { master, .. } => {
+                        let conditions = layer
+                            .kind
+                            .bracket_conditions()
+                            .ok_or_else(|| invalid("invalid alternate layer condition"))?;
                         if !ids.contains(master)
-                            || min.is_none() && max.is_none()
-                            || min.is_some_and(|n| {
-                                !n.is_finite()
-                                    || n < a.user_to_design(a.min)
-                                    || n > a.user_to_design(a.max)
+                            || conditions
+                                .iter()
+                                .all(|c| c.min.is_none() && c.max.is_none())
+                            || conditions
+                                .windows(2)
+                                .any(|pair| pair[0].axis == pair[1].axis)
+                            || conditions.iter().any(|condition| {
+                                let Some(a) = self.axes.iter().find(|a| a.tag == condition.axis)
+                                else {
+                                    return true;
+                                };
+                                let outside = |n: f64| {
+                                    !n.is_finite()
+                                        || n < a.user_to_design(a.min)
+                                        || n > a.user_to_design(a.max)
+                                };
+                                condition.min.is_some_and(outside)
+                                    || condition.max.is_some_and(outside)
+                                    || condition.min.zip(condition.max).is_some_and(|(a, b)| a > b)
                             })
-                            || max.is_some_and(|n| {
-                                !n.is_finite()
-                                    || n < a.user_to_design(a.min)
-                                    || n > a.user_to_design(a.max)
-                            })
-                            || min.zip(*max).is_some_and(|(a, b)| a > b)
                         {
                             return Err(invalid("invalid alternate layer condition"));
                         }

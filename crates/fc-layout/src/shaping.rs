@@ -354,6 +354,20 @@ impl Shaper {
         })
     }
 
+    /// Whether the cached shaping font for this key reused the previous
+    /// outline, metric and `cmap` tables and rebuilt only the layout tables.
+    ///
+    /// The shaper's output never depends on this; it is the observable record
+    /// that live editing takes the incremental layout path.
+    #[must_use]
+    pub fn used_incremental_layout(&self, key: &FontKey) -> Option<bool> {
+        let entries = lock(&self.entries);
+        let entry = entries.get(key)?;
+        let state = lock(&entry.state);
+        let compiled = state.compiled.as_ref()?;
+        compiled.source.as_ref().map(|source| source.incremental)
+    }
+
     /// Drops every compiled font belonging to one document.
     ///
     /// A rebuild that was already scheduled for the closed document is

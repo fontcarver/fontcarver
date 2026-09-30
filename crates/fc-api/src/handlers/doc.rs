@@ -8,8 +8,8 @@ use read_fonts::FileRef;
 
 use crate::{
     handlers::session::summary_for, Api, ApiError, ApplyParams, DocParams, DocSummary,
-    EditApplyParams, EditBeginParams, EditEndParams, EditTokenId, FontInfoView, SidebarCounts,
-    TableInfo,
+    DocumentHistory, EditApplyParams, EditBeginParams, EditEndParams, EditTokenId, FontInfoView,
+    HistoryEntry, HistoryGoParams, HistoryLayer, SidebarCounts, TableInfo,
 };
 
 pub(crate) fn summary(api: &Api, params: DocParams) -> Result<DocSummary, ApiError> {
@@ -172,6 +172,135 @@ pub(crate) fn redo(api: &Api, params: DocParams) -> Result<Option<fc_doc::Change
         .map_err(ApiError::from)
 }
 
+/// How many entries the History surface lists at once.
+///
+/// A gesture-per-entry timeline stays short in practice; the cap only keeps a
+/// pathological session from serializing an unbounded list into one response.
+const HISTORY_LIMIT: usize = 500;
+
+pub(crate) fn history(api: &Api, params: DocParams) -> Result<DocumentHistory, ApiError> {
+    api.session
+        .with_doc(params.doc, history_of)
+        .map_err(ApiError::from)
+}
+
+/// Moves the history cursor to an exact position by replaying undo or redo.
+///
+/// The caller states the timeline length it saw. A length that no longer matches
+/// means entries were added or evicted since, so the request is rejected and the
+/// document is left exactly as it was rather than jumping somewhere else.
+pub(crate) fn history_go(api: &Api, params: HistoryGoParams) -> Result<DocumentHistory, ApiError> {
+    let target = params.cursor as usize;
+    let expected = params.expected_len as usize;
+    api.session
+        .with_doc_mut(params.doc, |document| {
+            let stack = document.history();
+            if stack.len() != expected {
+                return Err(ApiError::invalid_params(format!(
+                    "the history has {} entries, not the {expected} this request was built from",
+                    stack.len()
+                )));
+            }
+            if target > expected {
+                return Err(ApiError::invalid_params(format!(
+                    "cursor {target} is beyond the {expected} entries in the history"
+                )));
+            }
+            replay_to(document, target)?;
+            Ok(history_of(document))
+        })
+        .map_err(ApiError::from)?
+}
+
+/// Replays undo or redo until the cursor reaches `target`, or not at all.
+///
+/// A step can be refused — a read-only reference, an open script transaction —
+/// and a half-moved cursor would leave the document in a state the user never
+/// asked for. A failure therefore walks the steps it took back the other way and
+/// reports the original error; if the way back is refused too, the error says
+/// exactly where the cursor stopped, because silently reporting the requested
+/// position would be a lie.
+fn replay_to(document: &mut fc_doc::Document, target: usize) -> Result<(), ApiError> {
+    let start = document.history().cursor();
+    let mut taken = 0usize;
+    let step = |document: &mut fc_doc::Document, forward: bool| -> Result<bool, ApiError> {
+        let moved = if forward {
+            document.redo().map_err(ApiError::from)?
+        } else {
+            document.undo().map_err(ApiError::from)?
+        };
+        Ok(moved.is_some())
+    };
+    let forward = target > start;
+    while document.history().cursor() != target {
+        match step(document, forward) {
+            Ok(true) => taken += 1,
+            // The stack ran out before the target: the length check already
+            // rejected a stale request, so stop rather than spin.
+            Ok(false) => break,
+            Err(error) => {
+                for _ in 0..taken {
+                    if step(document, !forward).is_err() {
+                        return Err(ApiError::internal(format!(
+                            "{error}; the history could not be returned to entry {start} and \
+                             stopped at entry {}",
+                            document.history().cursor()
+                        )));
+                    }
+                }
+                return Err(error);
+            }
+        }
+    }
+    Ok(())
+}
+
+fn history_of(document: &fc_doc::Document) -> DocumentHistory {
+    let stack = document.history();
+    let cursor = stack.cursor();
+    let entries = stack.entries();
+    let skipped = entries.len().saturating_sub(HISTORY_LIMIT);
+    DocumentHistory {
+        entries: entries
+            .iter()
+            .enumerate()
+            .skip(skipped)
+            .map(|(index, entry)| {
+                let scope = entry.scope();
+                HistoryEntry {
+                    index: u32::try_from(index).unwrap_or(u32::MAX),
+                    label: entry.label.clone(),
+                    glyphs: scope.glyphs.iter().map(|name| name.to_string()).collect(),
+                    layers: scope
+                        .layers
+                        .iter()
+                        .map(|layer| match layer {
+                            fc_doc::LayerScope::Named(name) => HistoryLayer {
+                                name: Some(name.clone()),
+                                role: None,
+                            },
+                            fc_doc::LayerScope::Role(role) => HistoryLayer {
+                                name: None,
+                                role: Some(role.as_str().to_owned()),
+                            },
+                        })
+                        .collect(),
+                    strikes: scope
+                        .strikes
+                        .iter()
+                        .map(|(ppem, depth)| format!("{ppem}px/{depth}bpp"))
+                        .collect(),
+                    font_level: scope.font_level,
+                    undone: index >= cursor,
+                }
+            })
+            .collect(),
+        cursor: u32::try_from(cursor).unwrap_or(u32::MAX),
+        len: u32::try_from(entries.len()).unwrap_or(u32::MAX),
+        truncated: skipped > 0,
+    }
+}
+
 fn compute_sidebar(document: &fc_doc::Document) -> SidebarCounts {
     let mut categories = HashMap::<String, u32>::new();
     let mut sub_categories = BTreeMap::<(String, String), u32>::new();
@@ -183,29 +312,20 @@ fn compute_sidebar(document: &fc_doc::Document) -> SidebarCounts {
     let mut unencoded = 0_u32;
 
     for glyph in document.font.glyphs.values() {
-        let (category, script, block) = match glyph.unicodes.first().copied() {
-            Some(unicode) => {
-                let category =
-                    super::glyphs::category_name(fc_glyphdata::category(unicode)).to_owned();
-                let sub_category = fc_glyphdata::sub_category(unicode).to_owned();
-                *sub_categories
-                    .entry((category.clone(), sub_category))
-                    .or_default() += 1;
-                (
-                    category,
-                    fc_glyphdata::script(unicode).to_owned(),
-                    fc_glyphdata::block_name(unicode).to_owned(),
-                )
-            }
+        // The effective classification, so a glyph carrying an explicit category
+        // or script is counted in the section its cell shows and the section's
+        // filter actually selects it.
+        let (category, sub_category, script) = super::glyphs::glyph_classification(glyph);
+        let block = match glyph.unicodes.first().copied() {
+            Some(unicode) => fc_glyphdata::block_name(unicode).to_owned(),
             None => {
                 unencoded = unencoded.saturating_add(1);
-                (
-                    "Unencoded".to_owned(),
-                    "Zzzz".to_owned(),
-                    "Unencoded".to_owned(),
-                )
+                "Unencoded".to_owned()
             }
         };
+        *sub_categories
+            .entry((category.clone(), sub_category))
+            .or_default() += 1;
         increment(&mut categories, category);
         increment(&mut scripts, script);
         increment(&mut blocks, block);

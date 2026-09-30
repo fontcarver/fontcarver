@@ -4,7 +4,7 @@ import { call, type DocId, type GlyphId } from '../api'
 import { WorkspaceDialog } from '../dialogs/WorkspaceDialog'
 import { emptyFilter, useDocumentStore } from '../stores/documentStore'
 import { useSessionStore } from '../stores/sessionStore'
-import { selectActiveDoc, useUiStore } from '../stores/uiStore'
+import { reportError, selectActiveDoc, useUiStore } from '../stores/uiStore'
 import {
   captureWorkspace,
   restoreWorkspace,
@@ -15,6 +15,7 @@ import {
 import { glyphName } from '../views/font/glyphNames'
 
 import { prepareTabTransition } from './tabActions'
+import { reopenDetachedViews } from './windowActions'
 
 async function namesForDocument(doc: DocId): Promise<Map<GlyphId, string>> {
   const names = new Map<GlyphId, string>()
@@ -82,7 +83,7 @@ export function WorkspaceDialogHost() {
         .docs.some((entry) => entry.doc === summary.doc)
     )
       return false
-    const restored = restoreWorkspace(
+    const { detached, ...restored } = restoreWorkspace(
       snapshot,
       summary.doc,
       new Map([...names].map(([gid, name]) => [name, gid])),
@@ -96,7 +97,16 @@ export function WorkspaceDialogHost() {
         inserted = true
       }
     }
-    useUiStore.setState({ ...restored, tabs })
+    useUiStore.setState({
+      ...restored,
+      tabs,
+      // The arrangement owns this document's windows; other documents keep theirs.
+      detached: current.detached.filter((view) => view.doc !== summary.doc),
+    })
+    // Applying a workspace is a user gesture, so reopening its windows is
+    // allowed; a browser that blocks a later popup reports that one only.
+    for (const failure of await reopenDetachedViews(detached))
+      reportError(failure)
     return true
   }
 

@@ -28,13 +28,16 @@ import { ToolPalette } from './ToolPalette'
 import { ShapeDialog } from './ShapeDialog'
 import { registerGlyphView } from './glyphCommands'
 import { buildScene, formatUnicodes } from './glyphScene'
+import { inkEdgesOf } from './guideAnchor'
 import { useGlyphTheme } from './glyphTheme'
 import styles from './glyphView.module.css'
 import { useEditorLabels } from './useEditorLabels'
+import { useFontEditorSettings } from './useFontEditorSettings'
 import { useGlyphDetail } from './useGlyphDetail'
 import { useLayerOutline } from './useLayerOutline'
 import { useMetricLabels } from './useMetricLabels'
 import { useComponentPoints } from './useComponentPoints'
+import { usePixelHandover } from './pixelHandover'
 import { useToolShortcuts } from './useToolShortcuts'
 import { layerMaster } from './panels/layerRows'
 
@@ -89,6 +92,7 @@ export function GlyphView({
   const editorLabels = useEditorLabels()
   const handleRef = useRef<GlyphCanvasHandle | null>(null)
   useToolShortcuts(gid !== undefined && textRun?.mode !== 'text')
+  usePixelHandover(doc, gid !== undefined)
 
   const editingMasterId = useMemo(() => {
     if (!editedLayer) return masterId
@@ -247,8 +251,17 @@ export function GlyphView({
     underlay.backgroundPoints,
   ])
 
-  const snapSettings = useMemo(() => snapSettingsOf(prefs), [prefs])
-  const nudgeSteps = useMemo(() => nudgeStepsOf(prefs), [prefs])
+  // The font's own grid and increments win over the application preference;
+  // the kernel has already resolved that order, so this only applies it.
+  const fontEditor = useFontEditorSettings(doc, detail.fontGeneration)
+  const snapSettings = useMemo(
+    () => snapSettingsOf(prefs, fontEditor),
+    [fontEditor, prefs],
+  )
+  const nudgeSteps = useMemo(
+    () => nudgeStepsOf(prefs, fontEditor),
+    [fontEditor, prefs],
+  )
 
   const query = useMemo<GlyphQuery>(
     () => ({
@@ -422,6 +435,7 @@ export function GlyphView({
             selection={selection}
             master={outline.master}
             masterGuides={master?.guides ?? []}
+            inkEdges={inkEdgesOf(shownScene.metrics)}
             name={shownScene.name}
             unicodes={shownScene.unicodes}
             onCommitted={outlineResult.reload}

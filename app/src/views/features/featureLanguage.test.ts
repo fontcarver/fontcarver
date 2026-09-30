@@ -192,3 +192,72 @@ describe('feature language', () => {
     expect(result?.options.map((option) => option.label)).toEqual(['\\A.alt'])
   })
 })
+
+describe('feature dialect tokens and conditionals', () => {
+  const tokenNames = (doc: string) => {
+    const state = EditorState.create({ doc, extensions: [featureLanguage] })
+    const names: string[] = []
+    syntaxTree(state).iterate({
+      enter: (node) => {
+        names.push(node.name)
+      },
+    })
+    return names
+  }
+
+  it('marks whole-line target conditionals apart from comments', () => {
+    const names = tokenNames(
+      '#ifdef VARIABLE\npos A -10;\n#else\npos A -20;\n#endif\n# an ordinary comment\n',
+    )
+    expect(names.filter((name) => name === 'meta')).toHaveLength(3)
+    expect(names).toContain('comment')
+  })
+
+  it('does not treat a trailing hash as a directive', () => {
+    expect(tokenNames('pos A -10; #ifdef VARIABLE')).not.toContain('meta')
+  })
+
+  it('highlights number, expression and predicate tokens', () => {
+    const names = tokenNames(
+      "pos A $unitsPerEm;\npos A ${-A:width / 10};\nsub [$[name ENDSWITH '.sc']] by A;\n",
+    )
+    expect(
+      names.filter((name) => name === 'atom').length,
+    ).toBeGreaterThanOrEqual(3)
+    expect(names).not.toContain('invalid')
+  })
+
+  it('marks an unterminated token as invalid instead of plain source', () => {
+    expect(tokenNames('pos A ${A:width;')).toContain('invalid')
+  })
+
+  it('completes directives and built-in metric tokens', () => {
+    const complete = createFeatureCompletion(['A'], [])
+    const directive = EditorState.create({
+      doc: '#if',
+      extensions: [featureLanguage],
+    })
+    const directives = complete(new CompletionContext(directive, 3, true))
+    expect(directives?.from).toBe(0)
+    expect(directives?.options.map((option) => option.label)).toContain(
+      '#ifdef VARIABLE',
+    )
+    // A complete directive closes the popup so Enter still inserts a newline.
+    const finished = EditorState.create({
+      doc: '#endif',
+      extensions: [featureLanguage],
+    })
+    expect(complete(new CompletionContext(finished, 6, true))).toBeNull()
+
+    const token = EditorState.create({
+      doc: 'pos A $un',
+      extensions: [featureLanguage],
+    })
+    const tokens = complete(new CompletionContext(token, 9, true))
+    expect(tokens?.from).toBe(6)
+    expect(tokens?.options.map((option) => option.label)).toContain(
+      '$unitsPerEm',
+    )
+    expect(tokens?.options.map((option) => option.label)).not.toContain('liga')
+  })
+})

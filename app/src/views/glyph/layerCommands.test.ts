@@ -28,9 +28,14 @@ function publish(
   background = false,
   editingBackground = false,
   locked = false,
+  backgroundInk: Parameters<typeof makeLayer>[0] = {},
 ) {
   const foreground = makeLayer({ contours: [makeContour([makePoint(0, 0)])] })
-  const back = makeLayer({ id: 'bg', kind: { Background: 'm1' } })
+  const back = makeLayer({
+    id: 'bg',
+    kind: { Background: 'm1' },
+    ...backgroundInk,
+  })
   const glyph = makeGlyph({
     layers: background ? [foreground, back] : [foreground],
     locked,
@@ -143,5 +148,120 @@ describe('background editing commands', () => {
       .getState()
       .setSelection(selectionOf([{ kind: 'node', contour: 0, point: 0 }]))
     expect(isCommandEnabled('layer.selectionToBackground')).toBe(false)
+  })
+})
+
+describe('clearing the background from the Layer menu', () => {
+  it('is offered only when this master has background ink to clear', () => {
+    publish()
+    expect(isCommandEnabled('layer.clearBackground')).toBe(false)
+    publish(true)
+    expect(isCommandEnabled('layer.clearBackground')).toBe(false)
+    publish(true, false, false, {
+      contours: [makeContour([makePoint(5, 5)])],
+    })
+    expect(isCommandEnabled('layer.clearBackground')).toBe(true)
+    publish(true, false, true, { contours: [makeContour([makePoint(5, 5)])] })
+    expect(isCommandEnabled('layer.clearBackground')).toBe(false)
+  })
+
+  it('empties the background as one undo entry', async () => {
+    publish(true, false, false, {
+      contours: [makeContour([makePoint(5, 5)])],
+    })
+    const mock = createMockTransport({ 'doc.apply': () => noChange([42]) })
+    setTransport(mock)
+    runCommand('layer.clearBackground')
+    await settle()
+    await settle()
+    const call = mock.calls.find((entry) => entry.method === 'doc.apply')
+    expect(call?.params).toEqual({
+      doc: 1,
+      label: 'Clear background',
+      command: {
+        DeleteContours: { glyph: 'a', layer: 'bg', contours: [0] },
+      },
+    })
+  })
+})
+
+describe('aligning components to anchors from the Glyph menu', () => {
+  const componentView = (autoAlign: boolean, locked = false) => ({
+    component: {
+      locked,
+      base: 'acute',
+      transform: [1, 0, 0, 1, 0, 0] as [
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+      ],
+      anchor: null,
+      auto_align: autoAlign,
+      use_my_metrics: false,
+      round_to_grid: false,
+      smart: null,
+      point_match: null,
+    },
+    path: 'M0 0Z',
+    bbox: [0, 0, 10, 10] as [number, number, number, number],
+  })
+
+  function publishWithComponents(views: ReturnType<typeof componentView>[]) {
+    const layer = makeLayer({ contours: [makeContour([makePoint(0, 0)])] })
+    const glyph = makeGlyph({ layers: [layer] })
+    useEditorStore.setState({
+      ...initialEditorState(),
+      activeGlyph: {
+        doc: 1,
+        gid: 42,
+        glyph,
+        cell: makeCell(),
+        scene: buildScene({
+          detail: makeGlyphDetail(glyph),
+          cell: makeCell(),
+          master: makeMaster(),
+          masterId: 'm1',
+          unitsPerEm: 1000,
+        }),
+        outline: makeLayerOutline(layer, { components: views }),
+        master: 'm1',
+        masterGuides: [],
+        reload: () => undefined,
+      },
+    })
+  }
+
+  it('is offered only when a component asks to be aligned', () => {
+    publishWithComponents([])
+    expect(isCommandEnabled('glyph.alignComponents')).toBe(false)
+    publishWithComponents([componentView(false)])
+    expect(isCommandEnabled('glyph.alignComponents')).toBe(false)
+    publishWithComponents([componentView(true)])
+    expect(isCommandEnabled('glyph.alignComponents')).toBe(true)
+    // A locked component is preserved rather than placed, so a layer whose
+    // only auto-aligned component is locked has nothing to align.
+    publishWithComponents([componentView(true, true)])
+    expect(isCommandEnabled('glyph.alignComponents')).toBe(false)
+    publishWithComponents([componentView(true, true), componentView(true)])
+    expect(isCommandEnabled('glyph.alignComponents')).toBe(true)
+  })
+
+  it('sends one AlignComponents for the edited layer', async () => {
+    publishWithComponents([componentView(true)])
+    const mock = createMockTransport({ 'doc.apply': () => noChange([42]) })
+    setTransport(mock)
+    runCommand('glyph.alignComponents')
+    await settle()
+    await settle()
+    expect(
+      mock.calls.find((entry) => entry.method === 'doc.apply')?.params,
+    ).toEqual({
+      doc: 1,
+      label: 'Align components to anchors',
+      command: { AlignComponents: { glyph: 'a', layer: 'layer-1' } },
+    })
   })
 })

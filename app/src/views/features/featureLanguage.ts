@@ -51,6 +51,23 @@ const KEYWORDS = new Set([
   'NULL',
 ])
 
+/** Whole-line target conditionals of the FontCarver feature dialect. */
+const DIRECTIVES = ['#ifdef VARIABLE', '#ifndef VARIABLE', '#else', '#endif']
+const DIRECTIVE_START = /^#(?:ifdef|ifndef|else|endif)\b/
+/** Built-in metric tokens the kernel resolves at compile time. */
+const METRIC_TOKENS = [
+  '$unitsPerEm',
+  '$ascender',
+  '$descender',
+  '$xHeight',
+  '$capHeight',
+  '$italicAngle',
+]
+/** Token shapes: a named number, a numeric expression, a glyph predicate. */
+const TOKEN_NAME = /\$[A-Za-z_][A-Za-z0-9_]*/
+const TOKEN_EXPRESSION = /\$\{[^}\r\n]*\}/
+const TOKEN_PREDICATE = /\$\[[^\]\r\n]*\]/
+
 const FEATURE_TAGS = [
   'aalt',
   'calt',
@@ -98,10 +115,28 @@ export const featureLanguage = StreamLanguage.define({
       return 'string'
     }
     if (stream.eatSpace()) return null
-    if (stream.match(/#.*/)) return 'comment'
+    if (stream.peek() === '#') {
+      // A conditional directive occupies its whole line; everything else
+      // beginning with a hash is an ordinary comment.
+      const lineStart = /^\s*$/.test(stream.string.slice(0, stream.start))
+      const rest = stream.string.slice(stream.start)
+      stream.skipToEnd()
+      return lineStart && DIRECTIVE_START.test(rest) ? 'meta' : 'comment'
+    }
     if (stream.eat('"')) {
       state.quoted = true
       return 'string'
+    }
+    if (stream.peek() === '$') {
+      if (
+        stream.match(TOKEN_EXPRESSION) ||
+        stream.match(TOKEN_PREDICATE) ||
+        stream.match(TOKEN_NAME)
+      )
+        return 'atom'
+      // An unterminated token must not be mistaken for ordinary source.
+      stream.next()
+      return 'invalid'
     }
     if (stream.match(/@[\w.-]+/)) return 'variableName'
     if (stream.match(/\\[\w.-]+/)) return 'variableName'
@@ -158,6 +193,14 @@ export function createFeatureCompletion(
   const classes: Completion[] = [
     ...new Set(classNames.map((name) => `@${name.replace(/^@/, '')}`)),
   ].map((label) => ({ label, type: 'variable' }))
+  const tokens: Completion[] = METRIC_TOKENS.map((label) => ({
+    label,
+    type: 'variable',
+  }))
+  const directives: Completion[] = DIRECTIVES.map((label) => ({
+    label,
+    type: 'keyword',
+  }))
   const names = new Map<string, Completion>()
   for (const label of KEYWORDS) names.set(label, { label, type: 'keyword' })
   for (const label of FEATURE_TAGS)
@@ -168,11 +211,31 @@ export function createFeatureCompletion(
   let queryRevision = 0
   return (context) => {
     const revision = ++queryRevision
+    // A directive is being typed when the line so far is only a hash and
+    // letters; the stream tokenizer still calls that a comment.
+    const line = context.state.doc.lineAt(context.pos)
+    const typed = line.text.slice(0, context.pos - line.from)
+    if (/^\s*#[A-Za-z]*$/.test(typed)) {
+      const word = typed.trimStart()
+      // Once the directive is complete the popup closes, so Enter inserts a
+      // newline instead of accepting the identical completion.
+      const options = directives.filter(
+        (option) => option.label !== word && option.label.startsWith(word),
+      )
+      if (options.length === 0) return null
+      return {
+        from: context.pos - word.length,
+        options,
+        validFor: /#[A-Za-z]*/,
+      }
+    }
     const token = syntaxTree(context.state).resolveInner(context.pos, -1)
     if (token.name === 'comment' || token.name === 'string') return null
-    const word = context.matchBefore(/[@\\]?[\w.-]*/)
+    const word = context.matchBefore(/[@\\$]?[\w.-]*/)
     if (!word || (!context.explicit && word.from === word.to)) return null
     const escaped = word.text.startsWith('\\')
+    if (word.text.startsWith('$'))
+      return { from: word.from, options: tokens, validFor: /\$[\w]*/ }
     const result: CompletionResult = {
       from: word.from,
       options: word.text.startsWith('@')

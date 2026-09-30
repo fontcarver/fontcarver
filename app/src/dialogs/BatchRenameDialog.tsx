@@ -9,10 +9,12 @@ import { useSessionStore } from '../stores/sessionStore'
 import { reportError, useUiStore } from '../stores/uiStore'
 
 import {
+  InvalidSearchError,
   loadRenameInventory,
   planBatchRename,
   replaceGlyphNames,
   type RenameInventory,
+  type RenamePlan,
 } from './batchRename'
 import styles from './dialogs.module.css'
 import renameStyles from './batchRename.module.css'
@@ -31,6 +33,8 @@ export function BatchRenameDialog({ doc, glyphs }: BatchRenameDialogProps) {
   )
   const [find, setFind] = useState('')
   const [replacement, setReplacement] = useState('')
+  const [regex, setRegex] = useState(false)
+  const [ignoreCase, setIgnoreCase] = useState(false)
   const [busy, setBusy] = useState(false)
   const [stale, setStale] = useState(false)
   const [loadFailed, setLoadFailed] = useState(false)
@@ -64,15 +68,30 @@ export function BatchRenameDialog({ doc, glyphs }: BatchRenameDialogProps) {
         .map(({ name }) => name),
     [inventory, selected],
   )
-  const plan = useMemo(
-    () =>
-      planBatchRename(
-        (inventory ?? []).map(({ name }) => name),
-        replaceGlyphNames(names, find, replacement),
-        temporaryPrefix,
-      ),
-    [inventory, names, find, replacement, temporaryPrefix],
-  )
+  // A pattern the user has not finished typing is a message under the field,
+  // not an exception: the preview simply stays empty until it compiles.
+  const { plan, searchError } = useMemo<{
+    plan: RenamePlan
+    searchError: string | null
+  }>(() => {
+    const allNames = (inventory ?? []).map(({ name }) => name)
+    try {
+      return {
+        plan: planBatchRename(
+          allNames,
+          replaceGlyphNames(names, find, replacement, { regex, ignoreCase }),
+          temporaryPrefix,
+        ),
+        searchError: null,
+      }
+    } catch (error) {
+      if (!(error instanceof InvalidSearchError)) throw error
+      return {
+        plan: { renames: [], issues: [], command: null },
+        searchError: error.message,
+      }
+    }
+  }, [inventory, names, find, replacement, regex, ignoreCase, temporaryPrefix])
   const missing = inventory !== null && names.length !== selected.size
   const canApply =
     inventory !== null && !busy && !missing && plan.command !== null
@@ -140,12 +159,40 @@ export function BatchRenameDialog({ doc, glyphs }: BatchRenameDialogProps) {
             className={styles.text}
             value={find}
             disabled={busy}
+            aria-invalid={searchError === null ? undefined : true}
             onChange={(event) => {
               setFind(event.target.value)
               setPage(0)
             }}
           />
         </label>
+        <div className={styles.row}>
+          <span className={styles.rowLabel} />
+          <label className={styles.checkRow}>
+            <input
+              type="checkbox"
+              checked={regex}
+              disabled={busy}
+              onChange={(event) => {
+                setRegex(event.currentTarget.checked)
+                setPage(0)
+              }}
+            />
+            <span>{t('dialog.batchRename.regex')}</span>
+          </label>
+          <label className={styles.checkRow}>
+            <input
+              type="checkbox"
+              checked={ignoreCase}
+              disabled={busy}
+              onChange={(event) => {
+                setIgnoreCase(event.currentTarget.checked)
+                setPage(0)
+              }}
+            />
+            <span>{t('dialog.batchRename.ignoreCase')}</span>
+          </label>
+        </div>
         <label className={styles.row}>
           <span className={styles.rowLabel}>
             {t('dialog.batchRename.replace')}
@@ -160,6 +207,14 @@ export function BatchRenameDialog({ doc, glyphs }: BatchRenameDialogProps) {
             }}
           />
         </label>
+        {searchError !== null ? (
+          <p role="alert" className={styles.error}>
+            {t('dialog.batchRename.invalidRegex', { message: searchError })}
+          </p>
+        ) : null}
+        {regex ? (
+          <p className={styles.hint}>{t('dialog.batchRename.regexHint')}</p>
+        ) : null}
         {inventory === null ? (
           <p role="status">
             {t(

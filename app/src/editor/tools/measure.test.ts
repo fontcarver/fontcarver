@@ -57,6 +57,7 @@ describe('measurement guide creation', () => {
             name: null,
             locked: false,
             color: null,
+            anchor: 'Origin',
           },
         },
       },

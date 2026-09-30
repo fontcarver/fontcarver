@@ -201,6 +201,32 @@ function cross(a: Point2, b: Point2): number {
  * anywhere else usually has to be moved there afterwards.
  */
 export function splitCandidates(segment: EditSegment): number[] {
+  const found = [...extremumCandidates(segment)]
+  if (segment.kind === 'cubic') {
+    const { from, to, controls } = segment
+    const c1 = controls[0]
+    const c2 = controls[1]
+    if (!c1 || !c2) return found
+    const a = { x: c1.x - from.x, y: c1.y - from.y }
+    const b = { x: c2.x - 2 * c1.x + from.x, y: c2.y - 2 * c1.y + from.y }
+    const c = {
+      x: to.x - 3 * c2.x + 3 * c1.x - from.x,
+      y: to.y - 3 * c2.y + 3 * c1.y - from.y,
+    }
+    // Inflection: B'(t) × B''(t) = 0 reduces to (B×C)t² + (A×C)t + (A×B).
+    found.push(...rootsInSpan(cross(b, c), cross(a, c), cross(a, b)))
+  }
+  return dedupeParameters(found)
+}
+
+/**
+ * The parameters of a segment's horizontal and vertical extrema.
+ *
+ * Separate from [`splitCandidates`] because the outline audit asks a narrower
+ * question than a ⇧+click does: a missing extremum is a defect, a missing
+ * inflection node is a style choice.
+ */
+export function extremumCandidates(segment: EditSegment): number[] {
   const { from, to, controls } = segment
   const found: number[] = []
   if (segment.kind === 'quad') {
@@ -229,9 +255,12 @@ export function splitCandidates(segment: EditSegment): number[] {
     }
     for (const axis of ['x', 'y'] as const)
       found.push(...rootsInSpan(c[axis], 2 * b[axis], a[axis]))
-    // Inflection: B'(t) × B''(t) = 0 reduces to (B×C)t² + (A×C)t + (A×B).
-    found.push(...rootsInSpan(cross(b, c), cross(a, c), cross(a, b)))
   }
+  return dedupeParameters(found)
+}
+
+/** Rounded, deduplicated and ordered parameters. */
+function dedupeParameters(found: readonly number[]): number[] {
   return [...new Set(found.map((t) => Math.round(t * 1e6) / 1e6))].sort(
     (x, y) => x - y,
   )

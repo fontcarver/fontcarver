@@ -359,7 +359,15 @@ describe('drawAnchors', () => {
 
 describe('drawGuides', () => {
   const guide = (angle: number, name: string | null = null) => ({
-    guide: { x: 100, y: 200, angle, name, locked: false, color: null },
+    guide: {
+      x: 100,
+      y: 200,
+      angle,
+      name,
+      locked: false,
+      color: null,
+      anchor: 'Origin' as const,
+    },
     scope: 'layer' as const,
     index: 0,
   })

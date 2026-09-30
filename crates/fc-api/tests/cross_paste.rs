@@ -183,6 +183,12 @@ fn destination_and_content_matrix_preserves_unselected_fields() {
                         left: Some("==20".into()),
                         ..Default::default()
                     });
+                    // Make the source drawing and advance distinguishable from
+                    // the destination's, so a no-op paste cannot pass.
+                    glyph.layers[0].width = 731.;
+                    glyph.layers[0].contours.extend(Contour::from_bezpath(
+                        &BezPath::from_svg("M300 0L500 0L400 400Z").unwrap(),
+                    ));
                     doc.apply(
                         fc_doc::Command::CreateKerningGroup {
                             side: fc_doc::kerning::KerningGroupSide::Side1,
@@ -195,6 +201,7 @@ fn destination_and_content_matrix_preserves_unselected_fields() {
                 })
                 .unwrap();
             let before = font(&session, target);
+            let source_layer = font(&session, source).glyph("composite").unwrap().layers[0].clone();
             let mut request = params(&session, source, target);
             request["destination"] = json!(destination);
             request["content"] = json!(content);
@@ -229,6 +236,32 @@ fn destination_and_content_matrix_preserves_unselected_fields() {
             }
             if destination != "same_name" && content != "all_data" {
                 assert_eq!(copied.note, before.glyph("destination").unwrap().note);
+            }
+            // A drawing payload must actually transfer the source geometry and
+            // advance, with the component repointed at the copied base.
+            if destination != "components" && matches!(content, "all_data" | "layer") {
+                let layer = &copied.layers[0];
+                assert_eq!(
+                    layer.contours, source_layer.contours,
+                    "{destination}/{content}: contours were not transferred"
+                );
+                assert_eq!(
+                    layer.width, 731.,
+                    "{destination}/{content}: advance was not transferred"
+                );
+                assert_eq!(layer.components.len(), 1);
+                assert_eq!(layer.components[0].base.as_ref(), "base");
+                assert!(after.glyph("base").is_some());
+            }
+            // A metadata-only payload must leave the drawing exactly as it was.
+            if destination == "selected" && matches!(content, "kerning_groups" | "metric_keys") {
+                let original = &before.glyph("destination").unwrap().layers[0];
+                assert_eq!(
+                    copied.layers[0].contours, original.contours,
+                    "{destination}/{content}: contours must not change"
+                );
+                assert_eq!(copied.layers[0].width, original.width);
+                assert!(copied.layers[0].components.is_empty());
             }
             if destination == "components" && matches!(content, "all_data" | "layer") {
                 assert_eq!(
@@ -330,4 +363,57 @@ fn explicit_cff_dictionary_remaps_by_value_and_unmatched_non_cid_rejects() {
         .message
         .contains("CID destination"));
     assert_eq!(font(&session, target), before);
+}
+
+#[test]
+fn placeholders_are_reported_with_the_tag_that_finds_them_in_the_inventory() {
+    let (api, session, source, target) = fixture();
+    let mut request = params(&session, source, target);
+    request["missing_bases"] = json!("placeholder");
+    request["dry_run"] = json!(true);
+
+    let preview = api.call("doc.paste_special", request.clone()).unwrap();
+
+    assert_eq!(
+        preview["placeholders"],
+        json!([{
+            "name": "base",
+            "source_base": "base",
+            "tag": "missing-component-base",
+        }])
+    );
+    assert!(preview["warnings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|warning| warning.as_str().unwrap().contains("missing-component-base")));
+
+    request["dry_run"] = json!(false);
+    api.call("doc.paste_special", request).unwrap();
+    // The reported tag is the one the inventory's smart filter matches.
+    api.call(
+        "glyph.smart_filters.parse",
+        json!({"expression": "tags~\"missing-component-base\""}),
+    )
+    .expect("the documented placeholder filter parses");
+    let matched = api
+        .call(
+            "glyphs.list",
+            json!({
+                "doc": target,
+                "offset": 0,
+                "limit": 50,
+                "include_paths": false,
+                "filter": {"smart_expression": "tags~\"missing-component-base\""},
+            }),
+        )
+        .expect("filter the inventory by the placeholder tag");
+    let names: Vec<&str> = matched["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|item| item["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, vec!["base"]);
+    assert_eq!(matched["items"][0]["export"], false);
 }

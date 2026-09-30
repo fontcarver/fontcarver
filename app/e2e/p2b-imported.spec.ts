@@ -193,9 +193,7 @@ test('proves a kerning lift before exposing pair controls and preserves zero exc
       },
     },
   })
-  await page
-    .getByRole('tab', { name: 'WriterKerning.ttf', exact: true })
-    .click()
+  await page.getByRole('tab', { name: 'WriterKerning.ttf' }).click()
   const canvas = await enterText(page)
   await page
     .getByRole('combobox', { name: 'Kerning gap', exact: true })

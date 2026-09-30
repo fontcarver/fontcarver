@@ -227,3 +227,103 @@ fn manually_edited_glyph_text_can_be_reopened_and_saved() {
     fcf::write(&path, &font).unwrap();
     assert_eq!(fcf::read(&path).unwrap(), font);
 }
+
+/// A project is only Git-friendly if saving an unchanged document changes no
+/// byte on disk: the manifest, every glyph file and every file name have to come
+/// out identical, and each text file has to end with a newline so a later edit
+/// shows as one changed line rather than a rewritten last line.
+#[test]
+fn resaving_an_unchanged_project_produces_no_diff() {
+    let scratch = Scratch::new();
+    let path = scratch.project();
+    let font = test_font();
+    fcf::write(&path, &font).unwrap();
+
+    let snapshot = |root: &std::path::Path| -> Vec<(String, Vec<u8>)> {
+        let mut files = Vec::new();
+        for entry in fs::read_dir(root).unwrap().flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if entry.path().is_dir() {
+                for glyph in fs::read_dir(entry.path()).unwrap().flatten() {
+                    files.push((
+                        format!("{name}/{}", glyph.file_name().to_string_lossy()),
+                        fs::read(glyph.path()).unwrap(),
+                    ));
+                }
+            } else if name != ".fontcarver.lock" {
+                files.push((name, fs::read(entry.path()).unwrap()));
+            }
+        }
+        files.sort();
+        files
+    };
+
+    let first = snapshot(&path);
+    assert!(first.iter().any(|(name, _)| name == "project.json"));
+    for (name, bytes) in &first {
+        assert!(bytes.ends_with(b"\n"), "{name} does not end with a newline");
+    }
+
+    // Re-read and re-save exactly what the previous save wrote.
+    let reopened = fcf::read(&path).unwrap();
+    assert_eq!(reopened, font);
+    fcf::write(&path, &reopened).unwrap();
+    assert_eq!(snapshot(&path), first);
+
+    // A third save through a fresh session behaves the same, so nothing depends
+    // on in-process state such as map iteration order.
+    let session = Session::new();
+    let id = session.open_path(&path, None).unwrap();
+    session
+        .with_doc_mut(id, |document| document.save(&path))
+        .unwrap()
+        .unwrap();
+    assert_eq!(snapshot(&path), first);
+
+    // One glyph edit touches that glyph's file and the manifest, nothing else.
+    let mut edited = font.clone();
+    let name = edited.glyph_order().next().unwrap().clone();
+    edited.glyph_mut(&name).unwrap().layers[0].width += 1.0;
+    fcf::write(&path, &edited).unwrap();
+    let second = snapshot(&path);
+    let names = |files: &[(String, Vec<u8>)]| -> Vec<String> {
+        files.iter().map(|(name, _)| name.clone()).collect()
+    };
+    let before_names = names(&first);
+    let after_names = names(&second);
+    // A glyph file is named `sha1(name)-sha1(content).json`, so editing a glyph
+    // never rewrites a file in place: the new revision is added, the old one is
+    // pruned, and the manifest that points at it is rewritten.
+    let added: Vec<_> = after_names
+        .iter()
+        .filter(|name| !before_names.contains(name))
+        .cloned()
+        .collect();
+    let removed: Vec<_> = before_names
+        .iter()
+        .filter(|name| !after_names.contains(name))
+        .cloned()
+        .collect();
+    let rewritten: Vec<_> = second
+        .iter()
+        .filter(|(name, bytes)| {
+            first
+                .iter()
+                .find(|(other, _)| other == name)
+                .is_some_and(|(_, old)| old != bytes)
+        })
+        .map(|(name, _)| name.clone())
+        .collect();
+    assert_eq!(added.len(), 1, "added: {added:?}");
+    assert!(added[0].starts_with("glyphs/"), "added: {added:?}");
+    assert_eq!(removed.len(), 1, "removed: {removed:?}");
+    assert!(removed[0].starts_with("glyphs/"), "removed: {removed:?}");
+    assert_ne!(added[0], removed[0]);
+    assert_eq!(rewritten, vec!["project.json".to_owned()]);
+    // The other glyph is untouched by name and by content.
+    assert_eq!(
+        second.len(),
+        first.len(),
+        "the project gained or lost a file: {added:?} {removed:?}"
+    );
+}

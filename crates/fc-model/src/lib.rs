@@ -54,19 +54,24 @@ pub use feature_draft::{
 };
 pub use feature_generation::{
     FeatureGenerationSettings, FeatureGenerator, FeatureLigatureMapping, FeatureLocalizedMapping,
-    FeatureSubstitution, FeatureWriterPolicy, GeneratedFeatureRecord,
+    FeatureSubstitution, FeatureWriterPolicy, GeneratedFeatureRecord, FEATURE_GENERATORS,
 };
 pub use features::{
+    aalt_feature_order, automatic_class_registry, family_kind, family_names, generate_family,
     AssembledFea, FeaSourceLocation, FeaSourceMapping, FeatureBlock, FeatureClass, FeatureSourceId,
-    FeatureSourceKind, FeatureTokenError, Features, FeaturesSource,
+    FeatureSourceKind, FeatureTokenError, Features, FeaturesSource, GeneratedFamily,
+    GeneratedItemKind, GeneratedRules, GenerationIssue, GENERATED_NAME_PREFIX,
 };
 pub use font::{Axis, CidInfo, DesignLocation, Font, Instance, VirtualMaster};
 pub use glyph::{Glyph, MetricsKeys};
-pub use guide::Guide;
+pub use guide::{Guide, GuideAnchor};
 pub use ids::{GlyphId, GlyphName, LayerId, MasterId, Tag};
-pub use info::{FontInfo, GaspRecord, NamePlatform, NameRecord};
+pub use info::{FontInfo, GaspRecord, InstanceOverrides, NamePlatform, NameRecord};
 pub use kerning::{KernPair, KernSide, Kerning, KerningGroups};
-pub use layer::{ColorLayer, DiagonalHint, HintMask, Image, Layer, LayerKind, PsHints, StemHint};
+pub use layer::{
+    BracketCondition, ColorLayer, DiagonalHint, HintMask, Image, Layer, LayerKind, PsHints,
+    StemHint,
+};
 pub use master::{Master, MasterMetrics, PsPrivate, Stem, TtMasterData, Zone};
 pub use math::{
     MathAssembly, MathAssemblyLayout, MathConstants, MathConstruction, MathDevice, MathGlyphInfo,

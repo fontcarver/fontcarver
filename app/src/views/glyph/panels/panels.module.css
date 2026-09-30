@@ -277,6 +277,10 @@
   outline-offset: 1px;
 }
 
+.swatch[data-empty='true'] {
+  border-style: dashed;
+}
+
 .swatchNone {
   background: var(--color-surface-raised);
   color: var(--color-text-muted);

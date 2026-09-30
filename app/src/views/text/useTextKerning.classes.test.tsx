@@ -98,9 +98,15 @@ function setup(
   return { ...hook, options, records, transport }
 }
 
+/** Pretends the session is on macOS, where Control is free for class drops. */
+function onMac() {
+  vi.spyOn(navigator, 'platform', 'get').mockReturnValue('MacIntel')
+}
+
 afterEach(() => {
   setTransport(undefined)
   useUiStore.setState({ modalCount: 0 })
+  vi.restoreAllMocks()
 })
 
 describe('kerning class defaults and exceptions', () => {
@@ -145,6 +151,8 @@ describe('kerning class defaults and exceptions', () => {
   })
 
   it('captures each held exception separately and restores the class target when modifiers lift', async () => {
+    // Control is only a class modifier where it is not the primary modifier.
+    onMac()
     const hook = setup()
     await vi.waitFor(() =>
       expect(hook.result.current.panel.editable).toBe(true),
@@ -214,6 +222,39 @@ describe('kerning class defaults and exceptions', () => {
     hook.unmount()
   })
 
+  it('opens a pair at the scope of the rule that actually applies', async () => {
+    const hook = setup()
+    await vi.waitFor(() =>
+      expect(hook.result.current.panel.editable).toBe(true),
+    )
+    // No rule yet, so both classes: the class-to-class default.
+    expect(hook.result.current.panel.scope).toBe('group_group')
+    act(() => hook.result.current.panel.setValue('-40'))
+    await act(async () => {
+      await hook.result.current.panel.commit()
+    })
+    // A glyph exception now wins, so reselecting the pair opens on it rather
+    // than on a class rule the exception would override.
+    await act(async () => {
+      await hook.result.current.panel.setScope('glyph_glyph')
+    })
+    act(() => hook.result.current.panel.setValue('-90'))
+    await act(async () => {
+      await hook.result.current.panel.commit()
+    })
+    await act(async () => {
+      await hook.result.current.panel.setPair({ left: 'T', right: 'o' })
+    })
+    await act(async () => {
+      await hook.result.current.panel.setPair({ left: 'A', right: 'V' })
+    })
+    await vi.waitFor(() =>
+      expect(hook.result.current.panel.scope).toBe('glyph_glyph'),
+    )
+    expect(hook.result.current.panel.value).toBe('-90')
+    hook.unmount()
+  })
+
   it('keeps explicit zero and removal on the chosen class rule', async () => {
     const hook = setup()
     await vi.waitFor(() =>
@@ -234,6 +275,37 @@ describe('kerning class defaults and exceptions', () => {
       await hook.result.current.panel.remove()
     })
     expect(hook.records).toEqual([])
+    hook.unmount()
+  })
+
+  it('drops the second class with Alt in any kerning mode, and leaves Mod alone', async () => {
+    const hook = setup()
+    // Bare punctuation is reserved for typing unless spacing is locked, but a
+    // held Alt is never typed, so an exception can be made in any mode.
+    hook.rerender({ ...hook.options, punctuationShortcuts: false })
+    await vi.waitFor(() =>
+      expect(hook.result.current.panel.editable).toBe(true),
+    )
+    expect(hook.result.current.onKerningKey(comma)).toBe(false)
+    await act(async () => {
+      expect(hook.result.current.onKerningKey({ ...comma, altKey: true })).toBe(
+        true,
+      )
+    })
+    await act(async () => {
+      await hook.result.current.finish()
+    })
+    expect(hook.records).toEqual([
+      {
+        left: { group: groups.left },
+        right: { glyph: 'V' },
+        value: -1,
+      },
+    ])
+    // Off macOS, Control is the primary modifier and stays with its own binding.
+    expect(hook.result.current.onKerningKey({ ...comma, ctrlKey: true })).toBe(
+      false,
+    )
     hook.unmount()
   })
 

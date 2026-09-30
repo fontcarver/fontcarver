@@ -1,7 +1,7 @@
 //! Native Glyphs conditional-layer attributes, with explicit representability checks.
 use super::{error, plist::*};
 use crate::Error;
-use fc_model::{Font, Layer, LayerKind, MasterId};
+use fc_model::{BracketCondition, Font, Layer, LayerKind, MasterId};
 use glyphs_reader::Plist;
 
 pub(super) fn read(
@@ -17,7 +17,9 @@ pub(super) fn read(
         if rules.len() != font.axes.len() {
             return Err(error("conditional rules do not match the font axes"));
         }
-        let mut condition = None;
+        // Glyphs stores one rule per axis; several bounded axes form the
+        // compound condition `[80<wght, 25<wdth<50]`.
+        let mut ranges = Vec::new();
         for (rule, axis) in rules.iter().zip(&font.axes) {
             if rule.as_dict().is_none() {
                 return Err(error("conditional axis rule must be a dictionary"));
@@ -25,22 +27,20 @@ pub(super) fn read(
             let min = optional_number(rule, "min")?;
             let max = optional_number(rule, "max")?;
             if min.is_some() || max.is_some() {
-                if condition.is_some() {
-                    return Err(error(
-                        "compound multi-axis bracket conditions are not representable",
-                    ));
-                }
-                condition = Some(LayerKind::Bracket {
-                    master: master.clone(),
+                ranges.push(BracketCondition {
                     axis: axis.tag,
                     min,
                     max,
                 });
             }
         }
-        if condition.is_none() {
+        if ranges.is_empty() {
             return Err(error("conditional layer has no axis bounds"));
         }
+        let condition = Some(
+            LayerKind::from_bracket_conditions(master.clone(), &ranges)
+                .map_err(|failure| error(failure.to_string()))?,
+        );
         if raw
             .get("attr")
             .and_then(|attr| attr.get("coordinates"))
@@ -83,6 +83,7 @@ pub(super) fn read(
         axis: axis.tag,
         min: lower.then_some(value),
         max: (!lower).then_some(value),
+        extra: Vec::new(),
     }))
 }
 
@@ -100,10 +101,17 @@ pub(super) fn write(raw: &mut Plist, font: &Font, layer: &Layer) -> Result<(), E
                 numbers(font.axes.iter().map(|a| location[&a.tag]))?,
             );
         }
-        LayerKind::Bracket { axis, min, max, .. } => {
-            if !font.axes.iter().any(|a| a.tag == *axis)
-                || min.is_none() && max.is_none()
-                || min.zip(*max).is_some_and(|(a, b)| a > b)
+        LayerKind::Bracket { .. } => {
+            let conditions = layer
+                .kind
+                .bracket_conditions()
+                .ok_or_else(|| error("invalid conditional layer axis or bounds"))?;
+            if conditions.iter().any(|condition| {
+                !font.axes.iter().any(|a| a.tag == condition.axis)
+                    || condition.min.zip(condition.max).is_some_and(|(a, b)| a > b)
+            }) || conditions
+                .iter()
+                .all(|condition| condition.min.is_none() && condition.max.is_none())
             {
                 return Err(error("invalid conditional layer axis or bounds"));
             }
@@ -112,12 +120,14 @@ pub(super) fn write(raw: &mut Plist, font: &Font, layer: &Layer) -> Result<(), E
                 .iter()
                 .map(|a| {
                     let mut rule = dict();
-                    if a.tag == *axis {
-                        if let Some(value) = min {
-                            set(&mut rule, "min", number(*value)?);
+                    if let Some(condition) =
+                        conditions.iter().find(|condition| condition.axis == a.tag)
+                    {
+                        if let Some(value) = condition.min {
+                            set(&mut rule, "min", number(value)?);
                         }
-                        if let Some(value) = max {
-                            set(&mut rule, "max", number(*value)?);
+                        if let Some(value) = condition.max {
+                            set(&mut rule, "max", number(value)?);
                         }
                     }
                     Ok(rule)

@@ -9,6 +9,7 @@ import { InfoGlyphRows } from './InfoGlyphRows'
 import { InfoMultiRows } from './InfoMultiRows'
 import { InfoObjectRows } from './InfoObjectRows'
 import { InfoPointRows } from './InfoPointRows'
+import type { InkEdges } from './guideAnchor'
 import type { ReadableOutline } from './infoBoxProps'
 import styles from './infoBox.module.css'
 
@@ -18,6 +19,8 @@ export interface InfoBoxProps {
   selection: Selection
   master: string | null
   masterGuides: readonly Guide[]
+  /** Ink edges an anchored guide measures from. */
+  inkEdges: InkEdges
   name: string
   unicodes: readonly number[]
   onCommitted: () => void

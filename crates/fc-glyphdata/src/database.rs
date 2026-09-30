@@ -5,7 +5,7 @@ use std::sync::LazyLock;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{category, name_for_unicode, script, sub_category, unicode_for_name, Category};
+use crate::{category, category_name, name_for_unicode, script, sub_category, unicode_for_name};
 
 #[path = "database_validation.rs"]
 mod validation;
@@ -164,6 +164,28 @@ pub fn resolve_info(name: &str, unicodes: &[u32], overlay: &GlyphDataOverlay) ->
     info
 }
 
+/// Returns the encodings the database states for this exact glyph name.
+///
+/// A name inherits metadata from its base — `A.alt` follows `A` — but never its
+/// encodings, and a name the database does not list gets none at all. `None`
+/// therefore means "the database has no opinion about what this glyph encodes",
+/// which is different from "it encodes nothing": a caller refreshing a glyph
+/// from the database must leave its own encodings alone rather than derive one
+/// from its name. The overlay wins over the bundled record for the same name.
+pub fn explicit_unicodes(name: &str, overlay: &GlyphDataOverlay) -> Option<Vec<u32>> {
+    overlay
+        .glyphs
+        .get(name)
+        .and_then(|record| record.unicodes.as_deref())
+        .or_else(|| {
+            BUNDLED
+                .glyphs
+                .get(name)
+                .and_then(|record| record.unicodes.as_deref())
+        })
+        .map(sanitize_unicodes)
+}
+
 /// Resolves a Unicode scalar to a suggested glyph record.
 ///
 /// Exact local records explicitly encoding the scalar take precedence, followed
@@ -258,19 +280,5 @@ fn apply(info: &mut GlyphInfo, record: &GlyphInfoOverride) {
     }
     if let Some(value) = &record.composition {
         info.composition.clone_from(value);
-    }
-}
-
-fn category_name(category: Category) -> &'static str {
-    match category {
-        Category::Letter => "Letter",
-        Category::Number => "Number",
-        Category::Punctuation => "Punctuation",
-        Category::Symbol => "Symbol",
-        Category::Separator => "Separator",
-        Category::Mark => "Mark",
-        Category::Format => "Format",
-        Category::Private => "Private",
-        Category::Other => "Other",
     }
 }

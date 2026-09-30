@@ -50,10 +50,16 @@
 }
 .slider {
   display: grid;
-  grid-template-columns: 90px 1fr 60px;
+  /* Named value field, scrubber, reset. */
+  grid-template-columns: minmax(150px, 1fr) 1fr auto;
   align-items: center;
   gap: var(--space-2);
   margin: var(--space-2) 0;
+}
+.slider input[type='number'],
+.slider input[type='text'] {
+  width: 100%;
+  min-width: 0;
 }
 .slider input {
   min-width: 0;

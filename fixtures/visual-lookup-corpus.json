@@ -1,0 +1,165 @@
+{
+  "note": "Shared corpus for the visual lookup editor and the typed FEA lookup IR. `app/src/views/features/visualLookup.test.ts` checks that the editor serialises each rule to `fea` and parses `fea` back into the same rule; `crates/fc-layout/tests/fea_ir.rs` wraps each `fea` in `feature <tag> { ... } <tag>;` and checks that it parses into the typed IR with no verbatim statement and round trips. Keeping one file stops the two sides drifting apart.",
+  "glyphOrder": [
+    ".notdef",
+    "a",
+    "b",
+    "c",
+    "d",
+    "e",
+    "f",
+    "i",
+    "f_i",
+    "one",
+    "two",
+    "fraction",
+    "acutecomb",
+    "gravecomb"
+  ],
+  "visual": [
+    {
+      "kind": "gsub-single",
+      "rule": {
+        "kind": "gsub-single",
+        "from": "a",
+        "to": "b"
+      },
+      "fea": "sub \\a by \\b;",
+      "tag": "smcp"
+    },
+    {
+      "kind": "gsub-single class",
+      "rule": {
+        "kind": "gsub-single",
+        "from": "a b",
+        "to": "c d"
+      },
+      "fea": "sub [\\a \\b] by [\\c \\d];",
+      "tag": "ss01"
+    },
+    {
+      "kind": "gsub-multiple",
+      "rule": {
+        "kind": "gsub-multiple",
+        "from": "f_i",
+        "to": "f i"
+      },
+      "fea": "sub \\f_i by \\f \\i;",
+      "tag": "ss02"
+    },
+    {
+      "kind": "gsub-alternate",
+      "rule": {
+        "kind": "gsub-alternate",
+        "from": "a",
+        "to": "b c"
+      },
+      "fea": "sub \\a from [\\b \\c];",
+      "tag": "salt"
+    },
+    {
+      "kind": "gsub-ligature",
+      "rule": {
+        "kind": "gsub-ligature",
+        "from": "f i",
+        "to": "f_i"
+      },
+      "fea": "sub \\f \\i by \\f_i;",
+      "tag": "dlig"
+    },
+    {
+      "kind": "gsub-contextual",
+      "rule": {
+        "kind": "gsub-contextual",
+        "before": "a",
+        "input": "b",
+        "after": "c",
+        "replacement": "d"
+      },
+      "fea": "sub \\a \\b' \\c by \\d;",
+      "tag": "calt"
+    },
+    {
+      "kind": "gpos-single",
+      "rule": {
+        "kind": "gpos-single",
+        "glyphs": "a",
+        "value": {
+          "xPlacement": 0,
+          "yPlacement": 0,
+          "xAdvance": -10,
+          "yAdvance": 0
+        }
+      },
+      "fea": "pos \\a <0 0 -10 0>;",
+      "tag": "kern"
+    },
+    {
+      "kind": "gpos-pair",
+      "rule": {
+        "kind": "gpos-pair",
+        "first": "a",
+        "second": "b",
+        "firstValue": {
+          "xPlacement": 0,
+          "yPlacement": 0,
+          "xAdvance": -10,
+          "yAdvance": 0
+        },
+        "secondValue": {
+          "xPlacement": 0,
+          "yPlacement": 0,
+          "xAdvance": -20,
+          "yAdvance": 0
+        }
+      },
+      "fea": "pos \\a <0 0 -10 0> \\b <0 0 -20 0>;",
+      "tag": "kern"
+    },
+    {
+      "kind": "gpos-mark-base",
+      "rule": {
+        "kind": "gpos-mark-base",
+        "markGlyphs": "acutecomb",
+        "markClass": "visual_mark",
+        "markAnchor": {
+          "x": 0,
+          "y": 500
+        },
+        "targetGlyphs": "a",
+        "targetAnchor": {
+          "x": 250,
+          "y": 700
+        }
+      },
+      "fea": "markClass \\acutecomb <anchor 0 500> @visual_mark;\npos base \\a <anchor 250 700> mark @visual_mark;",
+      "tag": "mark"
+    },
+    {
+      "kind": "gpos-mark-mark",
+      "rule": {
+        "kind": "gpos-mark-mark",
+        "markGlyphs": "acutecomb",
+        "markClass": "visual_mark",
+        "markAnchor": {
+          "x": 0,
+          "y": 500
+        },
+        "targetGlyphs": "gravecomb",
+        "targetAnchor": {
+          "x": 0,
+          "y": 900
+        }
+      },
+      "fea": "markClass \\acutecomb <anchor 0 500> @visual_mark;\npos mark \\gravecomb <anchor 0 900> mark @visual_mark;",
+      "tag": "mkmk"
+    }
+  ],
+  "generated": [
+    "feature frac {\n@fcGenFracNumeratorInput = [\\one \\two];\n@fcGenFracNumerator = [\\one \\two];\nlookup fcGenFracNumerators {\nrsub @fcGenFracNumeratorInput' \\fraction by @fcGenFracNumerator;\n} fcGenFracNumerators;\n} frac;",
+    "feature ordn { sub [\\one \\two] [\\a]' by \\b; } ordn;",
+    "feature ccmp { sub \\a \\acutecomb by \\b; sub \\i' [\\acutecomb] by \\c; } ccmp;",
+    "feature aalt { feature salt; feature ss01; } aalt;",
+    "feature smcp { sub \\a by \\b; } smcp;"
+  ]
+}

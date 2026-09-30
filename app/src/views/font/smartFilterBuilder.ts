@@ -1,41 +1,13 @@
 import type { SmartFilterNode, SmartFilterOperator } from '../../api'
+import { SMART_FILTER_FIELDS } from '../../api/generated/smartFilterFields'
 
-/** Editable predicate vocabulary shared by the visual builder and its labels. */
-export const SMART_FILTER_FIELDS = [
-  { field: 'name', type: 'text' },
-  { field: 'paths', type: 'number' },
-  { field: 'components', type: 'number' },
-  { field: 'tags', type: 'text' },
-  { field: 'script', type: 'text' },
-  { field: 'category', type: 'text' },
-  { field: 'subcategory', type: 'text' },
-  { field: 'case', type: 'text' },
-  { field: 'master_compatible', type: 'boolean' },
-  { field: 'export', type: 'boolean' },
-  { field: 'has_unicode', type: 'boolean' },
-  { field: 'has_components', type: 'boolean' },
-  { field: 'contains_component', type: 'text' },
-  { field: 'has_hints', type: 'boolean' },
-  { field: 'has_ps_hints', type: 'boolean' },
-  { field: 'has_tt_hints', type: 'boolean' },
-  { field: 'has_corners', type: 'boolean' },
-  { field: 'has_anchors', type: 'boolean' },
-  { field: 'has_special_layers', type: 'boolean' },
-  { field: 'has_custom_glyph_info', type: 'boolean' },
-  { field: 'has_annotations', type: 'boolean' },
-  { field: 'is_auto_aligned', type: 'boolean' },
-  { field: 'has_metrics_keys', type: 'boolean' },
-  { field: 'metrics_out_of_sync', type: 'boolean' },
-  { field: 'has_kerning_groups', type: 'boolean' },
-  { field: 'color_label', type: 'number' },
-  { field: 'layer_color_label', type: 'number' },
-  { field: 'is_hangul_key', type: 'boolean' },
-  { field: 'note', type: 'text' },
-  { field: 'unicode', type: 'scalar' },
-  { field: 'changed', type: 'boolean' },
-  { field: 'width', type: 'number' },
-  { field: 'block', type: 'text' },
-] as const
+/**
+ * The predicate vocabulary, generated from the kernel's own list.
+ *
+ * The parser, the evaluator and this builder read one table, so a field cannot
+ * exist on one side of the boundary and not the other.
+ */
+export { SMART_FILTER_FIELDS } from '../../api/generated/smartFilterFields'
 
 /** Valid operators for a field; text comparisons include bounded regex. */
 export function smartRuleOperators(field: string): SmartFilterOperator[] {

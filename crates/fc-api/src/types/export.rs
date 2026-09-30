@@ -68,6 +68,43 @@ pub enum ExportFormat {
     Fcf,
 }
 
+impl ExportFormat {
+    /// File-name extension written for this container, including the dot.
+    ///
+    /// The export dialog, the stored profiles and the command line all derive
+    /// destination names from this one table.
+    #[must_use]
+    pub const fn extension(self) -> &'static str {
+        match self {
+            Self::Bdf => ".bdf",
+            Self::Pcf => ".pcf",
+            Self::Psf | Self::Psf1 => ".psf",
+            Self::Fnt => ".fnt",
+            Self::Fon => ".fon",
+            Self::Otb => ".otb",
+            Self::Ttf | Self::Cbdt | Self::Sbix => ".ttf",
+            Self::Otf => ".otf",
+            Self::Woff => ".woff",
+            Self::Woff2 => ".woff2",
+            Self::Cff => ".cff",
+            Self::Type42 => ".t42",
+            Self::Svg => ".svg",
+            Self::Eps => ".eps",
+            Self::Afm => ".afm",
+            Self::Pfm => ".pfm",
+            Self::Ttx => ".ttx",
+            Self::Ttc => ".ttc",
+            Self::Ufo => ".ufo",
+            Self::Designspace => ".designspace",
+            Self::Glyphs => ".glyphs",
+            Self::Sfd => ".sfd",
+            Self::Pfa => ".pfa",
+            Self::Pfb => ".pfb",
+            Self::Fcf => ".fcf",
+        }
+    }
+}
+
 /// Options offered by the export dialog.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
 #[ts(export)]
@@ -83,6 +120,14 @@ pub struct ExportOptions {
     #[serde(default)]
     #[ts(optional)]
     pub master_subset: Option<Vec<MasterId>>,
+    /// Optional variable axis subset by four-character tag; other axes are dropped.
+    #[serde(default)]
+    #[ts(optional)]
+    pub axis_subset: Option<Vec<String>>,
+    /// Optional named-instance subset written to the variable font.
+    #[serde(default)]
+    #[ts(optional)]
+    pub instance_subset: Option<Vec<String>>,
     /// Bitmap strike identity for single-strike outputs.
     #[serde(default)]
     #[ts(optional)]
@@ -142,6 +187,8 @@ impl Default for ExportOptions {
             instance: None,
             variable: false,
             master_subset: None,
+            axis_subset: None,
+            instance_subset: None,
             bitmap_strike: None,
             format: ExportFormat::Ttf,
             master: None,
@@ -228,4 +275,97 @@ pub struct RecoveryEntry {
 pub struct RecoveryParams {
     /// Path of the recovery snapshot, as listed by `session.recover_list`.
     pub autosave_path: String,
+}
+
+/// A named export configuration stored in the project file.
+///
+/// Profiles are project data, not application state: the export dialog, the
+/// instance/profile matrix and the `fontcarver` command line read the same
+/// records, so a continuous-integration build reproduces what the editor does.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
+pub struct ExportProfile {
+    /// Unique display name, compared case-insensitively after NFC normalization.
+    pub name: String,
+    /// Output subdirectory relative to the destination folder; may be empty.
+    #[serde(default)]
+    pub subfolder: String,
+    /// Output base name without extension; empty derives it from the source.
+    #[serde(default)]
+    pub file_name: String,
+    /// Complete option set applied before the destination is validated.
+    #[serde(default)]
+    pub options: ExportOptions,
+}
+
+/// A named variable-font export configuration: a design-space subset plus a name.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
+pub struct VariableExportConfig {
+    /// Unique display name, compared case-insensitively after NFC normalization.
+    pub name: String,
+    /// Output base name without extension; empty derives it from the source.
+    #[serde(default)]
+    pub file_name: String,
+    /// Source masters to keep; empty keeps every master.
+    #[serde(default)]
+    pub masters: Vec<MasterId>,
+    /// Axis tags to keep; empty keeps every axis that still varies.
+    #[serde(default)]
+    pub axes: Vec<String>,
+    /// Named instances to write; empty writes every active named instance.
+    #[serde(default)]
+    pub instances: Vec<String>,
+}
+
+/// Every export configuration a document stores.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
+pub struct ExportProfilesResult {
+    /// Stored profiles in their saved order.
+    pub profiles: Vec<ExportProfile>,
+    /// Stored variable-font configurations in their saved order.
+    pub variable_configs: Vec<VariableExportConfig>,
+}
+
+/// Replace a document's stored export configurations as one undo entry.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
+pub struct SetExportProfilesParams {
+    /// Open document identifier.
+    pub doc: DocId,
+    /// Complete replacement profile list.
+    #[serde(default)]
+    pub profiles: Vec<ExportProfile>,
+    /// Complete replacement variable-font configuration list.
+    #[serde(default)]
+    pub variable_configs: Vec<VariableExportConfig>,
+}
+
+/// Resolve a stored configuration into the options one export would use.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
+pub struct ResolveExportProfileParams {
+    /// Open document identifier.
+    pub doc: DocId,
+    /// Stored profile name.
+    pub profile: String,
+    /// Stored variable-font configuration name, for a variable output.
+    #[serde(default)]
+    #[ts(optional)]
+    pub variable_config: Option<String>,
+    /// Named static instance, for a static output.
+    #[serde(default)]
+    #[ts(optional)]
+    pub instance: Option<String>,
+}
+
+/// The options and suggested file name one stored configuration produces.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
+pub struct ResolvedExportProfile {
+    /// Options ready for `session.export`.
+    pub options: ExportOptions,
+    /// Destination path relative to the chosen output folder.
+    pub relative_path: String,
 }

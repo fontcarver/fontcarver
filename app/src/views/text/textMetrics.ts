@@ -34,11 +34,14 @@ export interface MetricShortcutOptions {
 
 /**
  * Maps Mod+Left/Right to legacy sidebearing changes. Optional selected-side
- * brackets use the configured step: Shift ×10, Mod ×100, Shift+Mod true-one.
+ * brackets use the configured step, ×10 with Shift.
  *
- * macOS can distinguish Meta-as-Mod plus Ctrl for the 100-unit step. On Linux,
- * Ctrl is Mod itself, so Ctrl+arrow deliberately remains the one-unit step.
- * Alt combinations are reserved for future kerning commands.
+ * `Mod+[` and `Mod+]` are the shell's previous/next glyph commands, so a
+ * modified bracket is not a spacing step: pressing it used to move the glyph
+ * being left by 100 units as the tab switched. macOS can distinguish
+ * Meta-as-Mod plus Ctrl for the 100-unit arrow step. On Linux, Ctrl is Mod
+ * itself, so Ctrl+arrow deliberately remains the one-unit step. Alt
+ * combinations are reserved for future kerning commands.
  */
 export function metricShortcut(
   event: MetricShortcutEvent,
@@ -56,14 +59,15 @@ export function metricShortcut(
             event.key === '}'
           ? 1
           : 0
-    if (direction) {
+    // A bracket with the platform modifier belongs to glyph navigation.
+    if (direction && !mod) {
       const configured = options.step ?? 1
       const base =
         Number.isFinite(configured) && configured > 0 ? configured : 1
-      const step =
-        mod && event.shiftKey ? 1 : base * (mod ? 100 : event.shiftKey ? 10 : 1)
+      const step = base * (event.shiftKey ? 10 : 1)
       return { side: options.side, delta: direction * step }
     }
+    if (direction) return null
   }
   const side =
     event.key === 'ArrowLeft'

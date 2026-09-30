@@ -168,6 +168,7 @@ describe('buildScene', () => {
       name: 'g',
       locked: false,
       color: null,
+      anchor: 'Origin' as const,
     }
     const scene = sceneOf({
       detail: makeGlyphDetail(
@@ -182,6 +183,71 @@ describe('buildScene', () => {
       'master',
       'layer',
     ])
+  })
+
+  it('resolves an anchored guide against the ink edges it follows', () => {
+    // The fixture cell's bounds are [40, 0, 560, 700] at advance 600.
+    const anchored = (anchor: 'Origin' | 'Lsb' | 'Rsb', x: number) => ({
+      x,
+      y: 0,
+      angle: 90,
+      name: null,
+      locked: false,
+      color: null,
+      anchor,
+    })
+    const scene = sceneOf({
+      detail: makeGlyphDetail(
+        makeGlyph({
+          layers: [
+            makeLayer({
+              guides: [
+                anchored('Origin', 120),
+                anchored('Lsb', 30),
+                anchored('Rsb', -30),
+              ],
+            }),
+          ],
+        }),
+      ),
+      cell: makeCell(),
+      master,
+      masterId: 'm1',
+      unitsPerEm: 1000,
+    })
+    expect(scene.guides.map((entry) => entry.guide.x)).toEqual([120, 70, 530])
+    // The stored offsets are untouched: the scene resolves, it does not write.
+    expect(scene.layer?.guides.map((guide) => guide.x)).toEqual([120, 30, -30])
+  })
+
+  it('keeps an anchored guide absolute when the layer has no ink', () => {
+    const scene = sceneOf({
+      detail: makeGlyphDetail(
+        makeGlyph({
+          layers: [
+            makeLayer({
+              contours: [],
+              guides: [
+                {
+                  x: 42,
+                  y: 0,
+                  angle: 90,
+                  name: null,
+                  locked: false,
+                  color: null,
+                  anchor: 'Lsb' as const,
+                },
+              ],
+            }),
+          ],
+        }),
+      ),
+      cell: null,
+      master,
+      masterId: 'm1',
+      unitsPerEm: 1000,
+    })
+    expect(scene.guides[0]?.guide.x).toBe(42)
   })
 })
 

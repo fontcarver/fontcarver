@@ -12,9 +12,28 @@ use fc_compile::{ExportFormat as CompileFormat, ExportOptions as CompileOptions}
 use fc_model::{Font, GlyphName, LayerKind, MasterId, Tag};
 
 use crate::{
-    Api, ApiError, ExportFormat, ExportOptions, ExportParams, ExportReport, ExportWarning,
-    WRITE_STAGE,
+    Api, ApiError, DocParams, ExportFormat, ExportOptions, ExportParams, ExportProfile,
+    ExportProfilesResult, ExportReport, ExportWarning, ResolveExportProfileParams,
+    ResolvedExportProfile, SetExportProfilesParams, VariableExportConfig, WRITE_STAGE,
 };
+
+/// Namespaced collection holding the project's export profiles.
+const PROFILE_COLLECTION: &str = "export_profiles";
+
+/// Namespaced collection holding the project's variable-font configurations.
+const VARIABLE_COLLECTION: &str = "export_variable_configs";
+
+/// Upper bound shared by the profile picker and the instance/profile matrix.
+const MAX_PROFILES: usize = 24;
+
+/// Upper bound on stored variable-font configurations.
+const MAX_VARIABLE_CONFIGS: usize = 24;
+
+/// Longest accepted profile name, configuration name, subfolder or file name.
+const MAX_NAME_CHARS: usize = 80;
+
+/// Longest accepted destination component derived from a stored configuration.
+const MAX_PATH_CHARS: usize = 200;
 
 /// Per-glyph invalidation generations captured with the font.
 type Generations = HashMap<GlyphName, u64>;
@@ -416,9 +435,35 @@ fn validate_options(options: &ExportOptions) -> Result<(), ApiError> {
             "instance compilation requires a compiled outline font output",
         ));
     }
-    if options.master_subset.is_some() && (!compiled || !options.variable) {
+    for (name, present) in [
+        ("master_subset", options.master_subset.is_some()),
+        ("axis_subset", options.axis_subset.is_some()),
+        ("instance_subset", options.instance_subset.is_some()),
+    ] {
+        if present && (!compiled || !options.variable) {
+            return Err(ApiError::invalid_params(format!(
+                "{name} requires variable compiled output"
+            )));
+        }
+    }
+    if let Some(axes) = &options.axis_subset {
+        if axes.is_empty() {
+            return Err(ApiError::invalid_params(
+                "axis_subset must name at least one axis",
+            ));
+        }
+        for axis in axes {
+            axis.parse::<Tag>()
+                .map_err(|error| ApiError::invalid_params(error.to_string()))?;
+        }
+    }
+    if options
+        .instance_subset
+        .as_ref()
+        .is_some_and(|names| names.iter().any(|name| name.trim().is_empty()))
+    {
         return Err(ApiError::invalid_params(
-            "master_subset requires variable compiled output",
+            "instance_subset cannot contain an empty instance name",
         ));
     }
     if options.table_subset.is_some() && (!sfnt || options.format == ExportFormat::Cff) {
@@ -626,6 +671,18 @@ fn compile_options(options: &ExportOptions, master: &MasterId) -> Result<Compile
         instance: options.instance,
         variable: options.variable,
         master_subset: options.master_subset.clone(),
+        axis_subset: match &options.axis_subset {
+            Some(axes) => Some(
+                axes.iter()
+                    .map(|axis| {
+                        axis.parse::<Tag>()
+                            .map_err(|error| ApiError::invalid_params(error.to_string()))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
+            None => None,
+        },
+        instance_subset: options.instance_subset.clone(),
         format: match options.format {
             ExportFormat::Otf | ExportFormat::Cff => CompileFormat::Otf,
             ExportFormat::Woff => CompileFormat::Woff,
@@ -687,4 +744,381 @@ fn written_bytes(path: &Path) -> u64 {
         .flatten()
         .map(|entry| written_bytes(&entry.path()))
         .sum()
+}
+
+/// Reads the export configurations stored in one document.
+pub(crate) fn profiles_get(api: &Api, params: DocParams) -> Result<ExportProfilesResult, ApiError> {
+    api.session
+        .with_doc(params.doc, |document| {
+            read_configurations(&document.font.info.user_data)
+        })
+        .map_err(ApiError::from)?
+}
+
+/// Replaces the export configurations of one document as a single undo entry.
+pub(crate) fn profiles_set(
+    api: &Api,
+    params: SetExportProfilesParams,
+) -> Result<ExportProfilesResult, ApiError> {
+    let result = validate_configurations(ExportProfilesResult {
+        profiles: params.profiles,
+        variable_configs: params.variable_configs,
+    })?;
+    let profiles = serde_json::to_value(&result.profiles)
+        .map_err(|error| ApiError::internal(error.to_string()))?;
+    let configs = serde_json::to_value(&result.variable_configs)
+        .map_err(|error| ApiError::internal(error.to_string()))?;
+    api.session
+        .with_doc_mut(params.doc, |document| {
+            // An unreadable stored collection must never be replaced silently.
+            read_configurations(&document.font.info.user_data)?;
+            super::inventory::write_collection(
+                document,
+                PROFILE_COLLECTION,
+                profiles,
+                "Edit export profiles",
+            )?;
+            super::inventory::write_collection(
+                document,
+                VARIABLE_COLLECTION,
+                configs,
+                "Edit export profiles",
+            )?;
+            Ok(result)
+        })
+        .map_err(ApiError::from)?
+}
+
+/// Resolves one stored configuration into concrete export options and a name.
+pub(crate) fn resolve_profile(
+    api: &Api,
+    params: ResolveExportProfileParams,
+) -> Result<ResolvedExportProfile, ApiError> {
+    api.session
+        .with_doc(params.doc, |document| {
+            let stored = read_configurations(&document.font.info.user_data)?;
+            resolve(&stored, &document.font, &params)
+        })
+        .map_err(ApiError::from)?
+}
+
+fn resolve(
+    stored: &ExportProfilesResult,
+    font: &Font,
+    params: &ResolveExportProfileParams,
+) -> Result<ResolvedExportProfile, ApiError> {
+    let profile = stored
+        .profiles
+        .iter()
+        .find(|profile| same_name(&profile.name, &params.profile))
+        .ok_or_else(|| {
+            ApiError::not_found(format!(
+                "no export profile named `{}` is stored in this document",
+                params.profile
+            ))
+        })?;
+    let mut options = profile.options.clone();
+    let mut base = profile.file_name.clone();
+    // A profile stores one file name, but a matrix runs the profile once per
+    // row. Without the row's own name every row of the run would resolve to the
+    // same path and the last one would win.
+    let stored_name = std::mem::take(&mut base);
+    /// Combines the profile's stored file name with the row's own name.
+    ///
+    /// Empty means "no stored name": the caller then falls back to the
+    /// family-derived stem, which already carries the row name.
+    fn row_stem(stored: &str, row: &str) -> String {
+        if stored.is_empty() {
+            return String::new();
+        }
+        let row = sanitize(row);
+        if row.is_empty() {
+            stored.to_owned()
+        } else {
+            format!("{stored}-{row}")
+        }
+    }
+    if params.variable_config.is_some() && params.instance.is_some() {
+        return Err(ApiError::invalid_params(
+            "choose either a variable-font configuration or a named instance",
+        ));
+    }
+    if let Some(name) = &params.variable_config {
+        let config = stored
+            .variable_configs
+            .iter()
+            .find(|config| same_name(&config.name, name))
+            .ok_or_else(|| {
+                ApiError::not_found(format!(
+                    "no variable-font configuration named `{name}` is stored in this document"
+                ))
+            })?;
+        for master in &config.masters {
+            if font.master(master).is_none() {
+                return Err(ApiError::not_found(format!(
+                    "variable-font configuration `{name}` names master `{master}`, which no longer exists"
+                )));
+            }
+        }
+        for axis in &config.axes {
+            if !font.axes.iter().any(|value| value.tag.to_string() == *axis) {
+                return Err(ApiError::not_found(format!(
+                    "variable-font configuration `{name}` names axis `{axis}`, which no longer exists"
+                )));
+            }
+        }
+        for instance in &config.instances {
+            if !font.instances.iter().any(|value| value.name == *instance) {
+                return Err(ApiError::not_found(format!(
+                    "variable-font configuration `{name}` names instance `{instance}`, which no longer exists"
+                )));
+            }
+        }
+        options.variable = true;
+        options.instance = None;
+        options.master_subset = (!config.masters.is_empty()).then(|| config.masters.clone());
+        options.axis_subset = (!config.axes.is_empty()).then(|| config.axes.clone());
+        options.instance_subset = (!config.instances.is_empty()).then(|| config.instances.clone());
+        // A configuration's own file name is already per-row, so it wins.
+        base = if !config.file_name.is_empty() {
+            config.file_name.clone()
+        } else {
+            row_stem(&stored_name, &config.name)
+        };
+        if base.is_empty() {
+            base = format!("{}-{}", family_stem(font), sanitize(&config.name));
+        }
+    } else if let Some(name) = &params.instance {
+        let index = font
+            .instances
+            .iter()
+            .position(|instance| instance.name == *name)
+            .ok_or_else(|| {
+                ApiError::not_found(format!(
+                    "no named instance `{name}` exists in this document"
+                ))
+            })?;
+        options.variable = false;
+        options.master_subset = None;
+        options.axis_subset = None;
+        options.instance_subset = None;
+        options.instance = Some(index);
+        base = row_stem(&stored_name, name);
+        if base.is_empty() {
+            base = format!("{}-{}", family_stem(font), sanitize(name));
+        }
+    } else {
+        base = stored_name;
+        if base.is_empty() {
+            base = format!("{}-{}", family_stem(font), sanitize(&profile.name));
+        }
+    }
+    validate_options(&options)?;
+    let relative_path = if profile.subfolder.is_empty() {
+        format!("{base}{}", options.format.extension())
+    } else {
+        format!(
+            "{}/{base}{}",
+            profile.subfolder.trim_end_matches('/'),
+            options.format.extension()
+        )
+    };
+    Ok(ResolvedExportProfile {
+        options,
+        relative_path,
+    })
+}
+
+/// A family-derived destination stem, always non-empty.
+fn family_stem(font: &Font) -> String {
+    let stem = sanitize(&font.info.family_name);
+    if stem.is_empty() {
+        "Untitled".to_owned()
+    } else {
+        stem
+    }
+}
+
+/// Keeps letters, digits, dot, underscore and hyphen; collapses everything else.
+fn sanitize(name: &str) -> String {
+    let mut result = String::new();
+    for character in name.chars() {
+        if character.is_alphanumeric() || matches!(character, '.' | '_' | '-') {
+            result.push(character);
+        } else if !result.ends_with('-') {
+            result.push('-');
+        }
+    }
+    result
+        .trim_matches(|c| matches!(c, '.' | '_' | '-'))
+        .to_owned()
+}
+
+/// Compares stored names the way the pickers do: NFC, case-insensitive, trimmed.
+fn same_name(left: &str, right: &str) -> bool {
+    normalized(left) == normalized(right)
+}
+
+fn normalized(name: &str) -> String {
+    name.trim().to_lowercase()
+}
+
+fn read_configurations(user_data: &serde_json::Value) -> Result<ExportProfilesResult, ApiError> {
+    let profiles = match super::inventory::read_collection(user_data, PROFILE_COLLECTION)? {
+        Some(value) => {
+            <Vec<ExportProfile> as serde::Deserialize>::deserialize(value).map_err(|error| {
+                ApiError::invalid_params(format!("invalid stored export profiles: {error}"))
+            })?
+        }
+        None => Vec::new(),
+    };
+    let variable_configs = match super::inventory::read_collection(user_data, VARIABLE_COLLECTION)?
+    {
+        Some(value) => <Vec<VariableExportConfig> as serde::Deserialize>::deserialize(value)
+            .map_err(|error| {
+                ApiError::invalid_params(format!(
+                    "invalid stored variable-font configurations: {error}"
+                ))
+            })?,
+        None => Vec::new(),
+    };
+    validate_configurations(ExportProfilesResult {
+        profiles,
+        variable_configs,
+    })
+}
+
+fn validate_configurations(
+    mut stored: ExportProfilesResult,
+) -> Result<ExportProfilesResult, ApiError> {
+    if stored.profiles.len() > MAX_PROFILES {
+        return Err(ApiError::invalid_params(format!(
+            "at most {MAX_PROFILES} export profiles may be stored"
+        )));
+    }
+    if stored.variable_configs.len() > MAX_VARIABLE_CONFIGS {
+        return Err(ApiError::invalid_params(format!(
+            "at most {MAX_VARIABLE_CONFIGS} variable-font configurations may be stored"
+        )));
+    }
+    let mut names = std::collections::HashSet::new();
+    for profile in &mut stored.profiles {
+        profile.name = profile.name.trim().to_owned();
+        profile.subfolder = profile
+            .subfolder
+            .trim()
+            .replace('\\', "/")
+            .trim_end_matches('/')
+            .to_owned();
+        profile.file_name = profile.file_name.trim().to_owned();
+        check_name(&profile.name, "export profile")?;
+        if !names.insert(normalized(&profile.name)) {
+            return Err(ApiError::invalid_params(format!(
+                "two export profiles are named `{}`",
+                profile.name
+            )));
+        }
+        check_subfolder(&profile.subfolder)?;
+        check_file_name(&profile.file_name)?;
+        validate_options(&profile.options)?;
+    }
+    let mut config_names = std::collections::HashSet::new();
+    for config in &mut stored.variable_configs {
+        config.name = config.name.trim().to_owned();
+        config.file_name = config.file_name.trim().to_owned();
+        check_name(&config.name, "variable-font configuration")?;
+        if !config_names.insert(normalized(&config.name)) {
+            return Err(ApiError::invalid_params(format!(
+                "two variable-font configurations are named `{}`",
+                config.name
+            )));
+        }
+        check_file_name(&config.file_name)?;
+        if config.masters.len() > 1024 || config.axes.len() > 16 || config.instances.len() > 4096 {
+            return Err(ApiError::invalid_params(
+                "a variable-font configuration exceeds the design-space limits",
+            ));
+        }
+        check_unique(config.masters.iter().map(MasterId::to_string), "master")?;
+        check_unique(config.axes.iter().cloned(), "axis")?;
+        check_unique(config.instances.iter().cloned(), "instance")?;
+        for axis in &config.axes {
+            axis.parse::<Tag>()
+                .map_err(|error| ApiError::invalid_params(error.to_string()))?;
+        }
+        for instance in &config.instances {
+            if instance.trim().is_empty() || instance.chars().count() > MAX_PATH_CHARS {
+                return Err(ApiError::invalid_params(
+                    "a variable-font configuration names an empty or overlong instance",
+                ));
+            }
+        }
+    }
+    Ok(stored)
+}
+
+fn check_unique(values: impl Iterator<Item = String>, what: &str) -> Result<(), ApiError> {
+    let mut seen = std::collections::HashSet::new();
+    for value in values {
+        if !seen.insert(value) {
+            return Err(ApiError::invalid_params(format!(
+                "a variable-font configuration repeats a {what}"
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn check_name(name: &str, what: &str) -> Result<(), ApiError> {
+    if name.is_empty() {
+        return Err(ApiError::invalid_params(format!("an {what} needs a name")));
+    }
+    if name.chars().count() > MAX_NAME_CHARS {
+        return Err(ApiError::invalid_params(format!(
+            "an {what} name is limited to {MAX_NAME_CHARS} characters"
+        )));
+    }
+    if name.chars().any(char::is_control) {
+        return Err(ApiError::invalid_params(format!(
+            "an {what} name cannot contain control characters"
+        )));
+    }
+    Ok(())
+}
+
+fn check_subfolder(subfolder: &str) -> Result<(), ApiError> {
+    if subfolder.is_empty() {
+        return Ok(());
+    }
+    if subfolder.chars().count() > MAX_PATH_CHARS
+        || subfolder.starts_with('/')
+        || subfolder.contains(':')
+        || subfolder.chars().any(char::is_control)
+        || subfolder
+            .split('/')
+            .any(|part| part.is_empty() || part == "." || part == "..")
+    {
+        return Err(ApiError::invalid_params(
+            "an export profile subfolder must be a relative path without `.` or `..` components",
+        ));
+    }
+    Ok(())
+}
+
+fn check_file_name(file_name: &str) -> Result<(), ApiError> {
+    if file_name.is_empty() {
+        return Ok(());
+    }
+    if file_name.chars().count() > MAX_PATH_CHARS
+        || file_name.contains('/')
+        || file_name.contains('\\')
+        || file_name.contains(':')
+        || file_name.chars().any(char::is_control)
+        || file_name.starts_with('.')
+    {
+        return Err(ApiError::invalid_params(
+            "an export file name must be a plain base name without a path or leading dot",
+        ));
+    }
+    Ok(())
 }

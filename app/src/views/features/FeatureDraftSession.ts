@@ -300,13 +300,15 @@ export class FeatureDraftSession {
       this.accept(result)
     })
 
-  freeze = (generator: FeatureGenerator): Promise<void> =>
+  /** Freeze one whole recipe, or with `entry` only that feature tag or class. */
+  freeze = (generator: FeatureGenerator, entry?: string): Promise<void> =>
     this.runExclusive(async () => {
       const state = this.snapshot.state
       if (!state || state.authority !== 'Fea') return
       const result = await call('features.freeze', {
         ...this.params(state),
         generator,
+        entry: entry ?? null,
       })
       this.invalidate()
       this.accept(result)

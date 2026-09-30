@@ -23,7 +23,8 @@ pub use editor_metadata::{
 mod features;
 mod glyph_data;
 mod glyphs;
-pub use glyph_data::{glyph_data_overlay, GLYPH_DATA_OVERLAY_KEY};
+pub use glyph_data::{composed_glyph, glyph_data_overlay, ComposedGlyph, GLYPH_DATA_OVERLAY_KEY};
+pub(crate) use glyphs::follow_rename;
 mod hints;
 pub use hints::HintCommand;
 mod color;
@@ -527,6 +528,41 @@ pub enum Command {
         /// First contour end.
         a: PointRef,
         /// Second contour start or end.
+        b: PointRef,
+    },
+    /// Place every automatically aligned component of one layer by its anchors.
+    AlignComponents {
+        /// Glyph containing the layer.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to align.
+        #[ts(type = "string")]
+        layer: LayerId,
+    },
+    /// Replace one corner node with the two nodes of an open corner.
+    OpenCorner {
+        /// Glyph containing it.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer containing it.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Corner node to open.
+        point: PointRef,
+        /// Setback along each adjacent tangent, in font units.
+        depth: f64,
+    },
+    /// Merge the two nodes of an open corner back into one corner node.
+    ReconnectNodes {
+        /// Glyph containing them.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer containing them.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// First node of the mouth, in path order.
+        a: PointRef,
+        /// Second node of the mouth, in path order.
         b: PointRef,
     },
     /// Open or split a contour.

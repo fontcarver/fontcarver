@@ -61,6 +61,13 @@ export interface PaintCellOptions {
   color?: ColorGlyphPaint
   /** UI font stack used for the label. */
   fontFamily: string
+  /**
+   * Whether an empty cell may show its character drawn with a system face.
+   *
+   * Presentation only: nothing is written to the glyph, and the character is
+   * drawn in the muted colour so it never reads as the font's own outline.
+   */
+  referenceCharacters?: boolean
 }
 
 /**
@@ -200,7 +207,10 @@ export function paintCell(
     options.color.paint(ctx, theme.glyph)
     ctx.restore()
   } else if (cell.is_empty || options.path === null) {
-    const character = emptyGlyphCharacter(cell)
+    const character =
+      options.referenceCharacters === false
+        ? undefined
+        : emptyGlyphCharacter(cell)
     if (character) paintReferenceCharacter(ctx, character, box, options)
     else paintEmptyMarker(ctx, box, theme.glyphMuted)
   } else {
@@ -211,6 +221,20 @@ export function paintCell(
     const dot = Math.max(3, Math.round(size * 0.07))
     ctx.fillStyle = theme.badge
     ctx.fillRect(size - pad - dot, pad + STRIPE_HEIGHT, dot, dot)
+  }
+
+  // The layer's own label is independent of the glyph's, so it gets its own
+  // mark rather than sharing the stripe: a glyph can carry both at once.
+  const layerSwatch = colorLabelSwatch(cell.layer_color_label ?? null)
+  if (layerSwatch) {
+    const dot = Math.max(3, Math.round(size * 0.07))
+    ctx.fillStyle = layerSwatch
+    ctx.beginPath()
+    ctx.moveTo(pad, pad + STRIPE_HEIGHT)
+    ctx.lineTo(pad + dot, pad + STRIPE_HEIGHT)
+    ctx.lineTo(pad, pad + STRIPE_HEIGHT + dot)
+    ctx.closePath()
+    ctx.fill()
   }
 
   if (labelHeight > 0) {

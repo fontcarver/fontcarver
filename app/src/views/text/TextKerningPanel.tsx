@@ -199,6 +199,15 @@ export function TextKerningPanel({
                 ? t('kerningText.exactRecord', { value: exact.value })
                 : t('kerningText.inherited')}
             </span>
+            {resolution.rule && (
+              <span data-testid="text-kerning-exception">
+                {t(
+                  resolution.exception
+                    ? 'kerningText.isException'
+                    : 'kerningText.isClassRule',
+                )}
+              </span>
+            )}
           </>
         )}
         {model.invalid && (

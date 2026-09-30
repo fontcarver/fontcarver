@@ -63,6 +63,34 @@ export interface Toast {
 /** Which resizable side panel a size or visibility change refers to. */
 export type PanelId = 'sidebar' | 'inspector'
 
+/**
+ * A view this window has moved into a separate OS window.
+ *
+ * The shape mirrors the transport's window target without importing it, so the
+ * store stays free of transport concerns while the workspace snapshot and the
+ * Window menu can both say what is currently detached.
+ */
+export type DetachedView =
+  | {
+      readonly kind: 'panel'
+      readonly doc: DocId
+      readonly panel: PanelId | 'preview'
+    }
+  | {
+      readonly kind: 'tab'
+      readonly doc: DocId
+      readonly tab: TabKind
+      readonly gid?: GlyphId
+      readonly tabId: string
+    }
+
+/** Identity of a detached view, so the same window is never listed twice. */
+export function detachedKey(view: DetachedView): string {
+  return view.kind === 'panel'
+    ? `panel:${view.doc}:${view.panel}`
+    : `tab:${view.doc}:${view.tabId}`
+}
+
 /** A path prompt shown when no native file dialog is available. */
 export interface PathPrompt {
   readonly mode: 'open' | 'saveAs'
@@ -252,6 +280,8 @@ export interface UiState extends PersistedUi {
   modalCount: number
   /** Documents whose "recovered from…" banner the user has dismissed. */
   dismissedRecoveries: readonly DocId[]
+  /** Views this window has moved into separate OS windows. */
+  detached: readonly DetachedView[]
   toasts: Toast[]
   /**
    * Label of the edit that just happened, shown in the status bar for a moment
@@ -283,6 +313,9 @@ export interface UiState extends PersistedUi {
   openModal: () => void
   closeModal: () => void
   dismissRecoveryBanner: (doc: DocId) => void
+  addDetached: (view: DetachedView) => void
+  removeDetached: (view: DetachedView) => void
+  setDetached: (views: readonly DetachedView[]) => void
   pushToast: (toast: Omit<Toast, 'id'>) => string
   dismissToast: (id: string) => void
   flashUndoLabel: (label: string | null) => void
@@ -325,6 +358,9 @@ export function initialUiState(): Omit<
   | 'openModal'
   | 'closeModal'
   | 'dismissRecoveryBanner'
+  | 'addDetached'
+  | 'removeDetached'
+  | 'setDetached'
   | 'pushToast'
   | 'dismissToast'
   | 'flashUndoLabel'
@@ -341,6 +377,7 @@ export function initialUiState(): Omit<
     dialog: null,
     modalCount: 0,
     dismissedRecoveries: [],
+    detached: [],
     toasts: [],
     undoFlash: null,
   }
@@ -404,12 +441,23 @@ export const useUiStore = create<UiState>((set, get) => ({
         suffix += 1
       id = `${baseId}:${suffix}`
     }
-    set((state) => ({
-      tabs: state.tabs.some((existing) => existing.id === id)
-        ? state.tabs
-        : [...state.tabs, { ...tab, id }],
-      activeTab: activate ? id : state.activeTab,
-    }))
+    set((state) => {
+      if (state.tabs.some((existing) => existing.id === id))
+        return { activeTab: activate ? id : state.activeTab }
+      const entry = { ...tab, id }
+      const tabs = [...state.tabs]
+      // Each document keeps one contiguous run of tabs with its Overview pinned
+      // first, so the numbered shortcuts, Ctrl+Tab and the strip all agree on
+      // what "the second tab of this document" means.
+      const first = tabs.findIndex((existing) => existing.doc === tab.doc)
+      let last = first
+      for (let index = Math.max(first, 0); index < tabs.length; index += 1)
+        if (tabs[index].doc === tab.doc) last = index
+      const at =
+        first < 0 ? tabs.length : tab.kind === 'font' ? first : last + 1
+      tabs.splice(at, 0, entry)
+      return { tabs, activeTab: activate ? id : state.activeTab }
+    })
     return id
   },
 
@@ -457,15 +505,21 @@ export const useUiStore = create<UiState>((set, get) => ({
         (entry) => entry !== doc,
       )
       const tabs = state.tabs.filter((tab) => tab.doc !== doc)
+      // A closed document's detached windows close with it, so its entries
+      // must not keep a later workspace pointing at windows that are gone.
+      const detached = state.detached.filter((view) => view.doc !== doc)
       if (tabs.length === state.tabs.length)
-        return dismissedRecoveries.length === state.dismissedRecoveries.length
+        return dismissedRecoveries.length ===
+          state.dismissedRecoveries.length &&
+          detached.length === state.detached.length
           ? state
-          : { ...state, dismissedRecoveries }
+          : { ...state, dismissedRecoveries, detached }
       const activeSurvives = tabs.some((tab) => tab.id === state.activeTab)
       return {
         ...state,
         tabs,
         dismissedRecoveries,
+        detached,
         activeTab: activeSurvives
           ? state.activeTab
           : (tabs[tabs.length - 1]?.id ?? null),
@@ -495,6 +549,24 @@ export const useUiStore = create<UiState>((set, get) => ({
 
   closeModal: () =>
     set((state) => ({ modalCount: Math.max(0, state.modalCount - 1) })),
+
+  addDetached: (view) =>
+    set((state) =>
+      state.detached.some((entry) => detachedKey(entry) === detachedKey(view))
+        ? state
+        : { detached: [...state.detached, view] },
+    ),
+
+  removeDetached: (view) =>
+    set((state) => {
+      const key = detachedKey(view)
+      const detached = state.detached.filter(
+        (entry) => detachedKey(entry) !== key,
+      )
+      return detached.length === state.detached.length ? state : { detached }
+    }),
+
+  setDetached: (views) => set({ detached: [...views] }),
 
   dismissRecoveryBanner: (doc) =>
     set((state) =>

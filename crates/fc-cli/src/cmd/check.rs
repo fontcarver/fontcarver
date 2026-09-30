@@ -4,7 +4,7 @@ use clap::Args as ClapArgs;
 use fc_api::{FindProblemsParams, FindProblemsResult};
 use fc_cli::Error;
 
-use super::{api_call, open_document};
+use super::{api_call, open_document, print_problem};
 
 #[derive(Debug, ClapArgs)]
 pub(crate) struct Args {
@@ -35,34 +35,7 @@ pub(crate) fn run(args: Args) -> Result<(), Error> {
         println!("{}", serde_json::to_string(&report)?);
     } else {
         for issue in &report.issues {
-            let mut parts = Vec::new();
-            if let Some(name) = &issue.glyph_name {
-                parts.push(name.to_string());
-            }
-            if let Some(master) = &issue.master {
-                parts.push(format!("master={master}"));
-            }
-            if let Some(layer) = &issue.layer {
-                parts.push(format!("layer={layer}"));
-            }
-            for (label, index) in [
-                ("color", issue.color_layer),
-                ("contour", issue.contour),
-                ("point", issue.point),
-            ] {
-                if let Some(index) = index {
-                    parts.push(format!("{label}={index}"));
-                }
-            }
-            let location = if parts.is_empty() {
-                String::new()
-            } else {
-                format!(" {}", parts.join(" "))
-            };
-            println!(
-                "{:?} [{}]{location}: {}",
-                issue.severity, issue.code, issue.message
-            );
+            print_problem(issue);
         }
         println!(
             "{} problems detected; {} shown{}",

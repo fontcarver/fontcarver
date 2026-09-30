@@ -56,6 +56,8 @@ const labels: EditorLabels = {
   convertSegment: 'Convert segment',
   setMetrics: 'Set metrics',
   addGuide: 'Add guide',
+  lockedTarget: 'That path is locked',
+  lockedGlyph: 'This glyph is locked',
   metricHud: (handle, value) => `${handle} ${value}`,
   snap: {
     node: 'node',
@@ -138,6 +140,7 @@ interface Recorded {
   reloads: number
   errors: unknown[]
   previews: (number | null)[]
+  refusals: string[]
 }
 
 /** 1 CSS pixel per font unit, font origin at canvas (0, 300). */
@@ -168,6 +171,7 @@ function makeController(supplied?: MockTransport): {
     reloads: 0,
     errors: [],
     previews: [],
+    refusals: [],
   }
   controller.setCallbacks({
     repaint: () => undefined,
@@ -184,6 +188,7 @@ function makeController(supplied?: MockTransport): {
     },
     onShapeDialog: () => undefined,
     onError: (error) => recorded.errors.push(error),
+    onRefused: (reason) => recorded.refusals.push(reason),
   })
   controller.setSource(source())
   built.push(controller)
@@ -357,6 +362,7 @@ describe('metric handles and ruler guides', () => {
             name: null,
             locked: false,
             color: null,
+            anchor: 'Origin',
           },
         },
       },
@@ -1906,6 +1912,7 @@ describe('EditorController drawing tools', () => {
       onPreview: () => undefined,
       onShapeDialog: (request) => dialogs.push(request),
       onError: () => undefined,
+      onRefused: () => undefined,
     })
     controller.setTool('rectangle')
     clickAt(controller, 40, 60)
@@ -1983,6 +1990,7 @@ describe('EditorController tool feedback', () => {
       onPreview: () => undefined,
       onShapeDialog: () => undefined,
       onError: () => undefined,
+      onRefused: () => undefined,
     })
     controller.setTool('pen')
     controller.pointerDown(at(202, 302))
@@ -2005,6 +2013,7 @@ describe('EditorController tool feedback', () => {
       onPreview: () => undefined,
       onShapeDialog: () => undefined,
       onError: () => undefined,
+      onRefused: () => undefined,
     })
     controller.setTool('measure')
     controller.pointerDown(at(20, 20))
@@ -2041,6 +2050,7 @@ describe('EditorController tool feedback', () => {
       onPreview: () => undefined,
       onShapeDialog: () => undefined,
       onError: () => undefined,
+      onRefused: () => undefined,
     })
     controller.setTool('pen')
 
@@ -2055,5 +2065,58 @@ describe('EditorController tool feedback', () => {
     // A click the pen consumed is.
     controller.pointerDown(at(300, 100))
     expect(repaints).toBeGreaterThan(0)
+  })
+})
+
+describe('a refused press says why', () => {
+  /**
+   * Two squares, the first locked. Their nodes are kept off the sidebearing
+   * lines, which the metrics handles own and would otherwise claim the press.
+   */
+  function lockedSource(): EditorSource {
+    const square = (x: number) =>
+      makeContour([
+        makePoint(x, 0),
+        makePoint(x + 40, 0),
+        makePoint(x + 40, 40),
+        makePoint(x, 40),
+      ])
+    const first = square(0)
+    first.id = 'locked-path'
+    const locked = makeLayer({ width: 600, contours: [first, square(100)] })
+    return {
+      ...source(),
+      outline: makeLayerOutline(locked),
+      editorMetadata: {
+        'com.fontcarver.editor': { locked_paths: ['locked-path'] },
+      },
+    }
+  }
+
+  it('reports the lock when a press lands on a locked path', () => {
+    const { controller, recorded } = makeController()
+    controller.setTool('select')
+    controller.setSource(lockedSource())
+    // Font (40, 40) is a node of the locked square; canvas y is 300 − y.
+    controller.pointerDown(at(40, 260))
+    expect(recorded.refusals).toEqual(['That path is locked'])
+    expect(recorded.selections.at(-1)).toEqual([])
+  })
+
+  it('names the glyph lock instead when the whole glyph is locked', () => {
+    const { controller, recorded } = makeController()
+    controller.setTool('select')
+    controller.setSource({ ...lockedSource(), glyphLocked: true })
+    // Even the unlocked square refuses while the glyph itself is locked.
+    controller.pointerDown(at(140, 260))
+    expect(recorded.refusals).toEqual(['This glyph is locked'])
+  })
+
+  it('stays quiet on genuinely empty canvas', () => {
+    const { controller, recorded } = makeController()
+    controller.setTool('select')
+    controller.setSource(lockedSource())
+    controller.pointerDown(at(300, 100))
+    expect(recorded.refusals).toEqual([])
   })
 })

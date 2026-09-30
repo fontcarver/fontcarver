@@ -9,8 +9,10 @@ use crate::{
     convert::path_to_contours, from_bezpaths, to_bezpaths, CurveKind, DEFAULT_SIMPLIFY_TOLERANCE,
 };
 
+mod corner;
 mod fit;
 
+pub use corner::{open_corner, reconnect_nodes, CornerError};
 pub use fit::{fit_span, SpanFit};
 
 const ENDPOINT_EXTREMA_TOLERANCE: f64 = 0.01;

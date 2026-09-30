@@ -1,8 +1,8 @@
-//! Native designspace rules and the editable single-axis bracket-layer subset.
+//! Native designspace rules and the editable bracket-layer condition sets.
 // Specification: https://fonttools.readthedocs.io/en/latest/designspaceLib/xml.html#rules-element
 use std::collections::{BTreeMap, HashSet};
 
-use fc_model::{Font, GlyphName, LayerId, LayerKind};
+use fc_model::{BracketCondition, Font, GlyphName, LayerId, LayerKind};
 use norad::designspace::{Condition, ConditionSet, Rule, RuleProcessing, Rules, Substitution};
 
 use crate::Error;
@@ -84,30 +84,51 @@ fn import(font: &mut Font, rules: &Rules, lib: &plist::Dictionary) -> Result<(),
     let mut work = 0usize;
     for rule in &rules.rules {
         for set in &rule.condition_sets {
-            let mut axis = None;
-            let (mut min, mut max) = (None::<f64>, None::<f64>);
+            // A designspace condition set is a conjunction, and so is a model
+            // condition set, so several axes convert directly. Repeated axes in
+            // one set are intersected.
+            let mut ranges: Vec<BracketCondition> = Vec::new();
             for condition in &set.conditions {
                 let current = font
                     .axes
                     .iter()
                     .find(|axis| axis.name == condition.name)
                     .ok_or_else(|| invalid("native rule refers to an unknown axis"))?;
-                if axis.is_some_and(|axis| axis != current.tag) {
-                    return Err(invalid(
-                        "compound multi-axis native rules cannot be converted to bracket layers",
-                    ));
+                if !ranges.iter().any(|range| range.axis == current.tag) {
+                    ranges.push(BracketCondition {
+                        axis: current.tag,
+                        min: None,
+                        max: None,
+                    });
                 }
-                axis = Some(current.tag);
+                let entry = ranges
+                    .iter_mut()
+                    .find(|range| range.axis == current.tag)
+                    .expect("range for this axis");
                 if let Some(value) = condition.minimum {
-                    min = Some(min.map_or(f64::from(value), |old| old.max(f64::from(value))));
+                    entry.min = Some(
+                        entry
+                            .min
+                            .map_or(f64::from(value), |old| old.max(f64::from(value))),
+                    );
                 }
                 if let Some(value) = condition.maximum {
-                    max = Some(max.map_or(f64::from(value), |old| old.min(f64::from(value))));
+                    entry.max = Some(
+                        entry
+                            .max
+                            .map_or(f64::from(value), |old| old.min(f64::from(value))),
+                    );
                 }
             }
-            let axis = axis.ok_or_else(|| {
-                invalid("unconditional native rules cannot be converted to bracket layers")
-            })?;
+            if ranges.is_empty()
+                || ranges
+                    .iter()
+                    .all(|range| range.min.is_none() && range.max.is_none())
+            {
+                return Err(invalid(
+                    "unconditional native rules cannot be converted to bracket layers",
+                ));
+            }
             for substitution in &rule.substitutions {
                 let base = GlyphName::from(substitution.name.as_str());
                 if font.glyph(&base).is_none() {
@@ -150,12 +171,8 @@ fn import(font: &mut Font, rules: &Rules, lib: &plist::Dictionary) -> Result<(),
                     }
                     let mut layer = source.clone();
                     layer.id = LayerId::new();
-                    layer.kind = LayerKind::Bracket {
-                        master: master.clone(),
-                        axis,
-                        min,
-                        max,
-                    };
+                    layer.kind = LayerKind::from_bracket_conditions(master.clone(), &ranges)
+                        .map_err(|error| invalid(error.to_string()))?;
                     layer.name = rule
                         .name
                         .clone()
@@ -238,11 +255,22 @@ pub(super) fn prepare(font: &Font) -> Result<(Font, Rules, plist::Dictionary), E
     let mut aliases = plist::Dictionary::new();
     let mut rules = Vec::new();
     for (index, region) in regions.into_iter().enumerate() {
-        let axis = font
-            .axes
+        let conditions = region
+            .conditions
             .iter()
-            .find(|a| a.tag == region.axis)
-            .ok_or_else(|| invalid("conditional axis is missing"))?;
+            .map(|condition| {
+                let axis = font
+                    .axes
+                    .iter()
+                    .find(|a| a.tag == condition.axis)
+                    .ok_or_else(|| invalid("conditional axis is missing"))?;
+                Ok(Condition {
+                    name: axis.name.clone(),
+                    minimum: condition.min.map(|v| v as f32),
+                    maximum: condition.max.map(|v| v as f32),
+                })
+            })
+            .collect::<Result<Vec<_>, Error>>()?;
         let substitutions = region
             .substitutions
             .into_iter()
@@ -256,13 +284,7 @@ pub(super) fn prepare(font: &Font) -> Result<(Font, Rules, plist::Dictionary), E
             .collect::<Result<_, Error>>()?;
         rules.push(Rule {
             name: Some(format!("FontCarver bracket {}", index + 1)),
-            condition_sets: vec![ConditionSet {
-                conditions: vec![Condition {
-                    name: axis.name.clone(),
-                    minimum: region.min.map(|v| v as f32),
-                    maximum: region.max.map(|v| v as f32),
-                }],
-            }],
+            condition_sets: vec![ConditionSet { conditions }],
             substitutions,
         });
     }

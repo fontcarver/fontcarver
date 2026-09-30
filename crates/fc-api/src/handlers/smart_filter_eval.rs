@@ -51,11 +51,12 @@ impl CompiledSmartFilter {
     pub(super) fn matches(
         &self,
         font: &Font,
+        overlay: &fc_glyphdata::GlyphDataOverlay,
         glyph: &Glyph,
         layer: Option<&Layer>,
         generation: u64,
     ) -> bool {
-        self.0.matches(font, glyph, layer, generation)
+        self.0.matches(font, overlay, glyph, layer, generation)
     }
 }
 
@@ -181,63 +182,75 @@ pub(super) fn canonical_field(field: &str) -> Option<&'static str> {
 }
 
 fn field_kind(field: &str) -> Option<(&'static str, char)> {
-    Some(match field {
-        "name" | "glyph_name" => ("name", 's'),
-        "paths" | "path_count" | "count_of_paths" => ("paths", 'n'),
-        "components" | "component_count" | "count_of_components" => ("components", 'n'),
-        "tags" => ("tags", 's'),
-        "script" => ("script", 's'),
-        "category" => ("category", 's'),
-        "subcategory" | "sub_category" => ("subcategory", 's'),
-        "case" => ("case", 's'),
-        "contains_component" => ("contains_component", 's'),
-        "note" => ("note", 's'),
-        "block" => ("block", 's'),
-        "unicode" => ("unicode", 'n'),
-        "width" => ("width", 'n'),
-        "color_label" => ("color_label", 'n'),
-        "layer_color_label" => ("layer_color_label", 'n'),
-        "master_compatible" => ("master_compatible", 'b'),
-        "export" | "export_glyph" => ("export", 'b'),
-        "has_unicode" => ("has_unicode", 'b'),
-        "has_components" => ("has_components", 'b'),
-        "has_hints" => ("has_hints", 'b'),
-        "has_ps_hints" => ("has_ps_hints", 'b'),
-        "has_tt_hints" => ("has_tt_hints", 'b'),
-        "has_corners" => ("has_corners", 'b'),
-        "has_anchors" => ("has_anchors", 'b'),
-        "has_special_layers" => ("has_special_layers", 'b'),
-        "has_custom_glyph_info" => ("has_custom_glyph_info", 'b'),
-        "has_annotations" => ("has_annotations", 'b'),
-        "is_auto_aligned" => ("is_auto_aligned", 'b'),
-        "has_metrics_keys" => ("has_metrics_keys", 'b'),
-        "metrics_out_of_sync" | "metrics_keys_out_of_sync" => ("metrics_out_of_sync", 'b'),
-        "has_kerning_groups" => ("has_kerning_groups", 'b'),
-        "is_hangul_key" => ("is_hangul_key", 'b'),
-        "changed" => ("changed", 'b'),
-        _ => return None,
-    })
+    // Aliases the grammar accepts for a canonical name; everything else must be
+    // spelled exactly as the shared vocabulary lists it.
+    const ALIASES: &[(&str, &str)] = &[
+        ("glyph_name", "name"),
+        ("path_count", "paths"),
+        ("count_of_paths", "paths"),
+        ("component_count", "components"),
+        ("count_of_components", "components"),
+        ("sub_category", "subcategory"),
+        ("export_glyph", "export"),
+        ("metrics_keys_out_of_sync", "metrics_out_of_sync"),
+        ("placeholder", "is_placeholder"),
+    ];
+    let canonical = ALIASES
+        .iter()
+        .find(|(alias, _)| *alias == field)
+        .map_or(field, |(_, name)| *name);
+    crate::SMART_FILTER_FIELDS
+        .iter()
+        .find(|entry| entry.field == canonical)
+        .map(|entry| {
+            (
+                entry.field,
+                match entry.kind {
+                    crate::SmartFilterFieldKind::Text => 's',
+                    crate::SmartFilterFieldKind::Number | crate::SmartFilterFieldKind::Scalar => {
+                        'n'
+                    }
+                    crate::SmartFilterFieldKind::Boolean => 'b',
+                },
+            )
+        })
 }
 
 impl CompiledNode {
-    fn matches(&self, font: &Font, glyph: &Glyph, layer: Option<&Layer>, generation: u64) -> bool {
+    fn matches(
+        &self,
+        font: &Font,
+        overlay: &fc_glyphdata::GlyphDataOverlay,
+        glyph: &Glyph,
+        layer: Option<&Layer>,
+        generation: u64,
+    ) -> bool {
         match self {
             Self::All(children) => children
                 .iter()
-                .all(|node| node.matches(font, glyph, layer, generation)),
+                .all(|node| node.matches(font, overlay, glyph, layer, generation)),
             Self::Any(children) => children
                 .iter()
-                .any(|node| node.matches(font, glyph, layer, generation)),
+                .any(|node| node.matches(font, overlay, glyph, layer, generation)),
             Self::None(children) => !children
                 .iter()
-                .any(|node| node.matches(font, glyph, layer, generation)),
-            Self::Predicate(predicate) => predicate.matches(font, glyph, layer, generation),
+                .any(|node| node.matches(font, overlay, glyph, layer, generation)),
+            Self::Predicate(predicate) => {
+                predicate.matches(font, overlay, glyph, layer, generation)
+            }
         }
     }
 }
 
 impl CompiledPredicate {
-    fn matches(&self, font: &Font, glyph: &Glyph, layer: Option<&Layer>, generation: u64) -> bool {
+    fn matches(
+        &self,
+        font: &Font,
+        overlay: &fc_glyphdata::GlyphDataOverlay,
+        glyph: &Glyph,
+        layer: Option<&Layer>,
+        generation: u64,
+    ) -> bool {
         let cp = glyph.unicodes.first().copied();
         match self.field {
             "name" => self.text(glyph.name.as_ref()),
@@ -310,6 +323,8 @@ impl CompiledPredicate {
             field => {
                 self.boolean(match field {
                     "export" => glyph.export,
+                    "locked" => glyph.locked,
+                    "is_placeholder" => super::glyph_status::is_placeholder(glyph),
                     "changed" => generation > 0,
                     "has_unicode" => !glyph.unicodes.is_empty(),
                     "master_compatible" => {
@@ -340,12 +355,10 @@ impl CompiledPredicate {
                                 | LayerKind::Smart { .. }
                         )
                     }),
+                    // One rule for the cell badge, the list column and this
+                    // predicate: stored metadata that departs from the database.
                     "has_custom_glyph_info" => {
-                        glyph.category.is_some()
-                            || glyph.sub_category.is_some()
-                            || glyph.script.is_some()
-                            || glyph.production_name.is_some()
-                            || glyph.user_data.get("case").is_some()
+                        super::glyph_status::has_custom_glyph_info(glyph, overlay)
                     }
                     "has_annotations" => layer.is_some_and(|layer| {
                         layer

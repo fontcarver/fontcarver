@@ -2,6 +2,10 @@ import { useTranslation } from 'react-i18next'
 
 import { NumberField } from '../../components/NumberField'
 import { setMetricsCommand } from '../../editor/pointCommands'
+import {
+  spacingLockedForDocument,
+  useSpacingLocked,
+} from '../text/kerningModes'
 
 import { formatUnicodes } from './glyphScene'
 import { commitField } from './commitField'
@@ -28,13 +32,18 @@ export function InfoGlyphRows({
 }: InfoGlyphRowsProps) {
   const { t } = useTranslation()
   const metrics = outline.resolved_metrics
-  const write = (values: { width?: number; lsb?: number; rsb?: number }) =>
+  // Locked kerning mode exists so a kerning session cannot respace a glyph by
+  // accident; the Info box is a spacing control like the panel and the handles.
+  const locked = useSpacingLocked(target.doc)
+  const write = (values: { width?: number; lsb?: number; rsb?: number }) => {
+    if (spacingLockedForDocument(target.doc)) return
     commitField(
       target,
       setMetricsCommand(target, values),
       t('editor.undo.setMetrics'),
       onCommitted,
     )
+  }
 
   return (
     <>
@@ -47,18 +56,21 @@ export function InfoGlyphRows({
         <span className={styles.rowValue}>{formatUnicodes(unicodes)}</span>
       </div>
       <NumberField
+        disabled={locked}
         label={t('glyphView.metric.advance')}
         value={metrics.width}
         invalidHint={t('infoBox.invalid')}
         onCommit={(width) => write({ width })}
       />
       <NumberField
+        disabled={locked}
         label={t('glyphView.metric.lsb')}
         value={metrics.lsb}
         invalidHint={t('infoBox.invalid')}
         onCommit={(lsb) => write({ lsb })}
       />
       <NumberField
+        disabled={locked}
         label={t('glyphView.metric.rsb')}
         value={metrics.rsb}
         invalidHint={t('infoBox.invalid')}

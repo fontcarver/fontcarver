@@ -108,7 +108,7 @@ test.describe('export', () => {
 
     const dialog = page.getByRole('dialog', { name: 'Export' })
     await expect(dialog).toBeVisible()
-    await dialog.getByRole('tab', { name: 'TTF' }).click()
+    await dialog.getByRole('tab', { name: 'TTF', exact: true }).click()
 
     const out = join(directory, 'DejaVuSansMin.ttf')
     await dialog.getByLabel('Destination path').fill(out)
@@ -122,5 +122,77 @@ test.describe('export', () => {
     expect(existsSync(out), `${out} was written`).toBe(true)
     const report = inspect(out)
     expect(report.summary.glyph_count).toBe(summary.glyph_count)
+  })
+})
+
+/**
+ * Row 58: an export profile is project data.
+ *
+ * The profile is saved through the dialog, read back out of the document by the
+ * kernel, and applied again after a reload — which is what makes the same
+ * record available to `fontcarver build --profile`.
+ *
+ * This spec uses the document the development server opens at start-up, so it
+ * adds no second document to the session the other specs share.
+ */
+test.describe('export profiles', () => {
+  test('saves a profile into the document and applies it after a reload', async ({
+    page,
+  }) => {
+    test.setTimeout(180_000)
+    await page.goto('/')
+    const docs = await api<DocSummary[]>(page, 'session.list', {})
+    const startup = docs.find((doc) => doc.path?.endsWith('DejaVuSans.ttf'))
+    expect(
+      startup,
+      'the development server opened its startup font',
+    ).toBeTruthy()
+    const doc = startup!.doc
+    await page.reload()
+
+    const openDialog = async () => {
+      await page.getByRole('tab', { name: 'DejaVuSans.ttf' }).click()
+      await page.getByRole('menuitem', { name: 'File', exact: true }).click()
+      await page
+        .getByRole('menu', { name: 'File' })
+        .getByRole('menuitem', { name: /^Export/ })
+        .click()
+      const dialog = page.getByRole('dialog', { name: 'Export' })
+      await expect(dialog).toBeVisible()
+      return dialog
+    }
+
+    const dialog = await openDialog()
+    await dialog.getByRole('tab', { name: 'WOFF2', exact: true }).click()
+    await dialog.getByLabel('Profile name').fill('Web')
+    await dialog.getByLabel('Output subfolder').fill('web')
+    await dialog.getByRole('button', { name: 'Save profile' }).click()
+    await expect(dialog.getByRole('option', { name: 'Web' })).toBeAttached()
+
+    // The kernel, not the browser, is holding it.
+    const stored = await api<{
+      profiles: {
+        name: string
+        subfolder: string
+        options: { format: string }
+      }[]
+    }>(page, 'export.profiles_get', { doc })
+    expect(stored.profiles).toHaveLength(1)
+    expect(stored.profiles[0]).toMatchObject({
+      name: 'Web',
+      subfolder: 'web',
+      options: { format: 'Woff2' },
+    })
+
+    // A reload keeps it, and applying it restores the format it names.
+    await page.reload()
+    const reopened = await openDialog()
+    await reopened.getByRole('tab', { name: 'TTF', exact: true }).click()
+    await reopened.getByLabel('Saved profile').selectOption({ label: 'Web' })
+    await reopened.getByRole('button', { name: 'Apply profile' }).click()
+    await expect(
+      reopened.getByRole('tab', { name: 'WOFF2', exact: true }),
+    ).toHaveAttribute('aria-selected', 'true')
+    await expect(reopened.getByLabel('Output subfolder')).toHaveValue('web')
   })
 })

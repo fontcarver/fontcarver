@@ -9,11 +9,13 @@ import { TextGapPicker } from './TextGapPicker'
 import { TextKerningPanel } from './TextKerningPanel'
 import { KerningGhostControls } from './KerningGhostControls'
 import { KerningTable } from './KerningTable'
+import { SpacingMatrix } from './SpacingMatrix'
 import type { ProofEntry } from './proofLibrary'
 import type { TextSampleId } from './presentationTypes'
 import type { PositionedGlyph, TextRequestContext } from './textLayout'
 import type { useTextKerningControls } from './useTextKerningControls'
 import type { useKerningGhosts } from './useKerningGhosts'
+import type { useSpacingOverlay } from './useSpacingOverlay'
 
 /** Presentation controls share the workspace's one transition barrier. */
 export function TextWorkspaceControls({
@@ -27,6 +29,7 @@ export function TextWorkspaceControls({
   pending,
   kerning,
   ghosts,
+  spacing,
   onTextChange,
   onChange,
   onSample,
@@ -42,6 +45,7 @@ export function TextWorkspaceControls({
   pending: boolean
   kerning: ReturnType<typeof useTextKerningControls>
   ghosts: ReturnType<typeof useKerningGhosts>
+  spacing: ReturnType<typeof useSpacingOverlay>
   onTextChange: (text: string) => void
   onChange: (changes: Partial<TextTabState>) => void
   onSample: (id: TextSampleId) => void
@@ -100,9 +104,16 @@ export function TextWorkspaceControls({
         pending={pending}
       />
       <KerningGhostControls model={ghosts} />
+      <SpacingMatrix
+        doc={summary.doc}
+        master={state.master}
+        unitsPerEm={summary.units_per_em}
+        overlay={spacing}
+      />
       <KerningTable
         doc={summary.doc}
         master={state.master}
+        masters={summary.masters}
         generation={context.generation}
         vertical={state.direction === 'ttb'}
         disabled={state.kerningMode === 'off'}

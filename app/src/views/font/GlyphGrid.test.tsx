@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { DocumentEvent, GlyphListParams } from '../../api'
@@ -12,7 +18,11 @@ import {
 import { initialSessionState, useSessionStore } from '../../stores/sessionStore'
 import { initialUiState, useUiStore } from '../../stores/uiStore'
 import { glyphPage, stubGridViewport } from '../../test/glyphFixtures'
-import { createMockTransport, makeSummary } from '../../test/mockTransport'
+import {
+  createMockTransport,
+  makeSummary,
+  noChange,
+} from '../../test/mockTransport'
 
 import { FontView } from './FontView'
 import { resetScrollMemory } from './scrollMemory'
@@ -42,6 +52,7 @@ function transport() {
     }),
     'glyphs.list': (params: GlyphListParams) =>
       glyphPage(params.offset, params.limit, TOTAL, names),
+    'doc.apply': () => noChange(),
   })
 }
 
@@ -421,5 +432,28 @@ describe('glyph grid invalidation', () => {
     expect(
       await screen.findByRole('option', { name: 'z0' }, { timeout: 2_000 }),
     ).toBeInTheDocument()
+  })
+})
+
+describe('glyph grid colour labels', () => {
+  it('offers the twelve labels and None from the context menu', async () => {
+    const { mock } = await mountGrid()
+    fireEvent.pointerDown(cellAt(1), { button: 0 })
+    await waitFor(() => expect(selection()).toEqual([1]))
+    fireEvent.contextMenu(cellAt(1), { clientX: 40, clientY: 40 })
+
+    const group = await screen.findByRole('group', { name: 'Colour label' })
+    expect(within(group).getAllByRole('menuitem')).toHaveLength(13)
+    const blue = within(group).getByRole('menuitem', { name: 'Blue' })
+    fireEvent.click(blue)
+
+    await waitFor(() =>
+      expect(mock.calls.some((entry) => entry.method === 'doc.apply')).toBe(
+        true,
+      ),
+    )
+    expect(
+      screen.queryByRole('group', { name: 'Colour label' }),
+    ).not.toBeInTheDocument()
   })
 })

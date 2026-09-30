@@ -46,6 +46,58 @@ beforeEach(() => {
 afterEach(() => setTransport(undefined))
 
 describe('BatchRenameDialog', () => {
+  it('renames with a regular expression and its capture groups', async () => {
+    const user = userEvent.setup()
+    const { transport } = setup({ names: ['A.sc', 'B.sc'] })
+    await user.click(screen.getByLabelText('Regular expression'))
+    await user.type(screen.getByLabelText('Find'), '^(.)\\.sc$')
+    await user.type(screen.getByLabelText('Replace with'), '$1.small')
+    const preview = screen.getByRole('table', { name: 'Glyph rename preview' })
+    expect(within(preview).getByText('A.small')).toBeInTheDocument()
+    expect(within(preview).getByText('B.small')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Rename 2 glyphs' }))
+    await waitFor(() => expect(useUiStore.getState().dialog).toBeNull())
+    const applied = transport.calls.find(({ method }) => method === 'doc.apply')
+      ?.params as { command: { Batch: unknown[] } }
+    expect(applied.command.Batch).toHaveLength(4)
+  })
+
+  it('reports an unfinished pattern without staging anything', async () => {
+    const user = userEvent.setup()
+    setup({ names: ['A.sc', 'B.sc'] })
+    await user.click(screen.getByLabelText('Regular expression'))
+    await user.type(screen.getByLabelText('Find'), '(')
+    expect(
+      screen.getByText(/not a valid regular expression/),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Find')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
+    expect(screen.getByText('No glyph names would change.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Rename/ })).toBeDisabled()
+    // Completing the pattern clears the report and stages the rename again.
+    await user.type(screen.getByLabelText('Find'), '.)\\.sc')
+    await user.type(screen.getByLabelText('Replace with'), '$1')
+    expect(
+      screen.queryByText(/not a valid regular expression/),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Rename 2 glyphs' }),
+    ).toBeEnabled()
+  })
+
+  it('matches loosely only while Ignore case is on', async () => {
+    const user = userEvent.setup()
+    setup({ names: ['Acute', 'Grave'] })
+    await user.type(screen.getByLabelText('Find'), 'acute')
+    expect(screen.getByText('No glyph names would change.')).toBeInTheDocument()
+    await user.click(screen.getByLabelText('Ignore case'))
+    await user.type(screen.getByLabelText('Replace with'), 'grave')
+    const preview = screen.getByRole('table', { name: 'Glyph rename preview' })
+    expect(within(preview).getByText('grave')).toBeInTheDocument()
+  })
+
   it('previews selected names and applies one atomic batch', async () => {
     const user = userEvent.setup()
     const { transport } = setup()

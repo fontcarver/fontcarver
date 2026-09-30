@@ -20,6 +20,7 @@ pub(crate) mod kerning;
 pub(crate) mod layout;
 pub(crate) mod layout_conversion;
 pub(crate) mod math;
+pub(crate) mod metrics;
 pub(crate) mod prefs;
 pub(crate) mod problems;
 pub(crate) mod recipe;
@@ -51,3 +52,5 @@ pub(crate) mod smart_filters;
 pub(crate) mod font_compare;
 
 pub(crate) mod optical;
+
+pub(crate) mod workspaces;

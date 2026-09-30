@@ -8,7 +8,7 @@ import { createMockTransport } from '../../test/mockTransport'
 import { FeatureDraftSession } from './FeatureDraftSession'
 import { FeatureSourceEditor } from './FeatureSourceEditor'
 import { sourceItems } from './featureSources'
-import { featureState } from './featureTestFixtures'
+import { featureSettings, featureState } from './featureTestFixtures'
 
 afterEach(() => setTransport(undefined))
 
@@ -29,6 +29,8 @@ describe('FeatureSourceEditor class preview', () => {
       <FeatureSourceEditor
         source={source}
         item={sourceItems(source)[0]!}
+        settings={featureSettings()}
+        automaticEntries={[]}
         generated={undefined}
         generatedSaved={false}
         readOnly={true}

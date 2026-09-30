@@ -1,3 +1,5 @@
+import type { VariationShape, VariationShapeStatus } from '../../api'
+
 /** An ordered SVG point used only for source-overlay inspection. */
 export interface SourcePoint {
   x: number
@@ -92,4 +94,72 @@ export function samePointStructure(
       )
     })
   )
+}
+
+/** Number of distinct shape colours the view cycles through. */
+export const SHAPE_COLOURS = 6
+
+/** Colour class index of one shape position, consistent across every source. */
+export function shapeColour(position: number): number {
+  return position % SHAPE_COLOURS
+}
+
+/** The status the kernel reported for one shape position. */
+export function statusOf(
+  status: readonly VariationShapeStatus[],
+  position: number,
+): VariationShapeStatus['status'] {
+  return status[position]?.status ?? 'compatible'
+}
+
+/** One segment of a shape, in stored-point order. */
+export interface ShapeSegment {
+  from: { x: number; y: number }
+  to: { x: number; y: number }
+  status: string
+}
+
+/**
+ * Straight chords between consecutive stored points of one shape.
+ *
+ * The chords are what carries the green/yellow/red status: they follow the
+ * point order the statuses are indexed by, which a rendered curve does not.
+ */
+export function shapeSegments(
+  shape: VariationShape,
+  status: VariationShapeStatus | undefined,
+): ShapeSegment[] {
+  const points = shape.points
+  if (points.length < 2) return []
+  const limit = shape.closed ? points.length : points.length - 1
+  const segments: ShapeSegment[] = []
+  for (let index = 0; index < limit; index += 1) {
+    const from = points[index]!
+    const to = points[(index + 1) % points.length]!
+    segments.push({
+      from: { x: from[0], y: from[1] },
+      to: { x: to[0], y: to[1] },
+      status: status?.segments[index] ?? 'compatible',
+    })
+  }
+  return segments
+}
+
+/** Move the shape at `from` to `to`, as a permutation the kernel accepts. */
+export function swapOrder(count: number, from: number, to: number): number[] {
+  const order = Array.from({ length: count }, (_, index) => index)
+  if (from === to || from < 0 || to < 0 || from >= count || to >= count)
+    return order
+  order[from] = to
+  order[to] = from
+  return order
+}
+
+/** Move the shape at `from` one position earlier or later. */
+export function nudgeOrder(
+  count: number,
+  from: number,
+  delta: number,
+): number[] {
+  return swapOrder(count, from, from + delta)
 }

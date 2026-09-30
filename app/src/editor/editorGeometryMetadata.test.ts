@@ -116,3 +116,23 @@ describe('editor focus and lock selection', () => {
     ])
   })
 })
+
+describe('a refused hit is distinguishable from empty canvas', () => {
+  it('reports a locked path, a locked glyph and nothing at all', () => {
+    const geometry = new EditorGeometry()
+    geometry.install(source())
+    const viewport = new Viewport()
+    const on = viewport.toScreen({ x: 0, y: 0 })
+    expect(geometry.hitAt(viewport, EMPTY_SELECTION, on)).toBeNull()
+    expect(geometry.refusedAt(viewport, EMPTY_SELECTION, on)).toBe(true)
+    // An unlocked node is selectable, so nothing is refused there.
+    const free = viewport.toScreen({ x: 100, y: 0 })
+    expect(geometry.refusedAt(viewport, EMPTY_SELECTION, free)).toBe(false)
+    // Empty canvas is empty, not refused.
+    const empty = viewport.toScreen({ x: 400, y: 400 })
+    expect(geometry.refusedAt(viewport, EMPTY_SELECTION, empty)).toBe(false)
+
+    geometry.install({ ...source(), glyphLocked: true })
+    expect(geometry.refusedAt(viewport, EMPTY_SELECTION, free)).toBe(true)
+  })
+})

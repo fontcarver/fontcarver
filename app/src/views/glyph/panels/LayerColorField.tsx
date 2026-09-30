@@ -2,7 +2,11 @@ import { useTranslation } from 'react-i18next'
 
 import type { Layer } from '../../../api'
 import type { LayerTarget } from '../../../editor/pointCommands'
-import { COLOR_LABELS, colorLabelKey } from '../../font/colorLabels'
+import {
+  COLOR_LABELS,
+  colorLabelKey,
+  colorLabelSwatch,
+} from '../../font/colorLabels'
 import { commitField } from '../commitField'
 
 import styles from './panels.module.css'
@@ -35,6 +39,14 @@ export function LayerColorField({
   return (
     <label className={styles.row}>
       <span className={styles.rowLabel}>{t('glyphMetadata.layerColor')}</span>
+      {/* The same swatch the grid cell marks the layer with, so the field and
+          the cell are recognisably about one thing. */}
+      <span
+        aria-hidden="true"
+        className={styles.swatch}
+        data-empty={value === null ? 'true' : undefined}
+        style={{ background: colorLabelSwatch(value) ?? 'transparent' }}
+      />
       <select
         className={styles.textInput}
         value={value ?? ''}

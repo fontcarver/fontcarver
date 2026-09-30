@@ -45,6 +45,12 @@ pub struct FontCompareCompatibility {
     pub glyph_set: bool,
     /// Selected-master global metrics agree.
     pub master_metrics: bool,
+    /// Every other font-info field agrees, ignoring family name and em square.
+    pub metadata: bool,
+    /// Kerning groups and both selected masters' kerning records agree.
+    pub kerning: bool,
+    /// Editable OpenType layout source and its authority agree.
+    pub layout: bool,
 }
 
 /// Counts over the complete compared glyph inventory, before filtering/paging.
@@ -64,6 +70,8 @@ pub struct FontCompareCounts {
     pub unicodes: u32,
     /// Shared glyphs whose selected layers have different interpolation topology.
     pub incompatible: u32,
+    /// Shared glyphs whose selected layers reference different components.
+    pub components: u32,
 }
 
 /// High-level classification of a glyph comparison.
@@ -99,6 +107,8 @@ pub struct FontCompareGlyph {
     pub unicode_changed: bool,
     /// Both selected layers have matching contour/component topology.
     pub compatible: bool,
+    /// Component references, transforms or smart values differ.
+    pub components_changed: bool,
     /// Target advance in its native font units.
     pub target_width: Option<f64>,
     /// Reference advance in its native font units.
@@ -144,6 +154,12 @@ pub struct FontCompareResult {
     pub counts: FontCompareCounts,
     /// Sorted glyph-name page.
     pub glyphs: Vec<FontCompareGlyph>,
+    /// Differing font-info fields, bounded to 128 entries.
+    pub metadata: Vec<FontCompareFieldDiff>,
+    /// Kerning group and record differences for the selected masters.
+    pub kerning: FontCompareKerning,
+    /// Editable OpenType layout source differences.
+    pub layout: FontCompareLayout,
 }
 
 /// Request a selected glyph's exact evaluated drawing from both documents.
@@ -201,4 +217,158 @@ pub struct FontCompareGlyphResult {
     pub source: Option<FontCompareOutline>,
     /// Union of nonempty outlines in native coordinates, [x0, y0, x1, y1].
     pub bounds: [f64; 4],
+}
+
+/// One differing font-level metadata field, rendered for review.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+pub struct FontCompareFieldDiff {
+    /// Field name as it appears in the native document.
+    pub field: String,
+    /// Compact rendering of the target value.
+    pub target: String,
+    /// Compact rendering of the reference value.
+    pub source: String,
+}
+
+/// One differing kerning record between the selected masters.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+pub struct FontComparePairDiff {
+    /// First glyph name, or `@group` for a class.
+    pub left: String,
+    /// Second glyph name, or `@group` for a class.
+    pub right: String,
+    /// Whether this is a vertical record.
+    pub vertical: bool,
+    /// Target value, absent when the target has no such record.
+    pub target: Option<f64>,
+    /// Reference value, absent when the reference has no such record.
+    pub source: Option<f64>,
+}
+
+/// Kerning-group and pair differences for the selected masters.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, TS)]
+pub struct FontCompareKerning {
+    /// First- and second-side groups present only in the target, as `side:name`.
+    pub groups_only_target: Vec<String>,
+    /// Groups present only in the reference.
+    pub groups_only_source: Vec<String>,
+    /// Shared groups whose member sets differ.
+    pub groups_changed: Vec<String>,
+    /// Records present only in the target.
+    pub pairs_only_target: u32,
+    /// Records present only in the reference.
+    pub pairs_only_source: u32,
+    /// Shared records with different values.
+    pub pairs_changed: u32,
+    /// Shared records with equal values.
+    pub pairs_equal: u32,
+    /// Bounded sample of differing records, sorted by side names.
+    pub examples: Vec<FontComparePairDiff>,
+}
+
+/// OpenType layout source differences.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, TS)]
+pub struct FontCompareLayout {
+    /// Prefixes and features present only in the target, as `prefix:name`/`feature:tag`.
+    pub only_target: Vec<String>,
+    /// Prefixes and features present only in the reference.
+    pub only_source: Vec<String>,
+    /// Shared prefixes and features whose source text or flags differ.
+    pub changed: Vec<String>,
+    /// Glyph classes present only in the target.
+    pub classes_only_target: Vec<String>,
+    /// Glyph classes present only in the reference.
+    pub classes_only_source: Vec<String>,
+    /// Shared glyph classes whose contents differ.
+    pub classes_changed: Vec<String>,
+    /// Whether the authoritative layout representation differs.
+    pub source_of_truth_changed: bool,
+    /// Whether the assembled effective FEA text is identical.
+    pub feature_source_equal: bool,
+}
+
+/// One (document, master) member of a compared family.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+pub struct FontCompareFamilyMember {
+    /// Document the member belongs to.
+    pub doc: fc_doc::DocId,
+    /// Family display name of that document.
+    pub family: String,
+    /// Resolved master.
+    pub master: fc_model::MasterId,
+    /// Master display name.
+    pub master_name: String,
+    /// Whether this member is the comparison reference.
+    pub reference: bool,
+    /// Compatibility flags against the reference member; all true for the reference.
+    pub compatibility: FontCompareCompatibility,
+    /// Counts over every compared glyph; zero for the reference member.
+    pub counts: FontCompareCounts,
+    /// Bounded sample of differing glyph names, for navigation.
+    pub examples: Vec<String>,
+    /// Explanation when this member could not be compared.
+    pub issue: Option<String>,
+}
+
+/// Compare every master of every selected document against one reference member.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+pub struct FontCompareFamilyParams {
+    /// Document that supplies the reference member.
+    pub doc: fc_doc::DocId,
+    /// Reference master; omission uses the document's default master.
+    #[serde(default)]
+    pub master: Option<fc_model::MasterId>,
+    /// Additional family documents; omission compares only `doc`'s own masters.
+    #[serde(default)]
+    pub docs: Vec<fc_doc::DocId>,
+    /// Include every master of each document instead of only its default master.
+    #[serde(default)]
+    pub all_masters: bool,
+}
+
+/// Family comparison across documents and masters.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+pub struct FontCompareFamilyResult {
+    /// Reference member first, then every compared member in request order.
+    pub members: Vec<FontCompareFamilyMember>,
+    /// Whether every compared member matched the reference on every flag.
+    pub compatible: bool,
+}
+
+/// Open a compiled font as an unmodifiable comparison reference.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+pub struct FontReferenceParams {
+    /// Path of the font to open read-only.
+    pub path: String,
+    /// Face index inside a collection.
+    #[serde(default)]
+    pub face_index: Option<u32>,
+}
+
+/// A read-only reference document that the kernel refuses to modify.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+pub struct FontReferenceResult {
+    /// Session handle of the opened reference.
+    pub doc: fc_doc::DocId,
+    /// Family display name.
+    pub family: String,
+    /// Absolute or user-supplied path the reference was opened from.
+    pub path: String,
+    /// Em square.
+    pub units_per_em: u16,
+    /// Master identifiers and display names, in document order.
+    pub masters: Vec<FontReferenceMaster>,
+    /// Always true: the document rejects every edit, undo, redo and save.
+    pub read_only: bool,
+    /// Importer warnings recorded while opening the font.
+    pub warnings: Vec<String>,
+}
+
+/// One master of an opened reference document.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+pub struct FontReferenceMaster {
+    /// Persistent master identifier.
+    pub id: fc_model::MasterId,
+    /// Display name.
+    pub name: String,
 }

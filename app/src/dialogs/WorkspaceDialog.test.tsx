@@ -81,3 +81,29 @@ it('closes on Escape and exposes overwrite before replacing an existing name', (
   fireEvent.keyDown(input, { key: 'Escape' })
   expect(close).toHaveBeenCalledOnce()
 })
+
+it('follows the storage the kernel reports instead of reading it once', async () => {
+  const saved = captureWorkspace(1, initialUiState())
+  render(
+    <WorkspaceDialog
+      documentKey="path:/fonts/Family.fcfp"
+      capture={() => saved}
+      onApply={() => true}
+      onClose={() => undefined}
+    />,
+  )
+
+  // The kernel has not answered yet, so the dialog says what is true so far.
+  expect(screen.getByText(/Saved on this computer only/)).toBeInTheDocument()
+
+  act(() => {
+    useWorkspaceStore
+      .getState()
+      .setStorage('path:/fonts/Family.fcfp', 'project')
+  })
+
+  expect(
+    await screen.findByText(/Saved in this document's project/),
+  ).toBeInTheDocument()
+  expect(screen.queryByText(/Saved on this computer only/)).toBeNull()
+})

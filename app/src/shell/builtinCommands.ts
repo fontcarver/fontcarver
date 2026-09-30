@@ -21,6 +21,7 @@ import {
   zoomActiveGlyphView,
 } from '../views/glyph/glyphCommands'
 import { registerLayerCommands } from '../views/glyph/layerCommands'
+import { registerMetricsCommands } from '../views/glyph/panels/metricsCommands'
 import { registerPathCommands } from '../views/glyph/pathCommands'
 import { registerSmoothCommands } from '../views/glyph/smoothCommands'
 
@@ -91,6 +92,7 @@ export function registerBuiltinCommands(): void {
   registerPathCommands()
   registerSmoothCommands()
   registerLayerCommands()
+  registerMetricsCommands()
   registerCommands([
     {
       id: 'bitmap.open',
@@ -117,6 +119,7 @@ export function registerBuiltinCommands(): void {
       title: 'textView.previewMenu',
       menu: 'view',
       group: 'panels',
+      shortcut: 'Mod+3',
       run: () => useUiStore.getState().toggleTextPreview(),
     },
     {
@@ -295,6 +298,21 @@ export function registerBuiltinCommands(): void {
         const doc = activeDoc()
         if (doc !== null)
           useUiStore.getState().setDialog({ kind: 'addGlyphs', doc })
+      },
+    },
+    {
+      id: 'edit.history',
+      title: 'cmd.view.history',
+      menu: 'edit',
+      group: 'history',
+      when: hasDocument,
+      disabledReason: 'cmd.reason.noDocument',
+      // The timeline lives in the Inspector's section stack, so the command
+      // opens the dock and that section rather than duplicating the list.
+      run: () => {
+        const ui = useUiStore.getState()
+        ui.setPanelVisible('inspector', true)
+        ui.setSection('history', true)
       },
     },
     {

@@ -16,7 +16,7 @@ beforeEach(() => {
 })
 
 describe('language repertoire filters', () => {
-  it('counts distinct scalar assignments and previews only missing letters', async () => {
+  it('counts distinct scalar assignments and previews only missing characters', async () => {
     const user = userEvent.setup()
     render(
       <LanguageFilters
@@ -30,7 +30,7 @@ describe('language repertoire filters', () => {
     ).toBeInTheDocument()
     await user.click(
       screen.getByRole('button', {
-        name: 'Preview 50 missing letters for English',
+        name: 'Preview 50 missing characters for English',
       }),
     )
     const dialog = useUiStore.getState().dialog
@@ -68,7 +68,7 @@ describe('language repertoire filters', () => {
     )
     expect(
       screen.getByRole('button', {
-        name: 'Preview 0 missing letters for English',
+        name: 'Preview 0 missing characters for English',
       }),
     ).toBeDisabled()
   })

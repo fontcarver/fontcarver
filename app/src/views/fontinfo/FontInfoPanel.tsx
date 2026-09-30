@@ -18,6 +18,8 @@ import { InfoGroups } from './InfoGroups'
 import { MetricsTable } from './MetricsTable'
 import { NamesTable } from './NamesTable'
 import { TablesTable } from './TablesTable'
+import { FontSettingsEditor } from './FontSettingsEditor'
+import { ScopedInfoTable } from './ScopedInfoTable'
 import { MasterHints } from '../hints/MasterHints'
 import { SvgEditor } from '../svg/SvgEditor'
 import { ColorEditor } from '../color/ColorEditor'
@@ -26,10 +28,12 @@ import { MathEditor } from '../math/MathEditor'
 /** The sections of the Font Info tab, in order. */
 export const SECTIONS = [
   'font',
+  'scopes',
   'names',
   'masters',
   'axes',
   'tables',
+  'settings',
   'other',
 ] as const
 
@@ -108,6 +112,17 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
             empty={t('fontInfo.noMatches')}
           />
         )
+      case 'scopes':
+        return (
+          <ScopedInfoTable
+            heading={heading}
+            doc={summary.doc}
+            info={info.info}
+            masters={info.masters}
+            instances={info.instances}
+            query={query}
+          />
+        )
       case 'names':
         return (
           <NamesTable heading={heading} names={info.info.names} query={query} />
@@ -152,6 +167,14 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
       case 'tables':
         return (
           <TablesTable heading={heading} tables={info.tables} query={query} />
+        )
+      case 'settings':
+        return searching ? null : (
+          <FontSettingsEditor
+            key={summary.doc}
+            doc={summary.doc}
+            unitsPerEm={info.info.units_per_em}
+          />
         )
       case 'other':
         return (

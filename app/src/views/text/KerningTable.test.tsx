@@ -10,8 +10,15 @@ const items = [
     right: { group: 'public.kern2.V' },
     value: -80,
     diagnostic: null,
+    exception: false,
   },
-  { left: { glyph: 'A' }, right: { glyph: 'V' }, value: 0, diagnostic: null },
+  {
+    left: { glyph: 'A' },
+    right: { glyph: 'V' },
+    value: 0,
+    diagnostic: null,
+    exception: true,
+  },
 ]
 let commands: Command[]
 beforeEach(() => {
@@ -27,6 +34,19 @@ beforeEach(() => {
         status: { generation: 4, editable: true, reason: null },
         total: items.length,
         items,
+      }),
+      'kerning.groups': () => ({
+        status: { generation: 4, editable: true, reason: null },
+        total: 1,
+        items: [
+          {
+            name: 'public.kern1.A',
+            member_count: 2,
+            pair_count: 1,
+            sample_members: ['A'],
+            diagnostic: null,
+          },
+        ],
       }),
       'doc.apply': ({ command }) => {
         commands.push(command)
@@ -107,7 +127,27 @@ describe('kerning table', () => {
     )
   })
 
-  it('requires scope confirmation before renaming every master reference', async () => {
+  it('cleans up obsolete records, not only invalid ones', async () => {
+    render(
+      <KerningTable doc={1} master="regular" generation={4} vertical={false} />,
+    )
+    openTable()
+    fireEvent.click(await screen.findByRole('button', { name: 'Clean Up' }))
+    await waitFor(() =>
+      expect(commands).toEqual([
+        {
+          KerningMaintenance: {
+            master: 'regular',
+            vertical: false,
+            expected_generation: 4,
+            operation: 'CleanupObsolete',
+          },
+        },
+      ]),
+    )
+  })
+
+  it('asks for the rename scope and states what each one changes', async () => {
     render(
       <KerningTable doc={1} master="regular" generation={4} vertical={false} />,
     )
@@ -115,14 +155,12 @@ describe('kerning table', () => {
     fireEvent.click(
       await screen.findByRole('button', { name: 'Rename public.kern1.A' }),
     )
-    expect(screen.getByRole('dialog')).toHaveTextContent('all masters')
+    expect(screen.getByRole('dialog')).toHaveTextContent('every master')
     fireEvent.change(screen.getByLabelText('New group name'), {
       target: { value: 'A.new' },
     })
     expect(commands).toHaveLength(0)
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Rename in all masters' }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: 'Rename' }))
     await waitFor(() =>
       expect(commands).toEqual([
         {
@@ -134,6 +172,169 @@ describe('kerning table', () => {
         },
       ]),
     )
+  })
+
+  it('retargets only the chosen record when that scope is selected', async () => {
+    render(
+      <KerningTable doc={1} master="regular" generation={4} vertical={false} />,
+    )
+    openTable()
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Rename public.kern1.A' }),
+    )
+    fireEvent.click(
+      screen.getByRole('radio', { name: 'Retarget this record only' }),
+    )
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      'Only this record moves',
+    )
+    fireEvent.change(screen.getByLabelText('New group name'), {
+      target: { value: 'A.alt' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Rename' }))
+    await waitFor(() => expect(commands).toHaveLength(1))
+    expect(commands[0]).toEqual({
+      Batch: [
+        {
+          SetHorizontalKerning: {
+            master: 'regular',
+            left: { group: 'public.kern1.A' },
+            right: { group: 'public.kern2.V' },
+            value: null,
+          },
+        },
+        {
+          SetHorizontalKerning: {
+            master: 'regular',
+            left: { group: 'public.kern1.A.alt' },
+            right: { group: 'public.kern2.V' },
+            value: -80,
+          },
+        },
+      ],
+    })
+  })
+
+  it('offers existing groups and refuses to retarget an unreadable record', async () => {
+    setTransport(
+      createMockTransport({
+        'kerning.pairs': () => ({
+          status: { generation: 4, editable: true, reason: null },
+          total: 1,
+          items: [
+            {
+              left: { group: 'public.kern1.A' },
+              right: { glyph: 'V' },
+              // An imported non-finite value the table cannot read.
+              value: null,
+              diagnostic: 'kerning must be finite',
+              exception: false,
+            },
+          ],
+        }),
+        'kerning.groups': () => ({
+          status: { generation: 4, editable: true, reason: null },
+          total: 2,
+          items: [
+            {
+              name: 'public.kern1.A',
+              member_count: 2,
+              pair_count: 1,
+              sample_members: ['A'],
+              diagnostic: null,
+            },
+            {
+              name: 'public.kern1.Diagonal',
+              member_count: 1,
+              pair_count: 0,
+              sample_members: ['V'],
+              diagnostic: null,
+            },
+          ],
+        }),
+        'doc.apply': () => noChange(),
+      }),
+    )
+    render(
+      <KerningTable doc={1} master="regular" generation={4} vertical={false} />,
+    )
+    openTable()
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Rename public.kern1.A' }),
+    )
+    const retarget = screen.getByRole('radio', {
+      name: 'Retarget this record only',
+    })
+    expect(retarget).toBeDisabled()
+    expect(screen.getByRole('dialog')).toHaveTextContent('cannot be retargeted')
+    // The existing groups of this side are offered as completions.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('dialog').querySelectorAll('datalist option'),
+      ).toHaveLength(2),
+    )
+  })
+
+  it('marks exceptions, class rules and plain pairs, and filters to exceptions', async () => {
+    render(
+      <KerningTable doc={1} master="regular" generation={4} vertical={false} />,
+    )
+    openTable()
+    await screen.findByRole('table')
+    expect(screen.getByText('Class')).toBeInTheDocument()
+    expect(screen.getByText('Exception')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Record kind'), {
+      target: { value: 'exceptions' },
+    })
+    expect(screen.queryByText('public.kern1.A')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Remove A / V' }),
+    ).toBeInTheDocument()
+  })
+
+  it('inspects another master without moving the proof and pastes there', async () => {
+    const masters = [
+      { id: 'regular', name: 'Regular' },
+      { id: 'bold', name: 'Bold' },
+    ]
+    render(
+      <KerningTable
+        doc={1}
+        master="regular"
+        masters={masters}
+        generation={4}
+        vertical={false}
+      />,
+    )
+    openTable()
+    fireEvent.click(await screen.findByRole('button', { name: 'Copy table' }))
+    fireEvent.change(screen.getByLabelText('Table master'), {
+      target: { value: 'bold' },
+    })
+    fireEvent.change(screen.getByLabelText('On conflict'), {
+      target: { value: 'keep' },
+    })
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Paste table' })).toBeEnabled(),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Paste table' }))
+    await waitFor(() => expect(commands).toHaveLength(1))
+    expect(commands[0]).toEqual({
+      KerningMaintenance: {
+        master: 'bold',
+        vertical: false,
+        expected_generation: 4,
+        operation: {
+          PasteKeepingExisting: {
+            records: items.map(({ left, right, value }) => ({
+              left,
+              right,
+              value,
+            })),
+          },
+        },
+      },
+    })
   })
 
   it('keeps imported layout tables read-only', async () => {

@@ -16,6 +16,7 @@ import { isEditableTarget, isInteractiveTarget } from '../../shell/shortcuts'
 import { useEditorStore } from '../../stores/editorStore'
 import { selectActiveTab, useUiStore } from '../../stores/uiStore'
 
+import { registerToolCommands } from './toolCommands'
 import type { GlyphOverlays } from './renderGlyph'
 
 /** What a mounted glyph view exposes to the command registry. */
@@ -107,6 +108,7 @@ function overlayCommand(key: keyof GlyphOverlays): Command {
 
 /** Registers every command of the glyph view. Safe to call more than once. */
 export function registerGlyphViewCommands(): void {
+  registerToolCommands()
   registerCommands([
     {
       id: 'view.zoomFit',

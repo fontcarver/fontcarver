@@ -4,6 +4,7 @@ use std::{
     collections::{HashMap, HashSet, VecDeque},
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
+    time::{Duration, Instant},
 };
 
 use fc_model::{Font, GlyphId, GlyphName, KernSide, Kerning, MasterId};
@@ -50,6 +51,18 @@ struct ActiveEdit {
     token: EditToken,
     label: String,
     has_entry: bool,
+    /// A script transaction also absorbs plain [`Document::apply`] commands.
+    ///
+    /// It carries its own deadline: an abandoned run — a reloaded page, a lost
+    /// transport — cannot hold history open beyond it, because every later
+    /// gesture, apply, undo, redo or save reaps an expired transaction first.
+    sticky: Option<Instant>,
+}
+
+impl ActiveEdit {
+    fn expired(&self, now: Instant) -> bool {
+        self.sticky.is_some_and(|deadline| now >= deadline)
+    }
 }
 
 /// An open editable font and its transient session state.
@@ -71,6 +84,7 @@ pub struct Document {
     next_glyph_id: u32,
     undo: UndoStack,
     active_edit: Option<ActiveEdit>,
+    read_only: bool,
     next_edit_token: u64,
     current_state: u64,
     saved_state: u64,
@@ -109,6 +123,7 @@ impl Document {
             next_glyph_id: 0,
             undo: UndoStack::default(),
             active_edit: None,
+            read_only: false,
             next_edit_token: 1,
             current_state: 0,
             saved_state: 0,
@@ -154,10 +169,113 @@ impl Document {
 
     /// Applies one labelled command and records a distinct undo entry.
     ///
-    /// A live coalesced edit is finalized before this command is applied.
+    /// A live coalesced edit is finalized before this command is applied. A live
+    /// script transaction ([`Document::begin_transaction`]) instead absorbs the
+    /// command, so a whole script run remains one undo entry, and the
+    /// transaction's own label is kept.
     pub fn apply(&mut self, command: Command, label: impl Into<String>) -> Result<Change, Error> {
+        self.check_writable()?;
+        // Only a live script transaction survives this; an expired one, and any
+        // gesture, is finalized here.
         self.finalize_active_edit();
+        if let Some(token) = self.active_edit.as_ref().map(|active| active.token) {
+            return self.apply_in_edit(&token, command);
+        }
         self.apply_command(command, label.into(), false)
+    }
+
+    /// Whether this document rejects every mutation, as an opened reference does.
+    pub fn read_only(&self) -> bool {
+        self.read_only
+    }
+
+    /// Marks the document as an unmodifiable reference, or restores editing.
+    pub fn set_read_only(&mut self, read_only: bool) {
+        self.read_only = read_only;
+        if read_only {
+            self.finalize_active_edit();
+        }
+    }
+
+    fn check_writable(&self) -> Result<(), Error> {
+        if self.read_only {
+            return Err(Error::InvalidCommand(
+                "this document is opened as a read-only reference and cannot be modified".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    /// Starts a script transaction whose commands share one undo entry.
+    ///
+    /// Unlike [`Document::begin_edit`], plain [`Document::apply`] calls join the
+    /// transaction, so a script that mixes low-level and high-level operations
+    /// still produces a single history entry. A gesture, history navigation or
+    /// `lifetime` elapsing closes it, so an abandoned run — a reloaded page, a
+    /// lost transport — can never hold history open indefinitely.
+    pub fn begin_transaction(
+        &mut self,
+        label: impl Into<String>,
+        lifetime: Duration,
+    ) -> Result<EditToken, Error> {
+        self.check_writable()?;
+        if lifetime.is_zero() {
+            return Err(Error::InvalidCommand(
+                "a script transaction needs a nonzero lifetime".into(),
+            ));
+        }
+        let token = self.begin_edit(label);
+        if let Some(active) = &mut self.active_edit {
+            active.sticky = Some(Instant::now() + lifetime);
+        }
+        Ok(token)
+    }
+
+    /// Closes a live script transaction whoever opened it, leaving a gesture
+    /// alone. The automation host calls this when a new run supersedes an
+    /// abandoned one. Returns whether a transaction was closed.
+    pub fn finalize_transaction(&mut self) -> bool {
+        if self
+            .active_edit
+            .as_ref()
+            .is_some_and(|active| active.sticky.is_some())
+        {
+            self.active_edit = None;
+            return true;
+        }
+        false
+    }
+
+    /// Closes a script transaction that has outlived its deadline.
+    ///
+    /// Safe to call at any time: a live transaction and a gesture are both left
+    /// alone. Returns whether one was reaped.
+    pub fn finalize_expired_transaction(&mut self) -> bool {
+        let now = Instant::now();
+        if self
+            .active_edit
+            .as_ref()
+            .is_some_and(|active| active.expired(now))
+        {
+            self.active_edit = None;
+            return true;
+        }
+        false
+    }
+
+    /// Finalizes a matching script transaction.
+    ///
+    /// Returns `None` when this token is not the live transaction — it already
+    /// ended, or a gesture, undo, redo or save finalized it — and otherwise
+    /// whether the transaction recorded a history entry.
+    pub fn end_transaction(&mut self, token: EditToken) -> Option<bool> {
+        let recorded = self
+            .active_edit
+            .as_ref()
+            .filter(|active| active.token == token && active.sticky.is_some())
+            .map(|active| active.has_entry)?;
+        self.active_edit = None;
+        Some(recorded)
     }
 
     /// Starts a coalesced editing gesture.
@@ -166,19 +284,23 @@ impl Document {
     /// its changes remain in history as one undo entry and its token becomes
     /// invalid.
     pub fn begin_edit(&mut self, label: impl Into<String>) -> EditToken {
-        self.finalize_active_edit();
+        // An editor gesture supersedes any live edit, including a script
+        // transaction: its recorded entry stays valid and its token expires.
+        self.active_edit.take();
         let token = EditToken(self.next_edit_token);
         self.next_edit_token = self.next_edit_token.saturating_add(1);
         self.active_edit = Some(ActiveEdit {
             token,
             label: label.into(),
             has_entry: false,
+            sticky: None,
         });
         token
     }
 
     /// Applies a command and merges it into the active gesture's undo entry.
     pub fn apply_in_edit(&mut self, token: &EditToken, command: Command) -> Result<Change, Error> {
+        self.check_writable()?;
         let Some(active) = &self.active_edit else {
             return Err(Error::InvalidEditToken);
         };
@@ -210,7 +332,9 @@ impl Document {
 
     /// Restores the preceding undo state, if one is available.
     pub fn undo(&mut self) -> Result<Option<Change>, Error> {
+        self.check_writable()?;
         self.finalize_active_edit();
+        self.reject_open_transaction()?;
         let Some(entry) = self.undo.take_undo() else {
             return Ok(None);
         };
@@ -223,7 +347,9 @@ impl Document {
 
     /// Reapplies the next redo state, if one is available.
     pub fn redo(&mut self) -> Result<Option<Change>, Error> {
+        self.check_writable()?;
         self.finalize_active_edit();
+        self.reject_open_transaction()?;
         let Some(entry) = self.undo.take_redo() else {
             return Ok(None);
         };
@@ -247,6 +373,11 @@ impl Document {
     /// Returns the number of retained entries in the undo timeline.
     pub fn undo_len(&self) -> usize {
         self.undo.len()
+    }
+
+    /// Read-only access to the undo timeline, for the History surface.
+    pub fn history(&self) -> &UndoStack {
+        &self.undo
     }
 
     /// Sets the estimated byte budget for undo and redo history.
@@ -292,6 +423,7 @@ impl Document {
 
     /// Saves the document as a `.fcf` or `.fcf.gz` file and marks it clean.
     pub fn save(&mut self, path: &Path) -> Result<(), Error> {
+        self.check_writable()?;
         let relocated = if crate::image_paths::relocates_images(self.path.as_deref(), path)? {
             let mut font = self.font.clone();
             let mut undo = self.undo.clone();
@@ -320,7 +452,34 @@ impl Document {
     }
 
     fn finalize_active_edit(&mut self) {
+        // A *live* script transaction outlives gesture finalization: only its
+        // own end, a new gesture, history navigation or its deadline closes it.
+        let now = Instant::now();
+        if self
+            .active_edit
+            .as_ref()
+            .is_some_and(|active| active.sticky.is_some() && !active.expired(now))
+        {
+            return;
+        }
         self.active_edit.take();
+    }
+
+    /// History navigation inside a live script transaction is rejected, not
+    /// silently reinterpreted: the pending entry covers the whole run, so
+    /// undoing it from inside the run would discard changes the script has not
+    /// finished making. An expired transaction has already been reaped.
+    fn reject_open_transaction(&self) -> Result<(), Error> {
+        if self
+            .active_edit
+            .as_ref()
+            .is_some_and(|active| active.sticky.is_some())
+        {
+            return Err(Error::InvalidCommand(
+                "a script transaction is open; end the script run before undoing or redoing".into(),
+            ));
+        }
+        Ok(())
     }
 
     fn apply_command(
@@ -711,6 +870,9 @@ fn merge_names(mut left: Vec<GlyphName>, right: Vec<GlyphName>) -> Vec<GlyphName
 }
 
 pub(crate) fn rename_references(font: &mut Font, from: &GlyphName, to: &GlyphName) {
+    // Metrics formulas, feature source and named glyph lists are text and
+    // metadata rather than model references; they follow a rename here too.
+    crate::command::follow_rename(font, from, to);
     for glyph in font.glyphs.values_mut() {
         for construction in glyph
             .layers

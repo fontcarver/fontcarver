@@ -10,6 +10,11 @@
  * Which families are live is a preference (`SnapPrefs`), and so is the grid
  * step, which is why the grid only appears once `prefs.grid_size` is set: the
  * canvas draws exactly the grid the snap uses.
+ *
+ * Each family also carries its own reach. One radius for everything is the
+ * wrong default for real work — nodes want to grab from far away, the grid
+ * rarely does — so a family with a configured distance uses it and a family
+ * left at zero stays on the shared `snapDistance`.
  */
 
 import type { Anchor } from '../api'
@@ -60,7 +65,48 @@ export interface SnapNames {
   descender: string
 }
 
-/** Which snap families are live, and how coarse the grid is. */
+/** One independently switchable, independently configurable snap family. */
+export type SnapTarget =
+  | 'nodes'
+  | 'handles'
+  | 'anchors'
+  | 'guides'
+  | 'metrics'
+  | 'grid'
+  | 'components'
+  | 'zones'
+  | 'background'
+
+/** Every snap family, in the order the preferences list them. */
+export const SNAP_TARGETS: readonly SnapTarget[] = [
+  'nodes',
+  'handles',
+  'anchors',
+  'guides',
+  'metrics',
+  'grid',
+  'components',
+  'zones',
+  'background',
+]
+
+/** Per-family snap reach in CSS pixels; zero inherits `snapDistance`. */
+export type SnapDistanceSettings = Readonly<Record<SnapTarget, number>>
+
+/** Every family inheriting the shared distance. */
+export const NO_SNAP_DISTANCES: SnapDistanceSettings = {
+  nodes: 0,
+  handles: 0,
+  anchors: 0,
+  guides: 0,
+  metrics: 0,
+  grid: 0,
+  components: 0,
+  zones: 0,
+  background: 0,
+}
+
+/** Which snap families are live, how far each reaches, and the grid step. */
 export interface SnapSettings {
   nodes: boolean
   handles: boolean
@@ -71,10 +117,16 @@ export interface SnapSettings {
   components: boolean
   zones: boolean
   background: boolean
-  /** Snap reach in CSS pixels; zero disables snapping. */
+  /** Shared snap reach in CSS pixels; zero disables snapping. */
   snapDistance: number
+  /** Per-family reach in CSS pixels; a zero entry uses `snapDistance`. */
+  distances: SnapDistanceSettings
   /** Node hit radius in CSS pixels; other hit families scale proportionally. */
   hitDistance: number
+  /** Drawn on-curve marker diameter in CSS pixels (design spec §4.2). */
+  nodeSize: number
+  /** Drawn off-curve marker diameter in CSS pixels. */
+  handleSize: number
   /** Grid step in font units; zero disables the grid entirely. */
   gridSize: number
 }
@@ -91,7 +143,10 @@ export const DEFAULT_SNAP_SETTINGS: SnapSettings = {
   zones: true,
   background: true,
   snapDistance: SNAP_DISTANCE,
+  distances: NO_SNAP_DISTANCES,
   hitDistance: 5,
+  nodeSize: 5,
+  handleSize: 3.5,
   gridSize: 0,
 }
 
@@ -118,6 +173,28 @@ interface PointTarget {
   point: Point2
   label: string
   rank: number
+  /** Which family's reach this candidate has to be inside. */
+  target: SnapTarget
+}
+
+/**
+ * The reach of one family in font units, or zero when it cannot snap.
+ *
+ * A family whose own distance is zero — the untouched default — falls back to
+ * the shared one, so a preference file that has never been edited behaves
+ * exactly as a single radius always did.
+ */
+export function snapReach(
+  settings: SnapSettings,
+  target: SnapTarget,
+  scale: number,
+): number {
+  if (!settings[target]) return 0
+  const own = settings.distances?.[target] ?? 0
+  const pixels = Number.isFinite(own) && own > 0 ? own : settings.snapDistance
+  if (!Number.isFinite(pixels) || pixels <= 0) return 0
+  const divisor = scale > 0 && Number.isFinite(scale) ? scale : 1
+  return pixels / divisor
 }
 
 /** Nothing snapped. */
@@ -151,6 +228,7 @@ function pointTargets(input: SnapInput): PointTarget[] {
       point: { x: point.x, y: point.y },
       label: point.onCurve ? input.names.node : input.names.handle,
       rank: point.onCurve ? 0 : 1,
+      target: point.onCurve ? 'nodes' : 'handles',
     })
   }
   if (input.settings.anchors)
@@ -159,16 +237,27 @@ function pointTargets(input: SnapInput): PointTarget[] {
         point: { x: anchor.x, y: anchor.y },
         label: anchor.name || input.names.anchor,
         rank: 2,
+        target: 'anchors',
       })
   // §4.2 does not name the component ghosts in its order, so they sit just
   // behind the layer's own features: a ghost is a hint about a neighbouring
   // shape, never a reason to miss a node of the glyph being drawn.
   if (input.settings.components)
     for (const point of input.componentPoints)
-      targets.push({ point, label: input.names.component, rank: 3 })
+      targets.push({
+        point,
+        label: input.names.component,
+        rank: 3,
+        target: 'components',
+      })
   if (input.settings.background)
     for (const point of input.backgroundPoints ?? [])
-      targets.push({ point, label: input.names.background, rank: 4 })
+      targets.push({
+        point,
+        label: input.names.background,
+        rank: 4,
+        target: 'background',
+      })
   return targets
 }
 
@@ -198,8 +287,10 @@ export function snapDelta(
   const primary = moved[0]
   if (!primary) return unsnapped(delta)
   const scale = input.viewport.scale > 0 ? input.viewport.scale : 1
-  const reach = input.settings.snapDistance / scale
-  if (!Number.isFinite(reach) || reach <= 0) return unsnapped(delta)
+  const reachOf = (target: SnapTarget): number =>
+    snapReach(input.settings, target, scale)
+  if (SNAP_TARGETS.every((target) => reachOf(target) <= 0))
+    return unsnapped(delta)
 
   let best: { target: PointTarget; distance: number } | null = null
   for (const target of pointTargets(input)) {
@@ -207,7 +298,7 @@ export function snapDelta(
       target.point.x - primary.x,
       target.point.y - primary.y,
     )
-    if (distance > reach) continue
+    if (distance > reachOf(target.target)) continue
     if (
       !best ||
       target.rank < best.target.rank ||
@@ -232,14 +323,23 @@ export function snapDelta(
   let snappedY: { value: number; label: string } | null = null
   let diagonal: { point: Point2; label: string; distance: number } | null = null
 
-  if (input.settings.guides)
+  const guideReach = reachOf('guides')
+  if (guideReach > 0)
     for (const entry of input.guides) {
       const { guide } = entry
       const angle = ((guide.angle % 180) + 180) % 180
       const name = guide.name ?? input.names.guide
-      if (angle === 0 && Math.abs(guide.y - primary.y) <= reach && !snappedY)
+      if (
+        angle === 0 &&
+        Math.abs(guide.y - primary.y) <= guideReach &&
+        !snappedY
+      )
         snappedY = { value: guide.y, label: name }
-      if (angle === 90 && Math.abs(guide.x - primary.x) <= reach && !snappedX)
+      if (
+        angle === 90 &&
+        Math.abs(guide.x - primary.x) <= guideReach &&
+        !snappedX
+      )
         snappedX = { value: guide.x, label: name }
       if (angle !== 0 && angle !== 90) {
         const radians = (angle * Math.PI) / 180
@@ -247,7 +347,10 @@ export function snapDelta(
         const ny = Math.cos(radians)
         const offset = (primary.x - guide.x) * nx + (primary.y - guide.y) * ny
         const distance = Math.abs(offset)
-        if (distance <= reach && (!diagonal || distance < diagonal.distance))
+        if (
+          distance <= guideReach &&
+          (!diagonal || distance < diagonal.distance)
+        )
           diagonal = {
             point: { x: primary.x - offset * nx, y: primary.y - offset * ny },
             label: name,
@@ -270,52 +373,54 @@ export function snapDelta(
       alignedY: null,
     }
 
-  if (!snappedY && input.settings.metrics)
+  const metricReach = reachOf('metrics')
+  if (!snappedY && metricReach > 0)
     for (const line of metricLines(input))
-      if (Math.abs(line.y - primary.y) <= reach) {
+      if (Math.abs(line.y - primary.y) <= metricReach) {
         snappedY = { value: line.y, label: line.label }
         break
       }
 
-  if (!snappedX && input.settings.metrics)
+  if (!snappedX && metricReach > 0)
     for (const x of [0, input.metrics.width])
-      if (Math.abs(x - primary.x) <= reach) {
+      if (Math.abs(x - primary.x) <= metricReach) {
         snappedX = { value: x, label: input.names.advance }
         break
       }
 
-  if (!snappedY && input.settings.zones)
+  const zoneReach = reachOf('zones')
+  if (!snappedY && zoneReach > 0)
     for (const y of input.zoneLines ?? [])
-      if (Math.abs(y - primary.y) <= reach) {
+      if (Math.abs(y - primary.y) <= zoneReach) {
         snappedY = { value: y, label: input.names.zone }
         break
       }
 
   const step = input.settings.gridSize
-  if (input.settings.grid && step > 0) {
+  const gridReach = reachOf('grid')
+  if (gridReach > 0 && step > 0) {
     const nearest = (value: number) => Math.round(value / step) * step
-    if (!snappedX && Math.abs(nearest(primary.x) - primary.x) <= reach)
+    if (!snappedX && Math.abs(nearest(primary.x) - primary.x) <= gridReach)
       snappedX = { value: nearest(primary.x), label: input.names.grid }
-    if (!snappedY && Math.abs(nearest(primary.y) - primary.y) <= reach)
+    if (!snappedY && Math.abs(nearest(primary.y) - primary.y) <= gridReach)
       snappedY = { value: nearest(primary.y), label: input.names.grid }
   }
 
   let alignedX: number | null = null
   let alignedY: number | null = null
-  if (
-    (input.settings.nodes || input.settings.handles) &&
-    (!snappedX || !snappedY)
-  )
+  const nodeReach = reachOf('nodes')
+  const handleReach = reachOf('handles')
+  if (Math.max(nodeReach, handleReach) > 0 && (!snappedX || !snappedY))
     for (const point of input.outline.points) {
-      if (!(point.onCurve ? input.settings.nodes : input.settings.handles))
-        continue
+      const own = point.onCurve ? nodeReach : handleReach
+      if (own <= 0) continue
       const key = `${point.ref.contour}:${point.ref.point}`
       if (input.exclude.has(key)) continue
-      if (!snappedX && Math.abs(point.x - primary.x) <= reach) {
+      if (!snappedX && Math.abs(point.x - primary.x) <= own) {
         snappedX = { value: point.x, label: 'align' }
         alignedX = point.x
       }
-      if (!snappedY && Math.abs(point.y - primary.y) <= reach) {
+      if (!snappedY && Math.abs(point.y - primary.y) <= own) {
         snappedY = { value: point.y, label: 'align' }
         alignedY = point.y
       }

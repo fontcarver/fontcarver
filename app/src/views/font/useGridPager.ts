@@ -18,6 +18,7 @@ import { rememberOrder } from './glyphOrder'
 import { GlyphPager } from './glyphPager'
 import type { GlyphQuery } from './glyphSelection'
 import { invalidateFor } from './invalidation'
+import { useQueryErrors } from './queryErrors'
 
 /** What {@link useGridPager} needs to fetch and invalidate pages. */
 export interface GridPagerOptions {
@@ -55,10 +56,19 @@ export function useGridPager({ doc, query }: GridPagerOptions): GridPager {
           })
           rememberGlyphNames(query.doc, result.items)
           rememberOrder(query, offset, result.items, result.total)
+          // The query the grid just answered is valid, so no control needs to
+          // keep complaining about it.
+          useQueryErrors.getState().clear(query.doc)
           return result
         },
         onChange: bump,
-        onError: reportError,
+        // A malformed search or smart expression is reported next to the control
+        // that owns it; everything else is still a toast.
+        onError: (error: unknown) => {
+          if (!useQueryErrors.getState().report(query.doc, error)) {
+            reportError(error)
+          }
+        },
       }),
   )
 

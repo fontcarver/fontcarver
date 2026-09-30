@@ -386,3 +386,66 @@ describe('window close decisions', () => {
     }
   })
 })
+
+it('a detached panel follows the glyph its owner moves to', async () => {
+  const summary = makeSummary()
+  setTransport(createMockTransport({ 'session.list': () => [summary] }))
+  useSessionStore.setState({ docs: [summary] })
+  // This window is a detached Inspector of the document.
+  windows.target = { kind: 'panel', doc: 1, panel: 'inspector' }
+  const tabFor = (gid: number): Tab => ({
+    id: `glyph:1:${gid}`,
+    kind: 'glyph',
+    doc: 1,
+    gid,
+  })
+  windows.payload = tabFor(7)
+
+  stop = installWindowLifecycle()
+  await vi.waitFor(() =>
+    expect(useUiStore.getState().activeTab).toBe('glyph:1:7'),
+  )
+
+  // The owning window steps to another glyph and republishes its tab, which
+  // reaches this window as a storage event.
+  windows.payload = tabFor(9)
+  window.dispatchEvent(
+    new StorageEvent('storage', {
+      key: 'fontcarver:window-tab:fc-panel-1-inspector',
+    }),
+  )
+
+  await vi.waitFor(() =>
+    expect(useUiStore.getState().activeTab).toBe('glyph:1:9'),
+  )
+  // Exactly the pinned Overview plus the followed tab, with no stale tab left.
+  expect(useUiStore.getState().tabs.map((tab) => tab.id)).toEqual([
+    'font:1',
+    'glyph:1:9',
+  ])
+})
+
+it('publishes the active tab to its own detached panels', () => {
+  loaded()
+  stop = installWindowLifecycle()
+  useUiStore
+    .getState()
+    .addDetached({ kind: 'panel', doc: 1, panel: 'inspector' })
+  windows.write.mockReset()
+
+  const glyph = useUiStore.getState().openTab({ kind: 'glyph', doc: 1, gid: 7 })
+
+  // The panel window reads this payload, which is how it follows the glyph.
+  expect(windows.write).toHaveBeenCalledWith(
+    { kind: 'panel', doc: 1, panel: 'inspector' },
+    expect.objectContaining({ id: glyph, gid: 7 }),
+  )
+
+  // A panel of another document is left alone.
+  windows.write.mockReset()
+  useUiStore.getState().addDetached({ kind: 'panel', doc: 2, panel: 'sidebar' })
+  expect(windows.write).not.toHaveBeenCalledWith(
+    { kind: 'panel', doc: 2, panel: 'sidebar' },
+    expect.anything(),
+  )
+})

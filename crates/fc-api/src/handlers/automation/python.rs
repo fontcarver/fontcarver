@@ -10,7 +10,10 @@ use std::{
 
 use serde_json::{json, Value};
 
-use crate::{Api, ApiError, AutomationPythonParams, AutomationPythonResult, METHODS};
+use crate::{
+    Api, ApiError, AutomationPythonParams, AutomationPythonResult, AutomationTransaction,
+    AutomationTransactionEndParams, AutomationTransactionParams, METHODS,
+};
 
 use super::SOURCE_LIMIT;
 
@@ -33,6 +36,26 @@ impl Drop for OwnedChild {
     fn drop(&mut self) {
         let _ = self.0.kill();
         let _ = self.0.wait();
+    }
+}
+
+/// Closes the run's history transaction even when the bridge fails internally.
+struct TransactionGuard<'a> {
+    api: &'a Api,
+    transaction: Option<AutomationTransaction>,
+}
+
+impl Drop for TransactionGuard<'_> {
+    fn drop(&mut self) {
+        if let Some(transaction) = self.transaction.take() {
+            let _ = super::transaction_end(
+                self.api,
+                AutomationTransactionEndParams {
+                    doc: transaction.doc,
+                    token: transaction.token,
+                },
+            );
+        }
     }
 }
 
@@ -191,11 +214,35 @@ pub(super) fn run(
             serde_json::to_vec(&config).map_err(|error| ApiError::internal(error.to_string()))?,
         )
         .map_err(|error| ApiError::internal(error.to_string()))?;
+    // One run is one undo entry: every kernel change the script makes joins the
+    // captured document's script transaction.
+    let transaction = match params.doc {
+        Some(doc) => Some(super::transaction_begin(
+            api,
+            AutomationTransactionParams {
+                doc,
+                label: params
+                    .label
+                    .clone()
+                    .filter(|label| !label.trim().is_empty())
+                    .unwrap_or_else(|| "Python script".to_owned()),
+                // The interpreter's own deadline plus margin for a kernel call
+                // already dispatched when it expires.
+                timeout_ms: Some(timeout.saturating_add(30_000).min(120_000)),
+            },
+        )?),
+        None => None,
+    };
+    let mut guard = TransactionGuard {
+        api,
+        transaction: transaction.clone(),
+    };
     let mut result = AutomationPythonResult {
         output: Vec::new(),
         error: None,
         elapsed_ms: 0,
         rpc_calls: 0,
+        undo_label: None,
     };
     let mut output_bytes = 0;
     loop {
@@ -274,6 +321,16 @@ pub(super) fn run(
     }
     if Instant::now() >= deadline {
         result.error = Some("Python script exceeded its deadline".into());
+    }
+    if let Some(transaction) = guard.transaction.take() {
+        result.undo_label = super::transaction_end(
+            api,
+            AutomationTransactionEndParams {
+                doc: transaction.doc,
+                token: transaction.token,
+            },
+        )?
+        .undo_label;
     }
     result.elapsed_ms = started.elapsed().as_millis().min(u128::from(u32::MAX)) as u32;
     Ok(result)

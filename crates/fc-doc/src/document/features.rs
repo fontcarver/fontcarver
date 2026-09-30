@@ -76,6 +76,8 @@ impl Document {
         prepared: PreparedFeatureChange,
         label: impl Into<String>,
     ) -> Result<Change, Error> {
+        // This path bypasses `apply`, so it needs the read-only guard of its own.
+        self.check_writable()?;
         if self.generation != expected_generation
             || self.compile_revision != expected_compile_revision
         {

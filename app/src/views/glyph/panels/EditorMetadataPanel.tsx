@@ -67,6 +67,17 @@ export function EditorMetadataPanel({ target, glyph, reload }: PanelContext) {
       title={t('editorMetadata.title')}
       count={metadata.annotations.length}
     >
+      {glyph.locked ? (
+        <p className={styles.hint} role="status">
+          {t('editorMetadata.glyphLockedReason')}
+        </p>
+      ) : metadata.lockedPaths.size > 0 ? (
+        <p className={styles.hint} role="status">
+          {t('editorMetadata.pathsLockedReason', {
+            count: metadata.lockedPaths.size,
+          })}
+        </p>
+      ) : null}
       <div className={styles.actions}>
         <button
           type="button"
@@ -89,6 +100,9 @@ export function EditorMetadataPanel({ target, glyph, reload }: PanelContext) {
           type="button"
           className={styles.actionButton}
           disabled={glyph.locked || !paths.length}
+          {...(glyph.locked
+            ? { title: t('editorMetadata.glyphLockedReason') }
+            : {})}
           onClick={() => locks(paths, true)}
         >
           {t('editorMetadata.lockPaths')}
@@ -111,7 +125,13 @@ export function EditorMetadataPanel({ target, glyph, reload }: PanelContext) {
           })}
         </button>
       </div>
-      <fieldset disabled={glyph.locked} className={metadataStyles.fields}>
+      <fieldset
+        disabled={glyph.locked}
+        className={metadataStyles.fields}
+        {...(glyph.locked
+          ? { title: t('editorMetadata.glyphLockedReason') }
+          : {})}
+      >
         <label className={styles.row}>
           <span className={styles.rowLabel}>{t('editorMetadata.kind')}</span>
           <select

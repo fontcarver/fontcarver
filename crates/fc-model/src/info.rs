@@ -249,3 +249,78 @@ pub struct FontInfo {
     #[cfg_attr(feature = "ts", ts(type = "unknown"))]
     pub user_data: serde_json::Value,
 }
+
+/// Export-scope overrides of font-wide metadata for one named instance.
+///
+/// Values a named instance does not override inherit the font's own value, which
+/// in turn inherits the family-wide value; the compiler applies these when it
+/// instantiates the export.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
+pub struct InstanceOverrides {
+    /// OS/2 weight class for this export.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub weight_class: Option<u16>,
+    /// OS/2 width class for this export.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub width_class: Option<u16>,
+    /// PostScript font name for this export.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub postscript_font_name: Option<String>,
+    /// Preferred (typographic) family name for this export.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub preferred_family_name: Option<String>,
+    /// Preferred (typographic) subfamily name for this export.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub preferred_subfamily_name: Option<String>,
+}
+
+impl InstanceOverrides {
+    /// Whether this instance overrides nothing.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
+
+    /// Validate the numeric OpenType ranges before an export uses them.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when a class or a name is outside its OpenType range.
+    pub fn validate(&self) -> Result<(), crate::Error> {
+        let invalid = |reason: &str| crate::Error::InvalidDesignSpace(reason.to_owned());
+        if self
+            .weight_class
+            .is_some_and(|value| !(1..=1000).contains(&value))
+        {
+            return Err(invalid("instance weight class must be between 1 and 1000"));
+        }
+        if self
+            .width_class
+            .is_some_and(|value| !(1..=9).contains(&value))
+        {
+            return Err(invalid("instance width class must be between 1 and 9"));
+        }
+        for name in [
+            &self.postscript_font_name,
+            &self.preferred_family_name,
+            &self.preferred_subfamily_name,
+        ]
+        .into_iter()
+        .flatten()
+        {
+            if name.trim().is_empty() || name.chars().count() > 255 {
+                return Err(invalid(
+                    "an instance name override must be between 1 and 255 characters",
+                ));
+            }
+        }
+        Ok(())
+    }
+}

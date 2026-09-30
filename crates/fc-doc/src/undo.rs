@@ -10,14 +10,16 @@ mod color;
 mod features;
 mod kerning;
 mod math;
+mod scope;
 pub use features::FeatureSnapshot;
 pub use kerning::HorizontalKerningSnapshot;
+pub use scope::{EntryScope, LayerRole, LayerScope};
 
 /// Default maximum estimated memory retained by one undo stack.
 pub const DEFAULT_MEMORY_BUDGET: usize = 512 * 1024 * 1024;
 
 /// Design-space metadata restored together by one undo entry.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct DesignSpaceSnapshot {
     axes: Vec<fc_model::Axis>,
     masters: Vec<Master>,
@@ -80,6 +82,14 @@ pub struct UndoEntry {
 }
 
 impl UndoEntry {
+    /// Which part of the document this entry restores.
+    ///
+    /// Derived from the stored snapshots when the History surface asks for it,
+    /// so an ordinary edit never pays for a label nobody is looking at.
+    pub fn scope(&self) -> EntryScope {
+        scope::scope(self)
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         label: String,
@@ -184,6 +194,19 @@ impl UndoStack {
     /// Returns whether no history entries are retained.
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
+    }
+
+    /// Returns the retained timeline oldest first, including undone entries.
+    pub fn entries(&self) -> &[UndoEntry] {
+        &self.entries
+    }
+
+    /// Returns how many entries undo can still restore.
+    ///
+    /// The same number is the index of the entry redo would reapply, so the
+    /// cursor separates the applied prefix from the undone suffix.
+    pub fn cursor(&self) -> usize {
+        self.cursor
     }
 
     pub(crate) fn set_memory_budget(&mut self, bytes: usize) {

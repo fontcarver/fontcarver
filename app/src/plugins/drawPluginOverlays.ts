@@ -1,10 +1,10 @@
-import type { Viewport } from '../canvas/Viewport'
+import type { FontBox, Viewport } from '../canvas/Viewport'
 import type { EditorSource } from '../editor/editorTypes'
 import type { GlyphScene } from '../views/glyph/glyphScene'
 import type { GlyphTheme } from '../views/glyph/glyphTheme'
-import type { PluginOverlay } from './contracts'
+import type { PluginOverlay, ReporterViewContext } from './contracts'
 import { useFilterPreview } from './filterSession'
-import { usePluginStore } from './pluginStore'
+import { pluginSettings, usePluginStore } from './pluginStore'
 import { bundledPlugin, bundledPlugins } from './registry'
 
 // Pointer movement repaints repeatedly, while preview path strings rarely change.
@@ -22,6 +22,40 @@ function parsedPath(data: string): Path2D {
   }
   paths.set(data, path)
   return path
+}
+
+// A reporter that throws is reported once per session: repainting runs on every
+// pointer move, and a console flooded with the same failure helps nobody.
+const failed = new Set<string>()
+
+function reportFailure(id: string, error: unknown): void {
+  if (failed.has(id)) return
+  failed.add(id)
+  console.error(
+    `FontCarver plugin ${id} failed while reporting overlays`,
+    error,
+  )
+}
+
+/** Forgets reported failures, so a reinstalled plugin reports again. */
+export function resetPluginFailures(): void {
+  failed.clear()
+}
+
+/** The visible font-space rectangle and zoom a reporter draws against. */
+export function viewContext(viewport: Viewport): ReporterViewContext {
+  const topLeft = viewport.toFont({ x: 0, y: 0 })
+  const bottomRight = viewport.toFont({
+    x: viewport.width,
+    y: viewport.height,
+  })
+  const visible: FontBox = {
+    x0: Math.min(topLeft.x, bottomRight.x),
+    y0: Math.min(topLeft.y, bottomRight.y),
+    x1: Math.max(topLeft.x, bottomRight.x),
+    y1: Math.max(topLeft.y, bottomRight.y),
+  }
+  return { scale: viewport.scale, visible }
 }
 
 function drawOverlays(
@@ -46,6 +80,11 @@ function drawOverlays(
       if (overlay.kind === 'bounds') {
         const { x0, y0, x1, y1 } = overlay.bounds
         ctx.strokeRect(x0, y0, x1 - x0, y1 - y0)
+      } else if (overlay.kind === 'line') {
+        ctx.beginPath()
+        ctx.moveTo(overlay.from[0], overlay.from[1])
+        ctx.lineTo(overlay.to[0], overlay.to[1])
+        ctx.stroke()
       } else {
         ctx.stroke(parsedPath(overlay.path))
       }
@@ -73,15 +112,32 @@ export function drawPluginOverlays(
       : bbox
         ? { x0: bbox[0], y0: bbox[1], x1: bbox[2], y1: bbox[3] }
         : null
+  const document = {
+    doc: source.doc,
+    gid: source.gid,
+    glyph: source.glyph,
+    layer: source.outline.layer,
+    master: source.master,
+    metrics: source.metrics,
+  }
+  const view = viewContext(viewport)
   for (const plugin of bundledPlugins) {
-    if ('report' in plugin && installed[plugin.manifest.id]?.enabled)
-      drawOverlays(
-        ctx,
-        viewport,
-        plugin.report({ bounds }),
-        theme.accent,
-        false,
-      )
+    if (!('report' in plugin) || !installed[plugin.manifest.id]?.enabled)
+      continue
+    // A failing reporter loses its own drawing, never the canvas paint.
+    let overlays: readonly PluginOverlay[]
+    try {
+      overlays = plugin.report({
+        bounds,
+        document,
+        view,
+        settings: pluginSettings(plugin.manifest.id),
+      })
+    } catch (error) {
+      reportFailure(plugin.manifest.id, error)
+      continue
+    }
+    drawOverlays(ctx, viewport, overlays, theme.accent, false)
   }
 
   const preview = useFilterPreview.getState().preview

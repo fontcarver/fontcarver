@@ -23,29 +23,48 @@ export interface KerningShortcutEvent {
   target?: EventTarget | null
 }
 
-/** Optional punctuation controls reserve Ctrl/Alt for independent class drops. */
+/**
+ * The kerning gesture for one key press, including held class suppression.
+ *
+ * `punctuation` enables the `,`/`.` kerning keys at all; `bare` additionally
+ * allows them **unmodified**, which only the locked kerning mode can afford
+ * because otherwise those characters are typed into the run. A held Alt or
+ * Control is never typed, so a modified punctuation edit is available in every
+ * kerning mode and is how an exception is made without changing the panel's
+ * scope.
+ *
+ * Alt suppresses the second side's class on every platform. Control suppresses
+ * the first side's class on macOS only: everywhere else Control *is* the
+ * primary modifier, so claiming it here would fight the user's own `Mod+,`
+ * binding. The scope selector covers that case on those platforms.
+ */
 export function kerningShortcutAction(
   event: KerningShortcutEvent,
   isMac: boolean,
   punctuation = false,
+  bare = true,
 ): { delta: number; suppressLeft: boolean; suppressRight: boolean } | null {
   const arrows = kerningShortcut(event, isMac)
   if (arrows !== null)
     return { delta: arrows, suppressLeft: false, suppressRight: false }
-  if (!punctuation || event.metaKey) return null
+  const mod = isMac ? event.metaKey : event.ctrlKey
+  if (!punctuation || mod || event.metaKey) return null
   const direction =
     event.code === 'Comma' || [',', '<'].includes(event.key)
       ? -1
       : event.code === 'Period' || ['.', '>'].includes(event.key)
         ? 1
         : null
-  return direction === null
-    ? null
-    : {
-        delta: direction * (event.shiftKey ? 10 : 1),
-        suppressLeft: event.ctrlKey,
-        suppressRight: event.altKey,
-      }
+  if (direction === null) return null
+  const suppressLeft = event.ctrlKey
+  const suppressRight = event.altKey
+  // An unmodified comma or period is a character the text run wants.
+  if (!bare && !suppressLeft && !suppressRight) return null
+  return {
+    delta: direction * (event.shiftKey ? 10 : 1),
+    suppressLeft,
+    suppressRight,
+  }
 }
 
 /** Reserved horizontal kerning keys, with platform-specific Mod semantics. */

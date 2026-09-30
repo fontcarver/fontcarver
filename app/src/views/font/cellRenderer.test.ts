@@ -33,6 +33,7 @@ function mockContext() {
     fill: vi.fn(),
     stroke: vi.fn(),
     beginPath: vi.fn(),
+    closePath: vi.fn(),
     moveTo: vi.fn(),
     lineTo: vi.fn(),
     rect: vi.fn(),
@@ -202,6 +203,63 @@ describe('paintCell', () => {
     )
 
     expect(ctx.fillText.mock.calls[0]?.[0]).toBe('一')
+  })
+
+  it('leaves an empty cell empty when reference characters are off', () => {
+    const ctx = mockContext()
+
+    paintCell(
+      ctx as unknown as CanvasRenderingContext2D,
+      makeCell({ is_empty: true, unicodes: [0x4e00] }),
+      options({ path: null, referenceCharacters: false }),
+    )
+
+    // Only the cell label is drawn; the muted reference character is not.
+    expect(ctx.fillText.mock.calls.map((call) => call[0])).not.toContain(
+      '\u4e00',
+    )
+    expect(ctx.setLineDash).toHaveBeenCalled()
+  })
+
+  it('marks the layer colour separately from the glyph colour label', () => {
+    const ctx = mockContext()
+
+    paintCell(
+      ctx as unknown as CanvasRenderingContext2D,
+      makeCell({ color_label: 0, layer_color_label: 7 }),
+      options(),
+    )
+
+    // A full-width stripe for the glyph label, a corner mark for the layer.
+    const stripe = ctx.fillRect.mock.calls.find(
+      (call) => call[2] === 64 && call[3] === 3,
+    )
+    expect(stripe).toBeDefined()
+    // The corner mark is the one filled path with no argument.
+    expect(
+      ctx.fill.mock.calls.filter((call) => call.length === 0),
+    ).toHaveLength(1)
+    expect(ctx.closePath).toHaveBeenCalledTimes(1)
+
+    const plain = mockContext()
+    paintCell(
+      plain as unknown as CanvasRenderingContext2D,
+      makeCell({ layer_color_label: null }),
+      options(),
+    )
+    expect(plain.closePath).not.toHaveBeenCalled()
+  })
+
+  it('ignores a layer colour index outside the twelve labels', () => {
+    const ctx = mockContext()
+
+    paintCell(
+      ctx as unknown as CanvasRenderingContext2D,
+      makeCell({ layer_color_label: 40 }),
+      options(),
+    )
+
+    expect(ctx.closePath).not.toHaveBeenCalled()
   })
 
   it('paints the selection ring and the selected background', () => {

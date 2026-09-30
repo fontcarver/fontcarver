@@ -17,6 +17,7 @@ import { glyphPage } from '../../test/glyphFixtures'
 import { createMockTransport, makeSummary } from '../../test/mockTransport'
 
 import { FontView } from './FontView'
+import { forgetFontViewPrefs, readFontViewPrefs } from './fontViewPrefs'
 
 const SUMMARY = makeSummary({ glyph_count: 65_535 })
 
@@ -37,6 +38,8 @@ function setup() {
 }
 
 beforeEach(() => {
+  localStorage.clear()
+  forgetFontViewPrefs()
   vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(
     function (this: HTMLElement) {
       return this.getAttribute('role') === 'rowgroup' ? 800 : 0
@@ -121,5 +124,33 @@ describe('glyph table', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Grid view' }))
     fireEvent.click(screen.getByRole('button', { name: 'List view' }))
     expect(columnNames().slice(0, 3)).toEqual(['name', 'width', 'unicode'])
+  })
+
+  it('chooses which columns appear and remembers the choice', async () => {
+    useDocumentStore.getState().setViewMode(SUMMARY.doc, 'list')
+    setup()
+    await screen.findByRole('row', { name: 'A' })
+    const columnNames = () =>
+      screen
+        .getAllByRole('columnheader')
+        .map((header) => header.getAttribute('data-column'))
+    expect(columnNames()).not.toContain('subCategory')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose columns' }))
+    const menu = screen.getByRole('group', { name: 'Choose columns' })
+    fireEvent.click(within(menu).getByRole('checkbox', { name: 'Subcategory' }))
+    fireEvent.click(within(menu).getByRole('checkbox', { name: 'Width' }))
+    expect(columnNames()).toEqual([
+      'name',
+      'unicode',
+      'category',
+      'subCategory',
+      'script',
+      'status',
+    ])
+    // The subcategory cell shows the kernel's classification for the row.
+    const row = screen.getByRole('row', { name: 'A' })
+    expect(within(row).getByTitle('Uppercase')).toBeInTheDocument()
+    expect(readFontViewPrefs().tableColumns).toEqual(columnNames())
   })
 })

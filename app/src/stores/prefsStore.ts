@@ -1,7 +1,11 @@
 import { create } from 'zustand'
 
 import { call, type Prefs } from '../api'
-import type { SnapSettings } from '../editor/snapping'
+import type {
+  SnapDistanceSettings,
+  SnapSettings,
+  SnapTarget,
+} from '../editor/snapping'
 import { normaliseLanguage } from '../i18n'
 
 import { reportError, useUiStore, type ThemePreference } from './uiStore'
@@ -32,6 +36,17 @@ export const DEFAULT_PREFS: Prefs = Object.freeze<Prefs>({
     metrics: true,
     grid: true,
     components: true,
+    distances: {
+      nodes: 0,
+      handles: 0,
+      anchors: 0,
+      zones: 0,
+      background: 0,
+      guides: 0,
+      metrics: 0,
+      grid: 0,
+      components: 0,
+    },
   },
   nudge: [1, 10, 100],
 })
@@ -226,8 +241,49 @@ export const usePrefsStore = create<PrefsState>((set, get) => {
   }
 })
 
+/**
+ * Per-family snap reach, tolerating a preference record written before the
+ * field existed: a missing or negative entry means "use the shared distance".
+ */
+function snapDistancesOf(prefs: Prefs): SnapDistanceSettings {
+  const stored = prefs.snap.distances
+  const own = (target: SnapTarget): number => {
+    const value = stored?.[target]
+    return typeof value === 'number' && Number.isFinite(value) && value > 0
+      ? value
+      : 0
+  }
+  return {
+    nodes: own('nodes'),
+    handles: own('handles'),
+    anchors: own('anchors'),
+    guides: own('guides'),
+    metrics: own('metrics'),
+    grid: own('grid'),
+    components: own('components'),
+    zones: own('zones'),
+    background: own('background'),
+  }
+}
+
+/**
+ * Grid and nudge values a font may override.
+ *
+ * The kernel resolves a font's stored settings against the preference and
+ * returns what to use, so the editor never re-implements that order: an
+ * override that is present wins, and `null` leaves the preference in charge.
+ */
+export interface FontEditorOverrides {
+  grid_size: number
+  grid_subdivision: number
+  nudge: readonly [number, number, number]
+}
+
 /** The snap settings the editor works from, read off one preference record. */
-export function snapSettingsOf(prefs: Prefs): SnapSettings {
+export function snapSettingsOf(
+  prefs: Prefs,
+  font: FontEditorOverrides | null = null,
+): SnapSettings {
   return {
     nodes: prefs.snap.nodes,
     handles: prefs.snap.handles,
@@ -239,13 +295,21 @@ export function snapSettingsOf(prefs: Prefs): SnapSettings {
     grid: prefs.snap.grid,
     components: prefs.snap.components,
     gridSize:
-      Math.max(0, prefs.grid_size) / Math.max(1, prefs.grid_subdivision),
+      Math.max(0, font?.grid_size ?? prefs.grid_size) /
+      Math.max(1, font?.grid_subdivision ?? prefs.grid_subdivision),
     snapDistance: prefs.snap_distance,
+    distances: snapDistancesOf(prefs),
     hitDistance: prefs.hit_distance,
+    nodeSize: prefs.node_size,
+    handleSize: prefs.handle_size,
   }
 }
 
-/** The arrow-key distances of one preference record: plain, Shift, Ctrl. */
-export function nudgeStepsOf(prefs: Prefs): [number, number, number] {
-  return prefs.nudge
+/** The arrow-key distances to use: the font's own, else the preference. */
+export function nudgeStepsOf(
+  prefs: Prefs,
+  font: FontEditorOverrides | null = null,
+): [number, number, number] {
+  const nudge = font?.nudge ?? prefs.nudge
+  return [nudge[0], nudge[1], nudge[2]]
 }

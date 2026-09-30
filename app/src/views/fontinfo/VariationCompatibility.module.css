@@ -32,23 +32,74 @@
   stroke: var(--cv-handle);
   stroke-dasharray: 3 3;
 }
-.source0 {
+.shape0 {
   color: var(--cv-guide-local);
 }
-.source1 {
+.shape1 {
   color: var(--cv-guide-global);
 }
-.source2 {
+.shape2 {
   color: var(--cv-node-smooth);
 }
-.source3 {
+.shape3 {
   color: var(--cv-other-master);
 }
-.source4 {
+.shape4 {
   color: var(--cv-background-layer);
 }
-.source5 {
+.shape5 {
   color: var(--cv-node-implied);
+}
+.secondary {
+  stroke-dasharray: 6 4;
+}
+.component {
+  fill-opacity: 0.35;
+}
+.checker {
+  fill: currentColor;
+  opacity: 0.35;
+}
+.startConnector,
+.centerConnector {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.centerConnector {
+  stroke-dasharray: 2 4;
+  opacity: 0.7;
+}
+.segmentCompatible,
+.segmentWarning,
+.segmentIncompatible {
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+}
+.segmentCompatible {
+  stroke: var(--cv-node-smooth);
+  opacity: 0.55;
+}
+.segmentWarning {
+  stroke: var(--color-warning);
+}
+.segmentIncompatible {
+  stroke: var(--color-danger);
+}
+.handle {
+  fill: var(--color-canvas);
+  stroke: currentColor;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+.dragLine {
+  stroke: var(--cv-selection);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
 }
 .onCurve,
 .control {

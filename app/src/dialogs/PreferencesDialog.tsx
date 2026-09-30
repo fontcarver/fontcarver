@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type { SnapPrefs } from '../api'
+import type { SnapDistances } from '../api'
 import { Button } from '../components/Button'
 import { Dialog } from '../components/Dialog'
 import { SUPPORTED_LANGUAGES } from '../i18n'
@@ -17,7 +17,7 @@ type Category = (typeof CATEGORIES)[number]
 
 const THEMES: readonly ThemePreference[] = ['system', 'light', 'dark']
 
-const SNAP_FIELDS: readonly (keyof SnapPrefs)[] = [
+const SNAP_FIELDS: readonly (keyof SnapDistances)[] = [
   'nodes',
   'handles',
   'anchors',
@@ -243,7 +243,7 @@ export function PreferencesDialog() {
                 {t('dialog.prefs.snapTo')}
               </h3>
               {SNAP_FIELDS.map((field) => (
-                <div key={field} className={styles.checkRow}>
+                <div key={field} className={styles.snapRow}>
                   <input
                     id={`snap-${field}`}
                     type="checkbox"
@@ -260,8 +260,30 @@ export function PreferencesDialog() {
                   >
                     {t(`dialog.prefs.snap.${field}`)}
                   </label>
+                  <NumberField
+                    label={t('dialog.prefs.snapTargetDistance', {
+                      target: t(`dialog.prefs.snap.${field}`),
+                    })}
+                    min={0}
+                    max={64}
+                    value={prefs.snap.distances[field]}
+                    onCommit={(distance) =>
+                      void update({
+                        snap: {
+                          ...prefs.snap,
+                          distances: {
+                            ...prefs.snap.distances,
+                            [field]: distance,
+                          },
+                        },
+                      })
+                    }
+                  />
                 </div>
               ))}
+              <span className={styles.hint}>
+                {t('dialog.prefs.snapTargetDistanceHint')}
+              </span>
               {(['snap_distance', 'hit_distance'] as const).map((field) => (
                 <label key={field} className={styles.row}>
                   <span className={styles.rowLabel}>

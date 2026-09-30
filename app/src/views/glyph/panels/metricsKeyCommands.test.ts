@@ -2,7 +2,54 @@ import { describe, expect, it } from 'vitest'
 
 import type { MetricsKeys } from '../../../api'
 
-import { effectiveMetricsKeys, metricsKeyCommand } from './metricsKeyCommands'
+import {
+  effectiveMetricsKeys,
+  metricsKeyCommand,
+  metricsKeyError,
+  normalizeMetricsKey,
+} from './metricsKeyCommands'
+
+/**
+ * Formulas the kernel accepts. `crates/fc-doc/tests/metrics.rs` asserts the
+ * same table through `SetMetricsKeys`, so the two grammars stay in step.
+ */
+export const VALID_METRICS_KEYS = [
+  '=H',
+  '=H+10',
+  '=H-10',
+  '=H*2',
+  '=H/2',
+  '=|H',
+  '=|',
+  '=50',
+  '=-25',
+  '=+25',
+  '==H',
+  '==50',
+  '=H@200',
+  '=|H@200',
+  '=H+10@200',
+  '=0.5',
+  '=.5',
+  // A trailing hyphen belongs to the glyph name, not to an arithmetic tail.
+  '=H-',
+]
+
+/** Formulas the kernel refuses, with the reason the field reports. */
+export const INVALID_METRICS_KEYS: readonly [string, string][] = [
+  ['=', 'empty'],
+  ['==', 'empty'],
+  ['=+', 'offset'],
+  ['=-x', 'offset'],
+  ['=H@', 'height'],
+  ['=H@x', 'height'],
+  ['=H/0', 'divideByZero'],
+  ['=H+', 'operand'],
+  ['=H*', 'operand'],
+  ['=H V', 'reference'],
+  ['=H=V', 'reference'],
+  ['=@200', 'empty'],
+]
 
 const keys: MetricsKeys = {
   left: '=H',
@@ -89,5 +136,33 @@ describe('metrics key scopes', () => {
         },
       },
     })
+  })
+})
+
+describe('metricsKeyError', () => {
+  it('accepts every documented formula', () => {
+    for (const key of VALID_METRICS_KEYS)
+      expect([key, metricsKeyError(key)]).toEqual([key, null])
+  })
+
+  it('names the problem for every refused formula', () => {
+    for (const [key, problem] of INVALID_METRICS_KEYS)
+      expect([key, metricsKeyError(key)]).toEqual([key, problem])
+  })
+
+  it('treats an empty field and whitespace as clearing the formula', () => {
+    expect(metricsKeyError('')).toBeNull()
+    expect(metricsKeyError('   ')).toBeNull()
+    expect(normalizeMetricsKey('   ')).toBe('')
+  })
+
+  it('accepts the bare spelling by adding the equals sign', () => {
+    expect(normalizeMetricsKey('H')).toBe('=H')
+    expect(normalizeMetricsKey(' 50 ')).toBe('=50')
+    expect(normalizeMetricsKey('=H')).toBe('=H')
+    expect(normalizeMetricsKey('==H')).toBe('==H')
+    // The validator normalises first, so the bare spelling is simply valid.
+    expect(metricsKeyError('H')).toBeNull()
+    expect(metricsKeyError('H+')).toBe('operand')
   })
 })

@@ -96,6 +96,21 @@ pub struct PasteSpecialParams {
     pub expected_source_generation: Option<u64>,
 }
 
+/// Tag every placeholder glyph carries, so the inventory can find them.
+pub const PLACEHOLDER_TAG: &str = "missing-component-base";
+
+/// One nonexporting placeholder the transfer created for a missing base.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct PastePlaceholder {
+    /// Destination glyph name that now holds the placeholder.
+    pub name: String,
+    /// Source component base the placeholder stands in for.
+    pub source_base: String,
+    /// Editor tag written on the glyph; `tags contains` finds it in the inventory.
+    pub tag: String,
+}
+
 /// Validated transfer result and revisions for preview/apply workflows.
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -112,6 +127,8 @@ pub struct PasteSpecialResult {
     pub pasted: Vec<String>,
     /// Additional copied or placeholder base glyph names.
     pub added_bases: Vec<String>,
+    /// Placeholders created for missing component bases, flagged in the inventory.
+    pub placeholders: Vec<PastePlaceholder>,
     /// Explanations of placeholders or cross-document resource boundaries.
     pub warnings: Vec<String>,
 }
@@ -136,4 +153,102 @@ pub struct RelinkComponentsParams {
     #[serde(default)]
     #[ts(type = "number | null")]
     pub expected_generation: Option<u64>,
+}
+
+/// Which side of one glyph conflict the user keeps.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
+pub enum MergeChoice {
+    /// Keep the destination glyph unchanged.
+    Target,
+    /// Replace the destination glyph with the reference glyph.
+    Source,
+}
+
+/// One reviewed per-glyph merge decision.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct MergeGlyphChoice {
+    /// Persistent glyph name shared by both documents.
+    pub name: String,
+    /// Resolution chosen for this glyph.
+    pub choice: MergeChoice,
+}
+
+/// Which font-level resources the merge adopts from the reference document.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct MergeAdoptions {
+    /// Replace every font-info field, including family name and em square.
+    #[serde(default)]
+    pub metadata: bool,
+    /// Replace the target master's global metrics.
+    #[serde(default)]
+    pub master_metrics: bool,
+    /// Replace kerning groups and the target master's kerning records.
+    #[serde(default)]
+    pub kerning: bool,
+}
+
+/// Preview or commit a conflict-resolved merge as one history transaction.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct FontMergeParams {
+    /// Destination document.
+    pub doc: DocId,
+    /// Reference document, which is never modified.
+    pub source_doc: DocId,
+    /// Reviewed per-glyph decisions, limited to 4096 entries.
+    pub glyphs: Vec<MergeGlyphChoice>,
+    /// Font-level resources to adopt from the reference.
+    #[serde(default)]
+    pub adopt: MergeAdoptions,
+    /// Selected target master; defaults to the destination's default master.
+    #[serde(default)]
+    #[ts(type = "string | null")]
+    pub target_master: Option<MasterId>,
+    /// Selected reference master; defaults to the reference's default master.
+    #[serde(default)]
+    #[ts(type = "string | null")]
+    pub source_master: Option<MasterId>,
+    /// Treatment of component bases absent from the destination.
+    pub missing_bases: MissingBasePolicy,
+    /// Validate and describe the merge without applying it.
+    #[serde(default)]
+    pub dry_run: bool,
+    /// Destination generation returned by the comparison or a previous preview.
+    #[serde(default)]
+    #[ts(type = "number | null")]
+    pub expected_generation: Option<u64>,
+    /// Reference generation returned by the comparison or a previous preview.
+    #[serde(default)]
+    #[ts(type = "number | null")]
+    pub expected_source_generation: Option<u64>,
+}
+
+/// Reviewed merge outcome and the revisions a following apply must quote.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct FontMergeResult {
+    /// The single atomic change; absent for a preview or an empty merge.
+    pub change: Option<Change>,
+    /// Destination generation after this request.
+    #[ts(type = "number")]
+    pub generation: u64,
+    /// Generation of the captured reference snapshot.
+    #[ts(type = "number")]
+    pub source_generation: u64,
+    /// Destination glyph names the merge replaces or adds.
+    pub replaced: Vec<String>,
+    /// Glyph names the user chose to keep unchanged.
+    pub kept: Vec<String>,
+    /// Additional copied or placeholder base glyph names.
+    pub added_bases: Vec<String>,
+    /// Font-level resources adopted from the reference, as stable identifiers.
+    pub adopted: Vec<String>,
+    /// History label of the single undo entry an apply records.
+    pub label: String,
+    /// Explanations of placeholders, scope boundaries or skipped resources.
+    pub warnings: Vec<String>,
 }

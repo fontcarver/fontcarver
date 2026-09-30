@@ -143,13 +143,31 @@ fn vertical_generation_preserves_manual_features_and_frozen_source() {
             .diagnostics
             .iter()
             .any(|diagnostic| diagnostic.code == "feature-generation-conflict"));
-        assert_eq!(generated.source, source);
+        // A collision skips only its own tag: the user's block is untouched and
+        // the family's other tag still materializes.
+        assert!(generated
+            .source
+            .features
+            .iter()
+            .any(|block| block.tag == tag && block.code == "sub A by V;" && !block.automatic));
+        assert!(!generated
+            .source
+            .features
+            .iter()
+            .any(|block| block.tag == tag && block.automatic));
+        let sibling = if tag == "vert" { "vrt2" } else { "vert" };
+        assert!(generated
+            .source
+            .features
+            .iter()
+            .any(|block| block.tag == sibling && block.automatic));
     }
     let generated = generate_feature_source(&font, &font.features, &settings);
     let mut frozen = freeze_feature_source(
         &generated.source,
         &generated.settings,
         FeatureGenerator::VerticalForms,
+        None,
     );
     assert!(!frozen.settings.vertical_forms);
     assert!(frozen.source.features.iter().all(|block| !block.automatic));
@@ -214,6 +232,7 @@ fn freeze_preserves_visible_source_and_disables_only_its_recipe() {
         &generated.source,
         &generated.settings,
         FeatureGenerator::SmallCaps,
+        None,
     );
     assert!(!frozen.settings.small_caps);
     assert!(frozen.settings.stylistic_sets);

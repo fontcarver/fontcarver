@@ -283,3 +283,78 @@ describe('undo label flash', () => {
     expect(useUiStore.getState().undoFlash).toBeNull()
   })
 })
+
+describe('detached windows', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    useUiStore.setState(initialUiState())
+  })
+
+  it('records each view once and forgets it when it returns', () => {
+    const ui = useUiStore.getState()
+    ui.addDetached({ kind: 'panel', doc: 1, panel: 'inspector' })
+    ui.addDetached({ kind: 'panel', doc: 1, panel: 'inspector' })
+    ui.addDetached({ kind: 'panel', doc: 1, panel: 'preview' })
+    ui.addDetached({
+      kind: 'tab',
+      doc: 1,
+      tab: 'glyph',
+      gid: 7,
+      tabId: 'glyph:1:7',
+    })
+    expect(useUiStore.getState().detached).toHaveLength(3)
+
+    ui.removeDetached({ kind: 'panel', doc: 1, panel: 'inspector' })
+    expect(useUiStore.getState().detached).toEqual([
+      { kind: 'panel', doc: 1, panel: 'preview' },
+      { kind: 'tab', doc: 1, tab: 'glyph', gid: 7, tabId: 'glyph:1:7' },
+    ])
+  })
+
+  it('drops the windows of a document that closes', () => {
+    const ui = useUiStore.getState()
+    ui.openTab({ kind: 'font', doc: 1 })
+    ui.openTab({ kind: 'font', doc: 2 })
+    ui.addDetached({ kind: 'panel', doc: 1, panel: 'sidebar' })
+    ui.addDetached({ kind: 'panel', doc: 2, panel: 'sidebar' })
+
+    useUiStore.getState().closeTabsForDoc(1)
+    expect(useUiStore.getState().detached).toEqual([
+      { kind: 'panel', doc: 2, panel: 'sidebar' },
+    ])
+  })
+})
+
+describe('pinned Overview ordering', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    useUiStore.setState(initialUiState())
+  })
+
+  it('inserts a document Overview before that document other tabs', () => {
+    const ui = useUiStore.getState()
+    const early = ui.openTab({ kind: 'font', doc: 1 })
+    ui.openTab({ kind: 'glyph', doc: 2, gid: 5 })
+    const late = ui.openTab({ kind: 'font', doc: 2 })
+    ui.openTab({ kind: 'glyph', doc: 1, gid: 6 })
+
+    expect(useUiStore.getState().tabs.map((tab) => tab.id)).toEqual([
+      early,
+      tabId('glyph', 1, 6),
+      late,
+      tabId('glyph', 2, 5),
+    ])
+  })
+
+  it('leaves the active tab alone when the Overview is already open', () => {
+    const ui = useUiStore.getState()
+    const overview = ui.openTab({ kind: 'font', doc: 1 })
+    const glyph = ui.openTab({ kind: 'glyph', doc: 1, gid: 6 })
+    expect(useUiStore.getState().activeTab).toBe(glyph)
+
+    useUiStore.getState().openTab({ kind: 'font', doc: 1 }, false)
+    expect(useUiStore.getState().activeTab).toBe(glyph)
+    expect(useUiStore.getState().tabs).toHaveLength(2)
+    expect(useUiStore.getState().tabs[0]?.id).toBe(overview)
+  })
+})

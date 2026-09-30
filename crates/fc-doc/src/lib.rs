@@ -26,4 +26,4 @@ pub use document::{Document, DocumentEvent, EditToken, PreparedFeatureChange};
 pub use error::Error;
 pub use metrics::{MetricsSource, ResolvedMetrics};
 pub use session::{DefaultFontOpener, DocId, FontOpener, Session};
-pub use undo::{Snapshot, UndoEntry, UndoStack};
+pub use undo::{EntryScope, LayerRole, LayerScope, Snapshot, UndoEntry, UndoStack};

@@ -84,3 +84,22 @@
   flex-direction: column;
   gap: var(--space-2);
 }
+.renameScope {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.renameScope label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}

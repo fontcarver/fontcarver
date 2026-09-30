@@ -43,6 +43,24 @@ fn validate(prefs: &Prefs) -> Result<(), ApiError> {
             )));
         }
     }
+    let distances = &prefs.snap.distances;
+    for (name, value) in [
+        ("snap.distances.nodes", distances.nodes),
+        ("snap.distances.handles", distances.handles),
+        ("snap.distances.anchors", distances.anchors),
+        ("snap.distances.guides", distances.guides),
+        ("snap.distances.metrics", distances.metrics),
+        ("snap.distances.grid", distances.grid),
+        ("snap.distances.components", distances.components),
+        ("snap.distances.zones", distances.zones),
+        ("snap.distances.background", distances.background),
+    ] {
+        if !value.is_finite() || !(0.0..=64.0).contains(&value) {
+            return Err(ApiError::invalid_params(format!(
+                "{name} must be finite and between 0 and 64 CSS pixels, where 0 uses snap_distance"
+            )));
+        }
+    }
     if !(1..=100).contains(&prefs.grid_subdivision) {
         return Err(ApiError::invalid_params(
             "grid_subdivision must be between 1 and 100",

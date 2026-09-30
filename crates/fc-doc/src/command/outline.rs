@@ -234,6 +234,8 @@ fn target(command: &Command) -> Option<(&GlyphName, &LayerId)> {
         | Command::SetStartPoint { glyph, layer, .. }
         | Command::JoinContours { glyph, layer, .. }
         | Command::SplitContour { glyph, layer, .. }
+        | Command::OpenCorner { glyph, layer, .. }
+        | Command::ReconnectNodes { glyph, layer, .. }
         | Command::TransformSelection { glyph, layer, .. }
         | Command::PathOp { glyph, layer, .. } => Some((glyph, layer)),
         _ => None,
@@ -341,6 +343,15 @@ fn dispatch(font: &mut Font, command: &Command) -> Result<Touched, Error> {
             layer,
             point,
         } => segments::split(font, glyph, layer, *point),
+        Command::OpenCorner {
+            glyph,
+            layer,
+            point,
+            depth,
+        } => segments::open_corner(font, glyph, layer, *point, *depth),
+        Command::ReconnectNodes { glyph, layer, a, b } => {
+            segments::reconnect(font, glyph, layer, *a, *b)
+        }
         Command::PathOp { glyph, layer, op } => segments::path_op(font, glyph, layer, op),
         Command::DeletePoints {
             glyph,

@@ -6,8 +6,11 @@ import { makeContour, makePoint } from '../test/fontFixtures'
 import { buildEditOutline } from './outlineGeometry'
 import {
   DEFAULT_SNAP_SETTINGS,
+  NO_SNAP_DISTANCES,
   snapDelta,
+  snapReach,
   SNAP_DISTANCE,
+  SNAP_TARGETS,
   type SnapInput,
 } from './snapping'
 
@@ -34,6 +37,7 @@ function input(overrides: Partial<SnapInput> = {}): SnapInput {
           name: 'mid',
           locked: false,
           color: null,
+          anchor: 'Origin',
         },
         scope: 'layer',
         index: 0,
@@ -185,6 +189,7 @@ describe('snapDelta', () => {
             name: null,
             locked: false,
             color: null,
+            anchor: 'Origin',
           },
           scope: 'layer',
           index: 0,
@@ -327,5 +332,95 @@ describe('snapDelta', () => {
     const match = snapDelta(off, { x: 0, y: 0 }, [{ x: 98, y: 320 }])
     expect(match.alignedX).toBeNull()
     expect(match.point).toBeNull()
+  })
+})
+
+describe('per-target snap distances', () => {
+  it('reaches exactly as far as each target is configured to', () => {
+    // Only the two point families are live, so nothing else can answer.
+    const settings = {
+      ...DEFAULT_SNAP_SETTINGS,
+      metrics: false,
+      guides: false,
+      zones: false,
+      snapDistance: 2,
+      distances: { ...NO_SNAP_DISTANCES, nodes: 20 },
+    }
+    // The node at (100, 0) is 12 units away: past the shared 2 px distance and
+    // well inside the node target's own 20 px.
+    const far = snapDelta(input({ settings }), { x: 0, y: 0 }, [
+      { x: 112, y: 0 },
+    ])
+    expect(far.label).toBe('NODE')
+    expect(far.delta).toEqual({ x: -12, y: 0 })
+    // A handle keeps the shared distance, so the same gap does not snap it.
+    const handles = {
+      ...settings,
+      distances: { ...NO_SNAP_DISTANCES, handles: 20 },
+    }
+    expect(
+      snapDelta(input({ settings: handles }), { x: 0, y: 0 }, [
+        { x: 112, y: 0 },
+      ]).label,
+    ).toBeNull()
+  })
+
+  it('lets one target be tightened without touching the others', () => {
+    const settings = {
+      ...DEFAULT_SNAP_SETTINGS,
+      grid: true,
+      gridSize: 50,
+      distances: { ...NO_SNAP_DISTANCES, grid: 1 },
+    }
+    // 3 units off a grid line: inside the shared 6 px reach, outside the grid's
+    // own 1 px, and the guide at y 250 is still free to catch it.
+    const tight = snapDelta(input({ settings }), { x: 0, y: 0 }, [
+      { x: 303, y: 403 },
+    ])
+    expect(tight.label).toBeNull()
+    expect(
+      snapDelta(
+        input({
+          settings: { ...DEFAULT_SNAP_SETTINGS, grid: true, gridSize: 50 },
+        }),
+        { x: 0, y: 0 },
+        [{ x: 303, y: 403 }],
+      ).label,
+    ).toBe('GRID')
+  })
+
+  it('snaps nothing when every target is switched off or has no reach', () => {
+    const off = Object.fromEntries(
+      SNAP_TARGETS.map((target) => [target, false]),
+    ) as Record<(typeof SNAP_TARGETS)[number], boolean>
+    expect(
+      snapDelta(
+        input({ settings: { ...DEFAULT_SNAP_SETTINGS, ...off } }),
+        { x: 0, y: 0 },
+        [{ x: 100, y: 0 }],
+      ),
+    ).toMatchObject({ label: null, delta: { x: 0, y: 0 } })
+    expect(
+      snapDelta(
+        input({
+          settings: { ...DEFAULT_SNAP_SETTINGS, snapDistance: 0 },
+        }),
+        { x: 0, y: 0 },
+        [{ x: 100, y: 0 }],
+      ),
+    ).toMatchObject({ label: null })
+  })
+
+  it('reports each target reach in font units at the current zoom', () => {
+    const settings = {
+      ...DEFAULT_SNAP_SETTINGS,
+      snapDistance: 6,
+      distances: { ...NO_SNAP_DISTANCES, nodes: 12, guides: -4 },
+    }
+    expect(snapReach(settings, 'nodes', 2)).toBe(6)
+    expect(snapReach(settings, 'handles', 2)).toBe(3)
+    // A negative or non-finite entry is not a distance; the shared one applies.
+    expect(snapReach(settings, 'guides', 1)).toBe(6)
+    expect(snapReach({ ...settings, grid: false }, 'grid', 1)).toBe(0)
   })
 })

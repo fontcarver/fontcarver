@@ -76,11 +76,32 @@ export function FeaturesView({ summary }: { summary: DocSummary }) {
     )
   const imported = state.authority === 'ImportedTables'
   const readOnly = imported || draft.busy || draft.suspended
-  const visibleSource = draft.validation?.generated_source ?? source
+  const previewSource = draft.validation?.generated_source ?? source
   const visibleSettings = draft.validation?.generated_settings ?? settings
   const canFreeze =
     JSON.stringify([source, settings]) ===
-    JSON.stringify([visibleSource, visibleSettings])
+    JSON.stringify([previewSource, visibleSettings])
+  // A draft edit made after the last check adds or renames entries the
+  // generated preview does not know about yet. They stay visible and
+  // selectable until the next check refreshes the preview.
+  const previewIds = new Set(sourceItems(previewSource).map((item) => item.id))
+  const visibleSource = canFreeze
+    ? previewSource
+    : {
+        ...previewSource,
+        prefixes: [
+          ...previewSource.prefixes,
+          ...source.prefixes.filter((block) => !previewIds.has(block.id)),
+        ],
+        classes: [
+          ...previewSource.classes,
+          ...source.classes.filter((block) => !previewIds.has(block.id)),
+        ],
+        features: [
+          ...previewSource.features,
+          ...source.features.filter((block) => !previewIds.has(block.id)),
+        ],
+      }
   const items = sourceItems(visibleSource)
   const item = items.find((candidate) => candidate.id === selected) ?? items[0]
   const generated = visibleSettings.generated.find(
@@ -318,6 +339,8 @@ export function FeaturesView({ summary }: { summary: DocSummary }) {
                   master={master}
                   generation={view.generation}
                   item={item}
+                  settings={settings}
+                  automaticEntries={state.automatic_entries}
                   generated={generated}
                   generatedSaved={
                     canFreeze &&
@@ -346,6 +369,9 @@ export function FeaturesView({ summary }: { summary: DocSummary }) {
           </div>
           <FeatureGenerationPanel
             settings={settings}
+            classRecipes={state.automatic_entries
+              .filter((entry) => entry.kind === 'Class')
+              .map((entry) => entry.name)}
             canFreeze={canFreeze}
             readOnly={readOnly}
             stale={state.generation_stale}

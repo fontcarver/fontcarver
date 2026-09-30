@@ -113,7 +113,15 @@ describe('the locked-component hatch', () => {
 
 describe('guide overlays', () => {
   const guide = {
-    guide: { x: 0, y: 100, angle: 0, name: null, locked: false, color: null },
+    guide: {
+      x: 0,
+      y: 100,
+      angle: 0,
+      name: null,
+      locked: false,
+      color: null,
+      anchor: 'Origin' as const,
+    },
     scope: 'layer' as const,
     index: 0,
   }

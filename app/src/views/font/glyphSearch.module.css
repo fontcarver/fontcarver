@@ -55,3 +55,15 @@
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 1px;
 }
+
+.error {
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--text-size-xs);
+  overflow-wrap: anywhere;
+}
+
+.search[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}

@@ -47,6 +47,10 @@ export interface EditorLabels {
   convertSegment: string
   setMetrics: string
   addGuide: string
+  /** Why a press on a locked path, component or guide did nothing. */
+  lockedTarget: string
+  /** Why a press anywhere in a locked glyph does nothing. */
+  lockedGlyph: string
   /** The HUD line a sidebearing drag shows: the handle's name and its value. */
   metricHud: (handle: 'lsb' | 'rsb' | 'width', value: number) => string
   /** Names the HUD gives a snap target, already translated. */
@@ -97,6 +101,14 @@ export interface EditorCallbacks {
    * turns these into a toast, the same way a failed command does.
    */
   onError: (error: unknown) => void
+
+  /**
+   * A press landed on something the editor will not let the user move.
+   *
+   * A lock that simply does nothing is indistinguishable from a bug, so the
+   * canvas says why — once per press, with the reason already translated.
+   */
+  onRefused: (reason: string) => void
 }
 
 /** A pointer event, normalised to canvas space. */
@@ -118,4 +130,5 @@ export const SILENT_CALLBACKS: EditorCallbacks = {
   onPreview: () => undefined,
   onShapeDialog: () => undefined,
   onError: () => undefined,
+  onRefused: () => undefined,
 }

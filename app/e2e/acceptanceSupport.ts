@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { basename, resolve } from 'node:path'
 
 import { expect, type Locator, type Page } from '@playwright/test'
@@ -41,23 +42,38 @@ export interface PointLocation {
 
 const RELEASE_CLI = resolve(REPO_ROOT, 'target', 'release', 'fontcarver')
 
+/**
+ * Runs the `fontcarver` CLI over an emitted font and returns its output.
+ *
+ * The release binary is used when the checkout has one, because these specs
+ * read whole fonts back; the suite only promises a built `fc-devserver`, so a
+ * checkout without it falls back to Cargo rather than failing with `ENOENT`.
+ */
+function runCli(args: readonly string[]): string {
+  const options = {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+    maxBuffer: 32 * 1024 * 1024,
+  } as const
+  return existsSync(RELEASE_CLI)
+    ? execFileSync(RELEASE_CLI, args, options)
+    : execFileSync(
+        'cargo',
+        ['run', '-q', '-p', 'fc-cli', '--bin', 'fontcarver', '--', ...args],
+        options,
+      )
+}
+
 export function releaseInspect(path: string): {
   summary: { glyph_count: number; family_name: string; units_per_em: number }
 } {
-  const output = execFileSync(RELEASE_CLI, ['inspect', '--json', path], {
-    cwd: REPO_ROOT,
-    encoding: 'utf8',
-    maxBuffer: 32 * 1024 * 1024,
-  })
-  return JSON.parse(output) as ReturnType<typeof releaseInspect>
+  return JSON.parse(runCli(['inspect', '--json', path])) as ReturnType<
+    typeof releaseInspect
+  >
 }
 
 export function releaseGlyphs(path: string): string {
-  return execFileSync(RELEASE_CLI, ['glyphs', path, '--limit', '16'], {
-    cwd: REPO_ROOT,
-    encoding: 'utf8',
-    maxBuffer: 32 * 1024 * 1024,
-  })
+  return runCli(['glyphs', path, '--limit', '16'])
 }
 
 export async function menuItem(
@@ -90,15 +106,23 @@ export async function openPathThroughDialog(
 
   let opened: DocSummary | undefined
   await expect
-    .poll(async () => {
-      opened = (await docs(page)).find(
-        (doc) => !before.has(doc.doc) && doc.path === path,
-      )
-      return opened?.doc
-    })
+    .poll(
+      async () => {
+        opened = (await docs(page)).find(
+          (doc) => !before.has(doc.doc) && doc.path === path,
+        )
+        return opened?.doc
+      },
+      // Opening a 6,000-glyph font takes the debug kernel several seconds on a
+      // busy machine, well past the five-second default.
+      { timeout: 30_000 },
+    )
     .toBeTruthy()
+  // The pinned Overview tab is labelled "Overview · <file>", so match the file
+  // name rather than requiring it to be the whole accessible name.
+  const name = basename(path).replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
   await expect(
-    page.getByRole('tab', { name: basename(path), exact: true }).last(),
+    page.getByRole('tab', { name: new RegExp(`(?:^|· )${name}$`, 'u') }).last(),
   ).toHaveAttribute('aria-selected', 'true')
   return opened as DocSummary
 }
@@ -110,7 +134,9 @@ export async function exportThroughDialog(
   await menuItem(page, 'File', /^Export/)
   const dialog = page.getByRole('dialog', { name: 'Export' })
   await expect(dialog).toBeVisible()
-  await dialog.getByRole('tab', { name: 'TTF' }).click()
+  // Bitmap-embedding formats add "CBDT (TTF)" and "sbix (TTF)" tabs, so the
+  // plain TTF tab has to be matched exactly.
+  await dialog.getByRole('tab', { name: 'TTF', exact: true }).click()
   await dialog.getByLabel('Destination path').fill(path)
   await dialog.getByRole('button', { name: 'Export', exact: true }).click()
   await expect(dialog.getByText(path)).toBeVisible({ timeout: 120_000 })

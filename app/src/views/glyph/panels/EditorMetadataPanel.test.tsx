@@ -123,13 +123,20 @@ describe('editor metadata inspector', () => {
     })
   })
 
-  it('disables mutation controls for a locked glyph', () => {
+  it('disables mutation controls for a locked glyph and says why', () => {
     setup(true)
-    expect(
-      screen.getByRole('button', { name: 'Lock selected paths' }),
-    ).toBeDisabled()
+    const lock = screen.getByRole('button', { name: 'Lock selected paths' })
+    expect(lock).toBeDisabled()
+    expect(lock).toHaveAttribute(
+      'title',
+      expect.stringContaining('This glyph is locked'),
+    )
     expect(
       screen.getByRole('button', { name: 'Draw annotation' }),
     ).toBeDisabled()
+    // A refusal the user cannot see is not a refusal they can act on.
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'unlock it in the Glyph panel',
+    )
   })
 })

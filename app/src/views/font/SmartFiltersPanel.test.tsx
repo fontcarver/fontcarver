@@ -87,6 +87,7 @@ beforeEach(() => {
         noFilter: 'No smart filter',
         customFilter: 'Custom expression',
         savedFilters: 'Saved filters',
+        none: 'No saved filters yet.',
       },
     },
     true,
@@ -96,9 +97,13 @@ beforeEach(() => {
 
 afterEach(() => setTransport(undefined))
 
+/** Saved filters are rows, so a name is a toggle button rather than an option. */
+function filterRow(name: string): HTMLElement {
+  return screen.getByRole('button', { name })
+}
+
 async function loaded() {
-  await screen.findByRole('option', { name: 'Wide' })
-  return screen.getByRole('combobox', { name: 'Saved filters' })
+  return screen.findByRole('button', { name: 'Wide' })
 }
 
 function edit(name: string, expression: string) {
@@ -117,11 +122,8 @@ it('loads named filters, applies the expression and clears it', async () => {
   const view = render(
     <SmartFiltersPanel doc={1} expression={null} onExpressionChange={change} />,
   )
-  const select = await loaded()
-  const option = screen.getByRole('option', {
-    name: 'Wide',
-  }) as HTMLOptionElement
-  fireEvent.change(select, { target: { value: option.value } })
+  await loaded()
+  fireEvent.click(filterRow('Wide'))
   expect(change).toHaveBeenLastCalledWith('width >= 600')
   view.rerender(
     <SmartFiltersPanel
@@ -147,7 +149,7 @@ it('persists new, edited and deleted filters and updates the applied expression'
   await loaded()
   fireEvent.click(screen.getByRole('button', { name: 'Edit filter' }))
   edit('Very wide', 'width >= 900')
-  await screen.findByRole('option', { name: 'Very wide' })
+  await screen.findByRole('button', { name: 'Very wide' })
   expect(change).toHaveBeenLastCalledWith('width >= 900')
   expect(
     mock.calls.find((entry) => entry.method === 'glyph.smart_filters.set')
@@ -165,7 +167,7 @@ it('persists new, edited and deleted filters and updates the applied expression'
   )
   fireEvent.click(screen.getByRole('button', { name: 'New filter' }))
   edit('Red', 'color == 1')
-  await screen.findByRole('option', { name: 'Red' })
+  await screen.findByRole('button', { name: 'Red' })
   expect(change).toHaveBeenLastCalledWith('color == 1')
   view.rerender(
     <SmartFiltersPanel
@@ -177,7 +179,7 @@ it('persists new, edited and deleted filters and updates the applied expression'
   fireEvent.click(screen.getByRole('button', { name: 'Delete filter' }))
   await waitFor(() =>
     expect(
-      screen.queryByRole('option', { name: 'Red' }),
+      screen.queryByRole('button', { name: 'Red' }),
     ).not.toBeInTheDocument(),
   )
   expect(change).toHaveBeenLastCalledWith(null)
@@ -210,7 +212,7 @@ it('keeps saved state and editor available after a failed save', async () => {
   edit('Bad', 'width ???')
   expect(await screen.findByText('Could not save filters.')).toBeVisible()
   expect(screen.getByRole('form', { name: 'Filter editor' })).toBeVisible()
-  expect(screen.getByRole('option', { name: 'Wide' })).toBeInTheDocument()
+  expect(filterRow('Wide')).toBeInTheDocument()
   expect(change).not.toHaveBeenCalled()
 })
 
@@ -271,9 +273,9 @@ it('reloads on this document’s font-info changes and ignores older replies', a
   act(() => mock.emit({ ...event, change: noChange() }))
   expect(requests).toBe(1)
   act(() => mock.emit(event))
-  await screen.findByRole('option', { name: 'Restored' })
+  await screen.findByRole('button', { name: 'Restored' })
   await act(async () => resolveOld({ filters: initial }))
-  expect(screen.queryByRole('option', { name: 'Wide' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Wide' })).not.toBeInTheDocument()
 })
 
 it('ignores reads and closes an open editor when the document changes', async () => {
@@ -293,9 +295,9 @@ it('ignores reads and closes an open editor when the document changes', async ()
   view.rerender(
     <SmartFiltersPanel doc={2} expression={null} onExpressionChange={change} />,
   )
-  await screen.findByRole('option', { name: 'Other font' })
+  await screen.findByRole('button', { name: 'Other font' })
   await act(async () => resolveOld({ filters: initial }))
-  expect(screen.queryByRole('option', { name: 'Wide' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Wide' })).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'New filter' }))
   expect(screen.getByRole('form', { name: 'Filter editor' })).toBeVisible()
   view.rerender(
@@ -333,7 +335,7 @@ it('does not apply a completed save to a different document', async () => {
   )
   expect(change).not.toHaveBeenCalled()
   expect(
-    screen.queryByRole('option', { name: 'Saved elsewhere' }),
+    screen.queryByRole('button', { name: 'Saved elsewhere' }),
   ).not.toBeInTheDocument()
 })
 

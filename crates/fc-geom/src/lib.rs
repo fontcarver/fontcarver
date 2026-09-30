@@ -34,12 +34,16 @@ pub use boolean::{
     boolean, remove_overlap, remove_overlap_with_fallback, BooleanOp, FallbackKind,
     RemoveOverlapOutcome,
 };
-pub use compatibility::{canonical_source, repair_compatibility};
+pub use compatibility::{
+    canonical_source, compare_shapes, repair_compatibility, segment_status_name, source_shapes,
+    SegmentStatus, ShapeComparison, SourceShape, ANGLE_WARNING_DEGREES,
+};
 pub use convert::{from_bezpaths, to_bezpaths, CurveKind};
 pub use edit::{
     add_extrema, add_inflections, bbox, canonical_order, canonical_start_points, correct_direction,
-    fit_span, force_extrema, intersections_with_line, nearest_on_path, reverse, round_to_grid,
-    segment_to_points, simplify, split_segment, transform, PathHit, SimplifyOptions, SpanFit,
+    fit_span, force_extrema, intersections_with_line, nearest_on_path, open_corner,
+    reconnect_nodes, reverse, round_to_grid, segment_to_points, simplify, split_segment, transform,
+    CornerError, PathHit, SimplifyOptions, SpanFit,
 };
 pub use error::Error;
 pub use interpolate::{compatible, interpolate, Incompatibility};

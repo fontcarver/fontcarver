@@ -10,6 +10,8 @@ const values = {
   variable: false,
   instance: undefined,
   masterSubset: undefined,
+  axisSubset: undefined,
+  instanceSubset: undefined,
   bitmapKey: '16:1',
   master: 'm1',
   glyph: ' A ',
@@ -93,4 +95,30 @@ it('uses one bitmap strike only for single-strike formats and glyph names only f
     exportOptionsFor({ ...values, canVary: false, format: 'Eps' }).glyph,
   ).toBe('A')
   expect(exportOptionsFor(values).glyph).toBeUndefined()
+})
+
+it('sends design-space subsets only for a variable export', () => {
+  const subsets = {
+    ...values,
+    masterSubset: ['m1', 'm2'],
+    axisSubset: ['wght'],
+    instanceSubset: ['Bold'],
+  }
+  expect(exportOptionsFor({ ...subsets, variable: true })).toMatchObject({
+    master_subset: ['m1', 'm2'],
+    axis_subset: ['wght'],
+    instance_subset: ['Bold'],
+  })
+  expect(exportOptionsFor(subsets)).toMatchObject({
+    master_subset: undefined,
+    axis_subset: undefined,
+    instance_subset: undefined,
+  })
+  expect(
+    exportOptionsFor({ ...subsets, canVary: false, variable: true }),
+  ).toMatchObject({
+    master_subset: undefined,
+    axis_subset: undefined,
+    instance_subset: undefined,
+  })
 })

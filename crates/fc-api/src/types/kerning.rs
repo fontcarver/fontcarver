@@ -57,6 +57,52 @@ pub struct KerningResolution {
     pub rule: Option<KernPair>,
     /// At most four candidate records, in exception priority order.
     pub records: Vec<KernPair>,
+    /// Whether the winning rule is an exception to a broader class rule.
+    ///
+    /// True when the rule names a concrete glyph on a side where that glyph
+    /// also belongs to a kerning group, so the pair deliberately departs from
+    /// its class. False for a class rule, and false when there is no rule.
+    #[serde(default)]
+    #[ts(as = "Option<bool>", optional)]
+    pub exception: bool,
+}
+
+/// Largest number of boundaries one exception request may carry.
+pub const KERNING_BOUNDARY_LIMIT: usize = 256;
+
+/// Select every editable boundary of one shaped run in one master.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct KerningBoundariesParams {
+    /// Open document.
+    pub doc: DocId,
+    /// Master inspected.
+    pub master: MasterId,
+    /// Read the vertical table instead of the horizontal one.
+    #[serde(default)]
+    pub vertical: bool,
+    /// Ordered `[left, right]` glyph names, at most [`KERNING_BOUNDARY_LIMIT`].
+    pub pairs: Vec<[String; 2]>,
+}
+
+/// What applies at one boundary, without any compiled positioning.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct KerningBoundary {
+    /// Winning adjustment, zero when no rule applies; null when unreadable.
+    pub value: Option<f64>,
+    /// Whether the winning rule departs from the class rule that would apply.
+    pub exception: bool,
+}
+
+/// Boundary answers in request order, at one document generation.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct KerningBoundaries {
+    /// Eligibility and generation.
+    pub status: KerningStatus,
+    /// One entry per requested boundary, in request order.
+    pub items: Vec<KerningBoundary>,
 }
 
 /// Select a glyph's two authoritative kerning memberships.
@@ -113,6 +159,10 @@ pub struct KerningPairRecord {
     pub value: Option<f64>,
     /// Invalid references or values, if present.
     pub diagnostic: Option<String>,
+    /// Whether this record is an exception to a broader class rule.
+    #[serde(default)]
+    #[ts(as = "Option<bool>", optional)]
+    pub exception: bool,
 }
 
 /// Bounded stored pair page.

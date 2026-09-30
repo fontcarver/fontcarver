@@ -68,6 +68,10 @@ pub struct Instance {
     /// Whether this is a named instance in the variable font.
     #[serde(default)]
     pub is_variable_named_instance: bool,
+    /// Export-scope overrides of font-wide metadata for this instance.
+    #[serde(default, skip_serializing_if = "crate::InstanceOverrides::is_empty")]
+    #[cfg_attr(feature = "ts", ts(optional, as = "Option<crate::InstanceOverrides>"))]
+    pub overrides: crate::InstanceOverrides,
     /// Format-specific instance metadata.
     #[serde(default)]
     #[cfg_attr(feature = "ts", ts(type = "unknown"))]

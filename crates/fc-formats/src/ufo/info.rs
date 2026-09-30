@@ -363,6 +363,7 @@ pub(crate) fn guide_from_norad(guide: &Guideline) -> Guide {
         name: guide.name.as_ref().map(ToString::to_string),
         locked: false,
         color: guide.color.map(|color| color.to_rgba_string()),
+        ..Guide::default()
     }
 }
 

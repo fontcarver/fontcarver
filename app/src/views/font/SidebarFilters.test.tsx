@@ -155,4 +155,84 @@ describe('SidebarFilters', () => {
       'Letter',
     ])
   })
+
+  it('badges a section row with its repertoire coverage and offers Generate', async () => {
+    const user = userEvent.setup()
+    setTransport(
+      createMockTransport({
+        'doc.sidebar': () => counts(2),
+        'inventory.get_lists': () => ({ lists: [] }),
+        'glyph.smart_filters.get': () => ({ filters: [] }),
+        'inventory.coverage': () => ({
+          categories: [
+            { value: 'Letter', present: 2, total: 1_000, glyphs: 2 },
+          ],
+          sub_categories: [],
+          scripts: [{ value: 'Latn', present: 40, total: 1_481, glyphs: 40 }],
+          blocks: [
+            { value: 'Basic Latin', present: 95, total: 128, glyphs: 95 },
+          ],
+          total_glyphs: 102,
+        }),
+        'inventory.missing': () => ({
+          scalars: [0x0021, 0x0022],
+          total: 33,
+          recipe: 'U+0021 U+0022',
+        }),
+      }),
+    )
+    render(<SidebarFilters doc={DOC} />)
+
+    const block = await screen.findByRole('button', { name: /^Basic Latin/ })
+    expect(block).toHaveTextContent('95 / 128')
+    expect(block.title).toContain('95 glyphs')
+    expect(block.title).toContain('33 missing')
+
+    const generate = screen.getByRole('button', {
+      name: 'Preview 33 missing characters for Basic Latin',
+    })
+    await user.click(generate)
+    await waitFor(() =>
+      expect(useUiStore.getState().dialog).toEqual({
+        kind: 'addGlyphs',
+        doc: DOC,
+        recipe: 'U+0021 U+0022',
+      }),
+    )
+    // Only part of the repertoire was preloaded, so the person is told.
+    expect(useUiStore.getState().toasts.at(-1)?.message).toContain('2 of 33')
+  })
+
+  it('filters by a cell badge through the status panel', async () => {
+    const user = userEvent.setup()
+    setTransport(transport())
+    render(<SidebarFilters doc={DOC} />)
+    const row = await screen.findByRole('button', { name: 'Locked' })
+
+    await user.click(row)
+    expect(
+      useDocumentStore.getState().byDoc[DOC]?.filter.smart_expression,
+    ).toBe('locked:"true"')
+    expect(row).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Placeholder for a missing component base',
+      }),
+    )
+    expect(
+      useDocumentStore.getState().byDoc[DOC]?.filter.smart_expression,
+    ).toBe('is_placeholder:"true"')
+
+    await user.click(screen.getByRole('button', { name: 'Not exported' }))
+    expect(
+      useDocumentStore.getState().byDoc[DOC]?.filter.smart_expression,
+    ).toBe('export:"false"')
+    expect(row).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(screen.getByRole('button', { name: 'Not exported' }))
+    expect(
+      useDocumentStore.getState().byDoc[DOC]?.filter.smart_expression,
+    ).toBeNull()
+  })
 })

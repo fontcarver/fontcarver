@@ -168,7 +168,7 @@ export function GlyphListsPanel({ doc }: { doc: DocId }) {
                     {t('glyphLists.edit')}
                   </Button>
                 </div>
-                {active && list.missing.length > 0 && (
+                {list.missing.length > 0 && (
                   <Button
                     disabled={!fresh || busy}
                     className={styles.generate}

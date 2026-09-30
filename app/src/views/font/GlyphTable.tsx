@@ -11,8 +11,10 @@ import type { GlyphCell } from '../../api'
 import { selectDocView, useDocumentStore } from '../../stores/documentStore'
 
 import { formatUnicode } from './cellRenderer'
+import { useFontViewPrefs } from './fontViewPrefs'
 import { GlyphContextMenu } from './GlyphContextMenu'
 import type { GlyphGridProps } from './GlyphGrid'
+import { GlyphTableColumnsMenu } from './GlyphTableColumnsMenu'
 import { GlyphTableHeader } from './GlyphTableHeader'
 import { glyphTableTemplate, type GlyphTableColumn } from './glyphTableColumns'
 import { glyphStatuses } from './glyphStatuses'
@@ -37,6 +39,8 @@ function columnValue(cell: GlyphCell, column: GlyphTableColumn): string {
       return String(cell.width)
     case 'category':
       return cell.category
+    case 'subCategory':
+      return cell.sub_category
     case 'script':
       return cell.script
     case 'status':
@@ -75,7 +79,10 @@ export function GlyphTable({ summary, query }: GlyphGridProps) {
     total,
     selection,
   })
-  const template = glyphTableTemplate(view.tableColumns)
+  const columns = useFontViewPrefs((state) => state.tableColumns)
+  const moveColumn = useFontViewPrefs((state) => state.moveColumn)
+  const toggleColumn = useFontViewPrefs((state) => state.toggleColumn)
+  const template = glyphTableTemplate(columns)
 
   useEffect(() => {
     pager.setRange(metrics.first, Math.max(metrics.first, metrics.last))
@@ -134,7 +141,7 @@ export function GlyphTable({ summary, query }: GlyphGridProps) {
           gridTemplateColumns: template,
         }}
       >
-        {view.tableColumns.map((column) => (
+        {columns.map((column) => (
           <div
             key={column}
             role="gridcell"
@@ -153,19 +160,20 @@ export function GlyphTable({ summary, query }: GlyphGridProps) {
       role="grid"
       aria-label={t('fontView.tableLabel')}
       aria-rowcount={total + 1}
-      aria-colcount={view.tableColumns.length}
+      aria-colcount={columns.length}
       aria-multiselectable="true"
       className={styles.table}
     >
-      <div ref={headerRef} className={styles.headerViewport}>
-        <GlyphTableHeader
-          columns={view.tableColumns}
-          sort={view.sort}
-          onSort={(sort) => useDocumentStore.getState().setSort(doc, sort)}
-          onMove={(column, before) =>
-            useDocumentStore.getState().moveTableColumn(doc, column, before)
-          }
-        />
+      <div className={styles.headerBar}>
+        <div ref={headerRef} className={styles.headerViewport}>
+          <GlyphTableHeader
+            columns={columns}
+            sort={view.sort}
+            onSort={(sort) => useDocumentStore.getState().setSort(doc, sort)}
+            onMove={moveColumn}
+          />
+        </div>
+        <GlyphTableColumnsMenu columns={columns} onToggle={toggleColumn} />
       </div>
       <div
         ref={containerRef}
@@ -199,7 +207,13 @@ export function GlyphTable({ summary, query }: GlyphGridProps) {
         <GlyphContextMenu
           x={menu.x}
           y={menu.y}
-          commands={['glyph.open', 'glyph.renameBatch', 'edit.copyGlyphNames']}
+          commands={[
+            'glyph.open',
+            'glyph.updateInfo',
+            'glyph.renameBatch',
+            'edit.copyGlyphNames',
+          ]}
+          colorLabels
           onClose={() => {
             setMenu(null)
             containerRef.current?.focus()

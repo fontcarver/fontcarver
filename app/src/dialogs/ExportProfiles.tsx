@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import type { ExportOptions } from '../api'
+import type { DocId, ExportOptions, ExportProfile } from '../api'
 import { Button } from '../components/Button'
 import {
   ExportProfileError,
@@ -10,38 +10,62 @@ import {
 } from '../stores/exportProfileStore'
 import styles from './dialogs.module.css'
 
-/** Save and reuse named export settings independently of document destinations. */
+/**
+ * Named export settings stored in the project file.
+ *
+ * The same records drive the instance/profile matrix and
+ * `fontcarver build --profile`, so saving one here is what a continuous
+ * integration build reads back.
+ */
 export function ExportProfiles({
+  doc,
   options,
   busy,
   onApply,
 }: {
+  doc: DocId
   options: ExportOptions
   busy: boolean
-  onApply: (options: ExportOptions) => void
+  onApply: (profile: ExportProfile) => void
 }) {
   const { t } = useTranslation()
   const id = useId()
-  const profiles = useExportProfileStore((state) => state.profiles)
-  const storageError = useExportProfileStore((state) => state.error)
+  const profiles = useExportProfileStore((state) => state.stored(doc).profiles)
+  const storeDetail = useExportProfileStore((state) => state.detail)
   const [name, setName] = useState('')
-  const [selectedId, setSelectedId] = useState('')
+  const [subfolder, setSubfolder] = useState('')
+  const [fileName, setFileName] = useState('')
+  const [selectedName, setSelectedName] = useState('')
   const [error, setError] = useState<ExportProfileErrorCode | null>(null)
-  const selected = profiles.find((profile) => profile.id === selectedId)
+  const [detail, setDetail] = useState<string | null>(null)
+  const selected = profiles.find((profile) => profile.name === selectedName)
   useEffect(() => {
-    useExportProfileStore.getState().reload()
-  }, [])
+    void useExportProfileStore
+      .getState()
+      .load(doc)
+      .catch(() => undefined)
+  }, [doc])
 
-  const perform = (action: () => void) => {
-    try {
-      action()
-      setError(null)
-    } catch (cause) {
-      setError(
-        cause instanceof ExportProfileError ? cause.code : 'storageUnavailable',
-      )
-    }
+  const perform = (action: () => Promise<unknown>) => {
+    setError(null)
+    setDetail(null)
+    void action().catch((cause: unknown) => {
+      if (cause instanceof ExportProfileError) {
+        setError(cause.code)
+        setDetail(cause.detail)
+      } else {
+        setError('kernelRejected')
+        setDetail(cause instanceof Error ? cause.message : String(cause))
+      }
+    })
   }
+
+  const draft = (): ExportProfile => ({
+    name,
+    subfolder,
+    file_name: fileName,
+    options,
+  })
 
   return (
     <section
@@ -55,7 +79,7 @@ export function ExportProfiles({
       <h3 id={`${id}-heading`} className={styles.sectionTitle}>
         {t('exportProfiles.title')}
       </h3>
-      <p className={styles.hint}>{t('exportProfiles.hint')}</p>
+      <p className={styles.hint}>{t('exportProfiles.projectHint')}</p>
       <div className={styles.row}>
         <label className={styles.rowLabel} htmlFor={`${id}-name`}>
           {t('exportProfiles.name')}
@@ -72,11 +96,11 @@ export function ExportProfiles({
           <Button
             disabled={busy || !name.trim()}
             onClick={() =>
-              perform(() => {
-                const saved = useExportProfileStore
+              perform(async () => {
+                const saved = await useExportProfileStore
                   .getState()
-                  .save(name, options)
-                setSelectedId(saved.id)
+                  .saveProfile(doc, draft())
+                setSelectedName(saved.name)
                 setName('')
               })
             }
@@ -86,22 +110,56 @@ export function ExportProfiles({
         </div>
       </div>
       <div className={styles.row}>
+        <label className={styles.rowLabel} htmlFor={`${id}-subfolder`}>
+          {t('exportProfiles.subfolder')}
+        </label>
+        <input
+          id={`${id}-subfolder`}
+          className={styles.text}
+          value={subfolder}
+          disabled={busy}
+          maxLength={200}
+          onChange={(event) => setSubfolder(event.target.value)}
+        />
+      </div>
+      <div className={styles.row}>
+        <label className={styles.rowLabel} htmlFor={`${id}-file`}>
+          {t('exportProfiles.fileName')}
+        </label>
+        <input
+          id={`${id}-file`}
+          className={styles.text}
+          value={fileName}
+          disabled={busy}
+          maxLength={200}
+          onChange={(event) => setFileName(event.target.value)}
+        />
+      </div>
+      <div className={styles.row}>
         <label className={styles.rowLabel} htmlFor={`${id}-selected`}>
           {t('exportProfiles.selected')}
         </label>
         <select
           id={`${id}-selected`}
           className={styles.text}
-          value={selected?.id ?? ''}
+          value={selected?.name ?? ''}
           disabled={busy || profiles.length === 0}
           onChange={(event) => {
-            setSelectedId(event.target.value)
+            setSelectedName(event.target.value)
             setError(null)
+            setDetail(null)
+            const chosen = profiles.find(
+              (profile) => profile.name === event.target.value,
+            )
+            if (chosen) {
+              setSubfolder(chosen.subfolder)
+              setFileName(chosen.file_name)
+            }
           }}
         >
           <option value="">{t('exportProfiles.choose')}</option>
           {profiles.map((profile) => (
-            <option key={profile.id} value={profile.id}>
+            <option key={profile.name} value={profile.name}>
               {profile.name}
             </option>
           ))}
@@ -111,7 +169,7 @@ export function ExportProfiles({
         <Button
           disabled={busy || !selected}
           onClick={() => {
-            if (selected) onApply(structuredClone(selected.options))
+            if (selected) onApply(structuredClone(selected))
           }}
         >
           {t('exportProfiles.apply')}
@@ -119,19 +177,44 @@ export function ExportProfiles({
         <Button
           disabled={busy || !selected}
           onClick={() =>
-            perform(() => {
+            perform(async () => {
               if (!selected) return
-              useExportProfileStore.getState().remove(selected.id)
-              setSelectedId('')
+              await useExportProfileStore
+                .getState()
+                .saveProfile(
+                  doc,
+                  { ...draft(), name: selected.name },
+                  selected.name,
+                )
+            })
+          }
+        >
+          {t('exportProfiles.update')}
+        </Button>
+        <Button
+          disabled={busy || !selected}
+          onClick={() =>
+            perform(async () => {
+              if (!selected) return
+              await useExportProfileStore
+                .getState()
+                .removeProfile(doc, selected.name)
+              setSelectedName('')
             })
           }
         >
           {t('exportProfiles.remove')}
         </Button>
       </div>
-      {(error ?? storageError) && (
+      {error && (
         <p role="alert" className={styles.error}>
-          {t(`exportProfiles.errors.${error ?? storageError}`)}
+          {t(`exportProfiles.errors.${error}`)}
+          {detail === null ? null : ` ${detail}`}
+        </p>
+      )}
+      {!error && storeDetail !== null && (
+        <p role="alert" className={styles.error}>
+          {storeDetail}
         </p>
       )}
     </section>

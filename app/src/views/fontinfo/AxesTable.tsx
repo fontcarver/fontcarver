@@ -4,6 +4,7 @@ import type { AxisSummary, Instance, Master } from '../../api'
 
 import styles from './fontInfo.module.css'
 import { rowMatches } from './fontInfoRows'
+import { overridesFamily, overridesStyle } from './scopedInfo'
 import { SectionBody } from './SectionBody'
 
 export interface AxesTableProps {
@@ -162,7 +163,7 @@ export function AxesTable({
                         : instance.name}
                       <span className={styles.sourceLabel}>
                         {t(
-                          instance.style_name.trim()
+                          overridesStyle(instance.style_name, instance.name)
                             ? 'scopedInfo.exportOverride'
                             : 'scopedInfo.instanceStyle',
                           {
@@ -177,9 +178,9 @@ export function AxesTable({
                       {instance.family_name ?? familyName}
                       <span className={styles.sourceLabel}>
                         {t(
-                          instance.family_name === null
-                            ? 'scopedInfo.inheritedFamily'
-                            : 'scopedInfo.exportOverride',
+                          overridesFamily(instance.family_name, familyName)
+                            ? 'scopedInfo.exportOverride'
+                            : 'scopedInfo.inheritedFamily',
                           { value: instance.family_name ?? familyName },
                         )}
                       </span>

@@ -30,7 +30,15 @@ const square = makeContour([
 const anchors = [{ name: 'top', x: 100, y: 200 }]
 const guides = [
   {
-    guide: { x: 0, y: 150, angle: 0, name: 'mid', locked: false, color: null },
+    guide: {
+      x: 0,
+      y: 150,
+      angle: 0,
+      name: 'mid',
+      locked: false,
+      color: null,
+      anchor: 'Origin' as const,
+    },
     scope: 'layer' as const,
     index: 0,
   },
@@ -176,6 +184,43 @@ describe('hitTest', () => {
       hitTest(input(), { x: 240, y: 180 }, { ignoreHandles: true })?.target
         .kind,
     ).not.toBe('handle')
+  })
+
+  it('grabs a marker the preferences draw larger than the hit distance', () => {
+    // Font (200, 0) → screen (200, 300). 8 CSS pixels away is outside the
+    // default 5 px node radius, and inside an 18 px node marker's face.
+    const at = { x: 208, y: 300 }
+    expect(hitTest(input(), at)).toBeNull()
+    expect(hitTest(input({ nodeSize: 18 }), at)?.target).toEqual({
+      kind: 'node',
+      contour: 0,
+      point: 1,
+    })
+    // The same is true of an off-curve marker, independently of nodes.
+    const handleAt = { x: 246, y: 180 }
+    expect(hitTest(input(), handleAt)).toBeNull()
+    expect(hitTest(input({ handleSize: 16 }), handleAt)?.target).toEqual({
+      kind: 'handle',
+      contour: 0,
+      point: 2,
+    })
+  })
+
+  it('never shrinks the hit radius below the configured hit distance', () => {
+    // A tiny marker preference must not make a point harder to grab than the
+    // hit distance alone would, and the clamp keeps 0 or NaN harmless.
+    const at = { x: 204, y: 300 }
+    expect(hitTest(input({ nodeSize: 2, handleSize: 2 }), at)?.target).toEqual({
+      kind: 'node',
+      contour: 0,
+      point: 1,
+    })
+    expect(
+      hitTest(input({ nodeSize: Number.NaN, hitDistance: 10 }), {
+        x: 208,
+        y: 300,
+      })?.target,
+    ).toEqual({ kind: 'node', contour: 0, point: 1 })
   })
 
   it('finds nothing on empty canvas', () => {

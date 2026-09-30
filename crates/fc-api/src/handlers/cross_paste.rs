@@ -7,7 +7,10 @@ use fc_model::{GlyphName, LayerKind, MasterId};
 
 use crate::{Api, ApiError, PasteSpecialParams, PasteSpecialResult, RelinkComponentsParams};
 
+mod merge;
 mod plan;
+
+pub(crate) use merge::merge;
 
 pub(crate) fn paste(api: &Api, params: PasteSpecialParams) -> Result<PasteSpecialResult, ApiError> {
     if params.mappings.is_empty() || params.mappings.len() > 512 {
@@ -62,6 +65,7 @@ pub(crate) fn paste(api: &Api, params: PasteSpecialParams) -> Result<PasteSpecia
         source_generation,
         pasted: plan.pasted,
         added_bases: plan.added_bases,
+        placeholders: plan.placeholders,
         warnings: plan.warnings,
     })
 }

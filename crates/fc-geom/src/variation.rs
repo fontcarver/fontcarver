@@ -264,20 +264,27 @@ pub fn interpolate_glyph(font: &Font, glyph: &Glyph, at: &DesignLocation) -> Res
             .ok_or_else(|| invalid("glyph has no default source"))
             .and_then(resolve);
     }
-    let mut condition = None;
+    let mut condition: Option<Vec<fc_model::BracketCondition>> = None;
     for layer in &glyph.layers {
-        if let LayerKind::Bracket { axis, min, max, .. } = &layer.kind {
+        let Some(conditions) = layer.kind.bracket_conditions() else {
+            continue;
+        };
+        let mut active = true;
+        for range in &conditions {
             let value = at
-                .get(axis)
+                .get(&range.axis)
                 .copied()
                 .ok_or_else(|| invalid("alternate axis is missing"))?;
-            if min.is_none_or(|n| value >= n) && max.is_none_or(|n| value <= n) {
-                let key = (*axis, *min, *max);
-                if condition.is_some_and(|existing| existing != key) {
-                    return Err(invalid("overlapping alternate layer conditions"));
-                }
-                condition = Some(key);
+            active &= range.contains(value);
+        }
+        if active {
+            if condition
+                .as_ref()
+                .is_some_and(|existing| *existing != conditions)
+            {
+                return Err(invalid("overlapping alternate layer conditions"));
             }
+            condition = Some(conditions);
         }
     }
     let sources = if let Some(condition) = condition {
@@ -285,22 +292,17 @@ pub fn interpolate_glyph(font: &Font, glyph: &Glyph, at: &DesignLocation) -> Res
             .layers
             .iter()
             .filter_map(|layer| {
-                if let LayerKind::Bracket {
-                    master,
-                    axis,
-                    min,
-                    max,
-                } = &layer.kind
-                {
-                    ((*axis, *min, *max) == condition).then(|| {
+                let LayerKind::Bracket { master, .. } = &layer.kind else {
+                    return None;
+                };
+                (layer.kind.bracket_conditions().as_deref() == Some(condition.as_slice())).then(
+                    || {
                         font.master(master)
                             .ok_or_else(|| invalid("alternate master is missing"))
                             .and_then(|m| font.complete_location(&m.location).map_err(invalid))
                             .map(|loc| (loc, layer))
-                    })
-                } else {
-                    None
-                }
+                    },
+                )
             })
             .collect::<Result<Vec<_>, _>>()?
     } else {

@@ -7,12 +7,22 @@ on:
 permissions:
   contents: read
 
+# A branch push and its pull request are the same commit, so one of the two runs
+# is redundant. The key has to be the branch either way: a pull request's
+# `github.ref` is `refs/pull/N/merge`, which would never collide with the push's
+# `refs/heads/<branch>`, so `head_ref` (set only for pull requests) comes first.
+# A run on the default branch is always allowed to finish.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   verify:
     runs-on: ubuntu-latest
-    # The whole job builds the Rust workspace twice over (clippy, then tests);
-    # this bounds a hang well under GitHub's six-hour default.
-    timeout-minutes: 45
+    # The whole job builds the Rust workspace twice over (clippy, then tests)
+    # and then runs the single-worker end-to-end suite; this bounds a hang well
+    # under GitHub's six-hour default.
+    timeout-minutes: 60
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -47,7 +57,7 @@ jobs:
       - name: Generate frontend API bindings
         run: |
           python3 scripts/check_artifacts.py --min-free-gib 5
-          cargo run -p fc-api --bin gen_ts
+          cargo run --locked -p fc-api --bin gen_ts
 
       - name: Install pnpm 10
         uses: pnpm/action-setup@v4
@@ -68,12 +78,12 @@ jobs:
       - name: Lint Rust
         run: |
           python3 scripts/check_artifacts.py --min-free-gib 5
-          cargo clippy --workspace --all-targets -- -D warnings
+          cargo clippy --locked --workspace --all-targets -- -D warnings
 
       - name: Test Rust
         run: |
           python3 scripts/check_artifacts.py --min-free-gib 5
-          cargo test --workspace
+          cargo test --locked --workspace
 
       - name: Check Rust artifact budget
         run: python3 scripts/check_artifacts.py --min-free-gib 5
@@ -105,7 +115,7 @@ jobs:
       # thing CI has to provide is the built binary and a browser. The CJK spec
       # skips: its corpus is a multi-megabyte font kept outside the repository.
       - name: Build the kernel development server
-        run: cargo build -p fc-devserver
+        run: cargo build --locked -p fc-devserver
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
@@ -118,9 +128,11 @@ jobs:
         working-directory: app
         run: pnpm exec playwright install --with-deps chromium
 
+      # The suite runs one worker: its specs share one kernel document, so two
+      # workers fight over it. That costs about fifteen minutes locally.
       - name: Run end-to-end tests
         working-directory: app
-        timeout-minutes: 20
+        timeout-minutes: 30
         run: pnpm e2e
 
       - name: Upload the Playwright report

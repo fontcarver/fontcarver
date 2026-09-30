@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 
 import { getCommand, isCommandEnabled, runCommand } from '../../shell/commands'
 
+import { COLOR_LABELS, colorLabelKey } from './colorLabels'
 import styles from './fontView.module.css'
 
 export interface GlyphContextMenuProps {
@@ -15,6 +16,8 @@ export interface GlyphContextMenuProps {
   y: number
   /** Command ids listed in the menu, in order. */
   commands: readonly string[]
+  /** Whether the colour-label swatch strip is offered above the commands. */
+  colorLabels?: boolean
   /** Closes the menu; the grid takes keyboard focus back. */
   onClose: () => void
 }
@@ -24,11 +27,15 @@ export interface GlyphContextMenuProps {
  * gains a new gate or title is reflected here without a change. The first
  * enabled item takes focus when the menu opens, and focus returns to the grid
  * when it closes.
+ *
+ * The colour-label swatches sit under the commands and are reachable with the
+ * arrow keys, so opening the menu still puts the keyboard on its first command.
  */
 export function GlyphContextMenu({
   x,
   y,
   commands,
+  colorLabels = false,
   onClose,
 }: GlyphContextMenuProps) {
   const { t } = useTranslation()
@@ -100,6 +107,47 @@ export function GlyphContextMenu({
           </button>
         )
       })}
+      {colorLabels && (
+        <div
+          className={styles.menuSwatches}
+          role="group"
+          aria-label={t('fontView.colorLabelGroup')}
+        >
+          {COLOR_LABELS.map((label) => {
+            const id = `glyph.colorLabel.${colorLabelKey(label.index)}`
+            return (
+              <button
+                key={label.index}
+                type="button"
+                role="menuitem"
+                className={styles.menuSwatch}
+                style={{ background: label.swatch }}
+                disabled={!isCommandEnabled(id)}
+                aria-label={t(`fontView.color.${colorLabelKey(label.index)}`)}
+                title={t(`fontView.color.${colorLabelKey(label.index)}`)}
+                onClick={() => {
+                  onClose()
+                  runCommand(id)
+                }}
+              />
+            )
+          })}
+          <button
+            type="button"
+            role="menuitem"
+            className={styles.menuSwatchNone}
+            disabled={!isCommandEnabled('glyph.colorLabel.none')}
+            aria-label={t('panel.glyph.noColor')}
+            title={t('panel.glyph.noColor')}
+            onClick={() => {
+              onClose()
+              runCommand('glyph.colorLabel.none')
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   )
 }

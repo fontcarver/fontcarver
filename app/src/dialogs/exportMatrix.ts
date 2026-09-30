@@ -1,15 +1,11 @@
 import type { ExportOptions, ExportReport } from '../api'
-import type { ExportProfile } from '../stores/exportProfileStore'
-
-import { FORMAT_EXTENSIONS, SFNT_FORMATS } from './exportFormats'
 
 export type ExportMatrixErrorCode =
   | 'empty-directory'
   | 'empty-profiles'
-  | 'empty-instances'
+  | 'empty-rows'
   | 'too-many-items'
-  | 'invalid-instance'
-  | 'unsupported-format'
+  | 'unsafe-path'
   | 'path-collision'
   | 'invalid-name'
 
@@ -24,10 +20,29 @@ export class ExportMatrixError extends Error {
   }
 }
 
+/** What one matrix row exports: a named static instance or a variable config. */
+export type ExportMatrixRowKind = 'instance' | 'variable'
+
+/**
+ * One planned output, already resolved by the kernel.
+ *
+ * `options` and `relativePath` come from `export.resolve_profile`, so the
+ * dialog, the matrix and `fontcarver build --profile` derive destinations and
+ * options from one implementation rather than from two that can drift.
+ */
+export interface ExportMatrixCell {
+  profileName: string
+  rowKind: ExportMatrixRowKind
+  rowName: string
+  options: ExportOptions
+  relativePath: string
+}
+
 export interface ExportMatrixItem {
   id: string
   profileName: string
-  instanceName: string
+  rowKind: ExportMatrixRowKind
+  rowName: string
   path: string
   options: ExportOptions
 }
@@ -40,18 +55,27 @@ export interface ExportMatrixResult {
 
 export const MAX_EXPORT_MATRIX_ITEMS = 100
 
-function safeName(name: string): string {
-  const safe = name
-    .normalize('NFC')
-    .replace(/[^\p{L}\p{N}._-]+/gu, '-')
-    .replace(/^[._-]+|[._-]+$/g, '')
-  if (!safe) {
+function checkRelative(relative: string): string {
+  const normalized = relative.replace(/\\/g, '/').trim()
+  if (!normalized) {
     throw new ExportMatrixError(
       'invalid-name',
-      'An instance or profile name cannot form a filename.',
+      'A resolved file name is empty.',
     )
   }
-  return safe
+  if (
+    normalized.startsWith('/') ||
+    normalized.includes(':') ||
+    normalized
+      .split('/')
+      .some((part) => part === '' || part === '.' || part === '..')
+  ) {
+    throw new ExportMatrixError(
+      'unsafe-path',
+      `A resolved output path escapes the destination: ${relative}`,
+    )
+  }
+  return normalized
 }
 
 function validatePaths(items: readonly ExportMatrixItem[]): void {
@@ -83,8 +107,7 @@ function validatePaths(items: readonly ExportMatrixItem[]): void {
 /** Plan and validate the complete matrix before any file can be written. */
 export function planExportMatrix(
   directory: string,
-  profiles: readonly ExportProfile[],
-  instances: readonly { index: number; name: string }[],
+  cells: readonly ExportMatrixCell[],
 ): ExportMatrixItem[] {
   const destination = directory.trim()
   if (!destination) {
@@ -93,63 +116,42 @@ export function planExportMatrix(
       'Choose an output directory.',
     )
   }
-  if (profiles.length === 0) {
+  if (cells.length === 0) {
     throw new ExportMatrixError(
-      'empty-profiles',
-      'Select at least one profile.',
+      'empty-rows',
+      'Select at least one instance or variable configuration and one profile.',
     )
   }
-  if (instances.length === 0) {
-    throw new ExportMatrixError(
-      'empty-instances',
-      'Select at least one instance.',
-    )
-  }
-  if (profiles.length * instances.length > MAX_EXPORT_MATRIX_ITEMS) {
+  if (cells.length > MAX_EXPORT_MATRIX_ITEMS) {
     throw new ExportMatrixError(
       'too-many-items',
       `An export matrix can contain at most ${MAX_EXPORT_MATRIX_ITEMS} items.`,
     )
   }
-  const indexes = new Set<number>()
-  for (const instance of instances) {
-    if (
-      !Number.isSafeInteger(instance.index) ||
-      instance.index < 0 ||
-      indexes.has(instance.index)
-    ) {
-      throw new ExportMatrixError(
-        'invalid-instance',
-        'Each instance index must be a unique nonnegative integer.',
-      )
-    }
-    indexes.add(instance.index)
-  }
   const separator =
     destination.includes('\\') && !destination.includes('/') ? '\\' : '/'
   const prefix = destination.replace(/[\\/]+$/, '') + separator
-  const items = profiles.flatMap((profile, profileIndex) => {
-    if (!SFNT_FORMATS.includes(profile.options.format)) {
+  const items = cells.map((cell) => {
+    const relative = checkRelative(cell.relativePath)
+    return {
+      id: `${cell.rowKind}:${cell.rowName}:${cell.profileName}`,
+      profileName: cell.profileName,
+      rowKind: cell.rowKind,
+      rowName: cell.rowName,
+      path: `${prefix}${separator === '\\' ? relative.replace(/\//g, '\\') : relative}`,
+      options: structuredClone(cell.options),
+    }
+  })
+  const ids = new Set<string>()
+  for (const item of items) {
+    if (ids.has(item.id)) {
       throw new ExportMatrixError(
-        'unsupported-format',
-        'The profile format does not support named instance exports.',
+        'invalid-name',
+        `Two matrix cells share the identity ${item.id}.`,
       )
     }
-    return instances.map((instance) => ({
-      id: `${profile.id}:${profileIndex}:${instance.index}`,
-      profileName: profile.name,
-      instanceName: instance.name,
-      path: `${prefix}${safeName(instance.name)}-${safeName(profile.name)}${FORMAT_EXTENSIONS[profile.options.format]}`,
-      options: {
-        ...structuredClone(profile.options),
-        instance: instance.index,
-        variable: false,
-        master_subset: undefined,
-        master: null,
-        keep_tt_instructions: false,
-      },
-    }))
-  })
+    ids.add(item.id)
+  }
   validatePaths(items)
   return items
 }

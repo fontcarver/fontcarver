@@ -1,9 +1,16 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createPluginStore, PLUGIN_STORAGE_KEY } from './pluginStore'
-import { boundsReporter, translateFilter } from './registry'
+import {
+  createPluginStore,
+  PLUGIN_STORAGE_KEY,
+  pluginSettings,
+  usePluginStore,
+} from './pluginStore'
+import { boundsReporter, metricsReporter } from './reporters'
+import { defaultSettings, translateFilter } from './registry'
 
 const boundsId = boundsReporter.manifest.id
+const metricsId = metricsReporter.manifest.id
 const translateId = translateFilter.manifest.id
 
 function memoryStorage(initial: string | null = null) {
@@ -15,6 +22,12 @@ function memoryStorage(initial: string | null = null) {
     }),
   }
 }
+
+const boundsEntry = (enabled: boolean) => ({
+  enabled,
+  version: boundsReporter.manifest.version,
+  settings: defaultSettings(boundsId),
+})
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -28,10 +41,7 @@ describe('plugin lifecycle', () => {
     store.getState().enable(boundsId)
     expect(store.getState().installed).toEqual({})
     store.getState().install(boundsId)
-    expect(store.getState().installed[boundsId]).toEqual({
-      enabled: false,
-      version: boundsReporter.manifest.version,
-    })
+    expect(store.getState().installed[boundsId]).toEqual(boundsEntry(false))
     store.getState().enable(boundsId)
     expect(store.getState().installed[boundsId]?.enabled).toBe(true)
     store.getState().disable(boundsId)
@@ -47,10 +57,11 @@ describe('plugin lifecycle', () => {
 
     const restarted = createPluginStore(storage)
     expect(restarted.getState().installed).toEqual({
-      [boundsId]: { enabled: true, version: boundsReporter.manifest.version },
+      [boundsId]: boundsEntry(true),
       [translateId]: {
         enabled: false,
         version: translateFilter.manifest.version,
+        settings: defaultSettings(translateId),
       },
     })
     restarted.getState().disable(boundsId)
@@ -97,8 +108,71 @@ describe('plugin lifecycle', () => {
     store.getState().enable(id)
     store.getState().disable(id)
     store.getState().remove(id)
+    store.getState().setSetting(id, 'dx', 5)
     expect(store.getState().installed).toEqual({})
     expect(storage.setItem).not.toHaveBeenCalled()
+  })
+})
+
+describe('plugin settings', () => {
+  it('persists, clamps and rounds declared settings', () => {
+    const storage = memoryStorage()
+    const store = createPluginStore(storage)
+    store.getState().install(translateId)
+    expect(store.getState().installed[translateId]?.settings).toEqual({
+      dx: 20,
+      dy: 0,
+    })
+
+    store.getState().setSetting(translateId, 'dx', 40.4)
+    store.getState().setSetting(translateId, 'dy', -100000)
+    expect(store.getState().installed[translateId]?.settings).toEqual({
+      dx: 40,
+      dy: -32767,
+    })
+    expect(
+      createPluginStore(storage).getState().installed[translateId]?.settings,
+    ).toEqual({ dx: 40, dy: -32767 })
+
+    // A toggle is stored as 0 or 1 regardless of the value offered.
+    store.getState().install(metricsId)
+    store.getState().setSetting(metricsId, 'zones', 0.2)
+    expect(store.getState().installed[metricsId]?.settings).toEqual({
+      zones: 0,
+    })
+    store.getState().setSetting(metricsId, 'zones', 7)
+    expect(store.getState().installed[metricsId]?.settings).toEqual({
+      zones: 1,
+    })
+    // An undeclared key is refused.
+    store.getState().setSetting(metricsId, 'unknown', 1)
+    expect(store.getState().installed[metricsId]?.settings).toEqual({
+      zones: 1,
+    })
+  })
+
+  it('repairs missing and non-numeric persisted settings on load', () => {
+    const storage = memoryStorage(
+      JSON.stringify({
+        [translateId]: {
+          enabled: true,
+          settings: { dx: 'nope', dy: 12, extra: 4 },
+        },
+      }),
+    )
+    expect(
+      createPluginStore(storage).getState().installed[translateId],
+    ).toEqual({
+      enabled: true,
+      version: translateFilter.manifest.version,
+      settings: { dx: 20, dy: 12 },
+    })
+  })
+
+  it('reads the declared defaults for a plugin that is not installed', () => {
+    expect(pluginSettings('unknown.plugin')).toEqual({})
+    expect(pluginSettings(metricsId)).toEqual(defaultSettings(metricsId))
+    expect(usePluginStore.getState().installed).toBeDefined()
   })
 })
 
@@ -112,7 +186,7 @@ describe('plugin persistence validation', () => {
     )
     const store = createPluginStore(storage)
     expect(store.getState().installed).toEqual({
-      [boundsId]: { enabled: true, version: boundsReporter.manifest.version },
+      [boundsId]: boundsEntry(true),
     })
     expect(storage.getItem).toHaveBeenCalledWith(PLUGIN_STORAGE_KEY)
     expect(storage.setItem).not.toHaveBeenCalled()
@@ -127,35 +201,43 @@ describe('plugin persistence validation', () => {
     },
   )
 
-  it.each([
-    null,
-    [],
-    true,
-    {},
-    { enabled: true },
-    { enabled: 'true', version: '1.0.0' },
-    { enabled: true, version: 1 },
-    { enabled: true, version: '' },
-  ])(
+  it.each([null, [], true, {}, { version: '1.0.0' }, { enabled: 'true' }])(
     'rejects a malformed installation %j while keeping valid peers',
     (entry) => {
       const storage = memoryStorage(
         JSON.stringify({
           [boundsId]: entry,
-          [translateId]: {
-            enabled: false,
-            version: translateFilter.manifest.version,
-          },
+          [translateId]: { enabled: false },
         }),
       )
       expect(createPluginStore(storage).getState().installed).toEqual({
         [translateId]: {
           enabled: false,
           version: translateFilter.manifest.version,
+          settings: defaultSettings(translateId),
         },
       })
     },
   )
+
+  it('reloads the persisted record without fetching anything', () => {
+    const storage = memoryStorage()
+    const store = createPluginStore(storage)
+    store.getState().install(boundsId)
+    // Another window changed the shared record.
+    storage.setItem(
+      PLUGIN_STORAGE_KEY,
+      JSON.stringify({ [metricsId]: { enabled: true } }),
+    )
+    store.getState().reload()
+    expect(store.getState().installed).toEqual({
+      [metricsId]: {
+        enabled: true,
+        version: metricsReporter.manifest.version,
+        settings: defaultSettings(metricsId),
+      },
+    })
+  })
 
   it('keeps the lifecycle usable when storage access fails', () => {
     const storage = {

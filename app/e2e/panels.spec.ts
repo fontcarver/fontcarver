@@ -14,10 +14,11 @@ import { expect, test, type Page } from '@playwright/test'
 async function openA(page: Page): Promise<void> {
   await page.goto('/')
   const grid = page.getByRole('listbox', { name: 'Glyphs' })
-  await expect(
-    grid.getByRole('option', { name: 'A', exact: true }),
-  ).toBeVisible()
-  await grid.getByRole('option', { name: 'A', exact: true }).dblclick()
+  const cell = grid.getByRole('option', { name: 'A', exact: true })
+  // The grid is virtualised and its cells arrive with their thumbnails.
+  await expect(cell).toBeAttached({ timeout: 20_000 })
+  await cell.scrollIntoViewIfNeeded()
+  await cell.dblclick()
   await expect(page.getByRole('tab', { name: 'A', exact: true })).toBeVisible()
   await expect(page.getByRole('img', { name: /^Glyph A/ })).toBeVisible()
 }
@@ -51,6 +52,11 @@ test.describe('editor panels', () => {
     page,
   }) => {
     await openA(page)
+
+    // The document is shared with every other spec, and one of them leaves an
+    // entry of its own on the undo stack, so the state this test restores is
+    // the one it found rather than an empty stack.
+    const undoBefore = await undoLabel(page)
 
     const inspector = page.getByRole('region', { name: 'Inspector' })
     const lsb = inspector.getByLabel('LSB', { exact: true })
@@ -94,8 +100,9 @@ test.describe('editor panels', () => {
     await expect(inspector.getByLabel('advance', { exact: true })).toHaveValue(
       originalWidth,
     )
-    // Nothing left on the stack: the item is listed but says why it is off.
-    expect(await undoLabel(page)).toContain('Nothing to undo')
+    // Nothing of this test left on the stack: the undo item reads exactly what
+    // it read before the three edits.
+    expect(await undoLabel(page)).toBe(undoBefore)
   })
 
   test('switches glyph from the sidebar and layer from the layer list', async ({
@@ -130,5 +137,52 @@ test.describe('editor panels', () => {
     await expect(
       sidebar.getByRole('button', { name: 'Background' }),
     ).toHaveCount(0)
+  })
+})
+
+test.describe('saved workspaces', () => {
+  test('saves a named arrangement and restores it on demand', async ({
+    page,
+  }) => {
+    await openA(page)
+    const inspector = page.getByRole('region', { name: 'Inspector' })
+    await expect(inspector).toBeVisible()
+
+    // An arrangement worth naming: no Inspector, no preview strip.
+    await page.keyboard.press('Control+2')
+    await expect(inspector).toHaveCount(0)
+    await page.keyboard.press('Control+3')
+    await expect(page.getByRole('region', { name: 'Preview' })).toHaveCount(0)
+
+    await runMenu(page, 'Window', 'Workspaces')
+    const dialog = page.getByRole('dialog', { name: 'Saved workspaces' })
+    await expect(dialog).toBeVisible()
+    // The dialog states where the arrangement is kept.
+    await expect(dialog).toContainText(/Saved (in this document|on this)/)
+    await dialog.getByLabel('Workspace name').fill('Canvas only')
+    await dialog.getByRole('button', { name: 'Save workspace' }).click()
+    await expect(dialog).toContainText('Workspace saved.')
+    // The dialog owns the keyboard while it is open, which is why the panels
+    // are changed back with it closed.
+    await dialog.getByRole('button', { name: 'Close' }).click()
+    await expect(dialog).toHaveCount(0)
+
+    // Undo the arrangement by hand, then let the saved one put it back.
+    await page.keyboard.press('Control+2')
+    await page.keyboard.press('Control+3')
+    await expect(inspector).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Preview' })).toBeVisible()
+
+    await runMenu(page, 'Window', 'Workspaces')
+    await expect(dialog).toBeVisible()
+    await dialog.getByRole('button', { name: 'Apply Canvas only' }).click()
+    await expect(dialog).toContainText('Applied Canvas only.')
+    await expect(inspector).toHaveCount(0)
+    await expect(page.getByRole('region', { name: 'Preview' })).toHaveCount(0)
+
+    await dialog.getByRole('button', { name: 'Delete Canvas only' }).click()
+    await expect(dialog).toContainText('Deleted Canvas only.')
+    await dialog.getByRole('button', { name: 'Close' }).click()
+    await expect(dialog).toHaveCount(0)
   })
 })

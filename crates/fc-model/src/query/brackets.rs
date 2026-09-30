@@ -1,25 +1,31 @@
 //! Expand conditional source layers into alternate glyphs and substitution rules.
-use crate::{Error, Font, GlyphName, LayerKind, Tag};
+use crate::{BracketCondition, Error, Font, GlyphName, LayerKind};
 use std::collections::BTreeMap;
 
 /// A substitution region in design coordinates, with generated source glyphs.
 #[derive(Clone, Debug, PartialEq)]
 pub struct BracketRule {
-    /// Axis controlling this region.
-    pub axis: Tag,
-    /// Inclusive lower design bound.
-    pub min: Option<f64>,
-    /// Inclusive upper design bound.
-    pub max: Option<f64>,
+    /// Conjunction of per-axis ranges that activates this region.
+    pub conditions: Vec<BracketCondition>,
     /// Original glyph and generated alternate, including component dependents.
     pub substitutions: BTreeMap<GlyphName, GlyphName>,
 }
 
-#[derive(Clone, Copy, PartialEq)]
-struct Bounds {
-    axis: Tag,
-    min: Option<f64>,
-    max: Option<f64>,
+/// A canonical condition set: sorted by axis tag, so equality identifies a region.
+type Bounds = Vec<BracketCondition>;
+
+/// Two condition sets overlap when every shared axis range intersects and no
+/// axis present in only one of them excludes the other.
+///
+/// An axis a set does not constrain is unbounded in that set, so two sets are
+/// disjoint exactly when some axis range fails to intersect.
+fn overlapping(left: &[BracketCondition], right: &[BracketCondition]) -> bool {
+    left.iter().all(|condition| {
+        right
+            .iter()
+            .find(|other| other.axis == condition.axis)
+            .is_none_or(|other| condition.overlaps(other))
+    })
 }
 
 /// Build a compilation copy with explicit alternates, preserving the input document.
@@ -31,29 +37,19 @@ pub fn expand_brackets(font: &Font) -> Result<(Font, Vec<BracketRule>), Error> {
     for glyph in font.glyphs.values() {
         let mut seen = Vec::<Bounds>::new();
         for layer in &glyph.layers {
-            if let LayerKind::Bracket { axis, min, max, .. } = &layer.kind {
-                let bounds = Bounds {
-                    axis: *axis,
-                    min: *min,
-                    max: *max,
-                };
+            if let Some(bounds) = layer.kind.bracket_conditions() {
                 if seen.contains(&bounds) {
                     continue;
                 }
                 for old in &seen {
-                    if old.axis != bounds.axis
-                        || old.min.unwrap_or(f64::NEG_INFINITY)
-                            <= bounds.max.unwrap_or(f64::INFINITY)
-                            && bounds.min.unwrap_or(f64::NEG_INFINITY)
-                                <= old.max.unwrap_or(f64::INFINITY)
-                    {
+                    if overlapping(old, &bounds) {
                         return Err(Error::InvalidDesignSpace(format!(
                             "{} has overlapping bracket conditions",
                             glyph.name
                         )));
                     }
                 }
-                seen.push(bounds);
+                seen.push(bounds.clone());
                 if let Some((_, names)) = groups.iter_mut().find(|(key, _)| *key == bounds) {
                     names.push(glyph.name.clone());
                 } else {
@@ -124,16 +120,10 @@ pub fn expand_brackets(font: &Font) -> Result<(Font, Vec<BracketRule>), Error> {
         }
         for base in aliases.keys() {
             let regions = effective_regions.entry(base.clone()).or_default();
-            if regions.iter().any(|old| {
-                old.axis != condition.axis
-                    || old.min.unwrap_or(f64::NEG_INFINITY)
-                        <= condition.max.unwrap_or(f64::INFINITY)
-                        && condition.min.unwrap_or(f64::NEG_INFINITY)
-                            <= old.max.unwrap_or(f64::INFINITY)
-            }) {
+            if regions.iter().any(|old| overlapping(old, &condition)) {
                 return Err(Error::InvalidDesignSpace(format!("{base}: overlapping conditional component dependencies require a combined alternate")));
             }
-            regions.push(condition);
+            regions.push(condition.clone());
         }
         for (base, alias) in &aliases {
             if let Some(glyph) = font.glyph(base) {
@@ -167,7 +157,9 @@ pub fn expand_brackets(font: &Font) -> Result<(Font, Vec<BracketRule>), Error> {
             glyph.unicodes.clear();
             glyph.variation_selectors.clear();
             if names.contains(base) {
-                glyph.layers.retain(|layer|matches!(&layer.kind,LayerKind::Bracket{axis,min,max,..} if (*axis,*min,*max)==(condition.axis,condition.min,condition.max)));
+                glyph.layers.retain(|layer| {
+                    layer.kind.bracket_conditions().as_deref() == Some(condition.as_slice())
+                });
                 for layer in &mut glyph.layers {
                     if let LayerKind::Bracket { master, .. } = &layer.kind {
                         layer.kind = LayerKind::Master(master.clone());
@@ -195,9 +187,7 @@ pub fn expand_brackets(font: &Font) -> Result<(Font, Vec<BracketRule>), Error> {
                 .map_err(|e| Error::InvalidDesignSpace(e.to_string()))?;
         }
         rules.push(BracketRule {
-            axis: condition.axis,
-            min: condition.min,
-            max: condition.max,
+            conditions: condition,
             substitutions: aliases,
         });
     }

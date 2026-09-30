@@ -3,6 +3,8 @@ import type { DocId, GlyphId } from '../api'
 import {
   PANEL_BOUNDS,
   tabId,
+  type DetachedView,
+  type PanelId,
   type Tab,
   type TabKind,
   type TextTabState,
@@ -17,6 +19,16 @@ export interface WorkspaceTab {
   textState?: TextTabState
 }
 
+/**
+ * A view the arrangement keeps in its own OS window.
+ *
+ * Like a saved tab, a detached tab names its glyph rather than a session handle
+ * so the window can be reopened after the document is reopened.
+ */
+export type WorkspaceDetached =
+  | { kind: 'panel'; panel: PanelId | 'preview' }
+  | { kind: 'tab'; tab: TabKind; glyphName?: string }
+
 /** Document-local tabs and the shell arrangement surrounding them. */
 export interface WorkspaceSnapshot {
   tabs: WorkspaceTab[]
@@ -25,12 +37,20 @@ export interface WorkspaceSnapshot {
   sizes: UiState['sizes']
   sections: UiState['sections']
   textPreviewVisible: boolean
+  /** Views kept in their own windows; absent in records saved before P5. */
+  detached?: WorkspaceDetached[]
 }
 
 /** The shell fields exchanged by the workspace adapters. */
 export type WorkspaceUi = Pick<
   UiState,
-  'tabs' | 'activeTab' | 'panels' | 'sizes' | 'sections' | 'textPreviewVisible'
+  | 'tabs'
+  | 'activeTab'
+  | 'panels'
+  | 'sizes'
+  | 'sections'
+  | 'textPreviewVisible'
+  | 'detached'
 >
 
 const TAB_KINDS: readonly string[] = [
@@ -40,7 +60,9 @@ const TAB_KINDS: readonly string[] = [
   'features',
   'bitmap',
 ]
+const PANEL_KINDS: readonly string[] = ['sidebar', 'inspector', 'preview']
 const MAX_TABS = 128
+const MAX_DETACHED = 16
 
 /** Narrows a JSON object without accepting arrays or null. */
 export function workspaceRecord(
@@ -167,6 +189,7 @@ export function readWorkspaceSnapshot(
       ...(textState ? { textState } : {}),
     })
   })
+  const detached = readDetached(data.detached)
   const sections = Object.fromEntries(
     Object.entries(workspaceRecord(data.sections) ?? {})
       .filter(([key, value]) => key.length <= 256 && typeof value === 'boolean')
@@ -192,7 +215,58 @@ export function readWorkspaceSnapshot(
     },
     sections,
     textPreviewVisible: data.textPreviewVisible,
+    detached,
   }
+}
+
+/** Validates the stored detached-window list, discarding unusable entries. */
+function readDetached(value: unknown): WorkspaceDetached[] {
+  if (!Array.isArray(value)) return []
+  const views: WorkspaceDetached[] = []
+  for (const raw of value.slice(0, MAX_DETACHED)) {
+    const view = workspaceRecord(raw)
+    if (!view) continue
+    if (
+      view.kind === 'panel' &&
+      typeof view.panel === 'string' &&
+      PANEL_KINDS.includes(view.panel)
+    ) {
+      views.push({ kind: 'panel', panel: view.panel as PanelId | 'preview' })
+      continue
+    }
+    // The Overview represents the document itself and is never torn off.
+    if (
+      view.kind !== 'tab' ||
+      typeof view.tab !== 'string' ||
+      !TAB_KINDS.includes(view.tab) ||
+      view.tab === 'font'
+    )
+      continue
+    const glyphName =
+      typeof view.glyphName === 'string' &&
+      view.glyphName.length > 0 &&
+      view.glyphName.length <= 1024
+        ? view.glyphName
+        : undefined
+    if (view.tab === 'glyph' && !glyphName) continue
+    views.push({
+      kind: 'tab',
+      tab: view.tab as TabKind,
+      ...(glyphName ? { glyphName } : {}),
+    })
+  }
+  return views.filter(
+    (view, index) =>
+      views.findIndex(
+        (other) => detachedIdentity(other) === detachedIdentity(view),
+      ) === index,
+  )
+}
+
+function detachedIdentity(view: WorkspaceDetached): string {
+  return view.kind === 'panel'
+    ? `panel:${view.panel}`
+    : `tab:${view.tab}:${view.glyphName ?? ''}`
 }
 
 /** Copies a trusted snapshot so callers cannot mutate the saved record. */
@@ -216,6 +290,7 @@ export function copyWorkspace(snapshot: WorkspaceSnapshot): WorkspaceSnapshot {
     panels: { ...snapshot.panels },
     sizes: { ...snapshot.sizes },
     sections: { ...snapshot.sections },
+    detached: (snapshot.detached ?? []).map((view) => ({ ...view })),
   }
 }
 
@@ -244,6 +319,22 @@ export function captureWorkspace(
       ...(textState ? { textState } : {}),
     })
   }
+  const detached: WorkspaceDetached[] = []
+  for (const view of ui.detached ?? []) {
+    if (view.doc !== doc) continue
+    if (view.kind === 'panel') {
+      detached.push({ kind: 'panel', panel: view.panel })
+      continue
+    }
+    const glyphName =
+      view.gid === undefined ? undefined : glyphNames.get(view.gid)
+    if (view.tab === 'glyph' && !glyphName) continue
+    detached.push({
+      kind: 'tab',
+      tab: view.tab,
+      ...(glyphName ? { glyphName } : {}),
+    })
+  }
   return copyWorkspace({
     tabs,
     activeTab: activeTab ?? (tabs.length ? 0 : null),
@@ -251,6 +342,7 @@ export function captureWorkspace(
     sizes: ui.sizes,
     sections: ui.sections,
     textPreviewVisible: ui.textPreviewVisible,
+    detached,
   })
 }
 
@@ -297,5 +389,36 @@ export function restoreWorkspace(
     sizes: saved.sizes,
     sections: saved.sections,
     textPreviewVisible: saved.textPreviewVisible,
+    detached: restoreDetached(saved.detached, doc, glyphIds),
   }
+}
+
+/**
+ * Resolves saved detached views against a reopened document.
+ *
+ * A glyph window whose glyph is gone is dropped rather than opened on a
+ * different glyph; everything else keeps its panel or tab identity.
+ */
+export function restoreDetached(
+  views: readonly WorkspaceDetached[] = [],
+  doc: DocId,
+  glyphIds: ReadonlyMap<string, GlyphId> = new Map(),
+): DetachedView[] {
+  const detached: DetachedView[] = []
+  for (const view of views) {
+    if (view.kind === 'panel') {
+      detached.push({ kind: 'panel', doc, panel: view.panel })
+      continue
+    }
+    const gid = view.glyphName ? glyphIds.get(view.glyphName) : undefined
+    if (view.tab === 'glyph' && gid === undefined) continue
+    detached.push({
+      kind: 'tab',
+      doc,
+      tab: view.tab,
+      ...(gid === undefined ? {} : { gid }),
+      tabId: tabId(view.tab, doc, gid),
+    })
+  }
+  return detached
 }

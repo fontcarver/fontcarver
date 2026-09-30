@@ -6,7 +6,10 @@ use fc_doc::{
 };
 use fc_model::{Component, Font, Glyph, GlyphName, Layer, LayerId, LayerKind, Master, MasterId};
 
-use crate::{ApiError, MissingBasePolicy, PasteContent, PasteDestination, PasteSpecialParams};
+use crate::{
+    ApiError, MissingBasePolicy, PasteContent, PasteDestination, PastePlaceholder,
+    PasteSpecialParams, PLACEHOLDER_TAG,
+};
 
 use super::{glyph_name, layer_master};
 
@@ -14,6 +17,7 @@ pub(super) struct Plan {
     pub(super) commands: Vec<Command>,
     pub(super) pasted: Vec<String>,
     pub(super) added_bases: Vec<String>,
+    pub(super) placeholders: Vec<PastePlaceholder>,
     pub(super) warnings: Vec<String>,
 }
 
@@ -26,6 +30,7 @@ struct Builder<'a> {
     names: BTreeMap<GlyphName, GlyphName>,
     staged: BTreeMap<GlyphName, Glyph>,
     added_bases: Vec<String>,
+    placeholders: Vec<PastePlaceholder>,
     warnings: Vec<String>,
     import_depth: usize,
     masters: BTreeMap<MasterId, Master>,
@@ -48,6 +53,7 @@ pub(super) fn build(
         names: BTreeMap::new(),
         staged: BTreeMap::new(),
         added_bases: Vec::new(),
+        placeholders: Vec::new(),
         warnings: Vec::new(),
         import_depth: 0,
         masters: BTreeMap::new(),
@@ -189,6 +195,7 @@ pub(super) fn build(
         commands,
         pasted: targets.iter().map(glyph_name).collect(),
         added_bases: builder.added_bases,
+        placeholders: builder.placeholders,
         warnings: builder.warnings,
     })
 }
@@ -480,11 +487,16 @@ impl Builder<'_> {
             MissingBasePolicy::Placeholder => {
                 let mut glyph = empty_glyph(self.target, target_name);
                 glyph.export = false;
-                glyph.tags.insert("missing-component-base".into());
+                glyph.tags.insert(PLACEHOLDER_TAG.into());
                 glyph.note = format!("Missing component base `{source_name}`. Relink references or replace this placeholder with real geometry.");
                 self.staged.insert(target_name.clone(), glyph);
+                self.placeholders.push(PastePlaceholder {
+                    name: target_name.to_string(),
+                    source_base: source_name.to_string(),
+                    tag: PLACEHOLDER_TAG.to_owned(),
+                });
                 self.warnings.push(format!(
-                    "Created empty nonexporting placeholder `{target_name}`."
+                    "Created empty nonexporting placeholder `{target_name}`, tagged `{PLACEHOLDER_TAG}`."
                 ));
             }
             MissingBasePolicy::Copy => {

@@ -61,6 +61,12 @@ async function setup(page: Page) {
   await expect(page.getByLabel('Bitmap pixel canvas')).toBeVisible()
   return { directory, doc }
 }
+/**
+ * The document's own tab. An unlabelled Overview renders as
+ * `Overview · <file>`, so the file name is matched at the start of the tab
+ * name or after that separator rather than as the whole name.
+ */
+const FONT_TAB = /(?:^|· )BitmapTest\.bdf$/
 const image = (page: Page, doc: number, ppem = 8, depth = 1) =>
   api<BitmapGlyphView>(page, 'bitmap.glyph', { doc, ppem, depth, glyph: 'A' })
 async function pixel(page: Page, x: number, y: number) {
@@ -126,7 +132,7 @@ test('failed pixel writes retain the draft and block tab navigation until retry'
   await expect(
     page.getByRole('alert').filter({ hasText: 'local pixels' }),
   ).toBeVisible()
-  await page.getByRole('tab', { name: 'BitmapTest.bdf', exact: true }).click()
+  await page.getByRole('tab', { name: FONT_TAB }).click()
   await expect(
     page.getByRole('tab', { name: 'Bitmap editor', exact: true }),
   ).toHaveAttribute('aria-selected', 'true')
@@ -136,10 +142,11 @@ test('failed pixel writes retain the draft and block tab navigation until retry'
   await expect
     .poll(async () => (await image(page, doc.doc)).value?.bitmap.rows[0])
     .toBe(128)
-  await page.getByRole('tab', { name: 'BitmapTest.bdf', exact: true }).click()
-  await expect(
-    page.getByRole('tab', { name: 'BitmapTest.bdf', exact: true }),
-  ).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('tab', { name: FONT_TAB }).click()
+  await expect(page.getByRole('tab', { name: FONT_TAB })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
 })
 test('trace, regenerate, strike properties, tools and strike removal are undoable', async ({
   page,

@@ -262,40 +262,62 @@ fn explicit_metric(
     let path = fc_geom::flatten_layer_by_id(font, glyph, &selected.id)?;
     let mut bounds = (!path.is_empty()).then(|| path.bounding_box());
     if let Some(height) = height {
-        let Some(bbox) = bounds else {
-            return Err(Error::InvalidCommand(
+        bounds = Some(cross_section(&path, height).ok_or_else(|| {
+            Error::InvalidCommand(
                 "metrics measurement height does not intersect the outline".into(),
-            ));
-        };
-        let line = Line::new((bbox.x0 - 1.0, height), (bbox.x1 + 1.0, height));
-        let mut xs = Vec::new();
-        for segment in path.segments() {
-            // Including endpoints handles horizontal segments and extrema exactly.
-            for point in [segment.start(), segment.end()] {
-                if (point.y - height).abs() < 1e-8 {
-                    xs.push(point.x);
-                }
-            }
-            for hit in segment.intersect_line(line) {
-                xs.push(segment.eval(hit.segment_t).x);
-            }
-        }
-        let min = xs.iter().copied().reduce(f64::min);
-        let max = xs.iter().copied().reduce(f64::max);
-        bounds = match (min, max) {
-            (Some(min), Some(max)) => Some(kurbo::Rect::new(min, height, max, height)),
-            _ => {
-                return Err(Error::InvalidCommand(
-                    "metrics measurement height does not intersect the outline".into(),
-                ))
-            }
-        };
+            )
+        })?);
     }
     Ok(match metric {
         Metric::Left => bounds.map_or(0.0, |bounds| bounds.x0),
         Metric::Right => bounds.map_or(selected.width, |bounds| selected.width - bounds.x1),
         Metric::Width => selected.width,
     })
+}
+
+/// Horizontal extent of the ink a horizontal line at `height` crosses.
+///
+/// Returns a degenerate rectangle on that line, so callers read `x0`/`x1` the
+/// same way they read full outline bounds. `None` means the line misses the
+/// outline entirely. Segment endpoints are included as well as true
+/// intersections, which is what makes a horizontal segment or an extremum at
+/// exactly `height` measure correctly.
+fn cross_section(path: &kurbo::BezPath, height: f64) -> Option<kurbo::Rect> {
+    let bbox = (!path.is_empty()).then(|| path.bounding_box())?;
+    let line = Line::new((bbox.x0 - 1.0, height), (bbox.x1 + 1.0, height));
+    let mut xs = Vec::new();
+    for segment in path.segments() {
+        for point in [segment.start(), segment.end()] {
+            if (point.y - height).abs() < 1e-8 {
+                xs.push(point.x);
+            }
+        }
+        for hit in segment.intersect_line(line) {
+            xs.push(segment.eval(hit.segment_t).x);
+        }
+    }
+    let min = xs.iter().copied().reduce(f64::min)?;
+    let max = xs.iter().copied().reduce(f64::max)?;
+    Some(kurbo::Rect::new(min, height, max, height))
+}
+
+/// Margins of one layer at a measurement height, in font units.
+///
+/// The pair is the distance from the origin to the first ink crossing and from
+/// the last crossing to the advance — the two numbers a spacing beam shows.
+/// `None` means the height misses this layer's outline, which is an ordinary
+/// answer for a beam and not an error. Uses exactly the geometry that a
+/// `=n@height` formula measures.
+pub fn measure_beam(
+    font: &Font,
+    glyph: &GlyphName,
+    master: &MasterId,
+    layer: Option<&LayerId>,
+    height: f64,
+) -> Result<Option<(f64, f64)>, Error> {
+    let selected = selected_layer(font, glyph, master, layer)?;
+    let path = fc_geom::flatten_layer_by_id(font, glyph, &selected.id)?;
+    Ok(cross_section(&path, height).map(|bounds| (bounds.x0, selected.width - bounds.x1)))
 }
 
 fn automatic_metric(
@@ -444,6 +466,34 @@ pub(crate) fn validate_keys(keys: &MetricsKeys, local: bool) -> Result<(), Error
             ));
         }
         parse_key(key)?;
+    }
+    Ok(())
+}
+
+/// Validates a formula assignment coming from an explicit editing command.
+///
+/// This is `validate_keys` plus a refusal to *introduce or change* either
+/// vertical formula field. Both are persisted version-1 model fields that no
+/// resolver reads, so a command that stored one would keep a formula which
+/// never takes effect. A value already in the document is carried through
+/// unchanged, so editing a horizontal formula on a glyph that happens to hold a
+/// vertical one still works, and document replacement keeps using
+/// `validate_keys`.
+pub(crate) fn validate_editable_keys(
+    keys: &MetricsKeys,
+    previous: Option<&MetricsKeys>,
+    local: bool,
+) -> Result<(), Error> {
+    validate_keys(keys, local)?;
+    let kept = |next: &Option<String>, old: fn(&MetricsKeys) -> &Option<String>| {
+        next == previous.map_or(&None, old)
+    };
+    if !kept(&keys.vertical_origin, |keys| &keys.vertical_origin)
+        || !kept(&keys.vertical_width, |keys| &keys.vertical_width)
+    {
+        return Err(Error::InvalidCommand(
+            "vertical metrics formulas are not resolved; edit the vertical origin and advance directly".into(),
+        ));
     }
     Ok(())
 }

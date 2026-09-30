@@ -8,18 +8,21 @@ use serde_json::json;
 #[test]
 fn sidebar_subcategories_match_filters_and_inventory_includes_secondary_scalars() {
     let mut font = Font::new_empty("Sidebar", 1_000);
-    for (name, unicodes) in [
-        ("A", vec![0x0041, 0x0391, 0x0061, 0xD800, 0x110000]),
-        ("A.alt", vec![0x0041]),
-        ("a", vec![0x0061]),
-        ("one", vec![0x0031]),
-        ("unencoded", vec![]),
+    for (name, unicodes, classified) in [
+        ("A", vec![0x0041, 0x0391, 0x0061, 0xD800, 0x110000], true),
+        ("A.alt", vec![0x0041], true),
+        ("a", vec![0x0061], false),
+        ("one", vec![0x0031], false),
+        ("unencoded", vec![], false),
     ] {
         let mut glyph = Glyph::new(name);
         glyph.unicodes = unicodes;
-        // These are editable metadata; sidebar filters use Unicode properties.
-        glyph.category = Some("Symbol".to_owned());
-        glyph.sub_category = Some("Math".to_owned());
+        // An explicit classification is what the cell shows, so it is also what
+        // the sidebar counts and what the sidebar's filter selects.
+        if classified {
+            glyph.category = Some("Symbol".to_owned());
+            glyph.sub_category = Some("Math".to_owned());
+        }
         glyph
             .tags
             .extend(["review".to_owned(), "accent".to_owned()]);
@@ -36,15 +39,24 @@ fn sidebar_subcategories_match_filters_and_inventory_includes_secondary_scalars(
         sidebar["sub_categories"],
         json!([
             ["Letter", "Lowercase", 1],
-            ["Letter", "Uppercase", 2],
-            ["Number", "Decimal", 1]
+            ["Number", "Decimal", 1],
+            ["Symbol", "Math", 2],
+            ["Unencoded", "Other", 1]
         ])
     );
     assert_eq!(sidebar["unicodes"], json!([0x0031, 0x0041, 0x0061, 0x0391]));
     assert_eq!(sidebar["tags"], json!(["accent", "review"]));
     assert_eq!(sidebar["total"], 5);
     assert_eq!(sidebar["unencoded"], 1);
-    for (category, expected) in [("Letter/Uppercase", 2), ("Letter/Lowercase", 1)] {
+
+    // Every section the sidebar counts selects exactly that many glyphs.
+    for (category, expected) in [
+        ("Symbol/Math", 2),
+        ("Letter/Lowercase", 1),
+        ("Number/Decimal", 1),
+        ("Symbol", 2),
+        ("Letter/Uppercase", 0),
+    ] {
         let glyphs = api
             .call(
                 "glyphs.list",
@@ -57,7 +69,7 @@ fn sidebar_subcategories_match_filters_and_inventory_includes_secondary_scalars(
                 }),
             )
             .expect("list subcategory filter");
-        assert_eq!(glyphs["total"], expected);
+        assert_eq!(glyphs["total"], expected, "{category}");
     }
 }
 

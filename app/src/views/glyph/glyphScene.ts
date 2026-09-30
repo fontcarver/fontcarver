@@ -210,14 +210,30 @@ export function buildScene({
     .map((other) => pathOf(other.id))
     .filter((path): path is string => path !== null)
 
+  // An anchored guide stores its distance to a sidebearing, so the scene is
+  // where that becomes a position: everything downstream — drawing, hit
+  // testing, snapping, measuring — then works in absolute font space and needs
+  // to know nothing about anchoring, while the inspector keeps editing the
+  // stored offset.
+  const anchored = (guide: Guide): Guide => {
+    const edge =
+      guide.anchor === 'Lsb'
+        ? bbox?.x0
+        : guide.anchor === 'Rsb'
+          ? bbox?.x1
+          : null
+    if (edge === null || edge === undefined || !Number.isFinite(edge))
+      return guide
+    return { ...guide, x: edge + guide.x }
+  }
   const guides: SceneGuide[] = [
     ...(master?.guides ?? []).map((guide, index): SceneGuide => ({
-      guide,
+      guide: anchored(guide),
       scope: 'master',
       index,
     })),
     ...(layer?.guides ?? []).map((guide, index): SceneGuide => ({
-      guide,
+      guide: anchored(guide),
       scope: 'layer',
       index,
     })),

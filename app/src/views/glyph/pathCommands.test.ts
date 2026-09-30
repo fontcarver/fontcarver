@@ -441,3 +441,96 @@ describe('the Layer and Glyph menus', () => {
     })
   })
 })
+
+describe('Open Corner and Reconnect Nodes', () => {
+  const chevron = makeContour([
+    makePoint(0, 0),
+    makePoint(100, 0, 'Line'),
+    makePoint(50, 60, 'Line'),
+    makePoint(100, 120, 'Line'),
+    makePoint(0, 120, 'Line'),
+  ])
+
+  it('opens one selected corner with a bounded setback, as one entry', async () => {
+    const mock = transport()
+    publish([chevron])
+    expect(isCommandEnabled('path.openCorner')).toBe(false)
+    useEditorStore
+      .getState()
+      .setSelection(selectionOf([{ kind: 'node', contour: 0, point: 2 }]))
+    expect(isCommandEnabled('path.openCorner')).toBe(true)
+    expect(
+      commandForEvent(
+        new KeyboardEvent('keydown', { key: 'o', ctrlKey: true, altKey: true }),
+        false,
+      ),
+    ).toBe('path.openCorner')
+
+    runCommand('path.openCorner')
+    await settle()
+
+    const command = applied(mock)?.command
+    expect(
+      command && 'OpenCorner' in command && command.OpenCorner,
+    ).toMatchObject({
+      glyph: 'a',
+      layer: 'layer-1',
+      point: { contour: 0, point: 2 },
+    })
+    const depth =
+      command && 'OpenCorner' in command ? command.OpenCorner.depth : 0
+    expect(depth).toBeGreaterThan(0)
+    expect(depth).toBeLessThan(20.1)
+    expect(applied(mock)?.label).toBe('Open corner')
+  })
+
+  it('reconnects two nodes of one contour and joins two open ends', async () => {
+    const mock = transport()
+    publish([chevron])
+    expect(isCommandEnabled('path.reconnectNodes')).toBe(false)
+    useEditorStore.getState().setSelection(
+      selectionOf([
+        { kind: 'node', contour: 0, point: 2 },
+        { kind: 'node', contour: 0, point: 3 },
+      ]),
+    )
+    expect(isCommandEnabled('path.reconnectNodes')).toBe(true)
+    expect(
+      commandForEvent(
+        new KeyboardEvent('keydown', { key: 'j', ctrlKey: true, altKey: true }),
+        false,
+      ),
+    ).toBe('path.reconnectNodes')
+    runCommand('path.reconnectNodes')
+    await settle()
+    expect(applied(mock)?.command).toEqual({
+      ReconnectNodes: {
+        glyph: 'a',
+        layer: 'layer-1',
+        a: { contour: 0, point: 2 },
+        b: { contour: 0, point: 3 },
+      },
+    })
+
+    // The same entry point covers the other reading of "reconnect": two ends.
+    const second = transport()
+    publish([openA, openB])
+    useEditorStore.getState().setSelection(
+      selectionOf([
+        { kind: 'node', contour: 0, point: 2 },
+        { kind: 'node', contour: 1, point: 0 },
+      ]),
+    )
+    expect(isCommandEnabled('path.reconnectNodes')).toBe(true)
+    runCommand('path.reconnectNodes')
+    await settle()
+    expect(applied(second)?.command).toEqual({
+      JoinContours: {
+        glyph: 'a',
+        layer: 'layer-1',
+        a: { contour: 0, point: 2 },
+        b: { contour: 1, point: 0 },
+      },
+    })
+  })
+})

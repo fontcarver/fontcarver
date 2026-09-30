@@ -19,12 +19,22 @@ it('reloads and selects scripts without running them, then displays explicit Pyt
   const user = userEvent.setup()
   const transport = createMockTransport({
     'automation.scripts_reload': () => ({
-      directory: '/config/scripts',
-      scripts: [{ name: 'example.py', language: 'python', bytes: 10 }],
+      folders: [{ kind: 'preferences', path: '/config/scripts', exists: true }],
+      scripts: [
+        {
+          name: 'example.py',
+          folder: 'preferences',
+          language: 'python',
+          bytes: 10,
+        },
+      ],
       warnings: [],
+      fingerprint: 'aaa',
     }),
+    'automation.settings_get': () => ({ scripts_directory: null }),
     'automation.script_read': () => ({
       name: 'example.py',
+      folder: 'preferences',
       language: 'python',
       source: 'print("hello")',
     }),
@@ -33,22 +43,27 @@ it('reloads and selects scripts without running them, then displays explicit Pyt
       error: 'Script failed',
       elapsed_ms: 12,
       rpc_calls: 0,
+      undo_label: null,
     }),
   })
   setTransport(transport)
   render(<MacroConsole />)
   await user.click(screen.getByRole('button', { name: 'Reload scripts' }))
   expect(await screen.findByText('/config/scripts')).toBeVisible()
-  await user.selectOptions(screen.getByLabelText('Local script'), 'example.py')
+  await user.selectOptions(
+    screen.getByLabelText('Local script'),
+    'preferences/example.py',
+  )
   await waitFor(() =>
     expect(screen.getByLabelText('Script source')).toHaveValue(
       'print("hello")',
     ),
   )
-  expect(transport.calls.map(({ method }) => method)).toEqual([
-    'automation.scripts_reload',
-    'automation.script_read',
-  ])
+  expect(
+    transport.calls
+      .map(({ method }) => method)
+      .filter((method) => method !== 'automation.settings_get'),
+  ).toEqual(['automation.scripts_reload', 'automation.script_read'])
   await user.click(screen.getByRole('button', { name: 'Run script' }))
   expect(await screen.findByText('Script failed')).toBeVisible()
   expect(screen.getByRole('log', { name: 'Output' })).toHaveTextContent('hello')

@@ -25,6 +25,10 @@ export class EditorGeometry {
   private pathFocus: ReadonlySet<number> | null = null
   /** CSS-pixel node hit radius; other families keep their relative sizes. */
   hitDistance = 5
+  /** Drawn on-curve marker diameter in CSS pixels, from the preferences. */
+  nodeSize = 5
+  /** Drawn off-curve marker diameter in CSS pixels, from the preferences. */
+  handleSize = 3.5
   preview: EditorPreview | null = null
   private edit: EditOutline = buildEditOutline([])
   private editBase: readonly Contour[] = []
@@ -131,6 +135,8 @@ export class EditorGeometry {
       viewport,
       selection,
       hitDistance: this.hitDistance,
+      nodeSize: this.nodeSize,
+      handleSize: this.handleSize,
     }
   }
 
@@ -138,5 +144,34 @@ export class EditorGeometry {
     if (!this.source) return null
     const hit = hitTest(this.hitInput(viewport, selection), at)
     return hit && this.canSelect(hit.target) ? hit : null
+  }
+
+  /**
+   * What a press landed on when nothing selectable was there.
+   *
+   * `hitInput` has already taken the locked paths, components and guides out,
+   * so a press on one is indistinguishable from a press on empty canvas — which
+   * is exactly the silence a user cannot act on. This second, unfiltered hit
+   * test answers "was there something there that you are not allowed to move?"
+   * so the canvas can say so.
+   */
+  refusedAt(viewport: Viewport, selection: Selection, at: Point2): boolean {
+    const source = this.source
+    if (!source) return false
+    const hit = hitTest(
+      {
+        outline: this.editOutline(),
+        anchors: this.anchors(),
+        guides: source.guides,
+        components: this.components(),
+        viewport,
+        selection,
+        hitDistance: this.hitDistance,
+        nodeSize: this.nodeSize,
+        handleSize: this.handleSize,
+      },
+      at,
+    )
+    return hit !== null && !this.canSelect(hit.target)
   }
 }

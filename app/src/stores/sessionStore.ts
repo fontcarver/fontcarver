@@ -179,6 +179,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   open: async (path, faceIndex) => {
+    // Opening a path that is already open deliberately opens it again: the
+    // kernel keeps the two documents apart, and comparing a file with the
+    // version you have edited is an accepted workflow (see the P2a kerning
+    // handover case). Each document gets exactly one pinned Overview; two
+    // documents of one file therefore show two, named after the same file.
     set({ busy: true })
     const transition = prepareTabTransition()
     try {

@@ -3,12 +3,43 @@ import { useTranslation } from 'react-i18next'
 
 import { IconButton } from '../components/IconButton'
 import { documentLabel, useSessionStore } from '../stores/sessionStore'
-import { reportError, useUiStore, type Tab } from '../stores/uiStore'
+import type { DocId } from '../api'
+import {
+  reportError,
+  selectActiveDoc,
+  useUiStore,
+  type Tab,
+} from '../stores/uiStore'
 import { glyphName } from '../views/font/glyphNames'
 
 import styles from './TabBar.module.css'
+import { isMacPlatform } from './shortcuts'
 import { closeTab, selectTab } from './tabActions'
 import { detachTab } from './windowActions'
+
+/**
+ * The `Mod+Alt+<n>` binding that selects this tab, in `aria-keyshortcuts`
+ * spelling, or `undefined` when no binding reaches it.
+ *
+ * The numbered commands resolve against the *active* document, so only its tabs
+ * announce a binding: a tab of another document would be advertising a shortcut
+ * that selects a different tab. Position is counted within the document, with
+ * the pinned Overview first, which is what `workspaceTabCommands` selects.
+ */
+function ordinalShortcut(
+  tabs: readonly Tab[],
+  tab: Tab,
+  activeDoc: DocId | null,
+): string | undefined {
+  if (tab.doc !== activeDoc) return undefined
+  const own = tabs.filter((candidate) => candidate.doc === tab.doc)
+  const position =
+    tab.kind === 'font'
+      ? 0
+      : own.filter((candidate) => candidate.kind !== 'font').indexOf(tab) + 1
+  if (position < 0 || position > 8) return undefined
+  return `${isMacPlatform() ? 'Meta' : 'Control'}+Alt+${position + 1}`
+}
 
 /** The tab strip: one Font tab per document plus Glyph and Font Info tabs. */
 export function TabBar() {
@@ -18,6 +49,7 @@ export function TabBar() {
   const panels = useUiStore((state) => state.panels)
   const togglePanel = useUiStore((state) => state.togglePanel)
   const docs = useSessionStore((state) => state.docs)
+  const activeDoc = useUiStore(selectActiveDoc)
   const stripRef = useRef<HTMLDivElement>(null)
 
   const titleOf = (tab: Tab): string => {
@@ -56,6 +88,8 @@ export function TabBar() {
         const summary = docs.find((doc) => doc.doc === tab.doc)
         const title = titleOf(tab)
         const selected = tab.id === activeTab
+        const pinned = tab.kind === 'font'
+        const keyShortcut = ordinalShortcut(tabs, tab, activeDoc)
         return (
           <div
             key={tab.id}
@@ -81,14 +115,25 @@ export function TabBar() {
               type="button"
               role="tab"
               data-tab={tab.id}
+              data-pinned={pinned ? 'true' : undefined}
               aria-selected={selected}
+              aria-keyshortcuts={keyShortcut}
+              // The icon is decorative and a `title` is ignored on a button that
+              // has text, so the pinned state is exposed as a description. It
+              // stays out of the accessible *name*, which is the tab's title.
+              aria-description={pinned ? t('shellWindow.pinned') : undefined}
               tabIndex={selected ? 0 : -1}
               className={styles.tabLabel}
-              title={title}
+              title={pinned ? `${title} · ${t('shellWindow.pinned')}` : title}
               onClick={() => void selectTab(tab.id)}
               onKeyDown={(event) => onKeyDown(event, index)}
             >
-              {tab.kind === 'font' && !tab.label
+              {pinned ? (
+                <span className={styles.tabPin} aria-hidden="true">
+                  ⊙
+                </span>
+              ) : null}
+              {pinned && !tab.label
                 ? `${t('shellWindow.overview')} · ${title}`
                 : title}
             </button>

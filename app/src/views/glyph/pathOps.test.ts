@@ -5,11 +5,17 @@ import { selectionOf } from '../../editor/selection'
 import { makeContour, makePoint } from '../../test/fontFixtures'
 
 import {
+  alignComponentsCommand,
   breakPoint,
   DEFAULT_SIMPLIFY,
   joinEnds,
   onlyNode,
+  openCornerCommand,
+  openCornerDepth,
+  openCornerPlan,
   pathOpCommand,
+  reconnectCommand,
+  reconnectPair,
   scopedContours,
   startPoint,
   tidyCommand,
@@ -157,5 +163,191 @@ describe('break', () => {
     expect(
       breakPoint([open], selectionOf([{ kind: 'node', contour: 0, point: 0 }])),
     ).toBeNull()
+  })
+})
+
+describe('open corner', () => {
+  const chevron = makeContour([
+    makePoint(0, 0),
+    makePoint(100, 0),
+    makePoint(50, 60),
+    makePoint(100, 120),
+    makePoint(0, 120),
+  ])
+
+  it('picks a setback bounded by the em and by the shorter adjacent chord', () => {
+    // Both chords are about 78 units, so a quarter of that wins over 1000/50.
+    expect(openCornerDepth(chevron, 2, 1000)).toBeCloseTo(19.53, 2)
+    // A long corner is bounded by the em instead.
+    const wide = makeContour([
+      makePoint(0, 0),
+      makePoint(1000, 0),
+      makePoint(1000, 1000),
+    ])
+    expect(openCornerDepth(wide, 1, 1000)).toBe(20)
+    expect(openCornerDepth(wide, 1, 2048)).toBe(40.96)
+  })
+
+  it('needs exactly one on-curve node with a segment on either side', () => {
+    const plan = openCornerPlan(
+      [chevron],
+      selectionOf([{ kind: 'node', contour: 0, point: 2 }]),
+      1000,
+    )
+    expect(plan).toMatchObject({ point: { contour: 0, point: 2 } })
+    expect(plan?.depth).toBeGreaterThan(0)
+    expect(
+      openCornerPlan(
+        [chevron],
+        selectionOf([
+          { kind: 'node', contour: 0, point: 1 },
+          { kind: 'node', contour: 0, point: 2 },
+        ]),
+        1000,
+      ),
+    ).toBeNull()
+    // The end of an open contour has only one segment.
+    const path = makeContour(
+      [makePoint(0, 0, 'Move'), makePoint(100, 0), makePoint(100, 100)],
+      false,
+    )
+    expect(
+      openCornerPlan(
+        [path],
+        selectionOf([{ kind: 'node', contour: 0, point: 2 }]),
+        1000,
+      ),
+    ).toBeNull()
+  })
+
+  it('refuses a node that already carries a live smart corner', () => {
+    const smart = makeContour([
+      makePoint(0, 0),
+      { ...makePoint(100, 0), corner_radius: 12 },
+      makePoint(100, 100),
+    ])
+    expect(
+      openCornerPlan(
+        [smart],
+        selectionOf([{ kind: 'node', contour: 0, point: 1 }]),
+        1000,
+      ),
+    ).toBeNull()
+  })
+
+  it('builds the command the kernel validates', () => {
+    expect(openCornerCommand(target, { contour: 0, point: 2 }, 12.5)).toEqual({
+      OpenCorner: {
+        glyph: 'A',
+        layer: 'layer-1',
+        point: { contour: 0, point: 2 },
+        depth: 12.5,
+      },
+    })
+  })
+})
+
+describe('reconnect nodes', () => {
+  const opened = makeContour([
+    makePoint(0, 0),
+    makePoint(100, 0),
+    makePoint(60, 40),
+    makePoint(100, 120),
+    makePoint(0, 120),
+  ])
+
+  it('orders the two nodes along the path, whatever the selection order', () => {
+    const forward = reconnectPair(
+      [opened],
+      selectionOf([
+        { kind: 'node', contour: 0, point: 1 },
+        { kind: 'node', contour: 0, point: 2 },
+      ]),
+    )
+    expect(forward).toEqual({
+      a: { contour: 0, point: 1 },
+      b: { contour: 0, point: 2 },
+    })
+    const reversed = reconnectPair(
+      [opened],
+      selectionOf([
+        { kind: 'node', contour: 0, point: 2 },
+        { kind: 'node', contour: 0, point: 1 },
+      ]),
+    )
+    expect(reversed).toEqual(forward)
+  })
+
+  it('wraps across the closing seam of a closed contour', () => {
+    expect(
+      reconnectPair(
+        [opened],
+        selectionOf([
+          { kind: 'node', contour: 0, point: 0 },
+          { kind: 'node', contour: 0, point: 4 },
+        ]),
+      ),
+    ).toEqual({ a: { contour: 0, point: 4 }, b: { contour: 0, point: 0 } })
+  })
+
+  it('refuses nodes that are not one segment apart or not one contour', () => {
+    expect(
+      reconnectPair(
+        [opened],
+        selectionOf([
+          { kind: 'node', contour: 0, point: 0 },
+          { kind: 'node', contour: 0, point: 2 },
+        ]),
+      ),
+    ).toBeNull()
+    expect(
+      reconnectPair(
+        [opened, closed],
+        selectionOf([
+          { kind: 'node', contour: 0, point: 0 },
+          { kind: 'node', contour: 1, point: 0 },
+        ]),
+      ),
+    ).toBeNull()
+    expect(
+      reconnectPair(
+        [opened],
+        selectionOf([{ kind: 'node', contour: 0, point: 0 }]),
+      ),
+    ).toBeNull()
+    expect(
+      reconnectPair(
+        [opened],
+        selectionOf([
+          { kind: 'node', contour: 0, point: 1 },
+          { kind: 'handle', contour: 0, point: 2 },
+        ]),
+      ),
+    ).toBeNull()
+  })
+
+  it('builds the command the kernel validates', () => {
+    expect(
+      reconnectCommand(
+        target,
+        { contour: 0, point: 1 },
+        { contour: 0, point: 2 },
+      ),
+    ).toEqual({
+      ReconnectNodes: {
+        glyph: 'A',
+        layer: 'layer-1',
+        a: { contour: 0, point: 1 },
+        b: { contour: 0, point: 2 },
+      },
+    })
+  })
+})
+
+describe('component alignment', () => {
+  it('names the layer whose auto-aligned components are placed', () => {
+    expect(alignComponentsCommand(target)).toEqual({
+      AlignComponents: { glyph: 'A', layer: 'layer-1' },
+    })
   })
 })

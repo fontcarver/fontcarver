@@ -15,12 +15,16 @@ import { useEditorStore } from '../../stores/editorStore'
 import { openGlyphTab } from '../../shell/tabActions'
 import { call } from '../../api'
 import { useUiStore } from '../../stores/uiStore'
-import { selectionToBackgroundCommand } from './layerWorkflows'
+import {
+  clearBackgroundCommand,
+  selectionToBackgroundCommand,
+} from './layerWorkflows'
 import { reportError } from '../../shell/commands'
 
 import { commitField } from './commitField'
 import { backgroundLayer } from './glyphScene'
 import { pathContext } from './pathCommands'
+import { alignComponentsCommand } from './pathOps'
 import {
   addLayerCommand,
   copyLayerCommand,
@@ -223,6 +227,38 @@ export function registerLayerCommands(): void {
       },
     },
     {
+      id: 'layer.clearBackground',
+      title: 'cmd.layer.clearBackground',
+      menu: 'layer',
+      group: 'background',
+      when: () => {
+        const scope = layerScope()
+        if (!scope || scope.active.glyph.locked) return false
+        return (
+          clearBackgroundCommand(
+            scope.target.glyph,
+            backgroundLayer(scope.active.glyph, scope.master),
+          ) !== null
+        )
+      },
+      disabledReason: 'cmd.reason.noBackgroundInk',
+      run: () => {
+        const scope = layerScope()
+        if (!scope) return
+        const command = clearBackgroundCommand(
+          scope.target.glyph,
+          backgroundLayer(scope.active.glyph, scope.master),
+        )
+        if (!command) return
+        commitField(
+          scope.target,
+          command,
+          i18n.t('editor.undo.clearBackground'),
+          scope.active.reload,
+        )
+      },
+    },
+    {
       id: 'layer.addBackup',
       title: 'cmd.layer.addBackup',
       menu: 'layer',
@@ -242,6 +278,33 @@ export function registerLayerCommands(): void {
           }),
           i18n.t('editor.undo.addBackup'),
           scope.active.reload,
+        )
+      },
+    },
+    {
+      id: 'glyph.alignComponents',
+      title: 'cmd.glyph.alignComponents',
+      menu: 'glyph',
+      group: 'glyph',
+      when: () => {
+        const active = useEditorStore.getState().activeGlyph
+        return (
+          pathContext() !== null &&
+          (active?.outline?.components.some(
+            (view) => view.component.auto_align && !view.component.locked,
+          ) ??
+            false)
+        )
+      },
+      disabledReason: 'cmd.reason.noAutoAligned',
+      run: () => {
+        const context = pathContext()
+        if (!context) return
+        commitField(
+          context.target,
+          alignComponentsCommand(context.target),
+          i18n.t('editor.undo.alignComponents'),
+          context.reload,
         )
       },
     },

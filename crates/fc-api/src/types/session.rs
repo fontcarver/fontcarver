@@ -148,8 +148,8 @@ pub struct DocWarning {
     pub message: String,
 }
 
-/// Which editor objects the pointer snaps to.
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
+/// Which editor objects the pointer snaps to, and how far each one reaches.
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize, TS)]
 #[ts(export)]
 pub struct SnapPrefs {
     /// Snap to on-curve outline nodes.
@@ -179,6 +179,47 @@ pub struct SnapPrefs {
     /// Snap to outline points in the background layer.
     #[serde(default = "yes")]
     pub background: bool,
+    /// Per-target snap reach; zero on a target inherits `snap_distance`.
+    #[serde(default)]
+    pub distances: SnapDistances,
+}
+
+/// Per-target snap reach in CSS pixels, with zero meaning "use the default".
+///
+/// Professional snapping is not one radius: a designer who wants nodes to grab
+/// from far away rarely wants the grid to do the same. Each target therefore
+/// carries its own reach, and zero keeps it on `Prefs::snap_distance` so an
+/// untouched preference file behaves exactly as one radius always did.
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Serialize, TS)]
+#[ts(export)]
+pub struct SnapDistances {
+    /// Reach of on-curve outline nodes.
+    #[serde(default)]
+    pub nodes: f64,
+    /// Reach of off-curve control handles.
+    #[serde(default)]
+    pub handles: f64,
+    /// Reach of glyph anchors.
+    #[serde(default)]
+    pub anchors: f64,
+    /// Reach of guides.
+    #[serde(default)]
+    pub guides: f64,
+    /// Reach of metrics lines and sidebearings.
+    #[serde(default)]
+    pub metrics: f64,
+    /// Reach of the editing grid.
+    #[serde(default)]
+    pub grid: f64,
+    /// Reach of component ghost nodes.
+    #[serde(default)]
+    pub components: f64,
+    /// Reach of active-master alignment zones.
+    #[serde(default)]
+    pub zones: f64,
+    /// Reach of background-layer outline points.
+    #[serde(default)]
+    pub background: f64,
 }
 
 const fn yes() -> bool {
@@ -197,6 +238,7 @@ impl Default for SnapPrefs {
             components: true,
             zones: true,
             background: true,
+            distances: SnapDistances::default(),
         }
     }
 }
@@ -292,4 +334,96 @@ impl Default for Prefs {
 pub struct SetPrefsParams {
     /// Complete preference value to persist.
     pub prefs: Prefs,
+}
+
+/// One layer a history entry changes.
+///
+/// A layer the font names carries that name. An unnamed one carries only its
+/// role, so the interface can spell it in the reader's language instead of the
+/// kernel shipping English prose. Exactly one of the two is present.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
+pub struct HistoryLayer {
+    /// The layer's own display name, when it has one.
+    pub name: Option<String>,
+    /// The layer's role: `master`, `background`, `intermediate`, `alternate`,
+    /// `smart`, `backup` or `other`.
+    pub role: Option<String>,
+}
+
+/// One entry of a document's history timeline.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
+pub struct HistoryEntry {
+    /// Position in the timeline, oldest first.
+    pub index: u32,
+    /// User-facing operation label.
+    pub label: String,
+    /// Glyphs the entry restores.
+    pub glyphs: Vec<String>,
+    /// The layers the entry changes.
+    pub layers: Vec<HistoryLayer>,
+    /// Bitmap strikes the entry restores, as `<ppem>px/<depth>bpp`.
+    pub strikes: Vec<String>,
+    /// Whether the entry restores font-wide data.
+    pub font_level: bool,
+    /// Whether undo has already passed this entry, so redo would reapply it.
+    pub undone: bool,
+}
+
+/// A document's undo timeline as the History surface shows it.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
+pub struct DocumentHistory {
+    /// Retained entries, oldest first.
+    pub entries: Vec<HistoryEntry>,
+    /// How many entries undo can still restore.
+    pub cursor: u32,
+    /// Total retained entries, which may exceed the listed ones.
+    pub len: u32,
+    /// Whether older entries were dropped from this listing.
+    pub truncated: bool,
+}
+
+/// Parameters for moving a document's history cursor to an exact position.
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
+pub struct HistoryGoParams {
+    /// Open document identifier.
+    pub doc: DocId,
+    /// Requested cursor: the number of entries that must remain undoable.
+    pub cursor: u32,
+    /// Timeline length the caller saw, so a stale request is rejected.
+    pub expected_len: u32,
+}
+
+/// One named shell arrangement stored with a document.
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize, TS)]
+#[ts(export)]
+pub struct NamedWorkspace {
+    /// User-chosen workspace name.
+    pub name: String,
+    /// Opaque layout record; the interface owns and validates its schema.
+    #[ts(type = "unknown")]
+    pub layout: serde_json::Value,
+}
+
+/// Named workspaces stored beside one document.
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize, TS)]
+#[ts(export)]
+pub struct DocumentWorkspaces {
+    /// Stored workspaces, in their stored order.
+    pub workspaces: Vec<NamedWorkspace>,
+    /// Where the records live, or null when this document has no project storage.
+    pub path: Option<String>,
+}
+
+/// Parameters for replacing the workspaces stored with one document.
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize, TS)]
+#[ts(export)]
+pub struct SetWorkspacesParams {
+    /// Open document identifier.
+    pub doc: DocId,
+    /// Complete replacement list.
+    pub workspaces: Vec<NamedWorkspace>,
 }

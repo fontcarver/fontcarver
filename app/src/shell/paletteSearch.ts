@@ -24,6 +24,14 @@ export interface PaletteEntry {
   run: () => unknown | Promise<unknown>
 }
 
+/** Display order of the palette's sections. */
+export const PALETTE_SECTIONS = [
+  'commands',
+  'filters',
+  'scripts',
+  'glyphs',
+] as const satisfies readonly Exclude<PaletteScope, 'all'>[]
+
 /** Limits the selected category and fuzzy-ranks its translated labels. */
 export function searchPaletteEntries(
   query: string,
@@ -35,6 +43,22 @@ export function searchPaletteEntries(
     entries.filter((entry) => scope === 'all' || entry.kind === scope),
     (entry) => entry.label,
   )
+}
+
+/**
+ * Groups ranked results into the palette's sections.
+ *
+ * Ranking happens across every category first, so a good match is still a good
+ * match; the sections only decide where an equally good match is shown. Within
+ * a section the ranked order is preserved, and empty sections are dropped.
+ */
+export function paletteSections(
+  entries: readonly PaletteEntry[],
+): { kind: Exclude<PaletteScope, 'all'>; entries: PaletteEntry[] }[] {
+  return PALETTE_SECTIONS.map((kind) => ({
+    kind,
+    entries: entries.filter((entry) => entry.kind === kind),
+  })).filter((section) => section.entries.length > 0)
 }
 
 /** Replaces the current overview filter after the active editor settles. */

@@ -25,6 +25,13 @@ fn populated_font_round_trips_semantically() {
         family_name: Some("Round Trip Display".into()),
         active: true,
         is_variable_named_instance: true,
+        overrides: fc_model::InstanceOverrides {
+            weight_class: Some(700),
+            width_class: Some(5),
+            postscript_font_name: Some("RoundTrip-Bold".into()),
+            preferred_family_name: Some("Round Trip".into()),
+            preferred_subfamily_name: Some("Bold".into()),
+        },
         user_data: json!({"instance": 1}),
     });
     {
@@ -67,6 +74,7 @@ fn populated_font_round_trips_semantically() {
             name: Some("master guide".into()),
             locked: true,
             color: Some("#ff00ff".into()),
+            anchor: fc_model::GuideAnchor::Rsb,
         });
         master.kerning_h.0.insert(
             (

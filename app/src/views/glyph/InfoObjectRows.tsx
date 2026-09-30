@@ -10,6 +10,8 @@ import {
 import { onlyTarget } from '../../editor/selection'
 
 import { commitField } from './commitField'
+import { GuideAnchorRow } from './GuideAnchorRow'
+import { anchorOrigin } from './guideAnchor'
 import styles from './infoBox.module.css'
 import type { InfoRowsProps } from './infoBoxProps'
 
@@ -108,6 +110,7 @@ export function InfoObjectRows({
   selection,
   master,
   masterGuides,
+  inkEdges,
   onCommitted,
 }: InfoRowsProps) {
   const { t } = useTranslation()
@@ -279,10 +282,15 @@ export function InfoObjectRows({
         t('editor.undo.setGuide'),
         onCommitted,
       )
+    const origin = anchorOrigin(guide.anchor, inkEdges)
     return (
       <>
         <NumberField
-          label={t('infoBox.x')}
+          label={
+            origin === null
+              ? t('infoBox.x')
+              : `${t('infoBox.x')} · ${t(`infoBox.anchorPoint.${guide.anchor}`)}`
+          }
           value={guide.x}
           invalidHint={t('infoBox.invalid')}
           onCommit={(x) => write({ x })}
@@ -298,6 +306,11 @@ export function InfoObjectRows({
           value={guide.angle}
           invalidHint={t('infoBox.invalid')}
           onCommit={(angle) => write({ angle })}
+        />
+        <GuideAnchorRow
+          guide={guide}
+          edges={inkEdges}
+          onChange={(next) => write(next)}
         />
         <div className={styles.row}>
           <span className={styles.rowLabel}>{t('infoBox.locked')}</span>

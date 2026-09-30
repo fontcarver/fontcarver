@@ -1,0 +1,79 @@
+/* The document history list inside the Inspector's section stack. */
+
+.list {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  flex-direction: column;
+  gap: 1px;
+  list-style: none;
+}
+
+.entry {
+  display: grid;
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  gap: 0 var(--space-2);
+  grid-template-areas: 'label marker' 'scope marker';
+  grid-template-columns: 1fr auto;
+  text-align: left;
+}
+
+.entry:hover:not(:disabled) {
+  background: var(--color-surface-raised);
+}
+
+.entry:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.entry:disabled {
+  cursor: default;
+}
+
+.label {
+  grid-area: label;
+  font-size: var(--text-size-sm);
+}
+
+.scope {
+  grid-area: scope;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+}
+
+.marker {
+  align-self: center;
+  grid-area: marker;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+  text-transform: uppercase;
+}
+
+/* An entry undo has already passed: still listed, so redo is reachable from
+   the list, but visibly not part of the current state. */
+.undone .label,
+.undone .scope {
+  color: var(--color-text-faint);
+}
+
+.current {
+  background: var(--color-accent-soft);
+}
+
+.current .label {
+  font-weight: var(--text-weight-strong);
+}
+
+.empty {
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text-faint);
+  font-size: var(--text-size-xs);
+}

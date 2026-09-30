@@ -6,6 +6,8 @@ import { setTransport, type ApplyParams } from '../../api'
 import { selectionOf, type Selection } from '../../editor/selection'
 import { setCommandErrorReporter } from '../../shell/commands'
 import { initialEditorState, useEditorStore } from '../../stores/editorStore'
+import { initialUiState, useUiStore } from '../../stores/uiStore'
+import { initialTextState } from '../text/textState'
 import {
   makeContour,
   makeLayer,
@@ -35,7 +37,15 @@ const layer = makeLayer({
 const outline = makeLayerOutline(layer)
 
 const masterGuides = [
-  { x: 0, y: 500, angle: 0, name: 'x-height', locked: false, color: null },
+  {
+    x: 0,
+    y: 500,
+    angle: 0,
+    name: 'x-height',
+    locked: false,
+    color: null,
+    anchor: 'Origin' as const,
+  },
 ]
 
 function transport(): MockTransport {
@@ -67,6 +77,7 @@ function show(selection: Selection) {
       selection={selection}
       master="m1"
       masterGuides={masterGuides}
+      inkEdges={{ left: 0, right: 600 }}
       name="a"
       unicodes={[0x61]}
       onCommitted={() => undefined}
@@ -79,7 +90,10 @@ function applied(mock: MockTransport): ApplyParams | undefined {
     ApplyParams | undefined
 }
 
-beforeEach(() => useEditorStore.setState(initialEditorState()))
+beforeEach(() => {
+  useEditorStore.setState(initialEditorState())
+  useUiStore.setState(initialUiState())
+})
 afterEach(() => {
   setTransport(undefined)
   setCommandErrorReporter(() => undefined)
@@ -318,6 +332,37 @@ describe('InfoBox', () => {
           name: 'x-height',
           locked: false,
           color: null,
+          anchor: 'Origin' as const,
+        },
+      },
+    })
+  })
+
+  it('anchors a guide to a sidebearing without moving it', async () => {
+    const user = userEvent.setup()
+    const mock = transport()
+    show(selectionOf([{ kind: 'guide', index: 0, scope: 'master' }]))
+
+    // The stored guide is absolute at x 0; the ink starts at x 0 and ends at
+    // 600, so anchoring to the right sidebearing rebases the offset to −600.
+    await user.selectOptions(
+      screen.getByLabelText('Anchored to'),
+      'Right sidebearing',
+    )
+    expect(applied(mock)?.command).toEqual({
+      SetGuide: {
+        glyph: null,
+        layer: null,
+        master: 'm1',
+        index: 0,
+        guide: {
+          x: -600,
+          y: 500,
+          angle: 0,
+          name: 'x-height',
+          locked: false,
+          color: null,
+          anchor: 'Rsb' as const,
         },
       },
     })
@@ -346,5 +391,22 @@ describe('InfoBox', () => {
     expect(screen.getByLabelText('advance')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Collapse info box' }))
     expect(screen.queryByLabelText('advance')).not.toBeInTheDocument()
+  })
+
+  it('locks its metrics fields while the active text tab locks spacing', async () => {
+    const user = userEvent.setup()
+    const mock = transport()
+    useUiStore.getState().openTab({
+      kind: 'glyph',
+      doc: 1,
+      gid: 42,
+      textState: { ...initialTextState('m1', 'AV'), kerningMode: 'locked' },
+    })
+    show(selectionOf([]))
+    for (const label of ['advance', 'LSB', 'RSB'])
+      expect(screen.getByLabelText(label)).toBeDisabled()
+    // A queued commit must not slip through the disabled control either.
+    await user.type(screen.getByLabelText('LSB'), '99{Enter}')
+    expect(applied(mock)).toBeUndefined()
   })
 })

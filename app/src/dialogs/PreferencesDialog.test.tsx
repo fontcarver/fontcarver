@@ -93,6 +93,29 @@ describe('PreferencesDialog', () => {
       handle_size: 6,
     })
   }, 30_000)
+  it('gives every snap target its own reach, with zero meaning the shared one', async () => {
+    const user = userEvent.setup()
+    const transport = setup()
+    await waitFor(() => expect(usePrefsStore.getState().loaded).toBe(true))
+    await user.click(screen.getByRole('tab', { name: 'Snapping' }))
+    const nodes = screen.getByLabelText('Nodes distance (px)')
+    await user.clear(nodes)
+    await user.type(nodes, '18{Enter}')
+    const grid = screen.getByLabelText('Grid distance (px)')
+    await user.clear(grid)
+    await user.type(grid, '1{Enter}')
+    await waitFor(() =>
+      expect(lastPrefs(transport)?.snap.distances.grid).toBe(1),
+    )
+    usePrefsStore.setState(initialPrefsState())
+    await usePrefsStore.getState().load()
+    expect(usePrefsStore.getState().prefs.snap.distances).toMatchObject({
+      nodes: 18,
+      grid: 1,
+      handles: 0,
+    })
+  }, 30_000)
+
   it('loads the kernel values on open', async () => {
     setup({ autosave_seconds: 15 })
 

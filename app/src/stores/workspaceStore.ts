@@ -21,6 +21,16 @@ export const WORKSPACE_STORAGE_KEY = 'fontcarver.workspaces'
 const MAX_DOCUMENTS = 100
 const MAX_PRESETS = 32
 
+/**
+ * Where a document's named workspaces are kept.
+ *
+ * `project` means the kernel found (or can write) a sidecar beside the document,
+ * so the arrangements travel with it. `local` means this document has no native
+ * storage yet — an imported binary font, or one never saved — and they stay in
+ * this browser profile until it is saved as a FontCarver document or project.
+ */
+export type WorkspaceStorage = 'project' | 'local'
+
 /** A user-named layout saved alongside the document's latest arrangement. */
 export interface WorkspacePreset {
   name: string
@@ -38,6 +48,9 @@ export interface WorkspaceState {
   dialogOpen: boolean
   setDialogOpen: (open: boolean) => void
   documents: Record<string, DocumentWorkspace>
+  /** Where each open document's workspaces live, once the kernel has answered. */
+  storage: Record<string, WorkspaceStorage>
+  setStorage: (key: string, storage: WorkspaceStorage | null) => void
   saveCurrent: (key: string, snapshot: WorkspaceSnapshot) => void
   getCurrent: (key: string) => WorkspaceSnapshot | null
   savePreset: (
@@ -82,12 +95,13 @@ function readDocument(value: unknown): DocumentWorkspace | null {
 /** Loads only supported, validated records; unavailable storage stays usable. */
 export function initialWorkspaceState(): Pick<
   WorkspaceState,
-  'documents' | 'dialogOpen'
+  'documents' | 'dialogOpen' | 'storage'
 > {
   try {
     const raw = globalThis.localStorage?.getItem(WORKSPACE_STORAGE_KEY)
     const parsed = raw ? workspaceRecord(JSON.parse(raw)) : null
-    if (parsed?.version !== 1) return { documents: {}, dialogOpen: false }
+    if (parsed?.version !== 1)
+      return { documents: {}, dialogOpen: false, storage: {} }
     const documents = Object.fromEntries(
       Object.entries(workspaceRecord(parsed.documents) ?? {})
         .slice(-MAX_DOCUMENTS)
@@ -96,9 +110,9 @@ export function initialWorkspaceState(): Pick<
           return workspace && key.length <= 16_384 ? [[key, workspace]] : []
         }),
     )
-    return { documents, dialogOpen: false }
+    return { documents, dialogOpen: false, storage: {} }
   } catch {
-    return { documents: {}, dialogOpen: false }
+    return { documents: {}, dialogOpen: false, storage: {} }
   }
 }
 
@@ -150,6 +164,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
   return {
     ...initialWorkspaceState(),
     setDialogOpen: (dialogOpen) => set({ dialogOpen }),
+    setStorage: (key, storage) =>
+      set((state) => {
+        if ((state.storage[key] ?? null) === storage) return state
+        const next = { ...state.storage }
+        if (storage === null) delete next[key]
+        else next[key] = storage
+        return { storage: next }
+      }),
     saveCurrent: (key, snapshot) =>
       update(key, (saved) => ({ ...saved, current: copyWorkspace(snapshot) })),
     getCurrent: (key) => {

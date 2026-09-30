@@ -5,6 +5,7 @@ import {
   detachPanel,
   detachTab,
   rejoinDetachedWindow,
+  reopenDetachedViews,
 } from './windowActions'
 
 const mocks = vi.hoisted(() => ({
@@ -82,4 +83,39 @@ it('settles and transfers the latest detached state before returning', async () 
     { kind: 'tab', doc: 1, tab: 'glyph', gid: 3 },
     expect.objectContaining({ label: 'Latest text' }),
   )
+})
+
+it('records every detached view so a workspace can put it back', async () => {
+  const ui = useUiStore.getState()
+  ui.openTab({ kind: 'font', doc: 1 })
+  const glyph = ui.openTab({ kind: 'glyph', doc: 1, gid: 3 })
+
+  await detachPanel('inspector')
+  await detachTab(glyph)
+  expect(useUiStore.getState().detached).toEqual([
+    { kind: 'panel', doc: 1, panel: 'inspector' },
+    { kind: 'tab', doc: 1, tab: 'glyph', gid: 3, tabId: glyph },
+  ])
+})
+
+it('reopens a saved list and reports only the windows that were refused', async () => {
+  useUiStore.getState().openTab({ kind: 'font', doc: 1 })
+  mocks.requestWindow.mockImplementation((target: { panel?: string }) =>
+    target.panel === 'preview'
+      ? Promise.reject(new Error('blocked'))
+      : Promise.resolve(undefined),
+  )
+
+  const failures = await reopenDetachedViews([
+    { kind: 'panel', doc: 1, panel: 'inspector' },
+    { kind: 'panel', doc: 1, panel: 'preview' },
+    { kind: 'tab', doc: 1, tab: 'features', tabId: 'features:1' },
+  ])
+
+  expect(failures).toHaveLength(1)
+  expect(mocks.requestWindow).toHaveBeenCalledTimes(3)
+  expect(useUiStore.getState().detached).toEqual([
+    { kind: 'panel', doc: 1, panel: 'inspector' },
+    { kind: 'tab', doc: 1, tab: 'features', tabId: 'features:1' },
+  ])
 })

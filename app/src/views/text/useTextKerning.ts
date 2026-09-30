@@ -39,6 +39,7 @@ export interface UseTextKerningOptions {
   master: string | null
   generation: number
   selectedPair?: KerningPairNames | null
+  /** Allow the unmodified `,`/`.` keys, which locked spacing mode reserves. */
   punctuationShortcuts?: boolean
   prepare?: () => Promise<void>
 }
@@ -314,9 +315,12 @@ export function useTextKerning(options: UseTextKerningOptions) {
   const onKerningKey = useCallback(
     (event: KerningShortcutEvent): boolean => {
       const current = latest.current
+      // Punctuation kerning is always available with a held class modifier;
+      // the unmodified keys stay reserved for typing unless spacing is locked.
       const action = kerningShortcutAction(
         event,
         /Mac|iPhone|iPad/u.test(navigator.platform),
+        true,
         current.options.punctuationShortcuts,
       )
       if (

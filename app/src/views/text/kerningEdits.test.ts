@@ -43,20 +43,18 @@ describe('kerningShortcut', () => {
       suppressLeft: false,
       suppressRight: false,
     })
-    expect(
-      kerningShortcutAction(
-        {
-          ...punctuation,
-          key: '>',
-          code: 'Period',
-          shiftKey: true,
-          ctrlKey: true,
-          altKey: true,
-        },
-        false,
-        true,
-      ),
-    ).toEqual({
+    // Control is the primary modifier off macOS, so it is not a class modifier
+    // there: the gesture is refused rather than fighting the user's Mod binding.
+    const bothClasses = {
+      ...punctuation,
+      key: '>',
+      code: 'Period',
+      shiftKey: true,
+      ctrlKey: true,
+      altKey: true,
+    }
+    expect(kerningShortcutAction(bothClasses, false, true)).toBeNull()
+    expect(kerningShortcutAction(bothClasses, true, true)).toEqual({
       delta: 10,
       suppressLeft: true,
       suppressRight: true,
@@ -87,6 +85,45 @@ describe('kerningShortcut', () => {
       suppressLeft: false,
       suppressRight: false,
     })
+  })
+
+  it('allows a held class modifier without allowing the bare keys', () => {
+    const comma = {
+      key: ',',
+      code: 'Comma',
+      ctrlKey: false,
+      metaKey: false,
+      altKey: false,
+      shiftKey: false,
+    }
+    // Only locked spacing mode reserves the unmodified characters.
+    expect(kerningShortcutAction(comma, false, true, false)).toBeNull()
+    expect(kerningShortcutAction(comma, false, true, true)).toEqual({
+      delta: -1,
+      suppressLeft: false,
+      suppressRight: false,
+    })
+    // Alt suppresses the second class on every platform, in every mode.
+    for (const isMac of [false, true]) {
+      expect(
+        kerningShortcutAction({ ...comma, altKey: true }, isMac, true, false),
+      ).toEqual({ delta: -1, suppressLeft: false, suppressRight: true })
+      expect(
+        kerningShortcutAction(
+          { ...comma, altKey: true, shiftKey: true },
+          isMac,
+          true,
+          false,
+        ),
+      ).toEqual({ delta: -10, suppressLeft: false, suppressRight: true })
+    }
+    // Control suppresses the first class on macOS only.
+    expect(
+      kerningShortcutAction({ ...comma, ctrlKey: true }, true, true, false),
+    ).toEqual({ delta: -1, suppressLeft: true, suppressRight: false })
+    expect(
+      kerningShortcutAction({ ...comma, ctrlKey: true }, false, true, false),
+    ).toBeNull()
   })
 
   it('uses platform Mod+Alt and the documented 1/10/100-unit steps', () => {

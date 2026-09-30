@@ -29,17 +29,23 @@ function resolve(recipe: string) {
   const skipped = names.filter(
     (name) => name === 'a' || !/^[A-Za-z_.][A-Za-z0-9_.]*$/.test(name),
   )
+  const created = names.filter((name) => !skipped.includes(name))
   return {
-    added: names
-      .filter((name) => !skipped.includes(name))
-      .map((name, index) => cellFor(index, { name })),
+    added: created.map((name, index) => cellFor(index, { name })),
     skipped,
+    // Only `Aacute` has a composition in this fake, and `acutecomb` is absent.
+    composed: created.map((name) => ({
+      name,
+      components: name === 'Aacute' ? ['A', 'acutecomb'] : [],
+      unavailable: name === 'Agrave' ? ['gravecomb'] : [],
+    })),
   }
 }
 
 function setup() {
   const transport = createMockTransport({
     'glyphs.add': ({ recipe }) => resolve(recipe),
+    'glyphdata.generate_glyphs': ({ recipe }) => resolve(recipe),
     'doc.summary': () => makeSummary({ doc: 1 }),
   })
   setTransport(transport)
@@ -50,7 +56,11 @@ function setup() {
 }
 
 const addCalls = (transport: ReturnType<typeof setup>) =>
-  transport.calls.filter((entry) => entry.method === 'glyphs.add')
+  transport.calls.filter(
+    (entry) =>
+      entry.method === 'glyphs.add' ||
+      entry.method === 'glyphdata.generate_glyphs',
+  )
 
 /** The most recent error toast, if the dialog raised one. */
 const lastError = () =>
@@ -72,7 +82,7 @@ afterEach(() => {
 describe('AddGlyphsDialog', () => {
   it('previews a sidebar recipe without applying it on open', async () => {
     const transport = createMockTransport({
-      'glyphs.add': ({ recipe }) => resolve(recipe),
+      'glyphdata.generate_glyphs': ({ recipe }) => resolve(recipe),
     })
     setTransport(transport)
     render(<AddGlyphsDialog doc={1} recipe="A-C" />)
@@ -81,15 +91,15 @@ describe('AddGlyphsDialog', () => {
       expect(
         transport.calls.some(
           (entry) =>
-            entry.method === 'glyphs.add' &&
+            entry.method === 'glyphdata.generate_glyphs' &&
             (entry.params as AddGlyphsParams).recipe === 'A-C',
         ),
       ).toBe(true),
     )
     expect(
-      transport.calls
-        .filter((entry) => entry.method === 'glyphs.add')
-        .every((entry) => (entry.params as AddGlyphsParams).dry_run),
+      addCalls(transport).every(
+        (entry) => (entry.params as AddGlyphsParams).dry_run,
+      ),
     ).toBe(true)
   })
 
@@ -114,6 +124,7 @@ describe('AddGlyphsDialog', () => {
       recipe: 'A-C a',
       master: null,
       dry_run: true,
+      count_only: false,
     })
     const list = await screen.findByRole('list', { name: 'Glyphs to add' })
     expect(within(list).getAllByRole('listitem')).toHaveLength(3)
@@ -132,6 +143,26 @@ describe('AddGlyphsDialog', () => {
 
     expect(await screen.findByText('1 already present')).toBeInTheDocument()
     expect(screen.getByText('2 not understood')).toBeInTheDocument()
+  })
+
+  it('counts a character set without asking for its cells', async () => {
+    const transport = setup()
+    await waitFor(() =>
+      expect(
+        transport.calls.filter(
+          (entry) => entry.method === 'glyphdata.generate_glyphs',
+        ).length,
+      ).toBeGreaterThan(0),
+    )
+    const counting = transport.calls.filter(
+      (entry) =>
+        entry.method === 'glyphdata.generate_glyphs' &&
+        (entry.params as { count_only?: boolean }).count_only === true,
+    )
+    expect(counting.length).toBeGreaterThan(0)
+    expect(
+      counting.every((entry) => (entry.params as AddGlyphsParams).dry_run),
+    ).toBe(true)
   })
 
   it('stops counting a character set the kernel could not resolve', async () => {
@@ -192,6 +223,7 @@ describe('AddGlyphsDialog', () => {
       recipe: 'A-C',
       master: null,
       dry_run: false,
+      count_only: false,
     })
   })
 
@@ -215,7 +247,7 @@ describe('AddGlyphsDialog', () => {
     const user = userEvent.setup()
     const raw = 'unexpected token `bogus`'
     const transport = createMockTransport({
-      'glyphs.add': ({ recipe }) => {
+      'glyphdata.generate_glyphs': ({ recipe }) => {
         if (recipe === 'bogus') throw new ApiCallError('invalid_params', raw)
         return resolve(recipe)
       },
@@ -241,7 +273,7 @@ describe('AddGlyphsDialog', () => {
     const user = userEvent.setup()
     const raw = 'glyph order is locked'
     const transport = createMockTransport({
-      'glyphs.add': ({ recipe, dry_run: dryRun }) => {
+      'glyphdata.generate_glyphs': ({ recipe, dry_run: dryRun }) => {
         if (!dryRun) throw new ApiCallError('internal', raw)
         return resolve(recipe)
       },
@@ -263,6 +295,39 @@ describe('AddGlyphsDialog', () => {
     // A failed add leaves the dialog open and the button usable again.
     expect(useUiStore.getState().dialog).not.toBeNull()
     expect(screen.getByRole('button', { name: 'Add 3 glyphs' })).toBeEnabled()
+  })
+
+  it('builds composites by default and can create blank glyphs instead', async () => {
+    const user = userEvent.setup()
+    const transport = setup()
+    await user.type(screen.getByLabelText('Recipe'), 'Aacute Agrave')
+    await screen.findByText('2 new')
+    expect(screen.getByText('1 composite')).toBeInTheDocument()
+    expect(
+      screen.getByText('1 left empty: a component is missing'),
+    ).toBeInTheDocument()
+
+    const toggle = screen.getByLabelText(
+      'Build composites from the glyph database',
+    )
+    expect(toggle).toBeChecked()
+    await user.click(toggle)
+    await waitFor(() =>
+      expect(
+        transport.calls.some((entry) => entry.method === 'glyphs.add'),
+      ).toBe(true),
+    )
+    expect(screen.queryByText('1 composite')).not.toBeInTheDocument()
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Add 2 glyphs' }),
+      ).toBeEnabled(),
+    )
+    await user.click(screen.getByRole('button', { name: 'Add 2 glyphs' }))
+    const applied = addCalls(transport).at(-1)
+    expect(applied?.method).toBe('glyphs.add')
+    expect((applied?.params as AddGlyphsParams).dry_run).toBe(false)
   })
 
   it('keeps Add disabled while the recipe adds nothing', async () => {

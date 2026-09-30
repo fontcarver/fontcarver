@@ -91,7 +91,9 @@ pub(crate) fn ids(api: &Api, params: GlyphIdsParams) -> Result<Vec<GlyphId>, Api
         .with_doc(params.doc, |document| {
             let master =
                 crate::handlers::glyphs::selected_master(document, params.master.as_ref())?;
-            let mut matches = matching_candidates(document, &master, &params.filter, None)?;
+            let overlay = crate::handlers::glyphs::document_overlay(document)?;
+            let mut matches =
+                matching_candidates(document, &overlay, &master, &params.filter, None)?;
             sort_candidates(&mut matches, params.sort);
             Ok(matches.iter().map(|candidate| candidate.gid).collect())
         })
@@ -148,11 +150,12 @@ pub(crate) fn add(api: &Api, params: AddGlyphsParams) -> Result<AddGlyphsResult,
     }
     api.session
         .with_doc(params.doc, |document| {
+            let overlay = crate::handlers::glyphs::document_overlay(document)?;
             let added = plan
                 .added
                 .iter()
                 .filter_map(|(name, _)| document.glyph_id(name))
-                .map(|gid| build_cell(document, gid, &master, false))
+                .map(|gid| build_cell(document, &overlay, gid, &master, false))
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(AddGlyphsResult {
                 added,
@@ -219,6 +222,7 @@ fn preview_cell((name, unicode): &(GlyphName, Option<u32>)) -> GlyphCell {
         bbox: None,
         path: None,
         color_label: None,
+        layer_color_label: None,
         export: glyph.export,
         has_components: false,
         is_empty: true,
@@ -227,6 +231,7 @@ fn preview_cell((name, unicode): &(GlyphName, Option<u32>)) -> GlyphCell {
         has_custom_glyph_info: false,
         incompatible_masters: false,
         locked: false,
+        placeholder: false,
         generation: 0,
     }
 }

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { call, type DocId, type VariationPreview as Preview } from '../../api'
+import { IconButton } from '../../components/IconButton'
+import { NumberField } from '../../components/NumberField'
+import { axisStep, formatAxisValue } from './designCoordinates'
 import type { DesignSpaceValue as VariationState } from './designSpaceSession'
 import { VariationCompatibility } from './VariationCompatibility'
 import { errorNotice } from '../../i18n/errors'
@@ -105,6 +108,23 @@ export function VariationPreview({
       )
       .finally(() => setBusy(false))
   }
+  /** One swap of shape order in one source: one command, one undo entry. */
+  const reorder = (layer: string, order: number[]) => {
+    setBusy(true)
+    void call('variation.apply', {
+      doc,
+      expected_generation: state.generation,
+      command: { ReorderShapes: { glyph, layer, order } },
+      label: t('variation.reorderShapes'),
+    })
+      .then(onRefresh)
+      .catch((error: unknown) =>
+        setError(
+          errorNotice(error, t).details ?? errorNotice(error, t).message,
+        ),
+      )
+      .finally(() => setBusy(false))
+  }
   return (
     <section className={styles.preview} aria-label={t('variation.preview')}>
       <h3>{t('variation.preview')}</h3>
@@ -147,23 +167,49 @@ export function VariationPreview({
           </select>
         </label>
       </div>
-      {state.axes.map((axis) => (
-        <label className={styles.slider} key={axis.tag}>
-          {axis.name}
-          <input
-            type="range"
-            aria-label={axis.name}
-            min={axis.min}
-            max={axis.max}
-            step={(axis.max - axis.min) / 1000}
-            value={location[axis.tag] ?? axis.default}
-            onChange={(e) =>
-              setLocation({ ...location, [axis.tag]: Number(e.target.value) })
-            }
-          />
-          <output>{(location[axis.tag] ?? axis.default).toFixed(1)}</output>
-        </label>
-      ))}
+      {state.axes.map((axis) => {
+        const step = axisStep(
+          axis,
+          state.instances
+            .map((instance) => instance.location[axis.tag])
+            .filter((value): value is number => value !== undefined)
+            .map((value) => userValue(axis, value)),
+        )
+        const value = location[axis.tag] ?? axis.default
+        const set = (next: number) =>
+          setLocation({
+            ...location,
+            [axis.tag]: Math.min(axis.max, Math.max(axis.min, next)),
+          })
+        return (
+          <div className={styles.slider} key={axis.tag}>
+            {/* The field carries the axis name, so the scrubber names its job. */}
+            <NumberField
+              label={axis.name}
+              value={value}
+              step={step}
+              onCommit={set}
+              formatValue={(shown) => formatAxisValue(shown, step)}
+            />
+            <input
+              type="range"
+              aria-label={t('variation.scrubAxis', { axis: axis.name })}
+              min={axis.min}
+              max={axis.max}
+              step={step}
+              value={value}
+              onChange={(e) => set(Number(e.target.value))}
+            />
+            <IconButton
+              label={t('variation.resetAxis', { axis: axis.name })}
+              disabled={value === axis.default}
+              onClick={() => set(axis.default)}
+            >
+              ↺
+            </IconButton>
+          </div>
+        )
+      })}
       {onPreviewChange && (
         <label>
           <input
@@ -181,6 +227,7 @@ export function VariationPreview({
         busy={busy || settledKey !== requestKey}
         glyph={glyph}
         onRepair={repair}
+        onReorder={reorder}
       />
     </section>
   )

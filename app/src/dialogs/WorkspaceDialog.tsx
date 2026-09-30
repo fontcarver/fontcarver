@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '../components/Button'
 import { Dialog } from '../components/Dialog'
 import { reportError } from '../stores/uiStore'
+
 import {
   useWorkspaceStore,
   type WorkspaceSnapshot,
@@ -28,6 +29,11 @@ export function WorkspaceDialog({
 }: WorkspaceDialogProps) {
   const { t } = useTranslation()
   const workspace = useWorkspaceStore((state) => state.documents[documentKey])
+  // Subscribed, not read once: the kernel answers where these workspaces live
+  // after the dialog has already rendered.
+  const storage = useWorkspaceStore(
+    (state) => state.storage[documentKey] ?? 'local',
+  )
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -79,6 +85,13 @@ export function WorkspaceDialog({
     >
       <div className={styles.content}>
         <p className={styles.hint}>{t('workspace.help')}</p>
+        <p className={styles.hint}>
+          {t(
+            storage === 'project'
+              ? 'workspace.storedInProject'
+              : 'workspace.storedLocally',
+          )}
+        </p>
         <div className={styles.saveRow}>
           <label className={styles.name}>
             <span>{t('workspace.name')}</span>

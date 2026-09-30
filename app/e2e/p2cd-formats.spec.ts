@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { expect } from '@playwright/test'
+import { expect, type Locator } from '@playwright/test'
 import type { GlyphDetail } from '../src/api/generated/GlyphDetail'
 import { glyphCell, outline } from './acceptanceSupport'
 import type { LayerOutline } from './acceptanceSupport'
@@ -13,6 +13,16 @@ import {
   LATIN_LAYOUT,
   outlineGeometry,
 } from './p2cdSupport'
+
+/**
+ * The Export dialog's master picker.
+ *
+ * The dialog also carries a saved-profile list, so the combobox this suite
+ * means is named: a `<label>` wrapping the select gives it an accessible name
+ * that starts with the field label.
+ */
+const MASTER_PICKER = (dialog: Locator) =>
+  dialog.getByRole('combobox', { name: /^Master/ })
 
 for (const [label, extension] of [
   ['OTF (CFF)', 'otf'],
@@ -61,11 +71,12 @@ for (const [label, extension] of [
       ).toHaveCount(0)
     }
     if (extension === 'glyphs') {
-      await expect(dialog.getByRole('combobox')).toHaveCount(0)
+      // The dialog always offers its saved-profile list, so the master picker
+      // is named rather than being the only combobox in the dialog.
+      await expect(MASTER_PICKER(dialog)).toHaveCount(0)
       await expect(dialog).toContainText('All masters')
     }
-    if (extension === 'sfd')
-      await dialog.getByRole('combobox').selectOption(bold.id)
+    if (extension === 'sfd') await MASTER_PICKER(dialog).selectOption(bold.id)
     const report = await finishExport(page, output)
     expect(existsSync(output)).toBe(true)
     if (extension === 'otf') {
@@ -111,16 +122,20 @@ for (const extension of ['pfa', 'pfb']) {
     const output = join(source.directory, `Latin.${extension}`)
     const dialog = await chooseExport(page, extension.toUpperCase(), output)
     await expect(dialog.getByRole('note')).toContainText(
-      'cannot preserve OpenType layout',
+      'OpenType layout, anchors, source layers and TrueType instructions are omitted',
     )
-    await expect(dialog.getByRole('note')).toContainText('retained hints')
+    await expect(dialog.getByRole('note')).toContainText(
+      'supported PostScript stems and private hint parameters',
+    )
     expect(existsSync(output)).toBe(false)
-    await expect(dialog.getByRole('combobox')).toHaveCount(1)
+    await expect(MASTER_PICKER(dialog)).toHaveCount(1)
     const report = await finishExport(page, output)
+    // Supported PostScript stems and private values are written now, so a
+    // source without TrueType instructions loses layout and Unicode, not hints.
     expect(report.warnings.map((warning) => warning.code)).toEqual(
-      expect.arrayContaining(['type1-layout-loss', 'type1-hinting-loss']),
+      expect.arrayContaining(['type1-layout-loss', 'type1-unicode-loss']),
     )
-    await expect(dialog).toContainText('unhinted')
+    await expect(dialog).toContainText('no Unicode cmap')
     const bytes = readFileSync(output)
     if (extension === 'pfa')
       expect(bytes.subarray(0, 2).toString('ascii')).toBe('%!')

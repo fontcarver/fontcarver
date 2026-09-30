@@ -157,8 +157,29 @@ pub fn instantiate(
         result.info.open_type_name_compatible_full_name = None;
         result.info.open_type_name_wws_family_name = None;
         result.info.open_type_name_wws_subfamily_name = None;
+        instance.overrides.validate().map_err(invalid)?;
     }
     crate::instance_metrics::apply_style(&mut result, &mut master.metrics, &location);
+    if let Some(instance) = instance {
+        // Export-scope overrides win over both the font's own values and the
+        // classes `apply_style` derives from the instance location.
+        let overrides = &instance.overrides;
+        if let Some(weight) = overrides.weight_class {
+            result.info.open_type_os2_weight_class = Some(weight);
+        }
+        if let Some(width) = overrides.width_class {
+            result.info.open_type_os2_width_class = Some(width);
+        }
+        if let Some(name) = &overrides.postscript_font_name {
+            result.info.postscript_font_name = Some(name.clone());
+        }
+        if let Some(name) = &overrides.preferred_family_name {
+            result.info.open_type_name_preferred_family_name = Some(name.clone());
+        }
+        if let Some(name) = &overrides.preferred_subfamily_name {
+            result.info.open_type_name_preferred_subfamily_name = Some(name.clone());
+        }
+    }
     master.metrics.validate().map_err(invalid)?;
     result.masters = vec![master];
     result.axes.clear();

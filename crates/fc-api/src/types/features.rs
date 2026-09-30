@@ -3,12 +3,27 @@
 use fc_doc::DocId;
 use fc_model::{
     FeatureDraft, FeatureGenerationSettings, FeatureGenerator, FeatureSourceId, Features,
-    FeaturesSource, MasterId,
+    FeaturesSource, GeneratedItemKind, MasterId,
 };
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use super::EditTokenId;
+
+/// One source entry name an automatic recipe can own in this document.
+///
+/// The editor uses this to offer a per-entry automatic switch without mirroring
+/// the kernel's recipe registry.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+#[ts(export)]
+pub struct AutomaticEntryOption {
+    /// Feature tag or glyph class name.
+    pub name: String,
+    /// Recipe family that would own the entry.
+    pub generator: FeatureGenerator,
+    /// Whether the entry is a feature block or a glyph class.
+    pub kind: GeneratedItemKind,
+}
 
 /// Active source and a separately persisted, possibly invalid draft.
 #[derive(Clone, Debug, Deserialize, Serialize, TS)]
@@ -39,6 +54,8 @@ pub struct FeatureState {
     pub original_layout_available: bool,
     /// Whether active generated source predates the current exported glyph set.
     pub generation_stale: bool,
+    /// Every entry name an automatic recipe can own, for the per-entry switch.
+    pub automatic_entries: Vec<AutomaticEntryOption>,
 }
 
 /// Store draft source without compiling or changing active layout.
@@ -110,6 +127,9 @@ pub struct FreezeFeatureParams {
     pub expected_draft_revision: u64,
     /// Generator whose visible snapshot becomes ordinary editable source.
     pub generator: FeatureGenerator,
+    /// One feature tag or class name to hold manual, leaving the recipe enabled.
+    #[serde(default)]
+    pub entry: Option<String>,
 }
 
 /// Severity of a located feature diagnostic.

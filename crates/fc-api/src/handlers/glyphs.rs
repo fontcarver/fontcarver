@@ -25,6 +25,12 @@ pub(crate) struct Candidate {
     strokes: u16,
     reading: String,
     cid: u32,
+    /// Effective category and subcategory, honouring explicit overrides.
+    classification: (String, String),
+    /// Effective script code, honouring an explicit override.
+    script: String,
+    /// Badge weight, resolved only for [`GlyphSort::Status`]; see `status_weight`.
+    status: u8,
 }
 
 pub(crate) fn list(api: &Api, params: GlyphListParams) -> Result<GlyphListResult, ApiError> {
@@ -40,7 +46,8 @@ pub(crate) fn list(api: &Api, params: GlyphListParams) -> Result<GlyphListResult
 pub(crate) fn cell(api: &Api, params: GlyphCellParams) -> Result<GlyphCell, ApiError> {
     api.session
         .with_doc(params.doc, |document| {
-            build_cell(document, params.gid, &params.master, true)
+            let overlay = document_overlay(document)?;
+            build_cell(document, &overlay, params.gid, &params.master, true)
         })
         .map_err(ApiError::from)?
 }
@@ -49,8 +56,10 @@ pub(crate) fn index_of(api: &Api, params: GlyphIndexParams) -> Result<Option<u32
     api.session
         .with_doc(params.doc, |document| {
             let master = selected_master(document, params.master.as_ref())?;
-            let mut matches = matching_candidates(document, &master, &params.filter, None)?;
-            sort_candidates(&mut matches, params.sort);
+            let overlay = document_overlay(document)?;
+            let mut matches =
+                matching_candidates(document, &overlay, &master, &params.filter, None)?;
+            sort_matched(document, &overlay, &master, &mut matches, params.sort);
             Ok(matches
                 .iter()
                 .position(|candidate| candidate.gid == params.gid)
@@ -94,7 +103,9 @@ fn list_impl(
     api.session
         .with_doc(params.doc, |document| {
             let master = selected_master(document, params.master.as_ref())?;
-            let mut matches = matching_candidates(document, &master, &params.filter, search_query)?;
+            let overlay = document_overlay(document)?;
+            let mut matches =
+                matching_candidates(document, &overlay, &master, &params.filter, search_query)?;
             if search_query.is_some() {
                 matches.sort_by(|left, right| {
                     left.search_rank
@@ -102,7 +113,7 @@ fn list_impl(
                         .then_with(|| left.order.cmp(&right.order))
                 });
             } else {
-                sort_candidates(&mut matches, params.sort);
+                sort_matched(document, &overlay, &master, &mut matches, params.sort);
             }
             let total = u32::try_from(matches.len()).unwrap_or(u32::MAX);
             let offset = params.offset as usize;
@@ -111,7 +122,15 @@ fn list_impl(
                 .into_iter()
                 .skip(offset)
                 .take(limit)
-                .map(|candidate| build_cell(document, candidate.gid, &master, params.include_paths))
+                .map(|candidate| {
+                    build_cell(
+                        document,
+                        &overlay,
+                        candidate.gid,
+                        &master,
+                        params.include_paths,
+                    )
+                })
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(GlyphListResult { total, items })
         })
@@ -120,6 +139,7 @@ fn list_impl(
 
 pub(crate) fn matching_candidates(
     document: &Document,
+    overlay: &fc_glyphdata::GlyphDataOverlay,
     master: &MasterId,
     filter: &GlyphFilter,
     search_query: Option<&str>,
@@ -165,21 +185,26 @@ pub(crate) fn matching_candidates(
             || query
                 .as_ref()
                 .is_some_and(|query| query.rank(glyph).is_none())
-            || smart
-                .as_ref()
-                .is_some_and(|smart| !smart.matches(&document.font, glyph, layer, generation))
+            || smart.as_ref().is_some_and(|smart| {
+                !smart.matches(&document.font, overlay, glyph, layer, generation)
+            })
         {
             continue;
         }
-        if matches_filter(glyph, layer, generation, filter) {
+        let classification = glyph_classification(glyph);
+        if matches_filter(glyph, &classification, layer, generation, filter) {
             let unihan = glyph
                 .unicodes
                 .first()
                 .and_then(|cp| fc_glyphdata::unihan(*cp));
+            let (category, sub_category, script) = classification;
             matches.push(Candidate {
                 order,
                 gid,
                 name: name.to_string(),
+                classification: (category, sub_category),
+                script,
+                status: 0,
                 first_unicode: glyph.unicodes.first().copied(),
                 radical: unihan
                     .and_then(|d| d.radicals().next())
@@ -217,6 +242,7 @@ pub(crate) fn selected_master(
 
 fn matches_filter(
     glyph: &Glyph,
+    classification: &(String, String, String),
     layer: Option<&Layer>,
     generation: u64,
     filter: &GlyphFilter,
@@ -233,17 +259,20 @@ fn matches_filter(
     if filter.unencoded_only && first_unicode.is_some() {
         return false;
     }
+    // Category and script use the glyph's effective classification, which is
+    // what the cell shows and what a smart filter tests, so an explicit
+    // override moves a glyph between sidebar sections instead of leaving the
+    // count and the listing disagreeing.
     if !filter.categories.is_empty()
-        && !category_matches(first_unicode, filter.categories.as_slice())
+        && !category_matches(
+            &classification.0,
+            &classification.1,
+            filter.categories.as_slice(),
+        )
     {
         return false;
     }
-    if !filter.scripts.is_empty()
-        && !filter
-            .scripts
-            .iter()
-            .any(|allowed| allowed == first_unicode.map(fc_glyphdata::script).unwrap_or("Zzzz"))
-    {
+    if !filter.scripts.is_empty() && !filter.scripts.contains(&classification.2) {
         return false;
     }
     if !filter.blocks.is_empty()
@@ -290,12 +319,8 @@ fn matches_filter(
     !filter.changed_only || generation > 0
 }
 
-fn category_matches(first_unicode: Option<u32>, allowed: &[String]) -> bool {
-    let Some(unicode) = first_unicode else {
-        return allowed.iter().any(|value| value == "Unencoded");
-    };
-    let category = category_name(fc_glyphdata::category(unicode));
-    let sub_category = fc_glyphdata::sub_category(unicode);
+/// Matches a broad category, a bare subcategory, or a qualified `Letter/Other`.
+pub(crate) fn category_matches(category: &str, sub_category: &str, allowed: &[String]) -> bool {
     allowed.iter().any(|value| {
         value == category || value == sub_category || value == &format!("{category}/{sub_category}")
     })
@@ -329,7 +354,70 @@ pub(crate) fn sort_candidates(candidates: &mut [Candidate], sort: GlyphSort) {
             .width
             .total_cmp(&right.width)
             .then_with(|| left.order.cmp(&right.order)),
+        GlyphSort::Category => left
+            .classification
+            .cmp(&right.classification)
+            .then_with(|| left.order.cmp(&right.order)),
+        GlyphSort::Script => left
+            .script
+            .cmp(&right.script)
+            .then_with(|| left.order.cmp(&right.order)),
+        // Descending weight: the glyphs that need attention come first.
+        GlyphSort::Status => right
+            .status
+            .cmp(&left.status)
+            .then_with(|| left.order.cmp(&right.order)),
     });
+}
+
+/// Sorts a matched set, resolving the badge weights the Status order needs.
+///
+/// Badge resolution costs a metrics resolve and a master-compatibility check per
+/// glyph, so it runs only for [`GlyphSort::Status`] and only over the glyphs the
+/// filter already matched.
+pub(crate) fn sort_matched(
+    document: &Document,
+    overlay: &fc_glyphdata::GlyphDataOverlay,
+    master: &MasterId,
+    candidates: &mut [Candidate],
+    sort: GlyphSort,
+) {
+    if sort == GlyphSort::Status {
+        for candidate in candidates.iter_mut() {
+            candidate.status = document
+                .glyph_name(candidate.gid)
+                .and_then(|name| document.font.glyph(name))
+                .map_or(0, |glyph| {
+                    status_weight(&document.font, overlay, glyph, master)
+                });
+        }
+    }
+    sort_candidates(candidates, sort);
+}
+
+/// Weighs a glyph's badges: two points per warning badge, one per notice.
+///
+/// The weights follow the badge tones the grid paints, so the Status order puts
+/// metrics and interpolation problems above notes, overlays, locks and
+/// non-exporting glyphs.
+fn status_weight(
+    font: &fc_model::Font,
+    overlay: &fc_glyphdata::GlyphDataOverlay,
+    glyph: &Glyph,
+    master: &MasterId,
+) -> u8 {
+    use super::glyph_status;
+
+    let warnings = u8::from(glyph_status::metrics_out_of_sync(font, glyph, master, None))
+        + u8::from(glyph_status::incompatible_masters(font, glyph));
+    let notices = u8::from(glyph_status::has_annotations(glyph))
+        + u8::from(glyph_status::has_custom_glyph_info(glyph, overlay))
+        + u8::from(glyph.locked)
+        + u8::from(!glyph.export);
+    // A stand-in for a component base another document had is a warning: it is
+    // empty on purpose and the font is incomplete until it is drawn.
+    let warnings = warnings + u8::from(glyph_status::is_placeholder(glyph));
+    warnings * 2 + notices
 }
 
 fn unicode_order(left: &Candidate, right: &Candidate) -> Ordering {
@@ -343,8 +431,18 @@ fn unicode_order(left: &Candidate, right: &Candidate) -> Ordering {
     }
 }
 
+/// Reads the document's glyph-database overlay once, for a whole request.
+///
+/// Parsing it per cell would re-read the same JSON for every glyph of a page.
+pub(crate) fn document_overlay(
+    document: &Document,
+) -> Result<fc_glyphdata::GlyphDataOverlay, ApiError> {
+    fc_doc::command::glyph_data_overlay(&document.font.info).map_err(ApiError::from)
+}
+
 pub(crate) fn build_cell(
     document: &Document,
+    overlay: &fc_glyphdata::GlyphDataOverlay,
     gid: GlyphId,
     master: &MasterId,
     include_path: bool,
@@ -378,6 +476,7 @@ pub(crate) fn build_cell(
             bbox: None,
             path: include_path.then(String::new),
             color_label: glyph.color_label,
+            layer_color_label: None,
             export: glyph.export,
             has_components: false,
             is_empty: true,
@@ -388,9 +487,10 @@ pub(crate) fn build_cell(
                 None,
             ),
             has_annotations: glyph_status::has_annotations(glyph),
-            has_custom_glyph_info: glyph_status::has_custom_glyph_info(glyph),
+            has_custom_glyph_info: glyph_status::has_custom_glyph_info(glyph, overlay),
             incompatible_masters: glyph_status::incompatible_masters(&document.font, glyph),
             locked: glyph.locked,
+            placeholder: glyph_status::is_placeholder(glyph),
             generation: document.glyph_generation(gid),
         });
     };
@@ -479,6 +579,7 @@ pub(crate) fn build_cell(
         bbox,
         path: include_path.then(|| rounded_svg(&flattened)),
         color_label: glyph.color_label,
+        layer_color_label: layer_color_label(layer),
         export: glyph.export,
         has_components: !layer.components.is_empty(),
         is_empty: layer.is_empty() && !bitmap_preview,
@@ -489,9 +590,10 @@ pub(crate) fn build_cell(
             outline_bbox,
         ),
         has_annotations: glyph_status::has_annotations(glyph),
-        has_custom_glyph_info: glyph_status::has_custom_glyph_info(glyph),
+        has_custom_glyph_info: glyph_status::has_custom_glyph_info(glyph, overlay),
         incompatible_masters: glyph_status::incompatible_masters(&document.font, glyph),
         locked: glyph.locked,
+        placeholder: glyph_status::is_placeholder(glyph),
         generation: if bitmap_preview {
             document.generation
         } else {
@@ -526,6 +628,16 @@ fn build_detail(document: &Document, gid: GlyphId) -> Result<GlyphDetail, ApiErr
         })
         .collect::<Result<Vec<_>, _>>()?;
     Ok(GlyphDetail { glyph, paths })
+}
+
+/// Reads one layer's independent colour label, ignoring malformed metadata.
+pub(crate) fn layer_color_label(layer: &Layer) -> Option<u8> {
+    layer
+        .user_data
+        .get("com.fontcarver.colorLabel")
+        .and_then(serde_json::Value::as_u64)
+        .and_then(|value| u8::try_from(value).ok())
+        .filter(|value| *value < 12)
 }
 
 pub(crate) fn glyph_classification(glyph: &Glyph) -> (String, String, String) {

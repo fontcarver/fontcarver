@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { call, type DocSummary, type VariationState } from '../api'
+import {
+  call,
+  type DocSummary,
+  type ResolvedExportProfile,
+  type VariationState,
+} from '../api'
 import { Button } from '../components/Button'
 import { withSettledDocument } from '../editor/documentPersistence'
 import { errorNotice } from '../i18n/errors'
@@ -8,11 +13,12 @@ import { useExportProfileStore } from '../stores/exportProfileStore'
 import { useProgressStore } from '../stores/progressStore'
 import { activeDocId } from '../stores/uiStore'
 import { useSessionStore } from '../stores/sessionStore'
-import { SFNT_FORMATS } from './exportFormats'
 import {
   ExportMatrixError,
   planExportMatrix,
   runExportMatrix,
+  type ExportMatrixCell,
+  type ExportMatrixItem,
   type ExportMatrixResult,
 } from './exportMatrix'
 import { ExportResult } from './ExportResult'
@@ -23,7 +29,19 @@ function parentDirectory(path: string): string {
   return separator < 0 ? '.' : path.slice(0, separator + 1)
 }
 
-/** A bounded matrix of saved processing profiles and active named instances. */
+/** Rows of the matrix: active named instances plus stored variable configurations. */
+interface MatrixRow {
+  kind: 'instance' | 'variable'
+  name: string
+}
+
+/**
+ * The instance/profile matrix.
+ *
+ * Every cell's options and file name come from `export.resolve_profile`, the
+ * same kernel call `fontcarver build --profile` uses, so a matrix run and a CI
+ * build of the same profile write the same files.
+ */
 export function ExportMatrixPanel({
   summary,
   destination,
@@ -36,13 +54,15 @@ export function ExportMatrixPanel({
   onBusyChange: (value: boolean) => void
 }) {
   const { t } = useTranslation()
-  const profiles = useExportProfileStore((state) => state.profiles)
+  const stored = useExportProfileStore((state) => state.stored(summary.doc))
   const [directory, setDirectory] = useState(() => parentDirectory(destination))
-  const [profileIds, setProfileIds] = useState<string[]>([])
-  const [instanceIds, setInstanceIds] = useState<number[]>([])
+  const [profileNames, setProfileNames] = useState<string[]>([])
+  const [rowKeys, setRowKeys] = useState<string[]>([])
   const [variation, setVariation] = useState<VariationState | null>(null)
   const [loading, setLoading] = useState(false)
   const [failure, setFailure] = useState('')
+  const [items, setItems] = useState<ExportMatrixItem[]>([])
+  const [planError, setPlanError] = useState('')
   const [results, setResults] = useState<ExportMatrixResult[]>([])
   const [total, setTotal] = useState(0)
   const [isRunning, setIsRunning] = useState(false)
@@ -58,30 +78,25 @@ export function ExportMatrixPanel({
     mounted.current &&
     activeDocId() === summary.doc &&
     useSessionStore.getState().docs.some((doc) => doc.doc === summary.doc)
-  const eligible = profiles.filter((profile) =>
-    SFNT_FORMATS.includes(profile.options.format),
+
+  const instances = (variation?.instances ?? []).filter(
+    (instance) => instance.active,
   )
-  const instances = (variation?.instances ?? [])
-    .map((instance, index) => ({ ...instance, index }))
-    .filter((instance) => instance.active)
-  const selectedProfiles = eligible.filter((profile) =>
-    profileIds.includes(profile.id),
+  const rows: MatrixRow[] = [
+    ...instances.map((instance) => ({
+      kind: 'instance' as const,
+      name: instance.name,
+    })),
+    ...stored.variableConfigs.map((config) => ({
+      kind: 'variable' as const,
+      name: config.name,
+    })),
+  ]
+  const key = (row: MatrixRow) => `${row.kind}:${row.name}`
+  const selectedProfiles = stored.profiles.filter((profile) =>
+    profileNames.includes(profile.name),
   )
-  const selectedInstances = instances.filter((instance) =>
-    instanceIds.includes(instance.index),
-  )
-  let planningError = ''
-  let items: ReturnType<typeof planExportMatrix> = []
-  if (selectedProfiles.length > 0 && selectedInstances.length > 0) {
-    try {
-      items = planExportMatrix(directory, selectedProfiles, selectedInstances)
-    } catch (error) {
-      planningError =
-        error instanceof ExportMatrixError
-          ? t(`exportMatrix.error.${error.code}`)
-          : errorNotice(error, t).message
-    }
-  }
+  const selectedRows = rows.filter((row) => rowKeys.includes(key(row)))
 
   const load = async () => {
     if (loading || busy) return
@@ -91,9 +106,11 @@ export function ExportMatrixPanel({
       const state = await withSettledDocument(summary.doc, () =>
         call('variation.state', { doc: summary.doc }),
       )
+      await useExportProfileStore.getState().load(summary.doc)
       if (current()) {
         setVariation(state)
-        setInstanceIds([])
+        setRowKeys([])
+        setItems([])
       }
     } catch (error) {
       if (current()) setFailure(errorNotice(error, t).message)
@@ -101,8 +118,51 @@ export function ExportMatrixPanel({
       if (mounted.current) setLoading(false)
     }
   }
+
+  /** Ask the kernel for every selected cell, then validate the whole plan. */
+  const plan = async () => {
+    setPlanError('')
+    setItems([])
+    if (selectedProfiles.length === 0 || selectedRows.length === 0) {
+      setPlanError(t('exportMatrix.error.empty-rows'))
+      return
+    }
+    try {
+      const cells: ExportMatrixCell[] = []
+      for (const profile of selectedProfiles) {
+        for (const row of selectedRows) {
+          const resolved: ResolvedExportProfile = await call(
+            'export.resolve_profile',
+            {
+              doc: summary.doc,
+              profile: profile.name,
+              variable_config: row.kind === 'variable' ? row.name : undefined,
+              instance: row.kind === 'instance' ? row.name : undefined,
+            },
+          )
+          cells.push({
+            profileName: profile.name,
+            rowKind: row.kind,
+            rowName: row.name,
+            options: resolved.options,
+            relativePath: resolved.relative_path,
+          })
+        }
+      }
+      if (!current()) return
+      setItems(planExportMatrix(directory, cells))
+    } catch (error) {
+      if (!mounted.current) return
+      setPlanError(
+        error instanceof ExportMatrixError
+          ? t(`exportMatrix.error.${error.code}`)
+          : (errorNotice(error, t).details ?? errorNotice(error, t).message),
+      )
+    }
+  }
+
   const run = async () => {
-    if (running.current || busy || items.length === 0 || planningError) return
+    if (running.current || busy || items.length === 0 || planError) return
     running.current = true
     setIsRunning(true)
     onBusyChange(true)
@@ -160,63 +220,71 @@ export function ExportMatrixPanel({
           <input
             className={styles.text}
             value={directory}
-            onChange={(event) => setDirectory(event.target.value)}
+            onChange={(event) => {
+              setDirectory(event.target.value)
+              setItems([])
+            }}
           />
         </label>
         <Button onClick={() => void load()}>
           {loading ? t('exportMatrix.loading') : t('exportMatrix.load')}
         </Button>
-        {variation && instances.length === 0 ? (
+        {variation && rows.length === 0 ? (
           <p>{t('exportMatrix.noInstances')}</p>
         ) : null}
-        {instances.length > 0 ? (
+        {rows.length > 0 ? (
           <fieldset className={styles.section}>
             <legend>{t('exportMatrix.instances')}</legend>
-            {instances.map((instance) => (
-              <label key={instance.index} className={styles.checkRow}>
+            {rows.map((row) => (
+              <label key={key(row)} className={styles.checkRow}>
                 <input
                   type="checkbox"
-                  checked={instanceIds.includes(instance.index)}
-                  onChange={(event) =>
-                    setInstanceIds((previous) =>
+                  checked={rowKeys.includes(key(row))}
+                  onChange={(event) => {
+                    setItems([])
+                    setRowKeys((previous) =>
                       event.target.checked
-                        ? [...previous, instance.index]
-                        : previous.filter((id) => id !== instance.index),
+                        ? [...previous, key(row)]
+                        : previous.filter((value) => value !== key(row)),
                     )
-                  }
+                  }}
                 />
-                {instance.name}
+                {row.kind === 'variable'
+                  ? t('exportMatrix.variableRow', { name: row.name })
+                  : row.name}
               </label>
             ))}
           </fieldset>
         ) : null}
         <fieldset className={styles.section}>
           <legend>{t('exportMatrix.profiles')}</legend>
-          {eligible.length === 0 ? (
+          {stored.profiles.length === 0 ? (
             <p className={styles.hint}>{t('exportMatrix.noProfiles')}</p>
           ) : (
-            eligible.map((profile) => (
-              <label key={profile.id} className={styles.checkRow}>
+            stored.profiles.map((profile) => (
+              <label key={profile.name} className={styles.checkRow}>
                 <input
                   type="checkbox"
-                  checked={profileIds.includes(profile.id)}
-                  onChange={(event) =>
-                    setProfileIds((previous) =>
+                  checked={profileNames.includes(profile.name)}
+                  onChange={(event) => {
+                    setItems([])
+                    setProfileNames((previous) =>
                       event.target.checked
-                        ? [...previous, profile.id]
-                        : previous.filter((id) => id !== profile.id),
+                        ? [...previous, profile.name]
+                        : previous.filter((value) => value !== profile.name),
                     )
-                  }
+                  }}
                 />
                 {profile.name}
               </label>
             ))
           )}
         </fieldset>
+        <Button onClick={() => void plan()}>{t('exportMatrix.plan')}</Button>
       </fieldset>
-      {planningError || failure ? (
+      {planError || failure ? (
         <p role="alert" className={styles.error}>
-          {planningError || failure}
+          {planError || failure}
         </p>
       ) : null}
       {items.length > 0 ? (
@@ -235,7 +303,7 @@ export function ExportMatrixPanel({
       ) : null}
       <Button
         disabled={
-          busy || isRunning || loading || items.length === 0 || !!planningError
+          busy || isRunning || loading || items.length === 0 || !!planError
         }
         onClick={() => void run()}
       >
@@ -251,7 +319,7 @@ export function ExportMatrixPanel({
           {results.map(({ item, report, error }) => (
             <li key={item.id}>
               <strong>
-                {item.instanceName} · {item.profileName}
+                {item.rowName} · {item.profileName}
               </strong>
               {report ? (
                 <>

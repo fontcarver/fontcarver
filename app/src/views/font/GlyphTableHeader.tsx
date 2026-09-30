@@ -4,14 +4,12 @@ import { useTranslation } from 'react-i18next'
 
 import type { GlyphSort } from '../../api'
 
-import { glyphTableTemplate, type GlyphTableColumn } from './glyphTableColumns'
+import {
+  COLUMN_SORTS,
+  glyphTableTemplate,
+  type GlyphTableColumn,
+} from './glyphTableColumns'
 import styles from './glyphTableHeader.module.css'
-
-const COLUMN_SORTS: Partial<Record<GlyphTableColumn, GlyphSort>> = {
-  name: 'Name',
-  unicode: 'Unicode',
-  width: 'Width',
-}
 
 export interface GlyphTableHeaderProps {
   columns: readonly GlyphTableColumn[]
@@ -47,7 +45,7 @@ export function GlyphTableHeader({
       {columns.map((column, index) => {
         const label = t(`fontView.tableColumns.${column}`)
         const columnSort = COLUMN_SORTS[column]
-        const sorted = columnSort !== undefined && sort === columnSort
+        const sorted = sort === columnSort
         const previous = columns[index - 1]
         const next = columns[index + 1]
         return (
@@ -85,18 +83,14 @@ export function GlyphTableHeader({
               if (source !== column) onMove(source, column)
             }}
           >
-            {columnSort === undefined ? (
+            <button
+              type="button"
+              className={styles.sort}
+              onClick={() => onSort(columnSort)}
+            >
               <span className={styles.label}>{label}</span>
-            ) : (
-              <button
-                type="button"
-                className={styles.sort}
-                onClick={() => onSort(columnSort)}
-              >
-                <span className={styles.label}>{label}</span>
-                {sorted && <ArrowUp size={12} aria-hidden="true" />}
-              </button>
-            )}
+              {sorted && <ArrowUp size={12} aria-hidden="true" />}
+            </button>
             <span className={styles.moves}>
               <button
                 type="button"

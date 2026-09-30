@@ -280,6 +280,7 @@ describe('ruler guides', () => {
           name: null,
           locked: false,
           color: null,
+          anchor: 'Origin',
         },
       },
     })
@@ -310,6 +311,7 @@ describe('ruler guides', () => {
           name: null,
           locked: false,
           color: null,
+          anchor: 'Origin',
         },
       },
     })

@@ -43,6 +43,8 @@ export function useEditorLabels(): EditorLabels {
       convertSegment: t('editor.undo.convertSegment'),
       setMetrics: t('editor.undo.setMetrics'),
       addGuide: t('editor.undo.addGuide'),
+      lockedTarget: t('editorMetadata.lockedTargetReason'),
+      lockedGlyph: t('editorMetadata.glyphLockedReason'),
       metricHud: (handle, value) =>
         `${t(
           handle === 'width'

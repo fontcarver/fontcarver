@@ -210,12 +210,14 @@ describe('FontInfoPanel', () => {
       'weight',
     )
 
-    // The Other section is reached without leaving the Font section first.
-    expect(screen.getByText('Weight class')).toBeInTheDocument()
-    expect(screen.getByText('400')).toBeInTheDocument()
+    // The Other section is reached without leaving the Font section first, and
+    // the scope breadcrumb lists the same field with the scope that supplies it.
+    expect(screen.getAllByText('Weight class').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText('400').length).toBeGreaterThanOrEqual(1)
     expect(screen.queryByText('Copyright (c) 2003 Bitstream Inc.')).toBeNull()
-    // Only the section that actually matched is titled and shown.
+    // Only the sections that actually matched are titled and shown.
     expect(screen.getByRole('heading', { name: 'Other' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Scopes' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Names' })).toBeNull()
     expect(screen.queryByText('This font has no name records.')).toBeNull()
   })

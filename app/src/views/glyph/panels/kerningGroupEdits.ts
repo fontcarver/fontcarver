@@ -21,7 +21,13 @@ export function canonicalGroupName(
     : `${side === 'side1' ? 'public.kern1.' : 'public.kern2.'}${text}`
 }
 
-/** Registers a group command immediately so save and editor handover await it. */
+/**
+ * Registers a command immediately so save and editor handover await it.
+ *
+ * Kerning-group edits need this and named it; the spacing matrix and the
+ * kerning table need exactly the same barriers, so the alias below reads
+ * correctly at those call sites without a second implementation.
+ */
 export function commitKerningGroup(
   doc: DocId,
   command: Command,
@@ -37,3 +43,6 @@ export function commitKerningGroup(
   holdDocumentEdits(doc, work)
   return work
 }
+
+/** `commitKerningGroup` under a name that fits non-group spacing commands. */
+export const commitSpacingEdit = commitKerningGroup

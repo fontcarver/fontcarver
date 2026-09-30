@@ -8,6 +8,8 @@ import { setGuideCommand } from '../../../editor/pointCommands'
 import { selectionOf, type GuideScope } from '../../../editor/selection'
 import { useEditorStore } from '../../../stores/editorStore'
 import { commitField } from '../commitField'
+import { GuideAnchorRow } from '../GuideAnchorRow'
+import { inkEdgesOf } from '../guideAnchor'
 import { measurementGuideKey } from '../guideIdentity'
 
 import styles from './panels.module.css'
@@ -29,7 +31,8 @@ export interface GuideRowsProps {
  */
 export function GuideRows({ context, scope, guides }: GuideRowsProps) {
   const { t } = useTranslation()
-  const { target, master, reload } = context
+  const { target, master, reload, scene } = context
+  const edges = inkEdgesOf(scene.metrics)
   const selection = useEditorStore((state) => state.selection)
   const measurement = useEditorStore((state) => state.measurementGuides)
   const toggleMeasurement = useEditorStore(
@@ -147,6 +150,11 @@ export function GuideRows({ context, scope, guides }: GuideRowsProps) {
                   onCommit={(name) =>
                     write(index, { ...guide, name: name === '' ? null : name })
                   }
+                />
+                <GuideAnchorRow
+                  guide={guide}
+                  edges={edges}
+                  onChange={(next) => write(index, { ...guide, ...next })}
                 />
               </div>
             ) : null}

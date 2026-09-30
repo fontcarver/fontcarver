@@ -22,6 +22,14 @@ export interface TextCanvasRun {
   selectedKerningValue?: number | null
   /** Bounded group-member outlines at the selected pair's glyph origins. */
   kerningGhosts?: readonly TextKerningGhost[]
+  /** Whether the selected boundary's winning rule departs from its class rule. */
+  selectedKerningException?: boolean
+  /** Boundary indexes whose winning rule is an exception to a class rule. */
+  kerningExceptions?: ReadonlySet<number>
+  /** Measurement beam drawn across the run, with the margins measured on it. */
+  beam?: TextSpacingBeam | null
+  /** Band, in font units, outside which the run is hidden. */
+  cutOff?: TextCutOffBand | null
   onSelectGap?: (index: number) => void
   onKerningKey?: (
     event: KeyboardEvent | React.KeyboardEvent<HTMLCanvasElement>,
@@ -32,6 +40,20 @@ export interface TextCanvasRun {
   onActivate: (index: number) => void
   onExitEdit: () => void
   onVisibleIndexes: (indexes: readonly number[]) => void
+  /**
+   * The pointer grabbed the measurement beam on the canvas.
+   *
+   * The three beam hooks are the canvas half of dragging the beam: the glyph
+   * canvas owns the geometry — it knows where the line is on screen and what
+   * height a pointer position means — and the run owns what that height does.
+   * `onBeamGrab` is only called while `beam` is present, and a grab is always
+   * followed by `onBeamRelease`, drag or no drag.
+   */
+  onBeamGrab?: () => void
+  /** The beam moved, in font units y-up from the baseline. */
+  onBeamDrag?: (height: number) => void
+  /** The beam drag ended. */
+  onBeamRelease?: () => void
 }
 
 /** One passive outline or color glyph drawn around the editable glyph. */
@@ -42,6 +64,20 @@ export interface SurroundingGlyph {
   x: number
   y: number
   ghost?: boolean
+}
+
+/** A spacing beam: one measurement height and the margins measured on it. */
+export interface TextSpacingBeam {
+  /** Measurement height in font units, y-up from the baseline. */
+  height: number
+  /** Left and right margins at `height`, keyed by document glyph name. */
+  margins: ReadonlyMap<string, { left: number; right: number }>
+}
+
+/** A cut-off display band in font units; only this slice of the run is shown. */
+export interface TextCutOffBand {
+  from: number
+  to: number
 }
 
 /** Unparsed group-member outline, positioned in absolute shaped-run space. */

@@ -90,6 +90,8 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
         }
         Command::DesignSpace(super::DesignSpaceCommand::Layer { glyph, .. })
         | Command::DesignSpace(super::DesignSpaceCommand::VirtualSource { glyph, .. })
+        | Command::DesignSpace(super::DesignSpaceCommand::ReorderShapes { glyph, .. })
+        | Command::DesignSpace(super::DesignSpaceCommand::Conditions { glyph, .. })
         | Command::DesignSpace(super::DesignSpaceCommand::SmartAxes { glyph, .. }) => {
             impact.glyph(glyph);
             impact.layers = true;
@@ -272,6 +274,8 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
         | Command::SetStartPoint { glyph, layer, .. }
         | Command::JoinContours { glyph, layer, .. }
         | Command::SplitContour { glyph, layer, .. }
+        | Command::OpenCorner { glyph, layer, .. }
+        | Command::ReconnectNodes { glyph, layer, .. }
         | Command::PathOp { glyph, layer, .. } => {
             impact.glyph(glyph);
             impact.affects_dependents = true;
@@ -288,6 +292,11 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.component_graph_changed |= !components.is_empty();
             impact.metrics |= is_master_layer(font, glyph, layer);
         }
+        Command::AlignComponents { glyph, layer } => {
+            impact.glyph(glyph);
+            impact.affects_dependents = true;
+            impact.metrics |= is_master_layer(font, glyph, layer);
+        }
         Command::AddComponent { glyph, .. }
         | Command::SetComponent { glyph, .. }
         | Command::RemoveComponents { glyph, .. }
@@ -298,7 +307,15 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
         }
         Command::AddAnchor { glyph, .. }
         | Command::SetAnchor { glyph, .. }
-        | Command::RemoveAnchors { glyph, .. } => impact.glyph(glyph),
+        | Command::RemoveAnchors { glyph, .. } => {
+            impact.glyph(glyph);
+            // A moved attachment anchor moves every composite that aligns to
+            // it, so those composites are part of the same edit and have to be
+            // in the undo snapshot before the command runs.
+            for (name, _) in super::component_locks::auto_align_closure(font, glyph) {
+                impact.glyph(&name);
+            }
+        }
         Command::AddGuide { glyph, master, .. }
         | Command::SetGuide { glyph, master, .. }
         | Command::RemoveGuide { glyph, master, .. } => {
@@ -453,6 +470,7 @@ fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
         Vec::new()
     };
     dispatch(font, command)?;
+    realign_after_anchor_edit(font, command);
     let result = (|| {
         for name in affected {
             if let Some(glyph) = font.glyph_mut(&name) {
@@ -471,6 +489,26 @@ fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
         }
     }
     result
+}
+
+/// Re-places automatically aligned components after their anchors moved.
+///
+/// Automatic alignment is only automatic if it survives the anchor moving, and
+/// an anchor belongs to the *base* glyph rather than to the composite that
+/// attaches to it. The layers that can be affected are collected before the
+/// command runs (`collect_impact`), so this pass writes only glyphs that are
+/// already in the undo snapshot and the whole thing stays one undo entry.
+/// Alignment never fails: an unresolvable pair is left alone.
+fn realign_after_anchor_edit(font: &mut Font, command: &Command) {
+    let glyph = match command {
+        Command::AddAnchor { glyph, .. }
+        | Command::SetAnchor { glyph, .. }
+        | Command::RemoveAnchors { glyph, .. } => glyph.clone(),
+        _ => return,
+    };
+    for (name, layer) in super::component_locks::auto_align_closure(font, &glyph) {
+        let _ = super::component_locks::align_auto_components(font, &name, &layer);
+    }
 }
 
 fn dispatch(font: &mut Font, command: &Command) -> Result<(), Error> {
@@ -557,6 +595,8 @@ fn dispatch(font: &mut Font, command: &Command) -> Result<(), Error> {
         | Command::SetStartPoint { .. }
         | Command::JoinContours { .. }
         | Command::SplitContour { .. }
+        | Command::OpenCorner { .. }
+        | Command::ReconnectNodes { .. }
         | Command::TransformSelection { .. }
         | Command::PathOp { .. } => outline::apply(font, command),
         Command::AddComponent { .. }
@@ -569,6 +609,9 @@ fn dispatch(font: &mut Font, command: &Command) -> Result<(), Error> {
         | Command::AddGuide { .. }
         | Command::SetGuide { .. }
         | Command::RemoveGuide { .. } => structure::apply(font, command),
+        Command::AlignComponents { glyph, layer } => {
+            super::component_locks::align_auto_components(font, glyph, layer).map(|_| ())
+        }
         Command::CenterMetrics {
             glyph,
             layer,
@@ -588,15 +631,17 @@ fn dispatch(font: &mut Font, command: &Command) -> Result<(), Error> {
             origin,
         } => metrics::set_vertical(font, glyph, layer, *advance, *origin),
         Command::SetMetricsKeys { glyph, keys } => {
-            crate::metrics::validate_keys(keys, false)?;
-            glyph_mut(font, glyph)?.metrics_keys = keys.clone();
+            let target = glyph_mut(font, glyph)?;
+            crate::metrics::validate_editable_keys(keys, Some(&target.metrics_keys), false)?;
+            target.metrics_keys = keys.clone();
             Ok(())
         }
         Command::SetLayerMetricsKeys { glyph, layer, keys } => {
+            let target = layer_mut(font, glyph, layer)?;
             if let Some(keys) = keys {
-                crate::metrics::validate_keys(keys, true)?;
+                crate::metrics::validate_editable_keys(keys, target.metrics_keys.as_ref(), true)?;
             }
-            layer_mut(font, glyph, layer)?.metrics_keys = keys.clone();
+            target.metrics_keys = keys.clone();
             Ok(())
         }
         Command::UpdateMetrics { glyph, master } => metrics::update(font, glyph, master.as_ref()),

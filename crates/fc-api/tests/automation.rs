@@ -51,22 +51,30 @@ fn script_discovery_reads_direct_sources_without_executing_them() {
 
     for method in ["automation.scripts_list", "automation.scripts_reload"] {
         let result = api.call(method, json!({})).expect("discover scripts");
-        assert_eq!(result["directory"], scripts.to_string_lossy().as_ref());
+        assert_eq!(
+            result["folders"],
+            json!([{
+                "kind": "preferences",
+                "path": scripts.to_string_lossy().as_ref(),
+                "exists": true,
+            }])
+        );
         assert_eq!(
             result["scripts"],
             json!([
-                { "name": "a.js", "language": "javascript", "bytes": javascript.len() },
-                { "name": "b.py", "language": "python", "bytes": python.len() },
+                { "name": "a.js", "folder": "preferences", "language": "javascript", "bytes": javascript.len() },
+                { "name": "b.py", "folder": "preferences", "language": "python", "bytes": python.len() },
             ])
         );
         assert!(result["warnings"].is_array());
+        assert_eq!(result["fingerprint"].as_str().map(str::len), Some(64));
     }
     assert!(!marker.exists(), "discovery executed a local script");
 
     assert_eq!(
         api.call("automation.script_read", json!({ "name": "b.py" }))
             .expect("load Python source"),
-        json!({ "name": "b.py", "language": "python", "source": python })
+        json!({ "name": "b.py", "folder": "preferences", "language": "python", "source": python })
     );
     assert!(!marker.exists(), "reading executed a local script");
 
@@ -226,7 +234,7 @@ fn python_returns_stdout_and_runtime_errors_without_poisoning_the_api() {
 }
 
 #[test]
-fn python_rpc_uses_the_same_session_and_persists_undoable_glyph_edits() {
+fn python_rpc_uses_the_same_session_and_records_one_undoable_run() {
     let (config, api) = configured_api();
     let saved = config.path().join("python-result.fcf");
     let created = api
@@ -245,20 +253,24 @@ listed = fontcarver.call('glyphs.list', {'doc': doc, 'offset': 0, 'limit': 10, '
 assert listed['total'] == 1
 outline = fontcarver.call('glyphs.outline', {'doc': doc, 'gid': gid})
 fontcarver.call('doc.apply', {'doc': doc, 'label': 'Python width', 'command': {'SetWidth': {'glyph': 'A', 'layer': outline['layer'], 'width': 725}}})
-fontcarver.call('doc.undo', {'doc': doc})
-assert fontcarver.call('glyphs.outline', {'doc': doc, 'gid': gid})['width'] == outline['width']
-fontcarver.call('doc.redo', {'doc': doc})
+try:
+    fontcarver.call('doc.undo', {'doc': doc})
+    raise AssertionError('history navigation inside a run must be rejected')
+except RuntimeError as error:
+    assert 'script transaction' in str(error), str(error)
+assert fontcarver.call('glyphs.outline', {'doc': doc, 'gid': gid})['width'] == 725
 print('edited')
 "#;
 
     let result = api
         .call(
             "automation.python_run",
-            json!({ "source": source, "doc": created["doc"] }),
+            json!({ "source": source, "doc": created["doc"], "label": "Python run" }),
         )
         .expect("run document script");
     assert_eq!(result["error"], Value::Null, "{result}");
-    assert_eq!(result["rpc_calls"], 8);
+    assert_eq!(result["rpc_calls"], 7);
+    assert_eq!(result["undo_label"], "Python run");
     let docs = api.call("session.list", json!({})).expect("shared session");
     assert_eq!(docs.as_array().unwrap().len(), 1);
     assert_eq!(docs[0]["family_name"], "Python automation");
@@ -269,6 +281,29 @@ print('edited')
         )
         .expect("read Python edit through API");
     assert_eq!(glyphs[0]["width"], 725.0);
+
+    // One run is one history entry: a single undo removes the added glyph and
+    // the width change together, and redo restores both.
+    api.call("doc.undo", json!({ "doc": created["doc"] }))
+        .expect("undo the whole run");
+    assert_eq!(
+        api.call(
+            "glyphs.list",
+            json!({ "doc": created["doc"], "offset": 0, "limit": 10, "include_paths": false }),
+        )
+        .expect("inventory after undo")["total"],
+        0
+    );
+    api.call("doc.redo", json!({ "doc": created["doc"] }))
+        .expect("redo the whole run");
+    assert_eq!(
+        api.call(
+            "glyphs.search",
+            json!({ "doc": created["doc"], "query": "A", "limit": 10 }),
+        )
+        .expect("state after redo")[0]["width"],
+        725.0
+    );
 
     api.call(
         "session.save",
@@ -535,4 +570,394 @@ fn python_rejects_raw_oversized_and_malformed_protocol_messages() {
         assert!(output(&result).len() <= SOURCE_LIMIT);
     }
     assert_eq!(run_python(&api, "pass")["error"], Value::Null);
+}
+
+#[test]
+fn a_script_transaction_merges_every_command_into_one_undo_entry() {
+    let (_config, api) = configured_api();
+    let created = api
+        .call(
+            "session.new",
+            json!({ "family": "Transaction", "units_per_em": 1000 }),
+        )
+        .expect("create document");
+    let doc = created["doc"].clone();
+
+    let transaction = api
+        .call(
+            "automation.transaction_begin",
+            json!({ "doc": doc, "label": "Script: batch.js" }),
+        )
+        .expect("open a script transaction");
+    assert_eq!(transaction["doc"], doc);
+    for recipe in ["A", "B", "C"] {
+        api.call("glyphs.add", json!({ "doc": doc, "recipe": recipe }))
+            .expect("add a glyph inside the transaction");
+    }
+    // History navigation inside a run is rejected rather than splitting history.
+    let rejected = api
+        .call("doc.undo", json!({ "doc": doc }))
+        .expect_err("undo inside a transaction must be rejected");
+    assert!(rejected.message.contains("script transaction"));
+    let ended = api
+        .call(
+            "automation.transaction_end",
+            json!({ "doc": doc, "token": transaction["token"] }),
+        )
+        .expect("close the transaction");
+    assert_eq!(ended["ended"], true);
+    assert_eq!(ended["undo_label"], "Script: batch.js");
+
+    let summary = api.call("doc.summary", json!({ "doc": doc })).unwrap();
+    assert_eq!(summary["undo_label"], "Script: batch.js");
+    api.call("doc.undo", json!({ "doc": doc }))
+        .expect("undo the whole run");
+    assert_eq!(
+        api.call(
+            "glyphs.list",
+            json!({ "doc": doc, "offset": 0, "limit": 10, "include_paths": false }),
+        )
+        .unwrap()["total"],
+        0
+    );
+    api.call("doc.redo", json!({ "doc": doc })).unwrap();
+    assert_eq!(
+        api.call(
+            "glyphs.list",
+            json!({ "doc": doc, "offset": 0, "limit": 10, "include_paths": false }),
+        )
+        .unwrap()["total"],
+        3
+    );
+    // A superseded token is reported, never an error: the console always closes
+    // its transaction in a finally block.
+    let again = api
+        .call(
+            "automation.transaction_end",
+            json!({ "doc": doc, "token": transaction["token"] }),
+        )
+        .expect("closing twice is not an error");
+    assert_eq!(again["ended"], false);
+    assert!(again["undo_label"].is_null());
+}
+
+#[test]
+fn a_script_transaction_label_is_validated_and_a_failed_run_stays_undoable() {
+    let (_config, api) = configured_api();
+    let created = api
+        .call(
+            "session.new",
+            json!({ "family": "Labels", "units_per_em": 1000 }),
+        )
+        .expect("create document");
+    let doc = created["doc"].clone();
+    for label in [json!(""), json!("   "), json!("x".repeat(121))] {
+        assert!(api
+            .call(
+                "automation.transaction_begin",
+                json!({ "doc": doc, "label": label }),
+            )
+            .is_err());
+    }
+    let transaction = api
+        .call(
+            "automation.transaction_begin",
+            json!({ "doc": doc, "label": "Script: partial.js" }),
+        )
+        .unwrap();
+    api.call("glyphs.add", json!({ "doc": doc, "recipe": "A" }))
+        .unwrap();
+    // A rejected command inside the run leaves the earlier work in the entry.
+    assert!(api
+        .call(
+            "doc.apply",
+            json!({
+                "doc": doc,
+                "label": "Rejected",
+                "command": {"SetWidth": {"glyph": "absent", "layer": "missing", "width": 10.0}},
+            }),
+        )
+        .is_err());
+    api.call(
+        "automation.transaction_end",
+        json!({ "doc": doc, "token": transaction["token"] }),
+    )
+    .unwrap();
+    api.call("doc.undo", json!({ "doc": doc })).unwrap();
+    assert_eq!(
+        api.call(
+            "glyphs.list",
+            json!({ "doc": doc, "offset": 0, "limit": 10, "include_paths": false }),
+        )
+        .unwrap()["total"],
+        0
+    );
+}
+
+#[test]
+fn configured_and_project_script_folders_are_searched_and_reads_are_root_scoped() {
+    let (config, api) = configured_api();
+    let extra = config.path().join("shared-scripts");
+    fs::create_dir_all(&extra).expect("configured folder");
+    fs::write(extra.join("shared.js"), "// shared\n").expect("configured script");
+    let project = config.path().join("project");
+    fs::create_dir_all(project.join("scripts")).expect("project folder");
+    fs::write(project.join("scripts/local.py"), "# local\n").expect("project script");
+    let document = project.join("Family.fcf");
+    let created = api
+        .call(
+            "session.new",
+            json!({ "family": "Folders", "units_per_em": 1000 }),
+        )
+        .expect("create document");
+    api.call(
+        "session.save",
+        json!({ "doc": created["doc"], "path": document }),
+    )
+    .expect("save so the document has a project folder");
+
+    let settings = api
+        .call(
+            "automation.settings_set",
+            json!({ "scripts_directory": extra }),
+        )
+        .expect("store the extra folder");
+    assert_eq!(
+        settings["scripts_directory"],
+        extra.to_string_lossy().as_ref()
+    );
+    assert_eq!(
+        api.call("automation.settings_get", json!({})).unwrap(),
+        settings
+    );
+
+    let listed = api
+        .call("automation.scripts_list", json!({ "doc": created["doc"] }))
+        .expect("list every searched folder");
+    let kinds: Vec<&str> = listed["folders"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|folder| folder["kind"].as_str().unwrap())
+        .collect();
+    assert_eq!(kinds, vec!["configured", "preferences", "project"]);
+    assert_eq!(
+        listed["scripts"],
+        json!([
+            { "name": "shared.js", "folder": "configured", "language": "javascript", "bytes": 10 },
+            { "name": "local.py", "folder": "project", "language": "python", "bytes": 8 },
+        ])
+    );
+    assert_eq!(
+        api.call(
+            "automation.script_read",
+            json!({ "name": "local.py", "folder": "project", "doc": created["doc"] }),
+        )
+        .unwrap(),
+        json!({ "name": "local.py", "folder": "project", "language": "python", "source": "# local\n" })
+    );
+    // A name only present in another root is not readable from this one.
+    assert!(api
+        .call(
+            "automation.script_read",
+            json!({ "name": "local.py", "folder": "configured", "doc": created["doc"] }),
+        )
+        .is_err());
+    // Without a document there is no project folder to resolve.
+    assert!(api
+        .call(
+            "automation.script_read",
+            json!({ "name": "local.py", "folder": "project" }),
+        )
+        .is_err());
+}
+
+#[test]
+fn the_folder_fingerprint_changes_only_when_a_searched_folder_changes() {
+    let (config, api) = configured_api();
+    let scripts = config.path().join("scripts");
+    fs::create_dir_all(&scripts).expect("scripts folder");
+    fs::write(scripts.join("a.js"), "// one\n").expect("script");
+    let first = api
+        .call("automation.scripts_reload", json!({}))
+        .expect("initial discovery");
+    let again = api
+        .call("automation.scripts_reload", json!({}))
+        .expect("unchanged discovery");
+    assert_eq!(first["fingerprint"], again["fingerprint"]);
+
+    fs::write(scripts.join("b.py"), "# two\n").expect("new script");
+    let changed = api
+        .call("automation.scripts_reload", json!({}))
+        .expect("changed discovery");
+    assert_ne!(first["fingerprint"], changed["fingerprint"]);
+    assert_eq!(changed["scripts"].as_array().unwrap().len(), 2);
+}
+
+#[test]
+fn the_extra_scripts_folder_rejects_relative_and_missing_paths() {
+    let (config, api) = configured_api();
+    for value in [
+        json!("relative/scripts"),
+        json!(config.path().join("absent").to_string_lossy()),
+    ] {
+        assert!(api
+            .call(
+                "automation.settings_set",
+                json!({ "scripts_directory": value })
+            )
+            .is_err());
+    }
+    // Clearing the preference is accepted and searched folders fall back.
+    assert_eq!(
+        api.call(
+            "automation.settings_set",
+            json!({ "scripts_directory": Value::Null }),
+        )
+        .unwrap()["scripts_directory"],
+        Value::Null
+    );
+    let listed = api.call("automation.scripts_list", json!({})).unwrap();
+    assert_eq!(listed["folders"].as_array().unwrap().len(), 1);
+}
+
+#[test]
+fn an_abandoned_script_transaction_expires_and_a_new_run_supersedes_it() {
+    let (_config, api) = configured_api();
+    let created = api
+        .call(
+            "session.new",
+            json!({ "family": "Abandoned", "units_per_em": 1000 }),
+        )
+        .expect("create document");
+    let doc = created["doc"].clone();
+
+    // A run that never closes its transaction, as a reloaded page leaves behind.
+    let abandoned = api
+        .call(
+            "automation.transaction_begin",
+            json!({ "doc": doc, "label": "Script: abandoned.js", "timeout_ms": 100 }),
+        )
+        .expect("open a short-lived transaction");
+    api.call("glyphs.add", json!({ "doc": doc, "recipe": "A" }))
+        .unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(150));
+
+    // The deadline has passed: later work is its own entry and history works.
+    api.call("glyphs.add", json!({ "doc": doc, "recipe": "B" }))
+        .unwrap();
+    let summary = api.call("doc.summary", json!({ "doc": doc })).unwrap();
+    assert_ne!(summary["undo_label"], "Script: abandoned.js");
+    api.call("doc.undo", json!({ "doc": doc }))
+        .expect("history is not blocked by an expired transaction");
+    assert_eq!(
+        api.call(
+            "automation.transaction_end",
+            json!({ "doc": doc, "token": abandoned["token"] }),
+        )
+        .unwrap()["ended"],
+        false
+    );
+    api.call("doc.redo", json!({ "doc": doc })).unwrap();
+
+    // A live transaction that the host loses is superseded by the next run.
+    let lost = api
+        .call(
+            "automation.transaction_begin",
+            json!({ "doc": doc, "label": "Script: lost.js" }),
+        )
+        .unwrap();
+    api.call("glyphs.add", json!({ "doc": doc, "recipe": "C" }))
+        .unwrap();
+    let next = api
+        .call(
+            "automation.transaction_begin",
+            json!({ "doc": doc, "label": "Script: next.js" }),
+        )
+        .expect("a new run supersedes the lost one");
+    assert_ne!(next["token"], lost["token"]);
+    assert_eq!(
+        api.call(
+            "automation.transaction_end",
+            json!({ "doc": doc, "token": lost["token"] }),
+        )
+        .unwrap()["ended"],
+        false
+    );
+    assert_eq!(
+        api.call(
+            "automation.transaction_end",
+            json!({ "doc": doc, "token": next["token"] }),
+        )
+        .unwrap()["ended"],
+        true
+    );
+    // The superseded run kept its own entry rather than corrupting history.
+    api.call("doc.undo", json!({ "doc": doc })).unwrap();
+    assert_eq!(
+        api.call(
+            "glyphs.list",
+            json!({ "doc": doc, "offset": 0, "limit": 10, "include_paths": false }),
+        )
+        .unwrap()["total"],
+        2
+    );
+}
+
+#[test]
+fn listing_scripts_reaps_only_expired_transactions() {
+    let (_config, api) = configured_api();
+    let created = api
+        .call(
+            "session.new",
+            json!({ "family": "Listing", "units_per_em": 1000 }),
+        )
+        .expect("create document");
+    let doc = created["doc"].clone();
+    let live = api
+        .call(
+            "automation.transaction_begin",
+            json!({ "doc": doc, "label": "Script: live.js" }),
+        )
+        .unwrap();
+
+    // The console polls discovery every couple of seconds while a run is going.
+    api.call("automation.scripts_reload", json!({})).unwrap();
+    api.call("automation.scripts_list", json!({})).unwrap();
+
+    assert_eq!(
+        api.call(
+            "automation.transaction_end",
+            json!({ "doc": doc, "token": live["token"] }),
+        )
+        .unwrap()["ended"],
+        true,
+        "discovery must not close a live transaction"
+    );
+}
+
+#[test]
+fn a_script_transaction_lifetime_is_validated() {
+    let (_config, api) = configured_api();
+    let created = api
+        .call(
+            "session.new",
+            json!({ "family": "Lifetime", "units_per_em": 1000 }),
+        )
+        .expect("create document");
+    let doc = created["doc"].clone();
+    for lifetime in [json!(0), json!(99), json!(120_001u32)] {
+        assert!(api
+            .call(
+                "automation.transaction_begin",
+                json!({ "doc": doc, "label": "Script: bounds.js", "timeout_ms": lifetime }),
+            )
+            .is_err());
+    }
+    assert!(api
+        .call(
+            "automation.transaction_begin",
+            json!({ "doc": doc, "label": "Script: bounds.js", "timeout_ms": 120_000u32 }),
+        )
+        .is_ok());
 }

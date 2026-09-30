@@ -5,6 +5,7 @@ import styles from './FeaturesView.module.css'
 /** Explicit automatic recipes; toggling never changes active layout by itself. */
 export function FeatureGenerationPanel({
   settings,
+  classRecipes,
   readOnly,
   canFreeze,
   stale,
@@ -12,6 +13,8 @@ export function FeatureGenerationPanel({
   onFreeze,
 }: {
   settings: FeatureGenerationSettings
+  /** Glyph class names the kernel can generate from glyph metadata. */
+  classRecipes: readonly string[]
   readOnly: boolean
   canFreeze: boolean
   stale: boolean
@@ -21,10 +24,17 @@ export function FeatureGenerationPanel({
   const { t } = useTranslation()
   const recipes = [
     'small_caps',
+    'caps_to_small_caps',
     'stylistic_sets',
     'case_forms',
     'vertical_forms',
     'ligatures',
+    'figure_styles',
+    'positional_figures',
+    'fractions',
+    'ordinals',
+    'composition',
+    'access_all_alternates',
   ] as const
   const generators = [
     ...new Set(settings.generated.map((record) => record.generator)),
@@ -99,6 +109,34 @@ export function FeatureGenerationPanel({
           </button>
         </div>
       ))}
+      <details>
+        <summary>{t('features.automaticClasses')}</summary>
+        <p className={styles.muted}>{t('features.automaticClassesHelp')}</p>
+        <fieldset disabled={readOnly} className={styles.checks}>
+          {classRecipes.map((name) => (
+            <label key={name}>
+              <input
+                type="checkbox"
+                checked={settings.automatic_classes.includes(name)}
+                onChange={(event) =>
+                  onChange({
+                    ...settings,
+                    automatic_classes: event.target.checked
+                      ? [...settings.automatic_classes, name]
+                      : settings.automatic_classes.filter(
+                          (entry) => entry !== name,
+                        ),
+                    manual_entries: settings.manual_entries.filter(
+                      (entry) => entry !== name,
+                    ),
+                  })
+                }
+              />
+              {`@${name}`}
+            </label>
+          ))}
+        </fieldset>
+      </details>
       <details>
         <summary>{t('features.localized')}</summary>
         <fieldset disabled={readOnly} className={styles.mappings}>

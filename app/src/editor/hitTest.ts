@@ -54,6 +54,15 @@ export interface HitTestInput {
   selection: Selection
   /** CSS-pixel node radius; scales all hit families proportionally. */
   hitDistance?: number
+  /**
+   * Drawn marker diameters in CSS pixels, from the preferences.
+   *
+   * A marker the user asked to be drawn larger has to be grabbable over its
+   * whole face, so each of the two point families is hit at the larger of its
+   * share of the hit distance and half of what is actually painted.
+   */
+  nodeSize?: number
+  handleSize?: number
 }
 
 /** Modifiers that change what can be hit. */
@@ -91,6 +100,17 @@ function guideDistance(
   return Math.abs((screen.x - origin.x) * dy - (screen.y - origin.y) * dx)
 }
 
+/**
+ * Half of a drawn marker, clamped to the range the preferences accept.
+ *
+ * An absent or non-finite preference contributes nothing, so the hit distance
+ * alone decides, exactly as it did before marker sizes were configurable.
+ */
+function markerRadius(size: number | undefined): number {
+  if (size === undefined || !Number.isFinite(size)) return 0
+  return Math.max(2, Math.min(20, size)) / 2
+}
+
 function best(hits: readonly Hit[]): Hit | null {
   let winner: Hit | null = null
   for (const hit of hits)
@@ -111,6 +131,14 @@ export function hitTest(
   const radiusScale =
     Math.max(1, Math.min(64, input.hitDistance ?? HIT_RADII.node)) /
     HIT_RADII.node
+  const nodeRadius = Math.max(
+    HIT_RADII.node * radiusScale,
+    markerRadius(input.nodeSize),
+  )
+  const handleRadius = Math.max(
+    HIT_RADII.handle * radiusScale,
+    markerRadius(input.handleSize),
+  )
 
   const selectedNodes: Hit[] = []
   const nodes: Hit[] = []
@@ -121,8 +149,7 @@ export function hitTest(
       : { kind: 'handle', contour: point.ref.contour, point: point.ref.point }
     if (!point.onCurve && options.ignoreHandles) continue
     const away = inPixels(point)
-    const radius =
-      (point.onCurve ? HIT_RADII.node : HIT_RADII.handle) * radiusScale
+    const radius = point.onCurve ? nodeRadius : handleRadius
     if (away > radius) continue
     const hit: Hit = {
       target,

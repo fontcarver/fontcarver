@@ -77,7 +77,9 @@ export function usePaletteEntries(query: string, scope: PaletteScope) {
     id: command.id,
     kind: 'commands',
     label: t(command.title),
-    detail: command.menu ? t(`menu.${command.menu}`) : undefined,
+    // A palette-only command has no menu to name, so it shows its own
+    // detail instead — which is how a tool row carries its key and its hint.
+    detail: command.menu ? t(`menu.${command.menu}`) : command.detail?.(),
     shortcut: command.shortcut,
     enabled: command.when?.() ?? true,
     disabledReason: command.disabledReason
@@ -105,7 +107,9 @@ export function usePaletteEntries(query: string, scope: PaletteScope) {
   }
   local.push(
     ...scripts.map((script): PaletteEntry => ({
-      id: `script:${script.name}`,
+      // A name can occur in more than one script root, so the entry identity
+      // and its label both carry the root the file was found in.
+      id: `script:${script.folder}:${script.name}`,
       kind: 'scripts',
       label: script.name,
       detail: t('paletteSearch.openScript'),
@@ -113,7 +117,8 @@ export function usePaletteEntries(query: string, scope: PaletteScope) {
       disabledReason: scriptRunning
         ? t('paletteSearch.scriptRunning')
         : undefined,
-      run: () => useAutomationStore.getState().openScript(script.name),
+      run: () =>
+        useAutomationStore.getState().openScript(script.name, script.folder),
     })),
   )
   const entries = searchPaletteEntries(query, scope, local)

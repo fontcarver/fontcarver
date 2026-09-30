@@ -52,6 +52,7 @@ it('reviews explicit source ordering, captures both generations and invalidates 
         generation: 12,
         source_generation: 3,
         pasted: ['X', 'Y'],
+        placeholders: [],
         added_bases: ['base'],
         warnings: [],
         change: params.dry_run ? null : noChange(),
@@ -95,6 +96,7 @@ it('keeps stale transfers open and requires a new preview', async () => {
           generation: 1,
           source_generation: 2,
           pasted: ['A'],
+          placeholders: [],
           added_bases: [],
           warnings: [],
           change: null,
@@ -132,4 +134,43 @@ it('rejects mismatched selected destinations before any kernel mutation', async 
     'source has 2 glyphs',
   )
   expect(mock.calls.every((entry) => entry.method === 'glyphs.list')).toBe(true)
+})
+
+it('names every placeholder it will create and how to find them again', async () => {
+  const transport = createMockTransport({
+    'glyphs.list': () => ({
+      items: [{ ...inventory[0], name: 'aacute', gid: 11 }],
+      total: 1,
+    }),
+    'doc.paste_special': () => ({
+      generation: 5,
+      source_generation: 2,
+      pasted: ['aacute'],
+      added_bases: ['acute'],
+      placeholders: [
+        {
+          name: 'acute',
+          source_base: 'acute',
+          tag: 'missing-component-base',
+        },
+      ],
+      warnings: [
+        'Created empty nonexporting placeholder `acute`, tagged `missing-component-base`.',
+      ],
+      change: null,
+    }),
+  })
+  setTransport(transport)
+  render(<PasteSpecialDialog target={target} glyphs={[]} onClose={vi.fn()} />)
+  const user = userEvent.setup()
+  await user.selectOptions(
+    screen.getByLabelText('Missing component bases'),
+    'placeholder',
+  )
+  await user.type(screen.getByLabelText('Source glyph names'), 'aacute')
+  await user.click(screen.getByRole('button', { name: 'Preview transfer' }))
+
+  const review = await screen.findByRole('region', { name: 'Transfer review' })
+  expect(review).toHaveTextContent('Nonexporting placeholders: acute')
+  expect(review).toHaveTextContent('tags~"missing-component-base"')
 })

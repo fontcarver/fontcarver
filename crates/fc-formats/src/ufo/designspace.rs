@@ -491,6 +491,7 @@ fn instance_from_norad(
         family_name: instance.familyname.clone(),
         active: true,
         is_variable_named_instance: true,
+        overrides: fc_model::InstanceOverrides::default(),
         user_data,
     }
 }

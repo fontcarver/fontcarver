@@ -1,5 +1,6 @@
 import type { DocId, GlyphId, MasterId, StyleBatchParams } from '../api'
 import type { FontBox } from '../canvas/Viewport'
+import type { SceneMetrics } from '../views/glyph/glyphScene'
 
 /** Metadata for trusted code shipped with the application; never a download URL. */
 export interface PluginManifest {
@@ -10,13 +11,62 @@ export interface PluginManifest {
   descriptionKey: string
 }
 
+/** One persisted numeric setting a bundled plugin declares in the curated index. */
+export interface PluginSetting {
+  key: string
+  labelKey: string
+  /** A toggle is stored as 0 or 1 so every persisted value is one number. */
+  kind: 'number' | 'toggle'
+  default: number
+  min: number
+  max: number
+  step: number
+}
+
+/** A curated index entry: manifest plus provenance and its settings contract. */
+export interface PluginIndexEntry extends PluginManifest {
+  author: string
+  license: string
+  /** Always `bundled`: this host has no remote or filesystem plugin loader. */
+  origin: 'bundled'
+  /** Repository path of the shipped implementation. */
+  source: string
+  settings: readonly PluginSetting[]
+}
+
 /** Declarative, font-space drawing operations. Plugins never receive a canvas. */
 export type PluginOverlay =
-  { kind: 'bounds'; bounds: FontBox } | { kind: 'path'; path: string }
+  | { kind: 'bounds'; bounds: FontBox }
+  | { kind: 'path'; path: string }
+  | { kind: 'line'; from: [number, number]; to: [number, number] }
 
-/** Current visible geometry, without mutable document or transport access. */
+/** Which document and layer a reporter is annotating. */
+export interface ReporterDocumentContext {
+  doc: DocId
+  gid: GlyphId
+  glyph: string
+  /** Persistent layer identifier of the drawn layer. */
+  layer: string
+  master: MasterId | null
+  /** Resolved metrics of the drawn layer, including em size and zones. */
+  metrics: SceneMetrics
+}
+
+/** What the editor is currently showing, in font units. */
+export interface ReporterViewContext {
+  /** CSS pixels per font unit. */
+  scale: number
+  /** Visible region in font space, y-up. */
+  visible: FontBox
+}
+
+/** Current visible geometry and context, without mutable document access. */
 export interface ReporterInput {
   bounds: FontBox | null
+  document: ReporterDocumentContext
+  view: ReporterViewContext
+  /** Persisted settings of this plugin, already validated against the index. */
+  settings: Readonly<Record<string, number>>
 }
 
 /** A reporter computes transient annotations; disabling it removes its drawings. */

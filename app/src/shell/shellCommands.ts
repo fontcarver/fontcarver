@@ -15,6 +15,15 @@ import {
 const APP_VERSION = '0.1.0'
 const hasDocument = () => activeDoc() !== null
 
+const capitalised = (value: string) =>
+  `${value[0]?.toUpperCase() ?? ''}${value.slice(1)}`
+
+/** Whether the active tab is an Edit tab, which is what owns a preview strip. */
+function hasPreview(): boolean {
+  const ui = useUiStore.getState()
+  return ui.tabs.find((tab) => tab.id === ui.activeTab)?.kind === 'glyph'
+}
+
 function textCanvasHasFocus(): boolean {
   const ui = useUiStore.getState()
   return (
@@ -63,11 +72,18 @@ export function shellCommands(): Command[] {
       menu: 'window',
       group: 'tabs',
       shortcut: 'Mod+Shift+W',
-      when: () => useUiStore.getState().activeTab !== null,
-      disabledReason: 'cmd.reason.noTab',
+      // The Overview is pinned: it stands for the document, so closing it is
+      // File ▸ Close Font, not Close Tab.
+      when: () => {
+        const ui = useUiStore.getState()
+        const tab = ui.tabs.find((candidate) => candidate.id === ui.activeTab)
+        return tab !== undefined && tab.kind !== 'font'
+      },
+      disabledReason: 'cmd.reason.pinnedOverview',
       run: () => {
-        const active = useUiStore.getState().activeTab
-        if (active) closeTab(active)
+        const ui = useUiStore.getState()
+        const tab = ui.tabs.find((candidate) => candidate.id === ui.activeTab)
+        if (tab && tab.kind !== 'font') closeTab(tab.id)
       },
     },
     {
@@ -85,13 +101,15 @@ export function shellCommands(): Command[] {
       disabledReason: 'cmd.reason.noTab',
       run: detachActiveTab,
     },
-    ...(['sidebar', 'inspector'] as const).map((panel): Command => ({
-      id: `window.detach${panel === 'sidebar' ? 'Sidebar' : 'Inspector'}`,
-      title: `shellWindow.detach${panel === 'sidebar' ? 'Sidebar' : 'Inspector'}`,
+    ...(['sidebar', 'inspector', 'preview'] as const).map((panel): Command => ({
+      id: `window.detach${capitalised(panel)}`,
+      title: `shellWindow.detach${capitalised(panel)}`,
       menu: 'window',
       group: 'windows',
-      when: hasDocument,
-      disabledReason: 'cmd.reason.noDocument',
+      // Only an Edit tab owns a preview strip to tear off.
+      when: panel === 'preview' ? hasPreview : hasDocument,
+      disabledReason:
+        panel === 'preview' ? 'cmd.reason.noGlyphTab' : 'cmd.reason.noDocument',
       run: () => detachPanel(panel),
     })),
     {

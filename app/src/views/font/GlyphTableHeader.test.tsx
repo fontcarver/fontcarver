@@ -3,6 +3,8 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
+import type { GlyphSort } from '../../api'
+
 import { GlyphTableHeader } from './GlyphTableHeader'
 import {
   DEFAULT_GLYPH_TABLE_COLUMNS,
@@ -10,7 +12,7 @@ import {
   type GlyphTableColumn,
 } from './glyphTableColumns'
 
-function renderHeader(sort: 'Order' | 'Name' | 'Unicode' | 'Width' = 'Order') {
+function renderHeader(sort: GlyphSort = 'Order') {
   const onSort = vi.fn()
   const onMove = vi.fn()
   render(
@@ -25,7 +27,7 @@ function renderHeader(sort: 'Order' | 'Name' | 'Unicode' | 'Width' = 'Order') {
 }
 
 describe('GlyphTableHeader', () => {
-  it('sorts only name, Unicode and width with ascending semantics', async () => {
+  it('sorts by every column with ascending semantics', async () => {
     const user = userEvent.setup()
     const { onSort } = renderHeader('Unicode')
 
@@ -34,6 +36,9 @@ describe('GlyphTableHeader', () => {
       ['Name', 'Name'],
       ['Unicode', 'Unicode'],
       ['Width', 'Width'],
+      ['Category', 'Category'],
+      ['Script', 'Script'],
+      ['Status', 'Status'],
     ]) {
       const button = screen.getByRole('button', { name: label })
       await user.click(button)
@@ -45,11 +50,20 @@ describe('GlyphTableHeader', () => {
         expect(column).not.toHaveAttribute('aria-sort')
       }
     }
-    for (const label of ['Category', 'Script', 'Status']) {
-      expect(
-        screen.queryByRole('button', { name: label }),
-      ).not.toBeInTheDocument()
-    }
+  })
+
+  it('marks the subcategory column sorted by the shared category order', () => {
+    render(
+      <GlyphTableHeader
+        columns={['name', 'category', 'subCategory']}
+        sort="Category"
+        onSort={vi.fn()}
+        onMove={vi.fn()}
+      />,
+    )
+    const headers = screen.getAllByRole('columnheader')
+    expect(headers[1]).toHaveAttribute('aria-sort', 'ascending')
+    expect(headers[2]).toHaveAttribute('aria-sort', 'ascending')
   })
 
   it('moves columns in either direction through keyboard reachable controls', async () => {

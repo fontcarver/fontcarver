@@ -12,7 +12,11 @@ import {
   useDocumentStore,
 } from '../../stores/documentStore'
 import { initialUiState, useUiStore } from '../../stores/uiStore'
-import { createMockTransport, makeSummary } from '../../test/mockTransport'
+import {
+  createMockTransport,
+  makeSummary,
+  noChange,
+} from '../../test/mockTransport'
 import { initialSessionState, useSessionStore } from '../../stores/sessionStore'
 
 import { registerFontViewCommands } from './fontCommands'
@@ -115,6 +119,103 @@ describe('font view commands', () => {
       'Copied 2 glyph names',
     )
     forgetGlyphNames(doc)
+  })
+
+  it('labels the whole selection in one undo step and can clear the label', async () => {
+    const doc = openFontTab()
+    rememberGlyphNames(doc, [cellFor(1), cellFor(2), cellFor(3)])
+    useDocumentStore.getState().setSelection(doc, [1, 3])
+    const transport = createMockTransport({ 'doc.apply': () => noChange() })
+    setTransport(transport)
+
+    expect(isCommandEnabled('glyph.colorLabel.red')).toBe(true)
+    await runCommandAndSettle('glyph.colorLabel.red')
+    expect(
+      transport.calls.filter((entry) => entry.method === 'doc.apply'),
+    ).toHaveLength(1)
+    expect(transport.calls[0]?.params).toEqual({
+      doc,
+      label: 'Set colour label',
+      command: {
+        Batch: [
+          {
+            SetGlyphMeta: {
+              glyph: 'g1',
+              export: null,
+              tags: null,
+              note: null,
+              color_label: 0,
+            },
+          },
+          {
+            SetGlyphMeta: {
+              glyph: 'g3',
+              export: null,
+              tags: null,
+              note: null,
+              color_label: 0,
+            },
+          },
+        ],
+      },
+    })
+
+    await runCommandAndSettle('glyph.colorLabel.none')
+    const cleared = transport.calls.at(-1)?.params as {
+      command: { Batch: { SetGlyphMeta: { color_label: number | null } }[] }
+    }
+    expect(cleared.command.Batch[0]?.SetGlyphMeta.color_label).toBeNull()
+    forgetGlyphNames(doc)
+  })
+
+  it('refreshes glyph information for the selection at the current revision', async () => {
+    const doc = openFontTab()
+    useDocumentStore.getState().setSelection(doc, [4, 9])
+    const transport = createMockTransport({
+      'glyphdata.state': () => ({
+        generation: 12,
+        overlay_json: '{}',
+        custom: false,
+        info: {
+          name: 'g4',
+          unicodes: [],
+          category: null,
+          sub_category: null,
+          script: null,
+          production_name: null,
+          anchors: [],
+          composition: [],
+        },
+      }),
+      'glyphdata.update': () => noChange(),
+    })
+    setTransport(transport)
+
+    expect(isCommandEnabled('glyph.updateInfo')).toBe(true)
+    await runCommandAndSettle('glyph.updateInfo')
+
+    expect(
+      transport.calls.find((entry) => entry.method === 'glyphdata.update')
+        ?.params,
+    ).toEqual({
+      doc,
+      glyphs: [4, 9],
+      expected_generation: 12,
+      label: 'Update Glyph Info',
+    })
+    expect(useUiStore.getState().toasts.at(-1)?.message).toBe(
+      'Updated glyph information for 2 glyphs',
+    )
+  })
+
+  it('gates the label and refresh commands on a selection', () => {
+    expect(isCommandEnabled('glyph.colorLabel.blue')).toBe(false)
+    expect(isCommandEnabled('glyph.updateInfo')).toBe(false)
+    const doc = openFontTab()
+    expect(isCommandEnabled('glyph.colorLabel.blue')).toBe(false)
+    useDocumentStore.getState().setSelection(doc, [1])
+    expect(isCommandEnabled('glyph.colorLabel.blue')).toBe(true)
+    expect(isCommandEnabled('glyph.updateInfo')).toBe(true)
   })
 
   it('gates the selection commands on a Font tab with a selection', () => {

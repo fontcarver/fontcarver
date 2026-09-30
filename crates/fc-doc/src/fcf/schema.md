@@ -40,10 +40,47 @@ list, 65536 total names, and 2 MiB of serialized list metadata are accepted.
 Glyph names use the recipe-safe ASCII letter/digit/dot/underscore grammar, begin
 with a letter, dot, or underscore, and contain at most 127 bytes. Duplicate glyph
 names are removed while preserving first occurrence. Live `present`/`missing`
-coverage is derived by the API and is not persisted.
+coverage is derived by the API and is not persisted. Renaming a glyph rewrites
+its name inside `glyph_lists`, as it does in metrics formulas and feature
+source; undo and redo of that rename restore them.
 Unknown sibling keys and other user data are retained.
+
+The optional `export_profiles` entry is an ordered array of
+`{name, subfolder, file_name, options}` values. `options` is the serde shape of
+`fc-api`'s `ExportOptions`. Names are unique after trimming and NFC
+case-folding, at most 80 characters; `subfolder` is a relative `/`-separated
+path without empty, `.` or `..` components; `file_name` is a plain base name
+without a path separator or a leading dot. At most 24 profiles are accepted.
+The optional `export_variable_configs` entry is an ordered array of
+`{name, file_name, masters, axes, instances}` values naming a design-space
+subset: `masters` holds master identifiers, `axes` four-character axis tags and
+`instances` named-instance names, and an empty array means "every one". At most
+24 configurations, 1024 masters, 16 axes and 4096 instances are accepted; a
+member that no longer exists is reported when a configuration is used, not when
+it is read. The optional `editor_settings` entry is an object with the optional
+fields `grid_size` (0–10000 font units), `grid_subdivision` (1–100) and `nudge`
+(three non-decreasing arrow-key increments between 0.001 and 10000 font units).
+An absent field inherits the application preference.
 These metadata edits use ordinary font-info undo snapshots and native/autosave
 serialization; no FCF version or structural model change is required.
+
+A named instance carries an optional version-1 `overrides` object with the
+optional fields `weight_class` (1–1000), `width_class` (1–9),
+`postscript_font_name`, `preferred_family_name` and `preferred_subfamily_name`
+(1–255 characters each). These are export-scope overrides: the compiler applies
+them to the instantiated font after the classes it derives from the instance
+location, so an explicit value wins over both the font's own value and the
+derived one. The object is omitted when it overrides nothing.
+
+An alternate (`Bracket`) layer carries an optional version-1 `extra` array of
+`{axis, min, max}` condition ranges beside its own `axis`/`min`/`max`. The
+complete set is a conjunction — the layer applies where every range holds, the
+OpenType `ConditionSet` model and the meaning of the Glyphs
+`[80‹wght, 25‹wdth‹50]` notation. The set may not name an axis twice and
+needs at least one bound; its canonical form is sorted by axis tag, and two
+alternate layers belong to the same conditional region exactly when their
+canonical sets are equal. The array is omitted for a single-axis condition, so
+documents written by an older version keep their meaning.
 
 Layer `metrics_keys` is an optional version-1 object with the same fields as
 glyph metrics keys. Each non-null layer field overrides that glyph field;
@@ -53,6 +90,13 @@ when absent. Horizontal formulas support references, mirrored sidebearings,
 finite literals, arithmetic, baseline-height measurements (`=n@200`), and offsets
 from automatic component metrics (`=+25`). Synchronization updates the stored
 outline/advance through an undoable command; it does not rewrite the formulas.
+
+The `vertical_origin` and `vertical_width` formula fields of both objects are
+persisted unchanged but are not resolved by any code path. The formula commands
+therefore refuse to _introduce or change_ either field, while carrying an
+existing value through untouched, so a document written by an older version is
+never rejected and no formula is stored that could never take effect. Vertical
+metrics are edited as explicit `Layer.vertical_origin`/`vertical_width` values.
 
 `Component.locked` is an optional boolean (default `false`). Native documents
 retain component editing locks; imported compiled-font components start unlocked.
@@ -66,13 +110,13 @@ means `true`. Source contours, components, anchors and metrics remain unchanged.
 The tagged `effect` value is one of:
 
 - `{kind: "stroke", nib: "ellipse" | "rectangle", width, height, angle,
-  cap: "round" | "butt" | "square", join: "round" | "bevel" | "miter",
-  miter_limit}`. Dimensions are full pen sizes in font units, in `[0.1,8192]`,
+cap: "round" | "butt" | "square", join: "round" | "bevel" | "miter",
+miter_limit}`. Dimensions are full pen sizes in font units, in `[0.1,8192]`,
   with aspect ratio at most 100. Angle is counterclockwise degrees in
   `[-360,360]`; miter limit is in `[1,100]`. All numbers must be finite.
 - `{kind: "remove_overlap"}`, using nonzero fill and retaining open paths.
 - `{kind: "boolean", operation: "union" | "intersect" | "subtract" | "xor",
-  path: string}`. The SVG path is a stored mask in layer coordinates, not a
+path: string}`. The SVG path is a stored mask in layer coordinates, not a
   live reference. It has at most 256 KiB and 4096 path elements, explicitly
   closed contours, and finite coordinates of magnitude at most 32767.
 
@@ -138,6 +182,13 @@ revision: u64}`. Invalid Unicode FEA text (including CRLF and comments) is
   in older files default to `DFLT`/`dflt`. Generated-source identities and the
   exported-glyph fingerprint are server-maintained provenance stored with the
   settings; editor API callers cannot forge them.
+  P5 adds further name-derived recipe switches, all defaulting to `false`:
+  `caps_to_small_caps`, `figure_styles`, `positional_figures`, `fractions`,
+  `ordinals`, `composition` and `access_all_alternates`. `automatic_classes` is
+  a list of generated glyph class names (empty disables that recipe, like
+  `localized`), and `manual_entries` is a list of feature tags and class names
+  held manual inside an otherwise enabled recipe. Both default to empty, so a
+  version-1 or P2b file keeps its exact previous generation behaviour.
 - `feature_revision`: a monotonic editor revision, initially zero. Draft changes,
   discard, successful activation and feature undo/redo advance it. A stored
   draft's `revision` matches this counter. Undo restores source contents but does
@@ -369,7 +420,6 @@ encoding, classification and production name into existing Glyph fields; anchor
 and composition lists are suggestions and do not change source geometry. Both
 overlay replacement and metadata refresh use the ordinary undo history.
 
-
 P5-89/91 stores non-exported layer editor metadata in
 `layer.user_data["com.fontcarver.editor"]`, preserving other user-data keys and
 unknown keys inside this object. `annotations` is an array of records with
@@ -399,6 +449,15 @@ stores its label at `Layer.user_data["com.fontcarver.colorLabel"]`. Omission mea
 no layer label. Label commands preserve other object entries and reject
 non-object vendor metadata rather than discarding it. Glyph `tags` remain
 trimmed free-text strings; autocomplete is derived from the document's tag set.
+One tag is a written contract rather than free text: a cross-document transfer
+that creates a stand-in for a component base absent from the destination writes
+an empty, non-exporting glyph tagged `missing-component-base`, so the inventory
+filter `tags~"missing-component-base"` finds every placeholder. Nothing else
+writes that tag, and removing it only removes the marker.
+
+Read-only reference documents and script history transactions are session state
+and are not serialized: a reopened document is always editable and carries no
+open transaction.
 
 P5 construction editing adds optional `Point.id` and `Guide.id` string identities,
 and optional `Point.super_smooth` (default false). IDs identify nodes and guides
@@ -479,6 +538,28 @@ lock file and interrupted `.fontcarver-*.tmp` files may be ignored by Git. Nativ
 serialization deliberately does not retain `extra.source.original_bytes`, just
 as for the existing single-file formats.
 
+## Workspace sidecar (`workspaces.json`)
+
+Named shell arrangements are interface state, not font data: they never dirty the
+document and take no place in its undo history, but they belong to the project so
+that a saved arrangement travels with it. They live in a sidecar written by
+`session.set_workspaces`: `workspaces.json` inside a `.fcfp` directory, and
+`<name>.fcf.workspaces.json` (or `.fcf.gz.workspaces.json`) beside a single-file
+native document. Documents without native storage have no sidecar, and the API
+reports `path: null` for them.
+
+The file is `{ "format": "fontcarver-workspaces", "version": 1, "workspaces": [
+{ "name", "layout" } ] }`, pretty-printed with a trailing newline and published
+by a temporary-file rename, so re-saving unchanged records produces no Git diff.
+`layout` is an opaque JSON object owned and validated by the interface; the
+kernel only enforces bounds — at most 32 uniquely named workspaces, names of 1 to
+80 characters without surrounding whitespace, and 256 KiB in total. Writing an
+empty list removes the file rather than leaving an empty one in the project. A
+sidecar that is unreadable, of an unknown format, of a later version or outside
+those bounds is reported as an error instead of being silently ignored. The
+sidecar is an ordinary unmanaged project file: project saves preserve it and
+never prune it.
+
 ## Virtual master source positions
 
 `font.virtual_masters` is an optional array (default empty, omitted when empty)
@@ -512,3 +593,29 @@ workflow validates static PNG data with 16 MiB compressed, 4096 per-dimension an
 one-million-pixel limits; unsupported, missing and invalid sources remain
 visible as repairable link errors. Placement commands reject non-finite or
 singular matrices and transform coefficients above one million in magnitude.
+
+P5 editor geometry adds `Guide.anchor`, a string enum `"Origin"` (the default),
+`"Lsb"` or `"Rsb"`, on every layer and master guide. `Origin` keeps `x` an
+absolute font-space coordinate, which is what every imported guide gets.
+`Lsb` and `Rsb` make `x` a signed offset from the left or the right edge of the
+layer's ink, so the guide follows the outline when the advance or the drawing
+moves; `y` and `angle` are unaffected, and a blank layer has no ink edge, so an
+anchored guide there behaves exactly as `Origin`. Changing a guide's anchor
+rebases its offset, leaving the line where it was. Interchange formats have no
+equivalent field: UFO, Glyphs and SFD guides read back as `Origin`.
+
+The Open Corner and Reconnect Nodes commands add and remove ordinary points and
+change no schema field. Opening a corner keeps the selected node's `id` and its
+segment kind, moves it along the incoming tangent, and inserts one fresh
+identity-free corner node; reconnecting removes the mouth's controls and one of
+its two nodes and moves the surviving one to the tangent intersection.
+
+`Component.auto_align` and `Component.anchor` keep their stored meaning and gain
+a command that acts on them: `AlignComponents` solves each auto-aligned
+component's translation so that its base layer's mark anchor — `Component.anchor`
+when it names one, otherwise the first `_`-prefixed anchor of that layer — lands
+on the base attachment anchor of the same name. The attachment anchor is looked
+for in the carrier layer's own anchors first and then in the base glyphs of the
+components before it, nearest first, each transformed by its own component
+transform. A component whose pair does not resolve keeps its stored transform,
+and only the translation is ever rewritten.

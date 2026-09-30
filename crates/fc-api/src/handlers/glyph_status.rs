@@ -12,12 +12,38 @@ pub(crate) fn has_annotations(glyph: &Glyph) -> bool {
         })
 }
 
-/// Whether explicit glyph-info overrides or format-specific metadata are stored.
-pub(crate) fn has_custom_glyph_info(glyph: &Glyph) -> bool {
-    glyph.production_name.is_some()
-        || glyph.category.is_some()
-        || glyph.sub_category.is_some()
-        || glyph.script.is_some()
+/// The tag a cross-document transfer writes on a stand-in glyph.
+///
+/// Documented in `crates/fc-doc/src/fcf/schema.md`: a transfer that needs a
+/// component base the destination lacks creates an empty, non-exporting glyph
+/// carrying this tag, and nothing else writes it.
+pub(crate) const PLACEHOLDER_TAG: &str = "missing-component-base";
+
+/// Whether the glyph is a stand-in for a component base another document had.
+pub(crate) fn is_placeholder(glyph: &Glyph) -> bool {
+    glyph.tags.iter().any(|tag| tag == PLACEHOLDER_TAG)
+}
+
+/// Whether the glyph's stored metadata departs from the effective glyph database.
+///
+/// Presence alone is not custom: `Glyph → Update Glyph Info` writes the
+/// database's own category, subcategory, script and production name onto every
+/// selected glyph, and that must not mark the whole font as customised. A value
+/// counts only when it differs from what [`fc_glyphdata::resolve_info`] derives
+/// for the name and its encodings, which is the same rule `glyphdata.state`
+/// reports as its `custom` flag — hence the document's own overlay rather than
+/// the bundled data alone, so the badge does not relight after a refresh driven
+/// by that overlay. Format-specific `user_data` is always custom, since the
+/// database has nothing to compare it against.
+pub(crate) fn has_custom_glyph_info(
+    glyph: &Glyph,
+    overlay: &fc_glyphdata::GlyphDataOverlay,
+) -> bool {
+    let info = fc_glyphdata::resolve_info(glyph.name.as_ref(), &glyph.unicodes, overlay);
+    differs(&glyph.production_name, &info.production_name)
+        || differs(&glyph.category, &info.category)
+        || differs(&glyph.sub_category, &info.sub_category)
+        || differs(&glyph.script, &info.script)
         || match &glyph.user_data {
             serde_json::Value::Null => false,
             serde_json::Value::Object(value) => !value.is_empty(),
@@ -25,6 +51,13 @@ pub(crate) fn has_custom_glyph_info(glyph: &Glyph) -> bool {
             serde_json::Value::String(value) => !value.is_empty(),
             _ => true,
         }
+}
+
+/// An absent stored value inherits the database, so only a present one can differ.
+fn differs(stored: &Option<String>, derived: &Option<String>) -> bool {
+    stored
+        .as_ref()
+        .is_some_and(|value| Some(value) != derived.as_ref())
 }
 
 /// Whether a required master layer is missing or cannot interpolate.
@@ -84,6 +117,11 @@ pub(crate) fn metrics_out_of_sync(
 mod tests {
     use super::*;
     use fc_model::{Anchor, Contour, Font, Glyph, Layer, LayerKind, Master, MetricsKeys};
+
+    /// The bundled database alone: these tests carry no project overlay.
+    fn overlay() -> fc_glyphdata::GlyphDataOverlay {
+        fc_glyphdata::GlyphDataOverlay::default()
+    }
     use kurbo::Shape;
     use serde_json::json;
 
@@ -99,7 +137,7 @@ mod tests {
         let (font, master) = font_with_glyph();
         let glyph = font.glyph("A").unwrap();
         assert!(!has_annotations(glyph));
-        assert!(!has_custom_glyph_info(glyph));
+        assert!(!has_custom_glyph_info(glyph, &overlay()));
         assert!(!incompatible_masters(&font, glyph));
         assert!(!metrics_out_of_sync(&font, glyph, &master, None));
     }
@@ -130,15 +168,34 @@ mod tests {
         glyph.tags.insert("review".into());
         glyph.kern_group_side1 = Some("A".into());
         glyph.user_data = json!({});
-        assert!(!has_custom_glyph_info(&glyph));
+        assert!(!has_custom_glyph_info(&glyph, &overlay()));
         glyph.production_name = Some("A.custom".into());
-        assert!(has_custom_glyph_info(&glyph));
+        assert!(has_custom_glyph_info(&glyph, &overlay()));
         glyph.production_name = None;
-        glyph.category = Some("Letter".into());
-        assert!(has_custom_glyph_info(&glyph));
+        glyph.category = Some("Symbol".into());
+        assert!(has_custom_glyph_info(&glyph, &overlay()));
         glyph.category = None;
         glyph.user_data = json!({"vendor.flag": true});
-        assert!(has_custom_glyph_info(&glyph));
+        assert!(has_custom_glyph_info(&glyph, &overlay()));
+    }
+
+    #[test]
+    fn glyph_status_custom_info_ignores_values_the_database_supplies() {
+        // Exactly what `Command::UpdateGlyphInfo` writes for this glyph.
+        let info = fc_glyphdata::resolve_info("Aacute", &[0x00C1], &overlay());
+        let mut glyph = Glyph::new("Aacute");
+        glyph.unicodes = vec![0x00C1];
+        glyph.category = info.category.clone();
+        glyph.sub_category = info.sub_category.clone();
+        glyph.script = info.script.clone();
+        glyph.production_name = info.production_name.clone();
+        assert_eq!(glyph.category.as_deref(), Some("Letter"));
+        assert!(
+            !has_custom_glyph_info(&glyph, &overlay()),
+            "refreshing from the database is not custom glyph info"
+        );
+        glyph.script = Some("Grek".into());
+        assert!(has_custom_glyph_info(&glyph, &overlay()));
     }
 
     #[test]
@@ -263,6 +320,7 @@ mod tests {
             .with_doc(doc, |document| {
                 super::super::glyphs::build_cell(
                     document,
+                    &overlay(),
                     document.glyph_id("A").unwrap(),
                     &master.id,
                     false,
@@ -287,6 +345,7 @@ mod tests {
             .with_doc(doc, |document| {
                 super::super::glyphs::build_cell(
                     document,
+                    &overlay(),
                     document.glyph_id("A").unwrap(),
                     &master,
                     false,
@@ -324,7 +383,10 @@ mod tests {
             )));
             assert!(!std::hint::black_box(incompatible_masters(&font, glyph)));
             assert!(!std::hint::black_box(has_annotations(glyph)));
-            assert!(!std::hint::black_box(has_custom_glyph_info(glyph)));
+            assert!(!std::hint::black_box(has_custom_glyph_info(
+                glyph,
+                &overlay()
+            )));
         }
         assert!(started.elapsed() < std::time::Duration::from_secs(2));
     }

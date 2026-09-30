@@ -271,6 +271,7 @@ fn bracket_layers_substitute_real_glyphs_at_the_axis_threshold() {
                 axis: Tag(*b"wght"),
                 min: Some(50.0),
                 max: None,
+                extra: Vec::new(),
             };
             layer.width += 100.0;
             layer
@@ -613,6 +614,7 @@ fn overlapping_conditional_component_dependencies_fail_instead_of_losing_one_alt
                     axis: Tag(*b"wght"),
                     min: Some(min),
                     max: None,
+                    extra: Vec::new(),
                 };
                 layer
             })

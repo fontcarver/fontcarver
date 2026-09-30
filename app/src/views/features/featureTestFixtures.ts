@@ -14,6 +14,15 @@ export function featureSettings(): FeatureGenerationSettings {
     ligatures: false,
     localized: [],
     discretionary_ligatures: [],
+    caps_to_small_caps: false,
+    figure_styles: false,
+    positional_figures: false,
+    fractions: false,
+    ordinals: false,
+    composition: false,
+    access_all_alternates: false,
+    automatic_classes: [],
+    manual_entries: [],
     writer_policy: { kerning: true, anchors: true },
     generated: [],
     glyph_fingerprint: null,
@@ -56,6 +65,10 @@ export function featureState(): FeatureState {
     has_unapplied_changes: false,
     original_layout_available: false,
     generation_stale: false,
+    automatic_entries: [
+      { name: 'smcp', generator: 'SmallCaps', kind: 'Feature' },
+      { name: 'Uppercase', generator: 'Classes', kind: 'Class' },
+    ],
   }
 }
 

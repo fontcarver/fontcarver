@@ -176,6 +176,32 @@ pub fn category(cp: u32) -> Category {
         .unwrap_or(Category::Other)
 }
 
+/// Returns the established spelling of a [`Category`].
+pub const fn category_name(category: Category) -> &'static str {
+    match category {
+        Category::Letter => "Letter",
+        Category::Number => "Number",
+        Category::Punctuation => "Punctuation",
+        Category::Symbol => "Symbol",
+        Category::Separator => "Separator",
+        Category::Mark => "Mark",
+        Category::Format => "Format",
+        Category::Private => "Private",
+        Category::Other => "Other",
+    }
+}
+
+/// Returns whether `cp` is a Unicode scalar with an assigned general category.
+///
+/// Surrogates, unassigned code points and values outside the scalar range are
+/// excluded, so this is the set of characters a font can encode.
+pub fn is_assigned(cp: u32) -> bool {
+    !matches!(
+        general_category(cp),
+        GeneralCategory::Unassigned | GeneralCategory::Surrogate
+    )
+}
+
 /// Returns the GlyphData-style sub-category bucket for `cp`.
 pub fn sub_category(cp: u32) -> &'static str {
     let general = general_category(cp);

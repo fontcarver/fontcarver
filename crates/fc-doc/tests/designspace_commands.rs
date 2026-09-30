@@ -69,6 +69,7 @@ fn supplemental_sources_duplicate_edit_undo_and_reject_invalid_roles_atomically(
                     axis: Tag(*b"wght"),
                     min: Some(500.),
                     max: None,
+                    extra: Vec::new(),
                 },
                 name: "Alternate".into(),
             };
@@ -178,7 +179,7 @@ fn axis_renames_migrate_sources_atomically_and_restore_them_on_undo() {
         let glyph = doc.font.glyph_mut("base").unwrap();
         for kind in [
             LayerKind::Brace { master: master.clone(), location: [(Tag(*b"wght"), 500.)].into() },
-            LayerKind::Bracket { master: master.clone(), axis: Tag(*b"wght"), min: Some(600.), max: None },
+            LayerKind::Bracket { master: master.clone(), axis: Tag(*b"wght"), min: Some(600.), max: None, extra: Vec::new() },
         ] {
             let mut source = glyph.layers[0].clone();
             source.id = LayerId::new();
@@ -243,6 +244,7 @@ fn repairs_smart_sources_and_conditional_groups_without_changing_geometry() {
                         axis: Tag(*b"wght"),
                         min: Some(600.),
                         max: None,
+                        extra: Vec::new(),
                     },
                 ] {
                     let mut source = glyph.layers[0].clone();

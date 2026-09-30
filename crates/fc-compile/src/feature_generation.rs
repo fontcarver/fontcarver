@@ -3,8 +3,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use fc_model::{
-    FeatureBlock, FeatureGenerationSettings, FeatureGenerator, FeatureSourceId, Features,
-    FeaturesSource, Font, GeneratedFeatureRecord, GlyphName,
+    family_kind, family_names, generate_family, FeatureBlock, FeatureClass,
+    FeatureGenerationSettings, FeatureGenerator, FeatureSourceId, Features, FeaturesSource, Font,
+    GeneratedFeatureRecord, GeneratedItemKind, GlyphName, FEATURE_GENERATORS,
 };
 use fea_rs::typed::AstNode;
 use sha2::{Digest, Sha256};
@@ -68,6 +69,10 @@ pub fn generate_feature_source(
         .source
         .features
         .retain(|block| !owned.contains(block.id.0.as_str()));
+    result
+        .source
+        .classes
+        .retain(|class| !owned.contains(class.id.0.as_str()));
     result.settings.generated.clear();
     result.settings.glyph_fingerprint = has_generators(settings).then(|| glyph_fingerprint(font));
     let mut parsing = FeatureValidation::default();
@@ -116,25 +121,34 @@ pub fn generate_feature_source(
         .filter(|g| g.export)
         .map(|g| g.name.clone())
         .collect();
-    for (generator, enabled) in [
-        (FeatureGenerator::SmallCaps, settings.small_caps),
-        (FeatureGenerator::StylisticSets, settings.stylistic_sets),
-        (FeatureGenerator::CaseForms, settings.case_forms),
-        (FeatureGenerator::VerticalForms, settings.vertical_forms),
-        (FeatureGenerator::Ligatures, settings.ligatures),
-        (FeatureGenerator::Localized, !settings.localized.is_empty()),
-        (
-            FeatureGenerator::DiscretionaryLigatures,
-            !settings.discretionary_ligatures.is_empty(),
-        ),
-    ] {
-        if !enabled {
+    // `aalt` references the tags the earlier families produced, so materialized
+    // tags accumulate across the fixed generator order.
+    let mut present_tags: BTreeSet<String> = manual_tags.clone();
+    for generator in FEATURE_GENERATORS {
+        if !settings.family_enabled(generator) {
             continue;
         }
-        let expected_tags = generator_tags(generator);
-        if let Some(tag) = expected_tags.iter().find(|tag| manual_tags.contains(*tag)) {
+        let kind = family_kind(generator);
+        let expected_tags: Vec<String> = family_names(generator, settings)
+            .into_iter()
+            .filter(|name| !settings.entry_is_manual(name))
+            .collect();
+        // A collision belongs to the one colliding name. The rest of the
+        // family still materializes, so enabling a recipe for one entry cannot
+        // silently lose the entries that have no conflict.
+        let occupied: BTreeSet<String> = expected_tags
+            .into_iter()
+            .filter(|name| match kind {
+                GeneratedItemKind::Feature => manual_tags.contains(name),
+                GeneratedItemKind::Class => result
+                    .source
+                    .classes
+                    .iter()
+                    .any(|class| &class.name == name),
+            })
+            .collect();
+        for tag in &occupied {
             result.error("feature-generation-conflict", format!("The user-owned {tag} feature conflicts with its enabled generator. Freeze or disable generation before editing this feature."));
-            continue;
         }
         let mut by_tag = BTreeMap::<String, Rules>::new();
         match generator {
@@ -145,7 +159,10 @@ pub fn generate_feature_source(
                 suffix_rules(&names, ".case", &["case"], &mut by_tag, &mut result)
             }
             FeatureGenerator::VerticalForms => {
-                suffix_rules(&names, ".vert", &["vert", "vrt2"], &mut by_tag, &mut result)
+                suffix_rules(&names, ".vert", &["vert", "vrt2"], &mut by_tag, &mut result);
+                // A `.vrt2`-named alternate is rotated for vertical writing and
+                // belongs only in `vrt2`.
+                suffix_rules(&names, ".vrt2", &["vrt2"], &mut by_tag, &mut result);
             }
             FeatureGenerator::StylisticSets => {
                 for index in 1..=20 {
@@ -166,21 +183,45 @@ pub fn generate_feature_source(
             FeatureGenerator::DiscretionaryLigatures => {
                 discretionary_rules(&names, settings, &mut by_tag, &mut result)
             }
+            // The model owns the name- and metadata-derived recipes so they can
+            // be unit tested without a compiler.
+            _ => {
+                let family = generate_family(font, generator, settings, &present_tags);
+                for issue in family.issues {
+                    result.error(issue.code, issue.message);
+                }
+                for (name, generated) in family.items {
+                    let rules = by_tag.entry(name).or_default();
+                    rules.code.extend(generated.code);
+                    rules.glyphs.extend(generated.glyphs);
+                }
+            }
         }
         for (tag, rules) in by_tag {
-            if rules.code.is_empty() {
+            if rules.code.is_empty() || settings.entry_is_manual(&tag) || occupied.contains(&tag) {
                 continue;
             }
             let old = settings.generated.iter().find(|record| {
                 record.generator == generator
-                    && source
-                        .features
-                        .iter()
-                        .any(|block| block.id == record.source_id && block.tag == tag)
+                    && match kind {
+                        GeneratedItemKind::Feature => source
+                            .features
+                            .iter()
+                            .any(|block| block.id == record.source_id && block.tag == tag),
+                        GeneratedItemKind::Class => source
+                            .classes
+                            .iter()
+                            .any(|class| class.id == record.source_id && class.name == tag),
+                    }
             });
             let id = old
                 .map(|record| record.source_id.clone())
-                .unwrap_or_else(|| FeatureSourceId(format!("fontcarver-generated-{tag}")));
+                .unwrap_or_else(|| {
+                    FeatureSourceId(match kind {
+                        GeneratedItemKind::Feature => format!("fontcarver-generated-{tag}"),
+                        GeneratedItemKind::Class => format!("fontcarver-generated-class-{tag}"),
+                    })
+                });
             if result
                 .source
                 .prefixes
@@ -192,13 +233,24 @@ pub fn generate_feature_source(
                 result.error("feature-generation-identity-conflict",format!("Generated source identity for {tag} is already used by a user source item."));
                 continue;
             }
-            result.source.features.push(FeatureBlock {
-                id: id.clone(),
-                tag,
-                code: rules.code.join("\n"),
-                automatic: true,
-                ..FeatureBlock::default()
-            });
+            match kind {
+                GeneratedItemKind::Feature => {
+                    present_tags.insert(tag.clone());
+                    result.source.features.push(FeatureBlock {
+                        id: id.clone(),
+                        tag,
+                        code: rules.code.join("\n"),
+                        automatic: true,
+                        ..FeatureBlock::default()
+                    });
+                }
+                GeneratedItemKind::Class => result.source.classes.push(FeatureClass {
+                    id: id.clone(),
+                    name: tag,
+                    code: rules.code.join("\n"),
+                    automatic: true,
+                }),
+            }
             result.settings.generated.push(GeneratedFeatureRecord {
                 generator,
                 source_id: id,
@@ -209,14 +261,18 @@ pub fn generate_feature_source(
     result
 }
 
-/// Freeze exactly the visible materialized snapshot and disable its recipe.
+/// Freeze the visible materialized snapshot of one family, or of one entry.
 ///
-/// This does not generate or compile. Callers persist the returned candidate as
-/// one undoable draft mutation, then use guarded activation as for any edit.
+/// With `entry` the family stays enabled and only that feature tag or class
+/// name becomes manual, which is the per-entry automatic switch. Without it the
+/// whole recipe is disabled. This does not generate or compile. Callers persist
+/// the returned candidate as one undoable draft mutation, then use guarded
+/// activation as for any edit.
 pub fn freeze_feature_source(
     source: &Features,
     settings: &FeatureGenerationSettings,
     generator: FeatureGenerator,
+    entry: Option<&str>,
 ) -> GeneratedFeatureSource {
     let mut result = GeneratedFeatureSource {
         source: source.clone(),
@@ -230,29 +286,71 @@ pub fn freeze_feature_source(
         );
         return result;
     }
+    let entry_name = |id: &FeatureSourceId| -> Option<String> {
+        source
+            .features
+            .iter()
+            .find(|block| &block.id == id)
+            .map(|block| block.tag.clone())
+            .or_else(|| {
+                source
+                    .classes
+                    .iter()
+                    .find(|class| &class.id == id)
+                    .map(|class| class.name.clone())
+            })
+    };
     let owned: BTreeSet<&str> = settings
         .generated
         .iter()
-        .filter(|r| r.generator == generator)
+        .filter(|r| {
+            r.generator == generator
+                && entry.is_none_or(|name| entry_name(&r.source_id).as_deref() == Some(name))
+        })
         .map(|r| r.source_id.0.as_str())
         .collect();
+    if owned.is_empty() {
+        result.error(
+            "feature-generation-not-generated",
+            "That source item is not currently generated by this recipe.",
+        );
+        return result;
+    }
     for block in &mut result.source.features {
         if owned.contains(block.id.0.as_str()) {
             block.automatic = false;
         }
     }
+    for class in &mut result.source.classes {
+        if owned.contains(class.id.0.as_str()) {
+            class.automatic = false;
+        }
+    }
     result
         .settings
         .generated
-        .retain(|r| r.generator != generator);
-    match generator {
-        FeatureGenerator::SmallCaps => result.settings.small_caps = false,
-        FeatureGenerator::StylisticSets => result.settings.stylistic_sets = false,
-        FeatureGenerator::CaseForms => result.settings.case_forms = false,
-        FeatureGenerator::VerticalForms => result.settings.vertical_forms = false,
-        FeatureGenerator::Ligatures => result.settings.ligatures = false,
-        FeatureGenerator::Localized => result.settings.localized.clear(),
-        FeatureGenerator::DiscretionaryLigatures => result.settings.discretionary_ligatures.clear(),
+        .retain(|r| !owned.contains(r.source_id.0.as_str()));
+    match entry {
+        // The recipe stays on; only this entry stops regenerating.
+        Some(name) => {
+            if !result.settings.entry_is_manual(name) {
+                result.settings.manual_entries.push(name.to_owned());
+            }
+            if generator == FeatureGenerator::Classes {
+                result
+                    .settings
+                    .automatic_classes
+                    .retain(|class| class != name);
+            }
+        }
+        None => {
+            let frozen_names = family_names(generator, settings);
+            result
+                .settings
+                .manual_entries
+                .retain(|entry| !frozen_names.contains(entry));
+            result.settings.set_family_enabled(generator, false);
+        }
     }
     if !has_generators(&result.settings) {
         result.settings.glyph_fingerprint = None;
@@ -275,13 +373,9 @@ impl GeneratedFeatureSource {
 }
 
 fn has_generators(settings: &FeatureGenerationSettings) -> bool {
-    settings.small_caps
-        || settings.stylistic_sets
-        || settings.case_forms
-        || settings.vertical_forms
-        || settings.ligatures
-        || !settings.localized.is_empty()
-        || !settings.discretionary_ligatures.is_empty()
+    FEATURE_GENERATORS
+        .into_iter()
+        .any(|generator| settings.family_enabled(generator))
 }
 
 fn glyph_fingerprint(font: &Font) -> String {
@@ -297,18 +391,6 @@ fn glyph_fingerprint(font: &Font) -> String {
         hash.update(name.as_bytes());
     }
     format!("{:x}", hash.finalize())
-}
-
-fn generator_tags(generator: FeatureGenerator) -> Vec<String> {
-    match generator {
-        FeatureGenerator::SmallCaps => vec!["smcp".into()],
-        FeatureGenerator::StylisticSets => (1..=20).map(|i| format!("ss{i:02}")).collect(),
-        FeatureGenerator::CaseForms => vec!["case".into()],
-        FeatureGenerator::VerticalForms => vec!["vert".into(), "vrt2".into()],
-        FeatureGenerator::Ligatures => vec!["liga".into()],
-        FeatureGenerator::Localized => vec!["locl".into()],
-        FeatureGenerator::DiscretionaryLigatures => vec!["dlig".into()],
-    }
 }
 
 fn glyph_token(name: &GlyphName, result: &mut GeneratedFeatureSource) -> Option<String> {

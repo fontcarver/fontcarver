@@ -86,6 +86,12 @@ pub enum GlyphSort {
     Reading,
     /// Numeric CID order; unmapped glyphs last.
     Cid,
+    /// Effective broad category, then subcategory, then glyph order.
+    Category,
+    /// Effective ISO 15924 script, then glyph order.
+    Script,
+    /// Glyphs needing attention first: warning badges, then the other badges.
+    Status,
 }
 
 /// Parameters for a filtered, sorted page of glyph cells.
@@ -143,6 +149,13 @@ pub struct GlyphCell {
     pub path: Option<String>,
     /// Optional application color-label index.
     pub color_label: Option<u8>,
+    /// Independent color label of the selected master layer, when it has one.
+    ///
+    /// Stored at `Layer.user_data["com.fontcarver.colorLabel"]` and separate
+    /// from `color_label`, so the grid can show both.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional = nullable)]
+    pub layer_color_label: Option<u8>,
     /// Whether the glyph participates in export.
     pub export: bool,
     /// Whether the selected layer contains components.
@@ -169,6 +182,13 @@ pub struct GlyphCell {
     #[serde(default)]
     #[ts(as = "Option<bool>", optional)]
     pub locked: bool,
+    /// Whether the glyph stands in for a component base another document had.
+    ///
+    /// Set by a cross-document transfer, which tags the stand-in
+    /// `missing-component-base` and marks it non-exporting.
+    #[serde(default)]
+    #[ts(as = "Option<bool>", optional)]
+    pub placeholder: bool,
     /// Glyph-specific invalidation generation.
     #[ts(type = "number")]
     pub generation: u64,

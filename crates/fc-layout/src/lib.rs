@@ -9,6 +9,7 @@
 
 pub mod conversion;
 mod error;
+pub mod fea_ir;
 mod import;
 mod shaping;
 

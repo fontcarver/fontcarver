@@ -8,7 +8,11 @@ import { shortcutFor } from './keymap'
 import { reportError } from './commands'
 import paletteStyles from './CommandPalette.module.css'
 import dialogStyles from './dialog.module.css'
-import type { PaletteEntry, PaletteScope } from './paletteSearch'
+import {
+  paletteSections,
+  type PaletteEntry,
+  type PaletteScope,
+} from './paletteSearch'
 import { formatShortcut } from './shortcuts'
 import { usePaletteEntries } from './usePaletteEntries'
 
@@ -28,7 +32,7 @@ export function CommandPaletteDialog() {
   const [active, setActive] = useState(0)
   const listId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
-  const listRef = useRef<HTMLUListElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
   const [restoreFocus] = useState<HTMLElement | null>(() =>
     document.activeElement instanceof HTMLElement
       ? document.activeElement
@@ -48,14 +52,21 @@ export function CommandPaletteDialog() {
   }, [restoreFocus])
 
   const { entries, notices, loading } = usePaletteEntries(query, scope)
-  const activeIndex = Math.min(active, Math.max(0, entries.length - 1))
+  const sections = paletteSections(entries)
+  // The keyboard walks the list the user can see. The ranked order decides the
+  // order inside a section, but the sections decide what row two is, so the
+  // highlight, Enter and every row index come from this one flattened list.
+  const ordered = sections.flatMap((section) => section.entries)
+  const activeIndex = Math.min(active, Math.max(0, ordered.length - 1))
+  // One section needs no heading: the category selector already says which.
+  const labelled = sections.length > 1
 
   useEffect(() => {
     const highlighted = listRef.current?.querySelector('[data-active="true"]')
     // jsdom does not implement scrollIntoView.
     if (highlighted instanceof HTMLElement && highlighted.scrollIntoView)
       highlighted.scrollIntoView({ block: 'nearest' })
-  }, [activeIndex, entries.length])
+  }, [activeIndex, ordered.length])
 
   const close = () => setPaletteOpen(false)
 
@@ -94,22 +105,22 @@ export function CommandPaletteDialog() {
     } else if (event.key === 'ArrowDown') {
       event.preventDefault()
       setActive((index) =>
-        entries.length === 0 ? 0 : (index + 1) % entries.length,
+        ordered.length === 0 ? 0 : (index + 1) % ordered.length,
       )
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
       setActive((index) =>
-        entries.length === 0
+        ordered.length === 0
           ? 0
-          : (index - 1 + entries.length) % entries.length,
+          : (index - 1 + ordered.length) % ordered.length,
       )
     } else if (event.key === 'Enter') {
       event.preventDefault()
-      run(entries[activeIndex])
+      run(ordered[activeIndex])
     }
   }
 
-  const activeCommand = entries[activeIndex]
+  const activeCommand = ordered[activeIndex]
 
   return (
     <div
@@ -162,78 +173,92 @@ export function CommandPaletteDialog() {
             )}
           </select>
         </label>
-        {entries.length === 0 ? (
+        {ordered.length === 0 ? (
           <p className={paletteStyles.paletteEmpty}>
             {t(loading ? 'paletteSearch.loading' : 'paletteSearch.empty')}
           </p>
         ) : (
-          <ul
+          <div
             ref={listRef}
             id={listId}
             role="listbox"
             aria-label={t('palette.title')}
             className={paletteStyles.paletteList}
           >
-            {entries.map((command, index) => {
-              const shortcut = shortcutFor(
-                command.id,
-                command.shortcut,
-                overrides,
-              )
-              const enabled = command.enabled
-              const reason =
-                !enabled && command.disabledReason
-                  ? command.disabledReason
-                  : undefined
-              // The four states are mutually exclusive so no cascade order can
-              // put disabled (faint) text on the solid accent fill.
-              const classes = [paletteStyles.paletteItem]
-              if (enabled && index === activeIndex)
-                classes.push(paletteStyles.paletteItemActive)
-              else if (!enabled && index === activeIndex)
-                classes.push(paletteStyles.paletteItemHighlight)
-              else if (!enabled) classes.push(paletteStyles.paletteItemDisabled)
-              return (
-                <li key={command.id}>
-                  <button
-                    type="button"
-                    id={`${listId}-${command.id}`}
-                    role="option"
-                    aria-selected={index === activeIndex}
-                    aria-disabled={!enabled}
-                    aria-description={reason}
-                    data-active={index === activeIndex}
-                    tabIndex={-1}
-                    className={classes.join(' ')}
-                    onPointerEnter={() => setActive(index)}
-                    onClick={() => run(command)}
+            {sections.map((section) => (
+              <div
+                key={section.kind}
+                role="group"
+                aria-label={t(`paletteSearch.${section.kind}`)}
+              >
+                {labelled ? (
+                  <p
+                    className={paletteStyles.paletteSection}
+                    aria-hidden="true"
                   >
-                    <span className={paletteStyles.paletteLabel}>
-                      {command.label}
-                    </span>
-                    {reason ? (
-                      <span className={paletteStyles.paletteReason}>
-                        {reason}
+                    {t(`paletteSearch.${section.kind}`)}
+                  </p>
+                ) : null}
+                {section.entries.map((command) => {
+                  const index = ordered.indexOf(command)
+                  const shortcut = shortcutFor(
+                    command.id,
+                    command.shortcut,
+                    overrides,
+                  )
+                  const enabled = command.enabled
+                  const reason =
+                    !enabled && command.disabledReason
+                      ? command.disabledReason
+                      : undefined
+                  // The four states are mutually exclusive so no cascade order
+                  // can put disabled (faint) text on the solid accent fill.
+                  const classes = [paletteStyles.paletteItem]
+                  if (enabled && index === activeIndex)
+                    classes.push(paletteStyles.paletteItemActive)
+                  else if (!enabled && index === activeIndex)
+                    classes.push(paletteStyles.paletteItemHighlight)
+                  else if (!enabled)
+                    classes.push(paletteStyles.paletteItemDisabled)
+                  return (
+                    <button
+                      key={command.id}
+                      type="button"
+                      id={`${listId}-${command.id}`}
+                      role="option"
+                      aria-selected={index === activeIndex}
+                      aria-disabled={!enabled}
+                      aria-description={reason}
+                      data-active={index === activeIndex}
+                      tabIndex={-1}
+                      className={classes.join(' ')}
+                      onPointerEnter={() => setActive(index)}
+                      onClick={() => run(command)}
+                    >
+                      <span className={paletteStyles.paletteLabel}>
+                        {command.label}
                       </span>
-                    ) : null}
-                    {command.detail ? (
-                      <span className={paletteStyles.paletteMenu}>
-                        {command.detail}
-                      </span>
-                    ) : null}
-                    <span className={paletteStyles.paletteMenu}>
-                      {t(`paletteSearch.${command.kind}`)}
-                    </span>
-                    {shortcut ? (
-                      <span className={paletteStyles.hint}>
-                        {formatShortcut(shortcut)}
-                      </span>
-                    ) : null}
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
+                      {reason ? (
+                        <span className={paletteStyles.paletteReason}>
+                          {reason}
+                        </span>
+                      ) : null}
+                      {command.detail ? (
+                        <span className={paletteStyles.paletteMenu}>
+                          {command.detail}
+                        </span>
+                      ) : null}
+                      {shortcut ? (
+                        <span className={paletteStyles.hint}>
+                          {formatShortcut(shortcut)}
+                        </span>
+                      ) : null}
+                    </button>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
         )}
         {notices.length > 0 && (
           <div role="status" className={paletteStyles.paletteNotices}>

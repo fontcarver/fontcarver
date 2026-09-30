@@ -8,6 +8,7 @@ import { GRID_GAP } from '../font/GlyphGrid'
 import { GridCells } from '../font/GridCells'
 import type { GlyphQuery } from '../font/glyphSelection'
 import { indexOf } from '../font/glyphOrder'
+import { useFontViewPrefs } from '../font/fontViewPrefs'
 import { uiFontFamily, useCellTheme } from '../font/useCellTheme'
 import { useFontMetrics } from '../font/useFontMetrics'
 import { useGridPager } from '../font/useGridPager'
@@ -49,6 +50,9 @@ export function EditGlyphList({ summary, gid, query }: EditGlyphListProps) {
   const theme = useCellTheme()
   const em = useFontMetrics(doc, query.master, summary.units_per_em)
   const fontFamily = useMemo(() => uiFontFamily(), [])
+  const referenceCharacters = useFontViewPrefs(
+    (state) => state.referenceCharacters,
+  )
   const dpr = globalThis.devicePixelRatio || 1
 
   const { metrics, scrollTo, onScroll } = useVirtualGrid({
@@ -112,6 +116,7 @@ export function EditGlyphList({ summary, gid, query }: EditGlyphListProps) {
         hasFocus={false}
         theme={theme}
         fontFamily={fontFamily}
+        referenceCharacters={referenceCharacters}
         band={null}
       />
     </div>

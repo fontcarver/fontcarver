@@ -125,6 +125,7 @@ export class MeasureTool implements EditorTool {
               name: null,
               locked: false,
               color: null,
+              anchor: 'Origin',
             },
           },
         },

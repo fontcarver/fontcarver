@@ -2,9 +2,11 @@
  * The tool strip (design spec §5).
  *
  * Every tool in the table is registered so the strip, the tooltips and the
- * keyboard map are complete and stable. Whether a tool actually does anything
- * is `createTool`'s answer, not a flag here: it builds a state machine for
- * every tool but Text, which stays inert until the Text tab arrives.
+ * keyboard map are complete and stable. Whether a tool needs a canvas state
+ * machine is `createTool`'s answer, not a flag here. Three tools deliberately
+ * have none: Select, Hand and Zoom are the controller's own gestures, Text
+ * switches the Edit tab into its shaped-text mode, and Pixel hands the glyph
+ * over to the strike editor, which owns pixel drawing.
  *
  * Tap/hold: a tap switches tool, holding the key for 200 ms borrows the tool
  * until the key is released, which the strip shows with a dotted outline.
@@ -13,6 +15,7 @@
 import {
   Circle,
   Eraser,
+  Grid2x2,
   Lasso,
   MessageSquare,
   Hand,
@@ -46,6 +49,7 @@ export type ToolId =
   | 'zoom'
   | 'hand'
   | 'text'
+  | 'pixel'
 
 /** One row of the tool strip. */
 export interface ToolDefinition {
@@ -204,8 +208,19 @@ export const TOOLS: readonly ToolDefinition[] = [
     key: 't',
     shift: false,
     labelKey: 'tool.text',
+    hintKey: 'tool.textHint',
     icon: Type,
     cursor: 'text',
+    group: 'view',
+  },
+  {
+    id: 'pixel',
+    key: 'x',
+    shift: false,
+    labelKey: 'tool.pixel',
+    hintKey: 'tool.pixelHint',
+    icon: Grid2x2,
+    cursor: 'crosshair',
     group: 'view',
   },
 ]

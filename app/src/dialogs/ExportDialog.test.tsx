@@ -16,6 +16,13 @@ import { initialUiState, useUiStore } from '../stores/uiStore'
 import { cellFor } from '../test/glyphFixtures'
 import { makeMaster } from '../test/fontFixtures'
 import { createMockTransport, makeSummary } from '../test/mockTransport'
+
+/** Export requests only: the dialog's panels make their own reads on mount. */
+function exportCalls(transport: {
+  calls: { method: string; params: unknown }[]
+}) {
+  return transport.calls.filter((call) => call.method === 'session.export')
+}
 import { ApiCallError } from '../transport'
 
 import { ExportDialog } from './ExportDialog'
@@ -39,6 +46,7 @@ function setup(
 ) {
   const transport = createMockTransport({
     'session.export': () => (typeof report === 'function' ? report() : report),
+    'export.profiles_get': () => ({ profiles: [], variable_configs: [] }),
     'glyphs.search': ({ query }) => [cellFor(7, { name: query })],
     'variation.state': () => ({
       generation: 0,
@@ -149,9 +157,9 @@ describe('ExportDialog', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Export' }))
 
-    await waitFor(() => expect(transport.calls).toHaveLength(1))
-    expect(transport.calls[0]?.method).toBe('session.export')
-    expect(transport.calls[0]?.params).toEqual({
+    await waitFor(() => expect(exportCalls(transport)).toHaveLength(1))
+    expect(exportCalls(transport)[0]?.method).toBe('session.export')
+    expect(exportCalls(transport)[0]?.params).toEqual({
       doc: 1,
       path: '/fonts/DejaVuSans.ttf',
       options: {
@@ -184,9 +192,9 @@ describe('ExportDialog', () => {
       )
       await user.click(screen.getByRole('checkbox', { name: 'Remove overlap' }))
       await user.click(screen.getByRole('button', { name: 'Export' }))
-      await waitFor(() => expect(transport.calls).toHaveLength(1))
+      await waitFor(() => expect(exportCalls(transport)).toHaveLength(1))
       expect(
-        (transport.calls[0]?.params as ExportParams).options,
+        (exportCalls(transport)[0]?.params as ExportParams).options,
       ).toMatchObject({
         format: tab === 'PFA' ? 'Pfa' : 'Pfb',
         autohint: true,
@@ -208,8 +216,8 @@ describe('ExportDialog', () => {
       ' A ',
     )
     await user.click(screen.getByRole('button', { name: 'Export' }))
-    await waitFor(() => expect(transport.calls).toHaveLength(1))
-    expect(transport.calls[0]?.params).toMatchObject({
+    await waitFor(() => expect(exportCalls(transport)).toHaveLength(1))
+    expect(exportCalls(transport)[0]?.params).toMatchObject({
       options: {
         format: 'Eps',
         glyph: 'A',
@@ -228,7 +236,7 @@ describe('ExportDialog', () => {
     const transport = setup()
     screen.getByText('Batch export').focus()
     await user.keyboard('{Enter}')
-    expect(transport.calls).toHaveLength(0)
+    expect(exportCalls(transport)).toHaveLength(0)
   })
 
   it('follows the format tab into the file extension and the options', async () => {
@@ -254,11 +262,13 @@ describe('ExportDialog', () => {
     ).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Export' }))
-    await waitFor(() => expect(transport.calls).toHaveLength(1))
-    expect((transport.calls[0]?.params as ExportParams).options.format).toBe(
-      'Ufo',
-    )
-    expect((transport.calls[0]?.params as ExportParams).options).toMatchObject({
+    await waitFor(() => expect(exportCalls(transport)).toHaveLength(1))
+    expect(
+      (exportCalls(transport)[0]?.params as ExportParams).options.format,
+    ).toBe('Ufo')
+    expect(
+      (exportCalls(transport)[0]?.params as ExportParams).options,
+    ).toMatchObject({
       autohint: false,
       remove_overlap: false,
     })
@@ -296,8 +306,10 @@ describe('ExportDialog', () => {
     ).not.toBeInTheDocument()
     expect(screen.getByText(/PostScript stems, masks and zones/)).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Export' }))
-    await waitFor(() => expect(transport.calls).toHaveLength(1))
-    expect((transport.calls[0]?.params as ExportParams).options).toMatchObject({
+    await waitFor(() => expect(exportCalls(transport)).toHaveLength(1))
+    expect(
+      (exportCalls(transport)[0]?.params as ExportParams).options,
+    ).toMatchObject({
       format: 'Otf',
       master: 'm1',
       keep_tt_instructions: false,
@@ -337,16 +349,20 @@ describe('ExportDialog', () => {
     expect(screen.queryByLabelText('Master')).not.toBeInTheDocument()
     expect(screen.getByText('All masters are included.')).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Export' }))
-    await waitFor(() => expect(transport.calls).toHaveLength(1))
-    expect((transport.calls[0]?.params as ExportParams).options).toMatchObject({
+    await waitFor(() => expect(exportCalls(transport)).toHaveLength(1))
+    expect(
+      (exportCalls(transport)[0]?.params as ExportParams).options,
+    ).toMatchObject({
       format: 'Glyphs',
       master: null,
     })
     await user.click(screen.getByRole('tab', { name: 'SFD' }))
     expect(screen.getByLabelText('Master')).toHaveValue('m2')
     await user.click(screen.getByRole('button', { name: 'Export' }))
-    await waitFor(() => expect(transport.calls).toHaveLength(2))
-    expect((transport.calls[1]?.params as ExportParams).options).toMatchObject({
+    await waitFor(() => expect(exportCalls(transport)).toHaveLength(2))
+    expect(
+      (exportCalls(transport)[1]?.params as ExportParams).options,
+    ).toMatchObject({
       format: 'Sfd',
       master: 'm2',
     })
@@ -367,7 +383,7 @@ describe('ExportDialog', () => {
       expect(
         screen.queryByRole('checkbox', { name: 'Preserve untouched tables' }),
       ).not.toBeInTheDocument()
-      expect(transport.calls).toHaveLength(0)
+      expect(exportCalls(transport)).toHaveLength(0)
     },
   )
 
@@ -497,6 +513,7 @@ describe('ExportDialog', () => {
       'session.export': () => {
         throw new ApiCallError('export', raw)
       },
+      'export.profiles_get': () => ({ profiles: [], variable_configs: [] }),
     })
     setTransport(transport)
     const summary = makeSummary()
@@ -520,6 +537,7 @@ describe('ExportDialog', () => {
       'session.export': () => {
         throw new Error('the kernel went away')
       },
+      'export.profiles_get': () => ({ profiles: [], variable_configs: [] }),
     })
     setTransport(transport)
     const summary = makeSummary()

@@ -16,13 +16,19 @@ pub(crate) fn prepare(font: &Font) -> Result<(Font, Option<VariableFeature>), Er
     let rules = rules
         .into_iter()
         .map(|rule| Rule {
-            conditions: vec![[Condition::new(
-                Tag::new(&rule.axis.0),
-                rule.min.map(DesignCoord::new),
-                rule.max.map(DesignCoord::new),
-            )]
-            .into_iter()
-            .collect()],
+            // One condition set per rule: a model condition set is a
+            // conjunction, which is exactly an OpenType `ConditionSet`.
+            conditions: vec![rule
+                .conditions
+                .iter()
+                .map(|condition| {
+                    Condition::new(
+                        Tag::new(&condition.axis.0),
+                        condition.min.map(DesignCoord::new),
+                        condition.max.map(DesignCoord::new),
+                    )
+                })
+                .collect()],
             substitutions: rule
                 .substitutions
                 .into_iter()

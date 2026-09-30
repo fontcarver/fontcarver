@@ -1,10 +1,11 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 
 import type { DocSummary } from '../../api'
 import { selectDocView, useDocumentStore } from '../../stores/documentStore'
 
 import './caches'
 import { FilterChips } from './FilterChips'
+import { applyFontViewPrefs } from './fontViewPrefs'
 import styles from './fontView.module.css'
 import { GlyphGrid } from './GlyphGrid'
 import { GlyphTable } from './GlyphTable'
@@ -19,6 +20,8 @@ export interface FontViewProps {
 export function FontView({ summary }: FontViewProps) {
   const doc = summary.doc
   const view = useDocumentStore(selectDocView(doc))
+  // A document's view state starts from the presentation the person last chose.
+  useEffect(() => applyFontViewPrefs(doc), [doc])
   const master = view.master ?? summary.masters[0]?.id ?? null
 
   const query = useMemo<GlyphQuery>(

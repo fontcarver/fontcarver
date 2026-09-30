@@ -68,3 +68,14 @@
   padding: var(--space-5);
   color: var(--color-text-faint);
 }
+
+.headerBar {
+  display: flex;
+  flex: none;
+  min-width: 0;
+}
+
+.headerBar > .headerViewport {
+  flex: 1;
+  min-width: 0;
+}

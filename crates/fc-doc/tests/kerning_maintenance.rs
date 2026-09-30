@@ -518,3 +518,217 @@ fn ownership_is_orientation_specific_and_noops_preserve_redo() {
         assert_eq!(doc.redo_label(), Some("Vertical"));
     });
 }
+
+#[test]
+fn obsolete_cleanup_removes_redundant_zeros_and_keeps_real_ones() {
+    let mut initial = font();
+    initial.masters[0].kerning_h.0 = [
+        // A real exception: it suppresses the class value for one pair.
+        ((group("public.kern1.A"), group("public.kern2.V")), -80.),
+        ((glyph("Aacute"), glyph("V")), 0.),
+        // Redundant: nothing broader applies, so the pair is already zero.
+        ((glyph("X"), glyph("X")), 0.),
+        // A redundant zero class root with no exceptions under it.
+        ((group("public.kern1.A"), glyph("X")), 0.),
+        // Kept: it carries a value.
+        ((glyph("X"), glyph("V")), -15.),
+    ]
+    .into();
+    with_font(initial, |doc| {
+        // Removing an obsolete zero leaves no rule at all, which is the same
+        // effective kerning; compare effective values, not rule presence.
+        let effective = |font: &Font| {
+            resolved(font, false)
+                .into_iter()
+                .map(|value| value.unwrap_or(0.0))
+                .collect::<Vec<_>>()
+        };
+        let values = effective(&doc.font);
+        let before = doc.font.clone();
+        doc.apply(command(doc, false, Op::CleanupObsolete), "Clean up")
+            .unwrap();
+        let keys: Vec<_> = table(&doc.font, false).0.keys().cloned().collect();
+        assert_eq!(
+            keys,
+            vec![
+                (glyph("Aacute"), glyph("V")),
+                (glyph("X"), glyph("V")),
+                (group("public.kern1.A"), group("public.kern2.V")),
+            ]
+        );
+        assert_eq!(effective(&doc.font), values);
+        doc.undo().unwrap();
+        assert_eq!(doc.font, before);
+    });
+}
+
+#[test]
+fn obsolete_cleanup_also_removes_invalid_records() {
+    let mut initial = font();
+    initial.masters[0].kerning_h.0 = [
+        ((glyph("A"), glyph("missing")), -30.),
+        ((glyph("X"), glyph("V")), f64::NAN),
+        ((glyph("X"), glyph("X")), -5.),
+    ]
+    .into();
+    with_font(initial, |doc| {
+        doc.apply(command(doc, false, Op::CleanupObsolete), "Clean up")
+            .unwrap();
+        let keys: Vec<_> = table(&doc.font, false).0.keys().cloned().collect();
+        assert_eq!(keys, vec![(glyph("X"), glyph("X"))]);
+    });
+}
+
+#[test]
+fn compression_folds_agreeing_pairs_into_one_class_pair() {
+    let mut initial = font();
+    // Every member combination of the two groups carries the same value, with
+    // no class record: A/V, A/W, Aacute/V and Aacute/W.
+    initial.masters[0].kerning_h.0 = [
+        ((glyph("A"), glyph("V")), -70.),
+        ((glyph("A"), glyph("W")), -70.),
+        ((glyph("Aacute"), glyph("V")), -70.),
+        ((glyph("Aacute"), glyph("W")), -70.),
+        ((glyph("X"), glyph("X")), -12.),
+    ]
+    .into();
+    with_font(initial, |doc| {
+        let values = resolved(&doc.font, false);
+        let before = doc.font.clone();
+        doc.apply(command(doc, false, Op::Compress), "Compress")
+            .unwrap();
+        let folded = table(&doc.font, false);
+        assert_eq!(
+            folded
+                .0
+                .get(&(group("public.kern1.A"), group("public.kern2.V"))),
+            Some(&-70.)
+        );
+        // The four folded records are gone; the unrelated glyph pair stays.
+        assert_eq!(folded.0.len(), 2);
+        assert_eq!(folded.0.get(&(glyph("X"), glyph("X"))), Some(&-12.));
+        assert_eq!(resolved(&doc.font, false), values);
+        doc.undo().unwrap();
+        assert_eq!(doc.font, before);
+    });
+}
+
+#[test]
+fn compression_keeps_disagreeing_pairs_as_exceptions() {
+    let mut initial = font();
+    initial.masters[0].kerning_h.0 = [
+        ((glyph("A"), glyph("V")), -70.),
+        ((glyph("A"), glyph("W")), -70.),
+        ((glyph("Aacute"), glyph("V")), -70.),
+        // Aacute/W disagrees, so no class record may be invented.
+        ((glyph("Aacute"), glyph("W")), -20.),
+    ]
+    .into();
+    with_font(initial, |doc| {
+        let values = resolved(&doc.font, false);
+        doc.apply(command(doc, false, Op::Compress), "Compress")
+            .unwrap();
+        let kept = table(&doc.font, false);
+        assert!(!kept
+            .0
+            .contains_key(&(group("public.kern1.A"), group("public.kern2.V"))));
+        assert_eq!(kept.0.len(), 4);
+        assert_eq!(resolved(&doc.font, false), values);
+    });
+}
+
+#[test]
+fn compression_never_invents_a_zero_class_record() {
+    let mut initial = font();
+    let zeros = [
+        ((glyph("A"), glyph("V")), 0.),
+        ((glyph("A"), glyph("W")), 0.),
+        ((glyph("Aacute"), glyph("V")), 0.),
+        ((glyph("Aacute"), glyph("W")), 0.),
+    ];
+    initial.masters[0].kerning_h.0 = zeros.clone().into();
+    with_font(initial, |doc| {
+        doc.apply(command(doc, false, Op::Compress), "Compress")
+            .unwrap();
+        // A zero class record would express nothing, so none is inserted, and
+        // Compress keeps explicit zeros. Clean Up is what removes obsolete ones.
+        assert_eq!(table(&doc.font, false).0, Kerning(zeros.into()).0);
+        doc.apply(command(doc, false, Op::CleanupObsolete), "Clean up")
+            .unwrap();
+        assert!(table(&doc.font, false).0.is_empty());
+    });
+}
+
+#[test]
+fn pasting_can_keep_existing_destination_records() {
+    let mut initial = font();
+    initial.masters[0].kerning_h.0 = [
+        ((glyph("A"), glyph("V")), -10.),
+        ((glyph("X"), glyph("X")), -1.),
+    ]
+    .into();
+    with_font(initial, |doc| {
+        let incoming = vec![
+            record(glyph("A"), glyph("V"), -99.),
+            record(glyph("A"), glyph("W"), -44.),
+        ];
+        let before = doc.font.clone();
+        doc.apply(
+            command(
+                doc,
+                false,
+                Op::PasteKeepingExisting {
+                    records: incoming.clone(),
+                },
+            ),
+            "Keep existing",
+        )
+        .unwrap();
+        let merged = table(&doc.font, false);
+        assert_eq!(merged.0.get(&(glyph("A"), glyph("V"))), Some(&-10.));
+        assert_eq!(merged.0.get(&(glyph("A"), glyph("W"))), Some(&-44.));
+        assert_eq!(merged.0.get(&(glyph("X"), glyph("X"))), Some(&-1.));
+        doc.undo().unwrap();
+        assert_eq!(doc.font, before);
+        // The overwrite half of the same choice takes the incoming value.
+        doc.apply(
+            command(
+                doc,
+                false,
+                Op::Paste {
+                    records: incoming,
+                    replace: false,
+                },
+            ),
+            "Overwrite",
+        )
+        .unwrap();
+        assert_eq!(
+            table(&doc.font, false).0.get(&(glyph("A"), glyph("V"))),
+            Some(&-99.)
+        );
+    });
+}
+
+#[test]
+fn keep_existing_paste_validates_sides_and_rejects_duplicates() {
+    with_font(font(), |doc| {
+        let before = doc.font.clone();
+        for records in [
+            vec![record(glyph("A"), glyph("absent"), -5.)],
+            vec![
+                record(glyph("A"), glyph("V"), -5.),
+                record(glyph("A"), glyph("V"), -6.),
+            ],
+            vec![record(glyph("A"), glyph("V"), f64::INFINITY)],
+        ] {
+            assert!(doc
+                .apply(
+                    command(doc, false, Op::PasteKeepingExisting { records }),
+                    "Invalid",
+                )
+                .is_err());
+            assert_eq!(doc.font, before);
+        }
+    });
+}

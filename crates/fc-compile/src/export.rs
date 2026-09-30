@@ -73,6 +73,10 @@ pub struct ExportOptions {
     pub variable: bool,
     /// Optional source-master subset for variable compilation; includes the default.
     pub master_subset: Option<Vec<MasterId>>,
+    /// Optional axis subset for variable compilation; the other axes are dropped.
+    pub axis_subset: Option<Vec<Tag>>,
+    /// Optional named-instance subset written to `fvar`; others are omitted.
+    pub instance_subset: Option<Vec<String>>,
     /// Output container format.
     pub format: ExportFormat,
     /// Master to compile; the first master is used when absent.
@@ -105,6 +109,8 @@ impl Default for ExportOptions {
             instance: None,
             variable: false,
             master_subset: None,
+            axis_subset: None,
+            instance_subset: None,
             format: ExportFormat::Ttf,
             master: None,
             remove_overlap: false,
@@ -269,7 +275,11 @@ fn export_inner(
         return export_inner(&resolved, &|_| 1, &options, progress, outline_changed);
     }
     if let Some(index) = options.instance {
-        if options.variable || options.master_subset.is_some() {
+        if options.variable
+            || options.master_subset.is_some()
+            || options.axis_subset.is_some()
+            || options.instance_subset.is_some()
+        {
             return Err(Error::InvalidSource(
                 "choose either a static instance or variable export".into(),
             ));
@@ -285,23 +295,38 @@ fn export_inner(
         options.keep_tt_instructions = false;
         return export_inner(&resolved, &|_| 1, &options, progress, outline_changed);
     }
-    if !options.variable && options.master_subset.is_some() {
+    if !options.variable
+        && (options.master_subset.is_some()
+            || options.axis_subset.is_some()
+            || options.instance_subset.is_some())
+    {
         return Err(Error::InvalidSource(
-            "source-master subsets require variable export".into(),
+            "design-space subsets require variable export".into(),
         ));
     }
     if options.variable {
-        if let Some(subset) = &options.master_subset {
-            let selected = crate::variable::master_subset(font, subset)?;
-            let mut options = options.clone();
-            options.master_subset = None;
-            return export_inner(
+        // One subset stage per recursion, so each stage validates the design
+        // space the previous stage produced.
+        let mut options = options.clone();
+        let staged = if let Some(subset) = options.axis_subset.take() {
+            Some(crate::variable::axis_subset(font, &subset)?)
+        } else if let Some(subset) = options.master_subset.take() {
+            Some(crate::variable::master_subset(font, &subset)?)
+        } else if let Some(subset) = options.instance_subset.take() {
+            Some(crate::variable::instance_subset(font, &subset)?)
+        } else {
+            None
+        };
+        if let Some((selected, subset_warnings)) = staged {
+            let mut report = export_inner(
                 &selected,
                 glyph_generations,
                 &options,
                 progress,
                 outline_changed,
-            );
+            )?;
+            report.warnings.extend(subset_warnings);
+            return Ok(report);
         }
         crate::variable::validate_export(font)?;
     }

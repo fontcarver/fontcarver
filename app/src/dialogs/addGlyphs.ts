@@ -1,4 +1,9 @@
-import { call, type AddGlyphsResult, type DocId } from '../api'
+import {
+  call,
+  type AddGlyphsResult,
+  type DocId,
+  type GeneratedGlyph,
+} from '../api'
 
 import { STARTER_RECIPES } from './newFont'
 
@@ -79,14 +84,74 @@ export function groupSkips(skipped: readonly string[]): SkipGroup[] {
 export function previewRecipe(
   doc: DocId,
   recipe: string,
-): Promise<AddGlyphsResult> {
-  return call('glyphs.add', { doc, recipe, master: null, dry_run: true })
+  compose = false,
+): Promise<RecipeOutcome> {
+  return run(doc, recipe, compose, true)
+}
+
+/**
+ * Counts what a recipe would create, without the cells.
+ *
+ * The character-set rows show one number each, and a legacy CJK repertoire
+ * resolves tens of thousands of glyphs: building and sending a cell for every
+ * one of them costs far more than the number on screen.
+ */
+export async function countRecipe(
+  doc: DocId,
+  recipe: string,
+): Promise<{ added: number; skipped: readonly string[] }> {
+  const result = await call('glyphdata.generate_glyphs', {
+    doc,
+    recipe,
+    master: null,
+    dry_run: true,
+    count_only: true,
+  })
+  return { added: result.added_count ?? 0, skipped: result.skipped }
 }
 
 /** Creates the glyphs a recipe asks for. */
 export function applyRecipe(
   doc: DocId,
   recipe: string,
-): Promise<AddGlyphsResult> {
-  return call('glyphs.add', { doc, recipe, master: null, dry_run: false })
+  compose = false,
+): Promise<RecipeOutcome> {
+  return run(doc, recipe, compose, false)
+}
+
+/**
+ * What a recipe did, whether or not compositions were built.
+ *
+ * `glyphs.add` creates blank glyphs; `glyphdata.generate_glyphs` creates the
+ * same set but builds a composite wherever the glyph database defines one, and
+ * reports per glyph which components it used and which it could not find. The
+ * dialog shows the same preview either way, so the two share one shape.
+ */
+export interface RecipeOutcome extends AddGlyphsResult {
+  /** One entry per created glyph when compositions were built. */
+  readonly composed: readonly GeneratedGlyph[]
+}
+
+async function run(
+  doc: DocId,
+  recipe: string,
+  compose: boolean,
+  dryRun: boolean,
+): Promise<RecipeOutcome> {
+  if (compose) {
+    return call('glyphdata.generate_glyphs', {
+      doc,
+      recipe,
+      master: null,
+      dry_run: dryRun,
+      count_only: false,
+    })
+  }
+  const result = await call('glyphs.add', {
+    doc,
+    recipe,
+    master: null,
+    dry_run: dryRun,
+  })
+  return { ...result, composed: [] }
 }

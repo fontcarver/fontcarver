@@ -21,10 +21,24 @@ export const KERNING_SCOPES: readonly KerningScope[] = [
   'group_group',
 ]
 
-/** New pairs use every available class; explicit choices remain independent. */
+/**
+ * The scope a pair opens at.
+ *
+ * A pair that already has a stored rule opens at **that rule's** scope: it is
+ * the rule the run is actually using, so it is the one an edit should change,
+ * and opening a pair with a glyph exception at the class scope would silently
+ * write a value the exception keeps overriding. A pair with no rule yet opens
+ * at the broadest scope its memberships allow, which is the class-to-class
+ * default. An explicit choice in the panel always wins over both.
+ */
 export function defaultKerningScope(
   resolution: KerningResolution,
 ): KerningScope {
+  const rule = resolution.rule
+  if (rule)
+    return `${'group' in rule.left ? 'group' : 'glyph'}_${
+      'group' in rule.right ? 'group' : 'glyph'
+    }` as KerningScope
   return `${resolution.left_group ? 'group' : 'glyph'}_${resolution.right_group ? 'group' : 'glyph'}`
 }
 

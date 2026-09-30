@@ -15,20 +15,46 @@ const plist = (body: string) =>
 /** Temporary source data derives only from this project's licensed Minimal UFO. */
 export function featureFixture(twoMasters = true) {
   const directory = mkdtempSync(join(tmpdir(), 'fc-p2b-browser-'))
-  const names = [
-    '.notdef',
-    'A',
-    'V',
-    'a',
-    'v',
-    'f',
-    'i',
-    'f_i',
-    'A.sc',
-    'A.ss01',
-    'A.case',
-    'A.vert',
+  // `[name, code point]`; a glyph without a code point is reachable only
+  // through layout. The P5 recipe rows need figures, ordinals, fraction parts,
+  // a mark and a dotless form on top of the original P2b inventory.
+  const glyphs: [string, string?][] = [
+    ['.notdef'],
+    ['A', '0041'],
+    ['V', '0056'],
+    ['a', '0061'],
+    ['v', '0076'],
+    ['f', '0066'],
+    ['i', '0069'],
+    ['f_i'],
+    ['A.sc'],
+    ['A.ss01'],
+    ['A.case'],
+    ['A.vert'],
+    ['a.sc'],
+    ['o', '006f'],
+    ['one', '0031'],
+    ['two', '0032'],
+    ['one.lf'],
+    ['one.osf'],
+    ['one.tf'],
+    ['one.pnum'],
+    ['one.sups'],
+    ['one.sinf'],
+    ['one.numr'],
+    ['one.dnom'],
+    ['two.numr'],
+    ['two.dnom'],
+    ['fraction', '2044'],
+    ['slash', '002f'],
+    ['period', '002e'],
+    ['period.ordn'],
+    ['ordfeminine', '00aa'],
+    ['ordmasculine', '00ba'],
+    ['idotless', '0131'],
+    ['acutecomb', '0301'],
   ]
+  const names = glyphs.map(([name]) => name)
   const makeMaster = (style: string) => {
     const path = join(directory, `${style}.ufo`)
     cpSync(resolve(REPO_ROOT, 'fixtures/ufo/Minimal.ufo'), path, {
@@ -42,11 +68,8 @@ export function featureFixture(twoMasters = true) {
       .replace('<string>Regular</string>', `<string>${style}</string>`)
     writeFileSync(join(path, 'fontinfo.plist'), info)
     const outline = readFileSync(join(path, 'glyphs/A_.glif'), 'utf8')
-    for (const [index, name] of names.entries()) {
-      const unicode =
-        name.length === 1
-          ? `<unicode hex="${name.charCodeAt(0).toString(16).padStart(4, '0')}"/>`
-          : ''
+    for (const [index, [name, codepoint]] of glyphs.entries()) {
+      const unicode = codepoint ? `<unicode hex="${codepoint}"/>` : ''
       writeFileSync(
         join(path, 'glyphs', `p2b-${index}.glif`),
         outline

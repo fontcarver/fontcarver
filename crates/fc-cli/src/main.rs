@@ -23,6 +23,8 @@ enum Command {
     Convert(cmd::convert::Args),
     /// Compile a document into a binary font.
     Build(cmd::build::Args),
+    /// List the export profiles and variable-font configurations a project stores.
+    Profiles(cmd::profiles::Args),
     /// Shape text with the document's own compiled font.
     Shape(cmd::shape::Args),
     /// List and filter glyphs in a font.
@@ -38,6 +40,7 @@ impl Command {
             Self::Check(args) => cmd::check::run(args),
             Self::Convert(args) => cmd::convert::run(args),
             Self::Build(args) => cmd::build::run(args),
+            Self::Profiles(args) => cmd::profiles::run(args),
             Self::Shape(args) => cmd::shape::run(args),
             Self::Glyphs(args) => cmd::glyphs::run(args),
             Self::Collection(args) => cmd::collection::run(args),

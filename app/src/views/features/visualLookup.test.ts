@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 import {
   defaultVisualLookup,
@@ -203,5 +206,30 @@ describe('visual lookup FEA', () => {
       expect(isValidFeatureTag(tag)).toBe(true)
     for (const tag of ['', 'abc', 'abcde', '汉字标签', 'a\ncd', 'a};{', 'a bc'])
       expect(isValidFeatureTag(tag)).toBe(false)
+  })
+
+  // One shared fixture also feeds `crates/fc-layout/tests/fea_ir.rs`, so the
+  // editor's output and the kernel's typed lookup IR cannot drift apart.
+  const corpus = JSON.parse(
+    readFileSync(
+      resolve(process.cwd(), '../fixtures/visual-lookup-corpus.json'),
+      'utf8',
+    ),
+  ) as {
+    visual: { kind: string; rule: VisualLookup; fea: string; tag: string }[]
+  }
+
+  it('matches the shared lookup corpus the kernel IR is checked against', () => {
+    expect(corpus.visual.length).toBeGreaterThanOrEqual(10)
+    const covered = new Set(corpus.visual.map((entry) => entry.rule.kind))
+    expect([...VISUAL_LOOKUP_KINDS].every((kind) => covered.has(kind))).toBe(
+      true,
+    )
+    for (const entry of corpus.visual) {
+      expect(validateVisualLookup(entry.rule), entry.kind).toEqual([])
+      expect(serializeVisualLookup(entry.rule), entry.kind).toBe(entry.fea)
+      expect(parseVisualLookup(entry.fea), entry.kind).toEqual(entry.rule)
+      expect(isValidFeatureTag(entry.tag), entry.tag).toBe(true)
+    }
   })
 })
