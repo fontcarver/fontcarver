@@ -22,6 +22,14 @@ new weighted assessment; it does not include credit for this batch. See
 [estimate](progress-estimate.md) and [evidence reconciliation](p5-resume-audit.md).
 [TODO](TODO.md) records the remaining scope for a future explicit resume.
 
+**2026-09-30, later:** the P5 completion drive started
+([plan](superpowers/plans/2026-09-30-p5-completion.md)). The resumed batch is
+committed (`6539b13`, `040609f`). Wave 1 (shell, inventory, editor, metrics,
+features, export, automation, release) is implemented in the working tree but
+**not yet integrated or committed**; the user asked to finish it, update the
+records and stop. The exact state and the integration to-do list are in
+[the wave 1 checkpoint](p5f-wave1-checkpoint.md). Wave 2 is planned, not started.
+
 ## Phases
 
 | Phase | Scope                                                    | Status      | Done       | Record                                                                                                                           |
