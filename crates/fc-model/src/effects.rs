@@ -47,6 +47,21 @@ pub enum LayerEffectKind {
         /// Maximum miter length as a multiple of stroke width.
         miter_limit: f64,
     },
+    /// Expand centerlines using pen dimensions sampled along each contour.
+    VariableStroke {
+        /// Pen shape before rotation.
+        nib: EffectNib,
+        /// Endpoint treatment for open contours.
+        cap: EffectCap,
+        /// Corner treatment.
+        join: EffectJoin,
+        /// Maximum miter length as a multiple of the larger pen radius.
+        miter_limit: f64,
+        /// Interpolation between adjacent normalized positions.
+        progression: EffectProgression,
+        /// Ordered pen samples spanning normalized contour length zero to one.
+        points: Vec<PenPoint>,
+    },
     /// Remove interior edges using the nonzero winding rule.
     RemoveOverlap,
     /// Combine the current fill with a stored copy of a closed mask outline.
@@ -56,6 +71,51 @@ pub enum LayerEffectKind {
         /// SVG path data in layer coordinates, independent of later source edits.
         path: String,
     },
+}
+
+/// Interpolation used between neighboring variable pen points.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
+pub enum EffectProgression {
+    /// Constant rate of change between points.
+    Linear,
+    /// Cubic smoothstep, with zero parameter slope at each pen point.
+    Smooth,
+}
+
+/// One pen sample at a normalized centerline arc-length position.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
+pub struct PenPoint {
+    /// Normalized distance along each source contour, in `[0,1]`.
+    pub position: f64,
+    /// Full pen width in font units.
+    pub width: f64,
+    /// Full pen height in font units.
+    pub height: f64,
+    /// Counterclockwise rotation in degrees.
+    pub angle: f64,
+}
+
+impl PenPoint {
+    /// Interpolate dimensions and the shortest angular interval at a position.
+    pub fn interpolate(a: &Self, b: &Self, position: f64, progression: EffectProgression) -> Self {
+        let t = ((position - a.position) / (b.position - a.position)).clamp(0., 1.);
+        let t = match progression {
+            EffectProgression::Linear => t,
+            EffectProgression::Smooth => t * t * (3. - 2. * t),
+        };
+        let angle = (b.angle - a.angle + 180.).rem_euclid(360.) - 180.;
+        Self {
+            position,
+            width: a.width + (b.width - a.width) * t,
+            height: a.height + (b.height - a.height) * t,
+            angle: a.angle + angle * t,
+        }
+    }
 }
 
 /// Shape of a layer-effect pen.
@@ -124,11 +184,16 @@ impl Layer {
 
     /// Whether local source geometry needs live construction or effect evaluation.
     pub fn has_live_geometry(&self) -> bool {
-        self.has_smart_corners() || self.effects.iter().any(|effect| effect.enabled)
+        self.has_smart_corners()
+            || !self.constructions.is_empty()
+            || !self.node_links.is_empty()
+            || !self.linked_guides.is_empty()
+            || self.effects.iter().any(|effect| effect.enabled)
     }
 
     /// Validate every stored operation, including disabled entries.
     pub fn validate_effects(&self) -> Result<(), Error> {
+        self.validate_constructions()?;
         let mut corners = 0;
         for contour in &self.contours {
             for (index, point) in contour.points.iter().enumerate() {
@@ -175,6 +240,32 @@ impl Layer {
                         || width.max(*height) / width.min(*height) > 100.
                     {
                         return Err(invalid("invalid pen dimensions, angle or miter limit (maximum aspect ratio 100)"));
+                    }
+                }
+                LayerEffectKind::VariableStroke {
+                    points,
+                    miter_limit,
+                    ..
+                } => {
+                    if !(2..=64).contains(&points.len())
+                        || points.first().is_none_or(|p| p.position != 0.)
+                        || points.last().is_none_or(|p| p.position != 1.)
+                        || points.windows(2).any(|p| p[0].position >= p[1].position)
+                        || !miter_limit.is_finite()
+                        || !(1.0..=100.).contains(miter_limit)
+                        || points.iter().any(|p| {
+                            !p.position.is_finite()
+                                || !(0.0..=1.).contains(&p.position)
+                                || !p.width.is_finite()
+                                || !(0.1..=8192.).contains(&p.width)
+                                || !p.height.is_finite()
+                                || !(0.1..=8192.).contains(&p.height)
+                                || p.width.max(p.height) / p.width.min(p.height) > 100.
+                                || !p.angle.is_finite()
+                                || p.angle.abs() > 360.
+                        })
+                    {
+                        return Err(invalid("variable pen requires 2–64 ordered points from 0 to 1, valid dimensions/angles and miter limit"));
                     }
                 }
                 LayerEffectKind::Boolean { path, .. } => {

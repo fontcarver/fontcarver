@@ -108,3 +108,32 @@
   color: var(--color-text-faint);
   font-size: var(--text-size-xs);
 }
+
+.paletteScope {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+}
+
+.paletteScope select {
+  max-width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.paletteNotices {
+  padding: var(--space-2) var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+}
+
+.paletteNotices p {
+  margin: 0;
+}

@@ -23,13 +23,21 @@ import {
   ALL_MASTER_FORMATS,
   DIRECTORY_FORMATS,
   SFNT_FORMATS,
-  TYPE1_FORMATS,
   chooseExportPath,
   formatsFor,
   suggestPath,
 } from './exportFormats'
 import { ExportResult } from './ExportResult'
+import { ExportFormatTabs } from './ExportFormatTabs'
 import { ExportVariationOptions } from './ExportVariationOptions'
+import { ExportProfiles } from './ExportProfiles'
+import { ExportPreflight } from './ExportPreflight'
+import { ExportMatrixPanel } from './ExportMatrixPanel'
+import {
+  DEFAULT_EXPORT_PROCESSING,
+  exportOptionsFor,
+  processingFromProfile,
+} from './exportOptionState'
 
 import {
   ExportProcessingOptions,
@@ -50,24 +58,20 @@ export function ExportDialog({ summary }: ExportDialogProps) {
   const setDialog = useUiStore((state) => state.setDialog)
   const formats = formatsFor(summary.masters.length)
   const [format, setFormat] = useState<ExportFormat>('Ttf')
-  const type1 = TYPE1_FORMATS.includes(format)
-  const canPreprocess = SFNT_FORMATS.includes(format) || type1
   const [variable, setVariable] = useState(false)
   const [instance, setInstance] = useState<number>()
   const [masterSubset, setMasterSubset] = useState<string[]>()
-  const canVary =
-    ['Ttf', 'Otf', 'Woff', 'Woff2'].includes(format) && summary.axes.length > 0
+  const canVary = SFNT_FORMATS.includes(format) && summary.axes.length > 0
+  const canVariable = canVary && !['Cff', 'Type42'].includes(format)
+  const effectiveVariable = canVariable && variable
   const [path, setPath] = useState(() => suggestPath(summary, 'Ttf'))
   const [master, setMaster] = useState<string | null>(
     summary.masters[0]?.id ?? null,
   )
   const [options, setOptions] = useState<Record<ExportOptionField, boolean>>({
-    remove_overlap: false,
-    autohint: false,
-    keep_tt_instructions: true,
-    preserve_untouched_tables: true,
-    production_names: false,
+    ...DEFAULT_EXPORT_PROCESSING,
   })
+  const [glyph, setGlyph] = useState('')
   const [busy, setBusy] = useState(false)
   const [report, setReport] = useState<ExportReport | null>(null)
   const [failure, setFailure] = useState<ErrorNotice | null>(null)
@@ -127,33 +131,45 @@ export function ExportDialog({ summary }: ExportDialogProps) {
       .catch((error: unknown) => setFailure(noticeFor(error)))
   }
 
+  const exportOptions = exportOptionsFor({
+    format,
+    canVary,
+    variable: effectiveVariable,
+    instance,
+    masterSubset,
+    bitmapKey,
+    master,
+    glyph,
+    options,
+  })
+  const applyProfile = (profile: ExportOptions) => {
+    chooseFormat(profile.format)
+    setVariable(profile.variable)
+    setInstance(profile.instance)
+    setMasterSubset(
+      profile.master_subset?.filter((id) =>
+        summary.masters.some((entry) => entry.id === id),
+      ),
+    )
+    setMaster(
+      summary.masters.some((entry) => entry.id === profile.master)
+        ? profile.master
+        : (summary.masters[0]?.id ?? null),
+    )
+    setOptions(processingFromProfile(profile))
+    setBitmapKey(profile.bitmap_strike?.join(':') ?? '')
+    setGlyph(profile.glyph ?? '')
+  }
+  const cannotRun =
+    busy ||
+    path.trim().length === 0 ||
+    (format === 'Eps' && glyph.trim().length === 0)
+
   const run = () => {
-    if (busy || path.trim().length === 0) return
+    if (cannotRun) return
     setBusy(true)
     setFailure(null)
     setReport(null)
-    const exportOptions: ExportOptions = {
-      instance: canVary && !variable ? instance : undefined,
-      master_subset: canVary && variable ? masterSubset : undefined,
-      variable: canVary && variable,
-      format,
-      bitmap_strike:
-        bitmapFormat && bitmapKey
-          ? (bitmapKey.split(':').map(Number) as [number, number])
-          : undefined,
-      master: allMasters ? null : master,
-      remove_overlap:
-        canPreprocess && !(canVary && variable) && options.remove_overlap,
-      keep_tt_instructions:
-        !type1 &&
-        !(canVary && (variable || instance !== undefined)) &&
-        format !== 'Otf' &&
-        options.keep_tt_instructions,
-      preserve_untouched_tables: !type1 && options.preserve_untouched_tables,
-      production_names: !type1 && options.production_names,
-      autohint: canPreprocess && !(canVary && variable) && options.autohint,
-      table_subset: null,
-    }
     // Show the busy line at once: the first kernel progress event only arrives
     // once compilation has started, which on a large font is not immediate.
     useProgressStore.getState().begin(summary.doc)
@@ -182,11 +198,7 @@ export function ExportDialog({ summary }: ExportDialogProps) {
       footer={
         <>
           <Button onClick={close}>{t('common.close')}</Button>
-          <Button
-            variant="primary"
-            disabled={busy || path.trim().length === 0}
-            onClick={run}
-          >
+          <Button variant="primary" disabled={cannotRun} onClick={run}>
             {busy
               ? t('dialog.export.running')
               : report
@@ -220,55 +232,17 @@ export function ExportDialog({ summary }: ExportDialogProps) {
         </div>
       )}
       <div className={styles.form}>
-        <div
-          role="tablist"
-          aria-label={t('dialog.export.format')}
-          className={styles.tabs}
-        >
-          {formats.map((candidate) => (
-            <button
-              key={candidate}
-              type="button"
-              role="tab"
-              disabled={busy}
-              aria-selected={candidate === format}
-              tabIndex={candidate === format ? 0 : -1}
-              className={
-                candidate === format
-                  ? `${styles.tab} ${styles.tabActive}`
-                  : styles.tab
-              }
-              onClick={() => chooseFormat(candidate)}
-              onKeyDown={(event) => {
-                const delta =
-                  event.key === 'ArrowRight'
-                    ? 1
-                    : event.key === 'ArrowLeft'
-                      ? -1
-                      : 0
-                if (!delta && event.key !== 'Home' && event.key !== 'End')
-                  return
-                event.preventDefault()
-                const index =
-                  event.key === 'Home'
-                    ? 0
-                    : event.key === 'End'
-                      ? formats.length - 1
-                      : (formats.indexOf(candidate) + delta + formats.length) %
-                        formats.length
-                const next = formats[index]
-                if (next) chooseFormat(next)
-                const tabs =
-                  event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
-                    '[role="tab"]',
-                  )
-                tabs?.[index]?.focus()
-              }}
-            >
-              {t(`dialog.export.formatName.${candidate}`)}
-            </button>
-          ))}
-        </div>
+        <ExportProfiles
+          options={exportOptions}
+          busy={busy}
+          onApply={applyProfile}
+        />
+        <ExportFormatTabs
+          formats={formats}
+          format={format}
+          busy={busy}
+          onChange={chooseFormat}
+        />
 
         {format === 'Otf' ? (
           <p className={styles.hint}>
@@ -312,11 +286,29 @@ export function ExportDialog({ summary }: ExportDialogProps) {
           </div>
         </div>
 
+        {format === 'Eps' ? (
+          <label className={styles.row}>
+            <span className={styles.rowLabel}>
+              {t('dialog.export.epsGlyph')}
+            </span>
+            <input
+              className={styles.text}
+              disabled={busy}
+              value={glyph}
+              onChange={(event) => setGlyph(event.target.value)}
+            />
+          </label>
+        ) : null}
+        {format === 'Ttc' ? (
+          <p className={styles.hint}>{t('dialog.export.collectionHint')}</p>
+        ) : null}
+
         {canVary && (
           <ExportVariationOptions
             doc={summary.doc}
             busy={busy}
-            variable={variable}
+            canVariable={canVariable}
+            variable={effectiveVariable}
             onVariable={setVariable}
             instance={instance}
             onInstance={setInstance}
@@ -325,7 +317,7 @@ export function ExportDialog({ summary }: ExportDialogProps) {
           />
         )}
         {!allMasters &&
-        !(canVary && (variable || instance !== undefined)) &&
+        !(canVary && (effectiveVariable || instance !== undefined)) &&
         summary.masters.length > 0 ? (
           <label className={styles.row}>
             <span className={styles.rowLabel}>{t('dialog.export.master')}</span>
@@ -347,13 +339,21 @@ export function ExportDialog({ summary }: ExportDialogProps) {
         <ExportProcessingOptions
           format={format}
           canVary={canVary}
-          variable={variable}
+          variable={effectiveVariable}
           instance={instance}
           busy={busy}
           options={options}
           onChange={(field, value) =>
             setOptions((current) => ({ ...current, [field]: value }))
           }
+        />
+
+        <ExportPreflight doc={summary.doc} busy={busy} onNavigate={close} />
+        <ExportMatrixPanel
+          summary={summary}
+          destination={path}
+          busy={busy}
+          onBusyChange={setBusy}
         />
 
         {failure ? (

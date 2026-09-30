@@ -1,4 +1,8 @@
 import { useTranslation } from 'react-i18next'
+import { IconButton } from '../components/IconButton'
+import { reportError } from '../stores/uiStore'
+import { readWindowTarget } from '../transport/windows'
+import { detachPanel } from './windowActions'
 
 import type { GlyphSort } from '../api'
 import { Field } from '../components/Field'
@@ -47,7 +51,17 @@ export function Inspector() {
   if (!summary || !tab) {
     return (
       <>
-        <div className={styles.panelTitle}>{t('inspector.title')}</div>
+        <div className={styles.panelTitle}>
+          <span>{t('inspector.title')}</span>
+          {readWindowTarget()?.kind !== 'panel' ? (
+            <IconButton
+              label={t('shellWindow.detachInspector')}
+              onClick={() => void detachPanel('inspector').catch(reportError)}
+            >
+              ↗
+            </IconButton>
+          ) : null}
+        </div>
         <p className={styles.hintBlock}>{t('inspector.empty')}</p>
       </>
     )
@@ -58,7 +72,17 @@ export function Inspector() {
 
   return (
     <>
-      <div className={styles.panelTitle}>{t('inspector.title')}</div>
+      <div className={styles.panelTitle}>
+        <span>{t('inspector.title')}</span>
+        {readWindowTarget()?.kind !== 'panel' ? (
+          <IconButton
+            label={t('shellWindow.detachInspector')}
+            onClick={() => void detachPanel('inspector').catch(reportError)}
+          >
+            ↗
+          </IconButton>
+        ) : null}
+      </div>
       <div
         className={styles.panelStack}
         role="region"

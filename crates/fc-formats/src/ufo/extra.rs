@@ -1,9 +1,9 @@
 //! Preservation of FontCarver data that UFO cannot represent.
 
-use std::{collections::HashSet, path::Path, str::FromStr};
+use std::{collections::HashMap, path::Path, str::FromStr};
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use fc_model::{FeaturesSource, Font, Master, Tag, TtIndex};
+use fc_model::{FeaturesSource, Font, GlyphName, LayerId, Master, Tag, TtIndex};
 use plist::Value;
 
 use super::value::json_to_plist;
@@ -31,7 +31,7 @@ pub(crate) fn copy_data_and_images(
     font: &Font,
     master: &Master,
     target: &mut norad::Font,
-) -> Result<(), Error> {
+) -> Result<HashMap<(GlyphName, LayerId), String>, Error> {
     let source_root = master
         .user_data
         .get("ufo.source_path")
@@ -60,29 +60,65 @@ pub(crate) fn copy_data_and_images(
                 .map_err(|error| Error::UnsupportedPlist(error.to_string()))?;
         }
     }
-    let mut copied = HashSet::new();
-    for image in font
-        .glyphs
-        .values()
-        .flat_map(|glyph| &glyph.layers)
-        .filter(|layer| super::convert::layer_belongs(font, layer, &master.id))
-        .filter_map(|layer| layer.background_image.as_ref())
-    {
-        if !copied.insert(image.file_name.clone()) {
-            continue;
-        }
-        let data = image.data.clone().or_else(|| {
-            source_root
-                .and_then(|root| std::fs::read(root.join("images").join(&image.file_name)).ok())
-        });
-        if let Some(data) = data {
+    let mut names = HashMap::new();
+    for glyph in font.glyphs.values() {
+        for layer in glyph
+            .layers
+            .iter()
+            .filter(|layer| super::convert::layer_belongs(font, layer, &master.id))
+        {
+            let Some(image) = &layer.background_image else {
+                continue;
+            };
+            let data = image
+                .data
+                .clone()
+                .or_else(|| {
+                    source_root.and_then(|root| {
+                        std::fs::read(root.join("images").join(&image.file_name)).ok()
+                    })
+                })
+                .ok_or_else(|| {
+                    Error::UnsupportedPlist(format!(
+                        "source image `{}` is unavailable; resolve or embed it before UFO export",
+                        image.file_name
+                    ))
+                })?;
+            let name = available_image_name(&image.file_name, &data, target);
             target
                 .images
-                .insert(image.file_name.clone().into(), data)
+                .insert(name.clone().into(), data)
                 .map_err(|error| Error::UnsupportedPlist(error.to_string()))?;
+            names.insert((glyph.name.clone(), layer.id.clone()), name);
         }
     }
-    Ok(())
+    Ok(names)
+}
+
+fn available_image_name(file_name: &str, data: &[u8], target: &norad::Font) -> String {
+    let file = Path::new(file_name)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .filter(|name| name.to_ascii_lowercase().ends_with(".png"))
+        .unwrap_or("reference.png");
+    let stem = file
+        .strip_suffix(".png")
+        .or_else(|| file.get(..file.len() - 4))
+        .unwrap_or("reference");
+    let mut name = file.to_owned();
+    let mut suffix = 1;
+    while target
+        .images
+        .get(Path::new(&name))
+        .is_some_and(|existing| match existing {
+            Ok(existing) => existing.as_ref() != data,
+            Err(_) => true,
+        })
+    {
+        name = format!("{stem}-{suffix}.png");
+        suffix += 1;
+    }
+    name
 }
 
 pub(crate) fn import(font: &mut Font) -> Result<(), Error> {

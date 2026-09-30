@@ -11,6 +11,7 @@ use fc_cli::Error;
 
 pub(crate) mod build;
 pub(crate) mod check;
+pub(crate) mod collection;
 pub(crate) mod convert;
 pub(crate) mod glyphs;
 pub(crate) mod inspect;
@@ -37,6 +38,10 @@ fn open_in(session: &Session, path: &Path, face_index: Option<u32>) -> Result<Do
         "designspace" => Some(fc_formats::ufo::read_designspace(path)),
         "glyphs" => Some(fc_formats::glyphs::read_glyphs(path)),
         "sfd" => Some(fc_formats::sfd::read_sfd(path)),
+        "svg" => Some(fc_formats::vector::read_svg(path)),
+        "eps" => Some(fc_formats::vector::read_eps(path)),
+        "afm" => Some(fc_formats::metrics::read_afm_path(path)),
+        "pfm" => Some(fc_formats::metrics::pfm::read_pfm_path(path)),
         "pfa" | "pfb" => Some(fc_formats::type1::read_type1(path)),
         _ => None,
     };
@@ -85,14 +90,23 @@ impl FontOpener for CliFontOpener {
         path: &Path,
         face_index: Option<u32>,
     ) -> Result<Vec<fc_model::Font>, fc_doc::Error> {
-        let outcome = fc_sfnt::read_path(
-            path,
-            &fc_sfnt::ReadOptions {
-                font_index: face_index,
-                keep_original_bytes: true,
-                decode_bitmaps: true,
-            },
-        )
+        let options = fc_sfnt::ReadOptions {
+            font_index: face_index,
+            keep_original_bytes: true,
+            decode_bitmaps: true,
+        };
+        let outcome = match source_extension(path).as_str() {
+            "ttx" => fc_sfnt::ttx::read_path(path, &options),
+            "cff" if face_index.is_none_or(|index| index == 0) => {
+                fc_sfnt::cff_interchange::read_path(path)
+            }
+            "t42" | "p42" | "type42" => {
+                let bytes = fc_formats::type42::read_path(path)
+                    .map_err(|error| fc_doc::Error::Sfnt(error.to_string()))?;
+                fc_sfnt::read_bytes(&bytes, &options)
+            }
+            _ => fc_sfnt::read_path(path, &options),
+        }
         .map_err(|error| fc_doc::Error::Sfnt(error.to_string()))?;
         let collection_warning = face_index
             .is_none()
@@ -124,7 +138,30 @@ impl FontOpener for CliFontOpener {
 pub(crate) fn open_document(path: &Path, face_index: Option<u32>) -> Result<OpenedDocument, Error> {
     let opener = Arc::new(CliFontOpener::default());
     let session = Arc::new(Session::with_opener(opener.clone()));
-    let doc = open_in(&session, path, face_index)?;
+    let doc = if matches!(
+        source_extension(path).as_str(),
+        "ttx" | "cff" | "t42" | "p42" | "type42"
+    ) {
+        // Session's binary path gate covers sfnt containers. These interchange
+        // formats must reach the CLI decoder before attaching the decoded font.
+        let font = opener
+            .open_path(path, face_index)
+            .and_then(|fonts| {
+                fonts.into_iter().next().ok_or_else(|| {
+                    fc_doc::Error::Internal(format!(
+                        "font reader returned no faces for `{}`",
+                        path.display()
+                    ))
+                })
+            })
+            .map_err(|source| Error::Open {
+                path: path.to_path_buf(),
+                source,
+            })?;
+        session.open_font(font, Some(path.to_path_buf()))
+    } else {
+        open_in(&session, path, face_index)?
+    };
     let api = Api::new(Arc::clone(&session));
     let mut warnings = opener.take_warnings();
     warnings.extend(
@@ -138,6 +175,12 @@ pub(crate) fn open_document(path: &Path, face_index: Option<u32>) -> Result<Open
                 message: warning.message,
             }),
     );
+    if matches!(source_extension(path).as_str(), "afm" | "pfm") {
+        warnings.push(DocWarning {
+            code: "metrics-only-source".into(),
+            message: "This file contains font metrics only; glyph outlines are empty.".into(),
+        });
+    }
     Ok(OpenedDocument {
         session,
         api,

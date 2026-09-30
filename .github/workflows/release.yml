@@ -1,0 +1,166 @@
+name: Native installer candidates
+
+# Builds remain reviewable artifacts. This workflow neither creates releases nor
+# signs/notarizes public distributions. Native install checks use disposable CI.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/release.yml"
+      - "scripts/*release*"
+      - "scripts/release_licenses/**"
+      - "src-tauri/**"
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "app/src/**"
+      - "app/vite.config.ts"
+      - "app/package.json"
+      - "pnpm-lock.yaml"
+      - "docs/install.md"
+      - "LICENSE-*"
+      - "THIRD_PARTY.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-installers-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    name: ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            label: linux-x86_64
+            bundles: deb,appimage
+          - os: macos-14
+            label: macos-arm64
+            bundles: dmg
+          - os: windows-2022
+            label: windows-x86_64
+            bundles: msi
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    env:
+      CARGO_INCREMENTAL: "0"
+      APPIMAGE_EXTRACT_AND_RUN: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Linux bundle prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2 \
+            desktop-file-utils
+
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@1.94.0
+
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test release checks
+        run: python -m unittest discover -s scripts -p "test_*release*.py"
+
+      - name: Build and inspect native installers
+        run: python scripts/build_release.py --bundles ${{ matrix.bundles }} --min-free-gib 5
+
+      - name: Install and remove Linux Debian package
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t installers < <(find target/release/bundle/deb -maxdepth 1 -name '*.deb')
+          test "${#installers[@]}" -eq 1
+          installer="${installers[0]}"
+          package="$(dpkg-deb -f "$installer" Package)"
+          sudo apt-get install -y "./$installer"
+          test -x /usr/bin/fontcarver-desktop
+          while IFS= read -r desktop; do
+            desktop-file-validate "$desktop"
+          done < <(dpkg-query --listfiles "$package" | sed -n '/\.desktop$/p')
+          dpkg-query --show "$package"
+          sudo apt-get remove -y "$package"
+
+      - name: Install and remove macOS app from disk image
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .scratch/p5-release-ci/mount .scratch/p5-release-ci/Applications
+          image="$(find target/release/bundle/dmg -maxdepth 1 -name '*.dmg' -print -quit)"
+          hdiutil attach -readonly -nobrowse -mountpoint "$PWD/.scratch/p5-release-ci/mount" "$image"
+          trap 'hdiutil detach "$PWD/.scratch/p5-release-ci/mount" || true' EXIT
+          ditto .scratch/p5-release-ci/mount/FontCarver.app .scratch/p5-release-ci/Applications/FontCarver.app
+          test -x .scratch/p5-release-ci/Applications/FontCarver.app/Contents/MacOS/fontcarver-desktop
+          plutil -lint .scratch/p5-release-ci/Applications/FontCarver.app/Contents/Info.plist
+          hdiutil detach "$PWD/.scratch/p5-release-ci/mount"
+          trap - EXIT
+          rm -rf .scratch/p5-release-ci
+
+      - name: Install and remove Windows MSI packages
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force .scratch/p5-release-ci | Out-Null
+          foreach ($msi in Get-ChildItem target/release/bundle/msi/*.msi) {
+            $log = Join-Path $PWD ".scratch/p5-release-ci/$($msi.BaseName).log"
+            $install = Start-Process msiexec.exe -Wait -PassThru -ArgumentList "/i `"$($msi.FullName)`" /qn /norestart /l*v `"$log`""
+            if ($install.ExitCode -notin @(0, 3010)) { throw "MSI install failed: $($install.ExitCode); see $log" }
+            $uninstall = Start-Process msiexec.exe -Wait -PassThru -ArgumentList "/x `"$($msi.FullName)`" /qn /norestart"
+            if ($uninstall.ExitCode -notin @(0, 3010)) { throw "MSI uninstall failed: $($uninstall.ExitCode)" }
+          }
+
+      - name: Upload installers and inspection evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: FontCarver-${{ matrix.label }}-${{ github.sha }}
+          path: |
+            target/release/bundle/**/*.deb
+            target/release/bundle/**/*.AppImage
+            target/release/bundle/**/*.dmg
+            target/release/bundle/**/*.msi
+            target/release/bundle/release-manifest.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FontCarver-${{ matrix.label }}-failure-${{ github.sha }}
+          path: |
+            .scratch/p5-release-ci/*.log
+            target/release/bundle/release-manifest.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # Hosted runners are disposable; retain the 20 GiB build/1 GiB scratch
+      # ceilings with the documented 5 GiB free-space floor.
+      - name: Check final artifact budget
+        if: always()
+        run: python scripts/check_artifacts.py --min-free-gib 5

@@ -10,7 +10,7 @@ use read_fonts::{
 };
 use sha2::{Digest, Sha256};
 
-use super::{invalid, span};
+use super::{invalid, span, variation};
 use crate::Error;
 
 pub(super) struct Source<'a> {
@@ -19,6 +19,7 @@ pub(super) struct Source<'a> {
     loca: Loca<'a>,
     count: u16,
     global: Vec<u8>,
+    variable: bool,
     hashes: HashMap<u16, Identity>,
     budget: usize,
 }
@@ -40,11 +41,6 @@ impl<'a> Source<'a> {
     }
 
     pub(super) fn from_face(face: FontRef<'a>) -> Result<Self, Error> {
-        if face.table_data(Tag::new(b"fvar")).is_some() {
-            return Err(invalid(
-                "instruction authoring currently requires a static font",
-            ));
-        }
         let head = face.head().map_err(invalid)?;
         if head.units_per_em() == 0 || !matches!(head.index_to_loc_format(), 0 | 1) {
             return Err(invalid("invalid head values"));
@@ -85,12 +81,17 @@ impl<'a> Source<'a> {
                     .ok_or_else(|| invalid("truncated OS/2 metrics"))?,
             );
         }
+        let variation_identity = variation::identity(&face, count)?;
+        if let Some(digest) = variation_identity {
+            global.extend(digest);
+        }
         Ok(Self {
             face,
             glyf,
             loca,
             count,
             global,
+            variable: variation_identity.is_some(),
             hashes: HashMap::new(),
             budget: 8_000_000,
         })
@@ -182,7 +183,12 @@ impl<'a> Source<'a> {
     pub(super) fn fingerprint(&mut self, id: u16) -> Result<String, Error> {
         let digest = self.hash(id, &mut Vec::new())?.hash;
         let hex: String = digest.iter().map(|b| format!("{b:02x}")).collect();
-        Ok(format!("tt-points-v1:{hex}"))
+        let version = if self.variable {
+            "tt-variable-points-v1"
+        } else {
+            "tt-points-v1"
+        };
+        Ok(format!("{version}:{hex}"))
     }
 
     fn hash(&mut self, id: u16, active: &mut Vec<u16>) -> Result<Identity, Error> {
@@ -196,7 +202,14 @@ impl<'a> Source<'a> {
         let mut hash = Sha256::new();
         let mut points = 0;
         let mut contours = 0;
-        hash.update(b"fontcarver-tt-points-v1");
+        if self.variable {
+            hash.update(b"fontcarver-tt-variable-points-v1");
+            // Equal default outlines can have different gvar/HVAR/VVAR rows.
+            // Including every recursive GID also binds component selection.
+            hash.update(id.to_be_bytes());
+        } else {
+            hash.update(b"fontcarver-tt-points-v1");
+        }
         hash.update((self.global.len() as u32).to_be_bytes());
         hash.update(&self.global);
         for vertical in [false, true] {
@@ -282,6 +295,11 @@ impl<'a> Source<'a> {
                         {
                             return Err(invalid(
                                 "component point anchor outside outline and phantom points",
+                            ));
+                        }
+                        if usize::from(base) >= points || usize::from(component) >= child.points {
+                            return Err(invalid(
+                                "component anchoring to phantom points is not yet supported",
                             ));
                         }
                     }

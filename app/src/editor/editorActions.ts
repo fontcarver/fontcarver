@@ -171,6 +171,8 @@ export function buildSnapInput(input: {
     guides: input.source?.guides ?? [],
     metrics: input.source?.metrics ?? FALLBACK_METRICS,
     componentPoints: input.source?.componentPoints ?? [],
+    zoneLines: input.source?.zoneLines ?? [],
+    backgroundPoints: input.source?.backgroundPoints ?? [],
     names: input.labels.snap,
     viewport: input.viewport,
     settings: input.settings,

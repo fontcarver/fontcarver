@@ -7,11 +7,12 @@ import { EditSession, type Scheduler } from '../../editor/editSession'
 export const TEXT_METRICS_TIMEOUT = 500
 
 /** The sidebearing changed by a metrics shortcut. */
-export type MetricSide = 'lsb' | 'rsb'
+export type MetricSide = 'lsb' | 'rsb' | 'both'
 
 /** Keyboard fields used by the shortcut mapper; DOM and React events conform. */
 export interface MetricShortcutEvent {
   key: string
+  code?: string
   altKey: boolean
   shiftKey: boolean
   ctrlKey: boolean
@@ -24,8 +25,16 @@ export interface MetricShortcut {
   delta: number
 }
 
+/** Selected side and configured base step for bracket spacing shortcuts. */
+export interface MetricShortcutOptions {
+  side: MetricSide
+  /** Positive font-unit step; missing or invalid values use one unit. */
+  step?: number
+}
+
 /**
- * Maps Mod+Left/Right to sidebearing changes.
+ * Maps Mod+Left/Right to legacy sidebearing changes. Optional selected-side
+ * brackets use the configured step: Shift ×10, Mod ×100, Shift+Mod true-one.
  *
  * macOS can distinguish Meta-as-Mod plus Ctrl for the 100-unit step. On Linux,
  * Ctrl is Mod itself, so Ctrl+arrow deliberately remains the one-unit step.
@@ -34,15 +43,34 @@ export interface MetricShortcut {
 export function metricShortcut(
   event: MetricShortcutEvent,
   isMac: boolean,
+  options?: MetricShortcutOptions,
 ): MetricShortcut | null {
   if (event.altKey) return null
+  const mod = isMac ? event.metaKey : event.ctrlKey
+  if (options) {
+    const direction =
+      event.code === 'BracketLeft' || event.key === '[' || event.key === '{'
+        ? -1
+        : event.code === 'BracketRight' ||
+            event.key === ']' ||
+            event.key === '}'
+          ? 1
+          : 0
+    if (direction) {
+      const configured = options.step ?? 1
+      const base =
+        Number.isFinite(configured) && configured > 0 ? configured : 1
+      const step =
+        mod && event.shiftKey ? 1 : base * (mod ? 100 : event.shiftKey ? 10 : 1)
+      return { side: options.side, delta: direction * step }
+    }
+  }
   const side =
     event.key === 'ArrowLeft'
       ? 'lsb'
       : event.key === 'ArrowRight'
         ? 'rsb'
         : null
-  const mod = isMac ? event.metaKey : event.ctrlKey
   if (!side || !mod) return null
 
   const step = isMac && event.ctrlKey ? 100 : event.shiftKey ? 10 : 1
@@ -138,8 +166,8 @@ export class TextMetricsRunner {
       }
     }
 
-    if (side === 'lsb') this.lsbDelta += delta
-    else this.rsbDelta += delta
+    if (side === 'lsb' || side === 'both') this.lsbDelta += delta
+    if (side === 'rsb' || side === 'both') this.rsbDelta += delta
     if (this.baselineReady) {
       this.options.onPreview(this.preview())
       this.session.queue(() => this.command())

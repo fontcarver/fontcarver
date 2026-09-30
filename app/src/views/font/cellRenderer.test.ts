@@ -121,12 +121,87 @@ describe('paintCell', () => {
 
     paintCell(
       ctx as unknown as CanvasRenderingContext2D,
-      makeCell({ is_empty: true, path: '' }),
+      makeCell({ is_empty: true, path: '', unicodes: [] }),
       options({ path: null }),
     )
 
     expect(ctx.fill).not.toHaveBeenCalled()
     expect(ctx.setLineDash).toHaveBeenCalledWith([2, 2])
+  })
+
+  it.each([0x4e00, 0x20000])(
+    'shows an empty encoded glyph with a system character: %i',
+    (unicode) => {
+      const ctx = mockContext()
+      const cell = makeCell({ is_empty: true, path: '', unicodes: [unicode] })
+
+      paintCell(
+        ctx as unknown as CanvasRenderingContext2D,
+        cell,
+        options({ path: null }),
+      )
+
+      expect(ctx.fill).not.toHaveBeenCalled()
+      expect(ctx.fillText.mock.calls[0]?.[0]).toBe(
+        String.fromCodePoint(unicode),
+      )
+      expect(ctx.setLineDash).not.toHaveBeenCalledWith([2, 2])
+      expect(cell.path).toBe('')
+      expect(cell.is_empty).toBe(true)
+    },
+  )
+
+  it.each([
+    -1,
+    0xd800,
+    0xdfff,
+    0x110000,
+    1.5,
+    NaN,
+    Infinity,
+    0,
+    0x20,
+    0x200b,
+    0xfe0f,
+  ])(
+    'keeps the empty marker for an invalid or invisible encoded value: %s',
+    (unicode) => {
+      const ctx = mockContext()
+
+      paintCell(
+        ctx as unknown as CanvasRenderingContext2D,
+        makeCell({ is_empty: true, unicodes: [unicode] }),
+        options({ path: null }),
+      )
+
+      expect(ctx.setLineDash).toHaveBeenCalledWith([2, 2])
+      expect(ctx.fillText).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  it('does not substitute a system character when a nonempty glyph path is unavailable', () => {
+    const ctx = mockContext()
+
+    paintCell(
+      ctx as unknown as CanvasRenderingContext2D,
+      makeCell({ unicodes: [0x4e00] }),
+      options({ path: null }),
+    )
+
+    expect(ctx.setLineDash).toHaveBeenCalledWith([2, 2])
+    expect(ctx.fillText).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses the first visible scalar when earlier encoding values cannot be displayed', () => {
+    const ctx = mockContext()
+
+    paintCell(
+      ctx as unknown as CanvasRenderingContext2D,
+      makeCell({ is_empty: true, unicodes: [0xd800, 0x20, 0x4e00] }),
+      options({ path: null }),
+    )
+
+    expect(ctx.fillText.mock.calls[0]?.[0]).toBe('一')
   })
 
   it('paints the selection ring and the selected background', () => {

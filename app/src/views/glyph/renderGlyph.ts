@@ -8,8 +8,11 @@
  */
 
 import type { Viewport } from '../../canvas/Viewport'
+import { drawSourceImage, type SourceImageDraw } from '../../canvas/sourceImage'
 
 import { drawAnchors } from './drawAnchors'
+import { drawAnnotations } from './drawAnnotations'
+import { editorMetadata } from '../../editor/editorMetadata'
 import { IDENTITY } from '../../editor/affine'
 import { drawComponents, type ComponentDraw } from './drawComponents'
 import { drawEditing, NO_OVERLAY, type EditingOverlay } from './drawEditing'
@@ -17,6 +20,10 @@ import { drawGuides } from './drawGuides'
 import { drawHud } from './drawHud'
 import { drawMetrics, type MetricLabels } from './drawMetrics'
 import { drawOutline } from './drawOutline'
+import {
+  drawVariationPreview,
+  type VariationCanvasPath,
+} from './drawVariationPreview'
 import { drawGrid, drawToolOverlay } from './drawTools'
 import { drawRulers } from './drawRulers'
 import { drawUnderlays, NO_UNDERLAY, type UnderlayData } from './drawUnderlays'
@@ -57,6 +64,8 @@ export const DEFAULT_OVERLAYS: GlyphOverlays = {
 /** Everything one frame needs. */
 export interface RenderGlyphOptions {
   scene: GlyphScene
+  focusedContours?: ReadonlySet<number> | null
+  glyphLocked?: boolean
   theme: GlyphTheme
   labels: MetricLabels
   overlays: GlyphOverlays
@@ -64,6 +73,8 @@ export interface RenderGlyphOptions {
   flattened: Path2D | null
   /** The other masters and the background layer, drawn behind everything. */
   underlay?: UnderlayData
+  /** Resolved PNG source, placed in font coordinates behind the outline. */
+  sourceImage?: SourceImageDraw | null
   /**
    * The layer's components with their own paths and any preview offset. When
    * omitted, the scene's components draw as markers over the flattened path.
@@ -89,10 +100,16 @@ export interface RenderGlyphOptions {
   tool?: ToolOverlay
   /** Grid step in font units; zero draws no grid. */
   grid?: number
+  /** Editable on-curve marker diameter in CSS pixels. */
+  nodeSize?: number
+  /** Editable off-curve marker diameter in CSS pixels. */
+  handleSize?: number
   /** Passive outlines in a shaped Text run, relative to the active glyph. */
   surrounding?: readonly SurroundingGlyph[]
   /** Text mode has no editable foreground glyph. */
   hideActive?: boolean
+  /** Live interpolation at the inspector's selected axis location. */
+  variationPreview?: VariationCanvasPath | null
 }
 
 /** The vertical metrics a node can sit on (design spec §4.1 item 9). */
@@ -121,6 +138,9 @@ export function renderGlyph(
   ctx.fillRect(0, 0, viewport.width, viewport.height)
 
   drawGrid(ctx, viewport, options.grid ?? 0, theme)
+
+  if (!options.hideActive && overlays.background && options.sourceImage)
+    drawSourceImage(ctx, viewport, options.sourceImage)
 
   if (!options.hideActive && overlays.metrics)
     drawMetrics(
@@ -207,15 +227,22 @@ export function renderGlyph(
       viewport,
       {
         contours: scene.contours,
+        focusedContours: options.focusedContours,
+        lockedPaths: editorMetadata(scene.layer?.user_data).lockedPaths,
         hidePath: effects,
         filled: overlays.filled,
-        showPoints: overlays.points,
+        showPoints: overlays.points && !options.glyphLocked,
         selected: options.selected,
         verticalMetrics: verticalMetricsOf(scene),
+        nodeSize: options.nodeSize,
+        handleSize: options.handleSize,
       },
       theme,
     )
   }
+
+  if (!options.hideActive && options.variationPreview)
+    drawVariationPreview(ctx, viewport, options.variationPreview, theme)
 
   if (!options.hideActive && overlays.anchors)
     drawAnchors(
@@ -227,6 +254,14 @@ export function renderGlyph(
 
   if (overlays.rulers)
     drawRulers(ctx, viewport, { pointer: options.pointer }, theme)
+
+  if (!options.hideActive)
+    drawAnnotations(
+      ctx,
+      viewport,
+      editorMetadata(scene.layer?.user_data).annotations,
+      theme,
+    )
 
   drawEditing(ctx, viewport, options.editing ?? NO_OVERLAY, theme)
   drawToolOverlay(ctx, viewport, options.tool ?? NO_TOOL_OVERLAY, theme)

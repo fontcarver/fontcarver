@@ -8,7 +8,11 @@ use axum::{
         ws::{Message, WebSocket},
         DefaultBodyLimit, Path, State, WebSocketUpgrade,
     },
-    http::{header::CONTENT_TYPE, HeaderValue, Method, StatusCode},
+    http::{
+        header::{CONTENT_TYPE, HOST, ORIGIN},
+        HeaderValue, Method, StatusCode, Uri,
+    },
+    middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
@@ -56,7 +60,50 @@ pub fn router(api: Arc<Api>) -> Router {
         // default. Keep a transport bound as well as the model's item limits.
         .layer(DefaultBodyLimit::max(64 * 1024 * 1024))
         .layer(cors)
+        .layer(middleware::from_fn(local_request_only))
         .with_state(api)
+}
+
+fn loopback_host(host: &str) -> bool {
+    matches!(host, "localhost" | "127.0.0.1" | "[::1]")
+}
+
+// CORS controls response visibility, not whether a request reaches the API.
+// Reject hostile browser origins and DNS-rebinding Host headers before any
+// document or explicitly requested local script can execute. Originless local
+// clients remain supported; this development server is not a remote service.
+async fn local_request_only(request: axum::extract::Request, next: Next) -> Response {
+    let headers = request.headers();
+    let host_ok = headers
+        .get(HOST)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.parse::<axum::http::uri::Authority>().ok())
+        .is_some_and(|authority| loopback_host(authority.host()));
+    let origin_ok = headers.get_all(ORIGIN).iter().all(|value| {
+        value
+            .to_str()
+            .ok()
+            .and_then(|value| value.parse::<Uri>().ok())
+            .is_some_and(|origin| {
+                matches!(origin.scheme_str(), Some("http" | "https"))
+                    && origin.host().is_some_and(loopback_host)
+                    && origin
+                        .authority()
+                        .is_some_and(|authority| !authority.as_str().contains('@'))
+                    && origin.path() == "/"
+                    && origin.query().is_none()
+            })
+    });
+    if !host_ok || !origin_ok {
+        return (
+            StatusCode::FORBIDDEN,
+            Json(ErrorEnvelope { error: ApiError {
+                code: "forbidden".to_owned(),
+                message: "The development API only accepts local clients and loopback browser origins".to_owned(),
+            }}),
+        ).into_response();
+    }
+    next.run(request).await
 }
 
 /// Serves the development API until the listener fails or the task is cancelled.

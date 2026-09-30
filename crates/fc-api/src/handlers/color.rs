@@ -55,19 +55,23 @@ pub(crate) fn state(api: &Api, params: DocParams) -> Result<ColorState, ApiError
     api.session
         .with_doc(params.doc, |doc| {
             let font = &doc.font;
-            let (status, import_error) = if font.color.is_some() {
-                (ColorStatus::Editable, None)
+            let (status, preview_color, import_error) = if font.color.is_some() {
+                (ColorStatus::Editable, None, None)
             } else if font.color_tables_owned {
-                (ColorStatus::Deleted, None)
+                (ColorStatus::Deleted, None, None)
             } else if let Some(result) = decode_imported(font) {
-                (ColorStatus::Imported, result.err())
+                match result {
+                    Ok(color) => (ColorStatus::Imported, Some(color), None),
+                    Err(error) => (ColorStatus::Imported, None, Some(error)),
+                }
             } else {
-                (ColorStatus::Absent, None)
+                (ColorStatus::Absent, None, None)
             };
             ColorState {
                 generation: doc.generation,
                 status,
                 color: font.color.clone(),
+                preview_color,
                 import_error,
                 units_per_em: font.info.units_per_em,
             }

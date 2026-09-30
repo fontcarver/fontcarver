@@ -7,6 +7,7 @@ import './caches'
 import { FilterChips } from './FilterChips'
 import styles from './fontView.module.css'
 import { GlyphGrid } from './GlyphGrid'
+import { GlyphTable } from './GlyphTable'
 import type { GlyphQuery } from './glyphSelection'
 import { GridToolbar } from './GridToolbar'
 
@@ -34,7 +35,11 @@ export function FontView({ summary }: FontViewProps) {
     <div className={styles.view}>
       <GridToolbar summary={summary} view={view} />
       <FilterChips doc={doc} filter={view.filter} />
-      <GlyphGrid key={queryKey} summary={summary} query={query} />
+      {view.viewMode === 'list' ? (
+        <GlyphTable key={queryKey} summary={summary} query={query} />
+      ) : (
+        <GlyphGrid key={queryKey} summary={summary} query={query} />
+      )}
     </div>
   )
 }

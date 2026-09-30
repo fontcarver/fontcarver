@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import { emBoxFor } from '../../canvas/glyphPaint'
@@ -46,6 +46,65 @@ function canvasIn(container: HTMLElement): HTMLCanvasElement {
 }
 
 describe('GlyphCell', () => {
+  it.each([
+    ['metrics_out_of_sync', 'Metrics out of sync'],
+    ['has_annotations', 'Annotations'],
+    ['has_custom_glyph_info', 'Custom glyph information'],
+    ['incompatible_masters', 'Incompatible masters'],
+    ['locked', 'Locked'],
+  ])(
+    'exposes the %s status visually and to assistive technology',
+    (flag, label) => {
+      const cell = { ...cellFor(0), [flag]: true }
+      render(<GlyphCell {...props(cell)} />)
+
+      expect(screen.getByRole('option')).toHaveAccessibleName(`A, ${label}`)
+      expect(screen.getByTitle(label)).toBeInTheDocument()
+    },
+  )
+
+  it('identifies excluded glyphs alongside their export hatching', () => {
+    render(<GlyphCell {...props(cellFor(0, { export: false }))} />)
+
+    expect(screen.getByRole('option')).toHaveAccessibleName('A, Not exported')
+    expect(screen.getByTitle('Not exported')).toBeInTheDocument()
+  })
+
+  it('keeps every status in the cell description when badges are condensed', () => {
+    const cell = {
+      ...cellFor(0),
+      metrics_out_of_sync: true,
+      has_annotations: true,
+      has_custom_glyph_info: true,
+      incompatible_masters: true,
+      locked: true,
+      export: false,
+    }
+    const { container, rerender } = render(
+      <GlyphCell {...props(cell)} size={32} />,
+    )
+
+    const option = screen.getByRole('option')
+    for (const label of [
+      'Metrics out of sync',
+      'Annotations',
+      'Custom glyph information',
+      'Incompatible masters',
+      'Locked',
+      'Not exported',
+    ]) {
+      expect(option).toHaveAccessibleName(expect.stringContaining(label))
+      expect(option.title).toContain(label)
+    }
+    expect(container.querySelector('[data-status-overflow]')).toHaveTextContent(
+      '+6',
+    )
+
+    rerender(<GlyphCell {...props(cellFor(0))} />)
+    expect(screen.getByRole('option')).toHaveAccessibleName('A')
+    expect(container.querySelector('[data-status-overflow]')).toBeNull()
+  })
+
   it('releases the backing store of a cell that arrived after the first render', () => {
     // The cell starts pending, so no canvas exists while the component mounts.
     const { container, rerender, unmount } = render(

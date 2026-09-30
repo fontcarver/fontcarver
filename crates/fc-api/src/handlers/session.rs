@@ -23,6 +23,11 @@ pub(crate) fn open(api: &Api, params: OpenParams) -> Result<DocSummary, ApiError
                 .open_font(fc_formats::bitmap::read(path)?, Some(path.to_path_buf())),
             Vec::new(),
         )
+    } else if ["ttx", "cff", "t42", "p42", "type42"]
+        .iter()
+        .any(|extension| has_extension(path, extension))
+    {
+        open_binary_source(api, path, params.face_index)?
     } else if is_binary_font_path(path) {
         open_binary(api, path, params.face_index)?
     } else if is_ufo_path(path) {
@@ -33,6 +38,14 @@ pub(crate) fn open(api: &Api, params: OpenParams) -> Result<DocSummary, ApiError
         (open_source(api, path, SourceKind::Glyphs)?, Vec::new())
     } else if has_extension(path, "sfd") {
         (open_source(api, path, SourceKind::Sfd)?, Vec::new())
+    } else if has_extension(path, "svg") {
+        (open_source(api, path, SourceKind::Svg)?, Vec::new())
+    } else if has_extension(path, "eps") {
+        (open_source(api, path, SourceKind::Eps)?, Vec::new())
+    } else if has_extension(path, "afm") {
+        (open_source(api, path, SourceKind::Afm)?, metrics_warning())
+    } else if has_extension(path, "pfm") {
+        (open_source(api, path, SourceKind::Pfm)?, metrics_warning())
     } else if has_extension(path, "pfa") || has_extension(path, "pfb") {
         (open_source(api, path, SourceKind::Type1)?, Vec::new())
     } else {
@@ -96,11 +109,9 @@ pub(crate) fn list(api: &Api, _params: EmptyParams) -> Result<Vec<DocSummary>, A
 pub(crate) fn save(api: &Api, params: SaveParams) -> Result<DocSummary, ApiError> {
     let path = match params.path {
         Some(path) if is_fcf_path(Path::new(&path)) => path,
-        Some(_) => {
-            return Err(ApiError::invalid_params(
-                "save target must end with .fcf or .fcf.gz; use export for binary font formats",
-            ))
-        }
+        Some(_) => return Err(ApiError::invalid_params(
+            "save target must end with .fcf, .fcf.gz, or .fcfp; use export for binary font formats",
+        )),
         None => {
             let current = api
                 .session
@@ -109,7 +120,7 @@ pub(crate) fn save(api: &Api, params: SaveParams) -> Result<DocSummary, ApiError
                 Some(path) if is_fcf_path(&path) => path.to_string_lossy().into_owned(),
                 Some(_) => {
                     return Err(ApiError::invalid_params(
-                        "imported fonts need an explicit .fcf path",
+                        "imported fonts need an explicit .fcf or .fcfp path",
                     ))
                 }
                 None => {
@@ -214,6 +225,10 @@ enum SourceKind {
     Glyphs,
     Sfd,
     Type1,
+    Svg,
+    Eps,
+    Afm,
+    Pfm,
 }
 
 fn open_source(api: &Api, path: &Path, kind: SourceKind) -> Result<DocId, ApiError> {
@@ -223,8 +238,65 @@ fn open_source(api: &Api, path: &Path, kind: SourceKind) -> Result<DocId, ApiErr
         SourceKind::Glyphs => fc_formats::glyphs::read_glyphs(path),
         SourceKind::Sfd => fc_formats::sfd::read_sfd(path),
         SourceKind::Type1 => fc_formats::type1::read_type1(path),
+        SourceKind::Svg => fc_formats::vector::read_svg(path),
+        SourceKind::Eps => fc_formats::vector::read_eps(path),
+        SourceKind::Afm => fc_formats::metrics::read_afm_path(path),
+        SourceKind::Pfm => fc_formats::metrics::pfm::read_pfm_path(path),
     }?;
     Ok(api.session.open_font(font, Some(path.to_path_buf())))
+}
+
+fn metrics_warning() -> Vec<DocWarning> {
+    vec![DocWarning {
+        code: "metrics-only-source".into(),
+        message: "This file contains font metrics only; glyph outlines are empty.".into(),
+    }]
+}
+
+fn open_binary_source(
+    api: &Api,
+    path: &Path,
+    face_index: Option<u32>,
+) -> Result<(DocId, Vec<DocWarning>), ApiError> {
+    let options = fc_sfnt::ReadOptions {
+        font_index: face_index,
+        ..fc_sfnt::ReadOptions::default()
+    };
+    let format;
+    let mut outcome = if has_extension(path, "ttx") {
+        format = "ttx";
+        fc_sfnt::ttx::read_path(path, &options)?
+    } else if has_extension(path, "cff") {
+        format = "cff";
+        if face_index.is_some_and(|index| index != 0) {
+            return Err(ApiError::invalid_params("standalone CFF contains one face"));
+        }
+        fc_sfnt::cff_interchange::read_path(path)?
+    } else {
+        format = "type42";
+        let bytes = fc_formats::type42::read_path(path)?;
+        fc_sfnt::read_bytes(&bytes, &options)?
+    };
+    let mut font = outcome
+        .fonts
+        .pop()
+        .ok_or_else(|| ApiError::internal("source reader returned no font"))?;
+    if let Some(source) = &mut font.extra.source {
+        source.path = Some(path.to_string_lossy().into_owned());
+        source.format = format.into();
+    }
+    let warnings = outcome
+        .warnings
+        .into_iter()
+        .map(|warning| DocWarning {
+            code: warning.code.into(),
+            message: warning.message,
+        })
+        .collect();
+    Ok((
+        api.session.open_font(font, Some(path.to_path_buf())),
+        warnings,
+    ))
 }
 
 pub(crate) fn summary_for(api: &Api, doc: DocId) -> Result<DocSummary, ApiError> {
@@ -305,7 +377,16 @@ fn build_summary(
 
 fn document_format(document: &Document) -> String {
     if document.path.as_deref().is_some_and(is_fcf_path) {
-        return "fcf".to_owned();
+        return if document
+            .path
+            .as_deref()
+            .is_some_and(fc_doc::fcf::is_project_path)
+        {
+            "fcfp"
+        } else {
+            "fcf"
+        }
+        .to_owned();
     }
     if let Some(path) = document
         .path
@@ -386,16 +467,7 @@ fn open_binary(
 }
 
 fn is_fcf_path(path: &Path) -> bool {
-    let name = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or_default()
-        .to_ascii_lowercase();
-    name.ends_with(".fcf")
-        || name.ends_with(".fcf.gz")
-        // Documents written before the `.fwf` extension was renamed.
-        || name.ends_with(".fwf")
-        || name.ends_with(".fwf.gz")
+    fc_doc::fcf::is_native_path(path)
 }
 
 fn is_ufo_path(path: &Path) -> bool {

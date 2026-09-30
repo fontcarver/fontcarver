@@ -1,5 +1,16 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+
+import { readWindowTarget } from '../transport/windows'
+import { MacroConsole } from '../automation/MacroConsole'
+import { DetachedPanel } from './DetachedPanel'
+import { DetachedWindowBar } from './DetachedWindowBar'
+import { registerWorkspaceTabCommands } from './workspaceTabCommands'
+import { installWindowLifecycle } from './windowLifecycle'
+import { installWorkspacePersistence } from './workspaceLifecycle'
+import { WorkspaceDialogHost } from './WorkspaceDialogHost'
+import { ShortcutSettingsDialog } from './ShortcutSettingsDialog'
+import { ContextHelpDialog } from './ContextHelpDialog'
 
 import { SplitPane } from '../components/SplitPane'
 import { ToastStack } from '../components/ToastStack'
@@ -38,6 +49,9 @@ import { TabContent } from './TabContent'
 /** The application frame: menu bar, tabs, panels, content and status bar. */
 export function AppShell() {
   const { t } = useTranslation()
+  const [windowTarget] = useState(() => readWindowTarget())
+  const detached =
+    windowTarget?.kind === 'tab' || windowTarget?.kind === 'panel'
   const theme = useUiStore((state) => state.theme)
   const language = useUiStore((state) => state.language)
   const panels = useUiStore((state) => state.panels)
@@ -49,15 +63,20 @@ export function AppShell() {
 
   useEffect(() => {
     registerBuiltinCommands()
+    registerWorkspaceTabCommands()
     setCommandErrorReporter(reportError)
+    const stopWindows = installWindowLifecycle()
+    const stopWorkspace = installWorkspacePersistence()
     const stopSession = useSessionStore.getState().start()
     const stopProgress = useProgressStore.getState().start()
     const stopShortcuts = installShortcuts()
     // The kernel owns the preferences, so they are read before the first paint
     // of anything that depends on them; a crash-recovery listing follows.
     void usePrefsStore.getState().load()
-    void checkForRecovery()
+    if (readWindowTarget() === null) void checkForRecovery()
     return () => {
+      stopWorkspace()
+      stopWindows()
       stopSession()
       stopProgress()
       stopShortcuts()
@@ -82,10 +101,13 @@ export function AppShell() {
   return (
     <div className={styles.shell}>
       <MenuBar />
-      <TabBar />
+      {detached ? <DetachedWindowBar target={windowTarget} /> : <TabBar />}
       <ProgressLine />
       <div className={styles.workspace}>
-        {summary && activeTab?.kind !== 'bitmap' && panels.sidebar ? (
+        {windowTarget?.kind !== 'panel' &&
+        summary &&
+        activeTab?.kind !== 'bitmap' &&
+        panels.sidebar ? (
           <SplitPane
             side="left"
             size={sizes.sidebar}
@@ -100,12 +122,23 @@ export function AppShell() {
         <main className={styles.content}>
           {summary ? <RecoveredBanner summary={summary} /> : null}
           {summary && activeTab ? (
-            <TabContent summary={summary} tab={activeTab} />
+            windowTarget?.kind === 'panel' ? (
+              <DetachedPanel
+                target={windowTarget}
+                summary={summary}
+                tab={activeTab}
+              />
+            ) : (
+              <TabContent summary={summary} tab={activeTab} />
+            )
           ) : (
             <EmptyState />
           )}
         </main>
-        {summary && activeTab?.kind !== 'bitmap' && panels.inspector ? (
+        {windowTarget?.kind !== 'panel' &&
+        summary &&
+        activeTab?.kind !== 'bitmap' &&
+        panels.inspector ? (
           <SplitPane
             side="right"
             size={sizes.inspector}
@@ -123,6 +156,10 @@ export function AppShell() {
       <PathPromptDialog />
       <CloseDocumentDialog />
       <DialogHost />
+      <WorkspaceDialogHost />
+      <ShortcutSettingsDialog />
+      <ContextHelpDialog />
+      <MacroConsole />
       <ToastStack />
     </div>
   )

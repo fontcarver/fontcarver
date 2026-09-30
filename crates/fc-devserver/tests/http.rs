@@ -59,6 +59,59 @@ async fn post(client: &Client, address: SocketAddr, method: &str, params: Value)
 }
 
 #[tokio::test]
+async fn rejects_foreign_origins_and_rebinding_hosts_before_api_execution() {
+    let server = spawn_server().await;
+    let client = Client::new();
+    let endpoint = format!("http://{}/api/session.new", server.address);
+    for origin in [
+        "https://example.com",
+        "null",
+        "http://localhost.example.com:1420",
+    ] {
+        let response = client
+            .post(&endpoint)
+            .header("Origin", origin)
+            .json(&json!({"family":"Untrusted", "units_per_em":1000}))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN, "{origin}");
+    }
+    let response = client
+        .post(&endpoint)
+        .header("Host", "rebound.example.com")
+        .json(&json!({"family":"Untrusted", "units_per_em":1000}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    let documents = post(&client, server.address, "session.list", json!({})).await;
+    assert_eq!(documents["result"], json!([]));
+    // A parallel local Vite proxy remains usable without weakening the remote
+    // origin check; browser CORS still limits direct cross-origin access.
+    let response = client
+        .post(&endpoint)
+        .header("Origin", "http://127.0.0.1:1479")
+        .json(&json!({"family":"Local", "units_per_em":1000}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn rejects_foreign_origin_event_subscriptions() {
+    let server = spawn_server().await;
+    let response = Client::new()
+        .get(format!("http://{}/events", server.address))
+        .header("Origin", "https://example.com")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
 async fn accepts_font_wide_color_drafts_larger_than_two_megabytes() {
     let server = spawn_server().await;
     let client = Client::new();
@@ -84,7 +137,8 @@ async fn accepts_font_wide_color_drafts_larger_than_two_megabytes() {
         "palette_version": 0,
         "palettes": [{"colors": colors, "flags": 0, "label": null}],
         "entry_labels": [],
-        "glyphs": {"A": [{"glyph": "A", "palette_index": 59_999}]}
+        "glyphs": {"A": [{"glyph": "A", "palette_index": 59_999}]},
+        "graph": null
     });
     let params = json!({"doc": doc, "expected_generation": state["result"]["generation"], "color": color, "label": "Large palette"});
     assert!(serde_json::to_vec(&params).unwrap().len() > 2 * 1024 * 1024);

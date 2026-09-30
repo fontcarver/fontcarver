@@ -165,6 +165,7 @@ impl Font {
             || self.masters.is_empty()
             || self.masters.len() > 1024
             || self.instances.len() > 4096
+            || self.virtual_masters.len() > 1024
         {
             return Err(invalid("design space exceeds axis/master/instance limits"));
         }
@@ -193,6 +194,28 @@ impl Font {
         }
         if !self.axes.is_empty() {
             self.design_default_master()?;
+        }
+        let mut virtual_names = HashSet::new();
+        for master in &self.virtual_masters {
+            if self.axes.is_empty()
+                || master.name.trim().is_empty()
+                || master.name.len() > 256
+                || !virtual_names.insert(master.name.trim())
+            {
+                return Err(invalid(
+                    "virtual masters require axes and unique nonempty names",
+                ));
+            }
+            let location = self.complete_location(&master.location)?;
+            let key: Vec<_> = location
+                .values()
+                .map(|value| if *value == 0.0 { 0 } else { value.to_bits() })
+                .collect();
+            if !positions.insert(key) {
+                return Err(invalid(
+                    "virtual master positions must be distinct from other masters",
+                ));
+            }
         }
         for instance in &self.instances {
             if instance.name.trim().is_empty() {

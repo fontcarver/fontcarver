@@ -64,6 +64,9 @@ impl Default for LayerKind {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub struct Image {
+    /// Prevent placement, replacement and removal until explicitly unlocked.
+    #[serde(default)]
+    pub locked: bool,
     /// Original or logical file name.
     #[serde(default)]
     pub file_name: String,
@@ -85,6 +88,7 @@ pub struct Image {
 impl Default for Image {
     fn default() -> Self {
         Self {
+            locked: false,
             file_name: String::new(),
             transform: Affine::IDENTITY,
             color: None,
@@ -216,6 +220,10 @@ pub struct Layer {
     /// Horizontal advance width.
     #[serde(default)]
     pub width: f64,
+    /// Layer-local metrics formulas; missing fields inherit the glyph formulas.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub metrics_keys: Option<crate::MetricsKeys>,
     /// Optional vertical advance width.
     #[serde(default)]
     pub vertical_width: Option<f64>,
@@ -232,18 +240,40 @@ pub struct Layer {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     #[cfg_attr(feature = "ts", ts(as = "Option<Vec<crate::LayerEffect>>", optional))]
     pub effects: Vec<crate::LayerEffect>,
+    /// Reusable glyph drawings attached to persistent carrier nodes.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[cfg_attr(
+        feature = "ts",
+        ts(as = "Option<Vec<crate::GlyphConstruction>>", optional)
+    )]
+    pub constructions: Vec<crate::GlyphConstruction>,
     /// Named anchors.
     #[serde(default)]
     pub anchors: Vec<Anchor>,
     /// Layer-local guides.
     #[serde(default)]
     pub guides: Vec<Guide>,
+    /// Axis-interpolated nodes and their neighboring handles.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[cfg_attr(feature = "ts", ts(as = "Option<Vec<crate::NodeLink>>", optional))]
+    pub node_links: Vec<crate::NodeLink>,
+    /// Guide-owned node positions, stored as signed normal offsets.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[cfg_attr(
+        feature = "ts",
+        ts(as = "Option<Vec<crate::NodeLinkedGuide>>", optional)
+    )]
+    pub linked_guides: Vec<crate::NodeLinkedGuide>,
     /// Optional source image.
     #[serde(default)]
     pub background_image: Option<Image>,
     /// PostScript hints.
     #[serde(default)]
     pub hints: PsHints,
+    /// CFF1 CID Font DICT selection; absent or zero selects the master's `private_dict`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub cff_private_dict_index: Option<u8>,
     /// Raw per-glyph TrueType instructions.
     #[serde(default)]
     pub tt_instructions: Option<Vec<u8>>,
@@ -267,15 +297,20 @@ impl Default for Layer {
             kind: LayerKind::default(),
             name: String::new(),
             width: 0.0,
+            metrics_keys: None,
             vertical_width: None,
             vertical_origin: None,
             contours: Vec::new(),
             components: Vec::new(),
             effects: Vec::new(),
+            constructions: Vec::new(),
             anchors: Vec::new(),
             guides: Vec::new(),
+            node_links: Vec::new(),
+            linked_guides: Vec::new(),
             background_image: None,
             hints: PsHints::default(),
+            cff_private_dict_index: None,
             tt_instructions: None,
             tt_binding: None,
             color_layers: None,
@@ -298,10 +333,14 @@ impl Layer {
         self.contours.is_empty()
             && self.components.is_empty()
             && self.effects.is_empty()
+            && self.constructions.is_empty()
             && self.anchors.is_empty()
             && self.guides.is_empty()
+            && self.node_links.is_empty()
+            && self.linked_guides.is_empty()
             && self.background_image.is_none()
             && self.hints.is_empty()
+            && self.cff_private_dict_index.unwrap_or(0) == 0
             && self
                 .tt_instructions
                 .as_ref()

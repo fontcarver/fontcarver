@@ -1,10 +1,10 @@
-use std::{cell::Cell, collections::BTreeMap, ops::Range};
+use std::{cell::Cell, collections::BTreeMap};
 
-use fc_model::{CidInfo, Contour, FontInfo, GlyphName, Layer, Point, PointKind, PsPrivate};
+use fc_model::{CidInfo, Contour, GlyphName, Layer, Point, PointKind};
 use kurbo::Affine;
 use read_fonts::{
     ps::{
-        cff::{dict, index::Index, CffFontRef},
+        cff::{dict, CffFontRef},
         cs,
         transform::Transform,
     },
@@ -14,6 +14,8 @@ use read_fonts::{
 
 use crate::Error;
 mod hints;
+mod private;
+pub(crate) use private::apply_private;
 
 pub(crate) struct CffSource<'a> {
     font: CffFontRef<'a>,
@@ -41,7 +43,17 @@ impl<'a> CffSource<'a> {
         if gid.to_u32() >= self.font.num_glyphs() {
             return Ok(());
         }
-        let subfont_index = self.font.subfont_index(gid).unwrap_or(0);
+        let subfont_index = self.font.subfont_index(gid).ok_or_else(|| Error::Parse {
+            table: "CFF/CFF2 FDSelect",
+            reason: format!("missing Font DICT selection for glyph {}", gid.to_u32()),
+        })?;
+        if self.font.is_cid() {
+            layer.cff_private_dict_index =
+                Some(u8::try_from(subfont_index).map_err(|_| Error::Parse {
+                    table: "CFF FDSelect",
+                    reason: "CFF1 Font DICT index exceeds 255".into(),
+                })?);
+        }
         let subfont = self
             .font
             .subfont(subfont_index, &[])
@@ -67,8 +79,8 @@ impl<'a> CffSource<'a> {
         self.has_hints() && self.lost_hints.get()
     }
 
-    pub(crate) fn multiple_private_dicts(&self) -> bool {
-        self.font.num_subfonts() > 1
+    pub(crate) fn unpreserved_private_dicts(&self) -> bool {
+        !self.font.is_cid() && self.font.num_subfonts() > 1
     }
 }
 
@@ -125,70 +137,6 @@ pub(crate) fn cid_info(
         supplement,
         cid_map,
     }))
-}
-
-pub(crate) fn apply_private(
-    face: &FontRef<'_>,
-    info: &mut FontInfo,
-    target: &mut PsPrivate,
-) -> Result<bool, Error> {
-    let Some(cff_data) = cff_data_and_top_dict(face)? else {
-        return Ok(false);
-    };
-    let top_entries = dict_entries(cff_data.top_dict, "CFF/CFF2 Top DICT")?;
-    for entry in &top_entries {
-        if let dict::Entry::UniqueId(value) = entry {
-            info.postscript_unique_id = Some(*value);
-        }
-    }
-    let Some(range) = private_range(cff_data.data, &top_entries, cff_data.is_cff2)? else {
-        return Ok(false);
-    };
-    let private_data = cff_data.data.get(range).ok_or_else(|| Error::Parse {
-        table: "CFF/CFF2 Private DICT",
-        reason: "private dictionary range is out of bounds".to_owned(),
-    })?;
-    let mut has_hints = false;
-    for entry in dict_entries(private_data, "CFF/CFF2 Private DICT")? {
-        match entry {
-            dict::Entry::BlueValues(values) => {
-                has_hints = true;
-                target.blue_values = flatten_blues(&values);
-            }
-            dict::Entry::OtherBlues(values) => target.other_blues = flatten_blues(&values),
-            dict::Entry::FamilyBlues(values) => target.family_blues = flatten_blues(&values),
-            dict::Entry::FamilyOtherBlues(values) => {
-                target.family_other_blues = flatten_blues(&values)
-            }
-            dict::Entry::BlueScale(value) => target.blue_scale = Some(value.to_f64()),
-            dict::Entry::BlueShift(value) => target.blue_shift = Some(value.to_f64()),
-            dict::Entry::BlueFuzz(value) => target.blue_fuzz = Some(value.to_f64()),
-            dict::Entry::StdHw(value) => {
-                has_hints = true;
-                target.std_hw = Some(value.to_f64());
-            }
-            dict::Entry::StdVw(value) => {
-                has_hints = true;
-                target.std_vw = Some(value.to_f64());
-            }
-            dict::Entry::StemSnapH(values) => {
-                target.stem_snap_h = values.values().iter().map(|value| value.to_f64()).collect()
-            }
-            dict::Entry::StemSnapV(values) => {
-                target.stem_snap_v = values.values().iter().map(|value| value.to_f64()).collect()
-            }
-            dict::Entry::ForceBold(value) => target.force_bold = Some(value),
-            dict::Entry::LanguageGroup(value) => target.language_group = u8::try_from(value).ok(),
-            dict::Entry::DefaultWidthX(value) => {
-                info.postscript_default_width_x = Some(value.to_f64())
-            }
-            dict::Entry::NominalWidthX(value) => {
-                info.postscript_nominal_width_x = Some(value.to_f64())
-            }
-            _ => {}
-        }
-    }
-    Ok(has_hints)
 }
 
 fn cff_font<'a>(face: &FontRef<'a>) -> Result<Option<CffFontRef<'a>>, Error> {
@@ -273,52 +221,27 @@ fn cff_data_and_top_dict<'a>(face: &FontRef<'a>) -> Result<Option<CffData<'a>>, 
     Ok(None)
 }
 
-fn private_range(
-    data: &[u8],
-    top_entries: &[dict::Entry],
-    is_cff2: bool,
-) -> Result<Option<Range<usize>>, Error> {
-    if let Some(range) = top_entries.iter().find_map(|entry| match entry {
-        dict::Entry::PrivateDictRange(range) => Some(range.clone()),
-        _ => None,
-    }) {
-        return Ok(Some(range));
-    }
-    let Some(offset) = top_entries.iter().find_map(|entry| match entry {
-        dict::Entry::FdArrayOffset(offset) => Some(*offset),
-        _ => None,
-    }) else {
-        return Ok(None);
-    };
-    let index_data = data.get(offset..).ok_or_else(|| Error::Parse {
-        table: "CFF/CFF2 FDArray",
-        reason: "FDArray offset is out of bounds".to_owned(),
-    })?;
-    let fd_array =
-        Index::new(index_data, is_cff2).map_err(|error| Error::parse("CFF/CFF2 FDArray", error))?;
-    let default_fd = fd_array
-        .get(0)
-        .map_err(|error| Error::parse("CFF/CFF2 FDArray", error))?;
-    Ok(dict_entries(default_fd, "CFF/CFF2 Font DICT")?
-        .into_iter()
-        .find_map(|entry| match entry {
-            dict::Entry::PrivateDictRange(range) => Some(range),
-            _ => None,
-        }))
-}
-
 fn dict_entries(data: &[u8], table: &'static str) -> Result<Vec<dict::Entry>, Error> {
     dict::entries(data, None)
         .map(|entry| entry.map_err(|error| Error::parse(table, error)))
         .collect()
 }
 
-fn flatten_blues(values: &read_fonts::ps::hinting::Blues) -> Vec<f64> {
-    values
-        .values()
-        .iter()
-        .flat_map(|(start, end)| [start.to_f64(), end.to_f64()])
-        .collect()
+fn effective_transform(transform: Transform) -> Affine {
+    let matrix = transform.matrix;
+    // read-fonts normalizes matrices for rendering: linear coefficients are
+    // 16.16, translation Fixed bits contain integer font units, and optional
+    // scale targets 26.6. Retain f64 precision for editable geometry and hints.
+    let scale = transform.scale.map_or(1.0, |scale| scale.to_f64() / 64.0);
+    Affine::scale(scale)
+        * Affine::new([
+            matrix.xx.to_f64(),
+            matrix.yx.to_f64(),
+            matrix.xy.to_f64(),
+            matrix.yy.to_f64(),
+            f64::from(matrix.dx.to_bits()),
+            f64::from(matrix.dy.to_bits()),
+        ])
 }
 
 #[derive(Default)]
@@ -332,24 +255,8 @@ struct CffPen {
 
 impl CffPen {
     fn new(transform: Transform) -> Self {
-        let matrix = transform.matrix;
-        // read-fonts normalizes Top/Font DICT matrices for a rendering pipeline:
-        // the linear coefficients are 16.16, translations are stored as integer
-        // font units in the Fixed bits, and scale targets 26.6 (hence / 64).
-        // Apply that effective transform in f64 directly to the charstring's
-        // 16.16 values. The renderer's TransformSink truncates them to integer
-        // font units, which would lose editable control-point precision.
-        let scale = transform.scale.map_or(1.0, |scale| scale.to_f64() / 64.0);
         Self {
-            transform: Affine::scale(scale)
-                * Affine::new([
-                    matrix.xx.to_f64(),
-                    matrix.yx.to_f64(),
-                    matrix.xy.to_f64(),
-                    matrix.yy.to_f64(),
-                    f64::from(matrix.dx.to_bits()),
-                    f64::from(matrix.dy.to_bits()),
-                ]),
+            transform: effective_transform(transform),
             ..Self::default()
         }
     }

@@ -49,6 +49,19 @@ function input(overrides: Partial<HitTestInput> = {}): HitTestInput {
 }
 
 describe('hitTest', () => {
+  it('applies the configurable point radius in CSS pixels at every zoom', () => {
+    const viewport = viewportAt(2)
+    viewport.scale = 2
+    const at = { x: 408, y: 300 }
+    expect(hitTest(input({ viewport, hitDistance: 10 }), at)?.target).toEqual({
+      kind: 'node',
+      contour: 0,
+      point: 1,
+    })
+    expect(
+      hitTest(input({ viewport, hitDistance: 3 }), at)?.target.kind,
+    ).not.toBe('node')
+  })
   it('publishes the design-spec §4.2 radii', () => {
     expect(HIT_RADII).toEqual({
       node: 5,

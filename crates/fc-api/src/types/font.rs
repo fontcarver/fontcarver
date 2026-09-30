@@ -46,6 +46,10 @@ pub struct FontInfoView {
 pub struct SidebarCounts {
     /// Unicode category names and glyph counts.
     pub categories: Vec<(String, u32)>,
+    /// Unicode category, subcategory and glyph counts for encoded glyphs.
+    #[serde(default)]
+    #[ts(as = "Option<Vec<(String, String, u32)>>", optional)]
+    pub sub_categories: Vec<(String, String, u32)>,
     /// ISO 15924 script codes and glyph counts.
     pub scripts: Vec<(String, u32)>,
     /// Unicode block names and glyph counts.
@@ -56,4 +60,12 @@ pub struct SidebarCounts {
     pub total: u32,
     /// Color-label indexes and glyph counts.
     pub color_labels: Vec<(u8, u32)>,
+    /// Sorted unique valid Unicode scalars, including secondary assignments.
+    #[serde(default)]
+    #[ts(as = "Option<Vec<u32>>", optional)]
+    pub unicodes: Vec<u32>,
+    /// Sorted unique editor tags used by glyphs in this document.
+    #[serde(default)]
+    #[ts(as = "Option<Vec<String>>", optional)]
+    pub tags: Vec<String>,
 }

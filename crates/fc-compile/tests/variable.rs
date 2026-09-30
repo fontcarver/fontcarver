@@ -687,3 +687,64 @@ fn variable_ttf_and_cff2_exports_write_editable_math() {
         assert_eq!(decoded, math, "{format:?}");
     }
 }
+
+#[test]
+fn virtual_master_sparse_sources_compile_without_full_font_master_layers() {
+    let mut font = variable_font();
+    let regular = font.design_default_master().unwrap().id.clone();
+    let heavy_index = font
+        .masters
+        .iter()
+        .position(|master| master.id != regular)
+        .unwrap();
+    let heavy = font.masters.remove(heavy_index);
+    font.virtual_masters.push(fc_model::VirtualMaster {
+        name: "Heavy support".into(),
+        location: heavy.location.clone(),
+    });
+    for glyph in font.glyphs.values_mut() {
+        for layer in &mut glyph.layers {
+            if matches!(&layer.kind, LayerKind::Master(id) if *id == heavy.id) {
+                layer.kind = LayerKind::Brace {
+                    master: regular.clone(),
+                    location: heavy.location.clone(),
+                };
+            }
+        }
+    }
+    font.validate_designspace().unwrap();
+    assert_eq!(font.masters.len(), 1);
+    let instance = fc_compile::instantiate(&font, &heavy.location, None).unwrap();
+    assert!(instance.virtual_masters.is_empty());
+    instance.validate_designspace().unwrap();
+    for format in [fc_compile::ExportFormat::Ttf, fc_compile::ExportFormat::Otf] {
+        let report = fc_compile::export(
+            &font,
+            &|_| 0,
+            &fc_compile::ExportOptions {
+                variable: true,
+                format,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let face = FontRef::new(&report.bytes).unwrap();
+        assert_eq!(face.axes().len(), 1);
+        let outline = face
+            .outline_glyphs()
+            .get(face.charmap().map('A').unwrap())
+            .unwrap();
+        for (user, max_x) in [(100., 550.), (900., 825.)] {
+            let location = face.axes().location([("wght", user)]);
+            let mut pen = Points::default();
+            outline
+                .draw(
+                    skrifa::outline::DrawSettings::unhinted(Size::new(1000.), &location),
+                    &mut pen,
+                )
+                .unwrap();
+            let actual = pen.0.iter().map(|point| point.0).reduce(f32::max).unwrap();
+            assert!((actual - max_x).abs() < 1., "{format:?}: {user}: {actual}");
+        }
+    }
+}

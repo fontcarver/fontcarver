@@ -305,7 +305,7 @@ describe('MeasureTool', () => {
     tool.pointerMove(toolPointer(context, { x: 250, y: 100 }), context)
     const overlay = tool.overlay(context)
 
-    expect(overlay.hud).toBe('d 300  ∠ 0.0°')
+    expect(overlay.hud).toBe('d 300  ∠ 0.0°  Δx 300  Δy 0')
     expect(overlay.marks.map((mark) => mark.x)).toEqual([0, 200])
     expect(overlay.labels).toEqual([{ at: { x: 100, y: 100 }, text: '200' }])
   })

@@ -1,0 +1,207 @@
+"""Exercise package discovery and payload checks without building the desktop app."""
+import json
+import os
+import plistlib
+import shutil
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+import check_release_bundle as verifier
+
+
+class ReleaseBundleTests(unittest.TestCase):
+    def setUp(self):
+        self.scratch = verifier.ROOT / '.scratch' / 'p5-release-verify-tests'
+        self.scratch.mkdir(parents=True, exist_ok=True)
+        self.temporary = tempfile.TemporaryDirectory(dir=self.scratch)
+        self.root = Path(self.temporary.name)
+
+    def tearDown(self):
+        self.temporary.cleanup()
+        try:
+            self.scratch.rmdir()
+        except OSError:
+            pass
+
+    def payload(self):
+        binary = self.root / 'usr/bin/fontcarver-desktop'
+        binary.parent.mkdir(parents=True)
+        binary.write_bytes(b'\x7fELF' + b'\x00' * 64)
+        binary.chmod(0o755)
+        resources = self.root / 'usr/lib/fontcarver'
+        resources.mkdir(parents=True)
+        for name in verifier.RESOURCES:
+            (resources / name).write_text('FontForge is a behavioral reference.\n')
+        notice = resources / 'licenses' / 'dependency.txt'
+        notice.parent.mkdir()
+        notice.write_text('Permission to redistribute.\n')
+        self.dependencies = resources / 'DEPENDENCIES.json'
+        self.dependencies.write_text(json.dumps({
+            'schema_version': 1,
+            'packages': [{'ecosystem': 'cargo', 'name': 'example', 'version': '1.0',
+                          'license': 'MIT', 'notices': [{'path': 'licenses/dependency.txt',
+                                                      'sha256': verifier.sha256(notice)}]}],
+        }))
+        desktop = self.root / 'usr/share/applications/fontcarver-desktop.desktop'
+        desktop.parent.mkdir(parents=True)
+        desktop.write_text('[Desktop Entry]\nType=Application\nName=FontCarver\n'
+                           'Exec=fontcarver-desktop\nIcon=fontcarver-desktop\n')
+        icon = self.root / 'usr/share/icons/hicolor/32x32/apps/fontcarver-desktop.png'
+        icon.parent.mkdir(parents=True)
+        icon.write_bytes(b'\x89PNG\r\n\x1a\nicon')
+        return resources
+
+    def test_complete_payload_and_legal_fontforge_mentions_pass(self):
+        self.payload()
+        report = verifier.inspect_payload(self.root, 'deb')
+        self.assertTrue(report['executable']['valid_header'])
+        self.assertEqual(report['notices']['packages'], 1)
+        self.assertEqual(len(report['resources']), len(verifier.RESOURCES))
+
+    def test_missing_and_empty_resources_are_rejected(self):
+        resources = self.payload()
+        license_file = resources / 'LICENSE-MIT'
+        license_file.write_bytes(b'')
+        with self.assertRaisesRegex(verifier.VerificationError, 'LICENSE-MIT'):
+            verifier.inspect_payload(self.root, 'deb')
+        license_file.unlink()
+        with self.assertRaisesRegex(verifier.VerificationError, 'LICENSE-MIT'):
+            verifier.inspect_payload(self.root, 'deb')
+
+    def test_plain_text_cannot_satisfy_application_executable(self):
+        self.payload()
+        (self.root / 'usr/bin/fontcarver-desktop').write_text('not a binary')
+        with self.assertRaisesRegex(verifier.VerificationError, 'executable'):
+            verifier.inspect_payload(self.root, 'deb')
+
+    def test_fontforge_binary_library_and_source_archive_are_rejected(self):
+        self.payload()
+        for name in ('FontForge.exe', 'libfontforge.so.4', 'libfontforge-4.dll',
+                     'fontforge-20230101.tar.xz', 'fontforge-source.zip', 'fontforge.py'):
+            with self.subTest(name=name):
+                forbidden = self.root / name
+                forbidden.write_bytes(b'not shipped')
+                with self.assertRaisesRegex(verifier.VerificationError, 'FontForge'):
+                    verifier.inspect_payload(self.root, 'deb')
+                forbidden.unlink()
+
+    def test_modified_dependency_license_is_rejected(self):
+        resources = self.payload()
+        (resources / 'licenses/dependency.txt').write_text('Changed after notice generation')
+        with self.assertRaisesRegex(verifier.VerificationError, 'checksum'):
+            verifier.inspect_payload(self.root, 'deb')
+
+    def test_dependency_notice_cannot_escape_resource_directory(self):
+        self.payload()
+        data = json.loads(self.dependencies.read_text())
+        data['packages'][0]['notices'][0]['path'] = '../LICENSE-MIT'
+        self.dependencies.write_text(json.dumps(data))
+        with self.assertRaisesRegex(verifier.VerificationError, 'notice path'):
+            verifier.inspect_payload(self.root, 'deb')
+
+    @unittest.skipIf(os.name == 'nt', 'Creating symlinks requires Windows privileges')
+    def test_external_resource_symlink_is_rejected(self):
+        resources = self.payload()
+        resource = resources / 'INSTALL.md'
+        resource.unlink()
+        resource.symlink_to(verifier.ROOT / 'CONVENTIONS.md')
+        with self.assertRaisesRegex(verifier.VerificationError, 'outside'):
+            verifier.inspect_payload(self.root, 'deb')
+
+    def test_appimage_requires_launcher_and_desktop_metadata(self):
+        self.payload()
+        with self.assertRaisesRegex(verifier.VerificationError, 'AppRun'):
+            verifier.inspect_payload(self.root, 'appimage')
+
+    @unittest.skipIf(os.name == 'nt', 'POSIX executable permissions')
+    def test_appimage_launcher_must_be_executable(self):
+        self.payload()
+        launcher = self.root / 'AppRun'
+        launcher.write_text('#!/bin/sh\nexec usr/bin/fontcarver-desktop\n')
+        launcher.chmod(0o644)
+        with self.assertRaisesRegex(verifier.VerificationError, 'AppRun'):
+            verifier.inspect_payload(self.root, 'appimage')
+        launcher.chmod(0o755)
+        self.assertTrue(verifier.inspect_payload(self.root, 'appimage')['executable']['valid_header'])
+
+    def test_linux_executable_must_be_installed_on_path(self):
+        self.payload()
+        (self.root / 'usr/bin/fontcarver-desktop').rename(self.root / 'fontcarver-desktop')
+        with self.assertRaisesRegex(verifier.VerificationError, 'executable'):
+            verifier.inspect_payload(self.root, 'deb')
+
+    def test_instructions_can_live_above_dependency_notices(self):
+        resources = self.payload()
+        (resources / 'INSTALL.md').rename(resources.parent / 'INSTALL.md')
+        dependencies = resources.parent / 'licenses/dependencies'
+        dependencies.parent.mkdir()
+        resources.rename(dependencies)
+        report = verifier.inspect_payload(self.root, 'deb')
+        self.assertEqual(report['notices']['packages'], 1)
+        self.assertIn('usr/lib/INSTALL.md', [item['path'] for item in report['resources']])
+
+    def test_expected_artifacts_are_discovered_case_insensitively(self):
+        (self.root / 'deb').mkdir()
+        deb = self.root / 'deb/FontCarver.deb'
+        appimage = self.root / 'FontCarver.AppImage'
+        deb.write_bytes(b'deb')
+        appimage.write_bytes(b'appimage')
+        discovered = verifier.discover(self.root, ['deb', 'appimage'])
+        self.assertEqual(discovered, [('deb', deb), ('appimage', appimage)])
+
+    def test_missing_expected_type_and_empty_installer_are_rejected(self):
+        (self.root / 'FontCarver.deb').touch()
+        with self.assertRaisesRegex(verifier.VerificationError, 'empty'):
+            verifier.discover(self.root, ['deb'])
+        with self.assertRaisesRegex(verifier.VerificationError, 'msi'):
+            verifier.discover(self.root, ['msi'])
+
+    def test_native_platform_mismatch_is_not_reported_as_success(self):
+        with patch.object(verifier.sys, 'platform', 'linux'):
+            with self.assertRaisesRegex(verifier.VerificationError, 'darwin'):
+                with verifier.extracted(self.root / 'test.dmg', 'dmg', self.root):
+                    self.fail('Unsupported platform yielded an extracted payload')
+
+    def test_dmg_is_detached_when_payload_validation_fails(self):
+        calls = []
+
+        def command(arguments, cwd=None):
+            calls.append(arguments)
+            return plistlib.dumps({'system-entities': []})
+
+        with patch.object(verifier.sys, 'platform', 'darwin'), patch.object(verifier, 'run', command):
+            with self.assertRaisesRegex(verifier.VerificationError, 'payload invalid'):
+                with verifier.extracted(self.root / 'test.dmg', 'dmg', self.root):
+                    raise verifier.VerificationError('payload invalid')
+        self.assertIn('-readonly', calls[0])
+        self.assertEqual(calls[-1][:2], ['hdiutil', 'detach'])
+
+    def test_failed_extraction_removes_temporary_directory(self):
+        (self.root / 'test.deb').write_bytes(b'not a deb')
+        with patch.object(verifier, 'ROOT', self.root), patch.object(verifier.sys, 'platform', 'linux'):
+            with patch.object(verifier, 'run', side_effect=verifier.VerificationError('bad archive')):
+                with self.assertRaisesRegex(verifier.VerificationError, 'bad archive'):
+                    verifier.verify(self.root, ['deb'])
+            self.assertFalse((self.root / '.scratch/p5-release-verify').exists())
+
+    @unittest.skipUnless(shutil.which('dpkg-deb'), 'dpkg-deb is required for native extraction')
+    def test_real_deb_round_trip_checks_metadata_and_checksum(self):
+        outer = self.root
+        self.root = outer / 'source'
+        self.payload()
+        control = self.root / 'DEBIAN/control'
+        control.parent.mkdir()
+        control.write_text('Package: fontcarver\nVersion: 0.1.0\nArchitecture: amd64\n'
+                           'Maintainer: FontCarver <test@example.invalid>\n'
+                           'Description: Synthetic package extraction test\n')
+        artifact = outer / 'FontCarver.deb'
+        verifier.run(['dpkg-deb', '--build', str(self.root), str(artifact)])
+        report = verifier.verify(outer, ['deb'])
+        self.assertEqual(report[0]['metadata']['Package'], 'fontcarver')
+        self.assertEqual(report[0]['sha256'], verifier.sha256(artifact))
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -6,134 +6,29 @@
  */
 
 import { useUiStore } from '../stores/uiStore'
+import { useKeymapStore } from '../stores/keymapStore'
 
 import { listCommands, runCommand } from './commands'
 
-/** A shortcut broken into modifier flags and a normalised key. */
-export interface ParsedShortcut {
-  readonly mod: boolean
-  readonly shift: boolean
-  readonly alt: boolean
-  readonly key: string
-}
-
-/** Whether the current platform uses Command as the primary modifier. */
-export function isMacPlatform(): boolean {
-  const nav = globalThis.navigator as
-    (Navigator & { userAgentData?: { platform?: string } }) | undefined
-  const platform = nav?.userAgentData?.platform ?? nav?.platform ?? ''
-  return /mac|iphone|ipad|ipod/i.test(platform)
-}
-
-const CODE_KEYS: Record<string, string> = {
-  Equal: '=',
-  NumpadAdd: '=',
-  Minus: '-',
-  NumpadSubtract: '-',
-  Slash: '/',
-  Comma: ',',
-  Period: '.',
-  BracketLeft: '[',
-  BracketRight: ']',
-}
-
-function normaliseKey(key: string): string {
-  const lower = key.toLowerCase()
-  if (lower === '+' || lower === 'add') return '='
-  if (lower === '_' || lower === 'subtract') return '-'
-  if (lower === 'esc') return 'escape'
-  if (lower === ' ') return 'space'
-  return lower
-}
-
-/** Parses `Mod+Shift+P`; returns `null` for an empty or malformed shortcut. */
-export function parseShortcut(shortcut: string): ParsedShortcut | null {
-  const parts = shortcut
-    .split('+')
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0)
-  if (parts.length === 0) return null
-  let mod = false
-  let shift = false
-  let alt = false
-  let key: string | undefined
-  for (const part of parts) {
-    const lower = part.toLowerCase()
-    if (lower === 'mod' || lower === 'cmd' || lower === 'ctrl') mod = true
-    else if (lower === 'shift') shift = true
-    else if (lower === 'alt' || lower === 'option') alt = true
-    else key = normaliseKey(part)
-  }
-  return key === undefined ? null : { mod, shift, alt, key }
-}
-
-const MAC_SYMBOLS: Record<string, string> = {
-  mod: '⌘',
-  shift: '⇧',
-  alt: '⌥',
-}
-
-const KEY_LABELS: Record<string, string> = {
-  arrowleft: '←',
-  arrowright: '→',
-  arrowup: '↑',
-  arrowdown: '↓',
-  escape: 'Esc',
-  enter: '↵',
-  space: 'Space',
-}
-
-/** Renders a shortcut for display: `⌘⇧P` on macOS, `Ctrl+Shift+P` elsewhere. */
-export function formatShortcut(
-  shortcut: string,
-  mac: boolean = isMacPlatform(),
-): string {
-  const parsed = parseShortcut(shortcut)
-  if (!parsed) return ''
-  const label =
-    KEY_LABELS[parsed.key] ??
-    (parsed.key.length === 1 ? parsed.key.toUpperCase() : parsed.key)
-  if (mac) {
-    return `${parsed.mod ? MAC_SYMBOLS.mod : ''}${parsed.alt ? MAC_SYMBOLS.alt : ''}${
-      parsed.shift ? MAC_SYMBOLS.shift : ''
-    }${label}`
-  }
-  const parts: string[] = []
-  if (parsed.mod) parts.push('Ctrl')
-  if (parsed.alt) parts.push('Alt')
-  if (parsed.shift) parts.push('Shift')
-  parts.push(label)
-  return parts.join('+')
-}
-
-function eventKeys(event: KeyboardEvent): string[] {
-  const keys = [normaliseKey(event.key)]
-  const code = event.code
-  if (code in CODE_KEYS) keys.push(CODE_KEYS[code] ?? '')
-  else if (code.startsWith('Key')) keys.push(code.slice(3).toLowerCase())
-  else if (code.startsWith('Digit')) keys.push(code.slice(5))
-  else if (code.startsWith('Numpad')) keys.push(code.slice(6).toLowerCase())
-  return keys.filter((key) => key.length > 0)
-}
-
-/** Whether a keyboard event matches a parsed shortcut on this platform. */
-export function matchesShortcut(
-  event: KeyboardEvent,
-  parsed: ParsedShortcut,
-  mac: boolean = isMacPlatform(),
-): boolean {
-  const modPressed = mac ? event.metaKey : event.ctrlKey
-  const otherMod = mac ? event.ctrlKey : event.metaKey
-  if (modPressed !== parsed.mod || otherMod) return false
-  if (event.shiftKey !== parsed.shift) return false
-  if (event.altKey !== parsed.alt) return false
-  return eventKeys(event).includes(parsed.key)
-}
+export {
+  formatShortcut,
+  isMacPlatform,
+  matchesShortcut,
+  parseShortcut,
+} from './shortcutSyntax'
+export type { ParsedShortcut } from './shortcutSyntax'
+import { isMacPlatform, matchesShortcut, parseShortcut } from './shortcutSyntax'
+import { shortcutFor } from './keymap'
+import { getCommand } from './commands'
 
 /** Whether the event target is a text field that should swallow shortcuts. */
 export function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
-  if (target.isContentEditable) return true
+  if (
+    target.isContentEditable ||
+    target.closest('[contenteditable]:not([contenteditable="false"])')
+  )
+    return true
   const tag = target.tagName
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
 }
@@ -165,11 +60,45 @@ export function commandForEvent(
   event: KeyboardEvent,
   mac: boolean = isMacPlatform(),
 ): string | undefined {
+  if (event.defaultPrevented || event.isComposing || event.keyCode === 229)
+    return undefined
+  const ui = useUiStore.getState()
+  const textMode =
+    ui.tabs.find((tab) => tab.id === ui.activeTab)?.textState?.mode === 'text'
+  if (
+    textMode &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.altKey &&
+    ((event.key.length === 1 && event.key !== ' ') || event.key === 'Backspace')
+  )
+    return undefined
   const editable = isEditableTarget(event.target)
-  for (const command of listCommands()) {
-    if (!command.shortcut) continue
-    if (editable && !command.allowInInput) continue
-    const parsed = parseShortcut(command.shortcut)
+  const overrides = useKeymapStore.getState().overrides
+  // A newly shipped default must not steal an existing user binding.
+  const commands = listCommands().sort(
+    (a, b) =>
+      Number(Object.hasOwn(overrides, b.id)) -
+      Number(Object.hasOwn(overrides, a.id)),
+  )
+  for (const command of commands) {
+    const shortcut = shortcutFor(command.id, command.shortcut, overrides)
+    if (!shortcut) continue
+    const parsed = parseShortcut(shortcut)
+    if (
+      editable &&
+      (!command.allowInInput ||
+        (parsed && !parsed.mod && !parsed.alt && !/^f\d+$/.test(parsed.key)))
+    )
+      continue
+    if (
+      parsed &&
+      !parsed.mod &&
+      !parsed.alt &&
+      !/^f\d+$/.test(parsed.key) &&
+      isInteractiveTarget(event.target)
+    )
+      continue
     if (!parsed || !matchesShortcut(event, parsed, mac)) continue
     // Honour the command's `when` guard before claiming the event. A command
     // whose `when()` is currently false is not bound to this keystroke, so the
@@ -187,8 +116,9 @@ export function commandForEvent(
  * Escape is exempt: it is the way out of every dialog, and no dialog would ever
  * want the dispatcher to swallow it.
  */
-function claimedByModal(event: KeyboardEvent): boolean {
-  if (normaliseKey(event.key) === 'escape') return false
+function claimedByModal(event: KeyboardEvent, id: string): boolean {
+  if (getCommand(id)?.allowInModal) return false
+  if (event.key.toLowerCase() === 'escape') return false
   return useUiStore.getState().modalCount > 0
 }
 
@@ -205,9 +135,8 @@ export function installShortcuts(
   const mac = isMacPlatform()
   const handler = (event: Event): void => {
     if (!(event instanceof KeyboardEvent) || event.repeat) return
-    if (claimedByModal(event)) return
     const id = commandForEvent(event, mac)
-    if (!id) return
+    if (!id || claimedByModal(event, id)) return
     event.preventDefault()
     runCommand(id)
   }

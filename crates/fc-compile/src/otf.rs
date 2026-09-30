@@ -11,6 +11,7 @@ pub(crate) fn prepare(
     font: &Font,
     master: &MasterId,
     production_names: bool,
+    subroutinize: bool,
 ) -> Result<(Vec<GlyphName>, fc_sfnt::write::CffOutput), Error> {
     let mut order = vec![GlyphName::from(".notdef")];
     order.extend(
@@ -19,8 +20,14 @@ pub(crate) fn prepare(
             .filter(|glyph| glyph.export && glyph.name.as_ref() != ".notdef")
             .map(|glyph| glyph.name.clone()),
     );
-    let cff = fc_sfnt::write::write_cff(font, master, &order, production_names)
-        .map_err(|error| Error::InvalidSource(error.to_string()))?;
+    let cff = fc_sfnt::write::write_cff_with_subroutines(
+        font,
+        master,
+        &order,
+        production_names,
+        subroutinize,
+    )
+    .map_err(|error| Error::InvalidSource(error.to_string()))?;
     Ok((order, cff))
 }
 
@@ -31,14 +38,21 @@ pub(crate) fn convert(
     order: &[GlyphName],
     production_names: bool,
     prepared: (Vec<GlyphName>, fc_sfnt::write::CffOutput),
+    subroutinize: bool,
 ) -> Result<Vec<u8>, Error> {
     crate::otf_preservation::check_geometry_independent_layout(sfnt)?;
     crate::otf_preservation_aat::check(sfnt)?;
     let cff = if prepared.0 == order {
         prepared.1
     } else {
-        fc_sfnt::write::write_cff(font, master, order, production_names)
-            .map_err(|error| Error::InvalidSource(error.to_string()))?
+        fc_sfnt::write::write_cff_with_subroutines(
+            font,
+            master,
+            order,
+            production_names,
+            subroutinize,
+        )
+        .map_err(|error| Error::InvalidSource(error.to_string()))?
     };
     let face = FontRef::new(sfnt).map_err(|error| Error::parse("OTF source sfnt", error))?;
     let mut builder = FontBuilder::new();

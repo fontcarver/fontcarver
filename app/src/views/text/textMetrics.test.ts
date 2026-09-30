@@ -9,12 +9,7 @@ import {
   type MockTransport,
 } from '../../test/mockTransport'
 
-import {
-  metricShortcut,
-  TextMetricsRunner,
-  type MetricShortcutEvent,
-  type TextMetricsPreview,
-} from './textMetrics'
+import { TextMetricsRunner, type TextMetricsPreview } from './textMetrics'
 
 function deferred(): { promise: Promise<void>; resolve: () => void } {
   let resolve: () => void = () => undefined
@@ -93,59 +88,64 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('metricShortcut', () => {
-  const event = (
-    overrides: Partial<MetricShortcutEvent>,
-  ): MetricShortcutEvent => ({
-    key: 'ArrowLeft',
-    altKey: false,
-    shiftKey: false,
-    ctrlKey: false,
-    metaKey: false,
-    ...overrides,
-  })
-
-  it('maps platform Mod+arrows to the stated sides and signs', () => {
-    expect(metricShortcut(event({ ctrlKey: true }), false)).toEqual({
-      side: 'lsb',
-      delta: -1,
-    })
-    expect(
-      metricShortcut(event({ key: 'ArrowRight', ctrlKey: true }), false),
-    ).toEqual({ side: 'rsb', delta: 1 })
-    expect(metricShortcut(event({ metaKey: true }), true)).toEqual({
-      side: 'lsb',
-      delta: -1,
-    })
-    expect(metricShortcut(event({ ctrlKey: true }), true)).toBeNull()
-  })
-
-  it('uses Shift for ten and macOS Meta+Ctrl for one hundred', () => {
-    expect(
-      metricShortcut(
-        event({ key: 'ArrowRight', ctrlKey: true, shiftKey: true }),
-        false,
-      ),
-    ).toEqual({ side: 'rsb', delta: 10 })
-    expect(
-      metricShortcut(event({ metaKey: true, ctrlKey: true }), true),
-    ).toEqual({ side: 'lsb', delta: -100 })
-    // Linux Ctrl is already Mod, so Ctrl alone remains the one-unit step.
-    expect(metricShortcut(event({ ctrlKey: true }), false)?.delta).toBe(-1)
-  })
-
-  it('leaves Alt, unmodified arrows, and other keys unclaimed', () => {
-    expect(
-      metricShortcut(event({ ctrlKey: true, altKey: true }), false),
-    ).toBeNull()
-    expect(metricShortcut(event({}), false)).toBeNull()
-    expect(
-      metricShortcut(event({ key: 'ArrowUp', ctrlKey: true }), false),
-    ).toBeNull()
-  })
-})
-
 describe('TextMetricsRunner', () => {
+  it('adjusts both sidebearings atomically in one preview and undo session', async () => {
+    const mock = createEditingTransport()
+    const { metrics, previews, frames, ended } = runner(mock)
+
+    metrics.press('both', 10)
+    frames.flush()
+    await vi.waitFor(() => expect(applies(mock)).toHaveLength(1))
+    metrics.press('both', -2.5)
+    frames.flush()
+    await metrics.end()
+    await call('doc.undo', { doc: 1 })
+
+    expect(previews).toEqual([
+      { width: 620, lsb: 50, rsb: 70, lsbDelta: 10 },
+      { width: 615, lsb: 47.5, rsb: 67.5, lsbDelta: 7.5 },
+    ])
+    expect(applies(mock).at(-1)?.command).toEqual({
+      SetMetrics: {
+        glyph: 'A',
+        layer: 'layer-1',
+        width: null,
+        lsb: 47.5,
+        rsb: 67.5,
+      },
+    })
+    expect(mock.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.undo',
+    ])
+    expect(ended).toHaveBeenCalledOnce()
+  })
+
+  it('adjusts an empty glyph advance by both sides without geometry translation', async () => {
+    const mock = createEditingTransport()
+    const { metrics, previews } = runner(mock, {
+      hasOutline: false,
+      start: { width: 600, lsb: 0, rsb: 600 },
+    })
+
+    metrics.press('both', -10)
+    await metrics.end()
+
+    expect(previews).toEqual([{ width: 580, lsb: 0, rsb: 580, lsbDelta: 0 }])
+    expect(applies(mock)[0]?.command).toEqual({
+      SetMetrics: {
+        glyph: 'A',
+        layer: 'layer-1',
+        width: 580,
+        lsb: null,
+        rsb: null,
+      },
+    })
+  })
+
   it('keeps alternating sides in one edit and one undo boundary', async () => {
     const mock = createEditingTransport()
     const { metrics, previews, frames, ended } = runner(mock)

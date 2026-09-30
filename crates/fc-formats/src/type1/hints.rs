@@ -6,6 +6,9 @@ use read_fonts::ps::cs::CharstringContext;
 
 use super::guards::{tokens, ProgramToken};
 
+#[path = "hints_seac.rs"]
+mod seac;
+
 pub(super) fn read(
     program: &[u8],
     context: &impl CharstringContext,
@@ -17,6 +20,12 @@ pub(super) fn read(
     scan.walk(program, context, 0, budget)?;
     if scan.result.is_some() || scan.replacement_call {
         return Err("unconsumed OtherSubrs result");
+    }
+    if scan
+        .seac_contours
+        .is_some_and(|count| count != contours.len())
+    {
+        return Err("seac contours differ from evaluated outline");
     }
     scan.bind(contours)?;
     let [xx, xy, yx, yy, dx, dy] = transform.as_coeffs();
@@ -69,6 +78,8 @@ struct Scan {
     point: usize,
     closed: bool,
     dirty: bool,
+    in_seac: bool,
+    seac_contours: Option<usize>,
 }
 
 impl Scan {
@@ -192,11 +203,15 @@ impl Scan {
                     self.operands(0)?;
                     return Ok(true);
                 }
+                ProgramToken::Operator(0x0c06) => {
+                    self.seac(context, depth, budget)?;
+                    return Ok(true);
+                }
                 ProgramToken::Operator(opcode @ (4..=9 | 21 | 22 | 30 | 31)) => {
                     self.draw(opcode)?;
                     self.stack.clear();
                 }
-                // Flex, dot sections, seac and counter-control procedures need
+                // Flex, dot sections and counter-control procedures need
                 // their own semantics. Never misapply a partial set of hints.
                 ProgramToken::Operator(_) => return Err("unsupported charstring hint mechanism"),
             }

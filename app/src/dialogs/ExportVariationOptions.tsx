@@ -8,6 +8,7 @@ import styles from './dialogs.module.css'
 export function ExportVariationOptions({
   doc,
   busy,
+  canVariable = true,
   variable,
   onVariable,
   instance,
@@ -17,6 +18,7 @@ export function ExportVariationOptions({
 }: {
   doc: DocId
   busy: boolean
+  canVariable?: boolean
   variable: boolean
   onVariable: (value: boolean) => void
   instance: number | undefined
@@ -45,14 +47,16 @@ export function ExportVariationOptions({
   }, [doc, t])
   return (
     <fieldset disabled={busy} className={styles.section}>
-      <label className={styles.row}>
-        <input
-          type="checkbox"
-          checked={variable}
-          onChange={(e) => onVariable(e.target.checked)}
-        />
-        {t('variation.exportVariable')}
-      </label>
+      {canVariable ? (
+        <label className={styles.row}>
+          <input
+            type="checkbox"
+            checked={variable}
+            onChange={(e) => onVariable(e.target.checked)}
+          />
+          {t('variation.exportVariable')}
+        </label>
+      ) : null}
       {error && <p role="alert">{error}</p>}
       {state &&
         (variable ? (

@@ -356,6 +356,7 @@ pub(crate) fn guide_from_norad(guide: &Guideline) -> Guide {
         Line::Angle { x, y, degrees } => (x, y, degrees),
     };
     Guide {
+        id: guide.identifier().map(ToString::to_string),
         x,
         y,
         angle,
@@ -366,6 +367,7 @@ pub(crate) fn guide_from_norad(guide: &Guideline) -> Guide {
 }
 
 pub(crate) fn guide_to_norad(guide: &Guide, identifier: Option<&str>) -> Result<Guideline, Error> {
+    let identifier = guide.id.as_deref().or(identifier);
     let line = Line::Angle {
         x: guide.x,
         y: guide.y,

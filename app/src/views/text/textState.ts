@@ -21,6 +21,8 @@ export function initialTextState(
     text,
     activeIndex: 0,
     mode: 'edit',
+    kerningMode: 'on',
+    spacingSide: 'lsb',
     master,
     size: 128,
     features: [

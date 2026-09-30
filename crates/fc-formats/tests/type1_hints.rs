@@ -91,6 +91,30 @@ fn unsupported_or_overlapping_hints_do_not_replace_output() {
     }
 }
 
+#[test]
+fn cid_private_assignments_cannot_silently_become_type1_dictionary_zero() {
+    let directory = tempfile::tempdir().unwrap();
+    for binary in [false, true] {
+        let path = directory.path().join(if binary {
+            "existing.pfb"
+        } else {
+            "existing.pfa"
+        });
+        std::fs::write(&path, b"original").unwrap();
+        for extra_dictionary in [false, true] {
+            let mut font = sample();
+            if extra_dictionary {
+                font.masters[0].cff_private_dicts.push(Default::default());
+            } else {
+                font.glyph_mut("H").unwrap().layers[0].cff_private_dict_index = Some(1);
+            }
+            let error = write_type1(&font, &font.default_master().id, &path, binary).unwrap_err();
+            assert!(error.to_string().contains("one private dictionary"));
+            assert_eq!(std::fs::read(&path).unwrap(), b"original");
+        }
+    }
+}
+
 // Native test data is constructed directly from the Type 1 format, including
 // lenIV=-1 and a nonzero sidebearing. No font editor generates these programs.
 fn native(

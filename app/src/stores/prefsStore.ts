@@ -17,8 +17,17 @@ export const DEFAULT_PREFS: Prefs = Object.freeze<Prefs>({
   recent_limit: 20,
   autosave_seconds: 60,
   grid_size: 1,
+  grid_subdivision: 1,
+  snap_distance: 6,
+  hit_distance: 5,
+  node_size: 5,
+  handle_size: 3.5,
   snap: {
     nodes: true,
+    handles: true,
+    anchors: true,
+    zones: true,
+    background: true,
     guides: true,
     metrics: true,
     grid: true,
@@ -221,11 +230,18 @@ export const usePrefsStore = create<PrefsState>((set, get) => {
 export function snapSettingsOf(prefs: Prefs): SnapSettings {
   return {
     nodes: prefs.snap.nodes,
+    handles: prefs.snap.handles,
+    anchors: prefs.snap.anchors,
+    zones: prefs.snap.zones,
+    background: prefs.snap.background,
     guides: prefs.snap.guides,
     metrics: prefs.snap.metrics,
     grid: prefs.snap.grid,
     components: prefs.snap.components,
-    gridSize: Math.max(0, prefs.grid_size),
+    gridSize:
+      Math.max(0, prefs.grid_size) / Math.max(1, prefs.grid_subdivision),
+    snapDistance: prefs.snap_distance,
+    hitDistance: prefs.hit_distance,
   }
 }
 

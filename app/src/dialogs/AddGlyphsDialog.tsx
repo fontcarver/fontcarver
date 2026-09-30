@@ -40,6 +40,8 @@ interface CharsetCounts {
 
 export interface AddGlyphsDialogProps {
   doc: DocId
+  /** Recipe selected by a repertoire or saved glyph list. */
+  recipe?: string
 }
 
 /**
@@ -48,10 +50,13 @@ export interface AddGlyphsDialogProps {
  * the names that would be created. Every count comes from a `glyphs.add` dry
  * run, so the dialog and the kernel can never disagree about a recipe.
  */
-export function AddGlyphsDialog({ doc }: AddGlyphsDialogProps) {
+export function AddGlyphsDialog({
+  doc,
+  recipe: initialRecipe = '',
+}: AddGlyphsDialogProps) {
   const { t } = useTranslation()
   const setDialog = useUiStore((state) => state.setDialog)
-  const [recipe, setRecipe] = useState('')
+  const [recipe, setRecipe] = useState(initialRecipe)
   const [latest, setLatest] = useState<Preview | null>(null)
   const [busy, setBusy] = useState(false)
   const [counts, setCounts] = useState<Record<string, CharsetCounts | null>>({})

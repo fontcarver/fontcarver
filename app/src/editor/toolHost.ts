@@ -18,6 +18,9 @@ import type { Hit } from './hitTest'
 import type { EditOutline } from './outlineGeometry'
 import type { LayerCurves } from './pathGeometry'
 import type { LayerTarget } from './pointCommands'
+import { AnnotationTool } from './tools/annotation'
+import { LassoTool } from './tools/lasso'
+import { EraserTool } from './tools/eraser'
 import { KnifeTool } from './tools/knife'
 import { MeasureTool } from './tools/measure'
 import { PencilTool } from './tools/pencil'
@@ -38,11 +41,17 @@ import {
   type ToolPointer,
 } from './tools/toolTypes'
 import type { ToolId } from './tools/registry'
-import type { Selection } from './selection'
+import type { EditTarget, Selection } from './selection'
 
 /** The tool for an id, or `null` when the controller handles it itself. */
 export function createTool(id: ToolId): EditorTool | null {
   switch (id) {
+    case 'annotation':
+      return new AnnotationTool()
+    case 'lasso':
+      return new LassoTool()
+    case 'eraser':
+      return new EraserTool()
     case 'pen':
       return new PenTool()
     case 'pencil':
@@ -75,7 +84,9 @@ export interface ToolHostSources {
   anchors: () => readonly Anchor[]
   components: () => readonly ComponentView[]
   selection: () => Selection
+  canSelect?: (target: EditTarget) => boolean
   curves: () => LayerCurves
+  italicAngle?: () => number
   labels: () => ToolLabels
   snap: (point: Point2, suspend: boolean) => SnappedPoint
   hitTest: (screen: Point2) => Hit | null
@@ -125,7 +136,9 @@ export class ToolHost {
       components: sources.components(),
       viewport: sources.viewport,
       selection: sources.selection(),
+      canSelect: sources.canSelect,
       curves: sources.curves(),
+      italicAngle: sources.italicAngle?.() ?? 0,
       labels: sources.labels(),
       snap: (point, suspend) => sources.snap(point, suspend === true),
       hitTest: sources.hitTest,

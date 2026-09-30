@@ -16,6 +16,7 @@ import {
 
 import styles from './fontView.module.css'
 import { CjkBatchDialog } from './CjkBatchDialog'
+import { OpticalSpacingDialog } from './OpticalSpacingDialog'
 import { GlyphSearch } from './GlyphSearch'
 import { useUiStore } from '../../stores/uiStore'
 
@@ -43,7 +44,13 @@ export interface GridToolbarProps {
 export function GridToolbar({ summary, view }: GridToolbarProps) {
   const { t } = useTranslation()
   const [batch, setBatch] = useState<number[] | null>(null)
+  const [optical, setOptical] = useState<{
+    doc: number
+    glyphs: number[]
+    master: string
+  } | null>(null)
   const doc = summary.doc
+  const setViewMode = useDocumentStore((state) => state.setViewMode)
   const setMaster = useDocumentStore((state) => state.setMaster)
   const setSort = useDocumentStore((state) => state.setSort)
   const setLabelMode = useDocumentStore((state) => state.setLabelMode)
@@ -56,6 +63,9 @@ export function GridToolbar({ summary, view }: GridToolbarProps) {
 
   return (
     <>
+      {optical && (
+        <OpticalSpacingDialog {...optical} onClose={() => setOptical(null)} />
+      )}
       {batch && (
         <CjkBatchDialog
           doc={doc}
@@ -66,6 +76,20 @@ export function GridToolbar({ summary, view }: GridToolbarProps) {
         />
       )}
       <Toolbar label={t('fontView.toolbar')} className={styles.toolbarRow}>
+        <span className={styles.toolbarGroup}>
+          <Button
+            aria-pressed={view.viewMode === 'grid'}
+            onClick={() => setViewMode(doc, 'grid')}
+          >
+            {t('fontView.gridView')}
+          </Button>
+          <Button
+            aria-pressed={view.viewMode === 'list'}
+            onClick={() => setViewMode(doc, 'list')}
+          >
+            {t('fontView.listView')}
+          </Button>
+        </span>
         <span className={styles.toolbarGroup}>
           <span className={styles.toolbarLabel}>{t('inspector.master')}</span>
           <span className={styles.toolbarSelect}>
@@ -143,6 +167,14 @@ export function GridToolbar({ summary, view }: GridToolbarProps) {
         >
           {t('cjk.batchTitle')}
         </Button>
+        <Button
+          disabled={view.selection.size === 0 || view.selection.size > 128}
+          onClick={() =>
+            setOptical({ doc, master: masterId, glyphs: [...view.selection] })
+          }
+        >
+          {t('opticalSpacing.title')}
+        </Button>
         <span className={styles.toolbarSpacer} />
         <Button
           disabled={view.selection.size === 0 || view.selection.size > 512}
@@ -160,7 +192,13 @@ export function GridToolbar({ summary, view }: GridToolbarProps) {
         <span className={styles.toolbarCount}>
           {t('status.glyphs', { count: shown })}
         </span>
-        <GlyphSearch doc={doc} value={view.filter.query} />
+        <GlyphSearch
+          doc={doc}
+          value={view.filter.query}
+          queryScope={view.filter.query_scope ?? 'All'}
+          caseSensitive={view.filter.case_sensitive ?? false}
+          regex={view.filter.regex ?? false}
+        />
       </Toolbar>
     </>
   )

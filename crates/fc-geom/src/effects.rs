@@ -62,8 +62,8 @@ fn invalid(error: impl std::fmt::Display) -> Error {
 
 /// Resolve a master outline and evaluate every participating layer's effects.
 pub fn flatten_layer(font: &Font, glyph: &str, master: &MasterId) -> Result<BezPath, Error> {
-    fc_model::query::flatten_layer_with(font, glyph, master, &|layer, path| {
-        apply(layer, path).map(|(path, _)| path)
+    fc_model::query::flatten_layer_with_sources(font, glyph, master, &|layer, path, sources| {
+        apply(layer, path, sources).map(|(path, _)| path)
     })
 }
 
@@ -79,9 +79,13 @@ pub fn flatten_smart_component(
     master: &MasterId,
     values: &BTreeMap<String, f64>,
 ) -> Result<BezPath, Error> {
-    fc_model::query::flatten_smart_component_with(font, glyph, master, values, &|layer, path| {
-        apply(layer, path).map(|(path, _)| path)
-    })
+    fc_model::query::flatten_smart_component_with_sources(
+        font,
+        glyph,
+        master,
+        values,
+        &|layer, path, sources| apply(layer, path, sources).map(|(path, _)| path),
+    )
 }
 
 /// Bounds of the final evaluated master drawing; empty paths have no bounds.
@@ -94,14 +98,19 @@ pub fn layer_bbox(font: &Font, glyph: &str, master: &MasterId) -> Result<Option<
 pub fn evaluate_layer(font: &Font, glyph: &str, layer: &LayerId) -> Result<EffectOutcome, Error> {
     let approximated = RefCell::new(Vec::new());
     let affected = std::cell::Cell::new(false);
-    let path = fc_model::query::flatten_layer_by_id_with(font, glyph, layer, &|layer, path| {
-        affected.set(affected.get() || layer.has_live_geometry());
-        let (path, fallback) = apply(layer, path)?;
-        if fallback && !approximated.borrow().contains(&layer.id) {
-            approximated.borrow_mut().push(layer.id.clone());
-        }
-        Ok(path)
-    })?;
+    let path = fc_model::query::flatten_layer_by_id_with_sources(
+        font,
+        glyph,
+        layer,
+        &|layer, path, sources| {
+            affected.set(affected.get() || layer.has_live_geometry());
+            let (path, fallback) = apply(layer, path, sources)?;
+            if fallback && !approximated.borrow().contains(&layer.id) {
+                approximated.borrow_mut().push(layer.id.clone());
+            }
+            Ok(path)
+        },
+    )?;
     Ok(EffectOutcome {
         path,
         approximated_layers: approximated.into_inner(),
@@ -126,6 +135,9 @@ pub fn bake_effects_font(font: &Font) -> Result<(Font, Vec<LayerId>), Error> {
     {
         for layer in result.glyphs.values_mut().flat_map(|g| &mut g.layers) {
             layer.effects.clear();
+            layer.constructions.clear();
+            layer.node_links.clear();
+            layer.linked_guides.clear();
         }
         return Ok((result, approximated));
     }
@@ -140,6 +152,9 @@ pub fn bake_effects_font(font: &Font) -> Result<(Font, Vec<LayerId>), Error> {
                 layer.tt_binding = None;
             }
             layer.effects.clear();
+            layer.constructions.clear();
+            layer.node_links.clear();
+            layer.linked_guides.clear();
             for id in evaluated.approximated_layers {
                 if !approximated.contains(&id) {
                     approximated.push(id);
@@ -150,29 +165,33 @@ pub fn bake_effects_font(font: &Font) -> Result<(Font, Vec<LayerId>), Error> {
     Ok((result, approximated))
 }
 
-fn apply(layer: &Layer, source: BezPath) -> Result<(BezPath, bool), Error> {
+fn apply(layer: &Layer, source: BezPath, sources: &[BezPath]) -> Result<(BezPath, bool), Error> {
     layer.validate_effects()?;
     if !layer.has_live_geometry() {
         return Ok((source, false));
     }
     check_path(&source, 4096)?;
-    let source = if layer.has_smart_corners() {
-        // Model traversal emits this layer's source contours first, followed by
-        // already evaluated component paths. Replace only that source prefix.
-        let mut prefix = 0;
-        let mut result = BezPath::new();
-        for contour in &layer.contours {
-            prefix += contour.try_to_bezpath()?.elements().len();
-            result.extend(
-                crate::corners::smart_corner_path_in_layer(contour, &source).map_err(invalid)?,
-            );
-        }
-        result.extend(source.iter().skip(prefix));
-        check_path(&result, 65_535)?;
-        result
-    } else {
-        source
-    };
+    // Preserve the exact local prefix separately: constructions may suppress
+    // carrier contours after local corner evaluation, before layer effects.
+    let smart_corners = layer.has_smart_corners();
+    let mut local_paths = Vec::with_capacity(layer.contours.len());
+    let mut prefix = 0;
+    for contour in &layer.contours {
+        let raw = contour.try_to_bezpath()?;
+        prefix += raw.elements().len();
+        local_paths.push(if smart_corners {
+            crate::corners::smart_corner_path_in_layer(contour, &source).map_err(invalid)?
+        } else {
+            raw
+        });
+    }
+    let mut resolved = BezPath::new();
+    for path in &local_paths {
+        resolved.extend(path.iter());
+    }
+    resolved.extend(source.iter().skip(prefix));
+    let source = crate::construction::apply(layer, resolved, sources, &local_paths)?;
+    check_path(&source, 65_535)?;
     let mut contours = Contour::from_bezpath(&source);
     let mut fallback = false;
     let mut remaining = 262_144usize;
@@ -230,6 +249,27 @@ fn apply(layer: &Layer, source: BezPath) -> Result<(BezPath, bool), Error> {
                     expanded.contours
                 };
                 (output, expanded.fallback != FallbackKind::None)
+            }
+            LayerEffectKind::VariableStroke {
+                nib,
+                cap,
+                join,
+                miter_limit,
+                progression,
+                points,
+            } => {
+                let options = crate::variable_pen::Options {
+                    nib: *nib,
+                    cap: *cap,
+                    join: *join,
+                    miter_limit: *miter_limit,
+                    progression: *progression,
+                    points,
+                };
+                (
+                    crate::variable_pen::expand(&contours, &options).map_err(invalid)?,
+                    true,
+                )
             }
             LayerEffectKind::RemoveOverlap => {
                 let output = crate::remove_overlap_with_fallback(&contours, CurveKind::Cubic, 0.01)

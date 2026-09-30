@@ -56,9 +56,23 @@ pub(crate) fn impact(font: &Font, command: &Command) -> Impact {
 
 fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
     match command {
+        Command::NodeLinks(command) => {
+            let (glyph, _) = command.target();
+            impact.glyph(glyph);
+            impact.affects_dependents = true;
+            impact.guides = true;
+            impact.metrics = true;
+        }
+        Command::EditorMetadata(super::EditorMetadataCommand::GlyphLock { glyph, .. })
+        | Command::EditorMetadata(super::EditorMetadataCommand::PathLocks { glyph, .. })
+        | Command::EditorMetadata(super::EditorMetadataCommand::Annotations { glyph, .. }) => {
+            impact.glyph(glyph);
+        }
         Command::Hints(super::HintCommand::Ps { glyph, .. })
+        | Command::Hints(super::HintCommand::CffPrivateAssignment { glyph, .. })
         | Command::Hints(super::HintCommand::Tt { glyph, .. }) => impact.glyph(glyph),
         Command::Hints(super::HintCommand::Private { master, .. })
+        | Command::Hints(super::HintCommand::CffPrivate { master, .. })
         | Command::Hints(super::HintCommand::TtGlobals { master, .. }) => {
             impact.master(master);
             impact.font_info = true;
@@ -75,6 +89,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.font_info = true;
         }
         Command::DesignSpace(super::DesignSpaceCommand::Layer { glyph, .. })
+        | Command::DesignSpace(super::DesignSpaceCommand::VirtualSource { glyph, .. })
         | Command::DesignSpace(super::DesignSpaceCommand::SmartAxes { glyph, .. }) => {
             impact.glyph(glyph);
             impact.layers = true;
@@ -88,6 +103,10 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             }
             impact.affects_dependents = true;
             impact.component_graph_changed = true;
+        }
+        Command::DesignSpace(super::DesignSpaceCommand::VirtualMasters { .. }) => {
+            impact.design_space = true;
+            impact.font_info = true;
         }
         Command::DesignSpace(super::DesignSpaceCommand::Set {
             masters,
@@ -149,6 +168,7 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
         }
         Command::SetHorizontalKerning { .. }
         | Command::SetVerticalKerning { .. }
+        | Command::KerningMaintenance { .. }
         | Command::CreateKerningGroup { .. }
         | Command::SetKerningGroup { .. }
         | Command::AssignKerningGroup { .. }
@@ -159,6 +179,14 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.glyph_order = true;
             impact.layers = true;
             impact.metrics = true;
+            impact.affects_dependents = true;
+            impact.component_graph_changed = true;
+        }
+        Command::ReplaceGlyph { glyph } => {
+            impact.glyph(&glyph.name);
+            impact.layers = true;
+            impact.metrics = true;
+            impact.guides = true;
             impact.affects_dependents = true;
             impact.component_graph_changed = true;
         }
@@ -194,16 +222,24 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.affects_dependents = true;
             impact.component_graph_changed |= from != to;
         }
+        Command::UpdateGlyphInfo { glyphs } => {
+            for name in glyphs {
+                impact.glyph(name);
+            }
+        }
         Command::SetUnicodes { glyph, .. } | Command::SetGlyphMeta { glyph, .. } => {
             impact.glyph(glyph)
         }
         Command::SetWidth { glyph, .. }
         | Command::SetVerticalMetrics { glyph, .. }
-        | Command::SetMetricsKeys { glyph, .. } => {
+        | Command::SetMetricsKeys { glyph, .. }
+        | Command::SetLayerMetricsKeys { glyph, .. } => {
             impact.glyph(glyph);
             impact.metrics = true;
         }
-        Command::SetMetrics { glyph, .. } | Command::CenterMetrics { glyph, .. } => {
+        Command::SetMetrics { glyph, .. }
+        | Command::CenterMetrics { glyph, .. }
+        | Command::UpdateMetrics { glyph, .. } => {
             impact.glyph(glyph);
             impact.metrics = true;
             impact.affects_dependents = true;
@@ -224,6 +260,8 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
         Command::MovePoints { glyph, layer, .. }
         | Command::SetPointPosition { glyph, layer, .. }
         | Command::SetSmooth { glyph, layer, .. }
+        | Command::SetSuperSmooth { glyph, layer, .. }
+        | Command::HarmonizeNodes { glyph, layer, .. }
         | Command::SetSmartCorner { glyph, layer, .. }
         | Command::InsertPointOnSegment { glyph, layer, .. }
         | Command::DeletePoints { glyph, layer, .. }
@@ -267,11 +305,28 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.guides = true;
             if let Some(glyph) = glyph {
                 impact.glyph(glyph);
+                impact.affects_dependents = true;
+                impact.metrics = true;
             } else if let Some(master) = master {
                 impact.master(master);
             } else {
                 impact.font_guides = true;
             }
+        }
+        Command::SetConstructions { glyph, layer, .. } => {
+            impact.glyph(glyph);
+            impact.layers = true;
+            impact.metrics |= is_master_layer(font, glyph, layer);
+            impact.affects_dependents = true;
+            impact.component_graph_changed = true;
+        }
+        Command::SetLayerImage { glyph, .. } => {
+            impact.glyph(glyph);
+            impact.layers = true;
+        }
+        Command::SetLayerColor { glyph, .. } => {
+            impact.glyph(glyph);
+            impact.layers = true;
         }
         Command::SetLayerEffects { glyph, layer, .. } => {
             impact.glyph(glyph);
@@ -279,9 +334,14 @@ fn collect_impact(font: &Font, command: &Command, impact: &mut Impact) {
             impact.metrics |= is_master_layer(font, glyph, layer);
             impact.affects_dependents = true;
         }
+        Command::RenameLayer { glyph, .. } => {
+            impact.glyph(glyph);
+            impact.layers = true;
+        }
         Command::AddLayer { glyph, .. }
         | Command::RemoveLayer { glyph, .. }
         | Command::CopyLayer { glyph, .. }
+        | Command::CopySelectionToBackground { glyph, .. }
         | Command::SwapWithBackground { glyph, .. } => {
             impact.glyph(glyph);
             impact.layers = true;
@@ -353,7 +413,13 @@ pub(crate) fn apply_to_font(
             }
             Ok(())
         }
-        command => apply_inner(font, command),
+        command => {
+            let result = apply_inner(font, command);
+            if result.is_err() {
+                undo::restore(font, rollback);
+            }
+            result
+        }
     }
 }
 
@@ -378,7 +444,39 @@ fn apply_batch(
 }
 
 fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
+    super::component_locks::preflight(font, command)?;
+    let protected = super::editor_metadata::preflight(font, command)?;
+    let change = impact(font, command);
+    let affected = if change.affects_dependents || change.guides {
+        change.glyphs
+    } else {
+        Vec::new()
+    };
+    dispatch(font, command)?;
+    let result = (|| {
+        for name in affected {
+            if let Some(glyph) = font.glyph_mut(&name) {
+                for layer in &mut glyph.layers {
+                    layer.resolve_node_links()?;
+                }
+            }
+        }
+        super::editor_metadata::validate_locks(font, &protected)
+    })();
+    if result.is_err() {
+        if let Command::RenameGlyph { from, to } = command {
+            if from != to {
+                rename_references(font, to, from);
+            }
+        }
+    }
+    result
+}
+
+fn dispatch(font: &mut Font, command: &Command) -> Result<(), Error> {
     match command {
+        Command::EditorMetadata(command) => super::editor_metadata::apply(font, command),
+        Command::NodeLinks(command) => super::node_links::apply(font, command),
         Command::Hints(command) => super::hints::apply(font, command),
         Command::SetCidInfo { cid } => super::cid::set(font, cid),
         Command::DesignSpace(command) => super::designspace::apply(font, command),
@@ -396,14 +494,17 @@ fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
         }
         Command::SetHorizontalKerning { .. }
         | Command::SetVerticalKerning { .. }
+        | Command::KerningMaintenance { .. }
         | Command::CreateKerningGroup { .. }
         | Command::SetKerningGroup { .. }
         | Command::AssignKerningGroup { .. }
         | Command::RenameKerningGroup { .. }
         | Command::RemoveKerningGroup { .. } => kerning::apply(font, command),
         Command::AddGlyph { glyph } => glyphs::add(font, glyph),
+        Command::ReplaceGlyph { glyph } => replace_glyph(font, glyph),
         Command::RemoveGlyphs { names } => glyphs::remove(font, names),
         Command::RenameGlyph { from, to } => glyphs::rename(font, from, to),
+        Command::UpdateGlyphInfo { glyphs } => super::glyph_data::update(font, glyphs),
         Command::SetUnicodes { glyph, unicodes } => {
             glyph_mut(font, glyph)?.unicodes.clone_from(unicodes);
             Ok(())
@@ -444,6 +545,8 @@ fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
         Command::MovePoints { .. }
         | Command::SetPointPosition { .. }
         | Command::SetSmooth { .. }
+        | Command::SetSuperSmooth { .. }
+        | Command::HarmonizeNodes { .. }
         | Command::SetSmartCorner { .. }
         | Command::InsertPointOnSegment { .. }
         | Command::DeletePoints { .. }
@@ -485,13 +588,27 @@ fn apply_inner(font: &mut Font, command: &Command) -> Result<(), Error> {
             origin,
         } => metrics::set_vertical(font, glyph, layer, *advance, *origin),
         Command::SetMetricsKeys { glyph, keys } => {
+            crate::metrics::validate_keys(keys, false)?;
             glyph_mut(font, glyph)?.metrics_keys = keys.clone();
             Ok(())
         }
-        Command::SetLayerEffects { .. }
+        Command::SetLayerMetricsKeys { glyph, layer, keys } => {
+            if let Some(keys) = keys {
+                crate::metrics::validate_keys(keys, true)?;
+            }
+            layer_mut(font, glyph, layer)?.metrics_keys = keys.clone();
+            Ok(())
+        }
+        Command::UpdateMetrics { glyph, master } => metrics::update(font, glyph, master.as_ref()),
+        Command::SetLayerImage { .. }
+        | Command::SetConstructions { .. }
+        | Command::SetLayerColor { .. }
+        | Command::SetLayerEffects { .. }
         | Command::AddLayer { .. }
+        | Command::RenameLayer { .. }
         | Command::RemoveLayer { .. }
         | Command::CopyLayer { .. }
+        | Command::CopySelectionToBackground { .. }
         | Command::SwapWithBackground { .. }
         | Command::SetMaster { .. }
         | Command::SetFontGuides { .. } => layers::apply(font, command),
@@ -555,6 +672,9 @@ pub(super) fn replace_layer_outline(
             layer: layer_id.clone(),
         })?;
     layer.contours = contours.to_vec();
+    for contour in &mut layer.contours {
+        super::outline::maintain_super_smooth(contour)?;
+    }
     layer.components = components.to_vec();
     layer.anchors = anchors.to_vec();
     font.remove_glyph(glyph_name);
@@ -581,6 +701,67 @@ pub(super) fn validate_glyph_outlines(glyph: &Glyph) -> Result<(), Error> {
     ) {
         contour.try_to_bezpath()?;
     }
+    Ok(())
+}
+
+fn replace_glyph(font: &mut Font, glyph: &Glyph) -> Result<(), Error> {
+    let position = font
+        .glyphs
+        .get_index_of(&glyph.name)
+        .ok_or_else(|| Error::MissingGlyph(glyph.name.clone()))?;
+    validate_glyph_outlines(glyph)?;
+    crate::metrics::validate_keys(&glyph.metrics_keys, false)?;
+    for layer in &glyph.layers {
+        ensure_finite(
+            &[
+                layer.width,
+                layer.vertical_width.unwrap_or(0.0),
+                layer.vertical_origin.unwrap_or(0.0),
+            ],
+            "replacement metrics",
+        )?;
+        if let Some(keys) = &layer.metrics_keys {
+            crate::metrics::validate_keys(keys, true)?;
+        }
+        for contour in layer.contours.iter().chain(
+            layer
+                .color_layers
+                .iter()
+                .flatten()
+                .flat_map(|layer| &layer.contours),
+        ) {
+            for point in &contour.points {
+                ensure_finite(&[point.x, point.y], "replacement outline coordinates")?;
+            }
+        }
+        for component in layer.components.iter().chain(
+            layer
+                .color_layers
+                .iter()
+                .flatten()
+                .flat_map(|layer| &layer.components),
+        ) {
+            ensure_finite(&component.transform.as_coeffs(), "component transform")?;
+        }
+    }
+    let original = font
+        .remove_glyph(&glyph.name)
+        .ok_or_else(|| Error::MissingGlyph(glyph.name.clone()))?;
+    let mut replacement = glyph.clone();
+    replacement
+        .kern_group_side1
+        .clone_from(&original.kern_group_side1);
+    replacement
+        .kern_group_side2
+        .clone_from(&original.kern_group_side2);
+    if let Err(error) = font.insert_glyph(replacement) {
+        // Restore the exact stored value, including imported data that may not
+        // satisfy current insertion checks. No external references were changed.
+        font.glyphs
+            .shift_insert(position, original.name.clone(), original);
+        return Err(error.into());
+    }
+    move_glyph_to(font, &glyph.name, position);
     Ok(())
 }
 

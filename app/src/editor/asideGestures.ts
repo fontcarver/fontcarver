@@ -9,6 +9,7 @@
  * — and stay about the node grammar it exists for.
  */
 
+import { spacingLockedForDocument } from '../views/text/kerningModes'
 import type { Point2, Viewport } from '../canvas/Viewport'
 import {
   METRIC_CURSOR,
@@ -185,7 +186,7 @@ export class AsideGestures {
 
   private handleAt(at: Point2 | null) {
     const source = this.context.source()
-    if (!at || !source) return null
+    if (!at || !source || spacingLockedForDocument(source.doc)) return null
     const prior = this.priorMetrics(source)
     return metricsHit(
       prior ? { ...source.metrics, ...prior.preview } : source.metrics,

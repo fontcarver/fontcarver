@@ -12,11 +12,18 @@ use ts_rs::TS;
 mod apply;
 mod bitmap;
 mod cid;
+mod component_locks;
 pub use bitmap::BitmapCommand;
 mod designspace;
 pub use designspace::DesignSpaceCommand;
+mod editor_metadata;
+pub use editor_metadata::{
+    AnnotationKind, EditorMetadataCommand, LayerAnnotation, EDITOR_METADATA_KEY,
+};
 mod features;
+mod glyph_data;
 mod glyphs;
+pub use glyph_data::{glyph_data_overlay, GLYPH_DATA_OVERLAY_KEY};
 mod hints;
 pub use hints::HintCommand;
 mod color;
@@ -28,6 +35,8 @@ pub use color::ColorCommand;
 mod math;
 pub use math::MathCommand;
 mod metrics;
+mod node_links;
+pub use node_links::NodeLinkCommand;
 mod options;
 mod outline;
 mod structure;
@@ -46,6 +55,10 @@ pub use options::{
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 pub enum Command {
+    /// Edit durable guide ownership and interpolated node relationships.
+    NodeLinks(NodeLinkCommand),
+    /// Edit persistent glyph/path locks and non-exported layer annotations.
+    EditorMetadata(EditorMetadataCommand),
     /// Edit hints or infer stems and zones without changing outline geometry.
     Hints(HintCommand),
     /// Set or disable CID metadata; incomplete mappings may be authored but cannot export.
@@ -110,6 +123,19 @@ pub enum Command {
         /// Explicit adjustment, including zero; null removes the record.
         value: Option<f64>,
     },
+    /// Clean, compress, or paste one complete stored kerning table atomically.
+    KerningMaintenance {
+        /// Persistent destination master identifier.
+        #[ts(type = "string")]
+        master: MasterId,
+        /// Select vertical kerning instead of horizontal kerning.
+        vertical: bool,
+        /// Document generation against which the operation was prepared.
+        #[ts(type = "number")]
+        expected_generation: u64,
+        /// Validated bulk edit to perform.
+        operation: crate::kerning::KerningMaintenanceOperation,
+    },
     /// Create a kerning group, rejecting an existing name atomically.
     CreateKerningGroup {
         /// Logical pair position.
@@ -164,6 +190,14 @@ pub enum Command {
         #[ts(type = "Glyph")]
         glyph: Glyph,
     },
+    /// Replace an existing glyph, preserving its order, handle and kerning groups.
+    ReplaceGlyph {
+        /// Replacement data; its name identifies the existing glyph. Kerning group
+        /// fields are retained from the existing glyph; use `AssignKerningGroup`
+        /// to change membership explicitly.
+        #[ts(type = "Glyph")]
+        glyph: Glyph,
+    },
     /// Remove glyphs while preserving the order of the rest.
     RemoveGlyphs {
         /// Glyph names to remove.
@@ -178,6 +212,12 @@ pub enum Command {
         /// Replacement name.
         #[ts(type = "string")]
         to: GlyphName,
+    },
+    /// Re-derive glyph metadata from the bundled database and document overlay.
+    UpdateGlyphInfo {
+        /// Persistent glyph names; all targets must be unlocked.
+        #[ts(type = "Array<string>")]
+        glyphs: Vec<GlyphName>,
     },
     /// Replace Unicode assignments.
     SetUnicodes {
@@ -215,6 +255,17 @@ pub enum Command {
         /// Note update.
         note: Option<String>,
     },
+    /// Set the independent editor color label of one layer.
+    SetLayerColor {
+        /// Glyph containing the layer.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to label.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Label index from zero through eleven; null clears the label.
+        color: Option<u8>,
+    },
     /// Set a layer's horizontal advance width.
     SetWidth {
         /// Glyph containing the layer.
@@ -225,6 +276,18 @@ pub enum Command {
         layer: LayerId,
         /// New width.
         width: f64,
+    },
+    /// Place, update or remove a source image without changing outline geometry.
+    SetLayerImage {
+        /// Glyph containing the image.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Editable source layer.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Replacement source image; null removes it.
+        #[ts(type = "Image | null")]
+        image: Option<fc_model::Image>,
     },
     /// Replace an ordered non-destructive effect stack, retaining source geometry.
     SetLayerEffects {
@@ -237,6 +300,18 @@ pub enum Command {
         /// Complete ordered stack, including disabled operations.
         #[ts(type = "Array<LayerEffect>")]
         effects: Vec<fc_model::LayerEffect>,
+    },
+    /// Replace reusable glyph constructions while retaining their editable carriers.
+    SetConstructions {
+        /// Glyph containing the carrier layer.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to update.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Complete construction list in evaluation order.
+        #[ts(type = "Array<GlyphConstruction>")]
+        constructions: Vec<fc_model::GlyphConstruction>,
     },
     /// Replace all editable outline content in a layer.
     ReplaceLayerOutline {
@@ -315,6 +390,30 @@ pub enum Command {
         smooth: bool,
         /// Level two adjacent handles.
         level_handles: bool,
+    },
+    /// Enable or disable persistent equal-curvature constraints on cubic joins.
+    SetSuperSmooth {
+        /// Glyph containing the nodes.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer containing the nodes.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Stored cubic join indexes.
+        points: Vec<PointRef>,
+        /// Whether subsequent outline edits preserve equal signed curvature.
+        enabled: bool,
+    },
+    /// Equalize selected cubic joins once without retaining a new constraint.
+    HarmonizeNodes {
+        /// Glyph containing the nodes.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer containing the nodes.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Stored cubic join indexes.
+        points: Vec<PointRef>,
     },
     /// Set a live signed radius on selected source nodes; zero removes it.
     SetSmartCorner {
@@ -635,6 +734,27 @@ pub enum Command {
         #[ts(type = "MetricsKeys")]
         keys: MetricsKeys,
     },
+    /// Replace layer-local metrics formulas; absent fields inherit glyph formulas.
+    SetLayerMetricsKeys {
+        /// Glyph to mutate.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer receiving the local formulas.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Replacement local formulas, or no local overrides.
+        #[ts(type = "MetricsKeys | null")]
+        keys: Option<MetricsKeys>,
+    },
+    /// Synchronize horizontal metrics formulas in one or all master layers.
+    UpdateMetrics {
+        /// Glyph whose formulas are synchronized.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Master to update; absent updates every master layer of the glyph.
+        #[ts(type = "string | null")]
+        master: Option<MasterId>,
+    },
     /// Add a non-master layer.
     AddLayer {
         /// Glyph receiving it.
@@ -643,6 +763,17 @@ pub enum Command {
         /// Layer to append.
         #[ts(type = "Layer")]
         layer: Layer,
+    },
+    /// Replace a layer's display name with a trimmed, nonempty name.
+    RenameLayer {
+        /// Glyph containing the layer.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Layer to rename.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// New display name.
+        name: String,
     },
     /// Remove a non-master layer.
     RemoveLayer {
@@ -664,6 +795,23 @@ pub enum Command {
         /// Destination role.
         #[ts(type = "LayerKind")]
         to: LayerKind,
+    },
+    /// Append selected full contours and components to a master's background.
+    /// Copied paths have their contour/node identities cleared to stay independent.
+    CopySelectionToBackground {
+        /// Glyph containing both source and background.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Source layer; cannot be the destination background.
+        #[ts(type = "string")]
+        from: LayerId,
+        /// Master identifying the destination background.
+        #[ts(type = "string")]
+        master: MasterId,
+        /// Contour indices, copied once each in source order.
+        contours: Vec<usize>,
+        /// Component indices, copied once each in source order.
+        components: Vec<usize>,
     },
     /// Swap master and background drawing content.
     SwapWithBackground {

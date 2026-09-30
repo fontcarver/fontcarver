@@ -96,7 +96,8 @@ pub(super) fn set_smooth(
     for point_ref in points {
         let contour = &mut target.contours[point_ref.contour];
         contour.points[point_ref.point].smooth = smooth;
-        if level_handles {
+        contour.points[point_ref.point].super_smooth = false;
+        if smooth && level_handles {
             level_node_handles(contour, point_ref.point);
         }
     }

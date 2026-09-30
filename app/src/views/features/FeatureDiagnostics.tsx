@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import type { FeatureValidationResult, Features } from '../../api'
+import { sourceOffsetToLocation } from './featureLanguage'
 import { sourceItems } from './featureSources'
 import styles from './FeaturesView.module.css'
 
@@ -56,6 +57,14 @@ export function FeatureDiagnostics({
                   </span>
                   <span>{diagnostic.message}</span>
                   {item && <span className={styles.muted}>{item.label}</span>}
+                  {item && diagnostic.span && (
+                    <span className={styles.muted}>
+                      {t(
+                        'features.diagnosticLocation',
+                        sourceOffsetToLocation(item.code, from),
+                      )}
+                    </span>
+                  )}
                   {diagnostic.master && (
                     <span className={styles.muted}>{diagnostic.master}</span>
                   )}

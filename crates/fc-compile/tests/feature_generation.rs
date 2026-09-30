@@ -50,6 +50,128 @@ fn name_generation_is_deterministic_materialized_and_opt_in() {
 }
 
 #[test]
+fn generated_vertical_alternates_shape_by_default_and_toggle_independently() {
+    let mut font = font_with(&["A.vert"]);
+    font.glyph_mut("A").unwrap().unicodes = vec![0x3001];
+    font.masters[0].metrics.default_vertical_advance = Some(1000.0);
+    let settings = FeatureGenerationSettings {
+        vertical_forms: true,
+        ..Default::default()
+    };
+    let generated = generate_feature_source(&font, &font.features, &settings);
+    assert!(
+        generated.diagnostics.is_empty(),
+        "{:?}",
+        generated.diagnostics
+    );
+    font.features = generated.source;
+    font.feature_settings = generated.settings;
+    for format in [fc_compile::ExportFormat::Ttf, fc_compile::ExportFormat::Otf] {
+        let report = fc_compile::export(
+            &font,
+            &|_| 0,
+            &fc_compile::ExportOptions {
+                format,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let face = read_fonts::FontRef::new(&report.bytes).unwrap();
+        let names = skrifa::GlyphNames::new(&face);
+        let alternate = names
+            .iter()
+            .find(|(_, name)| name.as_str() == "A.vert")
+            .expect("unencoded vertical alternate")
+            .0
+            .to_u32();
+        let base = skrifa::charmap::Charmap::new(&face)
+            .map('\u{3001}')
+            .unwrap()
+            .to_u32();
+        let data = harfrust::ShaperData::new(&face);
+        let shaper = data.shaper(&face).build();
+        let shape = |direction, features: &[&str]| {
+            let features: Vec<harfrust::Feature> = features
+                .iter()
+                .map(|feature| feature.parse().unwrap())
+                .collect();
+            let mut buffer = harfrust::UnicodeBuffer::new();
+            buffer.push_str("\u{3001}");
+            buffer.set_direction(direction);
+            buffer.set_script(harfrust::script::HAN);
+            buffer.guess_segment_properties();
+            shaper
+                .shape(buffer, harfrust::ShapeOptions::new().features(&features))
+                .glyph_infos()
+                .iter()
+                .map(|glyph| glyph.glyph_id)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(shape(harfrust::Direction::LeftToRight, &[]), [base]);
+        assert_eq!(shape(harfrust::Direction::TopToBottom, &[]), [alternate]);
+        assert_eq!(
+            shape(harfrust::Direction::TopToBottom, &["vert=0", "vrt2=0"]),
+            [base],
+            "{format:?} disabled vertical alternates"
+        );
+        for features in [["vert=1", "vrt2=0"], ["vert=0", "vrt2=1"]] {
+            assert_eq!(
+                shape(harfrust::Direction::TopToBottom, &features),
+                [alternate],
+                "{format:?} {features:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn vertical_generation_preserves_manual_features_and_frozen_source() {
+    let mut font = font_with(&["A.vert"]);
+    let settings = FeatureGenerationSettings {
+        vertical_forms: true,
+        ..Default::default()
+    };
+    for tag in ["vert", "vrt2"] {
+        let mut source = font.features.clone();
+        source.features.push(FeatureBlock {
+            tag: tag.into(),
+            code: "sub A by V;".into(),
+            ..Default::default()
+        });
+        let generated = generate_feature_source(&font, &source, &settings);
+        assert!(generated
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == "feature-generation-conflict"));
+        assert_eq!(generated.source, source);
+    }
+    let generated = generate_feature_source(&font, &font.features, &settings);
+    let mut frozen = freeze_feature_source(
+        &generated.source,
+        &generated.settings,
+        FeatureGenerator::VerticalForms,
+    );
+    assert!(!frozen.settings.vertical_forms);
+    assert!(frozen.source.features.iter().all(|block| !block.automatic));
+    frozen
+        .source
+        .features
+        .iter_mut()
+        .find(|block| block.tag == "vert")
+        .unwrap()
+        .code = "sub A by V;".into();
+    let regenerated = generate_feature_source(&font, &frozen.source, &frozen.settings);
+    assert!(regenerated.diagnostics.is_empty());
+    assert_eq!(regenerated.source, frozen.source);
+    font.features = regenerated.source;
+    font.feature_settings = regenerated.settings;
+    assert_eq!(
+        glyph_ids(&font, "A", harfrust::script::LATIN, "en", "vert=1"),
+        glyph_ids(&font, "V", harfrust::script::LATIN, "en", "vert=0")
+    );
+}
+
+#[test]
 fn missing_ambiguous_and_manual_collisions_fail_without_overwriting_source() {
     let font = font_with(&["missing.sc", "A_V", "A_V_A"]);
     let settings = FeatureGenerationSettings {

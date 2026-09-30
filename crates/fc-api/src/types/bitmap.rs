@@ -103,6 +103,19 @@ pub struct BitmapRasterParams {
     pub threshold: Option<u8>,
 }
 /// Exact pixel-edge tracing into the selected outline layer.
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, TS)]
+pub enum BitmapTraceMode {
+    /// Preserve exact square pixel edges.
+    #[default]
+    PixelEdges,
+    /// Cut each corner by one quarter pixel.
+    ChamferedCorners,
+    /// Replace square corners with cubic quarter circles.
+    RoundedCorners,
+    /// Smooth staircase corners while retaining rectangular extents.
+    DiagonalSmoothing,
+}
+/// Trace stored pixels into the selected outline layer.
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct BitmapTraceParams {
     /// Open document.
@@ -120,6 +133,14 @@ pub struct BitmapTraceParams {
     pub master: Option<fc_model::MasterId>,
     /// Minimum coverage, 1..255.
     pub threshold: u8,
+    /// Corner treatment; omitted preserves exact pixel boundaries.
+    #[serde(default)]
+    #[ts(optional)]
+    pub mode: Option<BitmapTraceMode>,
+    /// Connect pixels touching diagonally with a bounded quarter-pixel bridge.
+    #[serde(default)]
+    #[ts(optional)]
+    pub join_diagonals: Option<bool>,
 }
 /// Bounded Unicode sample rendered at every strike size.
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]

@@ -7,6 +7,7 @@ use fc_model::{FeaturesSource, Font, MasterId};
 use crate::Error;
 
 mod conditional;
+mod construction_metadata;
 mod convert;
 mod designspace;
 mod extra;
@@ -49,7 +50,7 @@ pub fn write_ufo(
     dir: &Path,
     opts: &UfoWriteOptions,
 ) -> Result<(), Error> {
-    crate::check_layer_effects(font)?;
+    check_sources(font)?;
     check_feature_export(font)?;
     let master = font
         .master(master)
@@ -64,7 +65,7 @@ pub fn write_ufo(
 /// an axis-less font this writes the default master as UFO, does not create a designspace, and
 /// returns [`Error::NoAxes`]. Call [`write_ufo`] directly for static, single-master fonts.
 pub fn write_designspace(font: &Font, dir: &Path) -> Result<PathBuf, Error> {
-    crate::check_layer_effects(font)?;
+    check_sources(font)?;
     check_feature_export(font)?;
     designspace::write(font, dir)
 }
@@ -75,6 +76,14 @@ fn check_feature_export(font: &Font) -> Result<(), Error> {
     }
     if font.features.source_of_truth == FeaturesSource::ImportedTables {
         return Err(Error::ImportedLayoutRequiresConversion);
+    }
+    Ok(())
+}
+
+fn check_sources(font: &Font) -> Result<(), Error> {
+    crate::check_effect_stacks(font)?;
+    for layer in font.glyphs.values().flat_map(|glyph| &glyph.layers) {
+        construction_metadata::validate(layer)?;
     }
     Ok(())
 }

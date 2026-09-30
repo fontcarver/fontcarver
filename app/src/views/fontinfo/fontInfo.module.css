@@ -165,6 +165,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+.sourceLabel {
+  display: block;
+  color: var(--color-text-faint);
+  font-size: var(--text-size-xs);
+}
+
 .preserved {
   display: inline-flex;
   padding: 1px var(--space-2);

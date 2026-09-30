@@ -51,6 +51,8 @@ export interface Command {
   readonly shortcut?: string
   /** Whether the shortcut also fires while a text field has focus. */
   readonly allowInInput?: boolean
+  /** Whether the shortcut may run while a modal is open, such as context help. */
+  readonly allowInModal?: boolean
   /** Extra text shown after the title (for example the undo label). */
   readonly detail?: () => string | undefined
   /** Enablement predicate; a command with `when() === false` cannot run. */

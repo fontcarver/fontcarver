@@ -246,6 +246,128 @@ describe('segment reshaping', () => {
   })
 })
 
+describe('live modifier changes', () => {
+  function resultingControls(mock: MockTransport) {
+    const points = curved.points.map((point) => ({ ...point }))
+    const apply = (command: Command) => {
+      if ('Batch' in command) command.Batch.forEach(apply)
+      if ('MovePoints' in command) {
+        for (const ref of command.MovePoints.points) {
+          const point = points[ref.point]
+          if (!point) continue
+          point.x += command.MovePoints.delta[0]
+          point.y += command.MovePoints.delta[1]
+        }
+      }
+    }
+    applied(mock).forEach(apply)
+    return points
+  }
+
+  it('keeps the saved segment equal to its preview across Alt press and release', async () => {
+    const mock = transport()
+    const drag = beginDrag(
+      context({ contours: [curved] }),
+      segmentHit,
+      { x: 100, y: 90 },
+      NO_MODIFIERS,
+    )
+    await drag?.ready()
+    drag?.move({ x: 100, y: 110 }, NO_MODIFIERS)
+    await drag?.flush()
+    drag?.move({ x: 100, y: 110 }, { ...NO_MODIFIERS, alt: true })
+    await drag?.flush()
+    for (const index of [1, 2]) {
+      expect(resultingControls(mock)[index]?.x).toBeCloseTo(
+        drag!.preview.contours[0]!.points[index]!.x,
+      )
+      expect(resultingControls(mock)[index]?.y).toBeCloseTo(
+        drag!.preview.contours[0]!.points[index]!.y,
+      )
+    }
+    drag?.move({ x: 100, y: 130 }, NO_MODIFIERS)
+    await drag?.finish()
+    expect(resultingControls(mock)).toEqual(drag?.preview.contours[0]?.points)
+  })
+
+  it('distinguishes physical Ctrl from Command when suspending snapping', async () => {
+    transport()
+    const drag = beginDrag(
+      context({ snap: () => ({ delta: { x: 50, y: 0 }, label: 'grid' }) }),
+      nodeHit,
+      { x: 200, y: 0 },
+      NO_MODIFIERS,
+    )
+    await drag?.ready()
+    drag?.move({ x: 220, y: 0 }, { ...NO_MODIFIERS, mod: true, ctrl: false })
+    expect(drag?.currentDelta).toEqual({ x: 50, y: 0 })
+    expect(drag?.snappedTo).toBe('grid')
+    drag?.move({ x: 220, y: 0 }, { ...NO_MODIFIERS, ctrl: true })
+    expect(drag?.currentDelta).toEqual({ x: 20, y: 0 })
+    expect(drag?.snappedTo).toBeNull()
+    await drag?.finish()
+  })
+})
+
+describe('persistent G2 drag preview', () => {
+  it('applies absolute projected outlines after every flush', async () => {
+    const mock = transport()
+    const source = makeContour(
+      [
+        makePoint(-100, 100, 'Move'),
+        makePoint(-80, 40, 'OffCurve'),
+        makePoint(-160 / 3, 0, 'OffCurve'),
+        { ...makePoint(0, 0, 'Curve', true), super_smooth: true },
+        makePoint(80 / 3, 0, 'OffCurve'),
+        makePoint(70, 10, 'OffCurve'),
+        makePoint(100, 100, 'Curve'),
+      ],
+      false,
+    )
+    const drag = beginDrag(
+      context({ contours: [source] }),
+      {
+        target: { kind: 'node', contour: 0, point: 3 },
+        point: { x: 0, y: 0 },
+        distance: 0,
+      },
+      { x: 0, y: 0 },
+      NO_MODIFIERS,
+    )
+    await drag?.ready()
+    for (const y of [5, 7]) {
+      drag?.move({ x: 0, y }, NO_MODIFIERS)
+      await drag?.flush()
+      const command = applied(mock).at(-1)
+      expect(command && 'ReplaceLayerOutline' in command).toBe(true)
+      if (!command || !('ReplaceLayerOutline' in command)) continue
+      expect(command.ReplaceLayerOutline.contours).toEqual(
+        drag?.preview.contours,
+      )
+      const points = command.ReplaceLayerOutline.contours[0]!.points
+      expect(points[3]).toMatchObject({ x: 0, y, super_smooth: true })
+      const incoming = (2 * (40 - y)) / (3 * points[2]!.x ** 2)
+      const outgoing = (2 * (10 - y)) / (3 * points[4]!.x ** 2)
+      expect(incoming).toBeCloseTo(outgoing, 12)
+    }
+    const accepted = drag?.preview
+    const applies = applied(mock).length
+    // Moving the join above only one outer control reverses one side's signed
+    // curvature: preserve the most recent valid sample instead of a false preview.
+    drag?.move({ x: 0, y: 20 }, NO_MODIFIERS)
+    await drag?.flush()
+    expect(applied(mock)).toHaveLength(applies)
+    expect(drag?.preview).toEqual(accepted)
+    await drag?.finish()
+    expect(
+      mock.calls.filter((entry) => entry.method === 'doc.edit_begin'),
+    ).toHaveLength(1)
+    expect(
+      mock.calls.filter((entry) => entry.method === 'doc.edit_end'),
+    ).toHaveLength(1)
+  })
+})
+
 describe('proportional nudge', () => {
   it("scales the neighbouring node's handle along the segment", async () => {
     const mock = transport()

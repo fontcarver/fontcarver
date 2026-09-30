@@ -1,3 +1,4 @@
+import { controlModifier } from '../gestures/drag'
 /**
  * The Knife tool (design spec §5).
  *
@@ -40,7 +41,10 @@ export class KnifeTool implements EditorTool {
 
   pointerDown(pointer: ToolPointer, context: ToolContext): ToolOutcome {
     if (pointer.button !== 0) return NO_OUTCOME
-    this.from = context.snap(pointer.font, pointer.modifiers.mod).point
+    this.from = context.snap(
+      pointer.font,
+      controlModifier(pointer.modifiers),
+    ).point
     this.to = this.from
     return { handled: true }
   }
@@ -59,7 +63,7 @@ export class KnifeTool implements EditorTool {
     this.to = null
     const target = context.target
     if (!target) return { handled: true }
-    const result = cutContours(context.contours, from, to)
+    const result = cutContours(cuttableContours(context), from, to)
     if (result.removed.length === 0) return { handled: true }
     return {
       apply: {
@@ -82,7 +86,7 @@ export class KnifeTool implements EditorTool {
     return {
       ...NO_TOOL_OVERLAY,
       lines: [{ from, to, dashed: true }],
-      marks: cutPoints(context.contours, from, to),
+      marks: cutPoints(cuttableContours(context), from, to),
     }
   }
 
@@ -92,7 +96,10 @@ export class KnifeTool implements EditorTool {
 
   private endPoint(pointer: ToolPointer, context: ToolContext): Point2 {
     const from = this.from
-    const at = context.snap(pointer.font, pointer.modifiers.mod).point
+    const at = context.snap(
+      pointer.font,
+      controlModifier(pointer.modifiers),
+    ).point
     return from && pointer.modifiers.shift ? constrainVector(from, at) : at
   }
 }
@@ -117,4 +124,14 @@ export function cutCommand(
       })),
     ],
   }
+}
+
+/** Keep contour indexes stable while omitting protected paths from cuts. */
+function cuttableContours(context: ToolContext): readonly Contour[] {
+  if (!context.canSelect) return context.contours
+  return context.contours.map((contour, index) =>
+    context.canSelect?.({ kind: 'node', contour: index, point: 0 })
+      ? contour
+      : { ...contour, points: [] },
+  )
 }

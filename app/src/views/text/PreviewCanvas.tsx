@@ -15,6 +15,9 @@ export interface PreviewCanvasProps {
   unitsPerEm: number
   size: number
   theme: PreviewTheme
+  flipHorizontal?: boolean
+  flipVertical?: boolean
+  blur?: number
 }
 
 /** One device-pixel-aware preview region at a single true pixel-per-em size. */
@@ -23,6 +26,9 @@ export function PreviewCanvas({
   unitsPerEm,
   size,
   theme,
+  flipHorizontal = false,
+  flipVertical = false,
+  blur = 0,
 }: PreviewCanvasProps) {
   const { t } = useTranslation()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -68,8 +74,20 @@ export function PreviewCanvas({
       minX: geometry.minX,
       maxY: geometry.maxY,
       ink: getComputedStyle(canvas).color || 'CanvasText',
+      flipHorizontal,
+      flipVertical,
+      blur,
     })
-  }, [geometry, glyphs, safeUnitsPerEm, size, theme])
+  }, [
+    geometry,
+    glyphs,
+    safeUnitsPerEm,
+    size,
+    theme,
+    flipHorizontal,
+    flipVertical,
+    blur,
+  ])
 
   return (
     <div

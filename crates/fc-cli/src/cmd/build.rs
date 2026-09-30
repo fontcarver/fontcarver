@@ -13,11 +13,26 @@ use fc_cli::Error;
 pub(crate) struct Args {
     /// Font or FontCarver document to compile.
     pub(crate) input: PathBuf,
-    /// Destination `.ttf`, `.otf`, `.woff`, `.woff2`, `.pfa`, or `.pfb` path.
+    /// Destination compiled font path (TTF, OTF, WOFF, Type 1/42, CFF, TTX or TTC).
     pub(crate) output: PathBuf,
     /// Remove overlapping contours before compiling.
     #[arg(long)]
     pub(crate) remove_overlap: bool,
+    /// Insert missing curve extrema in the static export copy.
+    #[arg(long, conflicts_with = "variable")]
+    pub(crate) add_extrema: bool,
+    /// Round outline coordinates and metrics in the static export copy.
+    #[arg(long, conflicts_with = "variable")]
+    pub(crate) round_coordinates: bool,
+    /// Expand components into contours in the static export copy.
+    #[arg(long, conflicts_with = "variable")]
+    pub(crate) decompose_components: bool,
+    /// Use supplied production glyph names in compiled output.
+    #[arg(long)]
+    pub(crate) production_names: bool,
+    /// Share repeated charstrings in static OTF or bare CFF output.
+    #[arg(long)]
+    pub(crate) subroutinize: bool,
     /// Automatically hint a static sfnt export (TrueType requires ttfautohint on PATH).
     #[arg(long, conflicts_with = "variable")]
     pub(crate) autohint: bool,
@@ -57,6 +72,11 @@ pub(crate) fn run(args: Args) -> Result<(), Error> {
             })
             .transpose()?,
         master: master_id(&opened, args.master.as_deref())?,
+        add_extrema: args.add_extrema,
+        round_coordinates: args.round_coordinates,
+        decompose_components: args.decompose_components,
+        production_names: args.production_names,
+        subroutinize: args.subroutinize,
         remove_overlap: args.remove_overlap,
         autohint: args.autohint,
         keep_tt_instructions: !args.no_preserve,
@@ -81,6 +101,7 @@ pub(crate) fn export(
             doc: opened.doc,
             path: output.to_string_lossy().into_owned(),
             options,
+            collection_docs: Vec::new(),
         },
     )
 }
@@ -128,9 +149,13 @@ pub(crate) fn binary_format(path: &Path) -> Result<ExportFormat, Error> {
         "pfb" => Ok(ExportFormat::Pfb),
         "woff" => Ok(ExportFormat::Woff),
         "woff2" => Ok(ExportFormat::Woff2),
+        "ttx" => Ok(ExportFormat::Ttx),
+        "ttc" => Ok(ExportFormat::Ttc),
+        "cff" => Ok(ExportFormat::Cff),
+        "t42" | "type42" => Ok(ExportFormat::Type42),
         extension => Err(Error::UnsupportedOutput {
             extension: extension.to_owned(),
-            supported: "ttf, otf, woff, woff2, pfa, pfb",
+            supported: "ttf, otf, woff, woff2, pfa, pfb, ttx, ttc, cff, t42",
         }),
     }
 }

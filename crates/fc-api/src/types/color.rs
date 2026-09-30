@@ -28,6 +28,10 @@ pub struct ColorState {
     pub status: ColorStatus,
     /// Editable data when status is `Editable`.
     pub color: Option<ColorTable>,
+    /// Validated imported data for read-only rendering; ownership remains imported.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub preview_color: Option<ColorTable>,
     /// Why imported bytes cannot become editable, if they cannot.
     pub import_error: Option<String>,
     /// Scale of the editable font.
@@ -114,6 +118,10 @@ pub struct ColorGraphPreviewParams {
     pub doc: DocId,
     /// Root glyph to preview at U+E000 in the result.
     pub glyph: String,
+    /// Master providing geometry, defaulting to the font's default master.
+    #[serde(default)]
+    #[ts(optional)]
+    pub master: Option<MasterId>,
     /// Draft graph and palettes; never written to the document.
     pub color: ColorTable,
     /// Palette copied to the sole output palette.

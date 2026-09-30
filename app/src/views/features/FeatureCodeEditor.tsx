@@ -19,6 +19,7 @@ import { useLayoutEffect, useRef } from 'react'
 
 import {
   createFeatureCompletion,
+  featureClassAt,
   featureLanguage,
   sourceOffsetToEditorOffset,
 } from './featureLanguage'
@@ -47,6 +48,7 @@ export interface FeatureCodeEditorProps {
   onCompositionChange: (composing: boolean) => void
   onHistory: (direction: 'undo' | 'redo') => void
   onSave: () => void
+  onClassPreview?: (name: string) => void
 }
 
 const hydration = Annotation.define<boolean>()
@@ -103,6 +105,25 @@ export function FeatureCodeEditor(props: FeatureCodeEditorProps) {
             }
           }),
           EditorView.domEventHandlers({
+            mousedown(event, view) {
+              if (
+                !event.altKey ||
+                event.button !== 0 ||
+                !latest.current.onClassPreview
+              )
+                return false
+              const position = view.posAtCoords({
+                x: event.clientX,
+                y: event.clientY,
+              })
+              const name =
+                position === null ? null : featureClassAt(view.state, position)
+              if (!name) return false
+              event.preventDefault()
+              event.stopPropagation()
+              latest.current.onClassPreview(name)
+              return true
+            },
             beforeinput(event) {
               if (
                 event.inputType !== 'historyUndo' &&
@@ -117,7 +138,27 @@ export function FeatureCodeEditor(props: FeatureCodeEditorProps) {
               )
               return true
             },
-            keydown(event) {
+            keydown(event, view) {
+              if (
+                event.altKey &&
+                event.key === 'Enter' &&
+                !event.ctrlKey &&
+                !event.metaKey &&
+                !event.isComposing &&
+                !composing &&
+                latest.current.onClassPreview
+              ) {
+                const name = featureClassAt(
+                  view.state,
+                  view.state.selection.main.head,
+                )
+                if (name) {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  latest.current.onClassPreview(name)
+                  return true
+                }
+              }
               if (!(event.ctrlKey || event.metaKey) || event.altKey)
                 return false
               const key = event.key.toLowerCase()

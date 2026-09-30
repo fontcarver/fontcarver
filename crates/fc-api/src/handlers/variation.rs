@@ -10,6 +10,7 @@ pub(crate) fn state(api: &Api, params: DocParams) -> Result<VariationState, ApiE
             axes: doc.font.axes.clone(),
             masters: doc.font.masters.clone(),
             instances: doc.font.instances.clone(),
+            virtual_masters: Some(doc.font.virtual_masters.clone()),
             first_glyph: doc
                 .font
                 .glyph_order()

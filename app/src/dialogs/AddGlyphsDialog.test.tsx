@@ -70,6 +70,29 @@ afterEach(() => {
 })
 
 describe('AddGlyphsDialog', () => {
+  it('previews a sidebar recipe without applying it on open', async () => {
+    const transport = createMockTransport({
+      'glyphs.add': ({ recipe }) => resolve(recipe),
+    })
+    setTransport(transport)
+    render(<AddGlyphsDialog doc={1} recipe="A-C" />)
+    expect(screen.getByLabelText('Recipe')).toHaveValue('A-C')
+    await waitFor(() =>
+      expect(
+        transport.calls.some(
+          (entry) =>
+            entry.method === 'glyphs.add' &&
+            (entry.params as AddGlyphsParams).recipe === 'A-C',
+        ),
+      ).toBe(true),
+    )
+    expect(
+      transport.calls
+        .filter((entry) => entry.method === 'glyphs.add')
+        .every((entry) => (entry.params as AddGlyphsParams).dry_run),
+    ).toBe(true)
+  })
+
   it('previews a recipe through a dry run and lists the names', async () => {
     const user = userEvent.setup()
     const transport = setup()

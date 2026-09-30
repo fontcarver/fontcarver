@@ -9,11 +9,13 @@ mod bracket;
 mod color;
 mod error;
 mod export;
+mod export_geometry;
 mod feature_generation;
 mod feature_validation;
 mod instance;
 mod kerning;
 mod large_font;
+mod layout_compile;
 mod math;
 mod metadata;
 mod otf;
@@ -23,6 +25,7 @@ mod otf_vertical;
 mod preprocess;
 mod preserve;
 mod shaping;
+mod shaping_compile;
 mod source;
 mod svg;
 mod tt;
@@ -36,6 +39,7 @@ pub use export::{
     export, export_with_progress, touched_since_import, ExportFormat, ExportOptions, ExportReport,
     ExportStage, ExportWarning,
 };
+pub use export_geometry::prepare_geometry_export;
 pub use feature_generation::{
     freeze_feature_source, generate_feature_source, generation_is_stale, GeneratedFeatureSource,
 };
@@ -48,6 +52,7 @@ pub use kerning::horizontal_kerning_warnings;
 pub use preprocess::prepare_postscript_export;
 pub use preserve::preserve_merge;
 pub use shaping::shaping_fingerprint;
+pub use shaping_compile::ShapingCompile;
 pub use source::{
     compile_static, compile_static_with_metadata, compile_variable, CompileOptions, FcSource,
     StaticCompile,

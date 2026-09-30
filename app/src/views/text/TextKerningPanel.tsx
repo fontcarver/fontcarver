@@ -72,7 +72,12 @@ export function TextKerningPanel({
       data-testid="text-kerning-panel"
     >
       <div className={styles.controls}>
-        <span className={styles.heading}>{t('kerningText.title')}</span>
+        <span
+          className={styles.heading}
+          title={t('kerningText.classShortcutHint')}
+        >
+          {t('kerningText.title')}
+        </span>
         {(['left', 'right'] as const).map((side) => (
           <input
             key={side}

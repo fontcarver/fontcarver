@@ -29,7 +29,11 @@ function counts(letters: number): SidebarCounts {
 let letters = 5_000
 
 function transport() {
-  return createMockTransport({ 'doc.sidebar': () => counts(letters) })
+  return createMockTransport({
+    'doc.sidebar': () => counts(letters),
+    'inventory.get_lists': () => ({ lists: [] }),
+    'glyph.smart_filters.get': () => ({ filters: [] }),
+  })
 }
 
 beforeEach(() => {
@@ -118,5 +122,37 @@ describe('SidebarFilters', () => {
         [],
       ),
     )
+  })
+
+  it('selects a qualified subcategory without retaining its broad parent', async () => {
+    const user = userEvent.setup()
+    setTransport(
+      createMockTransport({
+        'doc.sidebar': () => ({
+          ...counts(10),
+          sub_categories: [
+            ['Letter', 'Uppercase', 4],
+            ['Letter', 'Other', 6],
+          ],
+        }),
+        'inventory.get_lists': () => ({ lists: [] }),
+        'glyph.smart_filters.get': () => ({ filters: [] }),
+      }),
+    )
+    render(<SidebarFilters doc={DOC} />)
+    await user.click(await screen.findByRole('button', { name: /^Letter/ }))
+    await user.click(screen.getByRole('button', { name: /^Uppercase/ }))
+    expect(useDocumentStore.getState().byDoc[DOC].filter.categories).toEqual([
+      'Letter/Uppercase',
+    ])
+    await user.click(screen.getByRole('button', { name: /^Other/ }))
+    expect(useDocumentStore.getState().byDoc[DOC].filter.categories).toEqual([
+      'Letter/Uppercase',
+      'Letter/Other',
+    ])
+    await user.click(screen.getByRole('button', { name: /^Letter/ }))
+    expect(useDocumentStore.getState().byDoc[DOC].filter.categories).toEqual([
+      'Letter',
+    ])
   })
 })

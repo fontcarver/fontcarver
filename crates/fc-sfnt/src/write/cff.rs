@@ -32,8 +32,29 @@ pub fn write_cff(
     order: &[GlyphName],
     production_names: bool,
 ) -> Result<CffOutput, WriteError> {
-    if font.master(master).is_none() {
-        return Err(WriteError(format!("master {master} does not exist")));
+    write_cff_with_subroutines(font, master, order, production_names, false)
+}
+
+/// Writes static CFF1, optionally sharing identical glyph programs through global subroutines.
+pub fn write_cff_with_subroutines(
+    font: &Font,
+    master: &MasterId,
+    order: &[GlyphName],
+    production_names: bool,
+    subroutinize: bool,
+) -> Result<CffOutput, WriteError> {
+    let source_master = font
+        .master(master)
+        .ok_or_else(|| WriteError(format!("master {master} does not exist")))?;
+    if source_master.cff_private_dicts.len() > 255 {
+        return Err(WriteError(
+            "CFF1 permits at most 256 private dictionaries".into(),
+        ));
+    }
+    if !source_master.cff_private_dicts.is_empty() && font.cid.is_none() {
+        return Err(WriteError(
+            "multiple CFF private dictionaries require CID metadata".into(),
+        ));
     }
     if order.first().map(|name| name.as_ref()) != Some(".notdef") || order.len() > 65535 {
         return Err(WriteError(
@@ -55,6 +76,7 @@ pub fn write_cff(
     let mut advances = Vec::with_capacity(order.len());
     let mut seen = HashSet::new();
     let mut bbox: Option<Rect> = None;
+    let mut fdselect = vec![0]; // CFF1 FDSelect format 0, followed by one Card8 per glyph.
     for (gid, name) in order.iter().enumerate() {
         let glyph = font.glyph(name);
         let output_name = if gid == 0 {
@@ -86,6 +108,13 @@ pub fn write_cff(
             let layer = glyph
                 .master_layer(master)
                 .ok_or_else(|| WriteError(format!("{name} lacks master {master}")))?;
+            let fd = layer.cff_private_dict_index.unwrap_or(0);
+            if usize::from(fd) > source_master.cff_private_dicts.len() {
+                return Err(WriteError(format!(
+                    "{name} selects missing CFF private dictionary {fd}"
+                )));
+            }
+            fdselect.push(fd);
             let mut visited = HashSet::new();
             let mut budget = 1_000_000usize;
             (
@@ -93,6 +122,7 @@ pub fn write_cff(
                 layer.width,
             )
         } else if gid == 0 {
+            fdselect.push(0);
             (BezPath::new(), 0.0)
         } else {
             return Err(WriteError(format!("missing glyph {name}")));
@@ -144,13 +174,18 @@ pub fn write_cff(
     check_name(font_name, 63)?;
     let name_index = index(&[font_name.as_bytes().to_vec()])?;
     let string_index = index(&strings.custom)?;
+    let global_subrs = if subroutinize {
+        super::subroutinize::extract(&mut charstrings)?
+    } else {
+        Vec::new()
+    };
+    let global_subr_index = index(&global_subrs)?;
     let charstring_index = index(&charstrings)?;
-    let private = super::hints::private(
-        &font
-            .master(master)
-            .ok_or_else(|| WriteError("missing CFF master".into()))?
-            .private_dict,
-    )?;
+    let private = std::iter::once(&source_master.private_dict)
+        .chain(&source_master.cff_private_dicts)
+        .map(super::hints::private)
+        .collect::<Result<Vec<_>, _>>()?;
+    let first_private_size = private[0].len();
     let bbox = bbox.unwrap_or(Rect::ZERO);
     let top = top_dict(
         font.info.units_per_em,
@@ -158,18 +193,17 @@ pub fn write_cff(
         0,
         0,
         0,
-        private.len(),
+        first_private_size,
         cid.as_ref(),
     )?;
-    let charset_offset = 4 + name_index.len() + index(&[top])?.len() + string_index.len() + 2;
+    let charset_offset =
+        4 + name_index.len() + index(&[top])?.len() + string_index.len() + global_subr_index.len();
     let charstrings_offset = charset_offset + charset.len();
-    let fdselect = if cid.is_some() {
-        vec![0; order.len() + 1]
-    } else {
-        vec![]
-    };
+    if cid.is_none() {
+        fdselect.clear();
+    }
     let fdarray_size = if cid.is_some() {
-        index(&[private_dict(0, private.len())?])?.len()
+        font_dict_index(&private, 0)?.len()
     } else {
         0
     };
@@ -181,7 +215,7 @@ pub fn write_cff(
         cid.fdarray = fdarray_offset;
     }
     let fdarray = if cid.is_some() {
-        index(&[private_dict(private_offset, private.len())?])?
+        font_dict_index(&private, private_offset)?
     } else {
         vec![]
     };
@@ -191,19 +225,19 @@ pub fn write_cff(
         charset_offset,
         charstrings_offset,
         private_offset,
-        private.len(),
+        first_private_size,
         cid.as_ref(),
     )?])?;
     let mut bytes = vec![1, 0, 4, 4];
     bytes.extend(name_index);
     bytes.extend(top);
     bytes.extend(string_index);
-    bytes.extend([0, 0]); // Global Subrs INDEX
+    bytes.extend(global_subr_index);
     bytes.extend(charset);
     bytes.extend(charstring_index);
     bytes.extend(fdselect);
     bytes.extend(fdarray);
-    bytes.extend(private);
+    bytes.extend(private.into_iter().flatten());
     Ok(CffOutput {
         bytes,
         bounds,
@@ -286,6 +320,18 @@ fn private_dict(location: usize, size: usize) -> Result<Vec<u8>, WriteError> {
     Ok(bytes)
 }
 
+fn font_dict_index(private: &[Vec<u8>], mut location: usize) -> Result<Vec<u8>, WriteError> {
+    let entries = private
+        .iter()
+        .map(|data| {
+            let entry = private_dict(location, data.len())?;
+            location += data.len();
+            Ok(entry)
+        })
+        .collect::<Result<Vec<_>, WriteError>>()?;
+    index(&entries)
+}
+
 struct CidDict {
     registry: u16,
     ordering: u16,
@@ -359,6 +405,11 @@ fn checked_path(
     let layer = glyph
         .master_layer(master)
         .ok_or_else(|| WriteError(format!("{name} lacks master {master}")))?;
+    if layer.hints.flex {
+        return Err(WriteError(format!(
+            "{name}: CFF flex hint export is unsupported without curve-pair bindings"
+        )));
+    }
     let mut result = BezPath::new();
     for contour in &layer.contours {
         if !contour.closed

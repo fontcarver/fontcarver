@@ -1,6 +1,14 @@
 import type { Bitmap, BitmapGlyph } from '../../api'
 export type PixelTool =
-  'pencil' | 'erase' | 'line' | 'rectangle' | 'ellipse' | 'fill' | 'select'
+  | 'pencil'
+  | 'erase'
+  | 'line'
+  | 'rectangle'
+  | 'ellipse'
+  | 'fill'
+  | 'select'
+  | 'eyedropper'
+  | 'hand'
 export type PixelPoint = readonly [number, number]
 export type PixelSelection = {
   x: number
@@ -98,6 +106,10 @@ export function rectangle(a: PixelPoint, b: PixelPoint): PixelSelection {
     height: Math.abs(a[1] - b[1]) + 1,
   }
 }
+/** Choose the pencil ink once, then reuse it for the entire gesture. */
+export function pencilInk(b: Bitmap, start: PixelPoint, ink: number): number {
+  return sample(b, ...start) === ink ? 0 : ink
+}
 export function paint(
   source: BitmapGlyph,
   tool: PixelTool,
@@ -155,7 +167,8 @@ export function paint(
     line(b, [end[0], start[1]], end, ink)
     line(b, end, [start[0], end[1]], ink)
     line(b, [start[0], end[1]], start, ink)
-  } else if (tool !== 'select') line(b, start, end, tool === 'erase' ? 0 : ink)
+  } else if (tool === 'pencil' || tool === 'erase' || tool === 'line')
+    line(b, start, end, tool === 'erase' ? 0 : ink)
   return result
 }
 export function transform(
@@ -185,7 +198,7 @@ export function transform(
             : y + (kind === 'up' ? -1 : kind === 'down' ? 1 : 0)
       put(out, nx, ny, sample(b, x, y))
     }
-  return { ...source, bitmap: out, refs: [] }
+  return { ...source, bitmap: out }
 }
 export function resize(
   source: BitmapGlyph,

@@ -15,6 +15,7 @@
 import type { Command, PointRef } from '../../../api'
 import type { Point2 } from '../../../canvas/Viewport'
 import { EditSession } from '../../editSession'
+import { maintainSuperSmoothContours } from '../../harmonize'
 import type { Hit } from '../../hitTest'
 import {
   handlesOfNode,
@@ -33,6 +34,7 @@ import {
   type ProportionalHandle,
 } from './deltas'
 import {
+  controlModifier,
   planDrag,
   refKey,
   uniqueRefs,
@@ -48,6 +50,7 @@ import {
 
 export {
   NO_MODIFIERS,
+  controlModifier,
   planDrag,
   type DragContext,
   type DragLabels,
@@ -66,6 +69,7 @@ export class DragGesture {
   private readonly context: DragContext
   private readonly session: EditSession
   private readonly movedRefs: PointRef[]
+  private readonly maintainsSuperSmooth: boolean
   private delta: Point2 = { x: 0, y: 0 }
   private sent: Point2 = { x: 0, y: 0 }
   /** Per-point deltas, when the gesture constrains each point separately. */
@@ -75,6 +79,7 @@ export class DragGesture {
   private proportional: ProportionalHandle[] = []
   private mirror: MirrorTarget | null = null
   private snapLabel: string | null = null
+  private smoothPreview: DragPreview | null = null
 
   constructor(
     context: DragContext,
@@ -83,6 +88,9 @@ export class DragGesture {
     modifiers: Modifiers,
   ) {
     this.context = context
+    this.maintainsSuperSmooth = context.contours.some((contour) =>
+      contour.points.some((point) => point.super_smooth),
+    )
     this.plan = plan
     this.origin = origin
     this.session = new EditSession(context.doc, plan.label, {
@@ -101,7 +109,7 @@ export class DragGesture {
     // Ctrl+Alt on a node nudges: the node and its own handles move, and the
     // handles of the neighbouring nodes keep their share of each segment
     // (design spec §4.3).
-    if (plan.kind === 'points' && modifiers.mod && modifiers.alt)
+    if (plan.kind === 'points' && controlModifier(modifiers) && modifiers.alt)
       this.proportional = proportionalHandles(
         context.contours,
         plan.refs,
@@ -110,7 +118,7 @@ export class DragGesture {
 
     // Ctrl+Alt on a smooth node's handle mirrors length and angle onto the
     // opposite handle (design spec §4.3).
-    if (plan.kind === 'handle' && modifiers.mod && modifiers.alt) {
+    if (plan.kind === 'handle' && controlModifier(modifiers) && modifiers.alt) {
       const handle = plan.refs[0]
       const node = handle ? nodeOfHandle(context.contours, handle) : null
       const opposite = handle ? oppositeHandle(context.contours, handle) : null
@@ -158,7 +166,11 @@ export class DragGesture {
     if (modifiers.shift) delta = constrainDelta(delta)
     // Alt keeps a handle on its own line (design spec §4.3).
     let angleLocked = false
-    if (this.plan.kind === 'handle' && modifiers.alt && !modifiers.mod) {
+    if (
+      this.plan.kind === 'handle' &&
+      modifiers.alt &&
+      !controlModifier(modifiers)
+    ) {
       const handle = this.plan.refs[0]
       const node = handle ? nodeOfHandle(this.context.contours, handle) : null
       const nodePoint = node ? pointAt(this.context.contours, node) : null
@@ -171,8 +183,11 @@ export class DragGesture {
     // ⌥ on a segment reshapes it while every handle keeps its own angle
     // (design spec §4.3), which means one delta per control rather than one
     // for the gesture.
+    const previousDeltas = this.deltas
     this.deltas =
-      this.plan.kind === 'segment' && modifiers.alt && !modifiers.mod
+      this.plan.kind === 'segment' &&
+      modifiers.alt &&
+      !controlModifier(modifiers)
         ? perHandleDeltas(this.context.contours, this.plan.refs, delta)
         : this.proportional.length > 0
           ? nudgeDeltas(this.movedRefs, this.proportional, delta)
@@ -182,19 +197,42 @@ export class DragGesture {
     this.snapLabel = null
     // Snapping would pull an angle-locked handle off its line, which is the
     // one thing Alt promised it would not do.
-    if (!modifiers.mod && !angleLocked && this.context.snap) {
+    if (!controlModifier(modifiers) && !angleLocked && this.context.snap) {
       const moved = this.movedPoints(delta)
       const snapped = this.context.snap(delta, moved)
       delta = snapped.delta
       this.snapLabel = snapped.label
     }
-    if (delta.x === this.delta.x && delta.y === this.delta.y) return
+    if (
+      delta.x === this.delta.x &&
+      delta.y === this.delta.y &&
+      sameDeltas(previousDeltas, this.deltas)
+    )
+      return
+    const previousDelta = this.delta
     this.delta = delta
+    if (this.maintainsSuperSmooth) {
+      const preview = this.rawPreview()
+      const contours = maintainSuperSmoothContours(preview.contours)
+      if (!contours) {
+        // An impossible curvature constraint leaves the last accepted sample
+        // visible and queued; it must not roll a partial drag back to its origin.
+        this.delta = previousDelta
+        this.deltas = previousDeltas
+        this.snapLabel = null
+        return
+      }
+      this.smoothPreview = { ...preview, contours }
+    }
     this.session.queue(() => this.command())
   }
 
   /** The optimistic geometry the canvas should draw. */
   get preview(): DragPreview {
+    return this.smoothPreview ?? this.rawPreview()
+  }
+
+  private rawPreview(): DragPreview {
     return buildDragPreview({
       contours: this.context.contours,
       anchors: this.context.anchors,
@@ -267,8 +305,31 @@ export class DragGesture {
    */
   private command(): Command | null {
     const target = { glyph: this.context.glyph, layer: this.context.layer }
-    if (this.deltas)
-      return perHandleCommand(target, this.deltas, this.sentDeltas)
+    if (this.maintainsSuperSmooth) {
+      // G2 projection is nonlinear: successive incremental translations would
+      // accumulate against already adjusted handles and diverge from the preview.
+      // Apply the complete projected snapshot as one atomic edit instead.
+      const preview = this.preview
+      return {
+        ReplaceLayerOutline: {
+          ...target,
+          contours: [...preview.contours],
+          anchors: [...preview.anchors],
+          components: preview.components.map((view) => view.component),
+        },
+      }
+    }
+    if (this.deltas || this.sentDeltas.size > 0) {
+      // Switching Alt during a drag keeps one cumulative position per point.
+      // Seed it from the uniform steps already applied before the switch.
+      if (this.sentDeltas.size === 0)
+        for (const ref of this.movedRefs)
+          this.sentDeltas.set(refKey(ref), { ...this.sent })
+      const deltas =
+        this.deltas ??
+        new Map(this.movedRefs.map((ref) => [refKey(ref), this.delta]))
+      return perHandleCommand(target, deltas, this.sentDeltas)
+    }
     const step = {
       x: this.delta.x - this.sent.x,
       y: this.delta.y - this.sent.y,
@@ -304,4 +365,18 @@ export function beginDrag(
   )
     return null
   return new DragGesture(context, plan, origin, modifiers)
+}
+
+/** Whether the geometry is unchanged when only a modifier changes. */
+function sameDeltas(
+  a: ReadonlyMap<string, Point2> | null,
+  b: ReadonlyMap<string, Point2> | null,
+): boolean {
+  if (a === b) return true
+  if (!a || !b || a.size !== b.size) return false
+  for (const [key, value] of a) {
+    const other = b.get(key)
+    if (!other || value.x !== other.x || value.y !== other.y) return false
+  }
+  return true
 }

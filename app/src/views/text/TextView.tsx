@@ -14,7 +14,8 @@ import { selectDocView, useDocumentStore } from '../../stores/documentStore'
 import { useEditorStore } from '../../stores/editorStore'
 import { type Tab, type TextTabState, useUiStore } from '../../stores/uiStore'
 import { GlyphView } from '../glyph/GlyphView'
-import { TextBar, TEXT_SAMPLE_TEXT } from './TextBar'
+import { TEXT_SAMPLE_TEXT } from './TextBar'
+import { TextWorkspaceControls } from './TextWorkspaceControls'
 import { PreviewStrip } from './PreviewStrip'
 import type { TextSampleId } from './presentationTypes'
 import type { TextCanvasRun } from './textCanvas'
@@ -28,13 +29,15 @@ import {
 } from './textState'
 import { useTextRunCells } from './useTextRunCells'
 import { useTextKerningControls } from './useTextKerningControls'
-import { TextKerningPanel } from './TextKerningPanel'
-import { TextGapPicker } from './TextGapPicker'
 import { useTextMetrics } from './useTextMetrics'
 import { useTextShape } from './useTextShape'
 import { useTextFeedback } from './useTextFeedback'
 import { useTextTyping } from './useTextTyping'
 import { allEncodedText } from './textSamples'
+import type { ProofEntry } from './proofLibrary'
+import { useTextContext } from './useTextContext'
+import { detachPanel } from '../../shell/windowActions'
+import { useKerningGhosts } from './useKerningGhosts'
 import styles from './TextView.module.css'
 
 /** The shaped Text tab surrounds one persistent glyph editor/controller. */
@@ -49,6 +52,9 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
     [summary.masters, view.master],
   )
   const state = tab.textState ?? fallback
+  const kerningMode = state.kerningMode ?? 'on'
+  const context = useTextContext(summary, state, view.generation)
+  const shapingFeatures = context.features
   const [draft, setDraft] = useState(state.text)
   const [committedText, setCommittedText] = useState(state.text)
   if (committedText !== state.text) {
@@ -133,28 +139,6 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
     }
   }, [patch, state.master, tab.doc, transition, view.master])
 
-  const context = useMemo(
-    () => ({
-      doc: summary.doc,
-      generation: view.generation,
-      unitsPerEm: summary.units_per_em,
-      master: state.master,
-      text: state.text,
-      features: state.features,
-      direction: state.direction,
-      script: null,
-      language: null,
-    }),
-    [
-      state.direction,
-      state.features,
-      state.master,
-      state.text,
-      summary.doc,
-      summary.units_per_em,
-      view.generation,
-    ],
-  )
   const shaped = useTextShape(tab.textState ? context : null)
   const glyphs = shaped?.layout.glyphs ?? EMPTY_GLYPHS
   if (!entered && state.mode === 'text' && glyphs.length > 0) setEntered(true)
@@ -178,7 +162,7 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
     if (index !== state.activeIndex || (gid !== null && gid !== tab.gid))
       patch({ activeIndex: index }, gid ?? undefined)
   }, [glyphs, patch, shaped, state.activeIndex, state.mode, tab.gid])
-  const { cells, previewGlyphs } = useTextRunCells(
+  const { cells, colors, previewGlyphs } = useTextRunCells(
     summary.doc,
     state.master,
     shaped?.context.generation ?? view.generation,
@@ -189,8 +173,9 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
     previewVisible && !state.previewCollapsed,
   )
   const metrics = useTextMetrics(
-    state.mode === 'edit',
+    state.mode === 'edit' && kerningMode !== 'locked',
     t('textView.metricsUndo'),
+    state.spacingSide ?? 'lsb',
   )
   const pending =
     !shaped || shaped.stale || shaped.context.generation !== view.generation
@@ -200,10 +185,21 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
     generation: view.generation,
     text: state.text,
     direction: state.direction,
-    features: state.features,
+    features: shapingFeatures,
+    kerningMode,
     glyphs,
     pending,
     transition,
+  })
+  const ghosts = useKerningGhosts({
+    doc: summary.doc,
+    master: state.master,
+    generation: view.generation,
+    model: kerning.panel,
+    glyphs,
+    selectedGap: kerning.selectedGap,
+    pending,
+    direction: state.direction,
   })
   const finishMetrics = metrics.finish
   const finishKerning = kerning.finish
@@ -220,6 +216,8 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
           current.text !== state.text ||
           current.master !== state.master ||
           current.direction !== state.direction ||
+          current.script !== state.script ||
+          current.language !== state.language ||
           JSON.stringify(current.features) !== JSON.stringify(state.features)
         )
           return
@@ -234,6 +232,8 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
       state.master,
       state.direction,
       state.features,
+      state.script,
+      state.language,
       transition,
     ],
   )
@@ -256,13 +256,16 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
     const run: TextCanvasRun = {
       glyphs,
       cells,
+      colors,
       activeIndex: state.activeIndex,
       activeOrigin: { x: active?.x ?? 0, y: active?.y ?? 0 },
       mode: state.mode,
       unitsPerEm: summary.units_per_em,
       fitBox: runBox(glyphs, new Map(), summary.units_per_em),
       requestedScale: state.size / summary.units_per_em,
-      gaps: pending ? [] : kerning.gaps,
+      gaps: pending || kerningMode === 'off' ? [] : kerning.gaps,
+      kerningGhosts: ghosts.outlines,
+      selectedKerningValue: ghosts.value,
       selectedGap: kerning.selectedGap,
       onSelectGap: kerning.selectGap,
       onKerningKey: kerning.onKerningKey,
@@ -278,9 +281,13 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
     active?.x,
     active?.y,
     cells,
+    colors,
     enterText,
     glyphs,
     metrics.onMetricKey,
+    ghosts.outlines,
+    ghosts.value,
+    kerningMode,
     kerning.gaps,
     kerning.selectedGap,
     kerning.selectGap,
@@ -307,7 +314,31 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
   useEffect(() => {
     if (tool === 'text' && state.mode !== 'text') enterText()
   }, [enterText, state.mode, tool])
-  useTextTyping(state.text, state.mode, changeText, inputRef)
+  useTextTyping(
+    state.text,
+    state.mode,
+    changeText,
+    inputRef,
+    kerningMode === 'locked' && kerning.selectedGap !== null,
+  )
+  const applyProof = useCallback(
+    (entry: ProofEntry) => {
+      const revision = ++inputRevision.current
+      setDraft(entry.text)
+      void transition(() => {
+        if (revision !== inputRevision.current) return
+        patch({
+          text: entry.text,
+          script: entry.script || null,
+          language: entry.language || null,
+          direction: entry.direction,
+          activeIndex: null,
+          mode: 'text',
+        })
+      }).catch(reportError)
+    },
+    [patch, transition],
+  )
   const sample = async (id: TextSampleId) => {
     if (id !== 'all-encoded') return changeText(TEXT_SAMPLE_TEXT[id])
     const request = ++inputRevision.current
@@ -336,39 +367,23 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
       data-text-mode={state.mode}
       data-run-count={glyphs.length}
     >
-      <TextBar
-        text={draft}
+      <TextWorkspaceControls
+        summary={summary}
+        state={state}
+        context={context}
+        draft={draft}
         inputRef={inputRef}
+        glyphs={glyphs}
+        visible={visible}
+        pending={pending}
+        kerning={kerning}
+        ghosts={ghosts}
         onTextChange={changeText}
-        size={state.size}
-        onSizeChange={(size) => void transition(() => patch({ size }))}
-        master={state.master ?? ''}
-        masters={summary.masters.map((master) => ({
-          id: master.id,
-          name: master.name,
-        }))}
-        onMasterChange={(master) => void transition(() => patch({ master }))}
-        features={state.features}
-        onFeaturesChange={(features) =>
-          void transition(() => patch({ features }))
-        }
-        direction={state.direction}
-        onDirectionChange={(direction) =>
-          void transition(() => patch({ direction }))
+        onChange={(changes) =>
+          void transition(() => patch(changes)).catch(reportError)
         }
         onSample={(id) => void sample(id).catch(reportError)}
-      />
-      <TextGapPicker
-        gaps={kerning.gaps}
-        selected={kerning.selectedGap}
-        onSelect={kerning.selectGap}
-        pending={pending}
-        visible={visible}
-      />
-      <TextKerningPanel
-        model={kerning.panel}
-        gapDisabledReason={kerning.disabledReason}
-        pending={pending}
+        onProofSelect={applyProof}
       />
       <GlyphView
         summary={summary}
@@ -381,6 +396,18 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
       {previewVisible && (
         <PreviewStrip
           glyphs={previewGlyphs}
+          activeGlyph={
+            active && active.documentGid !== null
+              ? {
+                  ...active,
+                  path: cells.get(active.documentGid)?.path ?? '',
+                  color: colors.get(active.documentGid),
+                }
+              : null
+          }
+          height={state.previewHeight}
+          onHeightChange={(previewHeight) => patch({ previewHeight })}
+          onDetach={() => void detachPanel('preview').catch(reportError)}
           unitsPerEm={summary.units_per_em}
           status={dismissed === statusKey ? 'ready' : status}
           onDismissStatus={() => setDismissed(statusKey)}

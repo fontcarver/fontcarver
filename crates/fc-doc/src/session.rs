@@ -129,7 +129,7 @@ impl Session {
         }
     }
 
-    /// Opens a native `.fcf` document or imports a supported binary font.
+    /// Opens a native file/directory project or imports a supported binary font.
     pub fn open_path(&self, path: &Path, face_index: Option<u32>) -> Result<DocId, Error> {
         if is_fcf_path(path) {
             let font = fcf::read(path)?;
@@ -247,16 +247,7 @@ fn reject_reentrant() -> Result<(), Error> {
 }
 
 fn is_fcf_path(path: &Path) -> bool {
-    let name = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or_default()
-        .to_ascii_lowercase();
-    name.ends_with(".fcf")
-        || name.ends_with(".fcf.gz")
-        // Documents written before the `.fwf` extension was renamed.
-        || name.ends_with(".fwf")
-        || name.ends_with(".fwf.gz")
+    fcf::is_native_path(path)
 }
 
 fn is_binary_font_path(path: &Path) -> bool {

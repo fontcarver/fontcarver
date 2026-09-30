@@ -16,6 +16,7 @@ glyphs-reader = "1.0"
 read-fonts = { workspace = true, features = ["agl"] }
 norad.workspace = true
 plist.workspace = true
+roxmltree = "0.21.1"
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

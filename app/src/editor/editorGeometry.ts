@@ -7,7 +7,13 @@ import type { EditorPreview, EditorSource } from './editorTypes'
 import { hitTest, type Hit, type HitTestInput } from './hitTest'
 import { buildEditOutline, type EditOutline } from './outlineGeometry'
 import type { LayerTarget } from './pointCommands'
-import type { Selection } from './selection'
+import type { EditTarget, Selection } from './selection'
+import {
+  editableContour,
+  editableOutline,
+  editorMetadata,
+  inPathFocus,
+} from './editorMetadata'
 
 /**
  * Keeps the authoritative source and optimistic geometry in one index.
@@ -16,6 +22,9 @@ import type { Selection } from './selection'
  */
 export class EditorGeometry {
   source: EditorSource | null = null
+  private pathFocus: ReadonlySet<number> | null = null
+  /** CSS-pixel node hit radius; other families keep their relative sizes. */
+  hitDistance = 5
   preview: EditorPreview | null = null
   private edit: EditOutline = buildEditOutline([])
   private editBase: readonly Contour[] = []
@@ -28,6 +37,7 @@ export class EditorGeometry {
       (source.doc !== this.source?.doc ||
         source.gid !== this.source?.gid ||
         source.outline.layer !== this.source?.outline.layer)
+    if (changed || source === null) this.pathFocus = null
     this.source = source
     this.preview = null
     this.edit = buildEditOutline(source?.outline.contours ?? [])
@@ -62,6 +72,41 @@ export class EditorGeometry {
     return outline
   }
 
+  /** Limit hit testing and selection to a session-local set of source paths. */
+  setPathFocus(focus: ReadonlySet<number> | null): void {
+    this.pathFocus = focus
+  }
+
+  /** Preserve stored indexes while excluding locked and unfocused paths. */
+  selectableOutline(): EditOutline {
+    return editableOutline(
+      this.editOutline(),
+      editorMetadata(this.source?.editorMetadata).lockedPaths,
+      this.pathFocus,
+      this.source?.glyphLocked ?? false,
+    )
+  }
+
+  /** Eligibility shared by clicks, marquees, lasso and keyboard selection. */
+  canSelect(target: EditTarget): boolean {
+    if (this.source?.glyphLocked || !inPathFocus(target, this.pathFocus))
+      return false
+    if ('contour' in target)
+      return editableContour(
+        this.contours(),
+        target.contour,
+        editorMetadata(this.source?.editorMetadata).lockedPaths,
+        this.pathFocus,
+      )
+    if (target.kind === 'component')
+      return !this.components()[target.index]?.component.locked
+    if (target.kind === 'guide')
+      return !this.source?.guides.find(
+        (entry) => entry.scope === target.scope && entry.index === target.index,
+      )?.guide.locked
+    return true
+  }
+
   layerTarget(): LayerTarget | null {
     const source = this.source
     return source
@@ -71,16 +116,27 @@ export class EditorGeometry {
 
   hitInput(viewport: Viewport, selection: Selection): HitTestInput {
     return {
-      outline: this.editOutline(),
-      anchors: this.anchors(),
-      guides: this.source?.guides ?? [],
-      components: this.components(),
+      outline: this.selectableOutline(),
+      anchors: this.source?.glyphLocked || this.pathFocus ? [] : this.anchors(),
+      guides:
+        this.source?.glyphLocked || this.pathFocus
+          ? []
+          : (this.source?.guides ?? []).filter((entry) => !entry.guide.locked),
+      components:
+        this.source?.glyphLocked || this.pathFocus
+          ? []
+          : this.components().map((entry) =>
+              entry.component.locked ? { ...entry, bbox: null } : entry,
+            ),
       viewport,
       selection,
+      hitDistance: this.hitDistance,
     }
   }
 
   hitAt(viewport: Viewport, selection: Selection, at: Point2): Hit | null {
-    return this.source ? hitTest(this.hitInput(viewport, selection), at) : null
+    if (!this.source) return null
+    const hit = hitTest(this.hitInput(viewport, selection), at)
+    return hit && this.canSelect(hit.target) ? hit : null
   }
 }

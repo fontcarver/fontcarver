@@ -60,6 +60,7 @@ fn populated_font_round_trips_semantically() {
             width: 80.0,
         });
         master.guides.push(Guide {
+            id: None,
             x: 10.0,
             y: 20.0,
             angle: 90.0,
@@ -145,12 +146,15 @@ fn populated_font_round_trips_semantically() {
                 kind: PointKind::Line,
                 smooth: true,
                 name: Some("origin".into()),
+                id: None,
+                super_smooth: false,
                 tt_index: TtIndex::Index(3),
             }],
             name: Some("outer".into()),
             id: Some("contour-1".into()),
         });
         layer.components.push(Component {
+            locked: true,
             base: "acute".into(),
             transform: Affine::new([1.0, 0.1, 0.2, 1.0, 100.0, 200.0]),
             anchor: Some("top".into()),
@@ -167,6 +171,7 @@ fn populated_font_round_trips_semantically() {
         });
         layer.guides.push(Guide::default());
         layer.background_image = Some(Image {
+            locked: true,
             file_name: "reference.png".into(),
             transform: Affine::translate((3.0, 4.0)),
             color: Some("#fff".into()),

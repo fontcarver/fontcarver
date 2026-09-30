@@ -21,8 +21,10 @@ fc-sfnt = { path = "../fc-sfnt" }
 fc-raster = { path = "../fc-raster" }
 kurbo.workspace = true
 read-fonts.workspace = true
+regex = "1"
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 thiserror.workspace = true
 tokio = { version = "1", features = ["sync"], default-features = false }
 tracing.workspace = true
@@ -32,4 +34,3 @@ tempfile.workspace = true
 [dev-dependencies]
 fc-fixtures = { path = "../fc-fixtures" }
 kurbo.workspace = true
-sha2.workspace = true

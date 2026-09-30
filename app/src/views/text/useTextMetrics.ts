@@ -6,11 +6,14 @@ import { documentEditingSuspended } from '../../editor/documentEditParticipants'
 import type { EditorController } from '../../editor/editorController'
 import { reportError } from '../../shell/commands'
 import { useEditorStore, type ActiveGlyph } from '../../stores/editorStore'
+import { usePrefsStore } from '../../stores/prefsStore'
+import { spacingLockedForDocument } from './kerningModes'
 import { metricsGeometryPreview } from '../glyph/metricsHandles'
 import {
   TextMetricsRunner,
   metricShortcut,
   type MetricShortcutEvent,
+  type MetricSide,
 } from './textMetrics'
 
 interface Run {
@@ -33,7 +36,11 @@ function outlineMetrics(outline: LayerOutline) {
 }
 
 /** Captures each key before a subsequent command can close its edit session. */
-export function useTextMetrics(enabled: boolean, label: string) {
+export function useTextMetrics(
+  enabled: boolean,
+  label: string,
+  side: MetricSide = 'lsb',
+) {
   const currentRun = useRef<Run | null>(null)
   const runs = useRef(new Set<Run>())
   const alive = useRef(true)
@@ -56,10 +63,13 @@ export function useTextMetrics(enabled: boolean, label: string) {
       const shortcut = metricShortcut(
         event,
         /Mac|iPhone|iPad/u.test(navigator.platform),
+        { side, step: usePrefsStore.getState().prefs.nudge[0] },
       )
-      if (!enabled || !shortcut) return false
-      const editor = activeEditor()
+      if (!shortcut) return false
       const target = useEditorStore.getState().activeGlyph
+      if (target && spacingLockedForDocument(target.doc)) return true
+      if (!enabled) return false
+      const editor = activeEditor()
       if (!editor || !target?.outline || !alive.current) return true
       if (documentEditingSuspended(target.doc)) return true
       const previous = currentRun.current
@@ -139,7 +149,7 @@ export function useTextMetrics(enabled: boolean, label: string) {
       record.runner.press(shortcut.side, shortcut.delta)
       return true
     },
-    [enabled, finish, label],
+    [enabled, finish, label, side],
   )
   return useMemo(() => ({ finish, onMetricKey }), [finish, onMetricKey])
 }

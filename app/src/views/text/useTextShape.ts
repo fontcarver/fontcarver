@@ -58,6 +58,8 @@ export function useTextShape(
     previous.master !== context.master ||
     previous.text !== context.text ||
     previous.direction !== context.direction ||
+    previous.script !== context.script ||
+    previous.language !== context.language ||
     JSON.stringify(previous.features) !== JSON.stringify(context.features)
   )
     return null

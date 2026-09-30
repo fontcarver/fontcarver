@@ -1,5 +1,6 @@
 import type { GlyphCell, GlyphId } from '../../api'
 import type { FontBox, Point2 } from '../../canvas/Viewport'
+import type { ColorGlyphPaint } from '../../canvas/colorGlyph'
 
 import type { PositionedGlyph } from './textLayout'
 import type { TextGap } from './textGaps'
@@ -8,6 +9,7 @@ import type { TextGap } from './textGaps'
 export interface TextCanvasRun {
   glyphs: readonly PositionedGlyph[]
   cells: ReadonlyMap<GlyphId, GlyphCell>
+  colors?: ReadonlyMap<GlyphId, ColorGlyphPaint>
   activeIndex: number | null
   activeOrigin: Point2
   mode: 'text' | 'edit'
@@ -16,6 +18,10 @@ export interface TextCanvasRun {
   requestedScale: number
   gaps?: readonly TextGap[]
   selectedGap?: number | null
+  /** Resolved stored value for the selected boundary, never a draft value. */
+  selectedKerningValue?: number | null
+  /** Bounded group-member outlines at the selected pair's glyph origins. */
+  kerningGhosts?: readonly TextKerningGhost[]
   onSelectGap?: (index: number) => void
   onKerningKey?: (
     event: KeyboardEvent | React.KeyboardEvent<HTMLCanvasElement>,
@@ -28,10 +34,21 @@ export interface TextCanvasRun {
   onVisibleIndexes: (indexes: readonly number[]) => void
 }
 
-/** One parsed passive outline drawn around the editable glyph. */
+/** One passive outline or color glyph drawn around the editable glyph. */
 export interface SurroundingGlyph {
   index: number
-  path: Path2D
+  path: Path2D | null
+  color?: ColorGlyphPaint
+  x: number
+  y: number
+  ghost?: boolean
+}
+
+/** Unparsed group-member outline, positioned in absolute shaped-run space. */
+export interface TextKerningGhost {
+  index: number
+  name: string
+  path: string
   x: number
   y: number
 }

@@ -11,9 +11,16 @@ import {
 } from '../api'
 
 import { reportError } from './uiStore'
+import {
+  DEFAULT_GLYPH_TABLE_COLUMNS,
+  type GlyphTableColumn,
+} from '../views/font/glyphTableColumns'
 
 /** What the glyph grid prints under each cell. */
 export type LabelMode = 'name' | 'unicode' | 'index'
+
+/** Presentation used by the font overview. */
+export type GlyphViewMode = 'grid' | 'list'
 
 /** Smallest, largest and default glyph-cell edge length in CSS pixels. */
 export const CELL_SIZE_MIN = 24
@@ -28,7 +35,9 @@ export const CELL_SIZE_STEPS = [
 /** Whether any condition of a filter narrows the glyph list. */
 export function isFiltered(filter: GlyphFilter): boolean {
   return (
-    filter.query !== null ||
+    Boolean(filter.query) ||
+    Boolean(filter.smart_expression?.trim()) ||
+    filter.glyph_names != null ||
     filter.categories.length > 0 ||
     filter.scripts.length > 0 ||
     filter.blocks.length > 0 ||
@@ -46,6 +55,11 @@ export function isFiltered(filter: GlyphFilter): boolean {
 export function emptyFilter(): GlyphFilter {
   return {
     query: null,
+    query_scope: 'All',
+    case_sensitive: false,
+    regex: false,
+    smart_expression: null,
+    glyph_names: null,
     cjk: null,
     categories: [],
     scripts: [],
@@ -76,6 +90,8 @@ export interface DocView {
   master: MasterId | null
   cellSize: number
   labelMode: LabelMode
+  viewMode: GlyphViewMode
+  tableColumns: readonly GlyphTableColumn[]
 }
 
 /** A fresh view state for a newly opened document. */
@@ -92,6 +108,8 @@ export function newDocView(): DocView {
     master: null,
     cellSize: CELL_SIZE_DEFAULT,
     labelMode: 'name',
+    viewMode: 'grid',
+    tableColumns: [...DEFAULT_GLYPH_TABLE_COLUMNS],
   }
 }
 
@@ -140,6 +158,12 @@ export interface DocumentState {
   noteGeneration: (doc: DocId, generation: number) => void
   stepCellSize: (doc: DocId, direction: 1 | -1) => void
   setLabelMode: (doc: DocId, mode: LabelMode) => void
+  setViewMode: (doc: DocId, mode: GlyphViewMode) => void
+  moveTableColumn: (
+    doc: DocId,
+    column: GlyphTableColumn,
+    before: GlyphTableColumn,
+  ) => void
   setSelection: (doc: DocId, selection: Iterable<GlyphId>) => void
   toggleSelection: (doc: DocId, gid: GlyphId) => void
   clearSelection: (doc: DocId) => void
@@ -248,6 +272,18 @@ export const useDocumentStore = create<DocumentState>((set, get) => {
     },
 
     setLabelMode: (doc, labelMode) => patch(doc, { labelMode }),
+
+    setViewMode: (doc, viewMode) => patch(doc, { viewMode }),
+
+    moveTableColumn: (doc, column, before) => {
+      if (column === before) return
+      const current =
+        get().byDoc[doc]?.tableColumns ?? DEFAULT_GLYPH_TABLE_COLUMNS
+      if (!current.includes(column) || !current.includes(before)) return
+      const tableColumns = current.filter((value) => value !== column)
+      tableColumns.splice(tableColumns.indexOf(before), 0, column)
+      patch(doc, { tableColumns })
+    },
 
     setSelection: (doc, selection) =>
       patch(doc, { selection: new Set(selection) }),

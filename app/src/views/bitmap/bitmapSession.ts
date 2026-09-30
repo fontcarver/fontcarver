@@ -6,6 +6,8 @@ import {
 import { noteDocumentEdit } from '../../editor/editSession'
 export interface BitmapDraft {
   value: BitmapGlyph | null
+  /** Flattened kernel preview; never use this as the editable source. */
+  resolved: BitmapGlyph | null
   generation: number
   dirty: boolean
   busy: boolean
@@ -16,6 +18,7 @@ export interface BitmapDraft {
 export class BitmapSession {
   private state: BitmapDraft = {
     value: null,
+    resolved: null,
     generation: 0,
     dirty: false,
     busy: false,
@@ -60,7 +63,8 @@ export class BitmapSession {
       const result = await call('bitmap.glyph', this.target)
       if (request === this.request && !this.state.dirty)
         this.update({
-          value: result.resolved ?? structuredClone(this.empty),
+          value: result.value ?? structuredClone(this.empty),
+          resolved: result.resolved,
           generation: result.generation,
         })
     } catch (error) {
@@ -74,7 +78,7 @@ export class BitmapSession {
     if (this.state.busy || this.state.suspended) return
     ++this.request
     noteDocumentEdit(this.target.doc)
-    this.update({ value, dirty: true, error: null })
+    this.update({ value, resolved: null, dirty: true, error: null })
   }
   flush(): Promise<void> {
     if (this.pending) return this.pending
@@ -98,7 +102,8 @@ export class BitmapSession {
         this.update({ dirty: false })
         const result = await call('bitmap.glyph', this.target)
         this.update({
-          value: result.resolved ?? structuredClone(this.empty),
+          value: result.value ?? structuredClone(this.empty),
+          resolved: result.resolved,
           generation: result.generation,
           error: null,
         })

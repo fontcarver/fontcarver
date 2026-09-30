@@ -2,13 +2,15 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useUiStore } from '../stores/uiStore'
+import { useKeymapStore } from '../stores/keymapStore'
+import { shortcutFor } from './keymap'
 
-import { listCommands, runCommand, type Command } from './commands'
+import { reportError } from './commands'
 import paletteStyles from './CommandPalette.module.css'
 import dialogStyles from './dialog.module.css'
-import { fuzzyRank } from './fuzzy'
+import type { PaletteEntry, PaletteScope } from './paletteSearch'
 import { formatShortcut } from './shortcuts'
-import { useCommandRegistry } from './useCommandRegistry'
+import { usePaletteEntries } from './usePaletteEntries'
 
 /**
  * Searchable list of every command: arrow keys move the highlight, Enter runs,
@@ -19,9 +21,10 @@ import { useCommandRegistry } from './useCommandRegistry'
  */
 export function CommandPaletteDialog() {
   const { t } = useTranslation()
-  useCommandRegistry()
+  const overrides = useKeymapStore((state) => state.overrides)
   const setPaletteOpen = useUiStore((state) => state.setPaletteOpen)
   const [query, setQuery] = useState('')
+  const [scope, setScope] = useState<PaletteScope>('all')
   const [active, setActive] = useState(0)
   const listId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -44,53 +47,69 @@ export function CommandPaletteDialog() {
     }
   }, [restoreFocus])
 
-  // Recomputed on every render: the list is small, `when()` must be fresh, and
-  // `useCommandRegistry()` above re-renders us when the registry changes.
-  const commands = fuzzyRank(query, listCommands(), (command) =>
-    t(command.title),
-  )
+  const { entries, notices, loading } = usePaletteEntries(query, scope)
+  const activeIndex = Math.min(active, Math.max(0, entries.length - 1))
 
   useEffect(() => {
     const highlighted = listRef.current?.querySelector('[data-active="true"]')
     // jsdom does not implement scrollIntoView.
     if (highlighted instanceof HTMLElement && highlighted.scrollIntoView)
       highlighted.scrollIntoView({ block: 'nearest' })
-  }, [active])
+  }, [activeIndex, entries.length])
 
   const close = () => setPaletteOpen(false)
 
-  const run = (command: Command | undefined) => {
+  const run = (command: PaletteEntry | undefined) => {
     if (!command) return
     // Disabled commands stay listed but do nothing; keep the palette open so
     // the reason next to the row remains visible.
-    if (!(command.when?.() ?? true)) return
+    if (!command.enabled) return
     close()
-    runCommand(command.id)
+    try {
+      void Promise.resolve(command.run()).catch(reportError)
+    } catch (error) {
+      reportError(error)
+    }
   }
 
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Escape') {
       event.preventDefault()
       close()
+    } else if (event.key === 'Tab') {
+      const controls = dialogRef.current?.querySelectorAll<
+        HTMLInputElement | HTMLSelectElement
+      >('input, select')
+      const first = controls?.[0]
+      const last = controls?.[controls.length - 1]
+      if (event.shiftKey && event.target === first) {
+        event.preventDefault()
+        last?.focus()
+      } else if (!event.shiftKey && event.target === last) {
+        event.preventDefault()
+        first?.focus()
+      }
+    } else if (event.target instanceof HTMLSelectElement) {
+      return
     } else if (event.key === 'ArrowDown') {
       event.preventDefault()
       setActive((index) =>
-        commands.length === 0 ? 0 : (index + 1) % commands.length,
+        entries.length === 0 ? 0 : (index + 1) % entries.length,
       )
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
       setActive((index) =>
-        commands.length === 0
+        entries.length === 0
           ? 0
-          : (index - 1 + commands.length) % commands.length,
+          : (index - 1 + entries.length) % entries.length,
       )
     } else if (event.key === 'Enter') {
       event.preventDefault()
-      run(commands[active])
+      run(entries[activeIndex])
     }
   }
 
-  const activeCommand = commands[active]
+  const activeCommand = entries[activeIndex]
 
   return (
     <div
@@ -111,21 +130,42 @@ export function CommandPaletteDialog() {
           autoFocus
           role="combobox"
           aria-expanded="true"
+          aria-busy={loading}
           aria-controls={listId}
           aria-activedescendant={
             activeCommand ? `${listId}-${activeCommand.id}` : undefined
           }
           aria-label={t('palette.title')}
           className={paletteStyles.paletteInput}
-          placeholder={t('palette.placeholder')}
+          placeholder={t('paletteSearch.placeholder')}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value)
             setActive(0)
           }}
         />
-        {commands.length === 0 ? (
-          <p className={paletteStyles.paletteEmpty}>{t('palette.empty')}</p>
+        <label className={paletteStyles.paletteScope}>
+          <span>{t('paletteSearch.scope')}</span>
+          <select
+            value={scope}
+            onChange={(event) => {
+              setScope(event.target.value as PaletteScope)
+              setActive(0)
+            }}
+          >
+            {(['all', 'commands', 'filters', 'scripts', 'glyphs'] as const).map(
+              (kind) => (
+                <option key={kind} value={kind}>
+                  {t(`paletteSearch.${kind}`)}
+                </option>
+              ),
+            )}
+          </select>
+        </label>
+        {entries.length === 0 ? (
+          <p className={paletteStyles.paletteEmpty}>
+            {t(loading ? 'paletteSearch.loading' : 'paletteSearch.empty')}
+          </p>
         ) : (
           <ul
             ref={listRef}
@@ -134,18 +174,23 @@ export function CommandPaletteDialog() {
             aria-label={t('palette.title')}
             className={paletteStyles.paletteList}
           >
-            {commands.map((command, index) => {
-              const enabled = command.when?.() ?? true
+            {entries.map((command, index) => {
+              const shortcut = shortcutFor(
+                command.id,
+                command.shortcut,
+                overrides,
+              )
+              const enabled = command.enabled
               const reason =
                 !enabled && command.disabledReason
-                  ? t(command.disabledReason)
+                  ? command.disabledReason
                   : undefined
               // The four states are mutually exclusive so no cascade order can
               // put disabled (faint) text on the solid accent fill.
               const classes = [paletteStyles.paletteItem]
-              if (enabled && index === active)
+              if (enabled && index === activeIndex)
                 classes.push(paletteStyles.paletteItemActive)
-              else if (!enabled && index === active)
+              else if (!enabled && index === activeIndex)
                 classes.push(paletteStyles.paletteItemHighlight)
               else if (!enabled) classes.push(paletteStyles.paletteItemDisabled)
               return (
@@ -154,31 +199,34 @@ export function CommandPaletteDialog() {
                     type="button"
                     id={`${listId}-${command.id}`}
                     role="option"
-                    aria-selected={index === active}
+                    aria-selected={index === activeIndex}
                     aria-disabled={!enabled}
                     aria-description={reason}
-                    data-active={index === active}
+                    data-active={index === activeIndex}
                     tabIndex={-1}
                     className={classes.join(' ')}
                     onPointerEnter={() => setActive(index)}
                     onClick={() => run(command)}
                   >
                     <span className={paletteStyles.paletteLabel}>
-                      {t(command.title)}
+                      {command.label}
                     </span>
                     {reason ? (
                       <span className={paletteStyles.paletteReason}>
                         {reason}
                       </span>
                     ) : null}
-                    {command.menu ? (
+                    {command.detail ? (
                       <span className={paletteStyles.paletteMenu}>
-                        {t(`menu.${command.menu}`)}
+                        {command.detail}
                       </span>
                     ) : null}
-                    {command.shortcut ? (
+                    <span className={paletteStyles.paletteMenu}>
+                      {t(`paletteSearch.${command.kind}`)}
+                    </span>
+                    {shortcut ? (
                       <span className={paletteStyles.hint}>
-                        {formatShortcut(command.shortcut)}
+                        {formatShortcut(shortcut)}
                       </span>
                     ) : null}
                   </button>
@@ -187,7 +235,16 @@ export function CommandPaletteDialog() {
             })}
           </ul>
         )}
-        <div className={paletteStyles.paletteFooter}>{t('palette.hint')}</div>
+        {notices.length > 0 && (
+          <div role="status" className={paletteStyles.paletteNotices}>
+            {notices.map((notice) => (
+              <p key={notice}>{notice}</p>
+            ))}
+          </div>
+        )}
+        <div className={paletteStyles.paletteFooter}>
+          {t('paletteSearch.hint')}
+        </div>
       </div>
     </div>
   )

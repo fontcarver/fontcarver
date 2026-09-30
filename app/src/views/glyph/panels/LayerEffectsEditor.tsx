@@ -19,6 +19,23 @@ import { StylePreview } from '../../style/StylePreview'
 import styles from './layerEffects.module.css'
 
 function initial(kind: LayerEffectKind['kind']): LayerEffect {
+  if (kind === 'variable_stroke') {
+    return {
+      enabled: true,
+      effect: {
+        kind,
+        nib: 'ellipse',
+        cap: 'round',
+        join: 'round',
+        miter_limit: 4,
+        progression: 'linear',
+        points: [
+          { position: 0, width: 40, height: 40, angle: 0 },
+          { position: 1, width: 40, height: 40, angle: 0 },
+        ],
+      },
+    }
+  }
   return {
     enabled: true,
     effect:
@@ -180,7 +197,14 @@ export function LayerEffectsEditor({
         <fieldset disabled={busy} className={styles.form}>
           <legend className={styles.legend}>{t('layerEffects.stack')}</legend>
           <div className={styles.actions}>
-            {(['stroke', 'remove_overlap', 'boolean'] as const).map((kind) => (
+            {(
+              [
+                'stroke',
+                'variable_stroke',
+                'remove_overlap',
+                'boolean',
+              ] as const
+            ).map((kind) => (
               <Button
                 key={kind}
                 disabled={effects.length >= 16}

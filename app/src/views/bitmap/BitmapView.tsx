@@ -12,6 +12,11 @@ import {
 import { withSettledDocument } from '../../editor/documentPersistence'
 import { emptyFilter, useDocumentStore } from '../../stores/documentStore'
 import { reportError } from '../../stores/uiStore'
+import { BitmapGridPreset } from './BitmapGridPreset'
+import { BitmapSheet } from './BitmapSheet'
+import { BitmapTransfer } from './BitmapTransfer'
+import { BitmapOutlineTools } from './BitmapOutlineTools'
+import { BitmapReconstruction } from './BitmapReconstruction'
 import { StrikeProperties } from './StrikeProperties'
 import { BitmapEditor } from './BitmapEditor'
 import { BitmapWaterfall } from './BitmapWaterfall'
@@ -33,8 +38,7 @@ export function BitmapView({ summary }: { summary: DocSummary }) {
     [depth, setDepth] = useState(1),
     [busy, setBusy] = useState(false),
     [master, setMaster] = useState(summary.masters[0]?.id ?? ''),
-    [all, setAll] = useState(false),
-    [threshold, setThreshold] = useState(128)
+    [all, setAll] = useState(false)
   const refresh = useCallback(async () => {
     const next = await call('bitmap.state', { doc })
     setState((old) => (next.generation >= old.generation ? next : old))
@@ -211,7 +215,18 @@ export function BitmapView({ summary }: { summary: DocSummary }) {
           </div>
         </aside>
         <div className={styles.main}>
+          <BitmapReconstruction
+            key={`${doc}:${master}`}
+            doc={doc}
+            master={master}
+          />
           <div className={styles.creation}>
+            <BitmapGridPreset
+              unitsPerEm={summary.units_per_em}
+              value={ppem}
+              onSelect={setPpem}
+              disabled={busy}
+            />
             <label>
               {t('bitmap.size')}
               <input
@@ -349,49 +364,36 @@ export function BitmapView({ summary }: { summary: DocSummary }) {
                 doc={doc}
                 glyph={glyph}
                 strike={strike}
+                upm={summary.units_per_em}
+                master={master}
+                gid={items.find((item) => item.name === glyph)?.gid}
               />
-              <div className={styles.toolbar}>
-                <label>
-                  {t('bitmap.threshold')}
-                  <input
-                    type="number"
-                    min={1}
-                    max={255}
-                    value={threshold}
-                    onChange={(e) => setThreshold(Number(e.target.value))}
-                  />
-                </label>
-                <button
-                  disabled={
-                    busy ||
-                    !Number.isInteger(threshold) ||
-                    threshold < 1 ||
-                    threshold > 255
-                  }
-                  onClick={() =>
-                    operation(async () => {
-                      const current = await call('bitmap.state', { doc })
-                      await call('bitmap.trace', {
-                        doc,
-                        master,
-                        expected_generation: current.generation,
-                        glyph,
-                        ppem: strike.ppem,
-                        depth: strike.depth,
-                        threshold,
-                      })
-                    })
-                  }
-                >
-                  {t('bitmap.trace')}
-                </button>
-                <span className={styles.hint}>{t('bitmap.traceHint')}</span>
-              </div>
+              <BitmapOutlineTools
+                doc={doc}
+                strike={strike}
+                glyph={glyph}
+                master={master}
+              />
             </>
           ) : (
             <p className={styles.empty}>{t('bitmap.empty')}</p>
           )}
-          {strike && <StrikeProperties doc={doc} strike={strike} />}
+          {strike && (
+            <>
+              <BitmapTransfer
+                key={`transfer:${strikeKey}`}
+                doc={doc}
+                strike={strike}
+                glyph={glyph}
+              />
+              <BitmapSheet
+                key={`sheet:${doc}:${strikeKey}`}
+                doc={doc}
+                strike={strike}
+              />
+              <StrikeProperties doc={doc} strike={strike} />
+            </>
+          )}
           <BitmapWaterfall doc={doc} revision={state.generation} />
         </div>
       </div>

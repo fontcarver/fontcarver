@@ -17,6 +17,8 @@ import {
 } from '../../test/fontFixtures'
 import { createMockTransport, noChange } from '../../test/mockTransport'
 import { useTextMetrics } from './useTextMetrics'
+import { useUiStore } from '../../stores/uiStore'
+import { initialTextState } from './textState'
 import { suspendDocumentEditParticipants } from '../../editor/documentEditParticipants'
 
 function deferred() {
@@ -123,12 +125,31 @@ function setup(
 
 afterEach(() => {
   setTransport(undefined)
+  useUiStore.setState({ tabs: [], activeTab: null })
   useEditorStore.setState(initialEditorState())
   vi.useRealTimers()
   vi.restoreAllMocks()
 })
 
 describe('useTextMetrics ordering', () => {
+  it('consumes spacing keys without edits while kerning mode locks spacing', async () => {
+    const hook = setup()
+    useUiStore.setState({
+      tabs: [
+        {
+          id: 'locked',
+          kind: 'glyph',
+          doc: 1,
+          textState: { ...initialTextState('m1'), kerningMode: 'locked' },
+        },
+      ],
+      activeTab: 'locked',
+    })
+    act(() => expect(hook.result.current.onMetricKey(key('right'))).toBe(true))
+    await hook.result.current.finish()
+    expect(hook.transport.calls).toEqual([])
+  })
+
   it('does not accept metrics shortcuts while the document is closing', async () => {
     const hook = setup()
     const resume = suspendDocumentEditParticipants(1)

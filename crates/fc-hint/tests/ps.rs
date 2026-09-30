@@ -75,3 +75,57 @@ fn detects_round_bowl_stems_at_exact_curve_extrema() {
         }
     }
 }
+
+#[test]
+fn a_crossbar_does_not_turn_counter_space_into_a_stem() {
+    for horizontal in [false, true] {
+        for reversed in [false, true] {
+            let mut font = Font::new_empty("Crossed counters", 1000);
+            let master = font.default_master().id.clone();
+            font.insert_glyph(Glyph::new("test")).unwrap();
+            let mut path = Rect::new(0.0, 0.0, 200.0, 700.0).to_path(0.1);
+            path.extend(
+                Rect::new(40.0, 40.0, 160.0, 660.0)
+                    .to_path(0.1)
+                    .reverse_subpaths(),
+            );
+            path.extend(Rect::new(40.0, 330.0, 160.0, 370.0).to_path(0.1));
+            if horizontal {
+                path.apply_affine(kurbo::Affine::new([0.0, 1.0, 1.0, 0.0, 0.0, 0.0]));
+            }
+            if reversed {
+                path = path.reverse_subpaths();
+            }
+            font.glyph_mut("test").unwrap().layers[0].contours = Contour::from_bezpath(&path);
+            let hints = ps::detect(&font, &"test".into(), &master).unwrap();
+            let stems = if horizontal {
+                hints.h_stems
+            } else {
+                hints.v_stems
+            };
+            assert_eq!(
+                stems
+                    .iter()
+                    .map(|stem| (stem.start, stem.width))
+                    .collect::<Vec<_>>(),
+                [(0.0, 40.0), (160.0, 40.0)],
+                "horizontal={horizontal}, reversed={reversed}",
+            );
+        }
+    }
+}
+
+#[test]
+fn automatic_analysis_does_not_apply_dictionary_zero_to_other_dicts() {
+    let mut font = Font::new_empty("CID analysis", 1000);
+    let master = font.default_master().id.clone();
+    font.insert_glyph(Glyph::new("first")).unwrap();
+    font.insert_glyph(Glyph::new("second")).unwrap();
+    font.masters[0].cff_private_dicts.push(Default::default());
+    font.glyph_mut("second").unwrap().layers[0].cff_private_dict_index = Some(1);
+    assert!(ps::analyze(&font, &master, &["first".into()]).is_ok());
+    let before = font.clone();
+    let error = ps::analyze(&font, &master, &["first".into(), "second".into()]).unwrap_err();
+    assert!(error.to_string().contains("dictionary 0 only"));
+    assert_eq!(font, before);
+}

@@ -18,7 +18,7 @@ pub enum Issue {
         /// Glyphs carrying the value, in glyph order.
         glyphs: Vec<GlyphName>,
     },
-    /// A component base is absent.
+    /// A component base or construction source is absent.
     DanglingComponent {
         /// Glyph containing the component.
         glyph: GlyphName,
@@ -65,22 +65,11 @@ pub fn validate(font: &Font) -> Vec<Issue> {
                 });
             }
         }
-        for component in glyph
-            .layers
-            .iter()
-            .flat_map(|layer| layer.components.iter())
-            .chain(
-                glyph
-                    .layers
-                    .iter()
-                    .flat_map(|layer| layer.color_layers.iter().flatten())
-                    .flat_map(|color_layer| color_layer.components.iter()),
-            )
-        {
-            if font.glyph(&component.base).is_none() {
+        for base in glyph.layers.iter().flat_map(crate::font::component_bases) {
+            if font.glyph(base).is_none() {
                 issues.push(Issue::DanglingComponent {
                     glyph: name.clone(),
-                    base: component.base.clone(),
+                    base: base.clone(),
                 });
             }
         }

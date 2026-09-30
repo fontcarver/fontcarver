@@ -13,10 +13,20 @@ pub(super) fn apply(font: &mut Font, command: &Command) -> Result<(), Error> {
             glyph,
             layer,
             component,
-        } => mutate_components(font, glyph, layer, |components| {
-            components.push(component.clone());
-            Ok(())
-        }),
+        } => {
+            // Imported unresolved references remain editable, but authoring a
+            // new reference must not introduce a missing component dependency.
+            if font.glyph(&component.base).is_none() {
+                return Err(fc_model::Error::MissingGlyph {
+                    glyph: component.base.clone(),
+                }
+                .into());
+            }
+            mutate_components(font, glyph, layer, |components| {
+                components.push(component.clone());
+                Ok(())
+            })
+        }
         Command::SetComponent {
             glyph,
             layer,
@@ -97,7 +107,11 @@ pub(super) fn apply(font: &mut Font, command: &Command) -> Result<(), Error> {
             let target = guides
                 .get_mut(*index)
                 .ok_or_else(|| index_error("guide", *index, len))?;
+            let id = target.id.clone();
             *target = guide.clone();
+            if id.is_some() {
+                target.id = id;
+            }
             Ok(())
         }
         Command::RemoveGuide {

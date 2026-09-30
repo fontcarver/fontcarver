@@ -164,16 +164,23 @@ pub fn validate_feature_candidate(
     source: &Features,
     settings: &FeatureGenerationSettings,
 ) -> FeatureValidation {
-    let assembled = source.assemble_fea();
     let mut result = FeatureValidation::default();
-    let tree = parse_source(font, &assembled, &mut result);
-    if let Some((tree, glyphs)) = tree.filter(|_| !result.has_errors()) {
-        for diagnostic in writer_conflicts(font, settings, &tree, &assembled) {
-            result.push(diagnostic);
+    for master in &font.masters {
+        let Some(assembled) = expand_source(font, source, &master.id, false, &mut result) else {
+            return result;
+        };
+        let tree = parse_source(font, &assembled, &mut result);
+        if let Some((tree, glyphs)) = tree.filter(|_| !result.has_errors()) {
+            for diagnostic in writer_conflicts(font, settings, &tree, &assembled) {
+                result.push(diagnostic);
+            }
+            let diagnostics = fea_rs::compile::validate::<NopVariationInfo>(&tree, &glyphs, None);
+            for diagnostic in diagnostics.diagnostics() {
+                result.push(map_diagnostic(diagnostic, &assembled, "feature-semantic"));
+            }
         }
-        let diagnostics = fea_rs::compile::validate::<NopVariationInfo>(&tree, &glyphs, None);
-        for diagnostic in diagnostics.diagnostics() {
-            result.push(map_diagnostic(diagnostic, &assembled, "feature-semantic"));
+        if result.has_errors() {
+            return result;
         }
     }
     if result.has_errors() {
@@ -193,6 +200,38 @@ pub fn validate_feature_candidate(
             }
         }
     }
+    // Target-only code must be compiled too before editor activation. Ordinary
+    // source retains the existing per-master validation cost.
+    if !font.axes.is_empty()
+        && source
+            .to_fea()
+            .lines()
+            .any(|line| matches!(line.split_whitespace().next(), Some("#ifdef" | "#ifndef")))
+    {
+        let master = match font.design_default_master() {
+            Ok(master) => master,
+            Err(error) => {
+                result.push(FeatureDiagnostic::error(
+                    "feature-variable-compile-failed",
+                    error.to_string(),
+                ));
+                return result;
+            }
+        };
+        let Some(assembled) = expand_source(font, source, &master.id, true, &mut result) else {
+            return result;
+        };
+        let _ = parse_source(font, &assembled, &mut result);
+        if result.has_errors() {
+            return result;
+        }
+        if let Err(error) = crate::compile_variable(&candidate, &CompileOptions::default()) {
+            result.push(FeatureDiagnostic::error(
+                "feature-variable-compile-failed",
+                error.to_string(),
+            ));
+        }
+    }
     if font.masters.is_empty() {
         result.push(FeatureDiagnostic::error(
             "feature-no-masters",
@@ -203,8 +242,15 @@ pub fn validate_feature_candidate(
 }
 
 /// Apply source work limits and ownership checks at direct compilation too.
-pub(crate) fn check_writer_conflicts(font: &Font) -> Result<(), crate::Error> {
-    let assembled = font.features.assemble_fea();
+pub(crate) fn check_writer_conflicts(
+    font: &Font,
+    master: &MasterId,
+    variable: bool,
+) -> Result<(), crate::Error> {
+    let assembled = font
+        .features
+        .assemble_fea_for(font, master, variable)
+        .map_err(|error| crate::Error::InvalidSource(error.to_string()))?;
     if assembled.text.trim().is_empty() {
         return Ok(());
     }
@@ -225,6 +271,35 @@ pub(crate) fn check_writer_conflicts(font: &Font) -> Result<(), crate::Error> {
         }
     }
     Ok(())
+}
+
+pub(crate) fn expand_source(
+    font: &Font,
+    source: &Features,
+    master: &MasterId,
+    variable: bool,
+    result: &mut FeatureValidation,
+) -> Option<AssembledFea> {
+    // Preserve the editor's established source-budget diagnostic before token
+    // expansion can report its own output budget as a token syntax error.
+    if let Some(message) = source_limit(&source.to_fea()) {
+        result.push(FeatureDiagnostic::error("feature-source-limit", message));
+        return None;
+    }
+    match source.assemble_fea_for(font, master, variable) {
+        Ok(assembled) => Some(assembled),
+        Err(error) => {
+            let mut diagnostic = FeatureDiagnostic::error("feature-token", error.message);
+            diagnostic.source_id = Some(error.source_id);
+            diagnostic.span = Some(FeatureDiagnosticSpan {
+                start: error.range.start as u32,
+                end: error.range.end as u32,
+            });
+            diagnostic.master = Some(master.clone());
+            result.push(diagnostic);
+            None
+        }
+    }
 }
 
 fn writer_conflicts(

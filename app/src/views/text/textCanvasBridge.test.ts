@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { Viewport } from '../../canvas/Viewport'
 import { makeCell } from '../../test/fontFixtures'
 import { shiftRunOrigin, surroundingGlyphs } from './textCanvasBridge'
@@ -18,6 +18,42 @@ const glyph: PositionedGlyph = {
   sourceKind: 'literal',
 }
 describe('canvas run bridge', () => {
+  const run: TextCanvasRun = {
+    glyphs: [{ ...glyph, x: 600, y: 50 }],
+    cells: new Map([[7, makeCell({ gid: 7, path: null })]]),
+    activeIndex: null,
+    activeOrigin: { x: 100, y: 20 },
+    mode: 'text',
+    unitsPerEm: 1000,
+    fitBox: { x0: 0, y0: 0, x1: 1000, y1: 1000 },
+    requestedScale: 1,
+    onActivate: () => undefined,
+    onExitEdit: () => undefined,
+    onVisibleIndexes: () => undefined,
+  }
+  it('includes positioned color glyphs without a monochrome outline', () => {
+    const color = { paint: vi.fn() }
+    const shown = surroundingGlyphs(
+      { ...run, colors: new Map([[7, color]]) },
+      new Map(),
+      [0],
+    )
+    expect(shown).toEqual([{ index: 0, path: null, color, x: 500, y: 30 }])
+  })
+  it('omits the active glyph while editing even when it has color paint', () => {
+    expect(
+      surroundingGlyphs(
+        {
+          ...run,
+          mode: 'edit',
+          activeIndex: 0,
+          colors: new Map([[7, { paint: vi.fn() }]]),
+        },
+        new Map(),
+        [0],
+      ),
+    ).toEqual([])
+  })
   it('bounds draw entries even when every offscreen occurrence shares a cached path', () => {
     const run: TextCanvasRun = {
       glyphs: Array.from({ length: 65535 }, (_, i) => ({

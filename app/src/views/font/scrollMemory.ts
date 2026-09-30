@@ -22,8 +22,12 @@ const MAX_REMEMBERED = 8
 const offsets = new Map<string, { doc: DocId; top: number }>()
 
 /** Records where one list is scrolled to, in CSS pixels. */
-export function rememberScroll(query: GlyphQuery, top: number): void {
-  const key = orderKey(query)
+export function rememberScroll(
+  query: GlyphQuery,
+  top: number,
+  presentation = 'grid',
+): void {
+  const key = `${orderKey(query)}:${presentation}`
   // Re-insert so the most recently used list survives eviction.
   offsets.delete(key)
   offsets.set(key, { doc: query.doc, top })
@@ -35,8 +39,11 @@ export function rememberScroll(query: GlyphQuery, top: number): void {
 }
 
 /** The offset last recorded for one list, or `null` when it has none. */
-export function rememberedScroll(query: GlyphQuery): number | null {
-  return offsets.get(orderKey(query))?.top ?? null
+export function rememberedScroll(
+  query: GlyphQuery,
+  presentation = 'grid',
+): number | null {
+  return offsets.get(`${orderKey(query)}:${presentation}`)?.top ?? null
 }
 
 /** Forgets every list of one document; called when the document closes. */

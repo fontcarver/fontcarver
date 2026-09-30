@@ -27,6 +27,8 @@ enum Command {
     Shape(cmd::shape::Args),
     /// List and filter glyphs in a font.
     Glyphs(cmd::glyphs::Args),
+    /// Compile multiple inputs into a TrueType/OpenType collection.
+    Collection(cmd::collection::Args),
 }
 
 impl Command {
@@ -38,6 +40,7 @@ impl Command {
             Self::Build(args) => cmd::build::run(args),
             Self::Shape(args) => cmd::shape::run(args),
             Self::Glyphs(args) => cmd::glyphs::run(args),
+            Self::Collection(args) => cmd::collection::run(args),
         }
     }
 }

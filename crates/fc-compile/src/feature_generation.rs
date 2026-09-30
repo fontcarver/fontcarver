@@ -70,8 +70,21 @@ pub fn generate_feature_source(
         .retain(|block| !owned.contains(block.id.0.as_str()));
     result.settings.generated.clear();
     result.settings.glyph_fingerprint = has_generators(settings).then(|| glyph_fingerprint(font));
-    let assembled = result.source.assemble_fea();
     let mut parsing = FeatureValidation::default();
+    let Some(master) = font.masters.first() else {
+        result.error("feature-no-masters", "The font has no masters to compile.");
+        return result;
+    };
+    let Some(assembled) = crate::feature_validation::expand_source(
+        font,
+        &result.source,
+        &master.id,
+        false,
+        &mut parsing,
+    ) else {
+        result.diagnostics.extend(parsing.diagnostics);
+        return result;
+    };
     let parsed = parse_source(font, &assembled, &mut parsing);
     let manual_tags: BTreeSet<String> = parsed
         .as_ref()

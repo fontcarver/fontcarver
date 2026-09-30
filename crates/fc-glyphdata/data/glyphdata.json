@@ -1,0 +1,3627 @@
+{
+  "version": 1,
+  "glyphs": {
+    ".notdef": {
+      "unicodes": [],
+      "category": "Other",
+      "sub_category": "Other",
+      "script": "Zyyy",
+      "production_name": ".notdef",
+      "anchors": [],
+      "composition": []
+    },
+    "A": {
+      "unicodes": [
+        65
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "A",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Aacute": {
+      "unicodes": [
+        193
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Aacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "A",
+        "acutecomb"
+      ]
+    },
+    "Abreve": {
+      "unicodes": [
+        258
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Abreve",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "A",
+        "brevecomb"
+      ]
+    },
+    "Acircumflex": {
+      "unicodes": [
+        194
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Acircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "A",
+        "circumflexcomb"
+      ]
+    },
+    "Adieresis": {
+      "unicodes": [
+        196
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Adieresis",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "A",
+        "dieresiscomb"
+      ]
+    },
+    "Agrave": {
+      "unicodes": [
+        192
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Agrave",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "A",
+        "gravecomb"
+      ]
+    },
+    "Amacron": {
+      "unicodes": [
+        256
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Amacron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "A",
+        "macroncomb"
+      ]
+    },
+    "Aogonek": {
+      "unicodes": [
+        260
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Aogonek",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "A",
+        "ogonekcomb"
+      ]
+    },
+    "Aring": {
+      "unicodes": [
+        197
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Aring",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "A",
+        "ringcomb"
+      ]
+    },
+    "Atilde": {
+      "unicodes": [
+        195
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Atilde",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "A",
+        "tildecomb"
+      ]
+    },
+    "B": {
+      "unicodes": [
+        66
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "B",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "C": {
+      "unicodes": [
+        67
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "C",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Cacute": {
+      "unicodes": [
+        262
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Cacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "C",
+        "acutecomb"
+      ]
+    },
+    "Ccaron": {
+      "unicodes": [
+        268
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Ccaron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "C",
+        "caroncomb"
+      ]
+    },
+    "Ccedilla": {
+      "unicodes": [
+        199
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Ccedilla",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "C",
+        "cedillacomb"
+      ]
+    },
+    "Ccircumflex": {
+      "unicodes": [
+        264
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Ccircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "C",
+        "circumflexcomb"
+      ]
+    },
+    "Cdotaccent": {
+      "unicodes": [
+        266
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Cdotaccent",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "C",
+        "dotaccentcomb"
+      ]
+    },
+    "D": {
+      "unicodes": [
+        68
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "D",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Dcaron": {
+      "unicodes": [
+        270
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Dcaron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "D",
+        "caroncomb"
+      ]
+    },
+    "E": {
+      "unicodes": [
+        69
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "E",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Eacute": {
+      "unicodes": [
+        201
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Eacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "E",
+        "acutecomb"
+      ]
+    },
+    "Ebreve": {
+      "unicodes": [
+        276
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Ebreve",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "E",
+        "brevecomb"
+      ]
+    },
+    "Ecaron": {
+      "unicodes": [
+        282
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Ecaron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "E",
+        "caroncomb"
+      ]
+    },
+    "Ecircumflex": {
+      "unicodes": [
+        202
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Ecircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "E",
+        "circumflexcomb"
+      ]
+    },
+    "Edieresis": {
+      "unicodes": [
+        203
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Edieresis",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "E",
+        "dieresiscomb"
+      ]
+    },
+    "Edotaccent": {
+      "unicodes": [
+        278
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Edotaccent",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "E",
+        "dotaccentcomb"
+      ]
+    },
+    "Egrave": {
+      "unicodes": [
+        200
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Egrave",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "E",
+        "gravecomb"
+      ]
+    },
+    "Emacron": {
+      "unicodes": [
+        274
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Emacron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "E",
+        "macroncomb"
+      ]
+    },
+    "Eogonek": {
+      "unicodes": [
+        280
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Eogonek",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "E",
+        "ogonekcomb"
+      ]
+    },
+    "F": {
+      "unicodes": [
+        70
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "F",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "G": {
+      "unicodes": [
+        71
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "G",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Gbreve": {
+      "unicodes": [
+        286
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Gbreve",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "G",
+        "brevecomb"
+      ]
+    },
+    "Gcircumflex": {
+      "unicodes": [
+        284
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Gcircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "G",
+        "circumflexcomb"
+      ]
+    },
+    "Gdotaccent": {
+      "unicodes": [
+        288
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Gdotaccent",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "G",
+        "dotaccentcomb"
+      ]
+    },
+    "H": {
+      "unicodes": [
+        72
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "H",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Hcircumflex": {
+      "unicodes": [
+        292
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Hcircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "H",
+        "circumflexcomb"
+      ]
+    },
+    "I": {
+      "unicodes": [
+        73
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "I",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Iacute": {
+      "unicodes": [
+        205
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Iacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "I",
+        "acutecomb"
+      ]
+    },
+    "Ibreve": {
+      "unicodes": [
+        300
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Ibreve",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "I",
+        "brevecomb"
+      ]
+    },
+    "Icircumflex": {
+      "unicodes": [
+        206
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Icircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "I",
+        "circumflexcomb"
+      ]
+    },
+    "Idieresis": {
+      "unicodes": [
+        207
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Idieresis",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "I",
+        "dieresiscomb"
+      ]
+    },
+    "Idotaccent": {
+      "unicodes": [
+        304
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Idotaccent",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "I",
+        "dotaccentcomb"
+      ]
+    },
+    "Igrave": {
+      "unicodes": [
+        204
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Igrave",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "I",
+        "gravecomb"
+      ]
+    },
+    "Imacron": {
+      "unicodes": [
+        298
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Imacron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "I",
+        "macroncomb"
+      ]
+    },
+    "Iogonek": {
+      "unicodes": [
+        302
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Iogonek",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "I",
+        "ogonekcomb"
+      ]
+    },
+    "Itilde": {
+      "unicodes": [
+        296
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Itilde",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "I",
+        "tildecomb"
+      ]
+    },
+    "J": {
+      "unicodes": [
+        74
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "J",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Jcircumflex": {
+      "unicodes": [
+        308
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Jcircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "J",
+        "circumflexcomb"
+      ]
+    },
+    "K": {
+      "unicodes": [
+        75
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "K",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "L": {
+      "unicodes": [
+        76
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "L",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Lacute": {
+      "unicodes": [
+        313
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Lacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "L",
+        "acutecomb"
+      ]
+    },
+    "Lcaron": {
+      "unicodes": [
+        317
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Lcaron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "L",
+        "caroncomb"
+      ]
+    },
+    "M": {
+      "unicodes": [
+        77
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "M",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "N": {
+      "unicodes": [
+        78
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "N",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Nacute": {
+      "unicodes": [
+        323
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Nacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "N",
+        "acutecomb"
+      ]
+    },
+    "Ncaron": {
+      "unicodes": [
+        327
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Ncaron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "N",
+        "caroncomb"
+      ]
+    },
+    "Ntilde": {
+      "unicodes": [
+        209
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Ntilde",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "N",
+        "tildecomb"
+      ]
+    },
+    "O": {
+      "unicodes": [
+        79
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "O",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Oacute": {
+      "unicodes": [
+        211
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Oacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "O",
+        "acutecomb"
+      ]
+    },
+    "Obreve": {
+      "unicodes": [
+        334
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Obreve",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "O",
+        "brevecomb"
+      ]
+    },
+    "Ocircumflex": {
+      "unicodes": [
+        212
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Ocircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "O",
+        "circumflexcomb"
+      ]
+    },
+    "Odieresis": {
+      "unicodes": [
+        214
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Odieresis",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "O",
+        "dieresiscomb"
+      ]
+    },
+    "Ograve": {
+      "unicodes": [
+        210
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Ograve",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "O",
+        "gravecomb"
+      ]
+    },
+    "Ohungarumlaut": {
+      "unicodes": [
+        336
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Ohungarumlaut",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "O",
+        "hungarumlautcomb"
+      ]
+    },
+    "Omacron": {
+      "unicodes": [
+        332
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Omacron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "O",
+        "macroncomb"
+      ]
+    },
+    "Otilde": {
+      "unicodes": [
+        213
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Otilde",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "O",
+        "tildecomb"
+      ]
+    },
+    "P": {
+      "unicodes": [
+        80
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "P",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Q": {
+      "unicodes": [
+        81
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Q",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "R": {
+      "unicodes": [
+        82
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "R",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Racute": {
+      "unicodes": [
+        340
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Racute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "R",
+        "acutecomb"
+      ]
+    },
+    "Rcaron": {
+      "unicodes": [
+        344
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Rcaron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "R",
+        "caroncomb"
+      ]
+    },
+    "S": {
+      "unicodes": [
+        83
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "S",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Sacute": {
+      "unicodes": [
+        346
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Sacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "S",
+        "acutecomb"
+      ]
+    },
+    "Scaron": {
+      "unicodes": [
+        352
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Scaron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "S",
+        "caroncomb"
+      ]
+    },
+    "Scedilla": {
+      "unicodes": [
+        350
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Scedilla",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "S",
+        "cedillacomb"
+      ]
+    },
+    "Scircumflex": {
+      "unicodes": [
+        348
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Scircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "S",
+        "circumflexcomb"
+      ]
+    },
+    "T": {
+      "unicodes": [
+        84
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "T",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Tcaron": {
+      "unicodes": [
+        356
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Tcaron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "T",
+        "caroncomb"
+      ]
+    },
+    "U": {
+      "unicodes": [
+        85
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "U",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Uacute": {
+      "unicodes": [
+        218
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Uacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "U",
+        "acutecomb"
+      ]
+    },
+    "Ubreve": {
+      "unicodes": [
+        364
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Ubreve",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "U",
+        "brevecomb"
+      ]
+    },
+    "Ucircumflex": {
+      "unicodes": [
+        219
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Ucircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "U",
+        "circumflexcomb"
+      ]
+    },
+    "Udieresis": {
+      "unicodes": [
+        220
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Udieresis",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "U",
+        "dieresiscomb"
+      ]
+    },
+    "Ugrave": {
+      "unicodes": [
+        217
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Ugrave",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "U",
+        "gravecomb"
+      ]
+    },
+    "Uhungarumlaut": {
+      "unicodes": [
+        368
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Uhungarumlaut",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "U",
+        "hungarumlautcomb"
+      ]
+    },
+    "Umacron": {
+      "unicodes": [
+        362
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Umacron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "U",
+        "macroncomb"
+      ]
+    },
+    "Uogonek": {
+      "unicodes": [
+        370
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Uogonek",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "U",
+        "ogonekcomb"
+      ]
+    },
+    "Uring": {
+      "unicodes": [
+        366
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Uring",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "U",
+        "ringcomb"
+      ]
+    },
+    "Utilde": {
+      "unicodes": [
+        360
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Utilde",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "U",
+        "tildecomb"
+      ]
+    },
+    "V": {
+      "unicodes": [
+        86
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "V",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "W": {
+      "unicodes": [
+        87
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "W",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Wcircumflex": {
+      "unicodes": [
+        372
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Wcircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "W",
+        "circumflexcomb"
+      ]
+    },
+    "X": {
+      "unicodes": [
+        88
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "X",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Y": {
+      "unicodes": [
+        89
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Y",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Yacute": {
+      "unicodes": [
+        221
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Yacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "Y",
+        "acutecomb"
+      ]
+    },
+    "Ycircumflex": {
+      "unicodes": [
+        374
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Ycircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "Y",
+        "circumflexcomb"
+      ]
+    },
+    "Ydieresis": {
+      "unicodes": [
+        376
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Ydieresis",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "Y",
+        "dieresiscomb"
+      ]
+    },
+    "Z": {
+      "unicodes": [
+        90
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Z",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "Zacute": {
+      "unicodes": [
+        377
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Zacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "Z",
+        "acutecomb"
+      ]
+    },
+    "Zcaron": {
+      "unicodes": [
+        381
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Zcaron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "Z",
+        "caroncomb"
+      ]
+    },
+    "Zdotaccent": {
+      "unicodes": [
+        379
+      ],
+      "category": "Letter",
+      "sub_category": "Uppercase",
+      "script": "Latn",
+      "production_name": "Zdotaccent",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "Z",
+        "dotaccentcomb"
+      ]
+    },
+    "a": {
+      "unicodes": [
+        97
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "a",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "aacute": {
+      "unicodes": [
+        225
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "aacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "a",
+        "acutecomb"
+      ]
+    },
+    "abreve": {
+      "unicodes": [
+        259
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "abreve",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "a",
+        "brevecomb"
+      ]
+    },
+    "acircumflex": {
+      "unicodes": [
+        226
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "acircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "a",
+        "circumflexcomb"
+      ]
+    },
+    "acutecomb": {
+      "unicodes": [
+        769
+      ],
+      "category": "Mark",
+      "sub_category": "Nonspacing",
+      "script": "Zinh",
+      "production_name": "acutecomb",
+      "anchors": [
+        "_top",
+        "top"
+      ],
+      "composition": []
+    },
+    "adieresis": {
+      "unicodes": [
+        228
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "adieresis",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "a",
+        "dieresiscomb"
+      ]
+    },
+    "agrave": {
+      "unicodes": [
+        224
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "agrave",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "a",
+        "gravecomb"
+      ]
+    },
+    "amacron": {
+      "unicodes": [
+        257
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "amacron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "a",
+        "macroncomb"
+      ]
+    },
+    "aogonek": {
+      "unicodes": [
+        261
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "aogonek",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "a",
+        "ogonekcomb"
+      ]
+    },
+    "aring": {
+      "unicodes": [
+        229
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "aring",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "a",
+        "ringcomb"
+      ]
+    },
+    "atilde": {
+      "unicodes": [
+        227
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "atilde",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "a",
+        "tildecomb"
+      ]
+    },
+    "b": {
+      "unicodes": [
+        98
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "b",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "brevecomb": {
+      "unicodes": [
+        774
+      ],
+      "category": "Mark",
+      "sub_category": "Nonspacing",
+      "script": "Zinh",
+      "production_name": "uni0306",
+      "anchors": [
+        "_top",
+        "top"
+      ],
+      "composition": []
+    },
+    "c": {
+      "unicodes": [
+        99
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "c",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "cacute": {
+      "unicodes": [
+        263
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "cacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "c",
+        "acutecomb"
+      ]
+    },
+    "caroncomb": {
+      "unicodes": [
+        780
+      ],
+      "category": "Mark",
+      "sub_category": "Nonspacing",
+      "script": "Zinh",
+      "production_name": "uni030C",
+      "anchors": [
+        "_top",
+        "top"
+      ],
+      "composition": []
+    },
+    "ccaron": {
+      "unicodes": [
+        269
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "ccaron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "c",
+        "caroncomb"
+      ]
+    },
+    "ccedilla": {
+      "unicodes": [
+        231
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "ccedilla",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "c",
+        "cedillacomb"
+      ]
+    },
+    "ccircumflex": {
+      "unicodes": [
+        265
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "ccircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "c",
+        "circumflexcomb"
+      ]
+    },
+    "cdotaccent": {
+      "unicodes": [
+        267
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "cdotaccent",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "c",
+        "dotaccentcomb"
+      ]
+    },
+    "cedillacomb": {
+      "unicodes": [
+        807
+      ],
+      "category": "Mark",
+      "sub_category": "Nonspacing",
+      "script": "Zinh",
+      "production_name": "uni0327",
+      "anchors": [
+        "_bottom",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "circumflexcomb": {
+      "unicodes": [
+        770
+      ],
+      "category": "Mark",
+      "sub_category": "Nonspacing",
+      "script": "Zinh",
+      "production_name": "uni0302",
+      "anchors": [
+        "_top",
+        "top"
+      ],
+      "composition": []
+    },
+    "commaaccentcomb": {
+      "unicodes": [
+        806
+      ],
+      "category": "Mark",
+      "sub_category": "Nonspacing",
+      "script": "Zinh",
+      "production_name": "uni0326",
+      "anchors": [
+        "_bottom",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "d": {
+      "unicodes": [
+        100
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "d",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "dcaron": {
+      "unicodes": [
+        271
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "dcaron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "d",
+        "caroncomb"
+      ]
+    },
+    "dieresiscomb": {
+      "unicodes": [
+        776
+      ],
+      "category": "Mark",
+      "sub_category": "Nonspacing",
+      "script": "Zinh",
+      "production_name": "uni0308",
+      "anchors": [
+        "_top",
+        "top"
+      ],
+      "composition": []
+    },
+    "dotaccentcomb": {
+      "unicodes": [
+        775
+      ],
+      "category": "Mark",
+      "sub_category": "Nonspacing",
+      "script": "Zinh",
+      "production_name": "uni0307",
+      "anchors": [
+        "_top",
+        "top"
+      ],
+      "composition": []
+    },
+    "dotbelowcomb": {
+      "unicodes": [
+        803
+      ],
+      "category": "Mark",
+      "sub_category": "Nonspacing",
+      "script": "Zinh",
+      "production_name": "dotbelowcomb",
+      "anchors": [
+        "_bottom",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "dotlessi": {
+      "unicodes": [
+        305
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "dotlessi",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "dotlessj": {
+      "unicodes": [
+        567
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "uni0237",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "e": {
+      "unicodes": [
+        101
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "e",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "eacute": {
+      "unicodes": [
+        233
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "eacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "e",
+        "acutecomb"
+      ]
+    },
+    "ebreve": {
+      "unicodes": [
+        277
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "ebreve",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "e",
+        "brevecomb"
+      ]
+    },
+    "ecaron": {
+      "unicodes": [
+        283
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "ecaron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "e",
+        "caroncomb"
+      ]
+    },
+    "ecircumflex": {
+      "unicodes": [
+        234
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "ecircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "e",
+        "circumflexcomb"
+      ]
+    },
+    "edieresis": {
+      "unicodes": [
+        235
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "edieresis",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "e",
+        "dieresiscomb"
+      ]
+    },
+    "edotaccent": {
+      "unicodes": [
+        279
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "edotaccent",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "e",
+        "dotaccentcomb"
+      ]
+    },
+    "egrave": {
+      "unicodes": [
+        232
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "egrave",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "e",
+        "gravecomb"
+      ]
+    },
+    "emacron": {
+      "unicodes": [
+        275
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "emacron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "e",
+        "macroncomb"
+      ]
+    },
+    "eogonek": {
+      "unicodes": [
+        281
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "eogonek",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "e",
+        "ogonekcomb"
+      ]
+    },
+    "f": {
+      "unicodes": [
+        102
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "f",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "f_f": {
+      "unicodes": [
+        64256
+      ],
+      "category": "Letter",
+      "sub_category": "Ligature",
+      "script": "Latn",
+      "production_name": "uniFB00",
+      "anchors": [
+        "top_1",
+        "top_2"
+      ],
+      "composition": [
+        "f",
+        "f"
+      ]
+    },
+    "f_f_i": {
+      "unicodes": [
+        64259
+      ],
+      "category": "Letter",
+      "sub_category": "Ligature",
+      "script": "Latn",
+      "production_name": "uniFB03",
+      "anchors": [
+        "top_1",
+        "top_2",
+        "top_3"
+      ],
+      "composition": [
+        "f",
+        "f",
+        "i"
+      ]
+    },
+    "f_f_l": {
+      "unicodes": [
+        64260
+      ],
+      "category": "Letter",
+      "sub_category": "Ligature",
+      "script": "Latn",
+      "production_name": "uniFB04",
+      "anchors": [
+        "top_1",
+        "top_2",
+        "top_3"
+      ],
+      "composition": [
+        "f",
+        "f",
+        "l"
+      ]
+    },
+    "fi": {
+      "unicodes": [
+        64257
+      ],
+      "category": "Letter",
+      "sub_category": "Ligature",
+      "script": "Latn",
+      "production_name": "uniFB01",
+      "anchors": [
+        "top_1",
+        "top_2"
+      ],
+      "composition": [
+        "f",
+        "i"
+      ]
+    },
+    "fl": {
+      "unicodes": [
+        64258
+      ],
+      "category": "Letter",
+      "sub_category": "Ligature",
+      "script": "Latn",
+      "production_name": "uniFB02",
+      "anchors": [
+        "top_1",
+        "top_2"
+      ],
+      "composition": [
+        "f",
+        "l"
+      ]
+    },
+    "g": {
+      "unicodes": [
+        103
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "g",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "gbreve": {
+      "unicodes": [
+        287
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "gbreve",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "g",
+        "brevecomb"
+      ]
+    },
+    "gcircumflex": {
+      "unicodes": [
+        285
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "gcircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "g",
+        "circumflexcomb"
+      ]
+    },
+    "gdotaccent": {
+      "unicodes": [
+        289
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "gdotaccent",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "g",
+        "dotaccentcomb"
+      ]
+    },
+    "gravecomb": {
+      "unicodes": [
+        768
+      ],
+      "category": "Mark",
+      "sub_category": "Nonspacing",
+      "script": "Zinh",
+      "production_name": "gravecomb",
+      "anchors": [
+        "_top",
+        "top"
+      ],
+      "composition": []
+    },
+    "h": {
+      "unicodes": [
+        104
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "h",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "hcircumflex": {
+      "unicodes": [
+        293
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "hcircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "h",
+        "circumflexcomb"
+      ]
+    },
+    "hookabovecomb": {
+      "unicodes": [
+        777
+      ],
+      "category": "Mark",
+      "sub_category": "Nonspacing",
+      "script": "Zinh",
+      "production_name": "hookabovecomb",
+      "anchors": [
+        "_top",
+        "top"
+      ],
+      "composition": []
+    },
+    "hungarumlautcomb": {
+      "unicodes": [
+        779
+      ],
+      "category": "Mark",
+      "sub_category": "Nonspacing",
+      "script": "Zinh",
+      "production_name": "uni030B",
+      "anchors": [
+        "_top",
+        "top"
+      ],
+      "composition": []
+    },
+    "i": {
+      "unicodes": [
+        105
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "i",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "iacute": {
+      "unicodes": [
+        237
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "iacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "dotlessi",
+        "acutecomb"
+      ]
+    },
+    "ibreve": {
+      "unicodes": [
+        301
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "ibreve",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "dotlessi",
+        "brevecomb"
+      ]
+    },
+    "icircumflex": {
+      "unicodes": [
+        238
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "icircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "dotlessi",
+        "circumflexcomb"
+      ]
+    },
+    "idieresis": {
+      "unicodes": [
+        239
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "idieresis",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "dotlessi",
+        "dieresiscomb"
+      ]
+    },
+    "igrave": {
+      "unicodes": [
+        236
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "igrave",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "dotlessi",
+        "gravecomb"
+      ]
+    },
+    "imacron": {
+      "unicodes": [
+        299
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "imacron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "dotlessi",
+        "macroncomb"
+      ]
+    },
+    "iogonek": {
+      "unicodes": [
+        303
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "iogonek",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "dotlessi",
+        "ogonekcomb"
+      ]
+    },
+    "itilde": {
+      "unicodes": [
+        297
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "itilde",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "dotlessi",
+        "tildecomb"
+      ]
+    },
+    "j": {
+      "unicodes": [
+        106
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "j",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "jcircumflex": {
+      "unicodes": [
+        309
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "jcircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "dotlessj",
+        "circumflexcomb"
+      ]
+    },
+    "k": {
+      "unicodes": [
+        107
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "k",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "l": {
+      "unicodes": [
+        108
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "l",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "lacute": {
+      "unicodes": [
+        314
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "lacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "l",
+        "acutecomb"
+      ]
+    },
+    "lcaron": {
+      "unicodes": [
+        318
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "lcaron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "l",
+        "caroncomb"
+      ]
+    },
+    "m": {
+      "unicodes": [
+        109
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "m",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "macroncomb": {
+      "unicodes": [
+        772
+      ],
+      "category": "Mark",
+      "sub_category": "Nonspacing",
+      "script": "Zinh",
+      "production_name": "uni0304",
+      "anchors": [
+        "_top",
+        "top"
+      ],
+      "composition": []
+    },
+    "n": {
+      "unicodes": [
+        110
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "n",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "nacute": {
+      "unicodes": [
+        324
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "nacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "n",
+        "acutecomb"
+      ]
+    },
+    "ncaron": {
+      "unicodes": [
+        328
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "ncaron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "n",
+        "caroncomb"
+      ]
+    },
+    "ntilde": {
+      "unicodes": [
+        241
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "ntilde",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "n",
+        "tildecomb"
+      ]
+    },
+    "o": {
+      "unicodes": [
+        111
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "o",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "oacute": {
+      "unicodes": [
+        243
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "oacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "o",
+        "acutecomb"
+      ]
+    },
+    "obreve": {
+      "unicodes": [
+        335
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "obreve",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "o",
+        "brevecomb"
+      ]
+    },
+    "ocircumflex": {
+      "unicodes": [
+        244
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "ocircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "o",
+        "circumflexcomb"
+      ]
+    },
+    "odieresis": {
+      "unicodes": [
+        246
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "odieresis",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "o",
+        "dieresiscomb"
+      ]
+    },
+    "ogonekcomb": {
+      "unicodes": [
+        808
+      ],
+      "category": "Mark",
+      "sub_category": "Nonspacing",
+      "script": "Zinh",
+      "production_name": "uni0328",
+      "anchors": [
+        "_bottom",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "ograve": {
+      "unicodes": [
+        242
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "ograve",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "o",
+        "gravecomb"
+      ]
+    },
+    "ohungarumlaut": {
+      "unicodes": [
+        337
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "ohungarumlaut",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "o",
+        "hungarumlautcomb"
+      ]
+    },
+    "omacron": {
+      "unicodes": [
+        333
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "omacron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "o",
+        "macroncomb"
+      ]
+    },
+    "otilde": {
+      "unicodes": [
+        245
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "otilde",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "o",
+        "tildecomb"
+      ]
+    },
+    "p": {
+      "unicodes": [
+        112
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "p",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "q": {
+      "unicodes": [
+        113
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "q",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "r": {
+      "unicodes": [
+        114
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "r",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "racute": {
+      "unicodes": [
+        341
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "racute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "r",
+        "acutecomb"
+      ]
+    },
+    "rcaron": {
+      "unicodes": [
+        345
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "rcaron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "r",
+        "caroncomb"
+      ]
+    },
+    "ringcomb": {
+      "unicodes": [
+        778
+      ],
+      "category": "Mark",
+      "sub_category": "Nonspacing",
+      "script": "Zinh",
+      "production_name": "uni030A",
+      "anchors": [
+        "_top",
+        "top"
+      ],
+      "composition": []
+    },
+    "s": {
+      "unicodes": [
+        115
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "s",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "sacute": {
+      "unicodes": [
+        347
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "sacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "s",
+        "acutecomb"
+      ]
+    },
+    "scaron": {
+      "unicodes": [
+        353
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "scaron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "s",
+        "caroncomb"
+      ]
+    },
+    "scedilla": {
+      "unicodes": [
+        351
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "scedilla",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "s",
+        "cedillacomb"
+      ]
+    },
+    "scircumflex": {
+      "unicodes": [
+        349
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "scircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "s",
+        "circumflexcomb"
+      ]
+    },
+    "space": {
+      "unicodes": [
+        32
+      ],
+      "category": "Separator",
+      "sub_category": "Space",
+      "script": "Zyyy",
+      "production_name": "space",
+      "anchors": [],
+      "composition": []
+    },
+    "t": {
+      "unicodes": [
+        116
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "t",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "tcaron": {
+      "unicodes": [
+        357
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "tcaron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "t",
+        "caroncomb"
+      ]
+    },
+    "tildecomb": {
+      "unicodes": [
+        771
+      ],
+      "category": "Mark",
+      "sub_category": "Nonspacing",
+      "script": "Zinh",
+      "production_name": "tildecomb",
+      "anchors": [
+        "_top",
+        "top"
+      ],
+      "composition": []
+    },
+    "u": {
+      "unicodes": [
+        117
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "u",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "uacute": {
+      "unicodes": [
+        250
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "uacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "u",
+        "acutecomb"
+      ]
+    },
+    "ubreve": {
+      "unicodes": [
+        365
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "ubreve",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "u",
+        "brevecomb"
+      ]
+    },
+    "ucircumflex": {
+      "unicodes": [
+        251
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "ucircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "u",
+        "circumflexcomb"
+      ]
+    },
+    "udieresis": {
+      "unicodes": [
+        252
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "udieresis",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "u",
+        "dieresiscomb"
+      ]
+    },
+    "ugrave": {
+      "unicodes": [
+        249
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "ugrave",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "u",
+        "gravecomb"
+      ]
+    },
+    "uhungarumlaut": {
+      "unicodes": [
+        369
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "uhungarumlaut",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "u",
+        "hungarumlautcomb"
+      ]
+    },
+    "umacron": {
+      "unicodes": [
+        363
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "umacron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "u",
+        "macroncomb"
+      ]
+    },
+    "uogonek": {
+      "unicodes": [
+        371
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "uogonek",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "u",
+        "ogonekcomb"
+      ]
+    },
+    "uring": {
+      "unicodes": [
+        367
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "uring",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "u",
+        "ringcomb"
+      ]
+    },
+    "utilde": {
+      "unicodes": [
+        361
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "utilde",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "u",
+        "tildecomb"
+      ]
+    },
+    "v": {
+      "unicodes": [
+        118
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "v",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "w": {
+      "unicodes": [
+        119
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "w",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "wcircumflex": {
+      "unicodes": [
+        373
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "wcircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "w",
+        "circumflexcomb"
+      ]
+    },
+    "x": {
+      "unicodes": [
+        120
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "x",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "y": {
+      "unicodes": [
+        121
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "y",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "yacute": {
+      "unicodes": [
+        253
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "yacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "y",
+        "acutecomb"
+      ]
+    },
+    "ycircumflex": {
+      "unicodes": [
+        375
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "ycircumflex",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "y",
+        "circumflexcomb"
+      ]
+    },
+    "ydieresis": {
+      "unicodes": [
+        255
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "ydieresis",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "y",
+        "dieresiscomb"
+      ]
+    },
+    "z": {
+      "unicodes": [
+        122
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "z",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": []
+    },
+    "zacute": {
+      "unicodes": [
+        378
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "zacute",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "z",
+        "acutecomb"
+      ]
+    },
+    "zcaron": {
+      "unicodes": [
+        382
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "zcaron",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "z",
+        "caroncomb"
+      ]
+    },
+    "zdotaccent": {
+      "unicodes": [
+        380
+      ],
+      "category": "Letter",
+      "sub_category": "Lowercase",
+      "script": "Latn",
+      "production_name": "zdotaccent",
+      "anchors": [
+        "top",
+        "bottom"
+      ],
+      "composition": [
+        "z",
+        "dotaccentcomb"
+      ]
+    }
+  }
+}

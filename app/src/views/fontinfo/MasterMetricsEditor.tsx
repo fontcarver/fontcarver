@@ -2,6 +2,10 @@ import { useTranslation } from 'react-i18next'
 import type { MasterMetrics } from '../../api'
 import { NumberField } from '../../components/NumberField'
 import { Button } from '../../components/Button'
+import {
+  resolveMasterMetric,
+  type OptionalMasterMetric,
+} from './metricInheritance'
 import styles from './designSpace.module.css'
 
 const FIELDS = [
@@ -35,50 +39,67 @@ const REQUIRED = new Set<keyof MasterMetrics>([
 /** Edits the draft master metrics; the parent commits them atomically. */
 export function MasterMetricsEditor({
   metrics,
+  unitsPerEm,
   onChange,
 }: {
   metrics: MasterMetrics
+  unitsPerEm: number
   onChange: (metrics: MasterMetrics) => void
 }) {
   const { t } = useTranslation()
   return (
     <details>
       <summary>{t('variation.masterMetrics')}</summary>
+      <p>{t('scopedInfo.metricsHint')}</p>
       <div className={styles.form}>
-        {FIELDS.map(([field, label]) => (
-          <div key={field} className={styles.row}>
-            {!REQUIRED.has(field) && (
-              <label>
-                <input
-                  type="checkbox"
-                  checked={metrics[field] !== null}
-                  aria-label={t('variation.overrideMetric', {
-                    metric: t(`fontInfo.metric.${label}`),
-                  })}
-                  onChange={(e) =>
-                    onChange({
-                      ...metrics,
-                      [field]: e.target.checked
-                        ? field === 'default_vertical_advance'
-                          ? 1000
-                          : field === 'default_vertical_origin'
-                            ? metrics.ascender
-                            : 0
-                        : null,
-                    })
-                  }
-                />
-                {t('variation.override')}
-              </label>
-            )}
-            <NumberField
-              label={t(`fontInfo.metric.${label}`)}
-              value={metrics[field] ?? 0}
-              disabled={metrics[field] === null}
-              onCommit={(value) => onChange({ ...metrics, [field]: value })}
-            />
-          </div>
-        ))}
+        {FIELDS.map(([field, label]) => {
+          const required = REQUIRED.has(field)
+          const resolved = required
+            ? null
+            : resolveMasterMetric(
+                metrics,
+                field as OptionalMasterMetric,
+                unitsPerEm,
+              )
+          const effective = resolved?.value ?? metrics[field] ?? 0
+          return (
+            <div key={field} className={styles.row}>
+              {!required && (
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={metrics[field] !== null}
+                    aria-label={t('variation.overrideMetric', {
+                      metric: t(`fontInfo.metric.${label}`),
+                    })}
+                    onChange={(e) =>
+                      onChange({
+                        ...metrics,
+                        [field]: e.target.checked ? effective : null,
+                      })
+                    }
+                  />
+                  {t('variation.override')}
+                </label>
+              )}
+              <NumberField
+                label={t(`fontInfo.metric.${label}`)}
+                value={effective}
+                disabled={metrics[field] === null}
+                onCommit={(value) => onChange({ ...metrics, [field]: value })}
+              />
+              {resolved && (
+                <span className={styles.sourceLabel}>
+                  {t(
+                    resolved.overridden
+                      ? 'scopedInfo.masterOverride'
+                      : `scopedInfo.metricSource.${resolved.source}`,
+                  )}
+                </span>
+              )}
+            </div>
+          )
+        })}
         <Button
           onClick={() =>
             onChange({

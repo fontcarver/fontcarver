@@ -21,6 +21,21 @@ pub(super) fn encode(font: &Font, master: &MasterId, binary: bool) -> Result<Vec
     if font.cid.is_some() {
         return Err(source_error("CID-keyed Type 1 output is not supported"));
     }
+    if !master_data.cff_private_dicts.is_empty()
+        || font
+            .glyphs
+            .values()
+            .filter(|glyph| glyph.export)
+            .any(|glyph| {
+                glyph
+                    .master_layer(master)
+                    .is_some_and(|layer| layer.cff_private_dict_index.unwrap_or(0) != 0)
+            })
+    {
+        return Err(source_error(
+            "Type 1 output requires one private dictionary; resolve CID dictionary assignments before exporting",
+        ));
+    }
     let angle = master_data.metrics.italic_angle;
     let underline = font.info.postscript_underline_position.unwrap_or(-100.0);
     let thickness = font.info.postscript_underline_thickness.unwrap_or(50.0);

@@ -7,6 +7,7 @@
 
 mod boolean;
 mod compatibility;
+mod construction;
 mod corners;
 pub use corners::smart_corner_path;
 mod convert;
@@ -14,14 +15,17 @@ mod edit;
 mod effects;
 mod error;
 mod filled;
+mod harmonize;
 pub use effects::{
     bake_effects_font, evaluate_layer, flatten_layer, flatten_layer_by_id, flatten_smart_component,
     layer_bbox, EffectOutcome,
 };
+pub use harmonize::{harmonize_nodes, HarmonizeError};
 mod interpolate;
 mod smart;
 mod stroke;
 mod style;
+mod variable_pen;
 pub use style::{style_effect, StyleOptions, StyleOutcome};
 pub mod variation;
 pub use smart::{resolve_smart_font, resolve_smart_layer};
@@ -34,8 +38,8 @@ pub use compatibility::{canonical_source, repair_compatibility};
 pub use convert::{from_bezpaths, to_bezpaths, CurveKind};
 pub use edit::{
     add_extrema, add_inflections, bbox, canonical_order, canonical_start_points, correct_direction,
-    fit_span, intersections_with_line, nearest_on_path, reverse, round_to_grid, segment_to_points,
-    simplify, split_segment, transform, PathHit, SimplifyOptions, SpanFit,
+    fit_span, force_extrema, intersections_with_line, nearest_on_path, reverse, round_to_grid,
+    segment_to_points, simplify, split_segment, transform, PathHit, SimplifyOptions, SpanFit,
 };
 pub use error::Error;
 pub use interpolate::{compatible, interpolate, Incompatibility};

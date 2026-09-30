@@ -205,11 +205,27 @@ pub(crate) fn trace(api: &Api, params: crate::BitmapTraceParams) -> Result<Chang
             let glyph = strike
                 .flattened(&params.glyph.as_str().into())
                 .map_err(|e| ApiError::invalid_params(e.to_string()))?;
-            let contours = fc_raster::trace_bitmap(
+            let mode = match params.mode.unwrap_or_default() {
+                crate::BitmapTraceMode::PixelEdges => fc_raster::BitmapTraceMode::PixelEdges,
+                crate::BitmapTraceMode::ChamferedCorners => {
+                    fc_raster::BitmapTraceMode::ChamferedCorners
+                }
+                crate::BitmapTraceMode::RoundedCorners => {
+                    fc_raster::BitmapTraceMode::RoundedCorners
+                }
+                crate::BitmapTraceMode::DiagonalSmoothing => {
+                    fc_raster::BitmapTraceMode::DiagonalSmoothing
+                }
+            };
+            let contours = fc_raster::trace_bitmap_with_options(
                 &glyph.bitmap,
                 params.ppem,
                 doc.font.info.units_per_em,
                 params.threshold,
+                fc_raster::BitmapTraceOptions {
+                    mode,
+                    join_diagonals: params.join_diagonals.unwrap_or(false),
+                },
             )
             .map_err(|e| ApiError::invalid_params(e.to_string()))?;
             let master = params

@@ -12,6 +12,10 @@ export interface TextRowProps {
   multiline?: boolean
   /** Reject an empty commit, restoring the model value instead. */
   required?: boolean
+  /** Disable editing when the current workspace locks this field. */
+  disabled?: boolean
+  /** A reconciliation also restores a rejected draft when the value is unchanged. */
+  revision?: unknown
 }
 
 /**
@@ -30,16 +34,21 @@ export function TextRow({
   placeholder,
   multiline = false,
   required = false,
+  disabled = false,
+  revision,
 }: TextRowProps) {
   const [text, setText] = useState(value)
   const [shown, setShown] = useState(value)
+  const [shownRevision, setShownRevision] = useState(revision)
   const cancelBlur = useRef(false)
-  if (value !== shown) {
+  if (value !== shown || revision !== shownRevision) {
     setShown(value)
+    setShownRevision(revision)
     setText(value)
   }
 
   const commit = (raw: string): void => {
+    if (disabled) return
     const next = raw.trim()
     if (required && next === '') {
       setText(value)
@@ -50,6 +59,7 @@ export function TextRow({
   }
 
   const shared = {
+    disabled,
     value: text,
     'aria-label': label,
     placeholder,

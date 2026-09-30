@@ -6,6 +6,7 @@ import { activeEditor } from '../../../editor/activeEditor'
 import { setAnchorCommand } from '../../../editor/pointCommands'
 import { selectionOf } from '../../../editor/selection'
 import { useEditorStore } from '../../../stores/editorStore'
+import { useDocumentStore } from '../../../stores/documentStore'
 import { NumberField } from '../../../components/NumberField'
 import { commitField } from '../commitField'
 
@@ -18,6 +19,7 @@ import {
   suggestAnchorName,
 } from './panelCommands'
 import { TextRow } from './TextRow'
+import { MarkCloudPreview } from './MarkCloudPreview'
 
 /**
  * The Anchors section (design spec §7.5): the layer's attachment points, an
@@ -25,10 +27,20 @@ import { TextRow } from './TextRow'
  * Clicking a row selects the anchor on the canvas, which is what makes it
  * draggable and gives the Info box its rows.
  */
-export function AnchorsPanel({ target, outline, scene, reload }: PanelContext) {
+export function AnchorsPanel({
+  target,
+  gid,
+  outline,
+  scene,
+  reload,
+}: PanelContext) {
   const { t } = useTranslation()
   const [pending, setPending] = useState<string | null>(null)
+  const [preview, setPreview] = useState(false)
   const selection = useEditorStore((state) => state.selection)
+  const selectedMaster =
+    useDocumentStore((state) => state.byDoc[target.doc]?.master) ??
+    outline.master
   const anchors = outline.anchors
   // The suggestion follows the layer until the user picks another name.
   const suggested = pending ?? suggestAnchorName(anchors)
@@ -153,6 +165,26 @@ export function AnchorsPanel({ target, outline, scene, reload }: PanelContext) {
         </button>
       </div>
       <p className={styles.hint}>{t('panel.anchors.hint')}</p>
+      <button
+        type="button"
+        className={styles.actionButton}
+        aria-expanded={preview}
+        onClick={() => setPreview((value) => !value)}
+      >
+        {t(preview ? 'panel.anchors.cloud.hide' : 'panel.anchors.cloud.show')}
+      </button>
+      {preview ? (
+        <MarkCloudPreview
+          key={`${target.doc}:${gid}:${selectedMaster}:${outline.layer}`}
+          doc={target.doc}
+          gid={gid}
+          baseName={target.glyph}
+          master={selectedMaster}
+          outline={outline}
+          path={scene.flattened}
+          upem={scene.metrics.upem}
+        />
+      ) : null}
     </>
   )
 }

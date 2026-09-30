@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { setTransport, type EditApplyParams } from '../../api'
 import { afterDocumentEdits } from '../../editor/editSession'
 import { createEditingTransport } from '../../test/mockTransport'
-import { KerningEditRunner, kerningShortcut } from './kerningEdits'
+import {
+  KerningEditRunner,
+  kerningShortcut,
+  kerningShortcutAction,
+} from './kerningEdits'
 
 const target = {
   doc: 1,
@@ -31,6 +35,60 @@ afterEach(() => {
 })
 
 describe('kerningShortcut', () => {
+  it('reserves class modifiers only for opt-in punctuation and preserves arrows', () => {
+    const punctuation = { ...key, key: ',', ctrlKey: false, altKey: false }
+    expect(kerningShortcutAction(punctuation, false)).toBeNull()
+    expect(kerningShortcutAction(punctuation, false, true)).toEqual({
+      delta: -1,
+      suppressLeft: false,
+      suppressRight: false,
+    })
+    expect(
+      kerningShortcutAction(
+        {
+          ...punctuation,
+          key: '>',
+          code: 'Period',
+          shiftKey: true,
+          ctrlKey: true,
+          altKey: true,
+        },
+        false,
+        true,
+      ),
+    ).toEqual({
+      delta: 10,
+      suppressLeft: true,
+      suppressRight: true,
+    })
+    expect(
+      kerningShortcutAction(
+        { ...punctuation, key: '≤', code: 'Comma', altKey: true },
+        true,
+        true,
+      ),
+    ).toEqual({
+      delta: -1,
+      suppressLeft: false,
+      suppressRight: true,
+    })
+    expect(
+      kerningShortcutAction({ ...punctuation, metaKey: true }, true, true),
+    ).toBeNull()
+    expect(kerningShortcutAction(key, false, true)).toEqual({
+      delta: -1,
+      suppressLeft: false,
+      suppressRight: false,
+    })
+    expect(
+      kerningShortcutAction({ ...key, metaKey: true }, true, true),
+    ).toEqual({
+      delta: -100,
+      suppressLeft: false,
+      suppressRight: false,
+    })
+  })
+
   it('uses platform Mod+Alt and the documented 1/10/100-unit steps', () => {
     expect(kerningShortcut(key, false)).toBe(-1)
     expect(

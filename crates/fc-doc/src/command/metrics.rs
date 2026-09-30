@@ -1,9 +1,76 @@
-use fc_model::{Font, GlyphName, LayerId};
+use fc_model::{Font, GlyphName, LayerId, LayerKind, MasterId};
 use kurbo::{Affine, Shape, Vec2};
 
 use crate::Error;
 
 use super::apply::{ensure_finite, layer_mut};
+
+/// Resolve and synchronize the requested master layers as one command.
+pub(super) fn update(
+    font: &mut Font,
+    glyph: &GlyphName,
+    master: Option<&MasterId>,
+) -> Result<(), Error> {
+    let data = font
+        .glyph(glyph)
+        .ok_or_else(|| Error::MissingGlyph(glyph.clone()))?;
+    let layers = data
+        .layers
+        .iter()
+        .filter_map(|layer| match &layer.kind {
+            LayerKind::Master(id) if master.is_none_or(|master| master == id) => {
+                Some((layer.id.clone(), id.clone()))
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    if layers.is_empty() {
+        return Err(Error::InvalidCommand(
+            "glyph has no matching master layer".into(),
+        ));
+    }
+    // Resolve every requested layer before mutating any of them.
+    let mut updates = Vec::new();
+    for (layer, master) in layers {
+        let resolved = crate::metrics::resolve_layer(font, glyph, &master, &layer)?;
+        if resolved.source == crate::MetricsSource::Explicit {
+            continue;
+        }
+        let path = fc_geom::flatten_layer_by_id(font, glyph, &layer)?;
+        let ink = if path.is_empty() {
+            0.0
+        } else {
+            path.bounding_box().width()
+        };
+        if (resolved.lsb + ink + resolved.rsb - resolved.width).abs() > 1e-7 {
+            return Err(Error::InvalidCommand(
+                "metrics keys specify conflicting sidebearings and width".into(),
+            ));
+        }
+        if path.is_empty() && resolved.lsb.abs() > 1e-7 {
+            return Err(Error::InvalidCommand(
+                "an empty layer cannot have a nonzero left sidebearing".into(),
+            ));
+        }
+        if !(0.0..=65535.0).contains(&resolved.width) {
+            return Err(Error::InvalidCommand(
+                "resolved metrics width exceeds the OpenType range".into(),
+            ));
+        }
+        updates.push((layer, resolved));
+    }
+    for (layer, resolved) in updates {
+        set(
+            font,
+            glyph,
+            &layer,
+            None,
+            Some(resolved.lsb),
+            Some(resolved.rsb),
+        )?;
+    }
+    Ok(())
+}
 
 pub(super) fn center(
     font: &mut Font,

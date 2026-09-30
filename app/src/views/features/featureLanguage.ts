@@ -5,6 +5,7 @@ import type {
   CompletionSource,
 } from '@codemirror/autocomplete'
 import { StreamLanguage, syntaxTree } from '@codemirror/language'
+import type { EditorState } from '@codemirror/state'
 
 const KEYWORDS = new Set([
   'anchor',
@@ -119,6 +120,25 @@ export const featureLanguage = StreamLanguage.define({
   },
 })
 
+/** Resolve a source class reference while excluding comments and strings. */
+export function featureClassAt(
+  state: EditorState,
+  position: number,
+): string | null {
+  const token = syntaxTree(state).resolveInner(position, -1)
+  if (token.name === 'comment' || token.name === 'string') return null
+  const line = state.doc.lineAt(position)
+  for (const match of line.text.matchAll(/@[\w.-]+/g)) {
+    const from = line.from + match.index
+    if (from <= position && position <= from + match[0].length) {
+      if (match.index > 0 && /[\\\w.-]/.test(line.text[match.index - 1]!))
+        return null
+      return match[0].slice(1)
+    }
+  }
+  return null
+}
+
 /** Build name completions without inserting translated prose into source code. */
 export function createFeatureCompletion(
   glyphNames: readonly string[],
@@ -216,4 +236,18 @@ export function sourceOffsetToEditorOffset(
     }
   }
   return limit - removed
+}
+
+/** Display one-based lines and Unicode character columns for a UTF-16 span. */
+export function sourceOffsetToLocation(
+  source: string,
+  offset: number,
+): { line: number; column: number } {
+  const normalized = source.replace(/\r\n?/g, '\n')
+  const position = sourceOffsetToEditorOffset(source, offset)
+  const lines = normalized.slice(0, position).split('\n')
+  return {
+    line: lines.length,
+    column: Array.from(lines.at(-1) ?? '').length + 1,
+  }
 }

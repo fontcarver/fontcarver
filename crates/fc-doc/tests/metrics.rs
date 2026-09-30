@@ -177,3 +177,248 @@ fn set_metrics_uses_the_commands_own_layer_bounds() {
         })
         .unwrap();
 }
+
+#[test]
+fn height_keys_measure_the_outline_cross_section() {
+    let mut font = test_font();
+    let master = font.default_master().id.clone();
+    font.glyph_mut("base").unwrap().layers[0].contours[0].points = vec![
+        common::point(0.0, 0.0),
+        common::point(100.0, 0.0),
+        common::point(60.0, 100.0),
+        common::point(40.0, 100.0),
+    ];
+    font.glyph_mut("composite").unwrap().metrics_keys.left = Some("=base@50".into());
+    let answer = metrics::resolve(&font, &"composite".into(), &master).unwrap();
+    assert_eq!(answer.lsb, 20.0);
+    assert_eq!(answer.width, 620.0);
+}
+
+#[test]
+fn local_metrics_inherit_unset_fields_and_stay_in_their_layer() {
+    let mut font = test_font();
+    let master = font.default_master().id.clone();
+    let original = font.glyph("base").unwrap().layers[0].id.clone();
+    let mut local = font.glyph("base").unwrap().layers[0].clone();
+    local.id = fc_model::LayerId::new();
+    local.kind = LayerKind::Background(master.clone());
+    local.metrics_keys = Some(MetricsKeys {
+        left: Some("==40".into()),
+        ..Default::default()
+    });
+    let local_id = local.id.clone();
+    font.glyph_mut("base").unwrap().layers.push(local);
+    font.glyph_mut("base").unwrap().metrics_keys.right = Some("=30".into());
+    let answer = metrics::resolve_layer(&font, &"base".into(), &master, &local_id).unwrap();
+    assert_eq!((answer.lsb, answer.rsb, answer.width), (40.0, 30.0, 170.0));
+    let answer = metrics::resolve_layer(&font, &"base".into(), &master, &original).unwrap();
+    assert_eq!((answer.lsb, answer.rsb, answer.width), (0.0, 30.0, 130.0));
+}
+
+#[test]
+fn auto_alignment_offsets_use_the_base_metrics_without_drifting() {
+    let mut font = test_font();
+    let master = font.default_master().id.clone();
+    let glyph = font.glyph_mut("composite").unwrap();
+    glyph.layers[0].components[0].auto_align = true;
+    glyph.metrics_keys.left = Some("=+25".into());
+    let answer = metrics::resolve(&font, &"composite".into(), &master).unwrap();
+    assert_eq!(answer.lsb, 25.0);
+    let session = Session::new();
+    let id = session.open_font(font, None);
+    session
+        .with_doc_mut(id, |doc| {
+            let command = Command::UpdateMetrics {
+                glyph: "composite".into(),
+                master: Some(master.clone()),
+            };
+            doc.apply(command.clone(), "Update metrics").unwrap();
+            let once = doc.font.glyph("composite").unwrap().clone();
+            doc.apply(command, "Update metrics again").unwrap();
+            assert_eq!(doc.font.glyph("composite").unwrap(), &once);
+        })
+        .unwrap();
+}
+
+#[test]
+fn update_current_and_all_masters_is_undoable_and_idempotent() {
+    let mut font = test_font();
+    let first = font.default_master().id.clone();
+    let mut second = font.default_master().clone();
+    second.id = fc_model::MasterId::new();
+    second.name = "Second".into();
+    let second_id = second.id.clone();
+    font.masters.push(second);
+    let glyph = font.glyph_mut("base").unwrap();
+    let mut layer = glyph.layers[0].clone();
+    layer.id = fc_model::LayerId::new();
+    layer.kind = LayerKind::Master(second_id.clone());
+    layer.metrics_keys = Some(MetricsKeys {
+        left: Some("==40".into()),
+        ..Default::default()
+    });
+    glyph.layers.push(layer);
+    glyph.metrics_keys.left = Some("=20".into());
+    glyph.metrics_keys.right = Some("=30".into());
+    let session = Session::new();
+    let id = session.open_font(font, None);
+    session
+        .with_doc_mut(id, |doc| {
+            let before = doc.font.glyph("base").unwrap().clone();
+            doc.apply(
+                Command::UpdateMetrics {
+                    glyph: "base".into(),
+                    master: Some(first.clone()),
+                },
+                "Update current",
+            )
+            .unwrap();
+            let current = doc.font.glyph("base").unwrap();
+            assert_eq!(current.master_layer(&first).unwrap().width, 150.0);
+            assert_eq!(current.master_layer(&second_id).unwrap().width, 500.0);
+            doc.undo().unwrap();
+            assert_eq!(doc.font.glyph("base").unwrap(), &before);
+            doc.apply(
+                Command::UpdateMetrics {
+                    glyph: "base".into(),
+                    master: None,
+                },
+                "Update all",
+            )
+            .unwrap();
+            assert_eq!(
+                doc.font
+                    .glyph("base")
+                    .unwrap()
+                    .master_layer(&second_id)
+                    .unwrap()
+                    .width,
+                170.0
+            );
+            let once = doc.font.glyph("base").unwrap().clone();
+            doc.apply(
+                Command::UpdateMetrics {
+                    glyph: "base".into(),
+                    master: None,
+                },
+                "Update all again",
+            )
+            .unwrap();
+            assert_eq!(doc.font.glyph("base").unwrap(), &once);
+            let scratch = common::temp_dir("metrics-local-roundtrip");
+            let path = scratch.join("metrics.fcf");
+            fc_doc::fcf::write(&path, &doc.font).unwrap();
+            let reloaded = fc_doc::fcf::read(&path).unwrap();
+            assert_eq!(reloaded.glyph("base").unwrap(), &once);
+            std::fs::remove_dir_all(scratch).unwrap();
+        })
+        .unwrap();
+}
+
+#[test]
+fn conflicting_metrics_update_fails_without_mutation() {
+    let mut font = test_font();
+    font.glyph_mut("base").unwrap().metrics_keys = MetricsKeys {
+        left: Some("=20".into()),
+        right: Some("=30".into()),
+        width: Some("=999".into()),
+        ..Default::default()
+    };
+    let session = Session::new();
+    let id = session.open_font(font, None);
+    session
+        .with_doc_mut(id, |doc| {
+            let before = doc.font.glyph("base").unwrap().clone();
+            assert!(doc
+                .apply(
+                    Command::UpdateMetrics {
+                        glyph: "base".into(),
+                        master: None
+                    },
+                    "Conflicting"
+                )
+                .is_err());
+            assert_eq!(doc.font.glyph("base").unwrap(), &before);
+        })
+        .unwrap();
+}
+
+#[test]
+fn width_key_preserves_lsb_and_updates_the_opposite_sidebearing() {
+    let mut font = test_font();
+    let master = font.default_master().id.clone();
+    font.glyph_mut("base").unwrap().metrics_keys.width = Some("=700".into());
+    let answer = metrics::resolve(&font, &"base".into(), &master).unwrap();
+    assert_eq!((answer.lsb, answer.rsb, answer.width), (0.0, 600.0, 700.0));
+}
+
+#[test]
+fn malformed_keys_and_unaligned_offsets_are_rejected() {
+    let mut font = test_font();
+    let master = font.default_master().id.clone();
+    for key in [
+        "=NaN",
+        "=inf",
+        "=base/0",
+        "=base@NaN",
+        "=base@200",
+        "=+20",
+        "===base",
+    ] {
+        font.glyph_mut("base").unwrap().metrics_keys.left = Some(key.into());
+        assert!(
+            metrics::resolve(&font, &"base".into(), &master).is_err(),
+            "{key}"
+        );
+    }
+}
+
+#[test]
+fn local_formula_commands_are_undoable_and_reject_global_double_equals() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let layer = doc.font.glyph("base").unwrap().layers[0].id.clone();
+            let keys = MetricsKeys {
+                left: Some("==42".into()),
+                ..Default::default()
+            };
+            assert!(doc
+                .apply(
+                    Command::SetMetricsKeys {
+                        glyph: "base".into(),
+                        keys: keys.clone()
+                    },
+                    "Bad scope"
+                )
+                .is_err());
+            doc.apply(
+                Command::SetLayerMetricsKeys {
+                    glyph: "base".into(),
+                    layer,
+                    keys: Some(keys.clone()),
+                },
+                "Local key",
+            )
+            .unwrap();
+            assert_eq!(
+                doc.font.glyph("base").unwrap().layers[0]
+                    .metrics_keys
+                    .as_ref(),
+                Some(&keys)
+            );
+            doc.undo().unwrap();
+            assert!(doc.font.glyph("base").unwrap().layers[0]
+                .metrics_keys
+                .is_none());
+            doc.redo().unwrap();
+            assert_eq!(
+                doc.font.glyph("base").unwrap().layers[0]
+                    .metrics_keys
+                    .as_ref(),
+                Some(&keys)
+            );
+        })
+        .unwrap();
+}

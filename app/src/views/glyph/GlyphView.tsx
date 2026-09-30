@@ -230,8 +230,22 @@ export function GlyphView({
         outline.curve_format,
       ),
       componentPoints,
+      zoneLines: (master?.alignment_zones ?? []).flatMap((zone) => [
+        zone.position,
+        zone.position + zone.size,
+      ]),
+      backgroundPoints: underlay.backgroundPoints,
     }
-  }, [componentPoints, doc, gid, outline, scene, summary.format])
+  }, [
+    componentPoints,
+    doc,
+    gid,
+    master,
+    outline,
+    scene,
+    summary.format,
+    underlay.backgroundPoints,
+  ])
 
   const snapSettings = useMemo(() => snapSettingsOf(prefs), [prefs])
   const nudgeSteps = useMemo(() => nudgeStepsOf(prefs), [prefs])
@@ -246,15 +260,13 @@ export function GlyphView({
     [doc, editingMasterId, view.filter, view.sort],
   )
 
+  const textMode = textRun?.mode
+  const hasTextRun = Boolean(textRun)
+
   // Publish the glyph so the shell inspector can render it without a second
   // request, and name the tab now that the glyph name is known.
   useEffect(() => {
-    if (
-      !scene ||
-      gid === undefined ||
-      !detail.detail ||
-      textRun?.mode === 'text'
-    ) {
+    if (!scene || gid === undefined || !detail.detail || textMode === 'text') {
       setActiveGlyph(null)
       return
     }
@@ -269,7 +281,7 @@ export function GlyphView({
       masterGuides: master?.guides ?? [],
       reload: outlineResult.reload,
     })
-    if (!textRun)
+    if (!hasTextRun)
       setTabLabel(tabIdentity ?? tabId('glyph', doc, gid), scene.name)
     return () => setActiveGlyph(null)
   }, [
@@ -285,7 +297,8 @@ export function GlyphView({
     setActiveGlyph,
     setTabLabel,
     tabIdentity,
-    textRun,
+    textMode,
+    hasTextRun,
   ])
 
   useEffect(() => () => setPointer(null), [setPointer])

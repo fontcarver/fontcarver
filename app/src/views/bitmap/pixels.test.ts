@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { blank, paint, put, resize, sample, transform } from './pixels'
+import {
+  blank,
+  paint,
+  pencilInk,
+  put,
+  resize,
+  sample,
+  transform,
+} from './pixels'
 import type { BitmapGlyph } from '../../api'
 const glyph = (depth = 1): BitmapGlyph => ({
   bitmap: blank(7, 5, depth),
@@ -55,4 +63,36 @@ it('moves floating pixels, crops baseline bounds, interpolates coverage and inve
   const ellipse = paint(glyph(), 'ellipse', [1, 0], [5, 4], 1)
   expect(sample(ellipse.bitmap, 3, 0)).toBe(1)
   expect(sample(ellipse.bitmap, 3, 2)).toBe(0)
+})
+
+describe('bitmap pointer tools', () => {
+  it('toggles the first matching pixel then paints a consistent drag value', () => {
+    const source = glyph(4)
+    put(source.bitmap, 1, 1, 9)
+    put(source.bitmap, 2, 1, 9)
+    const ink = pencilInk(source.bitmap, [1, 1], 9)
+    expect(ink).toBe(0)
+    const edited = paint(source, 'pencil', [1, 1], [3, 1], ink)
+    expect([1, 2, 3].map((x) => sample(edited.bitmap, x, 1))).toEqual([0, 0, 0])
+    expect(pencilInk(source.bitmap, [0, 1], 9)).toBe(9)
+    expect(pencilInk(source.bitmap, [1, 1], 3)).toBe(3)
+    expect(pencilInk(source.bitmap, [0, 1], 0)).toBe(0)
+  })
+  it('keeps eyedropper and hand tools free of pixel mutations', () => {
+    const source = glyph(32)
+    put(source.bitmap, 1, 1, 0xffaabb80)
+    expect(paint(source, 'eyedropper', [0, 0], [6, 4], 0xffffffff)).toEqual(
+      source,
+    )
+    expect(paint(source, 'hand', [0, 0], [6, 4], 0xffffffff)).toEqual(source)
+  })
+})
+
+it('transforms own pixels without discarding separately editable references', () => {
+  const source = glyph()
+  source.refs = [{ base: 'accent', dx: 2, dy: 3 }]
+  put(source.bitmap, 1, 1, 1)
+  const result = transform(source, 'flipX')
+  expect(sample(result.bitmap, 5, 1)).toBe(1)
+  expect(result.refs).toEqual(source.refs)
 })

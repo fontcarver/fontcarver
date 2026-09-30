@@ -153,3 +153,56 @@ it('tracks an existing axis through partial tag edits and clears renames after s
   await session.flush()
   expect(writes).toBe(2)
 })
+
+it('flushes virtual master positions with the axis transaction before document save', async () => {
+  let value: VariationState = {
+    generation: 0,
+    axes: [],
+    masters: [makeMaster()],
+    instances: [],
+    first_glyph: 'A',
+    virtual_masters: [],
+  }
+  setTransport(
+    createMockTransport({
+      'variation.state': () => value,
+      'variation.apply': (params) => {
+        expect('Set' in params.command).toBe(true)
+        if ('Set' in params.command) {
+          expect(params.command.Set.virtual_masters).toEqual([
+            { name: 'Heavy', location: { wght: 900 } },
+          ])
+          value = { ...value, ...params.command.Set, generation: 1 }
+        }
+        return noChange()
+      },
+    }),
+  )
+  const session = new DesignSpaceSession(399, 'Virtual masters')
+  const dispose = session.connect(() => {})
+  try {
+    await session.load()
+    session.edit({
+      ...session.snapshot().value!,
+      axes: [
+        {
+          tag: 'wght',
+          name: 'Weight',
+          min: 100,
+          default: 100,
+          max: 900,
+          hidden: false,
+          map: [],
+        },
+      ],
+      virtual_masters: [{ name: 'Heavy', location: { wght: 900 } }],
+    })
+    await flushDocumentEditParticipants(399)
+    expect(session.snapshot().dirty).toBe(false)
+    expect(session.snapshot().value?.virtual_masters).toEqual([
+      { name: 'Heavy', location: { wght: 900 } },
+    ])
+  } finally {
+    dispose()
+  }
+})

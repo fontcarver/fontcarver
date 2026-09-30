@@ -98,7 +98,7 @@ fn malformed_instructions_and_point_data_cannot_create_a_binding() {
 }
 
 #[test]
-fn invalid_loca_end_and_variable_input_are_rejected() {
+fn invalid_loca_end_and_malformed_variable_input_are_rejected() {
     let bytes = font(&[simple(&[], &[])]);
     let malformed = support::replace(
         &bytes,
@@ -139,6 +139,10 @@ fn invalid_point_matches_and_unsupported_phantom_matches_are_distinguished() {
         .contains("outside outline"));
     let phantom = font(&[child, composite(&[(2, 0, 0, 0, &[]), (0, 0, 1, 0, &[])])]);
     assert!(point_basis(&phantom, 1)
+        .unwrap_err()
+        .to_string()
+        .contains("not yet supported"));
+    assert!(fc_sfnt::tt::fingerprints(&phantom, &[1])
         .unwrap_err()
         .to_string()
         .contains("not yet supported"));

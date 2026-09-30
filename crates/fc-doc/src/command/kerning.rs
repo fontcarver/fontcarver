@@ -12,6 +12,7 @@ pub(crate) fn is_kerning(command: &Command) -> bool {
     match command {
         Command::SetHorizontalKerning { .. }
         | Command::SetVerticalKerning { .. }
+        | Command::KerningMaintenance { .. }
         | Command::CreateKerningGroup { .. }
         | Command::SetKerningGroup { .. }
         | Command::AssignKerningGroup { .. }
@@ -24,8 +25,13 @@ pub(crate) fn is_kerning(command: &Command) -> bool {
 
 pub(super) fn apply(font: &mut Font, command: &Command) -> Result<(), Error> {
     match command {
-        Command::SetVerticalKerning { .. } => check_vertical_editing(font)?,
-        Command::SetHorizontalKerning { .. } => check_horizontal_editing(font)?,
+        Command::SetVerticalKerning { .. } | Command::KerningMaintenance { vertical: true, .. } => {
+            check_vertical_editing(font)?
+        }
+        Command::SetHorizontalKerning { .. }
+        | Command::KerningMaintenance {
+            vertical: false, ..
+        } => check_horizontal_editing(font)?,
         _ => {
             check_horizontal_editing(font)?;
             check_vertical_editing(font)?;
@@ -73,6 +79,12 @@ pub(super) fn apply(font: &mut Font, command: &Command) -> Result<(), Error> {
             }
             Ok(())
         }
+        Command::KerningMaintenance {
+            master,
+            vertical,
+            operation,
+            ..
+        } => crate::kerning::maintain_table(font, master, *vertical, operation),
         Command::CreateKerningGroup {
             side,
             name,

@@ -15,6 +15,7 @@ fc-model = { path = "../fc-model" }
 flate2.workspace = true
 kurbo.workspace = true
 read-fonts.workspace = true
+roxmltree = "0.21.1"
 sha2.workspace = true
 skrifa.workspace = true
 thiserror.workspace = true
@@ -25,6 +26,7 @@ write-fonts.workspace = true
 [dev-dependencies]
 criterion.workspace = true
 fc-fixtures = { path = "../fc-fixtures" }
+tempfile.workspace = true
 read-fonts.workspace = true
 write-fonts.workspace = true
 

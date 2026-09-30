@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { Component, ComponentView } from '../../../api'
 import { NumberField } from '../../../components/NumberField'
 
+import { SmartComponentControls } from './SmartComponentControls'
 import styles from './panels.module.css'
 
 export interface ComponentRowProps {
@@ -77,13 +78,13 @@ export function ComponentRow({
       className={`${styles.listRow} ${selected ? styles.listRowActive : ''} ${
         dragging ? styles.listRowDragging : ''
       }`}
-      draggable
+      draggable={!component.locked}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
         event.preventDefault()
-        onMove(index)
+        if (!component.locked) onMove(index)
       }}
     >
       <button
@@ -105,7 +106,7 @@ export function ComponentRow({
         type="button"
         className={styles.chipRemove}
         aria-label={t('panel.components.moveUp', { name: component.base })}
-        disabled={index === 0}
+        disabled={component.locked || index === 0}
         onClick={() => onMove(index - 1)}
       >
         ↑
@@ -114,7 +115,7 @@ export function ComponentRow({
         type="button"
         className={styles.chipRemove}
         aria-label={t('panel.components.moveDown', { name: component.base })}
-        disabled={index + 1 >= count}
+        disabled={component.locked || index + 1 >= count}
         onClick={() => onMove(index + 1)}
       >
         ↓
@@ -131,6 +132,7 @@ export function ComponentRow({
         type="button"
         className={styles.chipRemove}
         aria-label={t('panel.components.decompose', { name: component.base })}
+        disabled={component.locked}
         onClick={onDecompose}
       >
         ⊘
@@ -139,23 +141,29 @@ export function ComponentRow({
         type="button"
         className={styles.chipRemove}
         aria-label={t('panel.components.remove', { name: component.base })}
+        disabled={component.locked}
         onClick={onRemove}
       >
         ×
       </button>
+      <button
+        type="button"
+        className={styles.toggle}
+        aria-pressed={component.locked ?? false}
+        onClick={() => write({ locked: !component.locked })}
+      >
+        {t('panel.components.lock')}
+      </button>
       {selected ? (
         <div className={styles.rowFields}>
-          {view.smart_axes?.map((axis) => (
-            <NumberField
-              key={axis.name}
-              label={axis.name}
-              value={component.smart?.[axis.name] ?? axis.default}
-              onCommit={(value) =>
-                write({ smart: { ...component.smart, [axis.name]: value } })
-              }
-            />
-          ))}
+          <SmartComponentControls
+            axes={view.smart_axes ?? []}
+            component={component}
+            disabled={component.locked ?? false}
+            onWrite={onWrite}
+          />
           <NumberField
+            disabled={component.locked}
             label={t('infoBox.x')}
             value={offsetX}
             invalidHint={t('infoBox.invalid')}
@@ -173,6 +181,7 @@ export function ComponentRow({
             }}
           />
           <NumberField
+            disabled={component.locked}
             label={t('infoBox.y')}
             value={offsetY}
             invalidHint={t('infoBox.invalid')}
@@ -190,12 +199,14 @@ export function ComponentRow({
             }}
           />
           <NumberField
+            disabled={component.locked}
             label={t('infoBox.scaleX')}
             value={scale.x}
             invalidHint={t('infoBox.invalid')}
             onCommit={(x) => move(withScale(component.transform, x, scale.y))}
           />
           <NumberField
+            disabled={component.locked}
             label={t('infoBox.scaleY')}
             value={scale.y}
             invalidHint={t('infoBox.invalid')}
@@ -204,6 +215,7 @@ export function ComponentRow({
           <button
             type="button"
             className={styles.toggle}
+            disabled={component.locked}
             aria-pressed={component.auto_align}
             onClick={() => write({ auto_align: !component.auto_align })}
           >
@@ -212,6 +224,7 @@ export function ComponentRow({
           <button
             type="button"
             className={styles.toggle}
+            disabled={component.locked}
             aria-pressed={component.use_my_metrics}
             onClick={() => write({ use_my_metrics: !component.use_my_metrics })}
           >

@@ -292,8 +292,26 @@ impl Document {
 
     /// Saves the document as a `.fcf` or `.fcf.gz` file and marks it clean.
     pub fn save(&mut self, path: &Path) -> Result<(), Error> {
+        let relocated = if crate::image_paths::relocates_images(self.path.as_deref(), path)? {
+            let mut font = self.font.clone();
+            let mut undo = self.undo.clone();
+            crate::image_paths::rebase_image_paths(&mut font, self.path.as_deref(), path)?;
+            undo.rebase_image_paths(self.path.as_deref(), path)?;
+            Some((font, undo))
+        } else {
+            None
+        };
+        fcf::write(
+            path,
+            relocated.as_ref().map_or(&self.font, |(font, _)| font),
+        )?;
         self.finalize_active_edit();
-        fcf::write(path, &self.font)?;
+        if let Some((font, undo)) = relocated {
+            self.font = font;
+            self.undo = undo;
+            // Relative-link metadata changed; reject editors captured before Save As.
+            self.generation = self.generation.saturating_add(1);
+        }
         self.path = Some(path.to_path_buf());
         self.saved_state = self.current_state;
         self.dirty = false;
@@ -311,6 +329,7 @@ impl Document {
         label: String,
         coalesce: bool,
     ) -> Result<Change, Error> {
+        crate::kerning::validate_generation(&command, self.generation)?;
         let mut impact = command::impact(&self.font, &command);
         if !impact.renames.is_empty() {
             let dependent_names: Vec<_> = {
@@ -693,6 +712,13 @@ fn merge_names(mut left: Vec<GlyphName>, right: Vec<GlyphName>) -> Vec<GlyphName
 
 pub(crate) fn rename_references(font: &mut Font, from: &GlyphName, to: &GlyphName) {
     for glyph in font.glyphs.values_mut() {
+        for construction in glyph
+            .layers
+            .iter_mut()
+            .flat_map(|layer| &mut layer.constructions)
+        {
+            rename_name(&mut construction.source, from, to);
+        }
         for component in glyph.layers.iter_mut().flat_map(|layer| {
             layer.components.iter_mut().chain(
                 layer

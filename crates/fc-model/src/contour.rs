@@ -42,6 +42,10 @@ pub enum TtIndex {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub struct Point {
+    /// Optional stable identity for layer-local node relationships.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub id: Option<String>,
     /// Horizontal coordinate.
     #[serde(default)]
     pub x: f64,
@@ -54,6 +58,10 @@ pub struct Point {
     /// Whether neighboring handles should remain tangent.
     #[serde(default)]
     pub smooth: bool,
+    /// Whether neighboring cubic handles preserve equal signed curvature (G2).
+    #[serde(default, skip_serializing_if = "is_false")]
+    #[cfg_attr(feature = "ts", ts(as = "Option<bool>", optional))]
+    pub super_smooth: bool,
     /// Live corner radius in font units: positive rounds, negative cuts an ink trap.
     /// Zero keeps the source join unchanged.
     #[serde(default, skip_serializing_if = "zero_radius")]
@@ -74,6 +82,8 @@ impl Point {
 
     fn from_kurbo(point: KurboPoint, kind: PointKind) -> Self {
         Self {
+            id: None,
+            super_smooth: false,
             x: point.x,
             y: point.y,
             kind,
@@ -83,6 +93,10 @@ impl Point {
             tt_index: TtIndex::Unnumbered,
         }
     }
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 fn zero_radius(radius: &f64) -> bool {

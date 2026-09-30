@@ -14,6 +14,8 @@ import { registerCommands } from '../../shell/commands'
 import { useEditorStore } from '../../stores/editorStore'
 import { openGlyphTab } from '../../shell/tabActions'
 import { call } from '../../api'
+import { useUiStore } from '../../stores/uiStore'
+import { selectionToBackgroundCommand } from './layerWorkflows'
 import { reportError } from '../../shell/commands'
 
 import { commitField } from './commitField'
@@ -52,6 +54,101 @@ function hasMasterLayer(): boolean {
 /** Registers the Layer menu and the glyph-scoped Glyph-menu items. */
 export function registerLayerCommands(): void {
   registerCommands([
+    {
+      id: 'layer.editBackground',
+      title: 'cmd.layer.editBackground',
+      shortcut: 'Mod+B',
+      menu: 'layer',
+      group: 'background',
+      when: () => {
+        const scope = layerScope()
+        return (
+          scope !== null &&
+          (!scope.active.glyph.locked ||
+            backgroundLayer(scope.active.glyph, scope.master) !== null)
+        )
+      },
+      disabledReason: 'cmd.reason.noGlyphLayer',
+      run: async () => {
+        const scope = layerScope()
+        if (!scope) return
+        const tab = useUiStore.getState().activeTab
+        const stillCurrent = () => {
+          const current = useEditorStore.getState().activeGlyph
+          return (
+            useUiStore.getState().activeTab === tab &&
+            current?.doc === scope.active.doc &&
+            current?.gid === scope.active.gid &&
+            current?.outline?.layer === scope.outline.layer
+          )
+        }
+        await activeEditor()?.prepareTransition()
+        if (!stillCurrent()) return
+        const background = backgroundLayer(scope.active.glyph, scope.master)
+        let layer = background?.id
+        if (scope.outline.layer === layer) {
+          layer = scope.active.glyph.layers.find(
+            (candidate) =>
+              'Master' in candidate.kind &&
+              candidate.kind.Master === scope.master,
+          )?.id
+        } else if (!background) {
+          const command = addLayerCommand(
+            scope.target.glyph,
+            { Background: scope.master },
+            i18n.t('glyphInspector.layerKind.background'),
+            scope.outline.width,
+          )
+          if (!('AddLayer' in command)) return
+          layer = command.AddLayer.layer.id
+          await applyCommand(
+            scope.active.doc,
+            command,
+            i18n.t('editor.undo.addLayer'),
+          )
+          scope.active.reload()
+        }
+        if (layer && stillCurrent())
+          useEditorStore.getState().setEditedLayer(layer)
+      },
+    },
+    {
+      id: 'layer.selectionToBackground',
+      title: 'cmd.layer.selectionToBackground',
+      menu: 'layer',
+      group: 'background',
+      when: () => {
+        const scope = layerScope()
+        return (
+          scope !== null &&
+          !scope.active.glyph.locked &&
+          scope.outline.layer !==
+            backgroundLayer(scope.active.glyph, scope.master)?.id &&
+          selectionToBackgroundCommand(
+            scope.target,
+            scope.master,
+            useEditorStore.getState().selection,
+          ) !== null
+        )
+      },
+      disabledReason: 'cmd.reason.noGlyphLayer',
+      run: () => {
+        const scope = layerScope()
+        if (!scope) return
+        const command = selectionToBackgroundCommand(
+          scope.target,
+          scope.master,
+          useEditorStore.getState().selection,
+        )
+        if (command)
+          commitField(
+            scope.target,
+            command,
+            i18n.t('editor.undo.selectionToBackground'),
+            scope.active.reload,
+          )
+      },
+    },
     {
       id: 'layer.addBackground',
       title: 'cmd.layer.addBackground',
@@ -156,7 +253,11 @@ export function registerLayerCommands(): void {
       when: () => {
         const context = pathContext()
         const active = useEditorStore.getState().activeGlyph
-        return context !== null && (active?.outline?.components.length ?? 0) > 0
+        return (
+          context !== null &&
+          (active?.outline?.components.length ?? 0) > 0 &&
+          !active?.outline?.components.some((view) => view.component.locked)
+        )
       },
       disabledReason: 'cmd.reason.noGlyphLayer',
       run: () => {

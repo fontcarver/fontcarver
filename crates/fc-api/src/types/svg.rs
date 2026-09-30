@@ -28,6 +28,10 @@ pub struct SvgState {
     pub status: SvgStatus,
     /// Editable data when status is `Editable`.
     pub svg: Option<SvgTable>,
+    /// Validated imported data for read-only rendering; ownership remains imported.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub preview_svg: Option<SvgTable>,
     /// Why imported bytes cannot become editable, if they cannot.
     pub import_error: Option<String>,
     /// Scale of the editable font.

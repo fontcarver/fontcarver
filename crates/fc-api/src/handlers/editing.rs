@@ -48,13 +48,20 @@ pub(crate) fn outline(api: &Api, params: LayerOutlineParams) -> Result<LayerOutl
                 guides: selection.layer.guides.clone(),
                 width,
                 lsb: bbox.map_or(0.0, |bbox| bbox[0]),
-                rsb: bbox.map_or(0.0, |bbox| width - bbox[2]),
+                rsb: bbox.map_or(width, |bbox| width - bbox[2]),
                 bbox,
-                resolved_metrics: fc_doc::metrics::resolve(
+                resolved_metrics: fc_doc::metrics::resolve_layer(
                     &document.font,
                     &selection.name,
                     &selection.master,
-                )?,
+                    &selection.layer.id,
+                )
+                .unwrap_or(ResolvedMetrics {
+                    lsb: bbox.map_or(0.0, |bbox| bbox[0]),
+                    rsb: bbox.map_or(width, |bbox| width - bbox[2]),
+                    width,
+                    source: fc_doc::MetricsSource::Explicit,
+                }),
             })
         })
         .map_err(ApiError::from)?
@@ -100,7 +107,12 @@ pub(crate) fn metrics_resolve(
             let master =
                 crate::handlers::glyphs::selected_master(document, params.master.as_ref())?;
             let name = glyph_name(document, params.gid)?.clone();
-            fc_doc::metrics::resolve(&document.font, &name, &master).map_err(ApiError::from)
+            if let Some(layer) = &params.layer {
+                fc_doc::metrics::resolve_layer(&document.font, &name, &master, layer)
+            } else {
+                fc_doc::metrics::resolve(&document.font, &name, &master)
+            }
+            .map_err(ApiError::from)
         })
         .map_err(ApiError::from)?
 }
@@ -210,6 +222,11 @@ fn preview_cell((name, unicode): &(GlyphName, Option<u32>)) -> GlyphCell {
         export: glyph.export,
         has_components: false,
         is_empty: true,
+        metrics_out_of_sync: false,
+        has_annotations: false,
+        has_custom_glyph_info: false,
+        incompatible_masters: false,
+        locked: false,
         generation: 0,
     }
 }

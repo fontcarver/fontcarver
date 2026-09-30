@@ -1,19 +1,51 @@
-import type { Command, DocId, KernSide } from '../../api'
+import { call, type Command, type DocId, type KernSide } from '../../api'
 import {
   EditSession,
   holdDocumentEdits,
   type Scheduler,
 } from '../../editor/editSession'
 import { ApiCallError } from '../../transport'
+import {
+  kerningScopeRecord,
+  kerningScopeSides,
+  type KerningPairNames,
+  type KerningScope,
+} from './kerningModel'
 
 /** Modifier subset shared by React and native canvas events. */
 export interface KerningShortcutEvent {
   key: string
+  code?: string
   altKey: boolean
   ctrlKey: boolean
   metaKey: boolean
   shiftKey: boolean
   target?: EventTarget | null
+}
+
+/** Optional punctuation controls reserve Ctrl/Alt for independent class drops. */
+export function kerningShortcutAction(
+  event: KerningShortcutEvent,
+  isMac: boolean,
+  punctuation = false,
+): { delta: number; suppressLeft: boolean; suppressRight: boolean } | null {
+  const arrows = kerningShortcut(event, isMac)
+  if (arrows !== null)
+    return { delta: arrows, suppressLeft: false, suppressRight: false }
+  if (!punctuation || event.metaKey) return null
+  const direction =
+    event.code === 'Comma' || [',', '<'].includes(event.key)
+      ? -1
+      : event.code === 'Period' || ['.', '>'].includes(event.key)
+        ? 1
+        : null
+  return direction === null
+    ? null
+    : {
+        delta: direction * (event.shiftKey ? 10 : 1),
+        suppressLeft: event.ctrlKey,
+        suppressRight: event.altKey,
+      }
 }
 
 /** Reserved horizontal kerning keys, with platform-specific Mod semantics. */
@@ -35,6 +67,35 @@ export interface KerningEditTarget {
   master: string
   left: KernSide
   right: KernSide
+}
+
+/** Validates captured class membership after earlier queued edits finish. */
+export async function refreshKerningBaseline(
+  target: KerningEditTarget,
+  pair: KerningPairNames,
+  scope: KerningScope,
+): Promise<number> {
+  const fresh = await call(
+    target.vertical ? 'kerning.resolve_vertical' : 'kerning.resolve',
+    {
+      doc: target.doc,
+      master: target.master,
+      ...pair,
+    },
+  )
+  if (!fresh.status.editable || fresh.value === null)
+    throw new ApiCallError('kerning_unavailable', 'Kerning is unavailable')
+  const sides = kerningScopeSides(fresh, scope)
+  if (
+    !sides ||
+    JSON.stringify(sides.left) !== JSON.stringify(target.left) ||
+    JSON.stringify(sides.right) !== JSON.stringify(target.right)
+  )
+    throw new ApiCallError(
+      'stale_generation',
+      'Kerning group membership changed',
+    )
+  return kerningScopeRecord(fresh, scope)?.value ?? fresh.value
 }
 
 /** Callbacks for a single coalesced kerning command session. */

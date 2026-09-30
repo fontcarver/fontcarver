@@ -8,14 +8,17 @@ describe('tool registry', () => {
   it('lists every tool of design spec §5 in strip order', () => {
     expect(TOOLS.map((tool) => tool.id)).toEqual([
       'select',
+      'lasso',
       'pen',
       'pencil',
       'knife',
+      'eraser',
       'rectangle',
       'ellipse',
       'measure',
       'rotate',
       'scale',
+      'annotation',
       'zoom',
       'hand',
       'text',
@@ -39,7 +42,8 @@ describe('tool registry', () => {
     expect(toolForKey('F', false)).toBe('rectangle')
     expect(toolForKey('F', true)).toBe('ellipse')
     expect(toolForKey('Z', true)).toBe('zoom')
-    expect(toolForKey('q', false)).toBeNull()
+    expect(toolForKey('q', false)).toBe('lasso')
+    expect(toolForKey('e', true)).toBe('eraser')
   })
 
   it('borrows a tool after 200 ms of holding its key', () => {

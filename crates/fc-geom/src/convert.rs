@@ -246,6 +246,8 @@ fn model_point(point: Point, kind: PointKind) -> ModelPoint {
         kind,
         smooth: false,
         name: None,
+        id: None,
+        super_smooth: false,
         tt_index: TtIndex::Unnumbered,
     }
 }

@@ -138,6 +138,7 @@ export class DesignSpaceSession {
           })),
           masters: value.masters,
           instances: value.instances,
+          virtual_masters: value.virtual_masters ?? [],
           copy_from: this.copyFrom,
         },
       },

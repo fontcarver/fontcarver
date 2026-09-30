@@ -38,7 +38,11 @@ export function StylePreview({
               <g transform="scale(1,-1)">
                 <path
                   d={example[which]}
-                  className={styles.ink}
+                  className={
+                    showSource && which === 'before'
+                      ? styles.source
+                      : styles.ink
+                  }
                   stroke={
                     showSource && which === 'before'
                       ? 'var(--color-text)'

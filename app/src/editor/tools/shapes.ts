@@ -9,7 +9,7 @@
 
 import type { FontBox, Point2 } from '../../canvas/Viewport'
 
-import type { Modifiers } from '../gestures/drag'
+import { controlModifier, type Modifiers } from '../gestures/drag'
 import { hudText } from '../hud'
 import { normaliseBox } from '../pathGeometry'
 import { boxIsEmpty, shapeContour, type ShapeKind } from '../shapeContours'
@@ -70,7 +70,10 @@ export class ShapeTool implements EditorTool {
 
   pointerDown(pointer: ToolPointer, context: ToolContext): ToolOutcome {
     if (pointer.button !== 0) return NO_OUTCOME
-    this.origin = context.snap(pointer.font, pointer.modifiers.mod).point
+    this.origin = context.snap(
+      pointer.font,
+      controlModifier(pointer.modifiers),
+    ).point
     this.box = null
     this.dragging = false
     return { handled: true }
@@ -85,7 +88,10 @@ export class ShapeTool implements EditorTool {
     )
       return { handled: true }
     this.dragging = true
-    const at = context.snap(pointer.font, pointer.modifiers.mod).point
+    const at = context.snap(
+      pointer.font,
+      controlModifier(pointer.modifiers),
+    ).point
     this.box = shapeBox(origin, at, pointer.modifiers)
     return { handled: true }
   }

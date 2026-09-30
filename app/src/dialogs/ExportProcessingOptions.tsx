@@ -6,6 +6,10 @@ import { SFNT_FORMATS, TYPE1_FORMATS } from './exportFormats'
 
 const OPTION_KEYS = {
   remove_overlap: 'removeOverlap',
+  add_extrema: 'addExtrema',
+  round_coordinates: 'roundCoordinates',
+  decompose_components: 'decomposeComponents',
+  subroutinize: 'subroutinize',
   autohint: 'autohint',
   keep_tt_instructions: 'keepTtInstructions',
   preserve_untouched_tables: 'preserveUntouchedTables',
@@ -35,10 +39,20 @@ export function ExportProcessingOptions({
 }) {
   const { t } = useTranslation()
   const fields: ExportOptionField[] = TYPE1_FORMATS.includes(format)
-    ? ['remove_overlap', 'autohint']
+    ? [
+        'remove_overlap',
+        'add_extrema',
+        'round_coordinates',
+        'decompose_components',
+        'autohint',
+      ]
     : SFNT_FORMATS.includes(format)
       ? (Object.keys(OPTION_KEYS) as ExportOptionField[]).filter(
-          (field) => format !== 'Otf' || field !== 'keep_tt_instructions',
+          (field) =>
+            (!['Otf', 'Cff'].includes(format) ||
+              field !== 'keep_tt_instructions') &&
+            (field !== 'subroutinize' || ['Otf', 'Cff'].includes(format)) &&
+            (format !== 'Cff' || field !== 'preserve_untouched_tables'),
         )
       : []
   if (fields.length === 0) return null
@@ -46,7 +60,15 @@ export function ExportProcessingOptions({
     canVary &&
     ((field === 'keep_tt_instructions' &&
       (variable || instance !== undefined)) ||
-      (variable && (field === 'autohint' || field === 'remove_overlap')))
+      (variable &&
+        [
+          'autohint',
+          'remove_overlap',
+          'add_extrema',
+          'round_coordinates',
+          'decompose_components',
+          'subroutinize',
+        ].includes(field)))
 
   return (
     <div className={styles.section}>

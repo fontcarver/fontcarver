@@ -5,6 +5,10 @@ import type { Master } from '../../api'
 import styles from './fontInfo.module.css'
 import { rowMatches } from './fontInfoRows'
 import { SectionBody } from './SectionBody'
+import {
+  resolveMasterMetric,
+  type OptionalMasterMetric,
+} from './metricInheritance'
 
 const DASH = '—'
 
@@ -36,6 +40,7 @@ function stems(master: Master): string {
 
 export interface MetricsTableProps {
   masters: readonly Master[]
+  unitsPerEm: number
   /** Search term applied to the row label and every cell. */
   query: string
   heading?: string
@@ -46,34 +51,79 @@ export interface MetricsTableProps {
  * compares masters: reading across a row shows immediately whether the
  * vertical metrics are consistent.
  */
-export function MetricsTable({ masters, query, heading }: MetricsTableProps) {
+export function MetricsTable({
+  masters,
+  unitsPerEm,
+  query,
+  heading,
+}: MetricsTableProps) {
   const { t } = useTranslation()
 
-  const rows: [string, (master: Master) => string][] = [
+  const inherited = (field: OptionalMasterMetric) => (master: Master) =>
+    num(resolveMasterMetric(master.metrics, field, unitsPerEm).value)
+  const rows: [string, (master: Master) => string, OptionalMasterMetric?][] = [
     ['fontInfo.metric.location', location],
     ['fontInfo.metric.ascender', (m) => num(m.metrics.ascender)],
     ['fontInfo.metric.descender', (m) => num(m.metrics.descender)],
     ['fontInfo.metric.xHeight', (m) => num(m.metrics.x_height)],
     ['fontInfo.metric.capHeight', (m) => num(m.metrics.cap_height)],
     ['fontInfo.metric.italicAngle', (m) => num(m.metrics.italic_angle)],
-    ['fontInfo.metric.hheaAscender', (m) => num(m.metrics.hhea_ascender)],
-    ['fontInfo.metric.hheaDescender', (m) => num(m.metrics.hhea_descender)],
-    ['fontInfo.metric.hheaLineGap', (m) => num(m.metrics.hhea_line_gap)],
-    ['fontInfo.metric.typoAscender', (m) => num(m.metrics.typo_ascender)],
-    ['fontInfo.metric.typoDescender', (m) => num(m.metrics.typo_descender)],
-    ['fontInfo.metric.typoLineGap', (m) => num(m.metrics.typo_line_gap)],
-    ['fontInfo.metric.winAscent', (m) => num(m.metrics.win_ascent)],
-    ['fontInfo.metric.winDescent', (m) => num(m.metrics.win_descent)],
-    ['fontInfo.metric.vheaAscender', (m) => num(m.metrics.vhea_ascender)],
-    ['fontInfo.metric.vheaDescender', (m) => num(m.metrics.vhea_descender)],
-    ['fontInfo.metric.vheaLineGap', (m) => num(m.metrics.vhea_line_gap)],
+    [
+      'fontInfo.metric.hheaAscender',
+      inherited('hhea_ascender'),
+      'hhea_ascender',
+    ],
+    [
+      'fontInfo.metric.hheaDescender',
+      inherited('hhea_descender'),
+      'hhea_descender',
+    ],
+    [
+      'fontInfo.metric.hheaLineGap',
+      inherited('hhea_line_gap'),
+      'hhea_line_gap',
+    ],
+    [
+      'fontInfo.metric.typoAscender',
+      inherited('typo_ascender'),
+      'typo_ascender',
+    ],
+    [
+      'fontInfo.metric.typoDescender',
+      inherited('typo_descender'),
+      'typo_descender',
+    ],
+    [
+      'fontInfo.metric.typoLineGap',
+      inherited('typo_line_gap'),
+      'typo_line_gap',
+    ],
+    ['fontInfo.metric.winAscent', inherited('win_ascent'), 'win_ascent'],
+    ['fontInfo.metric.winDescent', inherited('win_descent'), 'win_descent'],
+    [
+      'fontInfo.metric.vheaAscender',
+      inherited('vhea_ascender'),
+      'vhea_ascender',
+    ],
+    [
+      'fontInfo.metric.vheaDescender',
+      inherited('vhea_descender'),
+      'vhea_descender',
+    ],
+    [
+      'fontInfo.metric.vheaLineGap',
+      inherited('vhea_line_gap'),
+      'vhea_line_gap',
+    ],
     [
       'fontInfo.metric.verticalOrigin',
-      (m) => num(m.metrics.default_vertical_origin),
+      inherited('default_vertical_origin'),
+      'default_vertical_origin',
     ],
     [
       'fontInfo.metric.verticalAdvance',
-      (m) => num(m.metrics.default_vertical_advance),
+      inherited('default_vertical_advance'),
+      'default_vertical_advance',
     ],
     ['fontInfo.metric.zones', zones],
     ['fontInfo.metric.stems', stems],
@@ -111,14 +161,28 @@ export function MetricsTable({ masters, query, heading }: MetricsTableProps) {
             </tr>
           </thead>
           <tbody>
-            {visible.map(([key, read]) => (
+            {visible.map(([key, read, field]) => (
               <tr key={key}>
                 <th scope="row">{t(key)}</th>
-                {masters.map((master) => (
-                  <td key={master.id} className={styles.numeric}>
-                    {read(master)}
-                  </td>
-                ))}
+                {masters.map((master) => {
+                  const resolved = field
+                    ? resolveMasterMetric(master.metrics, field, unitsPerEm)
+                    : null
+                  return (
+                    <td key={master.id} className={styles.numeric}>
+                      {read(master)}
+                      {resolved && (
+                        <span className={styles.sourceLabel}>
+                          {t(
+                            resolved.overridden
+                              ? 'scopedInfo.masterOverride'
+                              : `scopedInfo.metricSource.${resolved.source}`,
+                          )}
+                        </span>
+                      )}
+                    </td>
+                  )
+                })}
               </tr>
             ))}
           </tbody>

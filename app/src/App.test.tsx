@@ -180,7 +180,10 @@ describe('App shell', () => {
     await screen.findByRole('menubar')
 
     await user.keyboard('{Control>}{Shift>}p{/Shift}{/Control}')
-    await user.type(await screen.findByRole('combobox'), 'dark theme')
+    await user.type(
+      await screen.findByRole('combobox', { name: 'Commands' }),
+      'dark theme',
+    )
     await user.keyboard('{Enter}')
 
     await waitFor(() =>
@@ -208,7 +211,7 @@ describe('App shell', () => {
     render(<App />)
 
     expect(
-      await screen.findByRole('tab', { name: 'DejaVuSans.ttf' }),
+      await screen.findByRole('tab', { name: 'Overview · DejaVuSans.ttf' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('listbox', { name: 'Glyphs' })).toBeInTheDocument()
     expect(await screen.findByText('Letter')).toBeInTheDocument()
@@ -238,7 +241,7 @@ describe('App shell', () => {
       }),
     )
     render(<App />)
-    await screen.findByRole('tab', { name: 'DejaVuSans.ttf' })
+    await screen.findByRole('tab', { name: 'Overview · DejaVuSans.ttf' })
     expect(await screen.findByText('Letter')).toBeInTheDocument()
     expect(screen.getAllByLabelText('Cell size')).toHaveLength(2)
 
@@ -274,7 +277,7 @@ describe('App shell', () => {
       }),
     )
     render(<App />)
-    await screen.findByRole('tab', { name: 'DejaVuSans.ttf' })
+    await screen.findByRole('tab', { name: 'Overview · DejaVuSans.ttf' })
 
     expect(screen.getByText('Inspector')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Toggle inspector' }))

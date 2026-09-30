@@ -7,6 +7,10 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub struct Guide {
+    /// Optional stable identity for layer-local node relationships.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub id: Option<String>,
     /// Horizontal origin in font units.
     #[serde(default)]
     pub x: f64,

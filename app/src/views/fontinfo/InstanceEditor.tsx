@@ -9,11 +9,13 @@ import styles from './designSpace.module.css'
 /** A named instance with explicit naming overrides and design coordinates. */
 export function InstanceEditor({
   instance,
+  familyName,
   axes,
   onChange,
   onRemove,
 }: {
   instance: Instance
+  familyName: string
   axes: EditableAxis[]
   onChange: (value: Instance) => void
   onRemove: () => void
@@ -34,6 +36,7 @@ export function InstanceEditor({
           {t('fontInfo.column.styleName')}
           <input
             value={instance.style_name}
+            placeholder={instance.name}
             onChange={(e) =>
               onChange({ ...instance, style_name: e.target.value })
             }
@@ -43,12 +46,41 @@ export function InstanceEditor({
           {t('variation.familyOverride')}
           <input
             value={instance.family_name ?? ''}
+            placeholder={familyName}
             onChange={(e) =>
               onChange({ ...instance, family_name: e.target.value || null })
             }
           />
         </label>
+        <Button
+          disabled={instance.family_name === null}
+          onClick={() => onChange({ ...instance, family_name: null })}
+        >
+          {t('scopedInfo.useFontFamily')}
+        </Button>
         <Button onClick={onRemove}>{t('variation.removeInstance')}</Button>
+      </div>
+      <div className={styles.row}>
+        <span className={styles.sourceLabel}>
+          {t(
+            instance.family_name === null
+              ? 'scopedInfo.inheritedFamily'
+              : 'scopedInfo.exportOverride',
+            { value: instance.family_name ?? familyName },
+          )}
+        </span>
+        <span className={styles.sourceLabel}>
+          {t(
+            instance.style_name.trim()
+              ? 'scopedInfo.exportOverride'
+              : 'scopedInfo.instanceStyle',
+            {
+              value: instance.style_name.trim()
+                ? instance.style_name
+                : instance.name,
+            },
+          )}
+        </span>
       </div>
       <div className={styles.row}>
         {axes.map((axis) => (

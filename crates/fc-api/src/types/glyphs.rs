@@ -16,6 +16,26 @@ pub struct GlyphFilter {
     /// Name or Unicode query.
     #[serde(default)]
     pub query: Option<String>,
+    /// Searchable metadata to inspect; omitted searches all supported fields.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional = nullable)]
+    pub query_scope: Option<super::GlyphQueryScope>,
+    /// Whether textual search distinguishes uppercase and lowercase.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional = nullable)]
+    pub case_sensitive: Option<bool>,
+    /// Whether the search query is a bounded regular expression.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional = nullable)]
+    pub regex: Option<bool>,
+    /// Boolean smart-filter DSL intersected with the other filter conditions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional = nullable)]
+    pub smart_expression: Option<String>,
+    /// Exact case-sensitive glyph-name set; an empty set matches no glyphs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional = nullable)]
+    pub glyph_names: Option<Vec<String>>,
     /// Allowed Unicode categories.
     #[serde(default)]
     pub categories: Vec<String>,
@@ -129,6 +149,26 @@ pub struct GlyphCell {
     pub has_components: bool,
     /// Whether the selected layer has no editable content.
     pub is_empty: bool,
+    /// Whether selected-master horizontal formulas differ from stored metrics or fail to resolve.
+    #[serde(default)]
+    #[ts(as = "Option<bool>", optional)]
+    pub metrics_out_of_sync: bool,
+    /// Whether a glyph note or a per-layer editor annotation is present.
+    #[serde(default)]
+    #[ts(as = "Option<bool>", optional)]
+    pub has_annotations: bool,
+    /// Whether explicit glyph-info overrides or format-specific glyph metadata exist.
+    #[serde(default)]
+    #[ts(as = "Option<bool>", optional)]
+    pub has_custom_glyph_info: bool,
+    /// Whether a required master layer is missing or cannot interpolate.
+    #[serde(default)]
+    #[ts(as = "Option<bool>", optional)]
+    pub incompatible_masters: bool,
+    /// Whether persistent glyph editing is locked.
+    #[serde(default)]
+    #[ts(as = "Option<bool>", optional)]
+    pub locked: bool,
     /// Glyph-specific invalidation generation.
     #[ts(type = "number")]
     pub generation: u64,

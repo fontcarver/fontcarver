@@ -81,6 +81,9 @@
 .ink {
   fill: var(--color-text);
 }
+.source {
+  fill: none;
+}
 .metrics {
   fill: none;
   stroke: var(--color-border-strong);

@@ -58,3 +58,21 @@ describe('scroll memory', () => {
     expect(rememberedScroll(query('Order', 11))).toBe(110)
   })
 })
+
+describe('presentation scroll isolation', () => {
+  it('keeps independent offsets for the grid and list', () => {
+    const query = {
+      doc: 3,
+      master: null,
+      filter: emptyFilter(),
+      sort: 'Order' as const,
+    }
+    rememberScroll(query, 720)
+    rememberScroll(query, 180, 'list')
+    expect(rememberedScroll(query)).toBe(720)
+    expect(rememberedScroll(query, 'list')).toBe(180)
+    forgetScroll(3)
+    expect(rememberedScroll(query)).toBeNull()
+    expect(rememberedScroll(query, 'list')).toBeNull()
+  })
+})

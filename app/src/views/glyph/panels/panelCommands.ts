@@ -228,6 +228,7 @@ export function newComponent(base: string): Component {
     transform: [1, 0, 0, 1, 0, 0],
     anchor: null,
     auto_align: false,
+    locked: false,
     use_my_metrics: false,
     round_to_grid: false,
     smart: null,

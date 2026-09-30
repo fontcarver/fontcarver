@@ -19,10 +19,14 @@ const THEMES: readonly ThemePreference[] = ['system', 'light', 'dark']
 
 const SNAP_FIELDS: readonly (keyof SnapPrefs)[] = [
   'nodes',
+  'handles',
+  'anchors',
   'guides',
   'metrics',
   'grid',
   'components',
+  'zones',
+  'background',
 ]
 
 const NUDGE_STEPS = ['small', 'medium', 'large'] as const
@@ -160,6 +164,21 @@ export function PreferencesDialog() {
 
           {category === 'editor' ? (
             <>
+              {(['node_size', 'handle_size'] as const).map((field) => (
+                <label key={field} className={styles.row}>
+                  <span className={styles.rowLabel}>
+                    {t(`dialog.prefs.${field}`)}
+                  </span>
+                  <NumberField
+                    label={t(`dialog.prefs.${field}`)}
+                    min={2}
+                    max={20}
+                    step={0.5}
+                    value={prefs[field]}
+                    onCommit={(size) => void update({ [field]: size })}
+                  />
+                </label>
+              ))}
               <div className={`${styles.row} ${styles.rowTop}`}>
                 <span className={styles.rowLabel}>
                   {t('dialog.prefs.nudge')}
@@ -200,6 +219,19 @@ export function PreferencesDialog() {
                   <span className={styles.hint}>
                     {t('dialog.prefs.gridHint')}
                   </span>
+                  <NumberField
+                    label={t('dialog.prefs.gridSubdivision')}
+                    min={1}
+                    max={100}
+                    step={1}
+                    value={prefs.grid_subdivision}
+                    onCommit={(count) =>
+                      void update({ grid_subdivision: Math.round(count) })
+                    }
+                  />
+                  <span className={styles.hint}>
+                    {t('dialog.prefs.gridSubdivisionHint')}
+                  </span>
                 </div>
               </div>
             </>
@@ -230,6 +262,23 @@ export function PreferencesDialog() {
                   </label>
                 </div>
               ))}
+              {(['snap_distance', 'hit_distance'] as const).map((field) => (
+                <label key={field} className={styles.row}>
+                  <span className={styles.rowLabel}>
+                    {t(`dialog.prefs.${field}`)}
+                  </span>
+                  <NumberField
+                    label={t(`dialog.prefs.${field}`)}
+                    min={field === 'hit_distance' ? 1 : 0}
+                    max={64}
+                    value={prefs[field]}
+                    onCommit={(distance) => void update({ [field]: distance })}
+                  />
+                </label>
+              ))}
+              <span className={styles.hint}>
+                {t('dialog.prefs.distanceHint')}
+              </span>
             </div>
           ) : null}
         </div>

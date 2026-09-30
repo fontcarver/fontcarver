@@ -5,6 +5,31 @@ import { describe, expect, it, vi } from 'vitest'
 import { NumberField } from './NumberField'
 
 describe('NumberField', () => {
+  it('keeps the default font-unit display rounded to one decimal', () => {
+    render(<NumberField label="LSB" value={12.345} onCommit={vi.fn()} />)
+    expect(screen.getByLabelText('LSB')).toHaveValue('12.3')
+  })
+
+  it('uses a supplied formatter without rounding or recommitting fractions', async () => {
+    const user = userEvent.setup()
+    const onCommit = vi.fn()
+    render(
+      <NumberField
+        label="Scale"
+        value={1 / 3}
+        formatValue={String}
+        onCommit={onCommit}
+      />,
+    )
+    const field = screen.getByLabelText('Scale')
+    expect(field).toHaveValue(String(1 / 3))
+    await user.clear(field)
+    await user.type(field, '0.25{Enter}')
+    await user.tab()
+    expect(field).toHaveValue('0.25')
+    expect(onCommit).toHaveBeenCalledExactlyOnceWith(0.25)
+  })
+
   it('reconciles a rejected value and lets the same value be retried', async () => {
     const user = userEvent.setup()
     const onCommit = vi.fn()

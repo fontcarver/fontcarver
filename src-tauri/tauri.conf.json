@@ -21,12 +21,46 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; script-src 'self' blob:; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src ipc: http://ipc.localhost"
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
+    "publisher": "FontCarver contributors",
+    "homepage": "https://fontcarver.com",
+    "copyright": "Copyright (c) 2026 Tom Chen and the FontCarver contributors",
+    "license": "MIT OR Apache-2.0",
+    "licenseFile": "../LICENSE-MIT",
+    "category": "GraphicsAndDesign",
+    "shortDescription": "A desktop font editor for outlines, metrics and OpenType layout",
+    "longDescription": "Create, edit and export fonts with a Rust font engine and a local desktop interface. Supports native FontCarver documents and common font source and binary formats.",
+    "resources": {
+      "../LICENSE-MIT": "licenses/LICENSE-MIT",
+      "../LICENSE-APACHE": "licenses/LICENSE-APACHE",
+      "../THIRD_PARTY.md": "licenses/THIRD_PARTY.md",
+      "../docs/install.md": "INSTALL.md"
+    },
+    "linux": {
+      "deb": {
+        "section": "graphics",
+        "priority": "optional"
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "11.0"
+    },
+    "windows": {
+      "allowDowngrades": false,
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "wix": {
+        "upgradeCode": "636edb04-8fac-57a7-b086-0903042a7eab",
+        "language": ["en-US", "zh-CN"]
+      }
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

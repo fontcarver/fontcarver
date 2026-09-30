@@ -17,9 +17,14 @@ import {
   type EditorSource,
   type PointerInput,
 } from '../../editor/editorController'
-import type { Modifiers } from '../../editor/gestures/drag'
+import { modifiersOf } from '../../editor/modifiers'
 import { reportError } from '../../shell/commands'
+import { drawPluginOverlays } from '../../plugins/drawPluginOverlays'
+import { useFilterPreview } from '../../plugins/filterSession'
+import { usePluginStore } from '../../plugins/pluginStore'
 import { selectActiveTool, useEditorStore } from '../../stores/editorStore'
+import { usePrefsStore } from '../../stores/prefsStore'
+import { useVariationPreviewStore } from '../../stores/variationPreviewStore'
 import type { Selection } from '../../editor/selection'
 import type { ComponentView } from '../../api'
 import type { SnapSettings } from '../../editor/snapping'
@@ -41,6 +46,13 @@ import styles from './glyphView.module.css'
 import { sceneBox, type GlyphScene } from './glyphScene'
 import type { GlyphTheme } from './glyphTheme'
 import { renderGlyph, type GlyphOverlays } from './renderGlyph'
+import {
+  useEditorMetadataStore,
+  focusedPaths,
+} from '../../editor/editorMetadataStore'
+import { editorTargetKey } from '../../editor/editorMetadata'
+import { useSourceImage } from './useSourceImage'
+import { OutlineAudit, type OutlineAuditHandle } from './OutlineAudit'
 
 /** Padding kept around the glyph when the view is fitted, in CSS pixels. */
 const FIT_PADDING = 48
@@ -92,19 +104,6 @@ export interface GlyphCanvasProps {
   handleRef?: RefObject<GlyphCanvasHandle | null>
 }
 
-function modifiersOf(event: {
-  shiftKey: boolean
-  altKey: boolean
-  ctrlKey: boolean
-  metaKey: boolean
-}): Modifiers {
-  return {
-    shift: event.shiftKey,
-    alt: event.altKey,
-    mod: event.ctrlKey || event.metaKey,
-  }
-}
-
 /**
  * The glyph editor canvas.
  *
@@ -139,12 +138,62 @@ export function GlyphCanvas({
 }: GlyphCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const auditRef = useRef<OutlineAuditHandle>(null)
   const viewport = useMemo(() => new Viewport(), [])
   const pointerRef = useRef<{ x: number; y: number } | null>(null)
   const fittedRef = useRef('')
   const tool = useEditorStore(selectActiveTool)
+  const focusState = useEditorMetadataStore((state) => state.focus)
+  const activeGlyph = useEditorStore((state) => state.activeGlyph)
+  const metadataSource = useMemo(
+    () =>
+      source
+        ? {
+            ...source,
+            editorMetadata: scene.layer?.user_data,
+            glyphLocked:
+              activeGlyph?.doc === source.doc &&
+              activeGlyph.glyph.name === source.glyph
+                ? activeGlyph.glyph.locked
+                : false,
+          }
+        : null,
+    [source, scene.layer?.user_data, activeGlyph],
+  )
+  const pathFocus =
+    focusState &&
+    source &&
+    focusState.owner ===
+      editorTargetKey({
+        doc: source.doc,
+        glyph: source.glyph,
+        layer: source.outline.layer,
+      })
+      ? focusState.contours
+      : null
   const snapping = useEditorStore((state) => state.snapping)
+  const nodeSize = usePrefsStore((state) => state.prefs.node_size)
+  const handleSize = usePrefsStore((state) => state.prefs.handle_size)
   const measurementGuides = useEditorStore((state) => state.measurementGuides)
+  const sourceImage = useSourceImage(
+    source
+      ? { doc: source.doc, glyph: source.glyph, layer: source.outline.layer }
+      : null,
+    scene.layer?.background_image ?? null,
+    scene.layer,
+  )
+  const variation = useVariationPreviewStore((state) =>
+    state.preview?.doc === source?.doc && state.preview?.glyph === scene.name
+      ? state.preview
+      : null,
+  )
+  const variationPreview = useMemo(
+    () =>
+      variation
+        ? { path: new Path2D(variation.path), width: variation.width }
+        : null,
+    [variation],
+  )
 
   const frame = useRef({
     scene,
@@ -153,7 +202,9 @@ export function GlyphCanvas({
     overlays,
     flattened,
     underlay,
+    sourceImage,
     measurementGuides,
+    variationPreview,
     componentViews,
     textRun,
   })
@@ -221,21 +272,35 @@ export function GlyphCanvas({
         : current.scene
     renderGlyph(ctx, viewport, {
       scene,
+      focusedContours: focusedPaths(
+        source
+          ? {
+              doc: source.doc,
+              glyph: source.glyph,
+              layer: source.outline.layer,
+            }
+          : null,
+      ),
+      glyphLocked: metadataSource?.glyphLocked,
       theme: current.theme,
       labels: current.labels,
       overlays: current.overlays,
       flattened: current.flattened,
       underlay: current.underlay,
+      sourceImage: current.sourceImage,
       components,
       pointer: pointerRef.current,
       selected: editing.selected,
       editing: editing.overlay,
       tool: editing.tool,
       grid: controller.gridSize,
+      nodeSize,
+      handleSize,
       hud: editing.hud,
       pointerScreen: editing.pointerScreen,
       hoveredComponent: editing.hoveredComponent,
       measurementGuides: current.measurementGuides,
+      variationPreview: current.variationPreview,
       guideOwner: source
         ? {
             doc: source.doc,
@@ -248,6 +313,12 @@ export function GlyphCanvas({
         current.textRun !== null &&
         (current.textRun.mode === 'text' || source === null),
     })
+    if (current.textRun?.mode !== 'text')
+      drawPluginOverlays(ctx, viewport, {
+        source,
+        scene,
+        theme: current.theme,
+      })
     if (current.textRun) {
       const visible = passive?.visible ?? []
       drawTextGaps(ctx, viewport, current.textRun, current.theme, visible)
@@ -257,8 +328,26 @@ export function GlyphCanvas({
         current.textRun.onVisibleIndexes(visible)
       }
     }
+    auditRef.current?.refresh()
     if (import.meta.env.DEV) recordPaint(performance.now() - started)
-  }, [controller, source, textPaint, viewport])
+  }, [
+    controller,
+    handleSize,
+    metadataSource?.glyphLocked,
+    nodeSize,
+    source,
+    textPaint,
+    viewport,
+  ])
+
+  useEffect(() => {
+    const stopPlugins = usePluginStore.subscribe(draw)
+    const stopPreview = useFilterPreview.subscribe(draw)
+    return () => {
+      stopPlugins()
+      stopPreview()
+    }
+  }, [draw])
 
   useEffect(() => {
     controller.setCallbacks({
@@ -295,9 +384,24 @@ export function GlyphCanvas({
     [controller, nudgeSteps],
   )
   useEffect(() => {
-    controller.setSource(source)
+    controller.setSource(metadataSource)
+    controller.setPathFocus(pathFocus)
     draw()
-  }, [controller, draw, source])
+  }, [controller, draw, metadataSource, pathFocus])
+  useEffect(() => {
+    const focus = useEditorMetadataStore.getState().focus
+    if (
+      !source ||
+      (focus &&
+        focus.owner !==
+          editorTargetKey({
+            doc: source.doc,
+            glyph: source.glyph,
+            layer: source.outline.layer,
+          }))
+    )
+      useEditorMetadataStore.getState().clearFocus()
+  }, [source])
   useEffect(() => {
     controller.setExternalSettler(externalSettler)
     return () => controller.setExternalSettler(null)
@@ -407,7 +511,9 @@ export function GlyphCanvas({
       overlays,
       flattened,
       underlay,
+      sourceImage,
       measurementGuides,
+      variationPreview,
       componentViews,
       textRun,
     }
@@ -420,7 +526,9 @@ export function GlyphCanvas({
     overlays,
     flattened,
     underlay,
+    sourceImage,
     measurementGuides,
+    variationPreview,
     componentViews,
     textRun,
   ])
@@ -536,6 +644,8 @@ export function GlyphCanvas({
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLCanvasElement>) => {
       const modifiers = modifiersOf(event)
+      if (['Shift', 'Alt', 'Control', 'Meta'].includes(event.key))
+        controller.modifiersChanged(modifiers)
       const run = frame.current.textRun
       if (run?.onKerningKey?.(event)) {
         event.preventDefault()
@@ -611,6 +721,8 @@ export function GlyphCanvas({
 
   const onKeyUp = useCallback(
     (event: React.KeyboardEvent<HTMLCanvasElement>) => {
+      if (['Shift', 'Alt', 'Control', 'Meta'].includes(event.key))
+        controller.modifiersChanged(modifiersOf(event))
       if (event.key !== ' ') return
       event.preventDefault()
       const { held, dragged } = spaceRef.current
@@ -647,6 +759,14 @@ export function GlyphCanvas({
         onKeyDown={onKeyDown}
         onKeyUp={onKeyUp}
       />
+      {metadataSource && textRun?.mode !== 'text' && (
+        <OutlineAudit
+          source={metadataSource}
+          viewport={viewport}
+          onReload={onReload}
+          handleRef={auditRef}
+        />
+      )}
     </div>
   )
 }

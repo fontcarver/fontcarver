@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use fc_model::{Font, GlyphName, MasterId, PsHints, PsPrivate, StemHint};
 use kurbo::{
-    BezPath, ParamCurve, ParamCurveDeriv, ParamCurveExtrema, PathEl, PathSeg, Point, Shape,
+    BezPath, Line, ParamCurve, ParamCurveDeriv, ParamCurveExtrema, PathEl, PathSeg, Point, Shape,
 };
 
 use crate::Error;
@@ -31,6 +31,11 @@ pub fn analyze(
             .glyph(name)
             .and_then(|g| g.master_layer(master))
             .ok_or_else(|| Error::Invalid(format!("missing master layer for {name}")))?;
+        if layer.cff_private_dict_index.unwrap_or(0) != 0 {
+            return Err(Error::Invalid(
+                "automatic PostScript analysis currently supports private dictionary 0 only; select glyphs assigned to dictionary 0 or edit this dictionary's hints manually".into(),
+            ));
+        }
         points =
             points.saturating_add(layer.contours.iter().map(|c| c.points.len()).sum::<usize>());
         if points > 8_000_000 {
@@ -202,30 +207,29 @@ fn candidates(
             {
                 continue;
             }
-            let middle = if horizontal {
-                Point::new((from + to) / 2.0, low + width / 2.0)
-            } else {
-                Point::new(low + width / 2.0, (from + to) / 2.0)
-            };
-            spend(work, path.elements().len())?;
-            if path.winding(middle) == 0 {
-                continue;
-            }
             let affinity = preferred
                 .iter()
                 .map(|value| (width - value).abs() / value)
                 .fold(1.0, f64::min);
             let score = (to - from) / width.sqrt() * (2.0 - affinity);
-            candidates.push((score, low, width));
+            if candidates.len() == 65_536 {
+                return Err(Error::Invalid(
+                    "PS autohint candidate limit exceeded".into(),
+                ));
+            }
+            candidates.push((score, low, width, from, to));
         }
     }
     candidates.sort_by(|a, b| b.0.total_cmp(&a.0));
     let mut result: Vec<StemHint> = Vec::new();
-    for (_, start, width) in candidates {
+    for (_, start, width, from, to) in candidates {
         if result
             .iter()
             .any(|s| start < s.start + s.width + 0.5 && start + width + 0.5 > s.start)
         {
+            continue;
+        }
+        if !filled_sections(path, horizontal, start, width, from, to, work)? {
             continue;
         }
         result.push(StemHint {
@@ -239,6 +243,48 @@ fn candidates(
     }
     result.sort_by(|a, b| a.start.total_cmp(&b.start));
     Ok(result)
+}
+
+// A single filled midpoint can belong to a crossbar inside an otherwise empty
+// counter. Inspect three cross-sections, including every interval delimited by
+// actual curve intersections. The inset tolerates the slight slope of accepted
+// edges and curvature near synthesized extrema tangents. This remains a bounded
+// geometric heuristic, not a proof that an entire stem rectangle is filled.
+fn filled_sections(
+    path: &BezPath,
+    horizontal: bool,
+    start: f64,
+    width: f64,
+    from: f64,
+    to: f64,
+    work: &mut usize,
+) -> Result<bool, Error> {
+    for fraction in [0.25, 0.5, 0.75] {
+        let along = from + (to - from) * fraction;
+        let point = |cross| {
+            if horizontal {
+                Point::new(along, cross)
+            } else {
+                Point::new(cross, along)
+            }
+        };
+        let line = Line::new(point(start + width * 0.05), point(start + width * 0.95));
+        let mut intersections = vec![0.0, 1.0];
+        spend(work, path.elements().len())?;
+        for segment in path.segments() {
+            intersections.extend(segment.intersect_line(line).iter().map(|hit| hit.line_t));
+        }
+        intersections.sort_unstable_by(f64::total_cmp);
+        // Coincident vertices and tangencies do not create a nonempty interval.
+        intersections.dedup_by(|a, b| (*a - *b).abs() < 1e-9);
+        for interval in intersections.windows(2) {
+            spend(work, path.elements().len())?;
+            if path.winding(line.eval((interval[0] + interval[1]) * 0.5)) == 0 {
+                return Ok(false);
+            }
+        }
+    }
+    Ok(true)
 }
 
 fn spend(work: &mut usize, amount: usize) -> Result<(), Error> {

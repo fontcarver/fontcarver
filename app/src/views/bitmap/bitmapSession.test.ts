@@ -15,6 +15,36 @@ const empty: BitmapGlyph = {
 }
 afterEach(() => setTransport(undefined))
 describe('bitmap document handover', () => {
+  it('keeps editable references separate from composed display pixels', async () => {
+    let source = {
+      ...structuredClone(empty),
+      refs: [{ base: 'acute', dx: 2, dy: 5 }],
+    }
+    const resolved = structuredClone(empty)
+    put(resolved.bitmap, 3, 1, 1)
+    setTransport(
+      createMockTransport({
+        'bitmap.glyph': () => ({ generation: 1, value: source, resolved }),
+        'bitmap.apply': ({ command }) => {
+          if ('SetGlyph' in command) source = command.SetGlyph.value!
+          return noChange()
+        },
+      }),
+    )
+    const session = new BitmapSession(
+      { doc: 203, glyph: 'Aacute', ppem: 16, depth: 1 },
+      empty,
+    )
+    await session.load()
+    expect(session.snapshot().value).toEqual(source)
+    expect(session.snapshot().resolved).toEqual(resolved)
+    session.edit({ ...source, advance: 9 })
+    expect(session.snapshot().resolved).toBeNull()
+    await session.flush()
+    expect(source.refs).toEqual([{ base: 'acute', dx: 2, dy: 5 }])
+    expect(source.bitmap.rows.every((pixel) => pixel === 0)).toBe(true)
+    expect(session.snapshot().resolved).toEqual(resolved)
+  })
   it('persists one completed draft before navigation and retains failed pixels', async () => {
     let fail = true,
       generation = 0,

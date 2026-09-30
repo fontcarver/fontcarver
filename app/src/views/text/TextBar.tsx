@@ -6,6 +6,8 @@ import type {
   TextDirection,
   TextSampleId,
 } from './presentationTypes'
+import { SpacingControls } from './SpacingControls'
+import { KerningModeControl } from './KerningModeControl'
 import styles from './TextBar.module.css'
 
 export type {
@@ -19,6 +21,7 @@ export type {
 export const TEXT_SAMPLE_TEXT = {
   latin: 'The quick brown fox jumps over the lazy dog.',
   chinese: '天地玄黄，宇宙洪荒。',
+  kerning: 'AV VA WA AW To Ta Te Ty Yo LT PA FA',
 } as const
 
 export const TEXT_SIZE_MIN = 1
@@ -47,6 +50,10 @@ export function TextBar({
   direction,
   onDirectionChange,
   onSample,
+  kerningMode = 'on',
+  onKerningModeChange,
+  spacingSide = 'lsb',
+  onSpacingSideChange,
 }: TextBarProps) {
   const { t } = useTranslation()
   const [sizeDraft, setSizeDraft] = useState(String(size))
@@ -107,9 +114,7 @@ export function TextBar({
         <option value="all-encoded">
           {t('textControls.sample.allEncoded')}
         </option>
-        <option value="kerning" disabled>
-          {t('textControls.sample.kerning')}
-        </option>
+        <option value="kerning">{t('textControls.sample.kerning')}</option>
       </select>
 
       <label className={styles.sizeField}>
@@ -170,6 +175,18 @@ export function TextBar({
         ))}
       </select>
 
+      {onKerningModeChange && (
+        <KerningModeControl mode={kerningMode} onChange={onKerningModeChange} />
+      )}
+
+      {onSpacingSideChange && (
+        <SpacingControls
+          side={spacingSide}
+          onSideChange={onSpacingSideChange}
+          disabled={kerningMode === 'locked'}
+        />
+      )}
+
       {features.length > 0 && (
         <div
           className={styles.buttonGroup}
@@ -192,7 +209,14 @@ export function TextBar({
               className={styles.toggle}
               type="button"
               aria-label={tag}
-              aria-pressed={enabled}
+              aria-pressed={
+                kerningMode === 'off' && (tag === 'kern' || tag === 'vkrn')
+                  ? false
+                  : enabled
+              }
+              disabled={
+                kerningMode === 'off' && (tag === 'kern' || tag === 'vkrn')
+              }
               onClick={() =>
                 onFeaturesChange(
                   features.some(([key]) => key === tag)

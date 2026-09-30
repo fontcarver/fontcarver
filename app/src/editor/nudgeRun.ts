@@ -18,6 +18,7 @@ import type {
 import type { Point2 } from '../canvas/Viewport'
 
 import { NudgeCoalescer } from './gestures/nudge'
+import { maintainSuperSmoothContours } from './harmonize'
 import { movedPointRefs, translatePoints } from './outlineGeometry'
 import type { LayerTarget } from './pointCommands'
 
@@ -46,7 +47,7 @@ export interface NudgePress {
 export interface NudgePreview {
   contours: readonly Contour[]
   anchors: readonly Anchor[]
-  /** Untouched: a nudge sends `MovePoints`, which moves no component. */
+  /** Untouched: nudging points moves no component. */
   components: readonly ComponentView[]
 }
 
@@ -75,7 +76,11 @@ export class NudgeRunner {
     anchors: readonly Anchor[]
     components: readonly ComponentView[]
     total: Point2
-    refs: PointRef[]
+    preview: readonly Contour[]
+    commandState?: {
+      contours: readonly Contour[]
+      sent: readonly Contour[]
+    }
   } | null = null
   private signature = ''
   /**
@@ -116,17 +121,25 @@ export class NudgeRunner {
       if (this.run)
         // Reloads were deferred for the closing run's whole length, so its
         // result is what the next one has to accumulate from.
-        this.carried = translatePoints(
-          this.run.base,
-          this.run.refs,
-          this.run.total.x,
-          this.run.total.y,
-        )
+        this.carried = this.run.preview
       this.run = null
       this.closing = this.end()
       this.coalescer = null
     }
     this.signature = signature
+
+    const base = this.run?.base ?? this.carried ?? input.contours
+    const refs = movedPointRefs(base, input.refs, input.handles)
+    const constrained = base.some((contour) =>
+      contour.points.some((point) => point.super_smooth),
+    )
+    const project = (total: Point2) => {
+      const translated = translatePoints(base, refs, total.x, total.y)
+      return constrained ? maintainSuperSmoothContours(translated) : translated
+    }
+    const commandState =
+      this.run?.commandState ??
+      (constrained ? { contours: base, sent: base } : undefined)
 
     if (!this.coalescer) {
       this.generation += 1
@@ -139,28 +152,44 @@ export class NudgeRunner {
         after: combineGates(this.closing, input.after),
         onEnd: () => this.close(generation),
         onError: this.options.onError,
+        command: commandState
+          ? () => {
+              if (commandState.contours === commandState.sent) return null
+              commandState.sent = commandState.contours
+              return {
+                ReplaceLayerOutline: {
+                  glyph: input.target.glyph,
+                  layer: input.target.layer,
+                  contours: [...commandState.contours],
+                  anchors: [...input.anchors],
+                  components: input.components.map((view) => view.component),
+                },
+              }
+            }
+          : undefined,
       })
     }
-    this.coalescer.nudge(input.refs, input.delta, input.handles)
-
     // Accumulate against the layer the run started from: reloads are deferred
     // for its whole length, so that geometry stays put.
-    const base = this.run?.base ?? this.carried ?? input.contours
     const total = this.run
       ? {
           x: this.run.total.x + input.delta.x,
           y: this.run.total.y + input.delta.y,
         }
       : input.delta
+    const preview = project(total) ?? this.run?.preview ?? base
+    if (commandState) commandState.contours = preview
     this.run = {
       base,
       anchors: this.run?.anchors ?? input.anchors,
       components: this.run?.components ?? input.components,
       total,
-      refs: movedPointRefs(base, input.refs, input.handles),
+      preview,
+      commandState,
     }
+    this.coalescer.nudge(input.refs, input.delta, input.handles)
     return {
-      contours: translatePoints(base, this.run.refs, total.x, total.y),
+      contours: preview,
       anchors: this.run.anchors,
       components: this.run.components,
     }
@@ -191,13 +220,7 @@ export class NudgeRunner {
     if (generation !== this.generation) return
     // The reload this close triggers is still in flight, so the closed run's
     // result stays the base for a press that lands before it arrives.
-    if (this.run)
-      this.carried = translatePoints(
-        this.run.base,
-        this.run.refs,
-        this.run.total.x,
-        this.run.total.y,
-      )
+    if (this.run) this.carried = this.run.preview
     this.run = null
     this.closing = undefined
     this.options.onEnd()

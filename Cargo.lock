@@ -1278,6 +1278,7 @@ dependencies = [
  "fc-sfnt",
  "kurbo",
  "read-fonts",
+ "regex",
  "serde",
  "serde_json",
  "sha2",
@@ -1321,6 +1322,7 @@ dependencies = [
  "fc-sfnt",
  "fea-rs",
  "flate2",
+ "fontbe",
  "fontc",
  "fontdrasil",
  "fontir",
@@ -1365,6 +1367,7 @@ version = "0.1.0"
 dependencies = [
  "fc-fixtures",
  "fc-geom",
+ "fc-glyphdata",
  "fc-hint",
  "fc-model",
  "fc-sfnt",
@@ -1406,6 +1409,7 @@ dependencies = [
  "norad",
  "plist",
  "read-fonts",
+ "roxmltree",
  "serde",
  "serde_json",
  "tempfile",
@@ -1435,6 +1439,8 @@ name = "fc-glyphdata"
 version = "0.1.0"
 dependencies = [
  "icu_properties",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1489,6 +1495,7 @@ dependencies = [
  "fc-geom",
  "fc-model",
  "kurbo",
+ "png 0.17.16",
  "skrifa",
  "thiserror 2.0.20",
  "tiny-skia",
@@ -1505,8 +1512,10 @@ dependencies = [
  "kurbo",
  "png 0.17.16",
  "read-fonts",
+ "roxmltree",
  "sha2",
  "skrifa",
+ "tempfile",
  "thiserror 2.0.20",
  "write-fonts",
  "wuff",

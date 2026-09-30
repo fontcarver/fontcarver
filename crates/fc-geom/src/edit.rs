@@ -219,6 +219,15 @@ pub fn add_extrema(contours: &[Contour]) -> Vec<Contour> {
     add_extrema_with_tolerance(contours, ENDPOINT_EXTREMA_TOLERANCE)
 }
 
+/// Inserts all interior extrema, including those near existing endpoints.
+///
+/// Unlike [`add_extrema`], this operation does not suppress a split based on
+/// its distance in font units from a neighboring node. The numerical parameter
+/// guard still prevents degenerate endpoint splits.
+pub fn force_extrema(contours: &[Contour]) -> Vec<Contour> {
+    add_extrema_with_tolerance(contours, 0.0)
+}
+
 fn add_extrema_with_tolerance(contours: &[Contour], endpoint_tolerance: f64) -> Vec<Contour> {
     contours
         .iter()
@@ -580,16 +589,21 @@ fn restore_contour_metadata(result: &mut Contour, original: &Contour) {
 }
 
 fn restore_matching_point_metadata(result: &mut Contour, original: &Contour) {
+    let mut matched = vec![false; original.points.len()];
     for point in &mut result.points {
         if point.kind == PointKind::OffCurve {
             continue;
         }
-        if let Some(source) = original.points.iter().find(|source| {
-            source.kind != PointKind::OffCurve
+        if let Some((index, source)) = original.points.iter().enumerate().find(|(index, source)| {
+            !matched[*index]
+                && source.kind != PointKind::OffCurve
                 && (source.x - point.x).abs() <= 1e-9
                 && (source.y - point.y).abs() <= 1e-9
         }) {
+            matched[index] = true;
+            point.id.clone_from(&source.id);
             point.smooth = source.smooth;
+            point.super_smooth = source.super_smooth;
             point.corner_radius = source.corner_radius;
             point.name.clone_from(&source.name);
             point.tt_index = source.tt_index;

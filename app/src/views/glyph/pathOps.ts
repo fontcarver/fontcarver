@@ -64,6 +64,16 @@ export function tidyCommand(target: LayerTarget): Command {
   }
 }
 
+/** Correct winding and normalize start nodes and shape order in one undo step. */
+export function correctDirectionCommand(target: LayerTarget): Command {
+  return {
+    Batch: [
+      pathOpCommand(target, 'CorrectDirection'),
+      pathOpCommand(target, 'CanonicalOrder'),
+    ],
+  }
+}
+
 /** `ReverseContours` for the listed contours. */
 export function reverseCommand(
   target: LayerTarget,
@@ -132,6 +142,18 @@ export function onlyNode(selection: Selection): PointRef | null {
   return found
 }
 
+/** A selected on-curve node whose closed contour supports changing its start. */
+export function startPoint(
+  contours: readonly Contour[],
+  selection: Selection,
+): PointRef | null {
+  const node = onlyNode(selection)
+  if (!node) return null
+  const contour = contours[node.contour]
+  const point = contour?.points[node.point]
+  return contour?.closed && point && point.kind !== 'OffCurve' ? node : null
+}
+
 /** Whether a point index names an endpoint of an open contour. */
 function endpointOf(
   contours: readonly Contour[],
@@ -147,10 +169,8 @@ function endpointOf(
 /**
  * The two open ends a Join would connect.
  *
- * `JoinContours` requires `a` to be the *last* point of an open contour and
- * `b` an endpoint of a different one (it reverses `b`'s contour itself when
- * `b` is its last point), so the pair is ordered here rather than left to the
- * kernel to reject.
+ * Prefer the last endpoint first to retain the user's path direction. The
+ * kernel can reverse either contour and close the two ends of one contour.
  */
 export function joinEnds(
   contours: readonly Contour[],
@@ -161,14 +181,15 @@ export function joinEnds(
     if (target.kind !== 'node') continue
     const ref = { contour: target.contour, point: target.point }
     const end = endpointOf(contours, ref)
-    if (end) ends.push({ ref, end })
+    if (!end) return null
+    ends.push({ ref, end })
   }
   if (ends.length !== 2) return null
   const [first, second] = ends
-  if (!first || !second || first.ref.contour === second.ref.contour) return null
+  if (!first || !second) return null
   if (first.end === 'last') return { a: first.ref, b: second.ref }
   if (second.end === 'last') return { a: second.ref, b: first.ref }
-  return null
+  return { a: first.ref, b: second.ref }
 }
 
 /** Whether "Break" can act: one selected on-curve node with a contour to open. */

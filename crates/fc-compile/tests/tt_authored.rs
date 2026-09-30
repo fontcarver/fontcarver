@@ -108,6 +108,18 @@ fn preprocessing_that_would_drop_authored_programs_is_rejected() {
             ..Default::default()
         },
         ExportOptions {
+            add_extrema: true,
+            ..Default::default()
+        },
+        ExportOptions {
+            round_coordinates: true,
+            ..Default::default()
+        },
+        ExportOptions {
+            decompose_components: true,
+            ..Default::default()
+        },
+        ExportOptions {
             variable: true,
             ..Default::default()
         },

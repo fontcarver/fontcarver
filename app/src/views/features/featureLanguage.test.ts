@@ -5,11 +5,25 @@ import { describe, expect, it, vi } from 'vitest'
 
 import {
   createFeatureCompletion,
+  featureClassAt,
   featureLanguage,
   sourceOffsetToEditorOffset,
+  sourceOffsetToLocation,
 } from './featureLanguage'
 
 describe('feature language', () => {
+  it('identifies class references at the cursor while excluding escaped names and prose', () => {
+    const doc =
+      'sub @Upper-case.alt by A;\n# @Comment\nnameid 1 "@String";\n\\@Escaped'
+    const state = EditorState.create({ doc, extensions: [featureLanguage] })
+    for (const position of [doc.indexOf('@Upper'), doc.indexOf(' by')]) {
+      expect(featureClassAt(state, position)).toBe('Upper-case.alt')
+    }
+    for (const text of ['Comment', 'String', 'Escaped', 'by']) {
+      expect(featureClassAt(state, doc.indexOf(text) + 1)).toBeNull()
+    }
+  })
+
   it('recognizes FEA comments, classes, escaped glyphs and keywords', () => {
     const state = EditorState.create({
       doc: '# 中文\n@Upper = [A \\feature];\nfeature kern { pos A V -80; } kern;',
@@ -69,6 +83,23 @@ describe('feature language', () => {
     expect(sourceOffsetToEditorOffset(source, source.indexOf('A'))).toBe(10)
     expect(sourceOffsetToEditorOffset(source, -10)).toBe(0)
     expect(sourceOffsetToEditorOffset(source, 100)).toBe(source.length - 2)
+  })
+
+  it('reports one-based source locations across newline forms and Unicode characters', () => {
+    const source = '# setup\r\n# 字😀 invalid\rsub A by B;\n'
+    expect(sourceOffsetToLocation(source, source.indexOf('invalid'))).toEqual({
+      line: 2,
+      column: 6,
+    })
+    expect(sourceOffsetToLocation(source, source.indexOf('sub'))).toEqual({
+      line: 3,
+      column: 1,
+    })
+    expect(sourceOffsetToLocation(source, -1)).toEqual({ line: 1, column: 1 })
+    expect(sourceOffsetToLocation(source, source.length + 100)).toEqual({
+      line: 4,
+      column: 1,
+    })
   })
 
   it('does not treat contextual glyph marks as paired apostrophes', () => {

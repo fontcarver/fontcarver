@@ -15,9 +15,18 @@ vi.mock('./useTextKerning', async () => {
         [],
       )
       return {
-        panel: { pair, setPair },
+        panel: {
+          pair,
+          setPair,
+          editable: true,
+          status: { editable: true },
+          setValue: vi.fn(),
+          commit: vi.fn(),
+          remove: vi.fn(),
+          setScope: vi.fn(),
+        },
         finish: async () => undefined,
-        onKerningKey: () => false,
+        onKerningKey: useCallback(() => true, []),
       }
     },
   }
@@ -50,6 +59,56 @@ const base = {
 }
 
 describe('shaped gap selection handover', () => {
+  it('keeps the canvas keyboard callback stable across unrelated renders', () => {
+    const { result, rerender } = renderHook(() => useTextKerningControls(base))
+    const callback = result.current.onKerningKey
+    rerender()
+    expect(result.current.onKerningKey).toBe(callback)
+  })
+
+  it('disables shaping gap selection and panel mutations when kerning is off', async () => {
+    const hook = renderHook(() =>
+      useTextKerningControls({ ...base, kerningMode: 'off' }),
+    )
+    expect(hook.result.current.panel.editable).toBe(false)
+    expect(hook.result.current.panel.status?.editable).toBe(false)
+    expect(hook.result.current.disabledReason).toContain('disabled')
+    await act(async () => {
+      hook.result.current.selectGap(0)
+      await hook.result.current.panel.setPair({ left: 'A', right: 'V' })
+      await hook.result.current.panel.commit()
+      await hook.result.current.panel.remove()
+    })
+    expect(hook.result.current.selectedGap).toBeNull()
+    expect(hook.result.current.panel.pair).toEqual({ left: '', right: '' })
+    expect(
+      hook.result.current.onKerningKey({
+        key: '.',
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+      }),
+    ).toBe(false)
+  })
+
+  it('allows punctuation kerning in locked mode only after selecting a gap', async () => {
+    const hook = renderHook(() =>
+      useTextKerningControls({ ...base, kerningMode: 'locked' }),
+    )
+    const key = {
+      key: '.',
+      altKey: false,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+    }
+    expect(hook.result.current.onKerningKey(key)).toBe(false)
+    await act(async () => hook.result.current.selectGap(0))
+    expect(hook.result.current.onKerningKey(key)).toBe(true)
+    expect(hook.result.current.panel.editable).toBe(true)
+  })
+
   it('removes a misleading highlight after explicit names and can reselect the same gap', async () => {
     const hook = renderHook(() => useTextKerningControls(base))
     await act(async () => {

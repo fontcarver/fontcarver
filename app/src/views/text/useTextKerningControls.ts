@@ -7,6 +7,7 @@ import type { PositionedGlyph } from './textLayout'
 import { identifyTextGaps } from './textGaps'
 import { useTextKerning } from './useTextKerning'
 import { parseTextInput } from './textInput'
+import type { KerningMode } from './kerningModes'
 
 interface Options {
   doc: DocId
@@ -17,6 +18,7 @@ interface Options {
   features: Array<[string, boolean]>
   glyphs: readonly PositionedGlyph[]
   pending: boolean
+  kerningMode?: KerningMode
   transition: (action: () => void) => Promise<void>
 }
 
@@ -32,9 +34,17 @@ export function useTextKerningControls(options: Options) {
     features,
     glyphs,
     pending,
+    kerningMode = 'on',
     transition,
   } = options
-  const identity = JSON.stringify([doc, master, text, direction, features])
+  const identity = JSON.stringify([
+    doc,
+    master,
+    text,
+    direction,
+    features,
+    kerningMode,
+  ])
   const current = useRef(identity)
   const selectionRevision = useRef(0)
   useLayoutEffect(() => {
@@ -59,12 +69,14 @@ export function useTextKerningControls(options: Options) {
     generation,
     prepare,
     vertical: direction === 'ttb',
+    punctuationShortcuts: kerningMode === 'locked',
   })
   const setPair = editor.panel.setPair
   const selectGap = useCallback(
     (index: number) => {
       const gap = gaps[index]
       if (
+        kerningMode === 'off' ||
         pending ||
         !gap ||
         gap.reason !== null ||
@@ -86,7 +98,7 @@ export function useTextKerningControls(options: Options) {
         }
       }).catch(reportError)
     },
-    [gaps, identity, pending, setPair, transition],
+    [gaps, identity, kerningMode, pending, setPair, transition],
   )
   const selectedGap =
     choice?.identity === identity &&
@@ -96,16 +108,74 @@ export function useTextKerningControls(options: Options) {
     gaps[choice.index]?.right === choice.right
       ? choice.index
       : null
-  const disabledReason = pending
-    ? null
-    : gaps.length > 0 && gaps.every((gap) => gap.reason !== null)
-      ? t(`kerningCanvas.${gaps[0]!.reason}`)
-      : glyphs.length === 1 &&
-          parseTextInput(text).some(
-            (token) =>
-              token.kind === 'literal' && Array.from(token.text).length > 1,
-          )
-        ? t('kerningCanvas.cluster')
-        : null
-  return { ...editor, gaps, selectGap, selectedGap, disabledReason }
+  const disabledReason =
+    kerningMode === 'off'
+      ? t('kerningModes.offHint')
+      : pending
+        ? null
+        : gaps.length > 0 && gaps.every((gap) => gap.reason !== null)
+          ? t(`kerningCanvas.${gaps[0]!.reason}`)
+          : glyphs.length === 1 &&
+              parseTextInput(text).some(
+                (token) =>
+                  token.kind === 'literal' && Array.from(token.text).length > 1,
+              )
+            ? t('kerningCanvas.cluster')
+            : null
+  // Guard callbacks as well as disabled controls: a blur queued before a mode
+  // transition must not commit a draft after kerning has been switched off.
+  const enabled = useRef(kerningMode !== 'off')
+  useLayoutEffect(() => {
+    enabled.current = kerningMode !== 'off'
+  }, [kerningMode])
+  const panel = {
+    ...editor.panel,
+    editable: kerningMode !== 'off' && editor.panel.editable,
+    status: editor.panel.status && {
+      ...editor.panel.status,
+      editable: kerningMode !== 'off' && editor.panel.status.editable,
+    },
+    setPair: async (pair: Parameters<typeof editor.panel.setPair>[0]) => {
+      if (enabled.current) await editor.panel.setPair(pair)
+    },
+    setScope: async (scope: Parameters<typeof editor.panel.setScope>[0]) => {
+      if (enabled.current) await editor.panel.setScope(scope)
+    },
+    setValue: (value: string) => {
+      if (enabled.current) editor.panel.setValue(value)
+    },
+    commit: async () => {
+      if (enabled.current) await editor.panel.commit()
+    },
+    remove: async () => {
+      if (enabled.current) await editor.panel.remove()
+    },
+  }
+  const handleKerningKey = editor.onKerningKey
+  const onKerningKey = useCallback<typeof editor.onKerningKey>(
+    (event) => {
+      if (!enabled.current) return false
+      if (
+        (event.code === 'Comma' ||
+          event.code === 'Period' ||
+          event.key === ',' ||
+          event.key === '.' ||
+          event.key === '<' ||
+          event.key === '>') &&
+        selectedGap === null
+      )
+        return false
+      return handleKerningKey(event)
+    },
+    [handleKerningKey, selectedGap],
+  )
+  return {
+    ...editor,
+    panel,
+    onKerningKey,
+    gaps,
+    selectGap,
+    selectedGap,
+    disabledReason,
+  }
 }

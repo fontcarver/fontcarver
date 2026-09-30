@@ -120,7 +120,9 @@ export class EditorController {
         anchors: () => this.geometry.anchors(),
         components: () => this.geometry.components(),
         selection: () => this.selection,
+        canSelect: (target) => this.geometry.canSelect(target),
         curves: () => this.geometry.source?.curves ?? 'cubic',
+        italicAngle: () => this.geometry.source?.metrics.italicAngle ?? 0,
         labels: () => this.labels.tools,
         snap: (point, suspend) =>
           this.snapping.forPoint(this.snapSources(), point, suspend),
@@ -235,6 +237,7 @@ export class EditorController {
    */
   setSnapSettings(settings: SnapSettings): void {
     this.snapping.setSettings(settings)
+    this.geometry.hitDistance = settings.hitDistance
   }
 
   /** Arrow-key distances from the preferences: plain, Shift, Ctrl. */
@@ -301,9 +304,20 @@ export class EditorController {
 
   /** Replaces the selection and tells React. */
   setSelection(selection: Selection): void {
+    selection = new Map(
+      [...selection].filter(([, target]) => this.geometry.canSelect(target)),
+    )
     if (sameSelection(this.selection, selection)) return
     this.selection = selection
     this.callbacks.onSelectionChange(selection)
+    this.callbacks.repaint()
+  }
+
+  /** Change path focus and discard targets that are no longer editable. */
+  setPathFocus(focus: ReadonlySet<number> | null): void {
+    this.geometry.setPathFocus(focus)
+    this.setSelection(this.selection)
+    this.hover = null
     this.callbacks.repaint()
   }
 
@@ -411,6 +425,12 @@ export class EditorController {
     )
     this.updateCursor(input.modifiers)
     this.callbacks.repaint()
+  }
+
+  /** Re-evaluates a stationary gesture when a modifier key changes. */
+  modifiersChanged(modifiers: Modifiers): void {
+    if (!this.pointer) return
+    this.pointerMove({ ...this.pointer, button: 0, modifiers })
   }
 
   /** Pointer released. */
@@ -553,7 +573,7 @@ export class EditorController {
 
   /** Selects every point of the layer. */
   selectAll(): void {
-    this.setSelection(allTargets(this.geometry.editOutline()))
+    this.setSelection(allTargets(this.geometry.selectableOutline()))
   }
 
   /** Tab and Shift+Tab walk the on-curve points in stored order. */

@@ -48,8 +48,6 @@ export type PointMap = (point: Point2) => Point2
 
 /** Node sizes in CSS pixels, design spec §4.1. */
 const CORNER_SIZE = 5
-const SMOOTH_RADIUS = 2.5
-const IMPLIED_RADIUS = 2.5
 const OFF_CURVE_RADIUS = 1.75
 const START_SIZE = 7
 const OPEN_END_TICK = 6
@@ -296,6 +294,8 @@ function drawNodes(
   theme: GlyphTheme,
   selected: ReadonlySet<string>,
   verticalMetrics: readonly number[],
+  nodeSize: number,
+  handleSize: number,
 ): void {
   const storedIndex = new Map<Point, number>()
   contour.points.forEach((point, index) => storedIndex.set(point, index))
@@ -313,9 +313,8 @@ function drawNodes(
     const key = keyOf(control, 'handle')
     const isSelected = key !== null && selected.has(key)
     ctx.fillStyle = isSelected ? theme.selection : theme.nodeOffCurve
-    drawCircle(ctx, at, OFF_CURVE_RADIUS)
-    if (isSelected)
-      drawSelectedRing(ctx, at, OFF_CURVE_RADIUS * 2 + 2, true, theme)
+    drawCircle(ctx, at, handleSize / 2)
+    if (isSelected) drawSelectedRing(ctx, at, handleSize + 2, true, theme)
   }
 
   for (const node of onCurvePoints(resolved)) {
@@ -327,21 +326,30 @@ function drawNodes(
       // so a TrueType outline still reads as the point list it really is.
       ctx.strokeStyle = theme.nodeImplied
       ctx.lineWidth = 1
-      drawDiamond(ctx, at, IMPLIED_RADIUS)
+      drawDiamond(ctx, at, nodeSize / 2)
     } else if (node.source.smooth) {
       ctx.fillStyle = isSelected ? theme.selection : theme.nodeSmooth
-      drawCircle(ctx, at, SMOOTH_RADIUS)
-      if (isSelected) drawSelectedRing(ctx, at, SMOOTH_RADIUS * 2, true, theme)
+      drawCircle(ctx, at, nodeSize / 2)
+      if (isSelected) drawSelectedRing(ctx, at, nodeSize, true, theme)
     } else {
       ctx.fillStyle = isSelected ? theme.selection : theme.nodeCorner
-      drawSquare(ctx, at, CORNER_SIZE)
-      if (isSelected) drawSelectedRing(ctx, at, CORNER_SIZE, false, theme)
+      drawSquare(ctx, at, nodeSize)
+      if (isSelected) drawSelectedRing(ctx, at, nodeSize, false, theme)
+    }
+    if (node.source?.super_smooth) {
+      // An outer ring distinguishes persistent G2 nodes from ordinary smooth
+      // nodes without hiding the inner selection marker.
+      ctx.strokeStyle = isSelected ? theme.selection : theme.nodeSmooth
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.arc(at.x, at.y, nodeSize / 2 + 2, 0, Math.PI * 2)
+      ctx.stroke()
     }
     if ((node.source?.corner_radius ?? 0) !== 0) {
       ctx.strokeStyle = theme.selection
       ctx.lineWidth = 1
       ctx.beginPath()
-      ctx.arc(at.x, at.y, CORNER_SIZE + 2, 0, Math.PI * 2)
+      ctx.arc(at.x, at.y, nodeSize + 2, 0, Math.PI * 2)
       ctx.stroke()
     }
     // A node exactly on the baseline, the x-height, the cap height or an
@@ -391,6 +399,10 @@ function drawSelectedSegments(
 /** What `drawOutline` renders. */
 export interface OutlineData {
   contours: readonly Contour[]
+  /** Session-local path focus; other paths stay visible with reduced opacity. */
+  focusedContours?: ReadonlySet<number> | null
+  /** Persistent path IDs whose nodes cannot be selected or moved. */
+  lockedPaths?: ReadonlySet<string>
   /** Draw editable nodes while a separately evaluated effect path supplies the ink. */
   hidePath?: boolean
   /** Fill the outline instead of stroking it (the space-bar preview). */
@@ -401,6 +413,10 @@ export interface OutlineData {
   selected?: ReadonlySet<string>
   /** Font-space y of every vertical metric, for the diamond marker. */
   verticalMetrics?: readonly number[]
+  /** On-curve marker diameter in CSS pixels. */
+  nodeSize?: number
+  /** Off-curve marker diameter in CSS pixels. */
+  handleSize?: number
 }
 
 const NOTHING_SELECTED: ReadonlySet<string> = new Set()
@@ -418,6 +434,7 @@ export function drawOutline(
 
   ctx.save()
   ctx.beginPath()
+  if (data.focusedContours) ctx.globalAlpha = 0.25
   traceContours(ctx, data.contours, map)
   if (data.hidePath) {
     // Source nodes and handles remain visible below.
@@ -430,8 +447,21 @@ export function drawOutline(
     ctx.stroke()
   }
 
+  if (data.focusedContours) {
+    ctx.globalAlpha = 1
+    ctx.beginPath()
+    data.contours.forEach((contour, index) => {
+      if (data.focusedContours?.has(index)) traceContour(ctx, contour, map)
+    })
+    ctx.strokeStyle = theme.outline
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+  }
+
   if (data.showPoints) {
     data.contours.forEach((contour, index) => {
+      if (data.focusedContours && !data.focusedContours.has(index)) return
+      if (contour.id && data.lockedPaths?.has(contour.id)) return
       const resolved = resolveContour(contour)
       if (selected.size > 0)
         drawSelectedSegments(ctx, index, resolved, map, theme, selected)
@@ -445,6 +475,8 @@ export function drawOutline(
         theme,
         selected,
         data.verticalMetrics ?? [],
+        data.nodeSize ?? CORNER_SIZE,
+        data.handleSize ?? OFF_CURVE_RADIUS * 2,
       )
       drawOpenEnds(ctx, resolved, map, theme)
       drawStartMarker(ctx, resolved, map, theme)

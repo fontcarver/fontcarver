@@ -16,6 +16,7 @@ import {
   onDocumentEvent,
   type DocId,
   type GlyphId,
+  type LayerId,
   type MasterId,
   type MetricsKeys,
   type ResolvedMetrics,
@@ -25,12 +26,14 @@ import { useEditorStore } from '../../../stores/editorStore'
 export interface ResolvedMetricsState {
   value: ResolvedMetrics
   status: 'pending' | 'ready' | 'error'
+  error: string | null
 }
 
 interface Resolution {
   identity: string
   value: ResolvedMetrics | null
   status: 'ready' | 'error'
+  error: string | null
 }
 
 /** The resolved metrics of one glyph, refreshed on every document change. */
@@ -40,6 +43,7 @@ export function useResolvedMetrics(
   master: MasterId | null,
   keys: MetricsKeys,
   fallback: ResolvedMetrics,
+  layer?: LayerId,
 ): ResolvedMetricsState {
   const [resolved, setResolved] = useState<Resolution | null>(null)
   const [generation, setGeneration] = useState(0)
@@ -47,22 +51,31 @@ export function useResolvedMetrics(
   const deferred = useRef(false)
   // A formula names other glyphs, so the request has to be reissued whenever
   // any of them could have moved; the signature keeps it to real changes.
-  const signature = `${doc}:${gid}:${master ?? ''}:${keys.left ?? ''}:${
-    keys.right ?? ''
-  }:${keys.width ?? ''}`
+  const signature = JSON.stringify([doc, gid, master, layer, keys])
   const identity = `${signature}:${generation}`
 
   useEffect(() => {
     let cancelled = false
-    void call('doc.metrics_resolve', { doc, gid, master })
+    void call('doc.metrics_resolve', {
+      doc,
+      gid,
+      master,
+      ...(layer ? { layer } : {}),
+    })
       .then((answer) => {
         if (!cancelled)
-          setResolved({ identity, value: answer, status: 'ready' })
+          setResolved({ identity, value: answer, status: 'ready', error: null })
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         // A cyclic or malformed key makes the kernel refuse; the stored
         // sidebearings stay on screen rather than the panel going blank.
-        if (!cancelled) setResolved({ identity, value: null, status: 'error' })
+        if (!cancelled)
+          setResolved({
+            identity,
+            value: null,
+            status: 'error',
+            error: error instanceof Error ? error.message : String(error),
+          })
       })
     return () => {
       cancelled = true
@@ -96,10 +109,11 @@ export function useResolvedMetrics(
   }, [editing])
 
   if (resolved?.identity !== identity)
-    return { value: fallback, status: 'pending' }
+    return { value: fallback, status: 'pending', error: null }
   return {
     value: resolved.value ?? fallback,
     status: resolved.status,
+    error: resolved.error,
   }
 }
 

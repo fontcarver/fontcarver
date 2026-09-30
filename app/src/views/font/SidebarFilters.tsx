@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { Fragment, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { DocId } from '../../api'
@@ -14,6 +14,10 @@ import {
 import { COLOR_LABELS, colorLabelKey } from './colorLabels'
 import { CjkFilters } from './CjkFilters'
 import { FilterRow } from './FilterRow'
+import { LanguageFilters } from './LanguageFilters'
+import { GlyphListsPanel } from './GlyphListsPanel'
+import { SmartFiltersPanel } from './SmartFiltersPanel'
+import languageStyles from './languageFilters.module.css'
 
 export interface SidebarFiltersProps {
   doc: DocId
@@ -84,24 +88,70 @@ export function SidebarFilters({ doc }: SidebarFiltersProps) {
         />
       </Panel>
 
+      <GlyphListsPanel doc={doc} />
+      <SmartFiltersPanel
+        doc={doc}
+        expression={filter.smart_expression ?? null}
+        onExpressionChange={(smart_expression) =>
+          setFilter(doc, { smart_expression })
+        }
+      />
+
       {(counts.scripts.some(([script]) => script === 'Hani') || filter.cjk) && (
         <CjkFilters doc={doc} value={filter.cjk} />
       )}
       {counts.categories.length > 0 ? (
         <Panel title={t('sidebar.categories')}>
           {counts.categories.map(([name, count]) => (
-            <FilterRow
-              key={name}
-              label={name}
-              count={count}
-              active={filter.categories.includes(name)}
-              onToggle={() =>
-                setFilter(doc, { categories: toggled(filter.categories, name) })
-              }
-            />
+            <Fragment key={name}>
+              <FilterRow
+                label={t(`sidebar.categoryNames.${name}`, {
+                  defaultValue: name,
+                })}
+                count={count}
+                active={filter.categories.includes(name)}
+                onToggle={() =>
+                  setFilter(doc, {
+                    categories: toggled(filter.categories, name).filter(
+                      (value) => !value.startsWith(`${name}/`),
+                    ),
+                  })
+                }
+              />
+              {(counts.sub_categories ?? [])
+                .filter(([category]) => category === name)
+                .map(([, subcategory, subcount]) => {
+                  const value = `${name}/${subcategory}`
+                  return (
+                    <div key={value} className={languageStyles.subcategory}>
+                      <FilterRow
+                        label={t(`sidebar.categoryNames.${subcategory}`, {
+                          defaultValue: subcategory,
+                        })}
+                        count={subcount}
+                        active={filter.categories.includes(value)}
+                        onToggle={() =>
+                          setFilter(doc, {
+                            categories: toggled(
+                              filter.categories.filter(
+                                (entry) => entry !== name,
+                              ),
+                              value,
+                            ),
+                          })
+                        }
+                      />
+                    </div>
+                  )
+                })}
+            </Fragment>
           ))}
         </Panel>
       ) : null}
+
+      {counts.unicodes && (
+        <LanguageFilters doc={doc} filter={filter} unicodes={counts.unicodes} />
+      )}
 
       {counts.scripts.length > 0 ? (
         <Panel title={t('sidebar.scripts')}>

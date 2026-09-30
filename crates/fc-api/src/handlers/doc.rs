@@ -1,6 +1,6 @@
 //! Document query and mutation handlers.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use fc_doc::{Command, EditToken};
 use fc_model::{Font, SourceProvenance, Tag};
@@ -174,18 +174,29 @@ pub(crate) fn redo(api: &Api, params: DocParams) -> Result<Option<fc_doc::Change
 
 fn compute_sidebar(document: &fc_doc::Document) -> SidebarCounts {
     let mut categories = HashMap::<String, u32>::new();
+    let mut sub_categories = BTreeMap::<(String, String), u32>::new();
     let mut scripts = HashMap::<String, u32>::new();
     let mut blocks = HashMap::<String, u32>::new();
     let mut color_labels = HashMap::<u8, u32>::new();
+    let mut unicodes = BTreeSet::<u32>::new();
+    let mut tags = BTreeSet::<String>::new();
     let mut unencoded = 0_u32;
 
     for glyph in document.font.glyphs.values() {
         let (category, script, block) = match glyph.unicodes.first().copied() {
-            Some(unicode) => (
-                super::glyphs::category_name(fc_glyphdata::category(unicode)).to_owned(),
-                fc_glyphdata::script(unicode).to_owned(),
-                fc_glyphdata::block_name(unicode).to_owned(),
-            ),
+            Some(unicode) => {
+                let category =
+                    super::glyphs::category_name(fc_glyphdata::category(unicode)).to_owned();
+                let sub_category = fc_glyphdata::sub_category(unicode).to_owned();
+                *sub_categories
+                    .entry((category.clone(), sub_category))
+                    .or_default() += 1;
+                (
+                    category,
+                    fc_glyphdata::script(unicode).to_owned(),
+                    fc_glyphdata::block_name(unicode).to_owned(),
+                )
+            }
             None => {
                 unencoded = unencoded.saturating_add(1);
                 (
@@ -198,6 +209,14 @@ fn compute_sidebar(document: &fc_doc::Document) -> SidebarCounts {
         increment(&mut categories, category);
         increment(&mut scripts, script);
         increment(&mut blocks, block);
+        unicodes.extend(
+            glyph
+                .unicodes
+                .iter()
+                .copied()
+                .filter(|unicode| char::from_u32(*unicode).is_some()),
+        );
+        tags.extend(glyph.tags.iter().cloned());
         if let Some(label) = glyph.color_label {
             *color_labels.entry(label).or_default() += 1;
         }
@@ -205,11 +224,17 @@ fn compute_sidebar(document: &fc_doc::Document) -> SidebarCounts {
 
     SidebarCounts {
         categories: ordered_categories(&categories),
+        sub_categories: sub_categories
+            .into_iter()
+            .map(|((category, sub_category), count)| (category, sub_category, count))
+            .collect(),
         scripts: ordered_named_counts(fc_glyphdata::all_scripts(), &scripts, &["Zzzz"]),
         blocks: ordered_named_counts(fc_glyphdata::all_block_names(), &blocks, &["Unencoded"]),
         unencoded,
         total: u32::try_from(document.font.glyphs.len()).unwrap_or(u32::MAX),
         color_labels: sorted_counts(color_labels),
+        unicodes: unicodes.into_iter().collect(),
+        tags: tags.into_iter().collect(),
     }
 }
 

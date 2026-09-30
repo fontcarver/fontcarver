@@ -58,6 +58,31 @@ pub enum HintCommand {
         #[ts(type = "Array<Stem>")]
         stems: Vec<Stem>,
     },
+    /// Replace a CID private dictionary or append the next dictionary.
+    CffPrivate {
+        /// Target master.
+        #[ts(type = "string")]
+        master: MasterId,
+        /// Zero selects the default private dictionary; CID indices are 1–255.
+        index: u8,
+        /// Complete validated dictionary values.
+        #[ts(type = "PsPrivate")]
+        private: PsPrivate,
+    },
+    /// Assign an existing private dictionary to one layer in the target master.
+    CffPrivateAssignment {
+        /// Target master.
+        #[ts(type = "string")]
+        master: MasterId,
+        /// Persistent glyph name.
+        #[ts(type = "string")]
+        glyph: GlyphName,
+        /// Persistent source layer.
+        #[ts(type = "string")]
+        layer: LayerId,
+        /// Existing dictionary index; zero selects the default.
+        index: u8,
+    },
     /// Infer glyph stems and missing global values as one reversible operation.
     AutohintPs {
         /// Target master.
@@ -159,6 +184,63 @@ pub(super) fn apply(font: &mut Font, command: &HintCommand) -> Result<(), Error>
             target.private_dict = private.clone();
             target.alignment_zones = zones.clone();
             target.stems = stems.clone();
+        }
+        HintCommand::CffPrivate {
+            master,
+            index,
+            private,
+        } => {
+            private.validate()?;
+            if *index > 0 && font.cid.is_none() {
+                return Err(Error::InvalidCommand(
+                    "additional private dictionaries require a CID font".into(),
+                ));
+            }
+            let target = font
+                .masters
+                .iter_mut()
+                .find(|m| m.id == *master)
+                .ok_or_else(|| Error::MissingMaster(master.clone()))?;
+            if *index == 0 {
+                target.private_dict = private.clone();
+            } else {
+                let slot = usize::from(*index) - 1;
+                if slot > target.cff_private_dicts.len() {
+                    return Err(Error::InvalidCommand(
+                        "private dictionary index does not exist".into(),
+                    ));
+                }
+                if slot == target.cff_private_dicts.len() {
+                    target.cff_private_dicts.push(private.clone());
+                } else {
+                    target.cff_private_dicts[slot] = private.clone();
+                }
+            }
+        }
+        HintCommand::CffPrivateAssignment {
+            master,
+            glyph,
+            layer,
+            index,
+        } => {
+            let target_master = font
+                .master(master)
+                .ok_or_else(|| Error::MissingMaster(master.clone()))?;
+            if usize::from(*index) > target_master.cff_private_dicts.len()
+                || (*index > 0 && font.cid.is_none())
+            {
+                return Err(Error::InvalidCommand(
+                    "private dictionary index does not exist in this CID master".into(),
+                ));
+            }
+            let kind = super::apply::layer_mut(font, glyph, layer)?.kind.clone();
+            if layer_master(&kind, font) != master {
+                return Err(Error::InvalidCommand(
+                    "private dictionary assignment targets a different master".into(),
+                ));
+            }
+            super::apply::layer_mut(font, glyph, layer)?.cff_private_dict_index =
+                (*index > 0).then_some(*index);
         }
         HintCommand::AutohintPs { master, glyphs } => {
             let (hints, private) = fc_hint::ps::analyze(font, master, glyphs)

@@ -1,7 +1,11 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import {
+  initialAutomationState,
+  useAutomationStore,
+} from '../automation/automationStore'
 import { initialUiState, useUiStore } from '../stores/uiStore'
 
 import { CommandPalette } from './CommandPalette'
@@ -14,6 +18,7 @@ const gated = vi.fn()
 
 beforeEach(() => {
   localStorage.clear()
+  useAutomationStore.setState({ ...initialAutomationState(), loaded: true })
   resetCommands()
   openFont.mockReset()
   saveAs.mockReset()
@@ -93,8 +98,10 @@ describe('CommandPalette', () => {
     const user = userEvent.setup()
     render(<CommandPalette />)
 
-    await user.type(screen.getByRole('combobox'), 'save')
-    expect(screen.getAllByRole('option')).toHaveLength(1)
+    await user.type(screen.getByRole('combobox', { name: 'Commands' }), 'save')
+    expect(
+      within(screen.getByRole('listbox')).getAllByRole('option'),
+    ).toHaveLength(1)
 
     await user.keyboard('{Enter}')
 
@@ -135,8 +142,8 @@ describe('CommandPalette', () => {
     const user = userEvent.setup()
     render(<CommandPalette />)
 
-    await user.type(screen.getByRole('combobox'), 'zzzzz')
+    await user.type(screen.getByRole('combobox', { name: 'Commands' }), 'zzzzz')
 
-    expect(screen.getByText('No matching commands')).toBeInTheDocument()
+    expect(screen.getByText('No matching results')).toBeInTheDocument()
   })
 })

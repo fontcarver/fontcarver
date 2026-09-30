@@ -124,8 +124,8 @@ describe('the Path menu', () => {
 
   it.each([
     ['path.removeOverlap', 'RemoveOverlap', 'Remove overlap'],
-    ['path.correctDirection', 'CorrectDirection', 'Correct direction'],
     ['path.addExtrema', 'AddExtrema', 'Add extremes'],
+    ['path.forceExtrema', 'ForceExtrema', 'Force extremes'],
     ['path.addInflections', 'AddInflections', 'Add inflections'],
   ])('sends %s as one PathOp', async (id, op, label) => {
     const mock = transport()
@@ -151,6 +151,50 @@ describe('the Path menu', () => {
 
     expect(applied(mock)?.command).toEqual({
       PathOp: { glyph: 'a', layer: 'layer-1', op: { RoundToGrid: 1 } },
+    })
+  })
+
+  it('corrects direction and normalizes starts/order in one undo entry', async () => {
+    const mock = transport()
+    publish()
+    runCommand('path.correctDirection')
+    await settle()
+    expect(applied(mock)?.command).toEqual({
+      Batch: [
+        { PathOp: { glyph: 'a', layer: 'layer-1', op: 'CorrectDirection' } },
+        { PathOp: { glyph: 'a', layer: 'layer-1', op: 'CanonicalOrder' } },
+      ],
+    })
+  })
+
+  it.each([
+    ['path.correctDirectionAllMasters', ['CorrectDirection', 'CanonicalOrder']],
+    ['path.tidyAllMasters', ['CanonicalStart', 'CanonicalOrder']],
+  ])('batches %s over master layers only', async (id, ops) => {
+    const mock = transport()
+    publish()
+    const active = useEditorStore.getState().activeGlyph!
+    useEditorStore.getState().setActiveGlyph({
+      ...active,
+      glyph: {
+        ...active.glyph,
+        layers: [
+          ...active.glyph.layers,
+          makeLayer({ id: 'bold', kind: { Master: 'm2' } }),
+          makeLayer({ id: 'background', kind: { Background: 'm1' } }),
+          makeLayer({ id: 'sketch', kind: { Custom: 'sketch' } }),
+        ],
+      },
+    })
+    runCommand(id as string)
+    await settle()
+    expect(
+      mock.calls.filter((call) => call.method === 'doc.apply'),
+    ).toHaveLength(1)
+    expect(applied(mock)?.command).toEqual({
+      Batch: ['layer-1', 'bold'].flatMap((layer) =>
+        (ops as string[]).map((op) => ({ PathOp: { glyph: 'a', layer, op } })),
+      ),
     })
   })
 

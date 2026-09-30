@@ -17,6 +17,8 @@ import { rememberScroll, rememberedScroll } from './scrollMemory'
 export interface ScrollMemoryOptions {
   /** The list the offset belongs to. */
   query: GlyphQuery
+  /** Scroll positions belong to one presentation of the query. */
+  presentation?: 'grid' | 'list'
   containerRef: RefObject<HTMLElement | null>
   /** Offset the virtual grid currently renders at; changes once per row. */
   scrollTop: number
@@ -29,13 +31,14 @@ export interface ScrollMemoryOptions {
 /** Records and restores the scroll offset of one glyph list. */
 export function useScrollMemory({
   query,
+  presentation = 'grid',
   containerRef,
   scrollTop,
   loaded,
   onScroll,
 }: ScrollMemoryOptions): void {
   /** Offset still to be written back, or `null` once the grid sits on it. */
-  const pending = useRef<number | null>(rememberedScroll(query))
+  const pending = useRef<number | null>(rememberedScroll(query, presentation))
 
   useEffect(() => {
     const element = containerRef.current
@@ -45,18 +48,18 @@ export function useScrollMemory({
       // A reload is in flight: the content has no height, so the browser has
       // already clamped the offset to zero. Re-arm the restore and stop
       // recording, or the clamped zero would overwrite the memory.
-      pending.current ??= rememberedScroll(query)
+      pending.current ??= rememberedScroll(query, presentation)
       return
     }
 
     const wanted = pending.current
     if (wanted === null) {
-      rememberScroll(query, element.scrollTop)
+      rememberScroll(query, element.scrollTop, presentation)
       return
     }
     pending.current = null
     if (wanted === 0 || element.scrollTop === wanted) return
     element.scrollTop = wanted
     onScroll()
-  }, [containerRef, loaded, onScroll, query, scrollTop])
+  }, [containerRef, loaded, onScroll, presentation, query, scrollTop])
 }

@@ -25,14 +25,15 @@ import { commitField } from './commitField'
 import {
   breakCommand,
   breakPoint,
+  correctDirectionCommand,
   DEFAULT_QUADRATIC_ERROR,
   joinCommand,
   joinEnds,
-  onlyNode,
   pathOpCommand,
   reverseCommand,
   scopedContours,
   setStartPointCommand,
+  startPoint,
   tidyCommand,
 } from './pathOps'
 
@@ -105,6 +106,53 @@ function opCommand(
   }
 }
 
+function canonicalCommand(
+  id: 'tidy' | 'correctDirection',
+  allMasters = false,
+): MenuCommand {
+  const name = `${id}${allMasters ? 'AllMasters' : ''}`
+  const build = id === 'tidy' ? tidyCommand : correctDirectionCommand
+  return {
+    id: `path.${name}`,
+    title: `cmd.path.${name}`,
+    menu: 'path',
+    group: 'geometry',
+    shortcut: `Mod+${allMasters ? 'Alt+' : ''}Shift+${id === 'tidy' ? 'T' : 'R'}`,
+    when: () =>
+      hasLayer() &&
+      (!allMasters ||
+        Boolean(
+          useEditorStore
+            .getState()
+            .activeGlyph?.glyph.layers.some((layer) => 'Master' in layer.kind),
+        )),
+    disabledReason: 'cmd.reason.noGlyphLayer',
+    run: () => {
+      const context = pathContext()
+      if (!context) return
+      const targets = allMasters
+        ? (useEditorStore
+            .getState()
+            .activeGlyph?.glyph.layers.filter((layer) => 'Master' in layer.kind)
+            .map((layer) => ({ ...context.target, layer: layer.id })) ?? [])
+        : [context.target]
+      if (!targets.length) return
+      const command: Command = {
+        Batch: targets.flatMap((target) => {
+          const built = build(target)
+          return 'Batch' in built ? built.Batch : [built]
+        }),
+      }
+      commitField(
+        context.target,
+        command,
+        i18n.t(`editor.undo.${name}`),
+        context.reload,
+      )
+    },
+  }
+}
+
 /** Registers every Path-menu command. Safe to call more than once. */
 export function registerPathCommands(): void {
   registerCommands([
@@ -114,17 +162,19 @@ export function registerPathCommands(): void {
       'editor.undo.removeOverlap',
       'Mod+Shift+O',
     ),
-    opCommand(
-      'correctDirection',
-      'CorrectDirection',
-      'editor.undo.correctDirection',
-      'Mod+Shift+R',
-    ),
+    canonicalCommand('correctDirection'),
+    canonicalCommand('correctDirection', true),
     opCommand(
       'addExtrema',
       'AddExtrema',
       'editor.undo.addExtrema',
       'Mod+Shift+E',
+    ),
+    opCommand(
+      'forceExtrema',
+      'ForceExtrema',
+      'editor.undo.forceExtrema',
+      'Mod+Alt+Shift+E',
     ),
     opCommand('addInflections', 'AddInflections', 'editor.undo.addInflections'),
     {
@@ -158,25 +208,8 @@ export function registerPathCommands(): void {
         )
       },
     },
-    {
-      id: 'path.tidy',
-      title: 'cmd.path.tidy',
-      menu: 'path',
-      group: 'geometry',
-      shortcut: 'Mod+Shift+T',
-      when: hasLayer,
-      disabledReason: 'cmd.reason.noGlyphLayer',
-      run: () => {
-        const context = pathContext()
-        if (!context) return
-        commitField(
-          context.target,
-          tidyCommand(context.target),
-          i18n.t('editor.undo.tidy'),
-          context.reload,
-        )
-      },
-    },
+    canonicalCommand('tidy'),
+    canonicalCommand('tidy', true),
     {
       id: 'path.expandStroke',
       title: 'cmd.path.expandStroke',
@@ -224,12 +257,15 @@ export function registerPathCommands(): void {
       group: 'contours',
       when: () => {
         const context = pathContext()
-        return context !== null && onlyNode(context.selection) !== null
+        return (
+          context !== null &&
+          startPoint(context.contours, context.selection) !== null
+        )
       },
       disabledReason: 'cmd.reason.noStartPoint',
       run: () => {
         const context = pathContext()
-        const node = context && onlyNode(context.selection)
+        const node = context && startPoint(context.contours, context.selection)
         if (!context || !node) return
         commitField(
           context.target,

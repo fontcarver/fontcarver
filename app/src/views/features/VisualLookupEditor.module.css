@@ -1,0 +1,65 @@
+.root {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-3);
+  background: var(--color-surface);
+}
+.root h3 {
+  margin: 0 0 var(--space-2);
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: end;
+  margin-bottom: var(--space-3);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 140px;
+  font-size: var(--text-size-sm);
+}
+.field input,
+.field select {
+  width: 100%;
+}
+.operands {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3);
+  max-width: 960px;
+  margin: var(--space-3) 0;
+}
+.values {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(100px, 1fr));
+  gap: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  margin: 0;
+  padding: var(--space-2);
+  min-width: 0;
+}
+.values .field {
+  min-width: 0;
+}
+.preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+  max-width: 960px;
+}
+.muted {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+}
+.error {
+  color: var(--color-danger);
+}

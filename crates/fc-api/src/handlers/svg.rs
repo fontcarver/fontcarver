@@ -45,19 +45,23 @@ pub(crate) fn state(api: &Api, params: DocParams) -> Result<SvgState, ApiError> 
     api.session
         .with_doc(params.doc, |doc| {
             let font = &doc.font;
-            let (status, import_error) = if font.svg.is_some() {
-                (SvgStatus::Editable, None)
+            let (status, preview_svg, import_error) = if font.svg.is_some() {
+                (SvgStatus::Editable, None, None)
             } else if font.svg_table_owned {
-                (SvgStatus::Deleted, None)
+                (SvgStatus::Deleted, None, None)
             } else if let Some(result) = decode_imported(font) {
-                (SvgStatus::Imported, result.err())
+                match result {
+                    Ok(svg) => (SvgStatus::Imported, Some(svg), None),
+                    Err(error) => (SvgStatus::Imported, None, Some(error)),
+                }
             } else {
-                (SvgStatus::Absent, None)
+                (SvgStatus::Absent, None, None)
             };
             SvgState {
                 generation: doc.generation,
                 status,
                 svg: font.svg.clone(),
+                preview_svg,
                 import_error,
                 units_per_em: font.info.units_per_em,
             }

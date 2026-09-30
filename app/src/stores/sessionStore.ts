@@ -17,11 +17,11 @@ import { documentEditRevision } from '../editor/editSession'
 import { prepareTabTransition } from '../shell/tabActions'
 
 import { useDocumentStore } from './documentStore'
-import { activeDocId, reportError, tabId, useUiStore } from './uiStore'
+import { activeDocId, reportError, useUiStore } from './uiStore'
 
 /** File extensions the kernel accepts as native document save targets. */
 // `.fwf` is the pre-rename extension; the kernel still saves onto it.
-const NATIVE_EXTENSIONS = ['.fcf', '.fcf.gz', '.fwf', '.fwf.gz']
+const NATIVE_EXTENSIONS = ['.fcf', '.fcf.gz', '.fcfp', '.fwf', '.fwf.gz']
 
 /** Whether a path is a native FontCarver document the kernel can save onto. */
 export function isNativeDocumentPath(path: string | null): boolean {
@@ -46,6 +46,8 @@ export interface SessionState {
   refreshSummary: (doc: DocId) => Promise<void>
   open: (path: string, faceIndex?: number | null) => Promise<DocSummary | null>
   openDialog: () => Promise<void>
+  /** Opens a directory project through a folder picker or browser path prompt. */
+  openProjectDialog: () => Promise<void>
   createDocument: (
     family?: string,
     unitsPerEm?: number,
@@ -116,9 +118,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         set({ docs })
         const first = docs[0]
         if (first && activeDocId() === null) {
+          // Activate the first document once. Workspace subscriptions may
+          // restore its editing tab synchronously while Overview is opened.
           for (const doc of docs)
-            useUiStore.getState().openTab({ kind: 'font', doc: doc.doc })
-          useUiStore.getState().setActiveTab(tabId('font', first.doc))
+            useUiStore
+              .getState()
+              .openTab({ kind: 'font', doc: doc.doc }, doc.doc === first.doc)
         }
       } catch (error) {
         reportError(error)
@@ -219,6 +224,19 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
 
+  openProjectDialog: async () => {
+    if (!hasNativeFileDialog()) {
+      useUiStore.getState().setPathPrompt({ mode: 'open' })
+      return
+    }
+    try {
+      const choice = await choosePath({ kind: 'open', directory: true })
+      if (choice.kind === 'chosen') await get().open(choice.path)
+    } catch (error) {
+      reportError(error)
+    }
+  },
+
   createDocument: async (family, unitsPerEm) => {
     const transition = prepareTabTransition()
     try {
@@ -275,7 +293,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const choice = await choosePath({
         kind: 'save',
         filterName: i18n.t('dialog.saveAs.filter'),
-        extensions: ['fcf', 'fcf.gz'],
+        extensions: ['fcf', 'fcf.gz', 'fcfp'],
       })
       if (choice.kind !== 'chosen') return
       const saved = await get().save(doc, choice.path)

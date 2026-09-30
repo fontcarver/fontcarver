@@ -7,6 +7,8 @@
  * is doing right now and must never be hidden by the shape being drawn.
  */
 
+import { drawAnnotations } from './drawAnnotations'
+
 import type { Point2, Viewport } from '../../canvas/Viewport'
 import type { ToolOverlay } from '../../editor/tools/toolTypes'
 
@@ -72,6 +74,7 @@ export function drawToolOverlay(
   overlay: ToolOverlay,
   theme: GlyphTheme,
 ): void {
+  drawAnnotations(ctx, viewport, overlay.annotations ?? [], theme)
   const toScreen = (point: Point2) => viewport.toScreen(point)
   ctx.save()
 

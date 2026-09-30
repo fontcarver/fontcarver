@@ -58,6 +58,9 @@ export function useEditorLabels(): EditorLabels {
         anchor: t('editor.snap.anchor'),
         grid: t('editor.snap.grid'),
         component: t('editor.snap.component'),
+        background: t('editor.snap.background'),
+        zone: t('editor.snap.zone'),
+        advance: t('glyphView.metric.width'),
         baseline: t('glyphView.metric.baseline'),
         xHeight: t('glyphView.metric.xHeight'),
         capHeight: t('glyphView.metric.capHeight'),
@@ -66,6 +69,8 @@ export function useEditorLabels(): EditorLabels {
       },
       hud: hud,
       tools: {
+        addGuide: t('editor.undo.addGuide'),
+        erase: t('editor.undo.erase'),
         drawPath: t('editor.undo.drawPath'),
         extendPath: t('editor.undo.extendPath'),
         draw: t('editor.undo.draw'),

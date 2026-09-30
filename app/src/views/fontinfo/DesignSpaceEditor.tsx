@@ -6,6 +6,7 @@ import { Dialog } from '../../components/Dialog'
 import { NumberField } from '../../components/NumberField'
 import { errorNotice } from '../../i18n/errors'
 import { reportError } from '../../stores/uiStore'
+import { useFontInfo } from '../../stores/fontInfoCache'
 import { AxisEditor } from './AxisEditor'
 import {
   DesignSpaceSession,
@@ -15,6 +16,7 @@ import {
 import { VariationPreview } from './VariationPreview'
 import { MasterMetricsEditor } from './MasterMetricsEditor'
 import { InstanceEditor } from './InstanceEditor'
+import { VirtualMastersEditor } from './VirtualMastersEditor'
 import { designDefault, userToDesign } from './designCoordinates'
 import styles from './designSpace.module.css'
 
@@ -27,6 +29,7 @@ export function DesignSpaceEditor({
   onClose: () => void
 }) {
   const { t } = useTranslation()
+  const { info: fontInfo } = useFontInfo(doc)
   const root = useRef<HTMLDivElement>(null)
   const [session] = useState(
     () => new DesignSpaceSession(doc, t('variation.edit')),
@@ -86,6 +89,10 @@ export function DesignSpaceEditor({
         ...i,
         location: rename(i.location),
       })),
+      virtual_masters: (value.virtual_masters ?? []).map((m) => ({
+        ...m,
+        location: rename(m.location),
+      })),
     })
   }
   const addAxis = () => {
@@ -129,6 +136,10 @@ export function DesignSpaceEditor({
       instances: value.instances.map((i) => ({
         ...i,
         location: omit(i.location),
+      })),
+      virtual_masters: (value.virtual_masters ?? []).map((m) => ({
+        ...m,
+        location: omit(m.location),
       })),
     })
   }
@@ -283,6 +294,7 @@ export function DesignSpaceEditor({
                     ))}
                   </div>
                   <MasterMetricsEditor
+                    unitsPerEm={fontInfo?.info.units_per_em ?? 1000}
                     metrics={master.metrics}
                     onChange={(metrics) =>
                       edit({
@@ -298,9 +310,14 @@ export function DesignSpaceEditor({
                 {t('variation.addMaster')}
               </Button>
               <p>{t('variation.copyHint')}</p>
+              <VirtualMastersEditor
+                state={value}
+                onChange={(virtual_masters) => edit({ virtual_masters })}
+              />
               <h3>{t('fontInfo.group.instances')}</h3>
               {value.instances.map((instance, index) => (
                 <InstanceEditor
+                  familyName={fontInfo?.info.family_name ?? ''}
                   key={index}
                   instance={instance}
                   axes={value.axes}

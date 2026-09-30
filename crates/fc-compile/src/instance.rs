@@ -162,6 +162,7 @@ pub fn instantiate(
     master.metrics.validate().map_err(invalid)?;
     result.masters = vec![master];
     result.axes.clear();
+    result.virtual_masters.clear();
     result.instances.clear();
     Ok(result)
 }

@@ -1,3 +1,4 @@
+import { controlModifier } from '../gestures/drag'
 /**
  * The Pencil tool (design spec §5).
  *
@@ -87,7 +88,9 @@ export class PencilTool implements EditorTool {
 
   pointerDown(pointer: ToolPointer, context: ToolContext): ToolOutcome {
     if (pointer.button !== 0) return NO_OUTCOME
-    this.samples = [context.snap(pointer.font, pointer.modifiers.mod).point]
+    this.samples = [
+      context.snap(pointer.font, controlModifier(pointer.modifiers)).point,
+    ]
     this.drawing = true
     this.straight = false
     return { handled: true }
@@ -95,7 +98,10 @@ export class PencilTool implements EditorTool {
 
   pointerMove(pointer: ToolPointer, context: ToolContext): ToolOutcome {
     if (!this.drawing) return NO_OUTCOME
-    const at = context.snap(pointer.font, pointer.modifiers.mod).point
+    const at = context.snap(
+      pointer.font,
+      controlModifier(pointer.modifiers),
+    ).point
     const last = this.samples[this.samples.length - 1]
     if (!last) return { handled: true }
     if (pointer.modifiers.shift) {

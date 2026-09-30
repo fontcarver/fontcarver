@@ -15,6 +15,8 @@ import { activeEditor } from '../../../editor/activeEditor'
 import { errorNotice } from '../../../i18n/errors'
 import styles from '../../fontinfo/designSpace.module.css'
 import { userToDesign } from '../../fontinfo/designCoordinates'
+import { BracketConditionFields } from './BracketConditionFields'
+import { bracketConditionError } from './bracketConditions'
 
 /** Clone a source or edit its intermediate/conditional role without replacing its outline. */
 export function SourceLayerEditor({
@@ -69,6 +71,13 @@ export function SourceLayerEditor({
   )
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('')
+  const conditionError =
+    kind === 'Bracket' &&
+    bracketConditionError(
+      state?.axes.find((value) => String.fromCharCode(...value.tag) === axis),
+      min,
+      max,
+    )
   useEffect(() => {
     let current = true
     void Promise.resolve(activeEditor()?.settle())
@@ -105,7 +114,7 @@ export function SourceLayerEditor({
     }
   }, [doc, master, duplicate, t])
   const apply = () => {
-    if (!state || busy) return
+    if (!state || busy || conditionError) return
     const role: LayerKind =
       kind === 'Smart'
         ? { Smart: { master, location: smartLocation } }
@@ -160,6 +169,7 @@ export function SourceLayerEditor({
             disabled={
               busy ||
               !state ||
+              Boolean(conditionError) ||
               (kind === 'Smart' ? !smartAxes.length : !state.axes.length)
             }
             onClick={apply}
@@ -196,6 +206,41 @@ export function SourceLayerEditor({
             </option>
           </select>
         </label>
+        {kind === 'Brace' && Boolean(state?.virtual_masters?.length) && (
+          <label>
+            {t('virtualMaster.sourcePreset')}
+            <select
+              defaultValue=""
+              onChange={(event) => {
+                const preset =
+                  state?.virtual_masters?.[Number(event.target.value)]
+                if (!preset || !state) return
+                setLocation(
+                  Object.fromEntries(
+                    state.axes.map((axis) => {
+                      const tag = String.fromCharCode(...axis.tag)
+                      return [
+                        tag,
+                        preset.location[tag] ??
+                          userToDesign(axis, axis.default),
+                      ]
+                    }),
+                  ),
+                )
+                if (!name) setName(preset.name)
+              }}
+            >
+              <option value="" disabled>
+                {t('virtualMaster.choosePreset')}
+              </option>
+              {state?.virtual_masters?.map((preset, index) => (
+                <option key={index} value={index}>
+                  {preset.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {kind === 'Smart' ? (
           smartAxes.map((axis) => (
             <NumberField
@@ -225,51 +270,16 @@ export function SourceLayerEditor({
             )
           })
         ) : (
-          <>
-            <label>
-              {t('variation.conditionAxis')}
-              <select value={axis} onChange={(e) => setAxis(e.target.value)}>
-                {state?.axes.map((a) => {
-                  const tag = String.fromCharCode(...a.tag)
-                  return <option key={tag}>{tag}</option>
-                })}
-              </select>
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={min !== null}
-                onChange={(e) =>
-                  setMin(e.target.checked ? (location[axis] ?? 0) : null)
-                }
-              />
-              {t('variation.lowerBound')}
-            </label>
-            {min !== null && (
-              <NumberField
-                label={t('variation.lowerBound')}
-                value={min}
-                onCommit={setMin}
-              />
-            )}
-            <label>
-              <input
-                type="checkbox"
-                checked={max !== null}
-                onChange={(e) =>
-                  setMax(e.target.checked ? (location[axis] ?? 0) : null)
-                }
-              />
-              {t('variation.upperBound')}
-            </label>
-            {max !== null && (
-              <NumberField
-                label={t('variation.upperBound')}
-                value={max}
-                onCommit={setMax}
-              />
-            )}
-          </>
+          <BracketConditionFields
+            axes={state?.axes ?? []}
+            axis={axis}
+            min={min}
+            max={max}
+            location={location}
+            onAxis={setAxis}
+            onMin={setMin}
+            onMax={setMax}
+          />
         )}
       </fieldset>
     </Dialog>

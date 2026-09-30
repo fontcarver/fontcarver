@@ -124,7 +124,10 @@ export function ComponentsPanel({ target, outline, reload }: PanelContext) {
         <button
           type="button"
           className={styles.actionButton}
-          disabled={components.length === 0}
+          disabled={
+            components.length === 0 ||
+            components.some((view) => view.component.locked)
+          }
           onClick={() =>
             run(
               decomposeComponentsCommand(

@@ -72,13 +72,16 @@ describe('TextBar', () => {
     expect(callbacks.onSample).toHaveBeenLastCalledWith('all-encoded')
   })
 
-  it('enables vertical direction while retaining the future sample placeholder', async () => {
+  it('enables vertical direction and the kerning pair sample', async () => {
     const onDirectionChange = vi.fn()
-    render(<TextBar {...props({ onDirectionChange })} />)
-
-    expect(
-      screen.getByRole('option', { name: 'Kerning pairs — coming later' }),
-    ).toBeDisabled()
+    const onSample = vi.fn()
+    render(<TextBar {...props({ onDirectionChange, onSample })} />)
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Sample text' }),
+      'kerning',
+    )
+    expect(onSample).toHaveBeenCalledWith('kerning')
+    expect(TEXT_SAMPLE_TEXT.kerning).toContain('AV')
     const vertical = screen.getByRole('button', { name: 'Vertical text' })
     expect(vertical).toBeEnabled()
     await userEvent.click(vertical)

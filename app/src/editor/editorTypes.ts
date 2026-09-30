@@ -62,6 +62,9 @@ export interface EditorSource {
   gid: GlyphId
   glyph: string
   outline: LayerOutline
+  /** Persistent edit locks and annotations for this source layer. */
+  editorMetadata?: unknown
+  glyphLocked?: boolean
   guides: readonly ScopedGuide[]
   metrics: SceneMetrics
   master: string | null
@@ -69,6 +72,10 @@ export interface EditorSource {
   curves: LayerCurves
   /** Ghost nodes of this layer's components, for snapping (§4.1 item 14). */
   componentPoints: readonly Point2[]
+  /** Both boundaries of the active master's alignment zones. */
+  zoneLines?: readonly number[]
+  /** Points on the background layer of the active master. */
+  backgroundPoints?: readonly Point2[]
 }
 
 /** What the controller reports back to React. */

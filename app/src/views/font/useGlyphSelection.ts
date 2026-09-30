@@ -12,6 +12,7 @@ import type { DocId, GlyphId } from '../../api'
 import { useDocumentStore } from '../../stores/documentStore'
 
 import type { GlyphPager } from './glyphPager'
+import { knownIndex } from './glyphOrder'
 import {
   fetchGidRange,
   rangeBetween,
@@ -56,8 +57,15 @@ export function useGlyphSelection({
   scrollTo,
 }: GlyphSelectionOptions): GlyphSelection {
   const setSelection = useDocumentStore((state) => state.setSelection)
-  const [focusIndex, setFocusIndex] = useState(0)
-  const anchorRef = useRef(0)
+  // Grid/list switching remounts the presentation but keeps its query. Restore
+  // the known handle's position so keyboard commands retain the user's target.
+  const [focusIndex, setFocusIndex] = useState(() => {
+    const focus = useDocumentStore.getState().byDoc[doc]?.focus
+    return focus === null || focus === undefined
+      ? 0
+      : (knownIndex(query, focus) ?? 0)
+  })
+  const anchorRef = useRef(focusIndex)
   /**
    * Counter identifying the newest selection request. A range that has to ask
    * the kernel for its handles can resolve after a later click or key press,

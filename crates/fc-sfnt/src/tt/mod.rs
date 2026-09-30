@@ -3,6 +3,7 @@
 mod basis;
 mod points;
 mod span;
+mod variation;
 mod write;
 
 pub use write::{with_instructions, GlyphProgram};
@@ -24,6 +25,7 @@ pub struct GlyphPoint {
 #[derive(Clone, Debug, PartialEq)]
 pub struct GlyphBasis {
     /// Versioned digest of stored point order, components, transforms and metrics.
+    /// Variable-font bindings also include glyph IDs and variation tables.
     /// Hint bytecode is deliberately excluded.
     pub fingerprint: String,
     /// Points in the exact order used by TrueType instructions.
@@ -39,10 +41,15 @@ pub struct GlyphBasis {
     pub component_metrics: bool,
 }
 
-/// Reads stored point indices and a stable binding from a static TrueType sfnt.
+/// Reads stored point indices and a stable binding from a TrueType sfnt.
 ///
 /// This accepts compiled sfnt bytes, not a WOFF container. Recursive components,
 /// truncated point streams and excessive expansion return errors.
+///
+/// For variable fonts, positions describe the stored `glyf` outlines before
+/// variation interpolation or hinting. The binding includes the complete variation
+/// context and is deliberately incompatible with static bindings. This does not
+/// evaluate other instances or validate the runtime behavior of their programs.
 pub fn point_basis(bytes: &[u8], glyph_id: u16) -> Result<GlyphBasis, Error> {
     let mut source = basis::Source::new(bytes)?;
     let fingerprint = source.fingerprint(glyph_id)?;
@@ -67,6 +74,7 @@ pub fn point_basis(bytes: &[u8], glyph_id: u16) -> Result<GlyphBasis, Error> {
 }
 
 /// Computes bindings with shared component caching and bounded total work.
+/// Variable bindings conservatively become stale when any variation table changes.
 pub fn fingerprints(bytes: &[u8], glyph_ids: &[u16]) -> Result<Vec<String>, Error> {
     if glyph_ids.len() > 65535 {
         return Err(invalid("too many glyph binding requests"));

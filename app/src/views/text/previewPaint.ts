@@ -41,6 +41,14 @@ export function previewGeometry(
       Math.max(PREVIEW_CANVAS_MIN_WIDTH, contentWidth),
     ),
     minX,
+    ...(size > 48
+      ? {
+          cssHeight: Math.min(
+            PREVIEW_CANVAS_MAX_WIDTH,
+            Math.ceil(size * 1.2 + PREVIEW_PADDING * 2),
+          ),
+        }
+      : {}),
     ...(vertical
       ? {
           cssHeight: Math.min(
@@ -65,6 +73,9 @@ export interface PaintPreviewOptions {
   minX: number
   maxY?: number
   ink: string
+  flipHorizontal?: boolean
+  flipVertical?: boolean
+  blur?: number
 }
 
 /** Paints supplied paths with their shaped offsets using a y-up font transform. */
@@ -75,24 +86,37 @@ export function paintPreview(
 ): void {
   const { size, unitsPerEm, width, height, pixelRatio, minX, ink } = options
   context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
+  context.filter = 'none'
   context.clearRect(0, 0, width, height)
   context.fillStyle = ink
+  const blur = Number.isFinite(options.blur)
+    ? Math.max(0, Math.min(4, options.blur ?? 0))
+    : 0
+  context.filter = blur > 0 ? `blur(${blur * pixelRatio}px)` : 'none'
 
   const scale = size / unitsPerEm
   const baseline =
     options.maxY !== undefined
       ? PREVIEW_PADDING + options.maxY * scale
       : Math.min(height - PREVIEW_PADDING, Math.round((height + size) / 2))
+  const offsetX = PREVIEW_PADDING - minX * scale
   context.setTransform(
-    scale * pixelRatio,
+    (options.flipHorizontal ? -scale : scale) * pixelRatio,
     0,
     0,
-    -scale * pixelRatio,
-    (PREVIEW_PADDING - minX * scale) * pixelRatio,
-    baseline * pixelRatio,
+    (options.flipVertical ? scale : -scale) * pixelRatio,
+    (options.flipHorizontal ? width - offsetX : offsetX) * pixelRatio,
+    (options.flipVertical ? height - baseline : baseline) * pixelRatio,
   )
 
   for (const glyph of glyphs) {
+    if (glyph.color) {
+      context.save()
+      context.translate(glyph.x, glyph.y)
+      glyph.color.paint(context, ink)
+      context.restore()
+      continue
+    }
     if (!glyph.path) continue
     let path: Path2D
     try {

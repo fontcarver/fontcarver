@@ -17,6 +17,7 @@ import {
   type Rect,
 } from '../../canvas/glyphPaint'
 import type { GlyphCell } from '../../api'
+import type { ColorGlyphPaint } from '../../canvas/colorGlyph'
 import type { LabelMode } from '../../stores/documentStore'
 
 import { colorLabelSwatch } from './colorLabels'
@@ -56,6 +57,8 @@ export interface PaintCellOptions {
   theme: CellTheme
   /** Cached outline, or `null` for an empty glyph. */
   path: Path2D | null
+  /** Validated color artwork takes priority, including outline-free glyphs. */
+  color?: ColorGlyphPaint
   /** UI font stack used for the label. */
   fontFamily: string
 }
@@ -103,6 +106,50 @@ function ellipsise(
   return cut <= 0 ? '' : `${text.slice(0, cut)}…`
 }
 
+/** A reference character is presentation only, never synthetic glyph content. */
+function emptyGlyphCharacter(cell: GlyphCell): string | undefined {
+  if (!cell.is_empty) return undefined
+  for (const scalar of cell.unicodes) {
+    if (
+      !Number.isInteger(scalar) ||
+      scalar < 0 ||
+      scalar > 0x10ffff ||
+      (scalar >= 0xd800 && scalar <= 0xdfff)
+    )
+      continue
+    const character = String.fromCodePoint(scalar)
+    if (
+      !/[\p{Cc}\p{Cf}\p{Z}\p{Default_Ignorable_Code_Point}]/u.test(character)
+    ) {
+      return character
+    }
+  }
+  return undefined
+}
+
+function paintReferenceCharacter(
+  ctx: CanvasRenderingContext2D,
+  character: string,
+  box: Rect,
+  options: PaintCellOptions,
+) {
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(box.x, box.y, box.width, box.height)
+  ctx.clip()
+  ctx.font = `${Math.max(1, Math.round(box.height * 0.8))}px ${options.fontFamily}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = options.theme.glyphMuted
+  ctx.fillText(
+    character,
+    box.x + box.width / 2,
+    box.y + box.height / 2,
+    box.width,
+  )
+  ctx.restore()
+}
+
 /**
  * Paints one cell onto a canvas context whose backing store is
  * `size * dpr` square. The context is reset to the identity transform on entry
@@ -143,8 +190,19 @@ export function paintCell(
   const fit = fitGlyph(box, cell.width, em)
   paintBaseline(ctx, box, fit, theme.baseline)
 
-  if (cell.is_empty || options.path === null) {
-    paintEmptyMarker(ctx, box, theme.glyphMuted)
+  if (options.color) {
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(box.x, box.y, box.width, box.height)
+    ctx.clip()
+    ctx.translate(fit.originX, fit.baselineY)
+    ctx.scale(fit.scale, -fit.scale)
+    options.color.paint(ctx, theme.glyph)
+    ctx.restore()
+  } else if (cell.is_empty || options.path === null) {
+    const character = emptyGlyphCharacter(cell)
+    if (character) paintReferenceCharacter(ctx, character, box, options)
+    else paintEmptyMarker(ctx, box, theme.glyphMuted)
   } else {
     paintGlyph(ctx, options.path, fit, theme.glyph)
   }

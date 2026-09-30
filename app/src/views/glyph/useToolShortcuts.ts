@@ -10,12 +10,9 @@
 
 import { useEffect, useRef } from 'react'
 
-import {
-  HOLD_BORROW_MS,
-  toolForKey,
-  type ToolId,
-} from '../../editor/tools/registry'
-import { isEditableTarget } from '../../shell/shortcuts'
+import { HOLD_BORROW_MS, type ToolId } from '../../editor/tools/registry'
+import { isEditableTarget, isInteractiveTarget } from '../../shell/shortcuts'
+import { toolForShortcut } from '../../shell/toolShortcuts'
 import { useEditorStore } from '../../stores/editorStore'
 import { useUiStore } from '../../stores/uiStore'
 
@@ -23,6 +20,7 @@ import { useUiStore } from '../../stores/uiStore'
 export function useToolShortcuts(enabled: boolean): void {
   const pending = useRef<{
     key: string
+    code: string
     tool: ToolId
     timer: number
     borrowed: boolean
@@ -40,10 +38,15 @@ export function useToolShortcuts(enabled: boolean): void {
     }
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing || event.repeat) return
       if (useUiStore.getState().modalCount > 0) return
-      if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) return
       if (isEditableTarget(event.target)) return
-      const tool = toolForKey(event.key, event.shiftKey)
+      if (
+        isInteractiveTarget(event.target) &&
+        (event.key === ' ' || event.key === 'Enter')
+      )
+        return
+      const tool = toolForShortcut(event)
       if (!tool || pending.current) return
       event.preventDefault()
       const timer = setTimeout(() => {
@@ -57,6 +60,7 @@ export function useToolShortcuts(enabled: boolean): void {
       }, HOLD_BORROW_MS) as unknown as number
       pending.current = {
         key: event.key.toLowerCase(),
+        code: event.code,
         tool,
         timer,
         borrowed: false,
@@ -65,7 +69,13 @@ export function useToolShortcuts(enabled: boolean): void {
 
     const onKeyUp = (event: KeyboardEvent) => {
       const held = pending.current
-      if (!held || held.key !== event.key.toLowerCase()) return
+      if (!held) return
+      if (
+        held.code
+          ? held.code !== event.code
+          : held.key !== event.key.toLowerCase()
+      )
+        return
       clear()
       if (useUiStore.getState().modalCount > 0) {
         if (held.borrowed) store().borrowTool(null)
@@ -77,13 +87,20 @@ export function useToolShortcuts(enabled: boolean): void {
       else store().setTool(held.tool)
     }
 
+    const onBlur = () => {
+      clear()
+      store().borrowTool(null)
+    }
+
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', onBlur)
     return () => {
       clear()
       store().borrowTool(null)
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', onBlur)
     }
   }, [enabled])
 }

@@ -11,6 +11,10 @@ use sha1::{Digest, Sha1};
 
 use crate::{fcf, DocId, Error, Session};
 
+#[cfg(test)]
+#[path = "autosave_tests.rs"]
+mod tests;
+
 /// Timing and storage configuration for the autosave worker.
 #[derive(Clone, Debug)]
 pub struct AutosaveConfig {
@@ -98,7 +102,7 @@ pub fn spawn(session: Arc<Session>, config: AutosaveConfig) -> AutosaveHandle {
     AutosaveHandle { stop, thread }
 }
 
-/// Lists autosaves that are newer than their original document, if known.
+/// Lists readable autosaves that are newer than their original document, if known.
 pub fn list_recoverable(dir: &Path) -> Vec<RecoverableEntry> {
     let entries = match std::fs::read_dir(dir) {
         Ok(entries) => entries,
@@ -120,6 +124,13 @@ pub fn list_recoverable(dir: &Path) -> Vec<RecoverableEntry> {
             continue;
         };
         if original_is_newer(doc_path.as_deref(), saved_at) {
+            continue;
+        }
+        // Metadata deliberately skips the font payload. A damaged payload can
+        // still have a valid envelope, so only offer snapshots the native
+        // reader can actually restore, including model validation.
+        if let Err(error) = fcf::read(&autosave_path) {
+            tracing::warn!(%error, path = %autosave_path.display(), "ignoring invalid recovery snapshot");
             continue;
         }
         recoverable.push(RecoverableEntry {
@@ -197,9 +208,18 @@ fn is_autosave_path(path: &Path) -> bool {
 }
 
 fn original_is_newer(path: Option<&Path>, autosave_time: SystemTime) -> bool {
-    path.and_then(|path| std::fs::metadata(path).ok())
-        .and_then(|metadata| metadata.modified().ok())
-        .is_some_and(|modified| modified > autosave_time)
+    path.map(|path| {
+        if fcf::is_project_path(path) {
+            // The manifest commits a project save. Temporary files or lock
+            // creation can update the directory without committing a save.
+            path.join("project.json")
+        } else {
+            path.to_path_buf()
+        }
+    })
+    .and_then(|path| std::fs::metadata(path).ok())
+    .and_then(|metadata| metadata.modified().ok())
+    .is_some_and(|modified| modified > autosave_time)
 }
 
 fn default_autosave_dir() -> PathBuf {

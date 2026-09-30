@@ -13,6 +13,9 @@ use super::{apply::layer_mut, Command, CurveKind, PointRef};
 mod delete;
 mod points;
 mod segments;
+mod smooth;
+
+pub(super) use smooth::maintain_super_smooth;
 
 /// The contours an outline operation may have changed.
 ///
@@ -66,6 +69,8 @@ impl Restore {
         match command {
             Command::MovePoints { points, .. }
             | Command::SetSmooth { points, .. }
+            | Command::SetSuperSmooth { points, .. }
+            | Command::HarmonizeNodes { points, .. }
             | Command::SetSmartCorner { points, .. } => {
                 Self::contours(target, points.iter().map(|point| point.contour))
             }
@@ -180,6 +185,20 @@ fn validate(
     touched: &Touched,
 ) -> Result<(), Error> {
     let target = layer_mut(font, glyph, layer)?;
+    match touched {
+        Touched::Layer => {
+            for contour in &mut target.contours {
+                maintain_super_smooth(contour)?;
+            }
+        }
+        Touched::Contours(indices) => {
+            for &index in indices {
+                if let Some(contour) = target.contours.get_mut(index) {
+                    maintain_super_smooth(contour)?;
+                }
+            }
+        }
+    }
     let malformed = match touched {
         Touched::Layer => target
             .contours
@@ -203,6 +222,8 @@ fn target(command: &Command) -> Option<(&GlyphName, &LayerId)> {
         Command::MovePoints { glyph, layer, .. }
         | Command::SetPointPosition { glyph, layer, .. }
         | Command::SetSmooth { glyph, layer, .. }
+        | Command::SetSuperSmooth { glyph, layer, .. }
+        | Command::HarmonizeNodes { glyph, layer, .. }
         | Command::SetSmartCorner { glyph, layer, .. }
         | Command::InsertPointOnSegment { glyph, layer, .. }
         | Command::DeletePoints { glyph, layer, .. }
@@ -242,6 +263,17 @@ fn dispatch(font: &mut Font, command: &Command) -> Result<Touched, Error> {
             smooth,
             level_handles,
         } => points::set_smooth(font, glyph, layer, points, *smooth, *level_handles),
+        Command::SetSuperSmooth {
+            glyph,
+            layer,
+            points,
+            enabled,
+        } => smooth::set_super_smooth(font, glyph, layer, points, *enabled),
+        Command::HarmonizeNodes {
+            glyph,
+            layer,
+            points,
+        } => smooth::harmonize(font, glyph, layer, points),
         Command::SetSmartCorner {
             glyph,
             layer,

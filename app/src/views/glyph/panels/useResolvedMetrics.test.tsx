@@ -13,16 +13,18 @@ import { useResolvedMetrics } from './useResolvedMetrics'
 
 function Probe({
   doc = 1,
+  layer,
   keys,
   fallback,
   apply,
 }: {
   doc?: number
+  layer?: string
   keys: MetricsKeys
   fallback: ResolvedMetrics
   apply: (value: ResolvedMetrics) => void
 }) {
-  const resolution = useResolvedMetrics(doc, 42, 'm1', keys, fallback)
+  const resolution = useResolvedMetrics(doc, 42, 'm1', keys, fallback, layer)
   return (
     <>
       <output>{`${resolution.status}:${resolution.value.lsb}`}</output>
@@ -40,6 +42,57 @@ function Probe({
 afterEach(() => setTransport(undefined))
 
 describe('useResolvedMetrics', () => {
+  it('resolves the selected layer and discards a previous layer result', async () => {
+    const pending: ((value: ResolvedMetrics) => void)[] = []
+    const transport = createMockTransport({
+      'doc.metrics_resolve': () =>
+        new Promise<ResolvedMetrics>((resolve) => pending.push(resolve)),
+    })
+    setTransport(transport)
+    const keys: MetricsKeys = {
+      left: '==H',
+      right: null,
+      width: null,
+      vertical_origin: null,
+      vertical_width: null,
+    }
+    const fallback: ResolvedMetrics = {
+      lsb: 10,
+      rsb: 60,
+      width: 900,
+      source: 'Explicit',
+    }
+    const view = render(
+      <Probe layer="regular" keys={keys} fallback={fallback} apply={vi.fn()} />,
+    )
+    await waitFor(() => expect(pending).toHaveLength(1))
+    expect(transport.calls[0]?.params).toEqual({
+      doc: 1,
+      gid: 42,
+      master: 'm1',
+      layer: 'regular',
+    })
+    view.rerender(
+      <Probe
+        layer="alternate"
+        keys={keys}
+        fallback={fallback}
+        apply={vi.fn()}
+      />,
+    )
+    await waitFor(() => expect(pending).toHaveLength(2))
+    pending[0]?.({ ...fallback, lsb: 80, source: 'Key' })
+    expect(screen.getByText('pending:10')).toBeInTheDocument()
+    expect(transport.calls[1]?.params).toEqual({
+      doc: 1,
+      gid: 42,
+      master: 'm1',
+      layer: 'alternate',
+    })
+    pending[1]?.({ ...fallback, lsb: 90, source: 'Key' })
+    expect(await screen.findByText('ready:90')).toBeInTheDocument()
+  })
+
   it('never exposes a previous formula result while a new identity is pending', async () => {
     const pending: ((value: ResolvedMetrics) => void)[] = []
     setTransport(

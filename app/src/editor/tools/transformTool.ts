@@ -13,7 +13,7 @@ import type { Point2 } from '../../canvas/Viewport'
 import type { FontBox } from '../../canvas/Viewport'
 
 import { toolCursor, type CursorId } from '../cursors'
-import type { Modifiers } from '../gestures/drag'
+import { controlModifier, type Modifiers } from '../gestures/drag'
 import {
   TransformGesture,
   type TransformAmount,
@@ -68,7 +68,7 @@ export abstract class TransformTool implements EditorTool {
     // The press is snapped once, here: a click names the origin and a drag
     // measures from it, and both should start from the same point.
     this.press = {
-      at: context.snap(pointer.font, pointer.modifiers.mod).point,
+      at: context.snap(pointer.font, controlModifier(pointer.modifiers)).point,
       dragging: false,
     }
     return { handled: true }

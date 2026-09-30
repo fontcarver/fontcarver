@@ -11,6 +11,8 @@ pub fn point(x: f64, y: f64, kind: PointKind) -> Point {
         kind,
         smooth: false,
         name: None,
+        id: None,
+        super_smooth: false,
         tt_index: TtIndex::Unnumbered,
     }
 }

@@ -66,7 +66,6 @@ pub(crate) fn apply(api: &Api, params: LayerEffectsParams) -> Result<LayerEffect
     layer.effects.clone_from(&params.effects);
     let width = layer.width;
     let name = layer.name.clone();
-    let anchors = layer.anchors.clone();
     let master = super::glyphs::layer_master(layer);
     let name = if name.is_empty() {
         master
@@ -100,29 +99,7 @@ pub(crate) fn apply(api: &Api, params: LayerEffectsParams) -> Result<LayerEffect
     };
     if !params.dry_run {
         let command = if params.bake {
-            let contours = fc_geom::from_bezpaths(
-                &[output.path],
-                match fc_model::query::declared_curve_format(&font, master.as_ref()) {
-                    Some(fc_model::query::CurveFormat::Quadratic) => {
-                        fc_geom::CurveKind::Quadratic { max_err: 0.1 }
-                    }
-                    _ => fc_geom::CurveKind::Cubic,
-                },
-            );
-            Command::Batch(vec![
-                Command::ReplaceLayerOutline {
-                    glyph: params.glyph.clone().into(),
-                    layer: params.layer.clone(),
-                    contours,
-                    components: Vec::new(),
-                    anchors,
-                },
-                Command::SetLayerEffects {
-                    glyph: params.glyph.clone().into(),
-                    layer: params.layer.clone(),
-                    effects: Vec::new(),
-                },
-            ])
+            bake_layer(&font, &params.glyph, &params.layer, output.path)?
         } else {
             Command::SetLayerEffects {
                 glyph: params.glyph.clone().into(),
@@ -150,4 +127,51 @@ pub(crate) fn apply(api: &Api, params: LayerEffectsParams) -> Result<LayerEffect
         );
     }
     Ok(result)
+}
+
+/// Replace the evaluated layer and remove operations referring to its former source nodes.
+pub(crate) fn bake_layer(
+    font: &fc_model::Font,
+    glyph: &str,
+    layer: &fc_model::LayerId,
+    path: kurbo::BezPath,
+) -> Result<Command, ApiError> {
+    let source = font
+        .glyph(glyph)
+        .and_then(|glyph| glyph.layer(layer))
+        .ok_or_else(|| invalid("bake source does not exist"))?;
+    let master = super::glyphs::layer_master(source);
+    let contours = fc_geom::from_bezpaths(
+        &[path],
+        match fc_model::query::declared_curve_format(font, master.as_ref()) {
+            Some(fc_model::query::CurveFormat::Quadratic) => {
+                fc_geom::CurveKind::Quadratic { max_err: 0.1 }
+            }
+            _ => fc_geom::CurveKind::Cubic,
+        },
+    );
+    // Clear source references before replacing the points they identify.
+    Ok(Command::Batch(vec![
+        Command::SetConstructions {
+            glyph: glyph.into(),
+            layer: layer.clone(),
+            constructions: Vec::new(),
+        },
+        Command::SetLayerEffects {
+            glyph: glyph.into(),
+            layer: layer.clone(),
+            effects: Vec::new(),
+        },
+        Command::NodeLinks(fc_doc::NodeLinkCommand::Clear {
+            glyph: glyph.into(),
+            layer: layer.clone(),
+        }),
+        Command::ReplaceLayerOutline {
+            glyph: glyph.into(),
+            layer: layer.clone(),
+            contours,
+            components: Vec::new(),
+            anchors: source.anchors.clone(),
+        },
+    ]))
 }

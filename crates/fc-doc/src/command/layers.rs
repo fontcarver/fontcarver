@@ -1,4 +1,6 @@
-use fc_model::{Font, GlyphName, LayerId, LayerKind};
+use std::collections::BTreeSet;
+
+use fc_model::{Font, GlyphName, Layer, LayerId, LayerKind, MasterId};
 
 use crate::Error;
 
@@ -6,6 +8,62 @@ use super::{apply::glyph_mut, Command};
 
 pub(super) fn apply(font: &mut Font, command: &Command) -> Result<(), Error> {
     match command {
+        Command::SetLayerColor {
+            glyph,
+            layer,
+            color,
+        } => set_color(font, glyph, layer, *color),
+        Command::SetLayerImage {
+            glyph,
+            layer,
+            image,
+        } => {
+            if font.glyph(glyph).is_some_and(|g| g.locked) {
+                return Err(Error::InvalidCommand("the image glyph is locked".into()));
+            }
+            let target = super::apply::layer_mut(font, glyph, layer)?;
+            if let Some(current) = target.background_image.as_ref().filter(|i| i.locked) {
+                let mut unlocked = current.clone();
+                unlocked.locked = false;
+                if image.as_ref() != Some(&unlocked) && image.as_ref() != Some(current) {
+                    return Err(Error::InvalidCommand("the image is locked".into()));
+                }
+            }
+            if let Some(image) = image {
+                super::apply::ensure_finite(&image.transform.as_coeffs(), "image transform")?;
+                if image
+                    .transform
+                    .as_coeffs()
+                    .iter()
+                    .any(|v| v.abs() > 1_000_000.)
+                    || image.transform.determinant().abs() < 1e-12
+                    || image.file_name.len() > 4096
+                    || image.file_name.contains('\0')
+                    || image
+                        .data
+                        .as_ref()
+                        .is_some_and(|d| d.len() > 16 * 1024 * 1024)
+                {
+                    return Err(Error::InvalidCommand(
+                        "invalid source image placement or size".into(),
+                    ));
+                }
+            }
+            target.background_image.clone_from(image);
+            Ok(())
+        }
+        Command::SetConstructions {
+            glyph,
+            layer,
+            constructions,
+        } => {
+            let target = super::apply::layer_mut(font, glyph, layer)?;
+            let mut proposed = target.clone();
+            proposed.constructions.clone_from(constructions);
+            proposed.validate_constructions()?;
+            target.constructions.clone_from(constructions);
+            Ok(())
+        }
         Command::SetLayerEffects {
             glyph,
             layer,
@@ -19,8 +77,16 @@ pub(super) fn apply(font: &mut Font, command: &Command) -> Result<(), Error> {
             Ok(())
         }
         Command::AddLayer { glyph, layer } => add(font, glyph, layer),
+        Command::RenameLayer { glyph, layer, name } => rename(font, glyph, layer, name),
         Command::RemoveLayer { glyph, layer } => remove(font, glyph, layer),
         Command::CopyLayer { glyph, from, to } => copy(font, glyph, from, to),
+        Command::CopySelectionToBackground {
+            glyph,
+            from,
+            master,
+            contours,
+            components,
+        } => copy_selection(font, glyph, from, master, contours, components),
         Command::SwapWithBackground { glyph, master } => swap(font, glyph, master),
         Command::SetMaster { master } => {
             let current = font
@@ -58,6 +124,35 @@ pub(super) fn apply(font: &mut Font, command: &Command) -> Result<(), Error> {
             "non-layer command routed to layer handler".to_owned(),
         )),
     }
+}
+
+fn set_color(
+    font: &mut Font,
+    glyph: &GlyphName,
+    layer: &LayerId,
+    color: Option<u8>,
+) -> Result<(), Error> {
+    if color.is_some_and(|value| value > 11) {
+        return Err(Error::InvalidCommand(
+            "layer color label must be between 0 and 11".into(),
+        ));
+    }
+    let target = super::apply::layer_mut(font, glyph, layer)?;
+    if target.user_data.is_null() {
+        if color.is_none() {
+            return Ok(());
+        }
+        target.user_data = serde_json::json!({});
+    }
+    let data = target.user_data.as_object_mut().ok_or_else(|| {
+        Error::InvalidCommand("layer user data must be an object to store a color label".into())
+    })?;
+    if let Some(value) = color {
+        data.insert("com.fontcarver.colorLabel".into(), serde_json::json!(value));
+    } else {
+        data.remove("com.fontcarver.colorLabel");
+    }
+    Ok(())
 }
 
 fn add(font: &mut Font, glyph_name: &GlyphName, layer: &fc_model::Layer) -> Result<(), Error> {
@@ -100,6 +195,22 @@ fn add(font: &mut Font, glyph_name: &GlyphName, layer: &fc_model::Layer) -> Resu
         return Err(error.into());
     }
     move_to(font, glyph_name, position);
+    Ok(())
+}
+
+fn rename(
+    font: &mut Font,
+    glyph_name: &GlyphName,
+    layer_id: &LayerId,
+    name: &str,
+) -> Result<(), Error> {
+    let name = name.trim();
+    if name.is_empty() {
+        return Err(Error::InvalidCommand(
+            "layer name cannot be empty".to_owned(),
+        ));
+    }
+    super::apply::layer_mut(font, glyph_name, layer_id)?.name = name.to_owned();
     Ok(())
 }
 
@@ -159,6 +270,85 @@ fn copy(
     Ok(())
 }
 
+fn copy_selection(
+    font: &mut Font,
+    glyph_name: &GlyphName,
+    from: &LayerId,
+    master: &MasterId,
+    contours: &[usize],
+    components: &[usize],
+) -> Result<(), Error> {
+    if contours.is_empty() && components.is_empty() {
+        return Err(Error::InvalidCommand(
+            "select at least one path to copy".to_owned(),
+        ));
+    }
+    if font.master(master).is_none() {
+        return Err(Error::MissingMaster(master.clone()));
+    }
+    let glyph = glyph_mut(font, glyph_name)?;
+    let source = glyph
+        .layers
+        .iter()
+        .find(|layer| layer.id == *from)
+        .ok_or_else(|| Error::MissingLayer {
+            glyph: glyph_name.clone(),
+            layer: from.clone(),
+        })?;
+    let destination = LayerKind::Background(master.clone());
+    if source.kind == destination {
+        return Err(Error::InvalidCommand(
+            "source and destination background must be different layers".to_owned(),
+        ));
+    }
+    let mut contours = selected(&source.contours, contours, "contour")?;
+    // These are independent paths: retaining source identities can collide with
+    // earlier copies and accidentally bind them to destination locks or links.
+    for contour in &mut contours {
+        contour.id = None;
+        for point in &mut contour.points {
+            point.id = None;
+        }
+    }
+    let components = selected(&source.components, components, "component")?;
+    let new_background = Layer {
+        kind: destination.clone(),
+        width: source.width,
+        vertical_width: source.vertical_width,
+        vertical_origin: source.vertical_origin,
+        ..Layer::default()
+    };
+    if let Some(background) = glyph
+        .layers
+        .iter_mut()
+        .find(|layer| layer.kind == destination)
+    {
+        background.contours.extend(contours);
+        background.components.extend(components);
+    } else {
+        glyph.layers.push(Layer {
+            contours,
+            components,
+            ..new_background
+        });
+    }
+    Ok(())
+}
+
+fn selected<T: Clone>(values: &[T], indices: &[usize], kind: &str) -> Result<Vec<T>, Error> {
+    indices
+        .iter()
+        .copied()
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .map(|index| {
+            values.get(index).cloned().ok_or_else(|| {
+                Error::InvalidCommand(format!("{kind} index {index} is out of bounds"))
+            })
+        })
+        .collect()
+}
+
 fn swap(font: &mut Font, glyph_name: &GlyphName, master: &fc_model::MasterId) -> Result<(), Error> {
     let glyph = glyph_mut(font, glyph_name)?;
     let master_index = glyph
@@ -183,6 +373,19 @@ fn swap(font: &mut Font, glyph_name: &GlyphName, master: &fc_model::MasterId) ->
         two_mut(&mut glyph.layers, master_index, background_index);
     std::mem::swap(&mut master_layer.contours, &mut background_layer.contours);
     std::mem::swap(&mut master_layer.effects, &mut background_layer.effects);
+    std::mem::swap(
+        &mut master_layer.constructions,
+        &mut background_layer.constructions,
+    );
+    std::mem::swap(
+        &mut master_layer.node_links,
+        &mut background_layer.node_links,
+    );
+    std::mem::swap(
+        &mut master_layer.linked_guides,
+        &mut background_layer.linked_guides,
+    );
+    std::mem::swap(&mut master_layer.guides, &mut background_layer.guides);
     std::mem::swap(
         &mut master_layer.components,
         &mut background_layer.components,

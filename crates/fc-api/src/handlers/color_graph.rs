@@ -37,6 +37,13 @@ pub(crate) fn preview(
 }
 
 fn subset(source: &Font, params: ColorGraphPreviewParams) -> Result<Font, ApiError> {
+    let source_master = params
+        .master
+        .as_ref()
+        .unwrap_or(&source.default_master().id);
+    if source.master(source_master).is_none() {
+        return Err(ApiError::not_found("preview master does not exist"));
+    }
     let mut color = params.color;
     color
         .validate(&source.glyph_order().cloned().collect::<Vec<_>>())
@@ -95,13 +102,12 @@ fn subset(source: &Font, params: ColorGraphPreviewParams) -> Result<Font, ApiErr
     }];
     let mut font = Font::new_empty("FontCarver Color Preview", source.info.units_per_em);
     let master = font.default_master().id.clone();
-    let source_master = &source.default_master().id;
     let mut points = 0usize;
     for name in names {
         let layer = source
             .glyph(&name)
             .and_then(|g| g.master_layer(source_master))
-            .ok_or_else(|| invalid("preview outline has no default-master layer"))?;
+            .ok_or_else(|| invalid("preview outline has no selected-master layer"))?;
         let path = fc_geom::flatten_layer(source, &name, source_master).map_err(invalid)?;
         points = points.saturating_add(path.elements().len());
         if points > 100_000 {

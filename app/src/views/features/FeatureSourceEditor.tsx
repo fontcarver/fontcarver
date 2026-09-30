@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
+  DocId,
   FeatureDiagnostic,
   Features,
   GeneratedFeatureRecord,
+  MasterId,
 } from '../../api'
 import { withSettledDocument } from '../../editor/documentPersistence'
 import { reportError, runCommand } from '../../shell/commands'
@@ -11,12 +14,14 @@ import {
   type FeatureCodeEditorProps,
 } from './FeatureCodeEditor'
 import { type FeatureDraftSession } from './FeatureDraftSession'
+import { FeatureClassPreview } from './FeatureClassPreview'
 import { moveSource, updateSource, type SourceItem } from './featureSources'
 import styles from './FeaturesView.module.css'
 
 /** Source-local controls and the CodeMirror view share the document draft owner. */
 export function FeatureSourceEditor({
   source,
+  previewSource = source,
   item,
   generated,
   generatedSaved,
@@ -26,9 +31,12 @@ export function FeatureSourceEditor({
   diagnostics,
   focusRange,
   session,
+  master = null,
+  generation = 0,
   onRemove,
 }: {
   source: Features
+  previewSource?: Features
   item: SourceItem
   generated: GeneratedFeatureRecord | undefined
   generatedSaved: boolean
@@ -38,9 +46,16 @@ export function FeatureSourceEditor({
   diagnostics: readonly FeatureDiagnostic[]
   focusRange: FeatureCodeEditorProps['focusRange']
   session: FeatureDraftSession
+  master?: MasterId | null
+  generation?: number
   onRemove: (id: string) => void
 }) {
   const { t } = useTranslation()
+  const [classPreview, setClassPreview] = useState<{
+    doc: DocId
+    sourceId: string
+    name: string
+  } | null>(null)
   const change = (next: Features) => {
     const settings = session.getSnapshot().settings
     if (settings) session.change(next, settings)
@@ -150,7 +165,7 @@ export function FeatureSourceEditor({
           label={t('features.sourceCode')}
           glyphNames={glyphNames}
           loadGlyphNames={loadGlyphNames}
-          classNames={source.classes.map((entry) => entry.name)}
+          classNames={previewSource.classes.map((entry) => entry.name)}
           diagnostics={diagnostics
             .filter((entry) => entry.source_id === item.id && entry.span)
             .map((entry) => ({
@@ -172,8 +187,23 @@ export function FeatureSourceEditor({
           onCompositionChange={session.setComposing}
           onHistory={(direction) => runCommand(`edit.${direction}`)}
           onSave={() => runCommand('file.save')}
+          onClassPreview={(name) =>
+            setClassPreview({ doc: session.doc, sourceId: item.id, name })
+          }
         />
       </div>
+      <p className={styles.muted}>{t('features.classPreview.help')}</p>
+      {classPreview?.doc === session.doc &&
+        classPreview.sourceId === item.id && (
+          <FeatureClassPreview
+            doc={session.doc}
+            master={master}
+            generation={generation}
+            source={previewSource}
+            name={classPreview.name}
+            onClose={() => setClassPreview(null)}
+          />
+        )}
     </>
   )
 }

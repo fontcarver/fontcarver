@@ -15,6 +15,8 @@ import { NO_MODIFIERS, type Modifiers } from '../editor/gestures/drag'
 
 /** Undo labels and readouts for the drawing tools, in plain English. */
 export const TOOL_LABELS: ToolLabels = {
+  addGuide: 'Add guide',
+  erase: 'Erase',
   drawPath: 'Draw path',
   extendPath: 'Extend path',
   draw: 'Draw',

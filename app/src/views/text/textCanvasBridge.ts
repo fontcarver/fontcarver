@@ -28,31 +28,60 @@ export function surroundingGlyphs(
   paths: Map<string, Path2D>,
   indexes: readonly number[],
 ): SurroundingGlyph[] {
-  return indexes.flatMap((index) => {
-    const glyph = run.glyphs[index]
-    if (!glyph) return []
-    if (run.mode === 'edit' && index === run.activeIndex) return []
-    if (glyph.documentGid === null) return []
-    const data = run.cells.get(glyph.documentGid)?.path
-    if (!data) return []
-    let path = paths.get(data)
-    if (!path) {
-      try {
-        path = new Path2D(data)
-      } catch {
-        return []
+  const ghosts: SurroundingGlyph[] =
+    run.mode === 'text'
+      ? (run.kerningGhosts ?? []).flatMap((ghost) => {
+          if (!indexes.includes(ghost.index)) return []
+          let path = paths.get(ghost.path)
+          if (!path) {
+            try {
+              path = new Path2D(ghost.path)
+            } catch {
+              return []
+            }
+            paths.set(ghost.path, path)
+          }
+          return [
+            {
+              index: ghost.index,
+              path,
+              x: ghost.x - run.activeOrigin.x,
+              y: ghost.y - run.activeOrigin.y,
+              ghost: true,
+            },
+          ]
+        })
+      : []
+  return [
+    ...ghosts,
+    ...indexes.flatMap((index) => {
+      const glyph = run.glyphs[index]
+      if (!glyph) return []
+      if (run.mode === 'edit' && index === run.activeIndex) return []
+      if (glyph.documentGid === null) return []
+      const data = run.cells.get(glyph.documentGid)?.path
+      const color = run.colors?.get(glyph.documentGid)
+      if (!data && !color) return []
+      let path = data ? (paths.get(data) ?? null) : null
+      if (data && !path) {
+        try {
+          path = new Path2D(data)
+        } catch {
+          if (!color) return []
+        }
+        if (path) paths.set(data, path)
       }
-      paths.set(data, path)
-    }
-    return [
-      {
-        index,
-        path,
-        x: glyph.x - run.activeOrigin.x,
-        y: glyph.y - run.activeOrigin.y,
-      },
-    ]
-  })
+      return [
+        {
+          index,
+          path,
+          ...(color ? { color } : {}),
+          x: glyph.x - run.activeOrigin.x,
+          y: glyph.y - run.activeOrigin.y,
+        },
+      ]
+    }),
+  ]
 }
 
 /** Finds a run glyph under a canvas point in absolute shaped-run space. */

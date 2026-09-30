@@ -124,9 +124,22 @@ pub(crate) fn matching_candidates(
     filter: &GlyphFilter,
     search_query: Option<&str>,
 ) -> Result<Vec<Candidate>, ApiError> {
-    if filter.query.as_ref().is_some_and(|q| q.len() > 4096) {
-        return Err(ApiError::invalid_params("glyph search exceeds 4096 bytes"));
-    }
+    let query = super::glyph_query::GlyphQuery::new(filter)?;
+    let smart = filter
+        .smart_expression
+        .as_deref()
+        .filter(|expression| !expression.trim().is_empty())
+        .map(super::smart_filter_parser::parse)
+        .transpose()?
+        .as_ref()
+        .map(super::smart_filter_eval::CompiledSmartFilter::new)
+        .transpose()?;
+    let names = filter.glyph_names.as_ref().map(|names| {
+        names
+            .iter()
+            .map(String::as_str)
+            .collect::<std::collections::BTreeSet<_>>()
+    });
     if let Some(cjk) = &filter.cjk {
         super::cjk::validate(cjk)?;
     }
@@ -145,7 +158,20 @@ pub(crate) fn matching_candidates(
         let gid = document
             .glyph_id(name)
             .ok_or_else(|| ApiError::internal(format!("glyph `{name}` has no session handle")))?;
-        if matches_filter(glyph, layer, document.glyph_generation(gid), filter) {
+        let generation = document.glyph_generation(gid);
+        if names
+            .as_ref()
+            .is_some_and(|names| !names.contains(name.as_ref()))
+            || query
+                .as_ref()
+                .is_some_and(|query| query.rank(glyph).is_none())
+            || smart
+                .as_ref()
+                .is_some_and(|smart| !smart.matches(&document.font, glyph, layer, generation))
+        {
+            continue;
+        }
+        if matches_filter(glyph, layer, generation, filter) {
             let unihan = glyph
                 .unicodes
                 .first()
@@ -167,7 +193,7 @@ pub(crate) fn matching_candidates(
                 cid: cid_map.get(name).copied().unwrap_or(u32::MAX),
                 width: layer.map_or(0.0, |layer| layer.width),
                 search_rank: search_query
-                    .and_then(|query| query_rank(glyph, query))
+                    .and_then(|_| query.as_ref().and_then(|query| query.rank(glyph)))
                     .unwrap_or_default(),
             });
         }
@@ -195,13 +221,6 @@ fn matches_filter(
     generation: u64,
     filter: &GlyphFilter,
 ) -> bool {
-    if filter
-        .query
-        .as_deref()
-        .is_some_and(|query| !query_matches(glyph, query))
-    {
-        return false;
-    }
     if filter.cjk.as_ref().is_some_and(|filter| {
         !glyph
             .unicodes
@@ -277,55 +296,9 @@ fn category_matches(first_unicode: Option<u32>, allowed: &[String]) -> bool {
     };
     let category = category_name(fc_glyphdata::category(unicode));
     let sub_category = fc_glyphdata::sub_category(unicode);
-    allowed
-        .iter()
-        .any(|value| value == category || value == sub_category)
-}
-
-fn query_matches(glyph: &Glyph, query: &str) -> bool {
-    query_rank(glyph, query).is_some()
-}
-
-fn query_rank(glyph: &Glyph, query: &str) -> Option<u8> {
-    if let Some(matches) = super::cjk::query(glyph, query) {
-        return matches.then_some(0);
-    }
-    let query = query.trim();
-    let lower = query.to_lowercase();
-    if let Some(digits) = lower.strip_prefix("u+") {
-        if let Some(unicode) = parse_scalar(digits) {
-            return glyph.unicodes.contains(&unicode).then_some(4);
-        }
-    }
-    if lower.starts_with("uni") {
-        if let Some(unicode) = fc_glyphdata::unicode_for_name(&lower) {
-            return glyph.unicodes.contains(&unicode).then_some(4);
-        }
-    }
-    let name = glyph.name.as_ref();
-    if name == query {
-        return Some(0);
-    }
-    let lower_name = name.to_lowercase();
-    if lower_name == lower {
-        return Some(1);
-    }
-    if lower_name.starts_with(&lower) {
-        return Some(2);
-    }
-    if lower_name.contains(&lower) {
-        return Some(3);
-    }
-    let mut characters = query.chars();
-    if let (Some(character), None) = (characters.next(), characters.next()) {
-        return glyph.unicodes.contains(&u32::from(character)).then_some(4);
-    }
-    None
-}
-
-fn parse_scalar(digits: &str) -> Option<u32> {
-    let unicode = u32::from_str_radix(digits, 16).ok()?;
-    char::from_u32(unicode).map(u32::from)
+    allowed.iter().any(|value| {
+        value == category || value == sub_category || value == &format!("{category}/{sub_category}")
+    })
 }
 
 pub(crate) fn sort_candidates(candidates: &mut [Candidate], sort: GlyphSort) {
@@ -376,6 +349,8 @@ pub(crate) fn build_cell(
     master: &MasterId,
     include_path: bool,
 ) -> Result<GlyphCell, ApiError> {
+    use super::glyph_status;
+
     if document.font.master(master).is_none() {
         return Err(ApiError::not_found(format!(
             "master `{master}` does not exist"
@@ -406,10 +381,24 @@ pub(crate) fn build_cell(
             export: glyph.export,
             has_components: false,
             is_empty: true,
+            metrics_out_of_sync: glyph_status::metrics_out_of_sync(
+                &document.font,
+                glyph,
+                master,
+                None,
+            ),
+            has_annotations: glyph_status::has_annotations(glyph),
+            has_custom_glyph_info: glyph_status::has_custom_glyph_info(glyph),
+            incompatible_masters: glyph_status::incompatible_masters(&document.font, glyph),
+            locked: glyph.locked,
             generation: document.glyph_generation(gid),
         });
     };
     let mut flattened = document.flattened_path(gid, master)?;
+    let outline_bbox = (!flattened.elements().is_empty()).then(|| {
+        let bounds = flattened.bounding_box();
+        [bounds.x0, bounds.y0, bounds.x1, bounds.y1]
+    });
     let bitmap_preview = flattened.elements().is_empty()
         && document
             .font
@@ -448,10 +437,14 @@ pub(crate) fn build_cell(
             }
         }
     }
-    let bbox = (!flattened.elements().is_empty()).then(|| {
-        let bounds = flattened.bounding_box();
-        [bounds.x0, bounds.y0, bounds.x1, bounds.y1]
-    });
+    let bbox = if bitmap_preview {
+        (!flattened.elements().is_empty()).then(|| {
+            let bounds = flattened.bounding_box();
+            [bounds.x0, bounds.y0, bounds.x1, bounds.y1]
+        })
+    } else {
+        outline_bbox
+    };
     Ok(GlyphCell {
         gid,
         name: name.to_string(),
@@ -489,6 +482,16 @@ pub(crate) fn build_cell(
         export: glyph.export,
         has_components: !layer.components.is_empty(),
         is_empty: layer.is_empty() && !bitmap_preview,
+        metrics_out_of_sync: glyph_status::metrics_out_of_sync(
+            &document.font,
+            glyph,
+            master,
+            outline_bbox,
+        ),
+        has_annotations: glyph_status::has_annotations(glyph),
+        has_custom_glyph_info: glyph_status::has_custom_glyph_info(glyph),
+        incompatible_masters: glyph_status::incompatible_masters(&document.font, glyph),
+        locked: glyph.locked,
         generation: if bitmap_preview {
             document.generation
         } else {

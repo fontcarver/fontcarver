@@ -20,10 +20,17 @@ export function drawTextRun(
     viewport.offset.y * viewport.dpr,
   )
   context.fillStyle = ink
+  context.strokeStyle = ink
   for (const glyph of glyphs) {
     context.save()
     context.translate(glyph.x, glyph.y)
-    context.fill(glyph.path)
+    if (glyph.ghost && glyph.path) {
+      context.globalAlpha = 0.35
+      context.lineWidth = 1 / viewport.scale
+      context.setLineDash([3 / viewport.scale, 3 / viewport.scale])
+      context.stroke(glyph.path)
+    } else if (glyph.color) glyph.color.paint(context, ink)
+    else if (glyph.path) context.fill(glyph.path)
     context.restore()
   }
   context.restore()

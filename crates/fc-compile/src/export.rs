@@ -79,6 +79,14 @@ pub struct ExportOptions {
     pub master: Option<MasterId>,
     /// Remove overlaps in a static export copy before compilation and hinting.
     pub remove_overlap: bool,
+    /// Insert missing horizontal and vertical curve extrema in a static export copy.
+    pub add_extrema: bool,
+    /// Round outline points and component offsets to whole font units on export.
+    pub round_coordinates: bool,
+    /// Resolve static components into independent contours on the export copy.
+    pub decompose_components: bool,
+    /// Factor repeated static CFF1 OTF charstrings into PostScript subroutines.
+    pub subroutinize: bool,
     /// Preserve TrueType programs when no glyph has been touched.
     pub keep_tt_instructions: bool,
     /// Copy eligible imported raw tables into the generated font.
@@ -100,6 +108,10 @@ impl Default for ExportOptions {
             format: ExportFormat::Ttf,
             master: None,
             remove_overlap: false,
+            add_extrema: false,
+            round_coordinates: false,
+            decompose_components: false,
+            subroutinize: false,
             keep_tt_instructions: true,
             preserve_untouched_tables: true,
             production_names: false,
@@ -198,6 +210,7 @@ fn export_inner(
     if options.format == ExportFormat::Fcf {
         return Err(Error::UnsupportedFormat("FCF"));
     }
+    crate::export_geometry::validate_options(options)?;
     if font.has_unapplied_feature_draft() {
         return Err(Error::InvalidSource(
             "apply or discard the feature draft before exporting a font".to_owned(),
@@ -324,6 +337,20 @@ fn export_inner(
         return export_inner(&resolved, &|_| 1, &options, progress, outline_changed);
     }
 
+    if crate::export_geometry::requested(options) {
+        let prepared = crate::prepare_geometry_export(font, master, options)?;
+        let mut options = options.clone();
+        options.add_extrema = false;
+        options.round_coordinates = false;
+        options.decompose_components = false;
+        options.keep_tt_instructions = false;
+        let mut report = export_inner(&prepared, &|_| 1, &options, progress, true)?;
+        report.warnings.push(ExportWarning {
+            code: "export-geometry-prepared",
+            message: "Export geometry options were applied to a copy; source outlines remain unchanged and stale hints were cleared from modified layers".into(),
+        });
+        return Ok(report);
+    }
     if options.remove_overlap {
         if options.variable {
             return Err(Error::InvalidSource("remove overlaps in compatible source masters before variable export, or export a static instance".into()));
@@ -376,7 +403,7 @@ fn export_inner(
 
     progress(ExportStage::Compile, 0);
     let prepared_cff = (options.format == ExportFormat::Otf && !options.variable)
-        .then(|| crate::otf::prepare(font, master, options.production_names))
+        .then(|| crate::otf::prepare(font, master, options.production_names, options.subroutinize))
         .transpose()?;
     let compile_options = CompileOptions {
         production_names: options.production_names,
@@ -434,6 +461,7 @@ fn export_inner(
             &compiled.glyph_order,
             options.production_names,
             prepared,
+            options.subroutinize,
         )?
     } else {
         merged

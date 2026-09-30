@@ -12,7 +12,7 @@ import type { Command, Contour } from '../../api'
 import type { Point2 } from '../../canvas/Viewport'
 
 import { toolCursor } from '../cursors'
-import type { Modifiers } from '../gestures/drag'
+import { controlModifier, type Modifiers } from '../gestures/drag'
 import { HIT_RADII } from '../hitTest'
 import { handlePolar, hudText } from '../hud'
 import type { LayerCurves } from '../pathGeometry'
@@ -78,7 +78,10 @@ export class PenTool implements EditorTool {
       if (shortcut) return { apply: shortcut, handled: true }
     }
 
-    const at = context.snap(pointer.font, pointer.modifiers.mod).point
+    const at = context.snap(
+      pointer.font,
+      controlModifier(pointer.modifiers),
+    ).point
 
     if (this.nodes.length === 0) {
       const pickup = openEnd(context, hit)
@@ -118,7 +121,10 @@ export class PenTool implements EditorTool {
 
     if (this.spaceHeld) {
       // Space repositions the node the press is placing, handles and all.
-      const at = context.snap(pointer.font, pointer.modifiers.mod).point
+      const at = context.snap(
+        pointer.font,
+        controlModifier(pointer.modifiers),
+      ).point
       const dx = at.x - node.point.x
       const dy = at.y - node.point.y
       node.point = at

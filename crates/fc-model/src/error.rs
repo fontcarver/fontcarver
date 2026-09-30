@@ -9,6 +9,9 @@ use crate::{GlyphName, LayerId, MasterId};
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub enum Error {
+    /// A node constraint contains invalid identities, coordinates or cycles.
+    #[error("invalid node links: {0}")]
+    InvalidNodeLinks(String),
     /// Layer-effect parameters or stored mask outlines are invalid.
     #[error("invalid layer effects: {0}")]
     InvalidEffects(String),

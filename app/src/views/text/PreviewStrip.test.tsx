@@ -103,4 +103,112 @@ describe('PreviewStrip', () => {
     ).toBeLessThanOrEqual(4_096)
     expect(container.querySelectorAll('[data-preview-scroll]')).toHaveLength(3)
   })
+
+  it('reflects preview ink on both axes and applies bounded blur', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      () => {
+        const recording = createRecordingContext()
+        contexts.push(recording)
+        return recording.ctx
+      },
+    )
+    render(<PreviewStrip {...props()} />)
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Flip preview horizontally' }),
+    )
+    expect(contexts.at(-1)?.calls('setTransform')[1]?.args[0]).toBe(-0.048)
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Flip preview vertically' }),
+    )
+    expect(contexts.at(-1)?.calls('setTransform')[1]?.args[3]).toBe(0.048)
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Blur (px)' }), {
+      target: { value: '1.5' },
+    })
+    expect(contexts.at(-1)?.styleAt('fill', 'filter')).toBe('blur(1.5px)')
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Blur (px)' }), {
+      target: { value: '1000' },
+    })
+    expect(contexts.at(-1)?.styleAt('fill', 'filter')).toBe('blur(4px)')
+  })
+
+  it('applies custom sizes and preserves rendered sizes after an invalid draft', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      () => {
+        const recording = createRecordingContext()
+        contexts.push(recording)
+        return recording.ctx
+      },
+    )
+    render(<PreviewStrip {...props()} />)
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'Waterfall sizes (px)' }),
+      {
+        target: { value: '18, 72, 128' },
+      },
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Apply sizes' }))
+    expect(
+      contexts.slice(-3).map(({ calls }) => calls('setTransform')[1]?.args[0]),
+    ).toEqual([0.018, 0.072, 0.128])
+    expect(
+      screen
+        .getAllByRole('img')
+        .map((region) => region.getAttribute('aria-label')),
+    ).toEqual(['18 px preview', '72 px preview', '128 px preview'])
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'Waterfall sizes (px)' }),
+      {
+        target: { value: '12, Infinity' },
+      },
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Apply sizes' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('between 6 and 256')
+    expect(screen.getAllByRole('img')).toHaveLength(3)
+    expect(screen.getByRole('img', { name: '128 px preview' })).toBeVisible()
+  })
+
+  it('shows only the active glyph at the origin in single-glyph mode', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      () => {
+        const recording = createRecordingContext()
+        contexts.push(recording)
+        return recording.ctx
+      },
+    )
+    const input = props()
+    const { rerender } = render(
+      <PreviewStrip {...input} activeGlyph={input.glyphs[1]} />,
+    )
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Preview content' }),
+      {
+        target: { value: 'single' },
+      },
+    )
+    expect(contexts.at(-1)?.calls('fill')).toHaveLength(1)
+    expect(contexts.at(-1)?.calls('translate')[0]?.args).toEqual([0, 0])
+    rerender(<PreviewStrip {...input} activeGlyph={null} />)
+    expect(contexts.at(-1)?.calls('fill')).toHaveLength(0)
+  })
+
+  it('resizes with pointer and keyboard input and routes detachment', () => {
+    const onDetach = vi.fn()
+    const onHeightChange = vi.fn()
+    render(<PreviewStrip {...props({ onDetach, onHeightChange })} />)
+    const divider = screen.getByRole('separator', { name: 'Resize preview' })
+    expect(divider).toHaveAttribute('aria-valuenow', '160')
+    fireEvent.pointerDown(divider, { pointerId: 1, clientY: 400, button: 0 })
+    fireEvent.pointerMove(divider, { pointerId: 1, clientY: 360 })
+    fireEvent.pointerUp(divider, { pointerId: 1 })
+    expect(onHeightChange).toHaveBeenLastCalledWith(200)
+    expect(divider).toHaveAttribute('aria-valuenow', '200')
+    fireEvent.keyDown(divider, { key: 'Home' })
+    expect(onHeightChange).toHaveBeenLastCalledWith(120)
+    fireEvent.keyDown(divider, { key: 'ArrowDown' })
+    expect(divider).toHaveAttribute('aria-valuenow', '120')
+    fireEvent.keyDown(divider, { key: 'End' })
+    expect(onHeightChange).toHaveBeenLastCalledWith(600)
+    fireEvent.click(screen.getByRole('button', { name: 'Detach preview' }))
+    expect(onDetach).toHaveBeenCalledOnce()
+  })
 })

@@ -1,7 +1,7 @@
 /**
  * The Measure tool (design spec §5, §6.2).
  *
- * Purely local and purely read-only: the drag draws a line, the HUD reads its
+ * The line remains local until G drops a guide: the drag draws a line, the HUD reads its
  * length and angle, and every crossing with the outline is marked with the
  * distance to the previous one, which is how a designer checks a stem width or
  * a counter without changing anything.
@@ -10,6 +10,7 @@
 import type { Contour } from '../../api'
 import type { Point2 } from '../../canvas/Viewport'
 
+import { controlModifier } from '../gestures/drag'
 import { toolCursor } from '../cursors'
 import { formatUnits } from '../fieldValue'
 import { contourToPath, lineHits } from '../pathGeometry'
@@ -21,6 +22,7 @@ import {
   NO_TOOL_OVERLAY,
   type EditorTool,
   type ToolContext,
+  type ToolKey,
   type ToolOutcome,
   type ToolOverlay,
   type ToolPointer,
@@ -41,7 +43,13 @@ export function measureCrossings(
   const hits = contours.flatMap((contour) =>
     lineHits(contourToPath(contour), from, to),
   )
-  return hits.sort((a, b) => a.s - b.s).map((hit) => hit.point)
+  const sorted = hits.sort((a, b) => a.s - b.s).map((hit) => hit.point)
+  return sorted.filter((point, index) => {
+    const previous = sorted[index - 1]
+    return (
+      !previous || Math.hypot(point.x - previous.x, point.y - previous.y) > 1e-7
+    )
+  })
 }
 
 /** The per-span labels between consecutive crossings. */
@@ -70,15 +78,66 @@ export class MeasureTool implements EditorTool {
     return this.dragging
   }
 
-  claimsKey(): boolean {
-    // The measurement stays on screen after the button comes up, but it owns
-    // no key: leaving it displayed must not disable Enter or Escape.
-    return false
+  claimsKey(key: string): boolean {
+    return (
+      (key === 'Escape' && this.from !== null) ||
+      (key.toLowerCase() === 'g' && this.dragging)
+    )
+  }
+
+  keyDown(key: ToolKey, context: ToolContext): ToolOutcome {
+    if (key.key === 'Escape' && this.from) {
+      this.finish()
+      return { handled: true }
+    }
+    if (
+      key.key.toLowerCase() !== 'g' ||
+      !this.dragging ||
+      key.modifiers.mod ||
+      key.modifiers.alt ||
+      key.repeat
+    )
+      return NO_OUTCOME
+    const { from, to } = this
+    const target = context.target
+    if (
+      !from ||
+      !to ||
+      !target ||
+      Math.hypot(to.x - from.x, to.y - from.y) < 1e-7
+    )
+      return { handled: true }
+    return {
+      handled: true,
+      apply: {
+        label: context.labels.addGuide,
+        command: {
+          AddGuide: {
+            glyph: target.glyph,
+            layer: target.layer,
+            master: null,
+            guide: {
+              ...from,
+              angle:
+                ((Math.atan2(to.y - from.y, to.x - from.x) * 180) / Math.PI +
+                  360) %
+                180,
+              name: null,
+              locked: false,
+              color: null,
+            },
+          },
+        },
+      },
+    }
   }
 
   pointerDown(pointer: ToolPointer, context: ToolContext): ToolOutcome {
     if (pointer.button !== 0) return NO_OUTCOME
-    this.from = context.snap(pointer.font, pointer.modifiers.mod).point
+    this.from = context.snap(
+      pointer.font,
+      controlModifier(pointer.modifiers),
+    ).point
     this.to = this.from
     this.dragging = true
     return { handled: true }
@@ -86,7 +145,10 @@ export class MeasureTool implements EditorTool {
 
   pointerMove(pointer: ToolPointer, context: ToolContext): ToolOutcome {
     if (!this.from || !this.dragging) return NO_OUTCOME
-    const at = context.snap(pointer.font, pointer.modifiers.mod).point
+    const at = context.snap(
+      pointer.font,
+      controlModifier(pointer.modifiers),
+    ).point
     this.to = pointer.modifiers.shift ? constrainVector(this.from, at) : at
     return { handled: true }
   }
@@ -126,7 +188,19 @@ export class MeasureTool implements EditorTool {
   }
 }
 
-/** The `d 312  ∠ 30.0°` line the HUD shows while measuring. */
+/** Delta in the glyph's upright coordinate system (OpenType italic angle). */
+export function measureDelta(
+  from: Point2,
+  to: Point2,
+  italicAngle = 0,
+): Point2 {
+  const y = to.y - from.y
+  const angle =
+    Number.isFinite(italicAngle) && Math.abs(italicAngle) < 89 ? italicAngle : 0
+  return { x: to.x - from.x + y * Math.tan((angle * Math.PI) / 180), y }
+}
+
+/** Distance, physical angle, and italic-aware coordinate deltas. */
 export function measureHud(
   from: Point2,
   to: Point2,
@@ -135,8 +209,10 @@ export function measureHud(
   const dx = to.x - from.x
   const dy = to.y - from.y
   const angle = (Math.atan2(dy, dx) * 180) / Math.PI
+  const delta = measureDelta(from, to, context.italicAngle)
   return (
     `${context.labels.distance} ${formatUnits(Math.hypot(dx, dy))}` +
-    `  ${context.labels.hud.angle} ${angle.toFixed(1)}°`
+    `  ${context.labels.hud.angle} ${angle.toFixed(1)}°` +
+    `  ${context.labels.hud.deltaX} ${formatUnits(delta.x)}  ${context.labels.hud.deltaY} ${formatUnits(delta.y)}`
   )
 }

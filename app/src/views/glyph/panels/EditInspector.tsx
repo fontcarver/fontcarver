@@ -6,9 +6,13 @@ import { selectActiveTab, useUiStore } from '../../../stores/uiStore'
 import styles from '../glyphView.module.css'
 
 import { AnchorsPanel } from './AnchorsPanel'
+import { EditorMetadataPanel } from './EditorMetadataPanel'
 import { ComponentsPanel } from './ComponentsPanel'
+import { ConstructionPanel } from './ConstructionPanel'
+import { CjkConstructionPanel } from './CjkConstructionPanel'
 import { GlyphPanel } from './GlyphPanel'
 import { GuidesPanel } from './GuidesPanel'
+import { ImagePanel } from './ImagePanel'
 import { KerningGroupsPanel } from './KerningGroupsPanel'
 import { LayersPanel } from './LayersPanel'
 import { UnihanPanel } from './UnihanPanel'
@@ -108,6 +112,28 @@ export function EditInspector({
         <ComponentsPanel {...context} />
       </PanelSection>
       <PanelSection
+        id="source-image"
+        title={t('imageWorkflow.title')}
+        defaultOpen={false}
+      >
+        <ImagePanel
+          key={`${active.doc}:${active.glyph.name}:${outline.layer}`}
+          target={context.target}
+          glyphLocked={active.glyph.locked}
+          reload={context.reload}
+        />
+      </PanelSection>
+      <PanelSection
+        id="cjk-construction"
+        title={t('cjkConstruction.title')}
+        defaultOpen={false}
+      >
+        <CjkConstructionPanel
+          key={`${active.doc}:${active.gid}:${outline.layer}`}
+          {...context}
+        />
+      </PanelSection>
+      <PanelSection
         id="anchors"
         title={t('glyphInspector.anchors')}
         count={outline.anchors.length}
@@ -120,6 +146,17 @@ export function EditInspector({
         count={outline.guides.length + active.masterGuides.length}
       >
         <GuidesPanel {...context} />
+      </PanelSection>
+      <EditorMetadataPanel
+        key={`${active.doc}:${active.gid}:${outline.layer}`}
+        {...context}
+      />
+      <PanelSection
+        id="construction"
+        title={t('construction.title')}
+        defaultOpen={false}
+      >
+        <ConstructionPanel {...context} />
       </PanelSection>
       <PanelSection
         id="transform"

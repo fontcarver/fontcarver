@@ -45,6 +45,54 @@ afterEach(() => {
 })
 
 describe('PreferencesDialog', () => {
+  it('persists independent targets, pixel distances, marker sizes and grid subdivisions', async () => {
+    const user = userEvent.setup()
+    const transport = setup()
+    await waitFor(() => expect(usePrefsStore.getState().loaded).toBe(true))
+    await user.click(screen.getByRole('tab', { name: 'Snapping' }))
+    for (const name of [
+      'Handles',
+      'Anchors',
+      'Alignment zones',
+      'Background points',
+    ])
+      await user.click(screen.getByRole('checkbox', { name }))
+    for (const [label, value] of [
+      ['Snap distance (px)', '12'],
+      ['Hit distance (px)', '9'],
+    ]) {
+      const field = screen.getByLabelText(label!)
+      await user.clear(field)
+      await user.type(field, `${value}{Enter}`)
+    }
+    await user.click(screen.getByRole('tab', { name: 'Editor' }))
+    for (const [label, value] of [
+      ['Grid subdivisions', '4'],
+      ['Node size (px)', '8'],
+      ['Handle size (px)', '6'],
+    ]) {
+      const field = screen.getByLabelText(label!)
+      await user.clear(field)
+      await user.type(field, `${value}{Enter}`)
+    }
+    await waitFor(() => expect(lastPrefs(transport)?.handle_size).toBe(6))
+    usePrefsStore.setState(initialPrefsState())
+    await usePrefsStore.getState().load()
+    expect(usePrefsStore.getState().prefs).toMatchObject({
+      snap: {
+        nodes: true,
+        handles: false,
+        anchors: false,
+        zones: false,
+        background: false,
+      },
+      snap_distance: 12,
+      hit_distance: 9,
+      grid_subdivision: 4,
+      node_size: 8,
+      handle_size: 6,
+    })
+  }, 30_000)
   it('loads the kernel values on open', async () => {
     setup({ autosave_seconds: 15 })
 

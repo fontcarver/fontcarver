@@ -1,6 +1,13 @@
 //! Serializable request and response types for every API method.
 
+mod automation;
+pub use automation::*;
+
 mod bitmap;
+mod image;
+pub use image::*;
+mod bitmap_parity;
+pub use bitmap_parity::*;
 mod commands;
 pub use bitmap::*;
 mod editing;
@@ -8,7 +15,11 @@ mod events;
 mod export;
 mod features;
 mod font;
+mod glyph_lists;
 mod glyphs;
+pub use glyph_lists::*;
+mod smart_filters;
+pub use smart_filters::*;
 mod hints;
 mod tt_hints;
 pub use tt_hints::*;
@@ -24,8 +35,10 @@ pub use math::*;
 mod problems;
 mod session;
 mod shaping;
+mod variable_proof;
 mod variation;
 pub use hints::*;
+pub use variable_proof::*;
 pub use variation::*;
 
 pub use commands::*;
@@ -55,3 +68,18 @@ pub use style::*;
 
 mod effects;
 pub use effects::*;
+
+mod constructions;
+pub use constructions::*;
+
+mod cross_paste;
+pub use cross_paste::*;
+
+mod glyph_data;
+pub use glyph_data::*;
+
+mod font_compare;
+pub use font_compare::*;
+
+mod optical;
+pub use optical::*;

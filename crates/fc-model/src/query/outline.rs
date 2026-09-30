@@ -13,6 +13,16 @@ const MAX_PATH_ELEMENTS: usize = 1_000_000;
 /// The callback must not mutate the font and returns a bounded finite path.
 pub type LayerPathFilter<'a> = dyn Fn(&Layer, BezPath) -> Result<BezPath, Error> + 'a;
 
+/// Geometry callback receiving evaluated construction sources in construction order.
+/// Source traversal shares component cycle, depth and work limits.
+pub type LayerSourceFilter<'a> = dyn Fn(&Layer, BezPath, &[BezPath]) -> Result<BezPath, Error> + 'a;
+
+#[derive(Clone, Copy)]
+enum OutlineFilter<'a> {
+    Basic(&'a LayerPathFilter<'a>),
+    Sources(&'a LayerSourceFilter<'a>),
+}
+
 /// Resolve raw source geometry, including ordinary and smart components.
 /// Persistent layer effects are evaluated only by geometry consumers via the
 /// explicit filter variants; this model-only query leaves them unapplied.
@@ -45,7 +55,7 @@ pub fn flatten_layer_with(
         None,
         &mut HashSet::new(),
         &mut budget,
-        Some(filter),
+        Some(OutlineFilter::Basic(filter)),
     )
 }
 
@@ -84,7 +94,7 @@ pub fn flatten_smart_component_with(
         Some(values),
         &mut HashSet::new(),
         &mut budget,
-        Some(filter),
+        Some(OutlineFilter::Basic(filter)),
     )
 }
 
@@ -100,14 +110,63 @@ pub fn flatten_layer_by_id_with(
     layer: &LayerId,
     filter: &LayerPathFilter<'_>,
 ) -> Result<BezPath, Error> {
-    flatten_selected_layer(font, glyph, layer, Some(filter))
+    flatten_selected_layer(font, glyph, layer, Some(OutlineFilter::Basic(filter)))
+}
+
+/// Resolve a master with evaluated construction sources inside the shared recursion guard.
+pub fn flatten_layer_with_sources(
+    font: &Font,
+    glyph: &str,
+    master: &MasterId,
+    filter: &LayerSourceFilter<'_>,
+) -> Result<BezPath, Error> {
+    let mut budget = MAX_PATH_ELEMENTS;
+    flatten_inner(
+        font,
+        &glyph.into(),
+        master,
+        None,
+        &mut HashSet::new(),
+        &mut budget,
+        Some(OutlineFilter::Sources(filter)),
+    )
+}
+
+/// Resolve a selected layer with evaluated construction sources and shared work limits.
+pub fn flatten_layer_by_id_with_sources(
+    font: &Font,
+    glyph: &str,
+    layer: &LayerId,
+    filter: &LayerSourceFilter<'_>,
+) -> Result<BezPath, Error> {
+    flatten_selected_layer(font, glyph, layer, Some(OutlineFilter::Sources(filter)))
+}
+
+/// Resolve a smart instance with evaluated construction sources and shared work limits.
+pub fn flatten_smart_component_with_sources(
+    font: &Font,
+    glyph: &str,
+    master: &MasterId,
+    values: &BTreeMap<String, f64>,
+    filter: &LayerSourceFilter<'_>,
+) -> Result<BezPath, Error> {
+    let mut budget = MAX_PATH_ELEMENTS;
+    flatten_inner(
+        font,
+        &glyph.into(),
+        master,
+        Some(values),
+        &mut HashSet::new(),
+        &mut budget,
+        Some(OutlineFilter::Sources(filter)),
+    )
 }
 
 fn flatten_selected_layer(
     font: &Font,
     glyph: &str,
     layer: &LayerId,
-    filter: Option<&LayerPathFilter<'_>>,
+    filter: Option<OutlineFilter<'_>>,
 ) -> Result<BezPath, Error> {
     let name = GlyphName::from(glyph);
     let glyph_data = font.glyph(&name).ok_or_else(|| Error::MissingGlyph {
@@ -150,7 +209,7 @@ fn flatten_inner(
     smart: Option<&BTreeMap<String, f64>>,
     visited: &mut HashSet<GlyphName>,
     budget: &mut usize,
-    filter: Option<&LayerPathFilter<'_>>,
+    filter: Option<OutlineFilter<'_>>,
 ) -> Result<BezPath, Error> {
     if visited.len() >= MAX_COMPONENT_DEPTH {
         return Err(Error::ComponentDepthLimit {
@@ -192,8 +251,19 @@ fn flatten_contents(
     master: &MasterId,
     visited: &mut HashSet<GlyphName>,
     budget: &mut usize,
-    filter: Option<&LayerPathFilter<'_>>,
+    filter: Option<OutlineFilter<'_>>,
 ) -> Result<BezPath, Error> {
+    let resolved;
+    let layer = if !layer.node_links.is_empty() || !layer.linked_guides.is_empty() {
+        resolved = {
+            let mut value = layer.clone();
+            value.resolve_node_links()?;
+            value
+        };
+        &resolved
+    } else {
+        layer
+    };
     let mut path = BezPath::new();
     for contour in &layer.contours {
         let curve = contour.try_to_bezpath()?;
@@ -231,7 +301,25 @@ fn flatten_contents(
         path.extend(transformed);
     }
     if let Some(filter) = filter {
-        path = filter(layer, path)?;
+        path = match filter {
+            OutlineFilter::Basic(callback) => callback(layer, path)?,
+            OutlineFilter::Sources(callback) => {
+                layer.validate_constructions()?;
+                let mut sources = Vec::with_capacity(layer.constructions.len());
+                for construction in &layer.constructions {
+                    sources.push(flatten_inner(
+                        font,
+                        &construction.source,
+                        master,
+                        None,
+                        visited,
+                        budget,
+                        Some(filter),
+                    )?);
+                }
+                callback(layer, path, &sources)?
+            }
+        };
         if !path.is_finite() {
             return Err(Error::InvalidDesignSpace(
                 "layer outline filter returned nonfinite coordinates".into(),

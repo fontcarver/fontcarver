@@ -219,6 +219,24 @@ export function registerGlyphViewCommands(): void {
       run: () => activeEditor()?.toggleSmooth(false),
     },
     {
+      id: 'path.toggleSmoothKeepOutline',
+      title: 'cmd.path.toggleSmoothKeepOutline',
+      menu: 'path',
+      group: 'nodes',
+      shortcut: 'Alt+Enter',
+      when: () => {
+        const editor = activeEditor()
+        if (!editor || !canvasHasFocus()) return false
+        // A pen path in progress owns Enter: it finishes the path, and the
+        // shortcut layer must leave the key alone rather than claiming it for
+        // whatever node happens to be selected underneath.
+        if (editor.claimsKey('Enter')) return false
+        return selectionCounts(editor.currentSelection).nodes > 0
+      },
+      disabledReason: 'cmd.reason.noPointsSelected',
+      run: () => activeEditor()?.toggleSmooth(true),
+    },
+    {
       id: 'view.toggleSnapping',
       title: 'cmd.view.toggleSnapping',
       menu: 'view',

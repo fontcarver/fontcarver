@@ -41,3 +41,16 @@ it('keeps keyboard focus with the old tab until its edit finishes', async () => 
   expect(next).toHaveFocus()
   expect(next).toHaveAttribute('aria-selected', 'true')
 })
+
+it('keeps Overview pinned while offering an explicit tear-off control for editing tabs', () => {
+  useUiStore.getState().openTab({ kind: 'font', doc: 1, label: 'Overview' })
+  useUiStore.getState().openTab({ kind: 'glyph', doc: 1, gid: 3, label: 'A' })
+  render(<TabBar />)
+  expect(
+    screen.queryByRole('button', { name: 'Close Overview' }),
+  ).not.toBeInTheDocument()
+  expect(
+    screen.getByRole('button', { name: 'Move A to a new window' }),
+  ).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Close A' })).toBeInTheDocument()
+})

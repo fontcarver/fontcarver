@@ -1,5 +1,8 @@
-import { call, getTransport, type DocId, type GlyphId } from '../api'
-import { i18n } from '../i18n'
+import { registerCrossDocumentCommands } from '../views/crossdocument/crossDocumentCommands'
+import { call, type DocId, type GlyphId } from '../api'
+import { registerAutomationCommands } from '../automation/commands'
+import { registerHelpCommands } from './contextHelp'
+import { shellCommands } from './shellCommands'
 import { withSettledDocument } from '../editor/documentPersistence'
 import { hasPendingDocumentDraft } from '../editor/documentEditParticipants'
 import { useDocumentStore } from '../stores/documentStore'
@@ -19,29 +22,18 @@ import {
 } from '../views/glyph/glyphCommands'
 import { registerLayerCommands } from '../views/glyph/layerCommands'
 import { registerPathCommands } from '../views/glyph/pathCommands'
+import { registerSmoothCommands } from '../views/glyph/smoothCommands'
 
 import { registerCommands, type Command } from './commands'
 import {
-  closeTab,
-  cycleTab,
   openBitmapTab,
   openFeaturesTab,
   openFontInfoTab,
   openGlyphTab,
 } from './tabActions'
 
-const APP_VERSION = '0.1.0'
-
 function activeDoc(): DocId | null {
   return activeDocId()
-}
-
-function textCanvasHasFocus(): boolean {
-  const ui = useUiStore.getState()
-  return (
-    Boolean(ui.tabs.find((tab) => tab.id === ui.activeTab)?.textState) &&
-    globalThis.document?.activeElement instanceof HTMLCanvasElement
-  )
 }
 
 function hasDocument(): boolean {
@@ -91,9 +83,13 @@ async function runHistory(method: 'doc.undo' | 'doc.redo'): Promise<void> {
 
 /** Registers every built-in command. Safe to call more than once. */
 export function registerBuiltinCommands(): void {
+  registerCrossDocumentCommands()
+  registerHelpCommands()
+  registerAutomationCommands()
   registerFontViewCommands()
   registerGlyphViewCommands()
   registerPathCommands()
+  registerSmoothCommands()
   registerLayerCommands()
   registerCommands([
     {
@@ -138,6 +134,13 @@ export function registerBuiltinCommands(): void {
       group: 'open',
       shortcut: 'Mod+O',
       run: () => useSessionStore.getState().openDialog(),
+    },
+    {
+      id: 'file.openProject',
+      title: 'cmd.file.openProject',
+      menu: 'file',
+      group: 'open',
+      run: () => useSessionStore.getState().openProjectDialog(),
     },
     {
       id: 'file.openRecent',
@@ -361,71 +364,6 @@ export function registerBuiltinCommands(): void {
     themeCommand('light'),
     themeCommand('dark'),
     themeCommand('system'),
-    {
-      id: 'palette.open',
-      title: 'cmd.palette.open',
-      menu: 'view',
-      group: 'palette',
-      shortcut: 'Mod+Shift+P',
-      allowInInput: true,
-      run: () => useUiStore.getState().setPaletteOpen(true),
-    },
-    {
-      id: 'window.nextTab',
-      title: 'cmd.window.nextTab',
-      menu: 'window',
-      group: 'tabs',
-      shortcut: 'Mod+Alt+ArrowRight',
-      when: () =>
-        useUiStore.getState().tabs.length > 1 && !textCanvasHasFocus(),
-      disabledReason: 'cmd.reason.oneTab',
-      run: () => cycleTab(1),
-    },
-    {
-      id: 'window.previousTab',
-      title: 'cmd.window.previousTab',
-      menu: 'window',
-      group: 'tabs',
-      shortcut: 'Mod+Alt+ArrowLeft',
-      when: () =>
-        useUiStore.getState().tabs.length > 1 && !textCanvasHasFocus(),
-      disabledReason: 'cmd.reason.oneTab',
-      run: () => cycleTab(-1),
-    },
-    {
-      id: 'window.closeTab',
-      title: 'cmd.window.closeTab',
-      menu: 'window',
-      group: 'tabs',
-      shortcut: 'Mod+Shift+W',
-      when: () => useUiStore.getState().activeTab !== null,
-      disabledReason: 'cmd.reason.noTab',
-      run: () => {
-        const active = useUiStore.getState().activeTab
-        if (active) closeTab(active)
-      },
-    },
-    {
-      id: 'help.shortcuts',
-      title: 'cmd.help.shortcuts',
-      menu: 'help',
-      group: 'help',
-      run: () => useUiStore.getState().setPaletteOpen(true),
-    },
-    {
-      id: 'help.about',
-      title: 'cmd.help.about',
-      menu: 'help',
-      group: 'help',
-      run: () => {
-        useUiStore.getState().pushToast({
-          kind: 'info',
-          message: i18n.t('toast.about', {
-            version: APP_VERSION,
-            kind: getTransport().kind,
-          }),
-        })
-      },
-    },
+    ...shellCommands(),
   ])
 }

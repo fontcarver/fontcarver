@@ -3,12 +3,15 @@
 #![warn(missing_docs)]
 
 pub mod bitmap;
+pub mod cff_interchange;
+pub mod collection;
 pub mod color;
 pub mod error;
 pub mod math;
 mod read;
 pub mod svg;
 pub mod tt;
+pub mod ttx;
 pub mod write;
 
 pub use error::Error;

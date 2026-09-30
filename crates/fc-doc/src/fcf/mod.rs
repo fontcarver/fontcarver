@@ -1,5 +1,7 @@
 //! Native FontCarver JSON persistence.
 
+mod project;
+mod project_io;
 mod read;
 mod write;
 
@@ -46,7 +48,26 @@ struct MetadataEnvelope {
     _font: IgnoredAny,
 }
 
-/// Writes a font to a `.fcf` or gzip-wrapped `.fcf.gz` path.
+/// Returns whether a path has a supported native file or project extension.
+pub fn is_native_path(path: &Path) -> bool {
+    let name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    [".fcf", ".fcf.gz", ".fcfp", ".fwf", ".fwf.gz"]
+        .iter()
+        .any(|suffix| name.ends_with(suffix))
+}
+
+/// Returns whether a path names a per-glyph native directory project.
+pub fn is_project_path(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("fcfp"))
+}
+
+/// Writes a font to a `.fcf`, `.fcf.gz`, or per-glyph `.fcfp` directory.
 ///
 /// Non-finite imported kerning is rejected before touching the destination;
 /// JSON cannot preserve those values, and silently writing null would make
@@ -54,12 +75,21 @@ struct MetadataEnvelope {
 pub fn write(path: &Path, font: &Font) -> Result<(), Error> {
     font.validate_bitmaps()?;
     font.validate_effects()?;
-    write::write(path, font, None)
+    validate_construction_sources(font)?;
+    if is_project_path(path) {
+        project::write(path, font)
+    } else {
+        write::write(path, font, None)
+    }
 }
 
-/// Reads a native document, sniffing gzip by its magic bytes.
+/// Reads a native project, or a file with gzip sniffed by its magic bytes.
 pub fn read(path: &Path) -> Result<Font, Error> {
-    Ok(validate(read::read(path)?)?.font)
+    if is_project_path(path) {
+        project::read(path)
+    } else {
+        Ok(validate(read::read(path)?)?.font)
+    }
 }
 
 pub(crate) fn write_autosave(
@@ -69,6 +99,7 @@ pub(crate) fn write_autosave(
 ) -> Result<(), Error> {
     font.validate_bitmaps()?;
     font.validate_effects()?;
+    validate_construction_sources(font)?;
     write::write(path, font, document_path)
 }
 
@@ -94,6 +125,7 @@ fn is_known_format(format: &str) -> bool {
 fn validate(envelope: ReadEnvelope) -> Result<ReadEnvelope, Error> {
     envelope.font.validate_bitmaps()?;
     envelope.font.validate_effects()?;
+    validate_construction_sources(&envelope.font)?;
     if !is_known_format(&envelope.format) {
         return Err(Error::InvalidFcfFormat(envelope.format));
     }
@@ -109,6 +141,14 @@ fn validate_metadata(envelope: &MetadataEnvelope) -> Result<(), Error> {
     }
     if envelope.version > VERSION {
         return Err(Error::UnsupportedFcfVersion(envelope.version));
+    }
+    Ok(())
+}
+
+fn validate_construction_sources(font: &Font) -> Result<(), Error> {
+    for layer in font.glyphs.values().flat_map(|glyph| &glyph.layers) {
+        layer.validate_node_links()?;
+        layer.validate_constructions()?;
     }
     Ok(())
 }

@@ -5,8 +5,12 @@ use std::{collections::HashSet, fmt};
 use serde::{Deserialize, Deserializer, Serialize};
 
 mod assembly;
+mod numbers;
+mod predicates;
+mod preprocess;
 
 pub use assembly::{AssembledFea, FeaSourceLocation, FeaSourceMapping, FeatureSourceKind};
+pub use preprocess::FeatureTokenError;
 
 /// Persistent identity of a prefix, glyph class or feature block.
 ///

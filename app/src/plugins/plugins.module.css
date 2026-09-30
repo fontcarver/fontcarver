@@ -1,0 +1,105 @@
+.manager {
+  color: var(--color-text);
+  padding: 12px;
+  min-width: 0;
+}
+.manager h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+.manager p {
+  margin: 6px 0;
+}
+.help,
+.metadata {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+.list {
+  padding: 0;
+  margin: 12px 0 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+.plugin {
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.heading,
+.actions,
+.parameters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.heading {
+  justify-content: space-between;
+}
+.actions {
+  margin-top: 8px;
+}
+.actions button {
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  cursor: pointer;
+}
+.actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.actions button:focus-visible,
+.parameters input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.filter {
+  border-top: 1px solid var(--color-border);
+  margin-top: 10px;
+  padding-top: 6px;
+}
+.parameters label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.parameters input {
+  width: 92px;
+  padding: 4px;
+  color: var(--color-text);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.error {
+  color: var(--color-danger);
+}
+.figure {
+  margin: 10px 0 0;
+}
+.preview {
+  width: 100%;
+  height: 140px;
+  border: 1px solid var(--color-border);
+  background: var(--color-canvas);
+}
+.before {
+  stroke: var(--color-text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  fill: none;
+}
+.after {
+  stroke: var(--color-accent);
+  stroke-width: 1.5;
+  fill: none;
+}
+.figure figcaption {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}

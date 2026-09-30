@@ -16,6 +16,8 @@ brotli = "7"
 chrono = "0.4"
 flate2.workspace = true
 fontc = { version = "1.0", default-features = false, features = ["rayon"] }
+# Reuse fontc's Apache-2.0 layout writers without rebuilding outline tables.
+fontbe = "1.0"
 fontdrasil = "1.0"
 fontir = "1.0"
 fc-model = { path = "../fc-model" }

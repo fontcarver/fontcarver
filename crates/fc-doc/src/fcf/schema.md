@@ -26,6 +26,40 @@ Glyph `metrics_keys` (`left`, `right`, `width`, `vertical_origin`, and
 unchanged; resolved metrics and edit-session state are derived and are not
 written to the document.
 
+Project inventory collections use the existing
+`font.info.user_data["com.fontcarver.inventory"]` dictionary. Its optional
+`smart_filters` entry is an ordered array of `{name, expression}` values;
+expressions contain the bounded smart-filter DSL, and names are unique after
+trimming. The editing API accepts at most 256 filters, 256 UTF-8 bytes per name,
+and 1 MiB of combined name/expression text. The optional `glyph_lists` entry
+stores an ordered array of `{id, name, glyphs}` values, where `glyphs` contains
+ordered exact glyph names. List identifiers are unique and contain 1–80 ASCII
+letters, digits, underscores, or hyphens. Display names are trimmed and contain
+1–128 characters without control characters. At most 128 lists, 8192 names per
+list, 65536 total names, and 2 MiB of serialized list metadata are accepted.
+Glyph names use the recipe-safe ASCII letter/digit/dot/underscore grammar, begin
+with a letter, dot, or underscore, and contain at most 127 bytes. Duplicate glyph
+names are removed while preserving first occurrence. Live `present`/`missing`
+coverage is derived by the API and is not persisted.
+Unknown sibling keys and other user data are retained.
+These metadata edits use ordinary font-info undo snapshots and native/autosave
+serialization; no FCF version or structural model change is required.
+
+Layer `metrics_keys` is an optional version-1 object with the same fields as
+glyph metrics keys. Each non-null layer field overrides that glyph field;
+omitted/null fields inherit it. Double-equals formulas (`==n`) are layer-local
+and are rejected by the glyph-wide formula command. The local object is omitted
+when absent. Horizontal formulas support references, mirrored sidebearings,
+finite literals, arithmetic, baseline-height measurements (`=n@200`), and offsets
+from automatic component metrics (`=+25`). Synchronization updates the stored
+outline/advance through an undoable command; it does not rewrite the formulas.
+
+`Component.locked` is an optional boolean (default `false`). Native documents
+retain component editing locks; imported compiled-font components start unlocked.
+Editor commands preserve a locked component's content and ordering until an
+explicit `SetComponent` edit changes only `locked` to `false`. Locks do not alter
+component resolution or compiled outline geometry.
+
 P5-09 adds optional `Layer.effects`, an ordered array (default `[]`, omitted
 when empty). Each entry is `{enabled: bool, effect: {...}}`; missing `enabled`
 means `true`. Source contours, components, anchors and metrics remain unchanged.
@@ -68,6 +102,21 @@ that do not fit adjacent segments fail explicitly. Local smart interpolation
 interpolates signed radii; globally baked master topology must be compatible.
 Other editable source writers reject live corners before writing. Point-bound
 hint policies are the same as for other geometry-changing live effects.
+
+P5-11 adds `{kind: "variable_stroke", nib, cap, join, miter_limit,
+progression: "linear" | "smooth", points: [{position,width,height,angle}]}`
+to `Layer.effects`. There are 2–64 strictly increasing, finite positions in
+`[0,1]`, beginning at exactly 0 and ending at exactly 1. Positions measure
+normalized centerline arc length independently on every input contour; source
+edits retain the positions and resample against the new length. Pen dimensions,
+angle and miter limits use the fixed-stroke bounds. Dimensions interpolate
+linearly or with cubic smoothstep; angles follow the shortest angular interval.
+Closed contours require matching endpoint dimensions and angles modulo 360°.
+Evaluation rejects incompatible closed seams, excessive sampling or output
+geometry before committing an edit. Evaluation samples source curves and nib
+supports, unions filled cap/join/span patches, and fits cubic output; it always
+reports approximation through the existing effect outcome. Native files keep
+the original source and pen points; bake/export use the shared effect evaluator.
 
 Feature prefixes/blocks and classes carry a persistent string `id`, independent
 of their tag, name, code or ordering. New items receive UUID v4 IDs without
@@ -239,6 +288,13 @@ Hint masks add two optional booleans, both defaulting to `false`:
 byte array, MSB first, with horizontal stems followed by vertical stems and zero
 padding bits. Off-curve and missing points are invalid mask targets. Widths `-20` and `-21` retain PostScript ghost hints. Ordinary widths are positive.
 
+For static CID CFF1 sources, master `cff_private_dicts` retains additional
+PostScript private dictionaries (FD 1 onward); the existing `private_dict` is
+FD 0. Layer `cff_private_dict_index` selects a dictionary within its master;
+absent or zero selects FD 0. Both fields are optional for backward compatibility.
+The vector and selection persist in JSON and compressed FCF. CFF1 export rejects
+out-of-range selections or additional dictionaries without CID metadata.
+
 Master alignment zones, named preferred stems and `private_dict` retain their
 existing version-1 shapes. The editor validates format limits before applying
 changes. Hint edits, save/reopen and undo preserve these values. Geometry changes
@@ -301,3 +357,158 @@ Documents are limited to 2 MiB each, 32 MiB total, 100,000 XML nodes and 128
 nesting levels. Cyclic references and expansion above 1,000,000 elements are
 rejected. The binary writer applies the same 32 MiB output budget after
 adapting shared documents to the compiled glyph order.
+
+P5-16 stores the optional version-1 glyph database overlay as the JSON object
+`font.info.user_data["com.fontcarver.glyphData"]`. Its `version` is `1`; `glyphs`
+is a name-keyed object of partial `unicodes`, `category`, `sub_category`, `script`,
+`production_name`, `anchors` and `composition` overrides. Omitted fields inherit
+the bundled database. Empty arrays explicitly clear a list. Dot suffixes inherit
+base classification and recipes while remaining unencoded unless the exact
+suffixed overlay assigns Unicode. Update Glyph Info persists the resolved
+encoding, classification and production name into existing Glyph fields; anchor
+and composition lists are suggestions and do not change source geometry. Both
+overlay replacement and metadata refresh use the ordinary undo history.
+
+
+P5-89/91 stores non-exported layer editor metadata in
+`layer.user_data["com.fontcarver.editor"]`, preserving other user-data keys and
+unknown keys inside this object. `annotations` is an array of records with
+`id`, `kind` (`Text`, `Arrow`, `Circle`, `Rectangle`, `Plus`, or `Minus`), finite `x`, `y`, `end_x`,
+`end_y` coordinates in y-up font units, and plain `text`. IDs are unique and
+nonblank within a layer (maximum 256 UTF-8 bytes); text is limited to 16,384
+UTF-8 bytes per annotation and a layer to 10,000 annotations. Circle and
+rectangle records use opposite bounding-box corners; arrows use endpoints.
+Missing annotations mean an empty list.
+
+`locked_paths` is an array of persistent `Contour.id` strings, with a missing
+array meaning no path locks. Locking an unnamed contour assigns a UUID
+identifier; an ambiguous existing ID is replaced with a fresh unique one.
+Locks follow their contour IDs through list reordering. Commands must preserve
+locked contours, their owning layer, and the lock list until an explicit
+`EditorMetadata::PathLocks` unlock. The existing `Glyph.locked` boolean blocks
+glyph-targeted editing, including annotation/path-lock changes; explicit
+`EditorMetadata::GlyphLock` commands can always unlock it. These commands use
+ordinary atomic batch and undo/redo storage. Native version-1 FCF persistence
+retains annotations, contour IDs, path locks and glyph locks without changing
+exported outlines. Non-object legacy user data is rejected by metadata edits
+rather than overwritten.
+
+P5 glyph inventory labels reuse existing metadata fields. Glyph `color_label`
+uses twelve named indexes (`0` through `11`), while each layer independently
+stores its label at `Layer.user_data["com.fontcarver.colorLabel"]`. Omission means
+no layer label. Label commands preserve other object entries and reject
+non-object vendor metadata rather than discarding it. Glyph `tags` remain
+trimmed free-text strings; autocomplete is derived from the document's tag set.
+
+P5 construction editing adds optional `Point.id` and `Guide.id` string identities,
+and optional `Point.super_smooth` (default false). IDs identify nodes and guides
+within their containing layer, so references survive contour/point reordering.
+`NodeRef` is `{id: string}`. `Layer.node_links` and `Layer.linked_guides` default
+to empty arrays and are omitted when empty. A node link is
+`{node, first, second, axis: "X" | "Y", ratio, handles: [{node, ratio}]}`. It sets
+the selected servant coordinate to `first + (second - first) * ratio`; associated
+handle ratios follow the same boundary span. Ratios are finite and may lie
+outside `[0,1]`. A linked guide is `{guide_id, nodes: [{node, offset}]}`; offsets
+are finite signed distances along the guide's left normal. Moving the guide
+retains each node's tangent position and normal offset. References must resolve
+uniquely; missing nodes/guides, cyclic constraints and conflicting coordinate
+owners are rejected. Native read, write and autosave validate these constraints.
+
+`Layer.constructions` is an optional array, defaulting to empty and omitted when
+empty. Each entry is `{id, source, kind, keep_carrier}`. `source` names a glyph
+resolved in the carrier's master; `id` is a unique nonempty layer-local string
+of at most 256 bytes. `keep_carrier` defaults to false. The externally tagged
+`kind` is one of:
+
+- `{Corner: {at: NodeRef, scale}}`: attach the source origin to an interior node
+  and align source +x with the outgoing tangent.
+- `{Cap: {at: NodeRef, scale}}`: attach to an open endpoint, aligning +x outward.
+- `{Segment: {start: NodeRef, end: NodeRef, source_length}}`: map the source
+  baseline onto the chord between distinct on-curve nodes on one contour.
+- `{Brush: {at: NodeRef, spacing, scale}}`: repeat source origins along the
+  carrier by arc length, starting at the selected node.
+
+A layer permits at most 128 constructions. Finite scale is in `[0.001,1000]`,
+source baseline length in `[0.01,32767]`, and brush spacing in `[0.1,32767]`.
+Sources and carrier contours remain editable until an explicit bake. Construction
+source references participate in dependency invalidation, cycle detection and
+glyph rename history. Native read, write and autosave validate carrier references
+and construction parameters while retaining unresolved source glyph names.
+
+UFO stores point and guide IDs as native GLIF identifiers and preserves the
+construction/link arrays plus super-smooth point positions in the glyph lib's
+`com.fontcarver.constructionData` JSON string (maximum 1 MiB per layer). The GLIF
+outline remains the source contour data. Other editable source writers reject
+live constructions or node constraints before touching the destination. Existing
+live effect/corner source-export restrictions still apply to UFO.
+
+## Directory projects (`.fcfp`)
+
+A `.fcfp` is a directory with `project.json`, `glyphs/`, and a zero-byte
+`.fontcarver.lock` advisory lock file. It is an alternative native save target;
+existing `.fcf`, `.fcf.gz`, and legacy readers retain their current semantics.
+The manifest uses `format: "fontcarver-project"`, `version: 1`, a `font` object
+with an empty `glyphs` map, and an ordered `glyph_files` array of `{ name, file }`.
+All other `font` fields use the same serde shapes as single-file native documents.
+The index preserves glyph display/export order independently of filenames.
+
+Each `glyphs/<name-sha1>-<content-sha1>.json` stores one pretty-printed Glyph with
+its final newline. Digests provide deterministic filesystem-safe revision names;
+they are not authentication. Readers accept manual text edits without requiring
+users to recalculate hashes; the next save emits filenames for the edited bytes.
+Readers reject malformed filenames, duplicate names/files, missing or invalid
+JSON, embedded glyph-name mismatches, and symlinked managed entries/directories.
+
+A save publishes new, flushed glyph files before atomically replacing the
+manifest. Unchanged glyph files remain byte-identical and keep their names. A
+single glyph edit replaces only its revision file and manifest entry, keeping
+Git changes local. Advisory file locks serialize cooperating writers and protect
+readers from obsolete-file pruning. Unix saves also sync the relevant directory
+entries. Existing-manifest publication is the commit point: interrupted writes
+before it leave the previous snapshot readable; files not referenced by the
+manifest are ignored. After publication, only obsolete regular files explicitly
+listed in the previous manifest may be removed. Arbitrary files, `.git`, and
+unknown orphan files are preserved. Post-commit cleanup failures are warnings.
+A crash during the first save can leave a directory without a manifest; retrying
+the save completes it, while opening reports the missing manifest.
+
+Recovery remains the ordinary complete `.autosave.fcf` snapshot in the configured
+recovery directory, with `document_path` pointing at the `.fcfp` directory. This
+keeps a recoverable snapshot independent of damage to any project member. The
+lock file and interrupted `.fontcarver-*.tmp` files may be ignored by Git. Native
+serialization deliberately does not retain `extra.source.original_bytes`, just
+as for the existing single-file formats.
+
+## Virtual master source positions
+
+`font.virtual_masters` is an optional array (default empty, omitted when empty)
+containing `{name, location}` records. Names are unique nonempty strings of at
+most 256 bytes; locations map four-byte axis tags to finite design coordinates.
+There are at most 1024 positions. Completed coordinates must be within mapped
+axis ranges and distinct from physical and other virtual master positions.
+Virtual positions contain no global metrics, kerning or glyph layers. Creating
+a glyph source copies one position into a normal brace layer associated with
+the physical default master, so previews and variable export use the existing
+sparse/intermediate-source path. Editing or deleting a named position does not
+move or remove already-created sources. Axis renames migrate both presets and
+source coordinates atomically. Other source formats do not currently retain
+the named preset list; compiled fonts contain evaluated source geometry.
+
+P5-20 adds `Image.locked` (boolean, default false) to a layer's optional
+`background_image`. Its existing `file_name`, six-coefficient affine `transform`,
+optional `color`, and optional PNG `data` bytes remain unchanged. An unlocked
+image can be placed, replaced or removed; a locked image must first be explicitly
+unlocked. Image placement uses y-up source-pixel coordinates, with the bottom-left
+at `(0,0)`, before the affine transform. The image is source-only and does not
+alter compiled outlines. Tracing writes ordinary contours while retaining this
+source record; preview data and decode/link errors are derived, never persisted.
+
+Linked image names resolve relative to the native document directory, or the
+`images/` directory of an opened UFO. Import stores document-relative links and
+requires a saved document for non-embedded sources. Save As rebases links in both
+the document and undo/redo history only after a successful write, preserving the
+same external source. Embedded bytes take precedence over `file_name`. The image
+workflow validates static PNG data with 16 MiB compressed, 4096 per-dimension and
+one-million-pixel limits; unsupported, missing and invalid sources remain
+visible as repairable link errors. Placement commands reject non-finite or
+singular matrices and transform coefficients above one million in magnitude.

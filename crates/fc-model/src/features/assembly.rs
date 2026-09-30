@@ -29,6 +29,8 @@ pub struct FeaSourceMapping {
     /// Copied text is verbatim. Generated class names, feature tags, delimiters
     /// and separators belong to the item but have no position in its code.
     pub source_range: Option<Range<usize>>,
+    /// UTF-16 offset of the copied region in the original source item.
+    pub source_utf16_start: usize,
 }
 
 /// A position resolved back to a source item.
@@ -75,12 +77,11 @@ impl AssembledFea {
             .source_range
             .as_ref()
             .map(|source| source.start + offset - mapping.range.start);
-        // Each copied region currently contains the whole unmodified code field.
-        // Keeping that invariant makes Unicode offsets independent of wrappers.
         let utf16_offset = mapping.source_range.as_ref().map(|_| {
-            self.text[mapping.range.start..offset]
-                .encode_utf16()
-                .count()
+            mapping.source_utf16_start
+                + self.text[mapping.range.start..offset]
+                    .encode_utf16()
+                    .count()
         });
         Some(FeaSourceLocation {
             item: mapping.item.clone(),
@@ -98,6 +99,7 @@ impl AssembledFea {
             item: id.clone(),
             kind,
             source_range: copied.then_some(0..text.len()),
+            source_utf16_start: 0,
         });
     }
 

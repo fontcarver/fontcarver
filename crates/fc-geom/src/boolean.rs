@@ -1292,6 +1292,8 @@ mod tests {
             kind: PointKind::Line,
             smooth: false,
             name: None,
+            id: None,
+            super_smooth: false,
             tt_index: TtIndex::Unnumbered,
         }
     }

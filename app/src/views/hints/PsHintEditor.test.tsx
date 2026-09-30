@@ -9,6 +9,8 @@ import { PsHintEditor } from './PsHintEditor'
 afterEach(() => setTransport(undefined))
 const state = (): HintState => ({
   generation: 7,
+  is_cid: false,
+  cff_private_dict_index: 0,
   master: makeMaster(),
   hints: makeLayer().hints,
   layer: 'layer-1',
@@ -115,4 +117,107 @@ it('does not analyze a background layer using another layer’s outlines', async
   expect(transport.calls.every((call) => call.method !== 'hints.analyze')).toBe(
     true,
   )
+})
+
+it('edits FD1 and assigns it to the glyph without replacing FD0', async () => {
+  const value = {
+    ...state(),
+    is_cid: true,
+    cff_private_dict_index: 0,
+    master: makeMaster({
+      cff_private_dicts: [{ ...makeMaster().private_dict, std_hw: 90 }],
+    }),
+  }
+  const transport = createMockTransport({
+    'hints.state': () => value,
+    'hints.apply': () => noChange(),
+  })
+  setTransport(transport)
+  render(
+    <PsHintEditor
+      doc={1}
+      master="m1"
+      glyph="I"
+      onClose={vi.fn()}
+      onApplied={vi.fn()}
+    />,
+  )
+  await userEvent.selectOptions(
+    await screen.findByRole('combobox', { name: 'Edit private dictionary' }),
+    '1',
+  )
+  const width = screen.getByRole('spinbutton', { name: 'StdHW' })
+  expect(width).toHaveValue(90)
+  await userEvent.clear(width)
+  await userEvent.type(width, '100')
+  await userEvent.selectOptions(
+    screen.getByRole('combobox', { name: 'Glyph private dictionary' }),
+    '1',
+  )
+  expect(
+    screen.getByRole('button', { name: 'Analyze stems and zones' }),
+  ).toBeDisabled()
+  await userEvent.click(screen.getByRole('button', { name: 'Apply changes' }))
+  await waitFor(() =>
+    expect(transport.calls).toContainEqual(
+      expect.objectContaining({
+        method: 'hints.apply',
+        params: expect.objectContaining({
+          expected_generation: 7,
+          commands: [
+            {
+              CffPrivate: {
+                master: 'm1',
+                index: 1,
+                private: { ...value.master.cff_private_dicts![0], std_hw: 100 },
+              },
+            },
+            {
+              CffPrivateAssignment: {
+                master: 'm1',
+                glyph: 'I',
+                layer: 'layer-1',
+                index: 1,
+              },
+            },
+          ],
+        }),
+      }),
+    ),
+  )
+})
+
+it('appends a CID dictionary and keeps the draft when its apply fails', async () => {
+  const close = vi.fn()
+  const transport = createMockTransport({
+    'hints.state': () => ({
+      ...state(),
+      is_cid: true,
+      cff_private_dict_index: 0,
+    }),
+    'hints.apply': () => {
+      throw new Error('Revision changed')
+    },
+  })
+  setTransport(transport)
+  render(
+    <PsHintEditor
+      doc={1}
+      master="m1"
+      glyph="I"
+      onClose={close}
+      onApplied={vi.fn()}
+    />,
+  )
+  await userEvent.click(
+    await screen.findByRole('button', { name: 'Add private dictionary' }),
+  )
+  expect(
+    screen.getByRole('combobox', { name: 'Edit private dictionary' }),
+  ).toHaveValue('1')
+  await userEvent.type(screen.getByRole('spinbutton', { name: 'StdVW' }), '75')
+  await userEvent.click(screen.getByRole('button', { name: 'Apply changes' }))
+  await screen.findByRole('alert')
+  expect(close).not.toHaveBeenCalled()
+  expect(screen.getByRole('spinbutton', { name: 'StdVW' })).toHaveValue(75)
 })

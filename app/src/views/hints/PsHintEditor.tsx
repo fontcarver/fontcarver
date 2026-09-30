@@ -5,6 +5,7 @@ import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
 import { activeEditor } from '../../editor/activeEditor'
 import { errorNotice } from '../../i18n/errors'
+import { CffPrivateSelector } from './CffPrivateSelector'
 import { PsHintPreview } from './PsHintPreview'
 import { PsPrivateFields } from './PsPrivateFields'
 import { PsStemFields } from './PsStemFields'
@@ -28,6 +29,7 @@ export function PsHintEditor({
   const { t } = useTranslation()
   const [state, setState] = useState<HintState | null>(null)
   const [original, setOriginal] = useState<HintState | null>(null)
+  const [privateIndex, setPrivateIndex] = useState(0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const form = useRef<HTMLFormElement>(null)
@@ -39,6 +41,7 @@ export function PsHintEditor({
         if (current) {
           setState(result)
           setOriginal(result)
+          setPrivateIndex(result.cff_private_dict_index ?? 0)
         }
       })
       .catch((reason: unknown) => {
@@ -56,7 +59,14 @@ export function PsHintEditor({
     setError(notice.details ?? notice.message)
   }
   const analyze = () => {
-    if (!state || !state.can_autohint_ps || !glyph || busy) return
+    if (
+      !state ||
+      !state.can_autohint_ps ||
+      state.cff_private_dict_index ||
+      !glyph ||
+      busy
+    )
+      return
     setBusy(true)
     setError('')
     void call('hints.analyze', { doc, master, glyphs: [glyph] })
@@ -77,13 +87,44 @@ export function PsHintEditor({
   const apply = () => {
     if (!state || !original || busy || !form.current?.reportValidity()) return
     const commands: HintCommand[] = []
-    if (JSON.stringify(state.master) !== JSON.stringify(original.master))
+    if (
+      ['private_dict', 'alignment_zones', 'stems'].some(
+        (key) =>
+          JSON.stringify(state.master[key as keyof typeof state.master]) !==
+          JSON.stringify(original.master[key as keyof typeof original.master]),
+      )
+    )
       commands.push({
         Private: {
           master,
           private: state.master.private_dict,
           zones: state.master.alignment_zones,
           stems: state.master.stems,
+        },
+      })
+    for (const [index, privateDictionary] of (
+      state.master.cff_private_dicts ?? []
+    ).entries()) {
+      if (
+        JSON.stringify(privateDictionary) !==
+        JSON.stringify(original.master.cff_private_dicts?.[index])
+      )
+        commands.push({
+          CffPrivate: { master, index: index + 1, private: privateDictionary },
+        })
+    }
+    if (
+      glyph &&
+      state.layer &&
+      (state.cff_private_dict_index ?? 0) !==
+        (original.cff_private_dict_index ?? 0)
+    )
+      commands.push({
+        CffPrivateAssignment: {
+          master,
+          glyph,
+          layer: state.layer,
+          index: state.cff_private_dict_index ?? 0,
         },
       })
     if (
@@ -148,6 +189,18 @@ export function PsHintEditor({
               {state.master.name}
               {glyph ? ` · ${glyph}` : ''}
             </legend>
+            {state.is_cid && (
+              <CffPrivateSelector
+                master={state.master}
+                selected={privateIndex}
+                assignment={state.cff_private_dict_index}
+                onSelect={setPrivateIndex}
+                onChange={(master) => setState({ ...state, master })}
+                onAssign={(cff_private_dict_index) =>
+                  setState({ ...state, cff_private_dict_index })
+                }
+              />
+            )}
             {state.hints && (
               <>
                 <PsHintPreview
@@ -159,6 +212,7 @@ export function PsHintEditor({
                   <Button
                     disabled={
                       !state.can_autohint_ps ||
+                      (state.cff_private_dict_index ?? 0) > 0 ||
                       JSON.stringify(state.master) !==
                         JSON.stringify(original?.master)
                     }
@@ -185,9 +239,11 @@ export function PsHintEditor({
                 </div>
                 <p>
                   {t(
-                    state.can_autohint_ps
-                      ? 'hints.analysisHelp'
-                      : 'hints.masterLayerRequired',
+                    (state.cff_private_dict_index ?? 0) > 0
+                      ? 'hints.cidAnalysisUnavailable'
+                      : state.can_autohint_ps
+                        ? 'hints.analysisHelp'
+                        : 'hints.masterLayerRequired',
                   )}
                 </p>
                 <PsStemFields
@@ -198,6 +254,7 @@ export function PsHintEditor({
             )}
             <PsPrivateFields
               master={state.master}
+              index={privateIndex}
               onChange={(master) => setState({ ...state, master })}
             />
           </fieldset>

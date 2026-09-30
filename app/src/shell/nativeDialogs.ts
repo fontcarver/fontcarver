@@ -4,6 +4,7 @@ import { getTransport } from '../api'
 export const OPEN_FONT_EXTENSIONS = [
   'fcf',
   'fcf.gz',
+  'fcfp',
   'fwf',
   'fwf.gz',
   'bdf',
@@ -33,6 +34,8 @@ export const OPEN_FONT_EXTENSIONS = [
 /** What a native file dialog should ask the user for. */
 export interface PathRequest {
   readonly kind: 'open' | 'save'
+  /** Select a directory for an open request, such as a `.fcfp` project. */
+  readonly directory?: boolean
   /** Translated display name of the file-type filter. */
   readonly filterName?: string
   /** Extensions the filter accepts, without the leading dot. */
@@ -76,7 +79,11 @@ export async function choosePath(request: PathRequest): Promise<PathChoice> {
   const dialog = await import('@tauri-apps/plugin-dialog')
   const chosen =
     request.kind === 'open'
-      ? await dialog.open({ multiple: false, directory: false, filters })
+      ? await dialog.open({
+          multiple: false,
+          directory: request.directory ?? false,
+          filters,
+        })
       : await dialog.save({ defaultPath: request.defaultPath, filters })
   return typeof chosen === 'string'
     ? { kind: 'chosen', path: chosen }

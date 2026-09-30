@@ -12,6 +12,9 @@
 
 import {
   Circle,
+  Eraser,
+  Lasso,
+  MessageSquare,
   Hand,
   MousePointer2,
   Pencil,
@@ -29,6 +32,9 @@ import {
 /** Identifier of one tool. */
 export type ToolId =
   | 'select'
+  | 'lasso'
+  | 'eraser'
+  | 'annotation'
   | 'pen'
   | 'pencil'
   | 'knife'
@@ -50,6 +56,8 @@ export interface ToolDefinition {
   shift: boolean
   /** i18n key of the tool name. */
   labelKey: string
+  /** Optional gesture help shown in the tool tooltip. */
+  hintKey?: string
   icon: LucideIcon
   /** CSS cursor while the tool is active. */
   cursor: string
@@ -69,6 +77,16 @@ export const TOOLS: readonly ToolDefinition[] = [
     labelKey: 'tool.select',
     icon: MousePointer2,
     cursor: 'default',
+    group: 'select',
+  },
+  {
+    id: 'lasso',
+    key: 'q',
+    shift: false,
+    labelKey: 'tool.lasso',
+    hintKey: 'tool.lassoHint',
+    icon: Lasso,
+    cursor: 'crosshair',
     group: 'select',
   },
   {
@@ -99,6 +117,16 @@ export const TOOLS: readonly ToolDefinition[] = [
     group: 'draw',
   },
   {
+    id: 'eraser',
+    key: 'e',
+    shift: true,
+    labelKey: 'tool.eraser',
+    hintKey: 'tool.eraserHint',
+    icon: Eraser,
+    cursor: 'crosshair',
+    group: 'draw',
+  },
+  {
     id: 'rectangle',
     key: 'f',
     shift: false,
@@ -121,6 +149,7 @@ export const TOOLS: readonly ToolDefinition[] = [
     key: 'l',
     shift: false,
     labelKey: 'tool.measure',
+    hintKey: 'tool.measureHint',
     icon: Ruler,
     cursor: 'crosshair',
     group: 'transform',
@@ -140,6 +169,15 @@ export const TOOLS: readonly ToolDefinition[] = [
     shift: false,
     labelKey: 'tool.scale',
     icon: Scaling,
+    cursor: 'crosshair',
+    group: 'transform',
+  },
+  {
+    id: 'annotation',
+    key: 'a',
+    shift: false,
+    labelKey: 'tool.annotation',
+    icon: MessageSquare,
     cursor: 'crosshair',
     group: 'transform',
   },

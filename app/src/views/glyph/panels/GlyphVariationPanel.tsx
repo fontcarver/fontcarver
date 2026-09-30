@@ -1,6 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { call, onDocumentEvent, type DocId } from '../../../api'
+import {
+  call,
+  onDocumentEvent,
+  type DocId,
+  type VariationPreview as Preview,
+} from '../../../api'
+import { useVariationPreviewStore } from '../../../stores/variationPreviewStore'
 import { errorNotice } from '../../../i18n/errors'
 import { VariationPreview } from '../../fontinfo/VariationPreview'
 import type { DesignSpaceValue } from '../../fontinfo/designSpaceSession'
@@ -19,6 +25,18 @@ export function GlyphVariationPanel({
   const [state, setState] = useState<DesignSpaceValue | null>(null)
   const [error, setError] = useState<unknown>(null)
   const [refresh, setRefresh] = useState(0)
+  const publishPreview = useCallback(
+    (preview: Preview | null) => {
+      const store = useVariationPreviewStore.getState()
+      if (preview) store.show(doc, glyph, preview)
+      else store.clear(doc, glyph)
+    },
+    [doc, glyph],
+  )
+  useEffect(
+    () => () => useVariationPreviewStore.getState().clear(doc, glyph),
+    [doc, glyph],
+  )
   useEffect(() => {
     let request = 0
     let disposed = false
@@ -64,6 +82,7 @@ export function GlyphVariationPanel({
             doc={doc}
             state={state}
             fixedGlyph={glyph}
+            onPreviewChange={publishPreview}
             onRefresh={() => setRefresh((value) => value + 1)}
           />
         </div>

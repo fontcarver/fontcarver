@@ -41,9 +41,15 @@ pub(crate) fn preflight(font: &Font, options: &ExportOptions) -> Result<(), Erro
     {
         return Err(Error::InvalidSource("authored TrueType programs require reviewing the compiled points after baking live layer effects".into()));
     }
-    if options.variable || options.instance.is_some() || options.remove_overlap || options.autohint
+    if options.variable
+        || options.instance.is_some()
+        || options.remove_overlap
+        || options.autohint
+        || options.add_extrema
+        || options.round_coordinates
+        || options.decompose_components
     {
-        return Err(Error::InvalidSource("authored TrueType programs currently require static master export without overlap removal or automatic hinting; retain the source programs and choose compatible export options".into()));
+        return Err(Error::InvalidSource("authored TrueType programs currently require static master export without geometry preprocessing or automatic hinting; retain the source programs and choose compatible export options".into()));
     }
     if font.glyphs.values().any(|glyph| {
         !glyph.smart_axes.is_empty()

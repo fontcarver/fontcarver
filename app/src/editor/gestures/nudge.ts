@@ -54,6 +54,8 @@ export interface NudgeContext {
    * while the previous one is still flushing would invalidate its last apply.
    */
   after?: Promise<unknown>
+  /** Absolute command for constraints whose projection is not additive. */
+  command?: (total: Point2) => Command | null
 }
 
 /**
@@ -147,6 +149,7 @@ export class NudgeCoalescer {
     }
     if (step.x === 0 && step.y === 0) return null
     this.sent = { ...this.total }
+    if (this.context.command) return this.context.command(this.total)
     return {
       MovePoints: {
         glyph: this.context.glyph,

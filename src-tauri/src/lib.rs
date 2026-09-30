@@ -10,6 +10,7 @@ use tracing_subscriber::EnvFilter;
 
 mod commands;
 pub mod error;
+mod windows;
 
 pub use error::Error;
 
@@ -52,7 +53,12 @@ pub fn run() -> Result<(), Error> {
             }));
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![commands::api_call])
+        .invoke_handler(tauri::generate_handler![
+            commands::api_call,
+            windows::open_workspace_window,
+            windows::close_workspace_window,
+            windows::rejoin_workspace_window,
+        ])
         .run(tauri::generate_context!())
         .map_err(Error::from)
 }

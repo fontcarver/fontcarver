@@ -21,6 +21,23 @@ export const KERNING_SCOPES: readonly KerningScope[] = [
   'group_group',
 ]
 
+/** New pairs use every available class; explicit choices remain independent. */
+export function defaultKerningScope(
+  resolution: KerningResolution,
+): KerningScope {
+  return `${resolution.left_group ? 'group' : 'glyph'}_${resolution.right_group ? 'group' : 'glyph'}`
+}
+
+/** Held modifiers narrow an edit without changing its persistent panel scope. */
+export function suppressKerningClasses(
+  scope: KerningScope,
+  left: boolean,
+  right: boolean,
+): KerningScope {
+  const [first, second] = scope.split('_')
+  return `${left ? 'glyph' : first}_${right ? 'glyph' : second}` as KerningScope
+}
+
 /** Derives the stored side identities, or null for missing memberships. */
 export function kerningScopeSides(
   resolution: KerningResolution,

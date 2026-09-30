@@ -1,0 +1,65 @@
+.examples {
+  display: grid;
+  gap: var(--space-3);
+  max-height: 320px;
+  overflow: auto;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.examples:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.metrics {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.metrics caption {
+  padding: var(--space-1) var(--space-2);
+  text-align: start;
+  overflow-wrap: anywhere;
+  font-weight: var(--text-weight-strong);
+  background: var(--color-surface);
+}
+
+.metrics th,
+.metrics td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-border-subtle);
+  text-align: end;
+}
+
+.metrics th {
+  color: var(--color-text-muted);
+  font-weight: var(--text-weight-medium);
+}
+
+.metrics th:first-child {
+  text-align: start;
+}
+
+.metrics td.outlineCell {
+  width: 28%;
+  padding: var(--space-1);
+}
+
+.outline {
+  display: block;
+  width: 100%;
+  min-width: 72px;
+  height: 60px;
+  fill: var(--cv-ink);
+  background: var(--cv-bg);
+}
+
+.guide {
+  stroke: var(--cv-metric);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}

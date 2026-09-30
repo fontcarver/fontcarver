@@ -195,6 +195,7 @@ pub(crate) fn to_norad(font: &Font, master: &Master) -> Result<norad::Font, Erro
         .collect::<Vec<_>>();
 
     let mut target = norad::Font::new();
+    let image_names = extra::copy_data_and_images(font, master, &mut target)?;
     if let Some(raw) = font.extra.lib.get(UFO_METAINFO_KEY) {
         let raw = json_to_plist(raw)?;
         target.meta = plist::from_value(&raw)?;
@@ -257,10 +258,29 @@ pub(crate) fn to_norad(font: &Font, master: &Master) -> Result<norad::Font, Erro
             .filter(|layer| layer_belongs(font, layer, &master.id))
         {
             let layer_name = model_layer_name(layer, &master.id);
-            let mut ufo_glyph = glyph_to_norad(glyph, layer, &layer_name, &object_metadata)?;
+            let mut ufo_glyph = glyph_to_norad(
+                glyph,
+                layer,
+                &layer_name,
+                &object_metadata,
+                image_names
+                    .get(&(glyph.name.clone(), layer.id.clone()))
+                    .map(String::as_str),
+            )?;
             if let Some(lib) = glyph_lib(glyph, &layer_name)? {
                 ufo_glyph.lib = lib;
             }
+            ufo_glyph.lib.remove("com.fontcarver.imageLocked");
+            if layer
+                .background_image
+                .as_ref()
+                .is_some_and(|image| image.locked)
+            {
+                ufo_glyph
+                    .lib
+                    .insert("com.fontcarver.imageLocked".into(), Value::Boolean(true));
+            }
+            super::construction_metadata::write(layer, &mut ufo_glyph)?;
             ufo_glyph.lib.remove("com.fontcarver.smartAxes");
             if layer_name == "public.default" && !glyph.smart_axes.is_empty() {
                 ufo_glyph.lib.insert(
@@ -302,7 +322,6 @@ pub(crate) fn to_norad(font: &Font, master: &Master) -> Result<norad::Font, Erro
             ufo_layer.insert_glyph(ufo_glyph);
         }
     }
-    extra::copy_data_and_images(font, master, &mut target)?;
     Ok(target)
 }
 
@@ -362,6 +381,11 @@ fn layer_from_norad(
             transform: kurbo_affine(image.transform),
             color: image.color.map(|color| color.to_rgba_string()),
             data: None,
+            locked: glyph
+                .lib
+                .get("com.fontcarver.imageLocked")
+                .and_then(Value::as_boolean)
+                .unwrap_or(false),
         }),
         ..Layer::default()
     };
@@ -407,6 +431,7 @@ fn layer_from_norad(
             })?)?,
         )?;
     }
+    super::construction_metadata::read(glyph, &mut layer)?;
     Ok(layer)
 }
 
@@ -415,6 +440,7 @@ fn glyph_to_norad(
     layer: &Layer,
     layer_name: &str,
     metadata_entries: &[ObjectMetadata],
+    image_file_name: Option<&str>,
 ) -> Result<norad::Glyph, Error> {
     let mut result = norad::Glyph::new(glyph.name.as_ref());
     result.width = layer.width;
@@ -457,21 +483,24 @@ fn glyph_to_norad(
                         index,
                         Some(point_index),
                     );
-                    let mut result = ContourPoint::new(
-                        point.x,
-                        point.y,
-                        point_kind_to_norad(point.kind),
-                        point.smooth,
-                        point
-                            .name
-                            .as_deref()
-                            .map(Name::new)
-                            .transpose()
-                            .map_err(|_| {
-                                Error::InvalidName(point.name.clone().unwrap_or_default())
-                            })?,
-                        identifier(metadata.and_then(|entry| entry.identifier.as_deref()))?,
-                    );
+                    let mut result =
+                        ContourPoint::new(
+                            point.x,
+                            point.y,
+                            point_kind_to_norad(point.kind),
+                            point.smooth,
+                            point
+                                .name
+                                .as_deref()
+                                .map(Name::new)
+                                .transpose()
+                                .map_err(|_| {
+                                    Error::InvalidName(point.name.clone().unwrap_or_default())
+                                })?,
+                            identifier(point.id.as_deref().or_else(|| {
+                                metadata.and_then(|entry| entry.identifier.as_deref())
+                            }))?,
+                        );
                     if let Some(lib) = metadata
                         .map(ObjectMetadata::decoded_lib)
                         .transpose()?
@@ -607,7 +636,7 @@ fn glyph_to_norad(
                 .transpose()
                 .map_err(|_| Error::UnsupportedPlist("invalid image color".to_owned()))?;
             norad::Image::new(
-                image.file_name.clone().into(),
+                image_file_name.unwrap_or(&image.file_name).into(),
                 color,
                 norad_affine(image.transform),
             )
@@ -619,6 +648,7 @@ fn glyph_to_norad(
 
 fn point_from_norad(point: &ContourPoint) -> Point {
     Point {
+        id: point.identifier().map(ToString::to_string),
         x: point.x,
         y: point.y,
         kind: match point.typ {

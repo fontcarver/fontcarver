@@ -5,7 +5,12 @@ import { i18n } from '../i18n'
 import { createMockTransport, type MockTransport } from '../test/mockTransport'
 import { ApiCallError } from '../transport'
 
-import { DEFAULT_PREFS, initialPrefsState, usePrefsStore } from './prefsStore'
+import {
+  DEFAULT_PREFS,
+  initialPrefsState,
+  snapSettingsOf,
+  usePrefsStore,
+} from './prefsStore'
 import { initialUiState, useUiStore } from './uiStore'
 
 function stored(overrides: Partial<Prefs> = {}): Prefs {
@@ -81,6 +86,26 @@ afterEach(() => {
 })
 
 describe('prefsStore', () => {
+  it('uses grid subdivisions and pixel distances in the editor settings', () => {
+    expect(
+      snapSettingsOf(
+        stored({
+          grid_size: 20,
+          grid_subdivision: 4,
+          snap_distance: 12,
+          hit_distance: 9,
+        }),
+      ),
+    ).toMatchObject({
+      gridSize: 5,
+      snapDistance: 12,
+      hitDistance: 9,
+      handles: true,
+      anchors: true,
+      zones: true,
+      background: true,
+    })
+  })
   it('loads preferences and mirrors theme and language into the shell', async () => {
     const transport = createMockTransport({
       'prefs.get': () => stored({ theme: 'dark', language: 'zh-CN' }),

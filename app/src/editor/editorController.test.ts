@@ -22,6 +22,8 @@ import {
   type PointerInput,
 } from './editorController'
 import { registerEditor } from './activeEditor'
+import { useUiStore } from '../stores/uiStore'
+import { initialTextState } from '../views/text/textState'
 import { commitField } from '../views/glyph/commitField'
 import { NO_MODIFIERS, type Modifiers } from './gestures/drag'
 import { NUDGE_TIMEOUT } from './gestures/nudge'
@@ -62,6 +64,9 @@ const labels: EditorLabels = {
     anchor: 'anchor',
     grid: 'grid',
     component: 'component',
+    background: 'background',
+    zone: 'zone',
+    advance: 'width',
     baseline: 'baseline',
     xHeight: 'x-height',
     capHeight: 'cap height',
@@ -253,6 +258,31 @@ describe('dragging an anchor on its own', () => {
 })
 
 describe('metric handles and ruler guides', () => {
+  it('does not start metric dragging while the text tab locks spacing', async () => {
+    const { controller, transport } = makeController(createEditingTransport())
+    useUiStore.setState({
+      tabs: [
+        {
+          id: 'locked',
+          kind: 'glyph',
+          doc: 1,
+          textState: { ...initialTextState('m1'), kerningMode: 'locked' },
+        },
+      ],
+      activeTab: 'locked',
+    })
+    try {
+      // Above the outline, on the advance line: no competing node or segment.
+      controller.pointerDown(at(600, 40))
+      controller.pointerMove(at(640, 40))
+      controller.pointerUp(at(640, 40))
+      await settle()
+      expect(transport.calls).toEqual([])
+    } finally {
+      useUiStore.setState({ tabs: [], activeTab: null })
+    }
+  })
+
   it('drags the right sidebearing as one coalesced SetMetrics run', async () => {
     const { controller, transport, recorded } = makeController(
       createEditingTransport(),

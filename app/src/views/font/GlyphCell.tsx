@@ -1,12 +1,16 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import type { DocId, GlyphCell as GlyphCellData } from '../../api'
 import type { EmBox } from '../../canvas/glyphPaint'
 import { pathCache } from '../../canvas/pathCache'
 import type { LabelMode } from '../../stores/documentStore'
+import { useCellGlyphColor } from '../color/useGlyphColor'
 
 import { cellLabel, paintCell, type CellTheme } from './cellRenderer'
 import styles from './fontView.module.css'
+import { GlyphStatusBadges } from './GlyphStatusBadges'
+import { glyphStatuses } from './glyphStatuses'
 
 export interface GlyphCellProps {
   /** Document the cell belongs to; glyph handles are unique per document. */
@@ -50,6 +54,8 @@ function GlyphCellView({
   theme,
   fontFamily,
 }: GlyphCellProps) {
+  const { t } = useTranslation()
+  const color = useCellGlyphColor(doc, cell)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   /**
    * Bumped whenever a canvas attaches.
@@ -101,11 +107,13 @@ function GlyphCellView({
       focused,
       theme,
       path: pathCache.get(doc, cell.gid, cell.generation, cell.path),
+      color,
       fontFamily,
     })
   }, [
     attached,
     cell,
+    color,
     doc,
     dpr,
     em.ascender,
@@ -137,14 +145,20 @@ function GlyphCellView({
     )
   }
 
+  const statuses = glyphStatuses(cell)
+  const description = [
+    cellLabel(cell, 'name', index),
+    ...statuses.map(({ labelKey }) => t(labelKey)),
+  ].join(', ')
+
   return (
     <div
       role="option"
       aria-selected={selected}
-      aria-label={cellLabel(cell, 'name', index)}
+      aria-label={description}
       aria-posinset={index + 1}
       aria-setsize={total}
-      title={cell.name}
+      title={description}
       data-index={index}
       data-gid={cell.gid}
       data-glyph={cell.name}
@@ -156,6 +170,7 @@ function GlyphCellView({
         className={styles.cellCanvas}
         style={{ width: size, height: size }}
       />
+      <GlyphStatusBadges statuses={statuses} size={size} />
     </div>
   )
 }

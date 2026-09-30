@@ -9,7 +9,13 @@
  * to route events and carry the results.
  */
 
-import type { Anchor, Command, ComponentView, Contour } from '../../api'
+import type {
+  Anchor,
+  Command,
+  ComponentView,
+  Contour,
+  LayerAnnotation,
+} from '../../api'
 import type { Point2, Viewport } from '../../canvas/Viewport'
 
 import type { EditorPreview } from '../editorTypes'
@@ -20,7 +26,7 @@ import type { HudLabels } from '../hud'
 import type { EditOutline } from '../outlineGeometry'
 import type { LayerCurves } from '../pathGeometry'
 import type { LayerTarget } from '../pointCommands'
-import type { Selection } from '../selection'
+import type { EditTarget, Selection } from '../selection'
 import type { SnapMatch } from '../snapping'
 
 import type { ToolId } from './registry'
@@ -44,6 +50,8 @@ export interface ToolKey {
 
 /** Undo labels and readout words the tools need, already translated. */
 export interface ToolLabels {
+  addGuide: string
+  erase: string
   drawPath: string
   extendPath: string
   draw: string
@@ -75,8 +83,12 @@ export interface ToolContext {
   components: readonly ComponentView[]
   viewport: Viewport
   selection: Selection
+  /** Lock/focus policy for selection tools. */
+  canSelect?: (target: EditTarget) => boolean
   /** Which curve flavour a new contour should be built in. */
   curves: LayerCurves
+  /** OpenType italic angle, in degrees; zero until metrics are available. */
+  italicAngle?: number
   labels: ToolLabels
   /** Snaps one font-space point; the identity when snapping is suspended. */
   snap: (point: Point2, suspend?: boolean) => SnappedPoint
@@ -128,6 +140,8 @@ export const NO_OUTCOME: ToolOutcome = {}
 
 /** Transient geometry a tool draws on top of the layer. */
 export interface ToolOverlay {
+  /** Review marks drawn during an annotation gesture. */
+  annotations?: readonly LayerAnnotation[]
   /** Contours drawn as a live preview above the layer. */
   contours: readonly Contour[]
   /** Straight lines in font space: a cut, a measurement, a handle. */

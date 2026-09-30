@@ -5,8 +5,12 @@ import type { MasterSummary } from '../../../api'
 import { useEditorStore } from '../../../stores/editorStore'
 import { commitField } from '../commitField'
 import { backgroundLayer } from '../glyphScene'
+import { selectionToBackgroundCommand } from '../layerWorkflows'
+import { runCommand } from '../../../shell/commands'
+import { LayerManagementControls } from './LayerManagementControls'
 
 import { LayerList } from './LayerList'
+import { LayerColorField } from './LayerColorField'
 import { LayerEffectsEditor } from './LayerEffectsEditor'
 import { SmartGlyphEditor } from './SmartGlyphEditor'
 import { SourceLayerEditor } from './SourceLayerEditor'
@@ -46,6 +50,10 @@ export function LayersPanel({
   const [effectsEditor, setEffectsEditor] = useState(false)
   const [smartEditor, setSmartEditor] = useState(false)
   const [sourceEditor, setSourceEditor] = useState<'copy' | 'edit' | null>(null)
+  const selection = useEditorStore((state) => state.selection)
+  const selectionCommand = master
+    ? selectionToBackgroundCommand(target, master, selection)
+    : null
   const current = glyph.layers.find((layer) => layer.id === outline.layer)
 
   const run = (
@@ -110,6 +118,19 @@ export function LayersPanel({
           ) : null
         }
       />
+
+      {current && (
+        <LayerManagementControls
+          key={`${current.id}:${current.name}`}
+          target={target}
+          glyph={glyph}
+          current={current}
+          reload={reload}
+        />
+      )}
+      {current && (
+        <LayerColorField target={target} layer={current} reload={reload} />
+      )}
 
       <div className={styles.actions}>
         <button
@@ -218,6 +239,28 @@ export function LayersPanel({
       </div>
 
       <div className={styles.actions}>
+        <button
+          type="button"
+          className={styles.actionButton}
+          disabled={master === null || (background === null && glyph.locked)}
+          onClick={() => runCommand('layer.editBackground')}
+        >
+          {t('panel.layers.editBackground')}
+        </button>
+        <button
+          type="button"
+          className={styles.actionButton}
+          disabled={
+            !selectionCommand || glyph.locked || current?.id === background?.id
+          }
+          title={t('panel.layers.selectionToBackgroundHint')}
+          onClick={() => {
+            if (selectionCommand)
+              run(selectionCommand, t('editor.undo.selectionToBackground'))
+          }}
+        >
+          {t('panel.layers.selectionToBackground')}
+        </button>
         <button
           type="button"
           className={styles.toggle}

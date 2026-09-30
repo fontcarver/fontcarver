@@ -8,6 +8,7 @@ import {
 } from '../../../api'
 import { Button } from '../../../components/Button'
 import { Select } from '../../../components/Select'
+import { PenPointFields } from './PenPointFields'
 import styles from './layerEffects.module.css'
 
 /** Parameters and stored-mask capture for one live layer operation. */
@@ -31,7 +32,7 @@ export function LayerEffectFields({
   const [maskLayer, setMaskLayer] = useState('')
   if (effect.kind === 'remove_overlap')
     return <p>{t('layerEffects.overlapHelp')}</p>
-  if (effect.kind === 'stroke')
+  if (effect.kind === 'stroke' || effect.kind === 'variable_stroke')
     return (
       <div className={styles.numbers}>
         <label>
@@ -46,19 +47,35 @@ export function LayerEffectFields({
             onChange={(nib) => onChange({ ...effect, nib })}
           />
         </label>
-        {(['width', 'height', 'angle', 'miter_limit'] as const).map((key) => (
-          <label key={key}>
-            {t(`layerEffects.${key}`)}
-            <input
-              type="number"
-              step={0.1}
-              value={Number.isFinite(effect[key]) ? effect[key] : ''}
-              onChange={(e) =>
-                onChange({ ...effect, [key]: e.target.valueAsNumber })
-              }
-            />
-          </label>
-        ))}
+        {effect.kind === 'stroke' &&
+          (['width', 'height', 'angle'] as const).map((key) => (
+            <label key={key}>
+              {t(`layerEffects.${key}`)}
+              <input
+                type="number"
+                step={0.1}
+                value={Number.isFinite(effect[key]) ? effect[key] : ''}
+                onChange={(e) =>
+                  onChange({ ...effect, [key]: e.target.valueAsNumber })
+                }
+              />
+            </label>
+          ))}
+        <label>
+          {t('layerEffects.miter_limit')}
+          <input
+            type="number"
+            step={0.1}
+            min={1}
+            max={100}
+            value={
+              Number.isFinite(effect.miter_limit) ? effect.miter_limit : ''
+            }
+            onChange={(event) =>
+              onChange({ ...effect, miter_limit: event.target.valueAsNumber })
+            }
+          />
+        </label>
         <label>
           {t('layerEffects.cap')}
           <Select
@@ -84,6 +101,11 @@ export function LayerEffectFields({
           />
         </label>
         <p className={styles.wide}>{t('layerEffects.penHelp')}</p>
+        {effect.kind === 'variable_stroke' && (
+          <div className={styles.wide}>
+            <PenPointFields effect={effect} onChange={onChange} />
+          </div>
+        )}
       </div>
     )
   const capture = async () => {

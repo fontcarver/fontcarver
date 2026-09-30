@@ -3,6 +3,42 @@
 These text files are build inputs. `build.rs` converts them into sorted Rust
 tables; the original files stay here so updates are reviewable and reproducible.
 
+## FontCarver glyph metadata
+
+`glyphdata.json` is the version 1 curated metadata database, embedded directly in
+the library. It contains original FontCarver anchor and component suggestions
+for Latin letters, common Latin composites, combining marks, and ligatures.
+It is licensed under the repository's MIT OR Apache-2.0 license. Existing AGLFN
+names are drawn from the licensed file below; Latin canonical decompositions
+were checked against Python's Unicode 15.0.0 data. The committed JSON is the
+reviewable source and needs no runtime download or Python installation.
+
+The document has `version: 1` and a `glyphs` map keyed by glyph name. Each value
+can contain `unicodes` (scalar integers), `category`, `sub_category`, `script`
+(ISO 15924 code), `production_name`, `anchors` (names only), and `composition`
+(ordered glyph names). A project's local overlay uses the same format, with
+each field optional. Missing or null fields inherit; empty arrays explicitly
+clear. Known names determine encodings before caller fallbacks. Suffixed names
+inherit base metadata and production-name suffixes, but are unencoded unless an
+exact suffix record explicitly supplies `unicodes`. The leading dot in
+`.notdef` is part of its name.
+
+Inverse lookup prefers explicitly encoded local names in lexical order, then
+effective bundled records, then the canonical AGLFN/production name. An explicit
+overlay clearing or redirecting the canonical encoding can remove that inverse
+result when no other encoded candidate remains.
+
+The parser rejects unsupported versions and duplicate glyph keys. Limits are
+4 MiB, 65,536 records, 255-byte ASCII names (letters, digits, `.`, `_`, `-`),
+64 unique Unicode scalars, 64 composition members (repetition allowed), and
+128 unique anchors per record. Categories match the library's `Category`
+variants; scripts must be known ISO 15924 codes. Sub-categories have a 64-byte
+limit. Unknown JSON fields are accepted for forward compatibility.
+
+The curated records are deliberately a starter set. For other glyphs the
+library retains its AGLFN and ICU Unicode property fallbacks. Anchor suggestions
+do not include positions; composition suggestions do not build or modify paths.
+
 | File | Source | Licence / terms | SHA-256 |
 | --- | --- | --- | --- |
 | `aglfn.txt` | <https://raw.githubusercontent.com/adobe-type-tools/agl-aglfn/master/aglfn.txt> | BSD-3-Clause; the complete notice is retained in the file and at <https://github.com/adobe-type-tools/agl-aglfn/blob/master/LICENSE.md>. | `ed735a9ea58549b4cb2b8e804341548adb25aff43e81001ac7f3917247cacca1` |

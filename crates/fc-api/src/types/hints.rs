@@ -30,6 +30,10 @@ pub struct HintState {
     pub hints: Option<PsHints>,
     /// Selected layer identity.
     pub layer: Option<String>,
+    /// Whether this font supports additional CID private dictionaries.
+    pub is_cid: bool,
+    /// Dictionary assigned to the selected layer; absent when no layer is selected.
+    pub cff_private_dict_index: Option<u8>,
     /// Read-only outline for stem overlay preview.
     pub path: String,
     /// Whether automatic analysis targets this exact selected master layer.

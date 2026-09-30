@@ -78,7 +78,7 @@ describe('dialog wiring', () => {
   it('opens Add Glyphs, Export and Preferences from their shortcuts', async () => {
     const user = userEvent.setup()
     shell()
-    await screen.findByRole('tab', { name: 'DejaVuSans.ttf' })
+    await screen.findByRole('tab', { name: 'Overview · DejaVuSans.ttf' })
 
     await user.keyboard('{Control>}{Shift>}G{/Shift}{/Control}')
     expect(
@@ -101,7 +101,7 @@ describe('dialog wiring', () => {
   it('lists Export and Add Glyphs in their menus', async () => {
     const user = userEvent.setup()
     shell()
-    await screen.findByRole('tab', { name: 'DejaVuSans.ttf' })
+    await screen.findByRole('tab', { name: 'Overview · DejaVuSans.ttf' })
 
     await user.click(screen.getByRole('menuitem', { name: 'File' }))
     await user.click(screen.getByRole('menuitem', { name: /^Export/ }))
@@ -113,7 +113,7 @@ describe('dialog wiring', () => {
 
   it('draws the busy line while an operation runs', async () => {
     const transport = shell()
-    await screen.findByRole('tab', { name: 'DejaVuSans.ttf' })
+    await screen.findByRole('tab', { name: 'Overview · DejaVuSans.ttf' })
 
     transport.emit({ kind: 'Progress', doc: 1, stage: 'compile', percent: 40 })
 
@@ -129,7 +129,7 @@ describe('dialog wiring', () => {
   it('opens Find problems from the Font menu and command palette', async () => {
     const user = userEvent.setup()
     shell()
-    await screen.findByRole('tab', { name: 'DejaVuSans.ttf' })
+    await screen.findByRole('tab', { name: 'Overview · DejaVuSans.ttf' })
     await user.click(screen.getByRole('menuitem', { name: 'Font' }))
     await user.click(screen.getByRole('menuitem', { name: 'Find problems…' }))
     expect(

@@ -25,7 +25,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             "Contour",
             "FontInfo",
             "Glyph",
+            "GlyphConstruction",
             "Guide",
+            "Image",
             "Layer",
             "LayerEffect",
             "LayerKind",
@@ -43,15 +45,27 @@ fn main() -> Result<(), Box<dyn Error>> {
         &["BitmapStrike", "BitmapGlyph"],
     )?;
     add_imports(&output_dir.join("BitmapStrike.ts"), &["BitmapGlyph"])?;
+    add_imports(&output_dir.join("NodeLinkCommand.ts"), &["NodeAxis"])?;
     add_imports(
         &output_dir.join("HintCommand.ts"),
         &["PsHints", "PsPrivate", "Zone", "Stem", "TtMasterData"],
     )?;
     add_imports(
         &output_dir.join("DesignSpaceCommand.ts"),
-        &["Axis", "Master", "Instance", "LayerKind", "SmartAxis"],
+        &[
+            "Axis",
+            "Master",
+            "Instance",
+            "LayerKind",
+            "SmartAxis",
+            "VirtualMaster",
+        ],
     )?;
     add_imports(&output_dir.join("Kerning.ts"), &["KernPair"])?;
+    add_imports(
+        &output_dir.join("KerningMaintenanceOperation.ts"),
+        &["KernPair"],
+    )?;
     add_imports(
         &output_dir.join("MathCommand.ts"),
         &["MathTable", "MathConstants", "MathGlyphInfo"],
@@ -59,6 +73,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     add_imports(&output_dir.join("SvgCommand.ts"), &["SvgTable"])?;
     add_imports(&output_dir.join("ColorCommand.ts"), &["ColorTable"])?;
     write_methods(&output_dir)?;
+    write_scripting_declarations(&output_dir)?;
     write_index(&output_dir)?;
     Ok(())
 }
@@ -80,6 +95,29 @@ fn repair_command_double_option(path: &Path) -> Result<(), std::io::Error> {
 }
 
 fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
+    VariableProofParams::export_all(config)?;
+    VariableProof::export_all(config)?;
+    SmartFiltersGetParams::export_all(config)?;
+    SmartFiltersSetParams::export_all(config)?;
+    SmartFiltersResult::export_all(config)?;
+    SmartFilterParseParams::export_all(config)?;
+    SmartFilterParseResult::export_all(config)?;
+    FontCompareParams::export_all(config)?;
+    FontCompareResult::export_all(config)?;
+    FontCompareGlyphParams::export_all(config)?;
+    FontCompareGlyphResult::export_all(config)?;
+    GlyphDataStateParams::export_all(config)?;
+    GlyphDataState::export_all(config)?;
+    SetGlyphDataOverlayParams::export_all(config)?;
+    UpdateGlyphInfoParams::export_all(config)?;
+    PasteSpecialParams::export_all(config)?;
+    PasteSpecialResult::export_all(config)?;
+    RelinkComponentsParams::export_all(config)?;
+    AutomationScriptList::export_all(config)?;
+    AutomationScriptReadParams::export_all(config)?;
+    AutomationScriptSource::export_all(config)?;
+    AutomationPythonParams::export_all(config)?;
+    AutomationPythonResult::export_all(config)?;
     TtHintStateParams::export_all(config)?;
     TtHintState::export_all(config)?;
     TtHintApplyParams::export_all(config)?;
@@ -96,6 +134,11 @@ fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
     VariationPreview::export_all(config)?;
     BitmapRasterParams::export_all(config)?;
     BitmapTraceParams::export_all(config)?;
+    BitmapTransferParams::export_all(config)?;
+    BitmapPixelComponentsParams::export_all(config)?;
+    BitmapDetectParams::export_all(config)?;
+    BitmapPixelDetection::export_all(config)?;
+    BitmapReconstructParams::export_all(config)?;
     BitmapPreviewParams::export_all(config)?;
     BitmapPreviewLine::export_all(config)?;
     BitmapConfigureParams::export_all(config)?;
@@ -152,10 +195,19 @@ fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
     TableInfo::export_all(config)?;
     FontInfoView::export_all(config)?;
     SidebarCounts::export_all(config)?;
+    OpticalBatchParams::export_all(config)?;
+    OpticalBatchResult::export_all(config)?;
     CjkBatchParams::export_all(config)?;
     CjkBatchResult::export_all(config)?;
     CjkBatchExample::export_all(config)?;
     LayerEffectsParams::export_all(config)?;
+    ImageTarget::export_all(config)?;
+    ImageState::export_all(config)?;
+    ImageImportParams::export_all(config)?;
+    ImageSetParams::export_all(config)?;
+    ImageTraceParams::export_all(config)?;
+    ImageTraceResult::export_all(config)?;
+    LayerConstructionsParams::export_all(config)?;
     LayerEffectsResult::export_all(config)?;
     EffectMaskParams::export_all(config)?;
     StyleBatchParams::export_all(config)?;
@@ -187,6 +239,10 @@ fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
     GlyphListParams::export_all(config)?;
     GlyphCell::export_all(config)?;
     GlyphListResult::export_all(config)?;
+    GlyphList::export_all(config)?;
+    GlyphListView::export_all(config)?;
+    GlyphListsResult::export_all(config)?;
+    SetGlyphListsParams::export_all(config)?;
     GlyphIndexParams::export_all(config)?;
     GlyphCellParams::export_all(config)?;
     LayerPath::export_all(config)?;
@@ -290,13 +346,43 @@ fn collect_type_names(expression: &str, names: &mut BTreeSet<String>) {
     }
 }
 
+fn write_scripting_declarations(output_dir: &Path) -> Result<(), std::io::Error> {
+    let mut contents = generated_header();
+    contents.push_str(
+        r#"import type { ApiMethods } from './methods';
+import type { DocId } from './DocId';
+import type { MasterId } from './MasterId';
+import type { GlyphId } from './GlyphId';
+
+/** Context captured when the user explicitly starts a macro. */
+export interface FontCarverScriptContext {
+  readonly doc: DocId | null;
+  readonly master: MasterId | null;
+  readonly glyph: GlyphId | null;
+}
+
+/** Typed RPC facade in the macro worker. Calls preserve kernel validation/undo. */
+export interface FontCarverScriptApi {
+  readonly context: FontCarverScriptContext;
+  call<M extends Exclude<keyof ApiMethods, `automation.${string}` | 'doc.edit_begin' | 'doc.edit_apply' | 'doc.edit_end'>>(method: M, params: ApiMethods[M]['params']): Promise<ApiMethods[M]['result']>;
+}
+
+declare global {
+  const fc: FontCarverScriptApi;
+  const fontcarver: FontCarverScriptApi;
+}
+"#,
+    );
+    fs::write(output_dir.join("fontcarver.d.ts"), contents)
+}
+
 fn write_index(output_dir: &Path) -> Result<(), std::io::Error> {
     let mut modules = Vec::new();
     for entry in fs::read_dir(output_dir)? {
         let path = entry?.path();
         if path.extension().is_some_and(|extension| extension == "ts") {
             if let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) {
-                if stem != "index" {
+                if stem != "index" && !stem.ends_with(".d") {
                     modules.push(stem.to_owned());
                 }
             }
@@ -318,7 +404,30 @@ fn generated_header() -> String {
 mod tests {
     use std::fs;
 
-    use super::{add_imports, repair_command_double_option};
+    use super::{
+        add_imports, repair_command_double_option, write_index, write_scripting_declarations,
+    };
+
+    #[test]
+    fn scripting_declarations_are_ambient_and_not_a_runtime_index_export() {
+        let directory = tempfile::TempDir::new().unwrap();
+        write_scripting_declarations(directory.path()).unwrap();
+        fs::write(
+            directory.path().join("methods.ts"),
+            "export interface ApiMethods {}\n",
+        )
+        .unwrap();
+        write_index(directory.path()).unwrap();
+        let declarations = fs::read_to_string(directory.path().join("fontcarver.d.ts")).unwrap();
+        assert!(declarations.contains("declare global"));
+        assert!(declarations.contains("const fc: FontCarverScriptApi"));
+        assert!(declarations.contains("const fontcarver: FontCarverScriptApi"));
+        assert!(declarations.contains("Exclude<keyof ApiMethods, `automation.${string}` | 'doc.edit_begin' | 'doc.edit_apply' | 'doc.edit_end'>"));
+        assert_eq!(
+            fs::read_to_string(directory.path().join("index.ts")).unwrap(),
+            "// This file is generated by fc-api. Do not edit it manually.\nexport * from './methods';\n",
+        );
+    }
 
     #[test]
     fn import_repair_error_names_the_missing_generated_file() {

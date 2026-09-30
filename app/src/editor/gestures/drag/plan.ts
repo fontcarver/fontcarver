@@ -34,12 +34,19 @@ export interface Modifiers {
   shift: boolean
   /** "The other behaviour": ignore handles, keep an angle, from the centre. */
   alt: boolean
-  /** Command on macOS, Control elsewhere; suspends snapping. */
+  /** Command on macOS, Control elsewhere; selects the large nudge step. */
   mod: boolean
+  /** Physical Control; distinct from Command on macOS. */
+  ctrl?: boolean
 }
 
 /** No modifier held. */
 export const NO_MODIFIERS: Modifiers = { shift: false, alt: false, mod: false }
+
+/** Physical Control, with compatibility for callers predating the separate flag. */
+export function controlModifier(modifiers: Modifiers): boolean {
+  return modifiers.ctrl ?? modifiers.mod
+}
 
 /** What a drag moves and what its undo entry is called. */
 export interface DragPlan {
@@ -139,7 +146,9 @@ export function planDrag(
       // Ctrl+Alt is a different gesture — the proportional nudge — and there
       // the node keeps its handles while the neighbours' handles scale.
       handleMode:
-        modifiers.alt && !modifiers.mod ? 'PointsOnly' : 'WithHandles',
+        modifiers.alt && !controlModifier(modifiers)
+          ? 'PointsOnly'
+          : 'WithHandles',
       // A selection of handles alone is named for what it is: counting nodes
       // would label it "Move 0 points".
       label:

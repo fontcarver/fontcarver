@@ -152,9 +152,15 @@ pub struct DocWarning {
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
 #[ts(export)]
 pub struct SnapPrefs {
-    /// Snap to outline nodes and handles.
+    /// Snap to on-curve outline nodes.
     #[serde(default = "yes")]
     pub nodes: bool,
+    /// Snap to off-curve control handles.
+    #[serde(default = "yes")]
+    pub handles: bool,
+    /// Snap to glyph anchors.
+    #[serde(default = "yes")]
+    pub anchors: bool,
     /// Snap to guides.
     #[serde(default = "yes")]
     pub guides: bool,
@@ -167,6 +173,12 @@ pub struct SnapPrefs {
     /// Snap to component ghost nodes.
     #[serde(default = "yes")]
     pub components: bool,
+    /// Snap to active-master alignment zones.
+    #[serde(default = "yes")]
+    pub zones: bool,
+    /// Snap to outline points in the background layer.
+    #[serde(default = "yes")]
+    pub background: bool,
 }
 
 const fn yes() -> bool {
@@ -177,10 +189,14 @@ impl Default for SnapPrefs {
     fn default() -> Self {
         Self {
             nodes: true,
+            handles: true,
+            anchors: true,
             guides: true,
             metrics: true,
             grid: true,
             components: true,
+            zones: true,
+            background: true,
         }
     }
 }
@@ -200,6 +216,21 @@ pub struct Prefs {
     /// Editing grid size in font units; zero disables the grid.
     #[serde(default = "default_grid_size")]
     pub grid_size: f64,
+    /// Number of subdivisions per editing grid interval, from 1 through 100.
+    #[serde(default = "default_grid_subdivision")]
+    pub grid_subdivision: u32,
+    /// Maximum pointer snapping distance in CSS pixels, from 0 through 64.
+    #[serde(default = "default_snap_distance")]
+    pub snap_distance: f64,
+    /// Pointer hit-test distance in CSS pixels, from 1 through 64.
+    #[serde(default = "default_hit_distance")]
+    pub hit_distance: f64,
+    /// Control-handle marker diameter in CSS pixels, from 2 through 20.
+    #[serde(default = "default_handle_size")]
+    pub handle_size: f64,
+    /// On-curve node marker diameter in CSS pixels, from 2 through 20.
+    #[serde(default = "default_node_size")]
+    pub node_size: f64,
     /// Snapping targets.
     #[serde(default)]
     pub snap: SnapPrefs,
@@ -210,6 +241,26 @@ pub struct Prefs {
 
 const fn default_grid_size() -> f64 {
     1.0
+}
+
+const fn default_grid_subdivision() -> u32 {
+    1
+}
+
+const fn default_snap_distance() -> f64 {
+    6.0
+}
+
+const fn default_hit_distance() -> f64 {
+    5.0
+}
+
+const fn default_handle_size() -> f64 {
+    3.5
+}
+
+const fn default_node_size() -> f64 {
+    5.0
 }
 
 const fn default_nudge() -> [f64; 3] {
@@ -224,6 +275,11 @@ impl Default for Prefs {
             recent_limit: 20,
             autosave_seconds: 60,
             grid_size: default_grid_size(),
+            grid_subdivision: default_grid_subdivision(),
+            snap_distance: default_snap_distance(),
+            hit_distance: default_hit_distance(),
+            handle_size: default_handle_size(),
+            node_size: default_node_size(),
             snap: SnapPrefs::default(),
             nudge: default_nudge(),
         }

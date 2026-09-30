@@ -200,7 +200,7 @@ pub(super) fn set_start(
     Ok(Touched::one(point.contour))
 }
 
-/// Joins the end of one open contour to an endpoint of another.
+/// Joins two open endpoints, closing the contour when both belong to it.
 pub(super) fn join(
     font: &mut Font,
     glyph: &GlyphName,
@@ -210,31 +210,42 @@ pub(super) fn join(
 ) -> Result<Touched, Error> {
     let contours = &mut layer_mut(font, glyph, layer)?.contours;
     validate_points(contours, &[a, b])?;
-    if a.contour == b.contour {
-        return Err(Error::InvalidCommand(
-            "JoinContours requires two contours".to_owned(),
-        ));
-    }
     let first = &contours[a.contour];
     let second = &contours[b.contour];
-    if first.closed || second.closed || a.point + 1 != first.points.len() {
+    if first.closed
+        || second.closed
+        || !is_endpoint(first, a.point)
+        || !is_endpoint(second, b.point)
+        || (a.contour == b.contour && a.point == b.point)
+    {
         return Err(Error::InvalidCommand(
-            "a must be the end of an open contour".to_owned(),
+            "join requires two distinct open contour endpoints".to_owned(),
         ));
+    }
+    if a.contour == b.contour {
+        let contour = &mut contours[a.contour];
+        if same_position(contour.points.first(), contour.points.last()) {
+            if let Some(end) = contour.points.pop() {
+                contour.points[0].kind = end.kind;
+            }
+        } else {
+            contour.points[0].kind = PointKind::Line;
+        }
+        contour.closed = true;
+        return Ok(Touched::one(a.contour));
     }
     let mut second = second.clone();
     if b.point + 1 == second.points.len() {
         second = fc_geom::reverse(&second);
-    } else if b.point != 0 {
-        return Err(Error::InvalidCommand(
-            "b must be an endpoint of an open contour".to_owned(),
-        ));
     }
     if let Some(start) = second.points.first_mut() {
         start.kind = PointKind::Line;
     }
     let second_index = b.contour;
     let mut first = contours[a.contour].clone();
+    if a.point == 0 {
+        first = fc_geom::reverse(&first);
+    }
     if same_position(first.points.last(), second.points.first()) {
         second.points.remove(0);
     }
@@ -247,6 +258,11 @@ pub(super) fn join(
     contours.remove(second_index);
     contours[keep_index] = first;
     Ok(Touched::one(keep_index))
+}
+
+fn is_endpoint(contour: &Contour, index: usize) -> bool {
+    contour.points[index].kind != PointKind::OffCurve
+        && (index == 0 || index + 1 == contour.points.len())
 }
 
 /// Opens a closed contour, or splits an open contour into two.
@@ -264,16 +280,23 @@ pub(super) fn split(
             "split point must be on-curve".to_owned(),
         ));
     }
+    if contour.points[point.point].corner_radius != 0.0 {
+        return Err(Error::InvalidCommand(
+            "bake or remove the selected smart corner before splitting it".to_owned(),
+        ));
+    }
     if contour.closed {
         contour.points.rotate_left(point.point);
         contour.closed = false;
-        while contour
-            .points
-            .last()
-            .is_some_and(|point| point.kind == PointKind::OffCurve)
-        {
-            contour.points.pop();
-        }
+        // Keep the closing segment as an ordinary segment ending at a new
+        // coincident endpoint. A fresh point must not duplicate source IDs.
+        let start = &contour.points[0];
+        contour.points.push(Point {
+            x: start.x,
+            y: start.y,
+            kind: start.kind,
+            ..Point::default()
+        });
         repair_kinds(contour);
         return Ok(Touched::one(point.contour));
     }
@@ -284,6 +307,14 @@ pub(super) fn split(
     }
     let mut right = contour.clone();
     right.points = right.points[point.point..].to_vec();
+    let start = &right.points[0];
+    right.points[0] = Point {
+        x: start.x,
+        y: start.y,
+        kind: PointKind::Move,
+        ..Point::default()
+    };
+    right.id = None;
     contour.points.truncate(point.point + 1);
     repair_kinds(contour);
     repair_kinds(&mut right);
@@ -326,6 +357,7 @@ pub(super) fn path_op(
         .map_err(|error| Error::Geometry(error.to_string()))?,
         PathOp::CorrectDirection => fc_geom::correct_direction(contours, true),
         PathOp::AddExtrema => fc_geom::add_extrema(contours),
+        PathOp::ForceExtrema => fc_geom::force_extrema(contours),
         PathOp::AddInflections => fc_geom::add_inflections(contours),
         PathOp::Simplify(options) => fc_geom::simplify(contours, &options.geometry()),
         PathOp::RoundToGrid(step) => {

@@ -25,12 +25,18 @@ export interface TextTabState {
   readonly runCount?: number
   readonly shaping?: boolean
   readonly mode: 'text' | 'edit'
+  /** Legacy tabs behave as on; locked protects spacing edits. */
+  readonly kerningMode?: 'off' | 'on' | 'locked'
+  readonly spacingSide?: 'lsb' | 'rsb' | 'both'
   readonly master: MasterId | null
   readonly size: number
   readonly features: Array<[string, boolean]>
   readonly direction: 'ltr' | 'rtl' | 'ttb'
   readonly previewTheme: 'light' | 'dark'
   readonly previewCollapsed: boolean
+  readonly script?: string | null
+  readonly language?: string | null
+  readonly previewHeight?: number
 }
 
 /** One workspace tab. Tab ids are derived so re-opening focuses the same tab. */
@@ -77,8 +83,23 @@ export interface ClosePrompt {
  * dialog replaces the first rather than stacking two focus traps.
  */
 export type DialogState =
+  | { readonly kind: 'compareFonts'; readonly doc: DocId }
+  | {
+      readonly kind: 'pasteSpecial' | 'relinkComponents'
+      readonly doc: DocId
+      readonly glyphs: GlyphId[]
+    }
   | { readonly kind: 'newFont' }
-  | { readonly kind: 'addGlyphs'; readonly doc: DocId }
+  | {
+      readonly kind: 'batchRename'
+      readonly doc: DocId
+      readonly glyphs: GlyphId[]
+    }
+  | {
+      readonly kind: 'addGlyphs'
+      readonly doc: DocId
+      readonly recipe?: string
+    }
   | { readonly kind: 'export'; readonly doc: DocId }
   | { readonly kind: 'findProblems'; readonly doc: DocId }
   | { readonly kind: 'preferences' }

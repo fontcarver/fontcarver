@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next'
 
 import { IconButton } from '../components/IconButton'
 import { documentLabel, useSessionStore } from '../stores/sessionStore'
-import { useUiStore, type Tab } from '../stores/uiStore'
+import { reportError, useUiStore, type Tab } from '../stores/uiStore'
 import { glyphName } from '../views/font/glyphNames'
 
 import styles from './TabBar.module.css'
 import { closeTab, selectTab } from './tabActions'
+import { detachTab } from './windowActions'
 
 /** The tab strip: one Font tab per document plus Glyph and Font Info tabs. */
 export function TabBar() {
@@ -59,6 +60,19 @@ export function TabBar() {
           <div
             key={tab.id}
             role="none"
+            draggable={tab.kind !== 'font'}
+            onDragStart={(event) =>
+              event.dataTransfer.setData('text/plain', tab.id)
+            }
+            onDragEnd={(event) => {
+              const bounds = stripRef.current?.getBoundingClientRect()
+              if (
+                bounds &&
+                (event.clientY < bounds.top - 24 ||
+                  event.clientY > bounds.bottom + 24)
+              )
+                void detachTab(tab.id).catch(reportError)
+            }}
             className={
               selected ? `${styles.tab} ${styles.tabActive}` : styles.tab
             }
@@ -74,17 +88,29 @@ export function TabBar() {
               onClick={() => void selectTab(tab.id)}
               onKeyDown={(event) => onKeyDown(event, index)}
             >
-              {title}
+              {tab.kind === 'font' && !tab.label
+                ? `${t('shellWindow.overview')} · ${title}`
+                : title}
             </button>
             {tab.kind === 'font' && summary?.dirty ? (
               <span className={styles.tabDirty} aria-hidden="true" />
             ) : null}
-            <IconButton
-              label={t('tab.close', { title })}
-              onClick={() => void closeTab(tab.id)}
-            >
-              ✕
-            </IconButton>
+            {tab.kind !== 'font' ? (
+              <>
+                <IconButton
+                  label={t('shellWindow.detachTab', { title })}
+                  onClick={() => void detachTab(tab.id).catch(reportError)}
+                >
+                  ↗
+                </IconButton>
+                <IconButton
+                  label={t('tab.close', { title })}
+                  onClick={() => void closeTab(tab.id)}
+                >
+                  ✕
+                </IconButton>
+              </>
+            ) : null}
           </div>
         )
       })}

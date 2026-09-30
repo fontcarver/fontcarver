@@ -1,7 +1,7 @@
 //! Export and crash-recovery API types.
 
 use fc_doc::DocId;
-use fc_model::MasterId;
+use fc_model::{GlyphName, MasterId};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -36,6 +36,22 @@ pub enum ExportFormat {
     Woff,
     /// WOFF 2 wrapping a TrueType-flavored sfnt.
     Woff2,
+    /// Bare static Compact Font Format data without an OpenType container.
+    Cff,
+    /// PostScript Type 42 wrapping a static TrueType font.
+    Type42,
+    /// SVG font containing the selected master's outlines.
+    Svg,
+    /// Encapsulated PostScript outline of one explicitly selected glyph.
+    Eps,
+    /// Adobe font metrics for the selected master.
+    Afm,
+    /// Windows printer font metrics for the selected master.
+    Pfm,
+    /// Lossless XML containing compiled sfnt tables.
+    Ttx,
+    /// TrueType collection containing one or more independently compiled documents.
+    Ttc,
     /// UFO 3 package for the selected master.
     Ufo,
     /// Designspace document plus one UFO per master.
@@ -76,6 +92,26 @@ pub struct ExportOptions {
     /// Master to export, or the default master when absent.
     #[serde(default)]
     pub master: Option<MasterId>,
+    /// Glyph to write for a single-glyph outline output such as EPS.
+    #[serde(default)]
+    #[ts(optional)]
+    pub glyph: Option<GlyphName>,
+    /// Insert missing curve extrema in a static export copy.
+    #[serde(default)]
+    #[ts(as = "Option<bool>", optional)]
+    pub add_extrema: bool,
+    /// Round points, component offsets and metrics in a static export copy.
+    #[serde(default)]
+    #[ts(as = "Option<bool>", optional)]
+    pub round_coordinates: bool,
+    /// Expand components into contours in a static export copy.
+    #[serde(default)]
+    #[ts(as = "Option<bool>", optional)]
+    pub decompose_components: bool,
+    /// Share repeated static CFF charstrings using global subroutines.
+    #[serde(default)]
+    #[ts(as = "Option<bool>", optional)]
+    pub subroutinize: bool,
     /// Request overlap removal.
     #[serde(default)]
     pub remove_overlap: bool,
@@ -109,6 +145,11 @@ impl Default for ExportOptions {
             bitmap_strike: None,
             format: ExportFormat::Ttf,
             master: None,
+            glyph: None,
+            add_extrema: false,
+            round_coordinates: false,
+            decompose_components: false,
+            subroutinize: false,
             remove_overlap: false,
             keep_tt_instructions: true,
             preserve_untouched_tables: true,
@@ -127,6 +168,10 @@ pub struct ExportParams {
     pub doc: DocId,
     /// Destination path; a directory for UFO and designspace exports.
     pub path: String,
+    /// Additional open documents to append after `doc` in a TTC collection.
+    #[serde(default)]
+    #[ts(as = "Option<Vec<DocId>>", optional)]
+    pub collection_docs: Vec<DocId>,
     /// Export options.
     #[serde(default)]
     pub options: ExportOptions,

@@ -10,6 +10,7 @@ import { invalidateFor } from '../font/invalidation'
 import { AxesTable } from './AxesTable'
 import { CidEditor } from './CidEditor'
 import { DesignSpaceEditor } from './DesignSpaceEditor'
+import { FontMetadataEditor } from './FontMetadataEditor'
 import { Button } from '../../components/Button'
 import styles from './fontInfo.module.css'
 import { fontGroups, otherGroups } from './fontInfoRows'
@@ -51,6 +52,7 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
   const [section, setSection] = useState<SectionId>('font')
   const [query, setQuery] = useState('')
   const [designSpaceOpen, setDesignSpaceOpen] = useState(false)
+  const [metadataOpen, setMetadataOpen] = useState(false)
   const [cidOpen, setCidOpen] = useState(false)
   const [mathOpen, setMathOpen] = useState(false)
   const [colorOpen, setColorOpen] = useState(false)
@@ -114,11 +116,17 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
         return (
           <>
             {!searching && (
-              <MasterHints doc={summary.doc} masters={info.masters} />
+              <>
+                <Button onClick={() => setDesignSpaceOpen(true)}>
+                  {t('variation.edit')}
+                </Button>
+                <MasterHints doc={summary.doc} masters={info.masters} />
+              </>
             )}
             <MetricsTable
               heading={heading}
               masters={info.masters}
+              unitsPerEm={info.info.units_per_em}
               query={query}
             />
           </>
@@ -136,6 +144,7 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
               axes={summary.axes}
               masters={info.masters}
               instances={info.instances}
+              familyName={info.info.family_name}
               query={query}
             />
           </>
@@ -158,6 +167,13 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
 
   return (
     <div className={styles.view}>
+      {metadataOpen && (
+        <FontMetadataEditor
+          key={summary.doc}
+          doc={summary.doc}
+          onClose={() => setMetadataOpen(false)}
+        />
+      )}
       {cidOpen && (
         <CidEditor doc={summary.doc} onClose={() => setCidOpen(false)} />
       )}
@@ -177,6 +193,9 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
         />
       )}
       <Toolbar label={t('fontInfo.toolbar')} className={styles.toolbar}>
+        <Button onClick={() => setMetadataOpen(true)}>
+          {t('fontMetadata.edit')}
+        </Button>
         <Button onClick={() => setCidOpen(true)}>{t('cid.title')}</Button>
         <Button onClick={() => setMathOpen(true)}>{t('math.title')}</Button>
         <Button onClick={() => setColorOpen(true)}>{t('color.title')}</Button>

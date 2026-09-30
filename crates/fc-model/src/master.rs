@@ -266,6 +266,10 @@ pub struct Master {
     /// PostScript private dictionary.
     #[serde(default)]
     pub private_dict: PsPrivate,
+    /// Additional CFF1 CID private dictionaries, indexed from FD 1; FD 0 uses `private_dict`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[cfg_attr(feature = "ts", ts(as = "Option<Vec<PsPrivate>>", optional))]
+    pub cff_private_dicts: Vec<PsPrivate>,
     /// TrueType programs and maxima.
     #[serde(default)]
     pub tt: TtMasterData,
@@ -288,6 +292,7 @@ impl Default for Master {
             kerning_h: Kerning::default(),
             kerning_v: Kerning::default(),
             private_dict: PsPrivate::default(),
+            cff_private_dicts: Vec::new(),
             tt: TtMasterData::default(),
             user_data: serde_json::Value::Null,
         }

@@ -1,7 +1,11 @@
+import { CompareFontsDialog } from '../views/crossdocument/CompareFontsDialog'
+import { PasteSpecialDialog } from '../views/crossdocument/PasteSpecialDialog'
+import { RelinkComponentsDialog } from '../views/crossdocument/RelinkComponentsDialog'
 import { selectSummary, useSessionStore } from '../stores/sessionStore'
 import { useUiStore } from '../stores/uiStore'
 
 import { AddGlyphsDialog } from './AddGlyphsDialog'
+import { BatchRenameDialog } from './BatchRenameDialog'
 import { ExpandStrokeDialog } from './ExpandStrokeDialog'
 import { ExportDialog } from './ExportDialog'
 import { FindProblemsDialog } from './FindProblemsDialog'
@@ -23,10 +27,42 @@ export function DialogHost() {
 
   if (!dialog) return null
   switch (dialog.kind) {
+    case 'compareFonts':
+      return summary ? (
+        <CompareFontsDialog
+          key={dialog.doc}
+          target={summary}
+          onClose={() => useUiStore.getState().setDialog(null)}
+        />
+      ) : null
+    case 'pasteSpecial':
+      return summary ? (
+        <PasteSpecialDialog
+          key={dialog.doc}
+          target={summary}
+          glyphs={dialog.glyphs}
+          onClose={() => useUiStore.getState().setDialog(null)}
+        />
+      ) : null
+    case 'relinkComponents':
+      return summary ? (
+        <RelinkComponentsDialog
+          key={dialog.doc}
+          target={summary}
+          glyphs={dialog.glyphs}
+          onClose={() => useUiStore.getState().setDialog(null)}
+        />
+      ) : null
     case 'newFont':
       return <NewFontDialog />
+    case 'batchRename':
+      return summary ? (
+        <BatchRenameDialog doc={dialog.doc} glyphs={dialog.glyphs} />
+      ) : null
     case 'addGlyphs':
-      return summary ? <AddGlyphsDialog doc={dialog.doc} /> : null
+      return summary ? (
+        <AddGlyphsDialog doc={dialog.doc} recipe={dialog.recipe} />
+      ) : null
     case 'export':
       return summary ? (
         <ExportDialog key={summary.doc} summary={summary} />

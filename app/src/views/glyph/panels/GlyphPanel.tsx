@@ -12,6 +12,9 @@ import {
   setUnicodesCommand,
 } from './panelCommands'
 import { TextRow } from './TextRow'
+import { GlyphTagsField } from './GlyphTagsField'
+import { GlyphDatabasePanel } from './GlyphDatabasePanel'
+export { parseTags } from './glyphTags'
 
 /** `U+0041`, the form the chips and the entry field both use. */
 function formatScalar(value: number): string {
@@ -37,23 +40,12 @@ export function parseScalar(input: string): number | null {
   return null
 }
 
-/** Tags as the field shows them, and back again. */
-export function parseTags(input: string): string[] {
-  return [
-    ...new Set(
-      input
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter((tag) => tag !== ''),
-    ),
-  ]
-}
-
 /**
  * The Glyph section (design spec §7.1): identity, the derived classification
  * `fc-glyphdata` supplies, and the editable metadata `SetGlyphMeta` carries.
  */
-export function GlyphPanel({ target, glyph, cell, reload }: PanelContext) {
+export function GlyphPanel(context: PanelContext) {
+  const { target, glyph, cell, reload } = context
   const { t } = useTranslation()
   const [draft, setDraft] = useState('')
 
@@ -166,6 +158,32 @@ export function GlyphPanel({ target, glyph, cell, reload }: PanelContext) {
       </div>
 
       <div className={styles.row}>
+        <span className={styles.rowLabel}>{t('glyphMetadata.locked')}</span>
+        <button
+          type="button"
+          className={styles.toggle}
+          aria-pressed={glyph.locked}
+          aria-label={t(
+            glyph.locked ? 'glyphMetadata.unlock' : 'glyphMetadata.lock',
+          )}
+          onClick={() =>
+            commitField(
+              target,
+              {
+                EditorMetadata: {
+                  GlyphLock: { glyph: glyph.name, locked: !glyph.locked },
+                },
+              },
+              t(glyph.locked ? 'glyphMetadata.unlock' : 'glyphMetadata.lock'),
+              reload,
+            )
+          }
+        >
+          {glyph.locked ? t('common.yes') : t('common.no')}
+        </button>
+      </div>
+
+      <div className={styles.row}>
         <span className={styles.rowLabel}>{t('glyphInspector.color')}</span>
         <span className={styles.swatches}>
           <button
@@ -200,14 +218,12 @@ export function GlyphPanel({ target, glyph, cell, reload }: PanelContext) {
         </span>
       </div>
 
-      <TextRow
-        label={t('glyphInspector.tags')}
-        value={glyph.tags.join(', ')}
-        placeholder={t('panel.glyph.tagsPlaceholder')}
-        onCommit={(value) =>
-          meta({ tags: parseTags(value) }, t('editor.undo.setGlyphTags'))
-        }
+      <GlyphTagsField
+        doc={target.doc}
+        tags={glyph.tags}
+        onCommit={(tags) => meta({ tags }, t('editor.undo.setGlyphTags'))}
       />
+      <GlyphDatabasePanel {...context} />
       <TextRow
         label={t('glyphInspector.note')}
         value={glyph.note}

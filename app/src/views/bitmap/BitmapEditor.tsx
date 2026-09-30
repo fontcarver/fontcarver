@@ -1,13 +1,16 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  call,
   onDocumentEvent,
   type Bitmap,
   type BitmapStrikeInfo,
   type DocId,
+  type GlyphId,
 } from '../../api'
 import { reportError } from '../../stores/uiStore'
 import { cropGlyph, invert } from './bitmapTransforms'
+import { BitmapReferences } from './BitmapReferences'
 import { BitmapScale } from './BitmapScale'
 import { BitmapMetrics } from './BitmapMetrics'
 import { BitmapCanvas } from './BitmapCanvas'
@@ -27,10 +30,16 @@ export function BitmapEditor({
   doc,
   glyph,
   strike,
+  upm,
+  master,
+  gid,
 }: {
   doc: DocId
   glyph: string
   strike: BitmapStrikeInfo
+  upm: number
+  master: string
+  gid?: GlyphId
 }) {
   const { t } = useTranslation()
   const [session] = useState(() => {
@@ -52,6 +61,33 @@ export function BitmapEditor({
     [shade, setShade] = useState(255),
     [color, setColor] = useState('#171717'),
     [selection, setSelection] = useState<PixelSelection>()
+  const [outlinePath, setOutlinePath] = useState('')
+  useEffect(() => {
+    let active = true
+    const refresh = async () => {
+      if (gid === undefined) return
+      const detail = await call('glyphs.detail', { doc, gid })
+      const layer = detail.glyph.layers.find(
+        (layer) =>
+          typeof layer.kind === 'object' &&
+          'Master' in layer.kind &&
+          layer.kind.Master === master,
+      )
+      if (active)
+        setOutlinePath(
+          detail.paths.find((path) => path.layer === layer?.id)?.flattened ??
+            '',
+        )
+    }
+    void refresh().catch(reportError)
+    const off = onDocumentEvent((event) => {
+      if (event.doc === doc) void refresh().catch(reportError)
+    })
+    return () => {
+      active = false
+      off()
+    }
+  }, [doc, gid, master])
   useEffect(() => {
     const dispose = session.connect()
     void session.load().catch(reportError)
@@ -128,7 +164,7 @@ export function BitmapEditor({
           ArrowDown: 'down',
         } as const
         const direction = directions[event.key as keyof typeof directions]
-        if (direction) {
+        if (direction && tool !== 'hand') {
           event.preventDefault()
           event.stopPropagation()
           session.edit(transformSelection(value, selection, direction))
@@ -156,6 +192,8 @@ export function BitmapEditor({
             'ellipse',
             'fill',
             'select',
+            'eyedropper',
+            'hand',
           ] as const
         ).map((name) => (
           <button
@@ -164,7 +202,9 @@ export function BitmapEditor({
             aria-pressed={tool === name}
             onClick={() => setTool(name)}
           >
-            {t(`bitmap.tool.${name}`)}
+            {name === 'eyedropper' || name === 'hand'
+              ? t(`bitmapCanvas.${name}`)
+              : t(`bitmap.tool.${name}`)}
           </button>
         ))}
         <label>
@@ -219,6 +259,17 @@ export function BitmapEditor({
       )}
       <BitmapCanvas
         value={value}
+        upm={upm}
+        ppem={strike.ppem}
+        outlinePath={outlinePath}
+        resolved={state.resolved}
+        onPickInk={(sample) => {
+          if (strike.depth === 32) {
+            setColor(`#${(sample >>> 8).toString(16).padStart(6, '0')}`)
+            setShade(sample & 255)
+          } else
+            setShade(Math.round((sample * 255) / ((1 << strike.depth) - 1)))
+        }}
         zoom={zoom}
         tool={tool}
         ink={ink}
@@ -285,6 +336,7 @@ export function BitmapEditor({
         }}
       />
       <BitmapMetrics session={session} value={value} disabled={disabled} />
+      <BitmapReferences session={session} value={value} disabled={disabled} />
       <p className={styles.hint}>
         {t('bitmap.editHint')}{' '}
         {state.busy

@@ -2,6 +2,10 @@
 
 mod eligibility;
 mod groups;
+mod maintenance;
+
+pub use maintenance::KerningMaintenanceOperation;
+pub(crate) use maintenance::{apply as maintain_table, validate_generation};
 
 pub use eligibility::{
     check_horizontal_editing, check_vertical_editing, HorizontalKerningEditBlock,

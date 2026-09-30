@@ -25,10 +25,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use fc_compile::{
-    compile_static_with_metadata, horizontal_kerning_warnings, preserve_merge, CompileOptions,
-    ExportOptions, StaticCompile,
-};
+use fc_compile::{horizontal_kerning_warnings, preserve_merge, ExportOptions, ShapingCompile};
 use fc_model::{FeaturesSource, Font, GlyphName, MasterId};
 use harfrust::{Direction, Feature, Language, Script, ShapeOptions, ShaperData, UnicodeBuffer};
 use read_fonts::{
@@ -634,20 +631,35 @@ impl Drop for WorkerCensus<'_> {
 }
 
 struct CompiledFont {
-    bytes: Vec<u8>,
+    bytes: Arc<[u8]>,
     generation: u64,
     names: Vec<Option<GlyphName>>,
     advances: Vec<f64>,
     units_per_em: u16,
     warnings: Vec<String>,
+    source: Option<Arc<ShapingCompile>>,
 }
 
 impl CompiledFont {
     fn build(font: &Font, master: &MasterId, generation: u64) -> Result<Self, Error> {
+        Self::rebuild(font, master, generation, None)
+    }
+
+    fn rebuild(
+        font: &Font,
+        master: &MasterId,
+        generation: u64,
+        previous: Option<&Self>,
+    ) -> Result<Self, Error> {
         if font.master(master).is_none() {
             return Err(Error::MissingMaster(master.clone()));
         }
-        let mut compiled = compile_static_with_metadata(font, master, &CompileOptions::default())?;
+        let compiled = Arc::new(ShapingCompile::build(
+            font,
+            master,
+            previous.and_then(|previous| previous.source.as_deref()),
+        )?);
+        let mut bytes = Arc::clone(&compiled.bytes);
         let mut warnings = horizontal_kerning_warnings(font, master);
         if font.features.source_of_truth == FeaturesSource::ImportedTables {
             // Shaping shares export's glyph-order-verified layout preservation.
@@ -658,12 +670,20 @@ impl CompiledFont {
                 keep_tt_instructions: false,
                 ..ExportOptions::default()
             };
-            let (bytes, preserved) =
+            let (preserved_bytes, preserved) =
                 preserve_merge(&compiled.bytes, font, &HashSet::new(), &options)?;
-            compiled.bytes = bytes;
+            bytes = preserved_bytes.into();
             warnings.extend(preserved);
         }
-        let mut result = Self::from_static(compiled, generation, font.info.units_per_em)?;
+        let mut result = Self {
+            advances: glyph_advances(&bytes)?,
+            names: compiled.glyph_order.iter().cloned().map(Some).collect(),
+            bytes,
+            generation,
+            units_per_em: font.info.units_per_em,
+            warnings: Vec::new(),
+            source: Some(compiled),
+        };
         result.warnings = warnings
             .into_iter()
             .map(|warning| format!("{}: {}", warning.code, warning.message))
@@ -671,20 +691,22 @@ impl CompiledFont {
         Ok(result)
     }
 
+    #[cfg(test)]
     fn from_static(
-        compiled: StaticCompile,
+        compiled: fc_compile::StaticCompile,
         generation: u64,
         units_per_em: u16,
     ) -> Result<Self, Error> {
         let advances = glyph_advances(&compiled.bytes)?;
         let names = compiled.glyph_order.into_iter().map(Some).collect();
         Ok(Self {
-            bytes: compiled.bytes,
+            bytes: compiled.bytes.into(),
             generation,
             names,
             advances,
             units_per_em,
             warnings: Vec::new(),
+            source: None,
         })
     }
 }
@@ -722,7 +744,13 @@ fn run_worker(entry: &Arc<Entry>, token: u64, debounce: Duration) {
         // fontc and fea-rs are third-party code running on untrusted models;
         // a panic there must not wedge this entry into permanent staleness.
         let built = catch_unwind(AssertUnwindSafe(|| {
-            CompiledFont::build(&pending.font, &entry.key.master, pending.generation)
+            let previous = lock(&entry.state).compiled.clone();
+            CompiledFont::rebuild(
+                &pending.font,
+                &entry.key.master,
+                pending.generation,
+                previous.as_deref(),
+            )
         }));
         if entry.is_cancelled() {
             return;
@@ -943,12 +971,13 @@ mod tests {
 
     fn compiled(generation: u64) -> Arc<CompiledFont> {
         Arc::new(CompiledFont {
-            bytes: Vec::new(),
+            bytes: Vec::new().into(),
             generation,
             names: Vec::new(),
             advances: Vec::new(),
             units_per_em: 1_000,
             warnings: Vec::new(),
+            source: None,
         })
     }
 

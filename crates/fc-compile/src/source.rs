@@ -69,11 +69,39 @@ pub struct FcSource {
 }
 
 impl FcSource {
+    /// Prepare only the source fields consumed by static layout writers.
+    pub(crate) fn from_layout_font(font: &Font, master: &MasterId) -> Result<Self, Error> {
+        let mut source = font.clone();
+        for glyph in source.glyphs.values_mut() {
+            for layer in &mut glyph.layers {
+                layer.contours.clear();
+                layer.components.clear();
+                layer.effects.clear();
+                layer.constructions.clear();
+                layer.node_links.clear();
+                layer.linked_guides.clear();
+            }
+        }
+        // Effects and smart-component resolution preserve source anchors and
+        // metrics. Empty geometry makes the normal preparation path a no-op,
+        // while retaining its validation, token expansion and metric defaults.
+        Self::from_font(&source, master, &CompileOptions::default())
+    }
+
     /// Copies a FontCarver font into a source selecting one master.
     pub fn from_font(
         font: &Font,
         master: &MasterId,
         options: &CompileOptions,
+    ) -> Result<Self, Error> {
+        Self::from_font_target(font, master, options, false)
+    }
+
+    fn from_font_target(
+        font: &Font,
+        master: &MasterId,
+        options: &CompileOptions,
+        variable: bool,
     ) -> Result<Self, Error> {
         if font.master(master).is_none() {
             return Err(Error::MissingMaster(master.clone()));
@@ -89,7 +117,7 @@ impl FcSource {
                 "preserved native designspace rules require conversion before compilation".into(),
             ));
         }
-        crate::feature_validation::check_writer_conflicts(font)?;
+        crate::feature_validation::check_writer_conflicts(font, master, variable)?;
         let large_font = crate::large_font::requires_workaround(font, options.production_names);
         let (baked, _) =
             fc_geom::bake_effects_font(font).map_err(|e| Error::InvalidSource(e.to_string()))?;
@@ -100,7 +128,7 @@ impl FcSource {
             data: Arc::new(SourceData {
                 font: resolved,
                 master: master.clone(),
-                variable: false,
+                variable,
                 variations: None,
                 options: options.clone(),
                 large_font,
@@ -124,7 +152,7 @@ impl FcSource {
         let master = font
             .design_default_master()
             .map_err(|e| Error::InvalidSource(e.to_string()))?;
-        let mut source = Self::from_font(font, &master.id, options)?;
+        let mut source = Self::from_font_target(font, &master.id, options, true)?;
         for glyph in source.data.font.glyphs.values() {
             fc_geom::variation::interpolate_glyph(&source.data.font, glyph, &master.location)
                 .map_err(|e| Error::InvalidSource(format!("{}: {e}", glyph.name)))?;

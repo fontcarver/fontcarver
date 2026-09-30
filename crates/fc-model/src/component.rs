@@ -12,6 +12,10 @@ use crate::GlyphName;
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[cfg_attr(feature = "ts", ts(export))]
 pub struct Component {
+    /// Whether editor commands must preserve this component until it is unlocked.
+    #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(as = "Option<bool>", optional))]
+    pub locked: bool,
     /// Referenced base glyph.
     #[serde(default)]
     pub base: GlyphName,
@@ -49,6 +53,7 @@ fn default_affine() -> Affine {
 impl Default for Component {
     fn default() -> Self {
         Self {
+            locked: false,
             base: GlyphName::default(),
             transform: Affine::IDENTITY,
             anchor: None,

@@ -1,0 +1,53 @@
+.editor {
+  display: grid;
+  gap: var(--space-3);
+}
+.editor p {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+}
+.form {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.form legend,
+.form h3 {
+  margin: var(--space-3) 0;
+  padding: 0;
+  font-size: var(--text-size-md);
+  font-weight: 600;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+.editor label {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.editor input,
+.editor textarea {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  color: var(--color-text);
+  background: var(--color-canvas);
+  font: inherit;
+}
+.editor input {
+  height: var(--control-height);
+}
+.editor textarea {
+  resize: vertical;
+}
+.textFields {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}

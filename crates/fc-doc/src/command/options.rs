@@ -228,6 +228,8 @@ pub enum PathOp {
     CorrectDirection,
     /// Insert missing horizontal and vertical extrema.
     AddExtrema,
+    /// Insert extrema even when they are very close to existing endpoints.
+    ForceExtrema,
     /// Insert cubic inflection points.
     AddInflections,
     /// Simplify and re-fit outlines.

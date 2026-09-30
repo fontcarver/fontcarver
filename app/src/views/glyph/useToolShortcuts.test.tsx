@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { HOLD_BORROW_MS, TOOLS } from '../../editor/tools/registry'
 import { initialEditorState, useEditorStore } from '../../stores/editorStore'
+import { useKeymapStore } from '../../stores/keymapStore'
 import { initialUiState, useUiStore } from '../../stores/uiStore'
 
 import { useToolShortcuts } from './useToolShortcuts'
@@ -30,9 +31,77 @@ function press(key: string, options: { shift?: boolean; hold?: number } = {}) {
 beforeEach(() => {
   useEditorStore.setState(initialEditorState())
   useUiStore.setState(initialUiState())
+  useKeymapStore.setState({ overrides: {} })
 })
 
 describe('useToolShortcuts', () => {
+  it('uses a remapped key for tap and hold without reinstalling the hook', () => {
+    vi.useFakeTimers()
+    render(<Host />)
+    try {
+      useKeymapStore.setState({ overrides: { 'tool.pen': 'U' } })
+      press('p')
+      expect(useEditorStore.getState().tool).toBe('select')
+      press('u')
+      expect(useEditorStore.getState().tool).toBe('pen')
+      useEditorStore.getState().setTool('select')
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'u' }))
+        vi.advanceTimersByTime(HOLD_BORROW_MS)
+      })
+      expect(useEditorStore.getState().borrowedTool).toBe('pen')
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keyup', { key: 'u' }))
+      })
+      expect(useEditorStore.getState().borrowedTool).toBeNull()
+      expect(useEditorStore.getState().tool).toBe('select')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('leaves already handled command events alone', () => {
+    render(<Host />)
+    const event = new KeyboardEvent('keydown', { key: 'p', cancelable: true })
+    event.preventDefault()
+    act(() => {
+      window.dispatchEvent(event)
+      window.dispatchEvent(new KeyboardEvent('keyup', { key: 'p' }))
+    })
+    expect(useEditorStore.getState().tool).toBe('select')
+  })
+
+  it('releases a custom modified tool by physical key when its text changes', () => {
+    render(<Host />)
+    useKeymapStore.setState({ overrides: { 'tool.pen': 'Alt+Q' } })
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'œ', code: 'KeyQ', altKey: true }),
+      )
+      window.dispatchEvent(
+        new KeyboardEvent('keyup', { key: 'q', code: 'KeyQ' }),
+      )
+    })
+    expect(useEditorStore.getState().tool).toBe('pen')
+  })
+
+  it('returns a borrowed tool when the window loses focus', () => {
+    vi.useFakeTimers()
+    render(<Host />)
+    try {
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'p' }))
+        vi.advanceTimersByTime(HOLD_BORROW_MS)
+      })
+      expect(useEditorStore.getState().borrowedTool).toBe('pen')
+      act(() => window.dispatchEvent(new Event('blur')))
+      expect(useEditorStore.getState().borrowedTool).toBeNull()
+      expect(useEditorStore.getState().tool).toBe('select')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('switches on a tap for every key of the §5 table', () => {
     vi.useFakeTimers()
     render(<Host />)

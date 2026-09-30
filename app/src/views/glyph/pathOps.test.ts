@@ -11,6 +11,7 @@ import {
   onlyNode,
   pathOpCommand,
   scopedContours,
+  startPoint,
   tidyCommand,
 } from './pathOps'
 
@@ -48,6 +49,12 @@ describe('path operations', () => {
 })
 
 describe('selection scope', () => {
+  it('sets a start only on a closed contour and an existing node', () => {
+    const selection = selectionOf([{ kind: 'node', contour: 0, point: 0 }])
+    expect(startPoint([closed], selection)).toEqual({ contour: 0, point: 0 })
+    expect(startPoint([open], selection)).toBeNull()
+    expect(startPoint([], selection)).toBeNull()
+  })
   it('falls back to every contour when nothing is selected', () => {
     expect(scopedContours([closed, open], selectionOf([]))).toEqual([0, 1])
   })
@@ -87,12 +94,32 @@ describe('join', () => {
     })
   })
 
-  it('refuses two ends of the same contour', () => {
+  it('reconnects the two ends of the same contour', () => {
     const selection = selectionOf([
       { kind: 'node', contour: 0, point: 0 },
       { kind: 'node', contour: 0, point: 2 },
     ])
-    expect(joinEnds([open], selection)).toBeNull()
+    expect(joinEnds([open], selection)).toEqual({
+      a: { contour: 0, point: 2 },
+      b: { contour: 0, point: 0 },
+    })
+  })
+
+  it('joins two starts and rejects selections containing interior nodes', () => {
+    const starts = [
+      { kind: 'node' as const, contour: 0, point: 0 },
+      { kind: 'node' as const, contour: 1, point: 0 },
+    ]
+    expect(joinEnds([open, otherOpen], selectionOf(starts))).toEqual({
+      a: { contour: 0, point: 0 },
+      b: { contour: 1, point: 0 },
+    })
+    expect(
+      joinEnds(
+        [open, otherOpen],
+        selectionOf([...starts, { kind: 'node', contour: 0, point: 1 }]),
+      ),
+    ).toBeNull()
   })
 
   it('refuses an interior node and a closed contour', () => {

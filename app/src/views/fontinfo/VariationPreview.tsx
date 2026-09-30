@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { call, type DocId, type VariationPreview as Preview } from '../../api'
 import type { DesignSpaceValue as VariationState } from './designSpaceSession'
-import { Button } from '../../components/Button'
+import { VariationCompatibility } from './VariationCompatibility'
 import { errorNotice } from '../../i18n/errors'
 import styles from './designSpace.module.css'
 
@@ -30,47 +30,65 @@ export function VariationPreview({
   state,
   onRefresh,
   fixedGlyph,
+  onPreviewChange,
 }: {
   doc: DocId
   state: VariationState
   onRefresh: () => void
   fixedGlyph?: string
+  onPreviewChange?: (preview: Preview | null) => void
 }) {
   const { t } = useTranslation()
   const [glyph, setGlyph] = useState(fixedGlyph ?? state.first_glyph ?? '')
   const [location, setLocation] = useState<Record<string, number>>({})
-  const [preview, setPreview] = useState<Preview | null>(null)
+  const requestKey = JSON.stringify([doc, glyph, location, state.generation])
+  const [response, setResponse] = useState<{
+    key: string
+    value: Preview
+  } | null>(null)
+  const [settledKey, setSettledKey] = useState<string | null>(null)
+  const preview = response?.key === requestKey ? response.value : null
+  const [onCanvas, setOnCanvas] = useState(true)
+  useEffect(() => {
+    onPreviewChange?.(
+      onCanvas && (preview?.path || !preview?.issues.length) ? preview : null,
+    )
+    return () => onPreviewChange?.(null)
+  }, [onCanvas, preview, onPreviewChange])
   const [error, setError] = useState(''),
-    [busy, setBusy] = useState(false),
-    [overlays, setOverlays] = useState(true)
+    [busy, setBusy] = useState(false)
   useEffect(() => {
     let current = true
     const timer = setTimeout(() => {
       setBusy(true)
+      setError('')
       void call('variation.preview', { doc, glyph, location })
         .then((result) => {
           if (current) {
-            setPreview(result)
+            setResponse({ key: requestKey, value: result })
             setError('')
           }
         })
         .catch((error: unknown) => {
           if (current) {
-            setPreview(null)
+            setResponse(null)
             setError(
               errorNotice(error, t).details ?? errorNotice(error, t).message,
             )
           }
         })
         .finally(() => {
-          if (current) setBusy(false)
+          if (current) {
+            setSettledKey(requestKey)
+            setBusy(false)
+          }
         })
     }, 60)
     return () => {
       current = false
       clearTimeout(timer)
     }
-  }, [doc, glyph, location, state.generation, t])
+  }, [doc, glyph, location, requestKey, t])
   const repair = () => {
     setBusy(true)
     void call('variation.apply', {
@@ -87,7 +105,6 @@ export function VariationPreview({
       )
       .finally(() => setBusy(false))
   }
-  const em = preview?.units_per_em ?? 1000
   return (
     <section className={styles.preview} aria-label={t('variation.preview')}>
       <h3>{t('variation.preview')}</h3>
@@ -147,53 +164,24 @@ export function VariationPreview({
           <output>{(location[axis.tag] ?? axis.default).toFixed(1)}</output>
         </label>
       ))}
-      <svg
-        viewBox={`${-em * 0.15} ${-em} ${Math.max(em, preview?.width ?? 0) * 1.3} ${em * 1.25}`}
-        className={styles.canvas}
-        aria-label={t('variation.outline')}
-        role="img"
-        aria-busy={busy}
-      >
-        <g transform="scale(1,-1)">
-          <path d={`M${-em * 0.1} 0H${em * 1.2}`} className={styles.baseline} />
-          {overlays &&
-            preview?.sources.map((source, index) => (
-              <path
-                key={index}
-                d={source.path}
-                className={`${styles.source} ${styles[`source${index % 3}`]}`}
-              >
-                <title>{source.name}</title>
-              </path>
-            ))}
-          <path d={preview?.path ?? ''} className={styles.outline} />
-        </g>
-      </svg>
-      <div className={styles.row}>
+      {onPreviewChange && (
         <label>
           <input
             type="checkbox"
-            checked={overlays}
-            onChange={(e) => setOverlays(e.target.checked)}
+            checked={onCanvas}
+            onChange={(e) => setOnCanvas(e.target.checked)}
           />
-          {t('variation.showSources')}
+          {t('variation.showOnCanvas')}
         </label>
-        <span>
-          {t('variation.advance', { value: preview?.width.toFixed(1) ?? '—' })}
-        </span>
-      </div>
-      {error && <p role="alert">{error}</p>}
-      {preview && preview.issues.length > 0 && (
-        <ul>
-          {preview.issues.map((issue, i) => (
-            <li key={i}>{issue}</li>
-          ))}
-        </ul>
       )}
-      <Button disabled={busy || !glyph} onClick={repair}>
-        {t('variation.repair')}
-      </Button>
-      <p>{t('variation.repairHint')}</p>
+      {error && <p role="alert">{error}</p>}
+      <VariationCompatibility
+        key={`${doc}:${glyph}`}
+        preview={preview}
+        busy={busy || settledKey !== requestKey}
+        glyph={glyph}
+        onRepair={repair}
+      />
     </section>
   )
 }

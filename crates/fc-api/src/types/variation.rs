@@ -17,6 +17,10 @@ pub struct VariationState {
     pub masters: Vec<Master>,
     /// Named export instances.
     pub instances: Vec<Instance>,
+    /// Named sparse-source coordinates without physical master outlines.
+    #[serde(default)]
+    #[ts(optional)]
+    pub virtual_masters: Option<Vec<fc_model::VirtualMaster>>,
     /// First available glyph for an initial preview.
     pub first_glyph: Option<String>,
 }

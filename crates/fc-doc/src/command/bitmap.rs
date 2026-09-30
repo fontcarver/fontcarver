@@ -33,10 +33,43 @@ pub enum BitmapCommand {
         #[ts(type = "BitmapGlyph | null")]
         value: Option<BitmapGlyph>,
     },
+    /// Replace a bounded collection of glyph images as one undo transaction.
+    SetGlyphs {
+        /// Pixels per em.
+        ppem: u16,
+        /// Bits per pixel.
+        depth: u8,
+        /// Existing glyph names and their replacement images; other images remain unchanged.
+        #[ts(type = "Record<string, BitmapGlyph>")]
+        glyphs: std::collections::BTreeMap<GlyphName, BitmapGlyph>,
+    },
 }
 
 pub(super) fn apply(font: &mut Font, command: &BitmapCommand) -> Result<(), Error> {
     match command {
+        BitmapCommand::SetGlyphs {
+            ppem,
+            depth,
+            glyphs,
+        } => {
+            if glyphs.is_empty() || glyphs.len() > 4096 {
+                return Err(Error::InvalidCommand(
+                    "bitmap batch must contain 1–4096 glyphs".into(),
+                ));
+            }
+            let mut strike = font
+                .bitmap_strikes
+                .iter()
+                .find(|s| (s.ppem, s.depth) == (*ppem, *depth))
+                .cloned()
+                .ok_or_else(|| Error::InvalidCommand("bitmap strike does not exist".into()))?;
+            strike.glyphs.extend(
+                glyphs
+                    .iter()
+                    .map(|(name, value)| (name.clone(), value.clone())),
+            );
+            apply(font, &BitmapCommand::SetStrike { strike })?;
+        }
         BitmapCommand::SetStrike { strike } => {
             strike.validate()?;
             if font.bitmap_strikes.len() >= 256

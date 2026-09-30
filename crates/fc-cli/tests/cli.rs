@@ -260,3 +260,38 @@ fn glyphs_accepts_the_unencoded_filter() {
         .success()
         .stdout(predicate::str::is_match(r"^[^\t]+\t\t[0-9]+(?:\.[0-9]+)?\n$").unwrap());
 }
+
+#[test]
+fn build_and_convert_share_static_geometry_options_and_reject_inapplicable_flags() {
+    let directory = tempfile::tempdir().unwrap();
+    for command in ["build", "convert"] {
+        let output = directory.path().join(format!("{command}.otf"));
+        fontcarver()
+            .arg(command)
+            .arg(fc_fixtures::ufo_path("Minimal.ufo"))
+            .arg(&output)
+            .args([
+                "--add-extrema",
+                "--round-coordinates",
+                "--decompose-components",
+                "--production-names",
+                "--subroutinize",
+            ])
+            .assert()
+            .success();
+        let parsed =
+            fc_sfnt::read_bytes(&std::fs::read(&output).unwrap(), &Default::default()).unwrap();
+        assert!(parsed.fonts[0].glyph("A").is_some());
+    }
+    let existing = directory.path().join("existing.fcf");
+    std::fs::write(&existing, b"previous").unwrap();
+    fontcarver()
+        .arg("convert")
+        .arg(fc_fixtures::ufo_path("Minimal.ufo"))
+        .arg(&existing)
+        .arg("--round-coordinates")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("round_coordinates"));
+    assert_eq!(std::fs::read(existing).unwrap(), b"previous");
+}

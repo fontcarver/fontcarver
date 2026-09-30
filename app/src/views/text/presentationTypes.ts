@@ -1,4 +1,7 @@
 import type { Ref } from 'react'
+import type { MetricSide } from './textMetrics'
+import type { KerningMode } from './kerningModes'
+import type { ColorGlyphPaint } from '../../canvas/colorGlyph'
 
 /** One selectable design-space master in text presentation controls. */
 export interface TextMasterOption {
@@ -13,7 +16,7 @@ export type TextFeature = [tag: string, enabled: boolean]
 export type TextDirection = 'ltr' | 'rtl' | 'ttb'
 
 /** Sample-menu actions. All-encoded resolution remains the caller's job. */
-export type TextSampleId = 'latin' | 'chinese' | 'all-encoded'
+export type TextSampleId = 'latin' | 'chinese' | 'kerning' | 'all-encoded'
 
 /** Controlled properties for the text editing bar. */
 export interface TextBarProps {
@@ -30,11 +33,16 @@ export interface TextBarProps {
   direction: TextDirection
   onDirectionChange: (direction: TextDirection) => void
   onSample: (sample: TextSampleId) => void
+  kerningMode?: KerningMode
+  onKerningModeChange?: (mode: KerningMode) => void
+  spacingSide?: MetricSide
+  onSpacingSideChange?: (side: MetricSide) => void
 }
 
 /** One already-positioned glyph path, expressed entirely in font units. */
 export interface PreviewGlyph {
   path: string
+  color?: ColorGlyphPaint
   x: number
   y: number
   xAdvance: number
@@ -54,4 +62,8 @@ export interface PreviewStripProps {
   onThemeChange: (theme: PreviewTheme) => void
   collapsed: boolean
   onCollapsedChange: (collapsed: boolean) => void
+  activeGlyph?: PreviewGlyph | null
+  onDetach?: () => void
+  height?: number
+  onHeightChange?: (height: number) => void
 }

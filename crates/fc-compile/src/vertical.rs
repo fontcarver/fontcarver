@@ -55,7 +55,11 @@ pub(crate) fn feature_source(
     master: &MasterId,
     variable: bool,
 ) -> Result<String, Error> {
-    let mut source = font.features.to_fea();
+    let mut source = font
+        .features
+        .assemble_fea_for(font, master, variable)
+        .map_err(|error| Error::InvalidSource(error.to_string()))?
+        .text;
     let masters: Vec<_> = font
         .masters
         .iter()

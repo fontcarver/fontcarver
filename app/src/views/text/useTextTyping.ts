@@ -8,6 +8,7 @@ export function useTextTyping(
   mode: 'text' | 'edit',
   changeText: (text: string) => void,
   inputRef: RefObject<HTMLInputElement | null>,
+  reserveKerningPunctuation = false,
 ) {
   useEffect(() => {
     const typing = (event: KeyboardEvent) => {
@@ -20,6 +21,13 @@ export function useTextTyping(
       )
         return
       if (mode !== 'text' || event.key === ' ') return
+      if (
+        reserveKerningPunctuation &&
+        ([',', '.', '<', '>'].includes(event.key) ||
+          event.code === 'Comma' ||
+          event.code === 'Period')
+      )
+        return
       if (event.key.length !== 1 && event.key !== 'Backspace') return
       event.preventDefault()
       event.stopImmediatePropagation()
@@ -32,5 +40,5 @@ export function useTextTyping(
     }
     window.addEventListener('keydown', typing, true)
     return () => window.removeEventListener('keydown', typing, true)
-  }, [changeText, inputRef, mode, text])
+  }, [changeText, inputRef, mode, reserveKerningPunctuation, text])
 }

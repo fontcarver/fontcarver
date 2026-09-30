@@ -28,7 +28,16 @@ export function drawTextGaps(
       y: (gap.y ?? -run.unitsPerEm * 0.12) - run.activeOrigin.y,
     })
     const selected = run.selectedGap === gap.index
-    ctx.fillStyle = selected ? theme.accent : theme.metricStrong
+    const value = selected ? run.selectedKerningValue : null
+    const ink =
+      value !== null && value !== undefined && Number.isFinite(value)
+        ? value < 0
+          ? theme.warning
+          : value > 0
+            ? theme.nodeSmooth
+            : theme.accent
+        : theme.accent
+    ctx.fillStyle = selected ? ink : theme.metricStrong
     if (selected) {
       const top = viewport.toScreen({
         x:
@@ -37,7 +46,7 @@ export function drawTextGaps(
           run.activeOrigin.x,
         y: (gap.y ?? run.unitsPerEm * 0.8) - run.activeOrigin.y,
       })
-      ctx.strokeStyle = theme.accent
+      ctx.strokeStyle = ink
       ctx.lineWidth = 1
       ctx.setLineDash([3, 3])
       ctx.beginPath()

@@ -293,7 +293,7 @@ describe('Metrics panel', () => {
     })
   })
 
-  it('writes a metrics key and offers Apply when it is out of sync', async () => {
+  it('writes a metrics key and offers synchronization when it is out of sync', async () => {
     const user = userEvent.setup()
     const mock = createMockTransport({
       'doc.apply': () => noChange([42]),
@@ -322,15 +322,11 @@ describe('Metrics panel', () => {
       expect(screen.getByText('out of sync')).toBeInTheDocument(),
     )
 
-    await user.click(screen.getByRole('button', { name: 'Apply resolved' }))
+    await user.click(
+      screen.getByRole('button', { name: 'Update current master' }),
+    )
     expect(applied(mock)?.command).toEqual({
-      SetMetrics: {
-        glyph: 'a',
-        layer: 'layer-1',
-        width: 660,
-        lsb: 100,
-        rsb: 40,
-      },
+      UpdateMetrics: { glyph: 'a', master: 'm1' },
     })
 
     const key = screen.getByLabelText('LSB key')

@@ -68,7 +68,8 @@ async function pixel(page: Page, x: number, y: number) {
     b = await canvas.boundingBox()
   if (!b) throw new Error('missing canvas')
   await canvas.click({
-    position: { x: ((x + 0.5) * b.width) / 8, y: ((y + 0.5) * b.height) / 8 },
+    // The guide frame adds one pixel around this 8×8 bitmap.
+    position: { x: ((x + 1.5) * b.width) / 10, y: ((y + 1.5) * b.height) / 10 },
   })
 }
 test('BDF pixels survive drawing, undo, redo, save, export and reopen', async ({

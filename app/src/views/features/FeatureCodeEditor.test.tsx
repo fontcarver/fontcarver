@@ -40,6 +40,45 @@ function editor(): EditorView {
 afterEach(() => vi.useRealTimers())
 
 describe('FeatureCodeEditor', () => {
+  it('previews a class with Alt-click or Alt+Enter without editing source', () => {
+    const callbacks = props({
+      value: 'sub @Upper by A;',
+      onClassPreview: vi.fn(),
+    })
+    render(<FeatureCodeEditor {...callbacks} />)
+    const target = screen.getByRole('textbox', { name: 'Feature source' })
+    const coordinates = vi.spyOn(editor(), 'posAtCoords').mockReturnValue(6)
+    fireEvent.mouseDown(target, {
+      button: 0,
+      altKey: true,
+      clientX: 20,
+      clientY: 20,
+    })
+    expect(callbacks.onClassPreview).toHaveBeenCalledExactlyOnceWith('Upper')
+    coordinates.mockRestore()
+    act(() => editor().dispatch({ selection: { anchor: 10 } }))
+    fireEvent.keyDown(target, { key: 'Enter', altKey: true })
+    expect(callbacks.onClassPreview).toHaveBeenCalledTimes(2)
+    expect(callbacks.onClassPreview).toHaveBeenLastCalledWith('Upper')
+    expect(callbacks.onChange).not.toHaveBeenCalled()
+  })
+
+  it('does not preview references inside comments and strings or during composition', () => {
+    const callbacks = props({
+      value: '# @Upper\nnameid 1 "@Upper";\nsub @Upper by A;',
+      onClassPreview: vi.fn(),
+    })
+    render(<FeatureCodeEditor {...callbacks} />)
+    const target = screen.getByRole('textbox', { name: 'Feature source' })
+    for (const anchor of [5, 21]) {
+      act(() => editor().dispatch({ selection: { anchor } }))
+      fireEvent.keyDown(target, { key: 'Enter', altKey: true })
+    }
+    act(() => editor().dispatch({ selection: { anchor: 34 } }))
+    fireEvent.keyDown(target, { key: 'Enter', altKey: true, isComposing: true })
+    expect(callbacks.onClassPreview).not.toHaveBeenCalled()
+  })
+
   it('hydrates and refreshes source without producing a document edit', () => {
     const callbacks = props()
     const { rerender } = render(<FeatureCodeEditor {...callbacks} />)

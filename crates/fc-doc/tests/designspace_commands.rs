@@ -11,6 +11,7 @@ fn add_master(font: &Font) -> Command {
     heavy.location.insert(Tag(*b"wght"), 900.0);
     Command::DesignSpace(DesignSpaceCommand::Set {
         axis_renames: Default::default(),
+        virtual_masters: None,
         axes: vec![Axis {
             tag: Tag(*b"wght"),
             name: "Weight".into(),
@@ -114,6 +115,7 @@ fn add_remove_master_undo_and_native_roundtrip_restore_source_layers() {
             doc.apply(
                 Command::DesignSpace(DesignSpaceCommand::Set {
                     axis_renames: Default::default(),
+                    virtual_masters: None,
                     axes: doc.font.axes.clone(),
                     masters: vec![doc.font.masters[0].clone()],
                     instances: vec![],
@@ -194,6 +196,7 @@ fn axis_renames_migrate_sources_atomically_and_restore_them_on_undo() {
         let command = DesignSpaceCommand::Set {
             axes, masters, instances: vec![], copy_from: master,
             axis_renames: [("wght".into(), "WGHT".into())].into(),
+            virtual_masters: None,
         };
         let mut invalid = command.clone();
         if let DesignSpaceCommand::Set { axis_renames, .. } = &mut invalid {

@@ -202,6 +202,17 @@ fn blend(template: &Layer, layers: &[(&Layer, f64)]) -> Result<Layer, Error> {
         return Err(invalid("smart interpolation exceeds geometry work limit"));
     }
     for (layer, _) in layers {
+        if layer.node_links != template.node_links || layer.linked_guides != template.linked_guides
+        {
+            return Err(invalid(
+                "smart sources must have identical node and guide links",
+            ));
+        }
+        if layer.constructions != template.constructions {
+            return Err(invalid(
+                "smart sources must have identical glyph constructions",
+            ));
+        }
         if layer.effects != template.effects {
             return Err(invalid(
                 "smart sources must have identical layer-effect stacks",
@@ -218,10 +229,13 @@ fn blend(template: &Layer, layers: &[(&Layer, f64)]) -> Result<Layer, Error> {
         for (a, b) in template.contours.iter().zip(&layer.contours) {
             if a.closed != b.closed
                 || a.points.len() != b.points.len()
-                || a.points
-                    .iter()
-                    .zip(&b.points)
-                    .any(|(a, b)| a.kind != b.kind)
+                || a.points.iter().zip(&b.points).any(|(a, b)| {
+                    a.kind != b.kind
+                        || ((!template.constructions.is_empty()
+                            || !template.node_links.is_empty()
+                            || !template.linked_guides.is_empty())
+                            && a.id != b.id)
+                })
             {
                 return Err(invalid("incompatible smart source points"));
             }

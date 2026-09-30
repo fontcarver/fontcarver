@@ -59,6 +59,9 @@ function input(overrides: Partial<SnapInput> = {}): SnapInput {
       anchor: 'ANCHOR',
       grid: 'GRID',
       component: 'COMPONENT',
+      background: 'BACKGROUND',
+      zone: 'ZONE',
+      advance: 'WIDTH',
       baseline: 'baseline',
       xHeight: 'x-height',
       capHeight: 'cap height',
@@ -74,6 +77,101 @@ function input(overrides: Partial<SnapInput> = {}): SnapInput {
 }
 
 describe('snapDelta', () => {
+  it('switches handles and anchors independently from outline nodes', () => {
+    const outline = buildEditOutline([
+      makeContour([makePoint(180, 180), makePoint(230, 230, 'OffCurve')]),
+    ])
+    const settings = { ...DEFAULT_SNAP_SETTINGS, nodes: false, metrics: false }
+    const handle = { x: 232, y: 232 }
+    expect(
+      snapDelta(input({ outline, settings }), { x: 0, y: 0 }, [handle]).label,
+    ).toBe('HANDLE')
+    expect(
+      snapDelta(
+        input({ outline, settings: { ...settings, handles: false } }),
+        { x: 0, y: 0 },
+        [handle],
+      ).point,
+    ).toBeNull()
+    expect(
+      snapDelta(
+        input({ settings: { ...settings, anchors: false } }),
+        { x: 0, y: 0 },
+        [{ x: 301, y: 302 }],
+      ).point,
+    ).toBeNull()
+  })
+
+  it('snaps independently to alignment-zone boundaries and background points', () => {
+    const settings = { ...DEFAULT_SNAP_SETTINGS, nodes: false, metrics: false }
+    const scene = input({
+      settings,
+      zoneLines: [511, 525],
+      backgroundPoints: [{ x: 432, y: 333 }],
+    })
+    expect(
+      snapDelta(scene, { x: 0, y: 0 }, [{ x: 350, y: 514 }]).point,
+    ).toEqual({ x: 350, y: 511 })
+    expect(
+      snapDelta(scene, { x: 0, y: 0 }, [{ x: 434, y: 335 }]).point,
+    ).toEqual({ x: 432, y: 333 })
+    const disabled = {
+      ...scene,
+      settings: { ...settings, zones: false, background: false },
+    }
+    expect(
+      snapDelta(disabled, { x: 0, y: 0 }, [{ x: 350, y: 514 }]).point,
+    ).toBeNull()
+    expect(
+      snapDelta(disabled, { x: 0, y: 0 }, [{ x: 434, y: 335 }]).point,
+    ).toBeNull()
+  })
+
+  it('uses the configured snap radius in CSS pixels at every zoom', () => {
+    const scene = input({
+      settings: { ...DEFAULT_SNAP_SETTINGS, snapDistance: 2 },
+    })
+    scene.viewport.scale = 2
+    expect(
+      snapDelta(scene, { x: 0, y: 0 }, [{ x: 301, y: 301 }]).point,
+    ).toBeNull()
+    scene.settings.snapDistance = 4
+    expect(
+      snapDelta(scene, { x: 0, y: 0 }, [{ x: 301, y: 301 }]).point,
+    ).toEqual({ x: 300, y: 300 })
+    scene.settings.snapDistance = 0
+    expect(
+      snapDelta(scene, { x: 0, y: 0 }, [{ x: 300, y: 300 }]).point,
+    ).toBeNull()
+  })
+
+  it('projects onto oblique guides without snapping along their length', () => {
+    const scene = input()
+    scene.guides = [
+      {
+        ...scene.guides[0]!,
+        guide: {
+          ...scene.guides[0]!.guide,
+          x: 100,
+          y: 100,
+          angle: 45,
+          name: 'diagonal',
+        },
+      },
+    ]
+    const match = snapDelta(scene, { x: 20, y: 30 }, [{ x: 220, y: 224 }])
+    expect(match.point?.x).toBeCloseTo(222)
+    expect(match.point?.y).toBeCloseTo(222)
+    expect(match.delta.x).toBeCloseTo(22)
+    expect(match.delta.y).toBeCloseTo(28)
+    expect(match.label).toBe('diagonal')
+  })
+
+  it('snaps to horizontal advance boundaries when metrics are enabled', () => {
+    const match = snapDelta(input(), { x: 0, y: 0 }, [{ x: 598, y: 333 }])
+    expect(match.point).toEqual({ x: 600, y: 333 })
+  })
+
   it("names its targets from the caller's bundle, never a literal", () => {
     // Every user-visible string in the editor arrives translated; the module
     // must not invent one of its own.

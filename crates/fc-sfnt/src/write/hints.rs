@@ -60,6 +60,12 @@ pub(super) fn stems(bytes: &mut Vec<u8>, layer: &Layer) -> Result<(), WriteError
         .hints
         .validate(&layer.contours)
         .map_err(|e| WriteError(e.to_string()))?;
+    if layer.hints.flex {
+        return Err(WriteError(
+            "CFF flex hint export is unsupported: curve bindings and flex depth are not represented"
+                .into(),
+        ));
+    }
     if !layer.hints.d_stems.is_empty()
         || layer
             .hints

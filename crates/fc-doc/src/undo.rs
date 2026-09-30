@@ -16,6 +16,15 @@ pub use kerning::HorizontalKerningSnapshot;
 /// Default maximum estimated memory retained by one undo stack.
 pub const DEFAULT_MEMORY_BUDGET: usize = 512 * 1024 * 1024;
 
+/// Design-space metadata restored together by one undo entry.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DesignSpaceSnapshot {
+    axes: Vec<fc_model::Axis>,
+    masters: Vec<Master>,
+    instances: Vec<fc_model::Instance>,
+    virtual_masters: Vec<fc_model::VirtualMaster>,
+}
+
 /// A structurally shared value restored by undo or redo.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Snapshot {
@@ -27,8 +36,8 @@ pub enum Snapshot {
     Color(Option<Arc<fc_model::ColorTable>>, bool),
     /// CID identity and numeric mappings, including absence.
     Cid(Option<Arc<fc_model::CidInfo>>),
-    /// Axes, complete master list and instances, including source additions/removals.
-    DesignSpace(Arc<(Vec<fc_model::Axis>, Vec<Master>, Vec<fc_model::Instance>)>),
+    /// Axes, complete master list, instances and virtual source positions.
+    DesignSpace(Arc<DesignSpaceSnapshot>),
     /// Complete strike collection for strike management and glyph structure edits.
     BitmapStrikes(Arc<Vec<fc_model::BitmapStrike>>, bool),
     /// One bitmap for bounded pixel-edit undo storage.
@@ -118,7 +127,7 @@ impl UndoEntry {
 /// Estimation deliberately avoids serialization on the editing hot path. Each
 /// glyph snapshot counts `points * 32 + components * 64` bytes, plus a small
 /// fixed entry cost; metadata containers use similarly cheap size estimates.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct UndoStack {
     entries: Vec<UndoEntry>,
     cursor: usize,
@@ -133,6 +142,30 @@ impl Default for UndoStack {
 }
 
 impl UndoStack {
+    pub(crate) fn rebase_image_paths(
+        &mut self,
+        old_path: Option<&std::path::Path>,
+        new_path: &std::path::Path,
+    ) -> Result<(), crate::Error> {
+        let Some(old_path) = old_path else {
+            return Ok(());
+        };
+        for entry in &mut self.entries {
+            for snapshot in entry.inverse.iter_mut().chain(&mut entry.forward) {
+                if let Snapshot::Glyph(_, Some(glyph)) = snapshot {
+                    crate::image_paths::rebase_glyph_images(
+                        Arc::make_mut(glyph),
+                        old_path,
+                        new_path,
+                    )?;
+                }
+            }
+            entry.estimated_bytes = estimate_entry(&entry.inverse, &entry.forward);
+        }
+        self.estimated_bytes = self.entries.iter().map(|entry| entry.estimated_bytes).sum();
+        Ok(())
+    }
+
     /// Creates an empty stack with a byte budget based on cheap estimates.
     pub fn new(memory_budget: usize) -> Self {
         Self {
@@ -291,11 +324,12 @@ pub(crate) fn capture(font: &Font, impact: &Impact) -> Vec<Snapshot> {
         snapshots.push(Snapshot::FontInfo(Arc::new(font.info.clone())));
     }
     if impact.design_space || !impact.masters.is_empty() {
-        snapshots.push(Snapshot::DesignSpace(Arc::new((
-            font.axes.clone(),
-            font.masters.clone(),
-            font.instances.clone(),
-        ))));
+        snapshots.push(Snapshot::DesignSpace(Arc::new(DesignSpaceSnapshot {
+            axes: font.axes.clone(),
+            masters: font.masters.clone(),
+            instances: font.instances.clone(),
+            virtual_masters: font.virtual_masters.clone(),
+        })));
     }
     if impact.glyph_order {
         snapshots.push(Snapshot::GlyphOrder(font.glyph_order().cloned().collect()));
@@ -323,9 +357,10 @@ pub(crate) fn restore(font: &mut Font, snapshots: &[Snapshot]) {
             }
             Snapshot::Cid(cid) => font.cid = cid.as_ref().map(|value| (**value).clone()),
             Snapshot::DesignSpace(space) => {
-                font.axes = space.0.clone();
-                font.masters = space.1.clone();
-                font.instances = space.2.clone();
+                font.axes = space.axes.clone();
+                font.masters = space.masters.clone();
+                font.instances = space.instances.clone();
+                font.virtual_masters = space.virtual_masters.clone();
             }
             Snapshot::BitmapStrikes(strikes, owned) => {
                 font.bitmap_strikes = (**strikes).clone();
@@ -625,6 +660,9 @@ fn estimate_snapshot(snapshot: &Snapshot) -> usize {
                         std::mem::size_of::<fc_model::LayerEffect>()
                             + match &e.effect {
                                 fc_model::LayerEffectKind::Boolean { path, .. } => path.len(),
+                                fc_model::LayerEffectKind::VariableStroke { points, .. } => {
+                                    points.len() * std::mem::size_of::<fc_model::PenPoint>()
+                                }
                                 _ => 0,
                             }
                     })
@@ -639,16 +677,25 @@ fn estimate_snapshot(snapshot: &Snapshot) -> usize {
         Snapshot::FontInfo(_) => std::mem::size_of::<FontInfo>(),
         Snapshot::Master(_, _) => std::mem::size_of::<Master>(),
         Snapshot::DesignSpace(space) => {
-            space.0.len() * 128
+            space.axes.len() * 128
                 + space
-                    .1
+                    .masters
                     .iter()
                     .map(|m| {
                         std::mem::size_of::<Master>()
                             + (m.kerning_h.0.len() + m.kerning_v.0.len()) * 128
                     })
                     .sum::<usize>()
-                + space.2.len() * 128
+                + space.instances.len() * 128
+                + space
+                    .virtual_masters
+                    .iter()
+                    .map(|master| {
+                        std::mem::size_of::<fc_model::VirtualMaster>()
+                            + master.name.len()
+                            + master.location.len() * 32
+                    })
+                    .sum::<usize>()
         }
         Snapshot::GlyphOrder(names) => names.iter().map(|name| name.len()).sum(),
         Snapshot::FontGuides(guides) => guides.len().saturating_mul(std::mem::size_of::<Guide>()),

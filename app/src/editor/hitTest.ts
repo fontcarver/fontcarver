@@ -52,6 +52,8 @@ export interface HitTestInput {
   components: readonly ComponentBounds[]
   viewport: Viewport
   selection: Selection
+  /** CSS-pixel node radius; scales all hit families proportionally. */
+  hitDistance?: number
 }
 
 /** Modifiers that change what can be hit. */
@@ -106,6 +108,9 @@ export function hitTest(
   const font = viewport.toFont(screen)
   const scale = viewport.scale > 0 ? viewport.scale : 1
   const inPixels = (a: Point2): number => distance(a, font) * scale
+  const radiusScale =
+    Math.max(1, Math.min(64, input.hitDistance ?? HIT_RADII.node)) /
+    HIT_RADII.node
 
   const selectedNodes: Hit[] = []
   const nodes: Hit[] = []
@@ -116,7 +121,8 @@ export function hitTest(
       : { kind: 'handle', contour: point.ref.contour, point: point.ref.point }
     if (!point.onCurve && options.ignoreHandles) continue
     const away = inPixels(point)
-    const radius = point.onCurve ? HIT_RADII.node : HIT_RADII.handle
+    const radius =
+      (point.onCurve ? HIT_RADII.node : HIT_RADII.handle) * radiusScale
     if (away > radius) continue
     const hit: Hit = {
       target,
@@ -131,7 +137,7 @@ export function hitTest(
   const anchors: Hit[] = []
   input.anchors.forEach((anchor, index) => {
     const away = inPixels(anchor)
-    if (away <= HIT_RADII.anchor)
+    if (away <= HIT_RADII.anchor * radiusScale)
       anchors.push({
         target: { kind: 'anchor', index },
         point: { x: anchor.x, y: anchor.y },
@@ -142,7 +148,7 @@ export function hitTest(
   const guides: Hit[] = []
   input.guides.forEach((entry) => {
     const away = guideDistance(entry.guide, viewport, screen)
-    if (away <= HIT_RADII.guide)
+    if (away <= HIT_RADII.guide * radiusScale)
       guides.push({
         target: { kind: 'guide', index: entry.index, scope: entry.scope },
         point: { x: entry.guide.x, y: entry.guide.y },
@@ -154,7 +160,7 @@ export function hitTest(
   for (const segment of outline.segments) {
     const nearest = nearestOnSegment(segment, font)
     const away = nearest.distance * scale
-    if (away <= HIT_RADII.segment)
+    if (away <= HIT_RADII.segment * radiusScale)
       segments.push({
         target: {
           kind: 'segment',
@@ -168,7 +174,7 @@ export function hitTest(
   }
 
   const components: Hit[] = []
-  const slack = HIT_RADII.component / scale
+  const slack = (HIT_RADII.component * radiusScale) / scale
   input.components.forEach((component, index) => {
     const box = component.bbox
     if (!box) return

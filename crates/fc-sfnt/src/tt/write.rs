@@ -4,7 +4,7 @@ use fc_model::TtMasterData;
 use read_fonts::{tables::glyf::bytecode::Decoder, types::Tag, FontRef, TableProvider};
 use write_fonts::FontBuilder;
 
-use super::{basis::Source, invalid, span};
+use super::{basis::Source, invalid, span, variation};
 use crate::Error;
 
 const MAX_FONT_BYTES: usize = 256 * 1024 * 1024;
@@ -20,12 +20,17 @@ pub struct GlyphProgram {
     pub bytes: Vec<u8>,
 }
 
-/// Replaces all instruction data in a static TrueType sfnt.
+/// Replaces all instruction data in a compiled TrueType sfnt.
 ///
 /// The supplied glyph list is authoritative: unlisted glyph programs are removed.
 /// Outline byte encoding and point order are preserved. Bindings must match before
 /// any output is returned. All interpreter maxima except `max_size_of_instructions`
 /// must be supplied; the latter is computed from the actual glyph programs.
+///
+/// Existing variable-font tables are retained byte-for-byte. When `cvar` is
+/// present, the supplied CVT must equal the original indexed CVT exactly. This
+/// binary-only path does not generate variation deltas or make static bindings
+/// usable for a newly compiled variable font.
 ///
 /// This validates structure, bytecode framing and declared bounds, not the runtime
 /// behavior of arbitrary TrueType programs. Invalid execution is a preview error.
@@ -45,6 +50,7 @@ pub fn with_instructions(
     if globals.cvt.len() > 65536 {
         return Err(invalid("CVT exceeds the 16-bit index range"));
     }
+    variation::check_cvt(&face, &globals.cvt)?;
     let mut maxp = table(&face, b"maxp")?;
     if maxp.len() != 32 || maxp[..4] != [0, 1, 0, 0] {
         return Err(invalid("TrueType instructions require maxp version 1.0"));

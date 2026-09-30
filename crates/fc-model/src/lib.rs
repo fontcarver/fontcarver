@@ -8,6 +8,7 @@ mod color;
 pub mod colrv1;
 pub use colrv1::{ColrColorLine, ColrColorStop, ColrGraph, ColrPaint, ColrTransform};
 mod component;
+mod construction;
 mod contour;
 mod designspace;
 mod effects;
@@ -25,6 +26,7 @@ mod kerning;
 mod layer;
 mod master;
 mod math;
+mod node_links;
 mod ps;
 pub mod query;
 mod smart;
@@ -38,10 +40,11 @@ pub use bitmap::{
 };
 pub use color::{ColorPalette, ColorTable, ColrLayer, PaletteColor, MAX_COLOR_ITEMS};
 pub use component::Component;
+pub use construction::{ConstructionKind, GlyphConstruction};
 pub use contour::{Contour, Point, PointKind, TtIndex};
 pub use effects::{
-    validate_effect_mask, EffectBoolean, EffectCap, EffectJoin, EffectNib, LayerEffect,
-    LayerEffectKind, MAX_LAYER_EFFECTS,
+    validate_effect_mask, EffectBoolean, EffectCap, EffectJoin, EffectNib, EffectProgression,
+    LayerEffect, LayerEffectKind, PenPoint, MAX_LAYER_EFFECTS,
 };
 pub use error::Error;
 pub use extra::{Extra, SourceProvenance};
@@ -55,9 +58,9 @@ pub use feature_generation::{
 };
 pub use features::{
     AssembledFea, FeaSourceLocation, FeaSourceMapping, FeatureBlock, FeatureClass, FeatureSourceId,
-    FeatureSourceKind, Features, FeaturesSource,
+    FeatureSourceKind, FeatureTokenError, Features, FeaturesSource,
 };
-pub use font::{Axis, CidInfo, DesignLocation, Font, Instance};
+pub use font::{Axis, CidInfo, DesignLocation, Font, Instance, VirtualMaster};
 pub use glyph::{Glyph, MetricsKeys};
 pub use guide::Guide;
 pub use ids::{GlyphId, GlyphName, LayerId, MasterId, Tag};
@@ -70,6 +73,7 @@ pub use math::{
     MathKern, MathKerns, MathPart, MathTable, MathValue, MathVariant, PlacedMathPart,
     MAX_MATH_ITEMS,
 };
+pub use node_links::{GuidedNode, NodeAxis, NodeLink, NodeLinkedGuide, NodeRef, ServantHandle};
 pub use query::{
     dependents, flatten_layer, flatten_layer_by_id, flatten_smart_component, glyph_for_unicode,
     layer_bbox, masters_compatible, validate, Incompatibility, Issue,

@@ -189,6 +189,8 @@ fn simple_contours(
                     kind,
                     smooth: false,
                     name: None,
+                    id: None,
+                    super_smooth: false,
                     tt_index: TtIndex::Index((start + offset) as u16),
                 }
             })
@@ -239,6 +241,7 @@ fn map_component(
         (dx, dy) = (xx * dx + xy * dy, yx * dx + yy * dy);
     }
     Ok(Component {
+        locked: false,
         base,
         transform: Affine::new([xx, yx, xy, yy, dx, dy]),
         anchor: None,

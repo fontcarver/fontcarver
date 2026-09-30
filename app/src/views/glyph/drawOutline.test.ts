@@ -84,6 +84,45 @@ function startTriangleAt(
 }
 
 describe('traceContour', () => {
+  it('draws configurable marker diameters independently of viewport zoom', () => {
+    const recording = createRecordingContext()
+    const viewport = viewportOf()
+    viewport.scale = 3
+    drawOutline(
+      recording.ctx,
+      viewport,
+      {
+        contours: [
+          contourOf(
+            [
+              point(0, 0, 'Move'),
+              point(20, 20, 'OffCurve'),
+              point(40, 40, 'QCurve'),
+            ],
+            false,
+          ),
+        ],
+        filled: false,
+        showPoints: true,
+        nodeSize: 8,
+        handleSize: 6,
+      },
+      FALLBACK_GLYPH_THEME,
+    )
+    expect(
+      recording
+        .calls('arc')
+        .some(
+          (call) =>
+            call.args[0] === 60 && call.args[1] === -60 && call.args[2] === 3,
+        ),
+    ).toBe(true)
+    expect(
+      recording
+        .calls('fillRect')
+        .some((call) => call.args[2] === 8 && call.args[3] === 8),
+    ).toBe(true)
+  })
   it('draws a cubic contour with bezierCurveTo', () => {
     const recording = createRecordingContext()
     traceContour(

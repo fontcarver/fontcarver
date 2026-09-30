@@ -74,6 +74,20 @@ pub struct Instance {
     pub user_data: serde_json::Value,
 }
 
+/// A named sparse-source position without font-wide metrics or glyph layers.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
+pub struct VirtualMaster {
+    /// Unique display name for this source position.
+    #[serde(default)]
+    pub name: String,
+    /// Design-space coordinates copied when a glyph creates a sparse source.
+    #[serde(default, with = "design_location_serde")]
+    #[cfg_attr(feature = "ts", ts(type = "Record<string, number>"))]
+    pub location: DesignLocation,
+}
+
 pub(crate) mod design_location_serde {
     use std::{collections::BTreeMap, str::FromStr};
 
@@ -144,6 +158,9 @@ pub struct Font {
     /// Named export instances.
     #[serde(default)]
     pub instances: Vec<Instance>,
+    /// Named virtual positions; no full-font layers are allocated for them.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub virtual_masters: Vec<VirtualMaster>,
     /// Glyphs in persistent display/export order.
     #[serde(default)]
     #[cfg_attr(feature = "ts", ts(type = "Record<string, Glyph>"))]
@@ -213,6 +230,7 @@ impl Default for Font {
             axes: Vec::new(),
             masters: default_masters(),
             instances: Vec::new(),
+            virtual_masters: Vec::new(),
             glyphs: IndexMap::new(),
             kerning_groups: KerningGroups::default(),
             features: Features::default(),
@@ -310,6 +328,8 @@ impl Font {
     pub fn insert_glyph(&mut self, mut glyph: Glyph) -> Result<(), Error> {
         for layer in &glyph.layers {
             layer.validate_effects()?;
+            layer.validate_node_links()?;
+            layer.validate_constructions()?;
         }
         let name = glyph.name.clone();
         if self.glyphs.contains_key(name.as_ref()) {
@@ -383,6 +403,9 @@ impl Font {
             for layer in &mut glyph.layers {
                 for component in &mut layer.components {
                     rename_name(&mut component.base, from, &new_name);
+                }
+                for construction in &mut layer.constructions {
+                    rename_name(&mut construction.source, from, &new_name);
                 }
                 if let Some(color_layers) = &mut layer.color_layers {
                     for color_layer in color_layers {
@@ -525,11 +548,17 @@ fn cycle_from(
     Ok(None)
 }
 
-fn component_bases(layer: &Layer) -> impl Iterator<Item = &GlyphName> {
+pub(crate) fn component_bases(layer: &Layer) -> impl Iterator<Item = &GlyphName> {
     layer
         .components
         .iter()
         .map(|component| &component.base)
+        .chain(
+            layer
+                .constructions
+                .iter()
+                .map(|construction| &construction.source),
+        )
         .chain(
             layer
                 .color_layers

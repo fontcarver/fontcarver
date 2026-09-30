@@ -187,8 +187,17 @@ fn dispatches_session_open_and_reports_boundary_errors() {
             "recent_limit": 20,
             "autosave_seconds": 60,
             "grid_size": 1.0,
+            "grid_subdivision": 1,
+            "snap_distance": 6.0,
+            "hit_distance": 5.0,
+            "handle_size": 3.5,
+            "node_size": 5.0,
             "snap": {
                 "nodes": true,
+                "handles": true,
+                "anchors": true,
+                "zones": true,
+                "background": true,
                 "guides": true,
                 "metrics": true,
                 "grid": true,
@@ -265,7 +274,10 @@ fn save_without_path_never_overwrites_an_imported_font() {
         .expect_err("imported font needs an explicit FCF path");
 
     assert_eq!(error.code, "invalid_params");
-    assert_eq!(error.message, "imported fonts need an explicit .fcf path");
+    assert_eq!(
+        error.message,
+        "imported fonts need an explicit .fcf or .fcfp path"
+    );
     assert_eq!(sha256(&imported_path), before);
 
     let binary_target = config_dir.join("existing-target.ttf");
@@ -280,7 +292,7 @@ fn save_without_path_never_overwrites_an_imported_font() {
     assert_eq!(error.code, "invalid_params");
     assert_eq!(
         error.message,
-        "save target must end with .fcf or .fcf.gz; use export for binary font formats"
+        "save target must end with .fcf, .fcf.gz, or .fcfp; use export for binary font formats"
     );
     assert_eq!(sha256(&binary_target), binary_target_before);
 
@@ -315,8 +327,17 @@ fn damaged_preferences_fall_back_and_do_not_block_opening() {
             "recent_limit": 20,
             "autosave_seconds": 60,
             "grid_size": 1.0,
+            "grid_subdivision": 1,
+            "snap_distance": 6.0,
+            "hit_distance": 5.0,
+            "handle_size": 3.5,
+            "node_size": 5.0,
             "snap": {
                 "nodes": true,
+                "handles": true,
+                "anchors": true,
+                "zones": true,
+                "background": true,
                 "guides": true,
                 "metrics": true,
                 "grid": true,

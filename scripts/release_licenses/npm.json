@@ -1,0 +1,533 @@
+{
+  "@esbuild/aix-ppc64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/android-arm64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/android-arm@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/android-x64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/darwin-arm64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/darwin-x64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/freebsd-arm64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/freebsd-x64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/linux-arm64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/linux-arm@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/linux-ia32@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/linux-loong64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/linux-mips64el@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/linux-ppc64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/linux-riscv64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/linux-s390x@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/linux-x64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/netbsd-arm64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/netbsd-x64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/openbsd-arm64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/openbsd-x64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/openharmony-arm64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/sunos-x64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/win32-arm64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/win32-ia32@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@esbuild/win32-x64@0.28.2": [
+    {
+      "path": "npm/esbuild-0.28.2-LICENSE.md",
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681",
+      "source": "https://raw.githubusercontent.com/evanw/esbuild/609683d892977362a0f99026cb74b96263d728a9/LICENSE.md"
+    }
+  ],
+  "@humanfs/types@0.15.0": [
+    {
+      "path": "npm/humanfs-types-0.15.0-LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "source": "https://raw.githubusercontent.com/humanwhocodes/humanfs/85069f193cbacc371c3beb649ce746f8c5a493be/packages/core/LICENSE"
+    }
+  ],
+  "@rollup/rollup-android-arm-eabi@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-android-arm64@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-darwin-arm64@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-darwin-x64@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-freebsd-arm64@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-freebsd-x64@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-linux-arm-gnueabihf@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-linux-arm-musleabihf@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-linux-arm64-gnu@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-linux-arm64-musl@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-linux-loong64-gnu@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-linux-loong64-musl@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-linux-ppc64-gnu@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-linux-ppc64-musl@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-linux-riscv64-gnu@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-linux-riscv64-musl@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-linux-s390x-gnu@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-linux-x64-gnu@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-linux-x64-musl@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-openbsd-x64@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-openharmony-arm64@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-win32-arm64-msvc@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-win32-ia32-msvc@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-win32-x64-gnu@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@rollup/rollup-win32-x64-msvc@4.63.1": [
+    {
+      "path": "npm/rollup-4.63.1-LICENSE.md",
+      "sha256": "fa1bd040c5bdeefe65b3821cebf474f2733ce65df13089bd151dda1778e62fe8",
+      "source": "https://raw.githubusercontent.com/rollup/rollup/78bfef0cb94479566f81012fafa372c84b90bd34/LICENSE.md"
+    }
+  ],
+  "@tauri-apps/cli-darwin-arm64@2.11.4": [
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_MIT",
+      "sha256": "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_MIT"
+    },
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_APACHE-2.0",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_APACHE-2.0"
+    }
+  ],
+  "@tauri-apps/cli-darwin-x64@2.11.4": [
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_MIT",
+      "sha256": "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_MIT"
+    },
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_APACHE-2.0",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_APACHE-2.0"
+    }
+  ],
+  "@tauri-apps/cli-linux-arm-gnueabihf@2.11.4": [
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_MIT",
+      "sha256": "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_MIT"
+    },
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_APACHE-2.0",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_APACHE-2.0"
+    }
+  ],
+  "@tauri-apps/cli-linux-arm64-gnu@2.11.4": [
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_MIT",
+      "sha256": "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_MIT"
+    },
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_APACHE-2.0",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_APACHE-2.0"
+    }
+  ],
+  "@tauri-apps/cli-linux-arm64-musl@2.11.4": [
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_MIT",
+      "sha256": "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_MIT"
+    },
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_APACHE-2.0",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_APACHE-2.0"
+    }
+  ],
+  "@tauri-apps/cli-linux-riscv64-gnu@2.11.4": [
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_MIT",
+      "sha256": "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_MIT"
+    },
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_APACHE-2.0",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_APACHE-2.0"
+    }
+  ],
+  "@tauri-apps/cli-linux-x64-gnu@2.11.4": [
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_MIT",
+      "sha256": "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_MIT"
+    },
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_APACHE-2.0",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_APACHE-2.0"
+    }
+  ],
+  "@tauri-apps/cli-linux-x64-musl@2.11.4": [
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_MIT",
+      "sha256": "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_MIT"
+    },
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_APACHE-2.0",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_APACHE-2.0"
+    }
+  ],
+  "@tauri-apps/cli-win32-arm64-msvc@2.11.4": [
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_MIT",
+      "sha256": "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_MIT"
+    },
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_APACHE-2.0",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_APACHE-2.0"
+    }
+  ],
+  "@tauri-apps/cli-win32-ia32-msvc@2.11.4": [
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_MIT",
+      "sha256": "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_MIT"
+    },
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_APACHE-2.0",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_APACHE-2.0"
+    }
+  ],
+  "@tauri-apps/cli-win32-x64-msvc@2.11.4": [
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_MIT",
+      "sha256": "9dd42ea92cff2ede5cd477cbfcce051b2d0115c0ac7f368ee88cb545055dff1d",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_MIT"
+    },
+    {
+      "path": "npm/tauri-cli-2.11.4-LICENSE_APACHE-2.0",
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+      "source": "https://raw.githubusercontent.com/tauri-apps/tauri/59585e1aac2d2e3503aa1caececf3568dce51a47/LICENSE_APACHE-2.0"
+    }
+  ],
+  "esrecurse@4.3.0": [
+    {
+      "path": "npm/esrecurse-4.3.0-README.md",
+      "sha256": "a7007c78c9d9da690ef6cdb0e7a3427d05832edb00abd1f5a9882700d73be4ad",
+      "source": "https://raw.githubusercontent.com/estools/esrecurse/8ceb63797813d9ac69572a671b95cf58ffdf35b6/README.md"
+    }
+  ],
+  "imurmurhash@0.1.4": [
+    {
+      "path": "npm/imurmurhash-0.1.4-README.md",
+      "sha256": "4491517f7deb68d0b2a3bb590e785e276a60f12448447a9650d0bd50161a101c",
+      "source": "https://registry.npmjs.org/imurmurhash/-/imurmurhash-0.1.4.tgz#package/README.md"
+    }
+  ],
+  "keyv@4.5.4": [
+    {
+      "path": "npm/keyv-4.5.4-LICENSE",
+      "sha256": "1f7dca26d2d328c3dbb9b6fe3b15ec3cda08ffe2288e47b73d617454b256f959",
+      "source": "https://raw.githubusercontent.com/jaredwray/keyv/e4d608eccdfc094b80f6e9545c5307ee0810af72/LICENSE"
+    }
+  ],
+  "natural-compare@1.4.0": [
+    {
+      "path": "npm/natural-compare-1.4.0-LICENSE",
+      "sha256": "353fe762ba595bf1ffe786acf0f5984bb164205901d74f258af195fc8228c67d",
+      "source": "https://raw.githubusercontent.com/litejs/natural-compare-lite/6b42bc713dca62f35b927cd06b69a82e297f019b/LICENSE"
+    }
+  ],
+  "saxes@6.0.0": [
+    {
+      "path": "npm/saxes-6.0.0-LICENSE",
+      "sha256": "0fac2374380621b22e6b50451057721a9c52935b02d16d106a9f04897f061d0e",
+      "source": "https://raw.githubusercontent.com/lddubeau/saxes/211fa0ebec9b628affc09219199639887174bfc3/LICENSE"
+    }
+  ]
+}

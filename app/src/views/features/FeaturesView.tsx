@@ -10,6 +10,7 @@ import { FeatureDiagnostics } from './FeatureDiagnostics'
 import { FeatureGenerationPanel } from './FeatureGenerationPanel'
 import { FeatureSourceTree } from './FeatureSourceTree'
 import { LookupInspector } from './LookupInspector'
+import { VisualLookupEditor } from './VisualLookupEditor'
 import {
   addSource,
   removeSource,
@@ -35,7 +36,7 @@ export function FeaturesView({ summary }: { summary: DocSummary }) {
     view.generation,
   )
   const [selected, setSelected] = useState<string | null>(null)
-  const [mode, setMode] = useState<'source' | 'lookups'>('source')
+  const [mode, setMode] = useState<'source' | 'visual' | 'lookups'>('source')
   const [focusRange, setFocusRange] = useState<{
     from: number
     to: number
@@ -149,6 +150,18 @@ export function FeaturesView({ summary }: { summary: DocSummary }) {
           </button>
           <button
             type="button"
+            aria-pressed={mode === 'visual'}
+            onClick={() => {
+              void session
+                .flush()
+                .then(() => setMode('visual'))
+                .catch(reportError)
+            }}
+          >
+            {t('visualLookup.mode')}
+          </button>
+          <button
+            type="button"
             aria-pressed={mode === 'lookups'}
             onClick={() => {
               void session
@@ -249,7 +262,36 @@ export function FeaturesView({ summary }: { summary: DocSummary }) {
           )}
         </div>
       )}
-      {mode === 'lookups' ? (
+      {mode === 'visual' ? (
+        <>
+          <VisualLookupEditor
+            source={source}
+            selected={selected}
+            onSelect={setSelected}
+            master={master}
+            generation={state.compile_revision}
+            session={session}
+            readOnly={readOnly}
+            onSource={(id) => {
+              void session
+                .flush()
+                .then(() => {
+                  setSelected(id)
+                  setMode('source')
+                })
+                .catch(reportError)
+            }}
+          />
+          <FeatureDiagnostics
+            validation={draft.validation}
+            source={visibleSource}
+            onNavigate={(id, from, to) => {
+              navigate(id, from, to)
+              setMode('source')
+            }}
+          />
+        </>
+      ) : mode === 'lookups' ? (
         <LookupInspector
           doc={summary.doc}
           generation={view.generation}
@@ -272,6 +314,9 @@ export function FeaturesView({ summary }: { summary: DocSummary }) {
               <>
                 <FeatureSourceEditor
                   source={source}
+                  previewSource={visibleSource}
+                  master={master}
+                  generation={view.generation}
                   item={item}
                   generated={generated}
                   generatedSaved={

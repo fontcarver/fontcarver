@@ -22,7 +22,11 @@ import { useVirtualGrid } from './useVirtualGrid'
 export const GRID_GAP = 8
 
 /** Commands offered by the grid's context menu, in order. */
-const MENU_COMMANDS = ['glyph.open', 'edit.copyGlyphNames'] as const
+const MENU_COMMANDS = [
+  'glyph.open',
+  'glyph.renameBatch',
+  'edit.copyGlyphNames',
+] as const
 
 export interface GlyphGridProps {
   summary: DocSummary

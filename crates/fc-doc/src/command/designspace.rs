@@ -7,6 +7,23 @@ use ts_rs::TS;
 /// Atomic design-space metadata and source-layer editing.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 pub enum DesignSpaceCommand {
+    /// Replace named sparse-source coordinates without allocating glyph layers.
+    VirtualMasters {
+        /// All named virtual positions in design coordinates.
+        #[ts(type = "Array<VirtualMaster>")]
+        masters: Vec<fc_model::VirtualMaster>,
+    },
+    /// Duplicate one selected glyph source at a named virtual position.
+    VirtualSource {
+        /// Glyph receiving a sparse intermediate source.
+        #[ts(type = "string")]
+        glyph: fc_model::GlyphName,
+        /// Existing layer whose geometry seeds the new source.
+        #[ts(type = "string")]
+        source: LayerId,
+        /// Index into the current named virtual positions.
+        index: usize,
+    },
     /// Replace a glyph's local smart-component axes.
     SmartAxes {
         /// Glyph whose reusable geometry is parameterized.
@@ -52,6 +69,10 @@ pub enum DesignSpaceCommand {
         /// Complete named-instance list in design coordinates.
         #[ts(type = "Array<Instance>")]
         instances: Vec<Instance>,
+        /// Optional replacement of virtual positions; omission preserves existing positions.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional, type = "Array<VirtualMaster>")]
+        virtual_masters: Option<Vec<fc_model::VirtualMaster>>,
         /// Existing master whose layers seed newly added masters.
         #[ts(type = "string")]
         copy_from: MasterId,
@@ -66,6 +87,32 @@ pub(super) fn apply(font: &mut Font, command: &DesignSpaceCommand) -> Result<(),
 }
 
 fn apply_candidate(font: &mut Font, command: &DesignSpaceCommand) -> Result<(), Error> {
+    if let DesignSpaceCommand::VirtualMasters { masters } = command {
+        font.virtual_masters = masters.clone();
+        font.validate_designspace()?;
+        return Ok(());
+    }
+    if let DesignSpaceCommand::VirtualSource {
+        glyph,
+        source,
+        index,
+    } = command
+    {
+        let position = font.virtual_masters.get(*index).ok_or_else(|| {
+            Error::InvalidCommand("virtual master position does not exist".into())
+        })?;
+        let command = DesignSpaceCommand::Layer {
+            glyph: glyph.clone(),
+            source: source.clone(),
+            duplicate: true,
+            name: position.name.clone(),
+            kind: LayerKind::Brace {
+                master: font.design_default_master()?.id.clone(),
+                location: font.complete_location(&position.location)?,
+            },
+        };
+        return apply_candidate(font, &command);
+    }
     if let DesignSpaceCommand::SmartAxes { glyph, axes } = command {
         let target = font
             .glyph_mut(glyph)
@@ -203,6 +250,7 @@ fn apply_candidate(font: &mut Font, command: &DesignSpaceCommand) -> Result<(), 
         axes,
         masters,
         instances,
+        virtual_masters,
         copy_from,
     } = command
     else {
@@ -270,6 +318,9 @@ fn apply_candidate(font: &mut Font, command: &DesignSpaceCommand) -> Result<(), 
     font.axes = axes.clone();
     font.masters = masters.clone();
     font.instances = instances.clone();
+    if let Some(virtual_masters) = virtual_masters {
+        font.virtual_masters = virtual_masters.clone();
+    }
     font.validate_designspace()?;
     Ok(())
 }
@@ -297,6 +348,20 @@ fn migrate_axis_references(
     }
     if mapping.is_empty() {
         return Ok(());
+    }
+    for master in &mut font.virtual_masters {
+        let mut migrated = fc_model::DesignLocation::new();
+        for (tag, value) in &master.location {
+            if migrated
+                .insert(mapping.get(tag).copied().unwrap_or(*tag), *value)
+                .is_some()
+            {
+                return Err(Error::InvalidCommand(
+                    "axis rename collides with a virtual coordinate".into(),
+                ));
+            }
+        }
+        master.location = migrated;
     }
     for layer in font.glyphs.values_mut().flat_map(|glyph| &mut glyph.layers) {
         match &mut layer.kind {

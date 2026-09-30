@@ -308,6 +308,7 @@ pub(super) fn guides(raw: &Plist) -> Result<Vec<Guide>, Error> {
                 .transpose()?
                 .unwrap_or([0., 0.]);
             Ok(Guide {
+                id: None,
                 x,
                 y,
                 angle: numeric(raw, "angle", 0.)?,

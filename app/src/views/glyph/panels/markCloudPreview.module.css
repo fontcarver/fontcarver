@@ -1,0 +1,51 @@
+.cloud,
+.feedback {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.grid {
+  display: grid;
+  gap: var(--space-1);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.figure {
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+}
+
+.preview {
+  display: block;
+  width: 100%;
+  height: 88px;
+}
+
+.base {
+  fill: var(--color-text-muted);
+}
+
+.mark {
+  fill: var(--color-accent);
+}
+
+.anchor {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.name {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

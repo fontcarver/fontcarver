@@ -3,6 +3,8 @@ import styles from './fontView.module.css'
 export interface FilterRowProps {
   label: string
   count: number
+  /** Optional repertoire size; count is the number of members present. */
+  total?: number
   active: boolean
   /** Optional colour swatch shown before the label. */
   swatch?: string
@@ -13,6 +15,7 @@ export interface FilterRowProps {
 export function FilterRow({
   label,
   count,
+  total,
   active,
   swatch,
   onToggle,
@@ -34,7 +37,10 @@ export function FilterRow({
         ) : null}
         <span className={styles.filterName}>{label}</span>
       </span>
-      <span className={styles.filterCount}>{count.toLocaleString()}</span>
+      <span className={styles.filterCount}>
+        {count.toLocaleString()}
+        {total === undefined ? '' : ` / ${total.toLocaleString()}`}
+      </span>
     </button>
   )
 }

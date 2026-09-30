@@ -6,16 +6,16 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { call, type DocId } from '../../api'
+import type { DocId } from '../../api'
 import { noteDocumentEdit } from '../../editor/editSession'
 import { documentEditingSuspended } from '../../editor/documentEditParticipants'
 import { reportError } from '../../shell/commands'
 import { isEditableTarget } from '../../shell/shortcuts'
 import { useUiStore } from '../../stores/uiStore'
-import { ApiCallError } from '../../transport'
 import {
   KerningEditRunner,
-  kerningShortcut,
+  kerningShortcutAction,
+  refreshKerningBaseline,
   type KerningEditTarget,
   type KerningShortcutEvent,
 } from './kerningEdits'
@@ -23,12 +23,14 @@ import {
   kerningScopeRecord,
   kerningScopeSides,
   parseKerningValue,
+  suppressKerningClasses,
   type KerningPairNames,
   type KerningScope,
   type TextKerningModel,
 } from './kerningModel'
 import { useKerningImpact } from './kerningImpact'
 import { useStoredKerning } from './kerningQuery'
+import { useKerningScope } from './useKerningScope'
 
 /** TextView supplies document identity and captures old controller work. */
 export interface UseTextKerningOptions {
@@ -37,6 +39,7 @@ export interface UseTextKerningOptions {
   master: string | null
   generation: number
   selectedPair?: KerningPairNames | null
+  punctuationShortcuts?: boolean
   prepare?: () => Promise<void>
 }
 
@@ -61,7 +64,6 @@ export function useTextKerning(options: UseTextKerningOptions) {
   const [pair, setPairState] = useState<KerningPairNames>(
     options.selectedPair ?? { left: '', right: '' },
   )
-  const [scope, setScopeState] = useState<KerningScope>('glyph_glyph')
   const [draft, setDraftState] = useState<Draft | null>(null)
   const [invalid, setInvalid] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -78,7 +80,6 @@ export function useTextKerning(options: UseTextKerningOptions) {
     pair.left,
     pair.right,
   ])
-  const editKey = JSON.stringify([key, scope])
   const loaded = useStoredKerning(
     options.doc,
     options.master,
@@ -88,6 +89,8 @@ export function useTextKerning(options: UseTextKerningOptions) {
     options.vertical,
   )
   const resolution = loaded?.resolution ?? null
+  const [scope, setScopeState] = useKerningScope(key, resolution)
+  const editKey = JSON.stringify([key, scope])
   const status = loaded?.status ?? null
   const sides = resolution ? kerningScopeSides(resolution, scope) : null
   const impact = useKerningImpact(options.doc, resolution, scope)
@@ -150,34 +153,8 @@ export function useTextKerning(options: UseTextKerningOptions) {
           ...target,
           after,
           label: t(removing ? 'kerningText.undoRemove' : 'kerningText.undo'),
-          refreshStart: async () => {
-            const fresh = await call(
-              target.vertical ? 'kerning.resolve_vertical' : 'kerning.resolve',
-              {
-                doc: target.doc,
-                master: target.master,
-                ...capturedPair,
-              },
-            )
-            if (!fresh.status.editable || fresh.value === null)
-              throw new ApiCallError(
-                'kerning_unavailable',
-                'Kerning is unavailable',
-              )
-            const freshSides = kerningScopeSides(fresh, capturedScope)
-            if (
-              !freshSides ||
-              JSON.stringify(freshSides.left) !== JSON.stringify(target.left) ||
-              JSON.stringify(freshSides.right) !== JSON.stringify(target.right)
-            )
-              throw new ApiCallError(
-                'stale_generation',
-                'Kerning group membership changed',
-              )
-            return (
-              kerningScopeRecord(fresh, capturedScope)?.value ?? fresh.value
-            )
-          },
+          refreshStart: () =>
+            refreshKerningBaseline(target, capturedPair, capturedScope),
           onEnd: () => {
             runs.current.delete(record)
             if (currentRun.current === record) currentRun.current = null
@@ -244,7 +221,6 @@ export function useTextKerning(options: UseTextKerningOptions) {
       await finish()
       if (!alive.current || request !== changeId.current) return
       setPairState({ left: next.left.trim(), right: next.right.trim() })
-      setScopeState('glyph_glyph')
       setInvalid(false)
     },
     [finish],
@@ -263,7 +239,7 @@ export function useTextKerning(options: UseTextKerningOptions) {
         refresh()
       }
     },
-    [finish, refresh],
+    [finish, refresh, setScopeState],
   )
 
   const selectedLeft = options.selectedPair?.left
@@ -337,21 +313,29 @@ export function useTextKerning(options: UseTextKerningOptions) {
 
   const onKerningKey = useCallback(
     (event: KerningShortcutEvent): boolean => {
-      const delta = kerningShortcut(
+      const current = latest.current
+      const action = kerningShortcutAction(
         event,
         /Mac|iPhone|iPad/u.test(navigator.platform),
+        current.options.punctuationShortcuts,
       )
-      const current = latest.current
       if (
-        delta === null ||
+        action === null ||
         isEditableTarget(event.target ?? null) ||
         useUiStore.getState().modalCount > 0
       )
         return false
       if (!alive.current) return false
       if (documentEditingSuspended(current.options.doc)) return true
+      const { delta, suppressLeft, suppressRight } = action
+      const editScope = suppressKerningClasses(
+        current.scope,
+        suppressLeft,
+        suppressRight,
+      )
+      const capturedKey = JSON.stringify([current.key, editScope])
       const previous = currentRun.current
-      if (previous?.key === current.editKey) {
+      if (previous?.key === capturedKey) {
         if (previous.runner.active) previous.runner.press(delta)
         else {
           void finish()
@@ -366,17 +350,20 @@ export function useTextKerning(options: UseTextKerningOptions) {
       }
       if (!current.editable || !current.sides || !current.options.master)
         return false
+      const editSides =
+        current.resolution && kerningScopeSides(current.resolution, editScope)
+      if (!editSides) return false
       void finish()
       const run = createRun(
         {
           doc: current.options.doc,
           master: current.options.master,
           vertical: current.options.vertical,
-          ...current.sides,
+          ...editSides,
         },
         current.pair,
-        current.scope,
-        current.editKey,
+        editScope,
+        capturedKey,
       )
       run.runner.press(delta)
       return true

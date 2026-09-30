@@ -49,7 +49,7 @@ export function cropGlyph(
   const out = crop(b, region)
   out.origin_x = b.origin_x + region.x
   out.origin_y = b.origin_y + b.height - region.y - region.height
-  return { ...source, bitmap: out, refs: [] }
+  return { ...source, bitmap: out }
 }
 export function invert(
   source: BitmapGlyph,
@@ -81,7 +81,7 @@ export function resample(
     out = blank(width, height, src.depth)
   out.origin_x = src.origin_x
   out.origin_y = src.origin_y
-  if (!src.width || !src.height) return { ...source, bitmap: out, refs: [] }
+  if (!src.width || !src.height) return { ...source, bitmap: out }
   for (let y = 0; y < height; y++)
     for (let x = 0; x < width; x++) {
       if (!smooth) {
@@ -153,5 +153,5 @@ export function resample(
           : 0,
       )
     }
-  return { ...source, bitmap: out, refs: [] }
+  return { ...source, bitmap: out }
 }

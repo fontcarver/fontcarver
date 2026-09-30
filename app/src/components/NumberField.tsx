@@ -16,6 +16,8 @@ export interface NumberFieldProps {
   invalidHint?: string
   /** Changes after model reconciliation, including a rejected unchanged value. */
   revision?: unknown
+  /** Display formatter; defaults to font units rounded to one decimal. */
+  formatValue?: (value: number) => string
 }
 
 /**
@@ -32,8 +34,9 @@ export function NumberField({
   step = 1,
   invalidHint,
   revision,
+  formatValue = formatUnits,
 }: NumberFieldProps) {
-  const [text, setText] = useState(() => formatUnits(value))
+  const [text, setText] = useState(() => formatValue(value))
   const [invalid, setInvalid] = useState(false)
   const editing = useRef(false)
   /**
@@ -51,9 +54,9 @@ export function NumberField({
     if (pending.current === value) pending.current = null
     if (!editing.current) {
       pending.current = null
-      setText(formatUnits(value))
+      setText(formatValue(value))
     }
-  }, [value, revision])
+  }, [value, revision, formatValue])
 
   useEffect(() => {
     if (!invalid) return
@@ -65,10 +68,10 @@ export function NumberField({
     const next = evaluateField(raw, value)
     if (next === null) {
       setInvalid(true)
-      setText(formatUnits(value))
+      setText(formatValue(value))
       return false
     }
-    setText(formatUnits(next))
+    setText(formatValue(next))
     if (next !== value && next !== pending.current) {
       pending.current = next
       onCommit(next)
@@ -108,7 +111,7 @@ export function NumberField({
           if (event.key === 'Escape') {
             event.preventDefault()
             editing.current = false
-            setText(formatUnits(value))
+            setText(formatValue(value))
             event.currentTarget.blur()
             return
           }
@@ -117,7 +120,7 @@ export function NumberField({
           const amount = step * (event.shiftKey ? 10 : 1)
           const base = evaluateField(event.currentTarget.value, value) ?? value
           const next = event.key === 'ArrowUp' ? base + amount : base - amount
-          setText(formatUnits(next))
+          setText(formatValue(next))
           if (next !== value) {
             pending.current = next
             onCommit(next)

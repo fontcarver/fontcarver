@@ -157,4 +157,8 @@ pub struct MetricsResolveParams {
     /// Master to resolve in, or the default master when absent.
     #[serde(default)]
     pub master: Option<MasterId>,
+    /// Specific layer to resolve, including local metrics overrides.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub layer: Option<LayerId>,
 }

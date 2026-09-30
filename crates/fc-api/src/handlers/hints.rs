@@ -17,6 +17,8 @@ pub(crate) fn state(api: &Api, params: HintStateParams) -> Result<HintState, Api
                 master: master.clone(),
                 hints: None,
                 layer: None,
+                is_cid: doc.font.cid.is_some(),
+                cff_private_dict_index: None,
                 path: String::new(),
                 can_autohint_ps: false,
                 units_per_em: doc.font.info.units_per_em,
@@ -33,8 +35,10 @@ pub(crate) fn state(api: &Api, params: HintStateParams) -> Result<HintState, Api
                 }
                 .ok_or_else(|| ApiError::not_found("hint layer does not exist"))?;
                 result.hints = Some(layer.hints.clone());
+                result.cff_private_dict_index = Some(layer.cff_private_dict_index.unwrap_or(0));
                 result.can_autohint_ps =
-                    matches!(&layer.kind, fc_model::LayerKind::Master(id) if *id == params.master);
+                    layer.cff_private_dict_index.unwrap_or(0) == 0
+                    && matches!(&layer.kind, fc_model::LayerKind::Master(id) if *id == params.master);
                 result.layer = Some(layer.id.to_string());
                 result.path = fc_model::query::flatten_layer_by_id(&doc.font, &name, &layer.id)
                     .map_err(|e| ApiError::invalid_params(e.to_string()))?

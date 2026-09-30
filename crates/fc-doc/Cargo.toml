@@ -18,6 +18,7 @@ flate2.workspace = true
 fc-geom = { path = "../fc-geom" }
 fc-hint = { path = "../fc-hint" }
 fc-model = { path = "../fc-model" }
+fc-glyphdata = { path = "../fc-glyphdata" }
 fc-sfnt = { path = "../fc-sfnt", optional = true }
 kurbo.workspace = true
 serde.workspace = true

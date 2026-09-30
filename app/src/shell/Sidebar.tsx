@@ -1,4 +1,8 @@
 import { useTranslation } from 'react-i18next'
+import { IconButton } from '../components/IconButton'
+import { reportError } from '../stores/uiStore'
+import { readWindowTarget } from '../transport/windows'
+import { detachPanel } from './windowActions'
 
 import { EditSidebar } from '../views/glyph/EditSidebar'
 import { SidebarFilters } from '../views/font/SidebarFilters'
@@ -18,7 +22,17 @@ export function Sidebar() {
   return (
     <>
       <div className={styles.panelTitle}>
-        {tab?.kind === 'glyph' ? t('sidebar.glyphTitle') : t('sidebar.title')}
+        <span>
+          {tab?.kind === 'glyph' ? t('sidebar.glyphTitle') : t('sidebar.title')}
+        </span>
+        {tab && readWindowTarget()?.kind !== 'panel' ? (
+          <IconButton
+            label={t('shellWindow.detachSidebar')}
+            onClick={() => void detachPanel('sidebar').catch(reportError)}
+          >
+            ↗
+          </IconButton>
+        ) : null}
       </div>
       <div
         className={styles.panelStack}

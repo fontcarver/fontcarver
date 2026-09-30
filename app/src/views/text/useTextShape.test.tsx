@@ -52,6 +52,28 @@ describe('React shaping integration', () => {
     expect(result.current?.context.master).toBe('bold')
     expect(result.current?.context.text).toBe('B')
   })
+  it('hides old script and language geometry during the replacement debounce', async () => {
+    vi.useFakeTimers()
+    const transport = createMockTransport({ 'text.shape': () => empty })
+    setTransport(transport)
+    const { result, rerender } = renderHook(
+      ({ request }) => useTextShape(request),
+      { initialProps: { request: context } },
+    )
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(150)
+    })
+    expect(result.current).not.toBeNull()
+    rerender({ request: { ...context, script: 'Arab', language: 'ar' } })
+    expect(result.current).toBeNull()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(150)
+    })
+    expect(transport.calls.at(-1)?.params).toMatchObject({
+      script: 'Arab',
+      language: 'ar',
+    })
+  })
   it('polls stale to fresh without an edit and suspends requests during gestures', async () => {
     vi.useFakeTimers()
     let stale = true

@@ -191,8 +191,7 @@ fn read_face(face: &FontRef<'_>, warnings: &mut Vec<Warning>) -> Result<Font, Er
     master.name = font.info.style_name.clone();
     master.location = variations::default_location(&font.axes);
     hinting::apply(face, &maxp, &mut master.tt)?;
-    let private_dict_has_hints =
-        cff::apply_private(face, &mut font.info, &mut master.private_dict)?;
+    let private_dict_has_hints = cff::apply_private(face, &mut font.info, &mut master, warnings)?;
     let master_id = master.id.clone();
     font.masters = vec![master];
     font.cid = cff::cid_info(face, glyph_count, &glyph_names)?;
@@ -244,11 +243,11 @@ fn read_face(face: &FontRef<'_>, warnings: &mut Vec<Warning>) -> Result<Font, Er
     }
     if cff_source
         .as_ref()
-        .is_some_and(cff::CffSource::multiple_private_dicts)
+        .is_some_and(cff::CffSource::unpreserved_private_dicts)
     {
         warnings.push(Warning {
             code: "cff-private-dicts-flattened",
-            message: "The source has multiple CFF private dictionaries; only the first is editable as master parameters. Per-glyph stems are retained, but exporting uses that single private dictionary.".into(),
+            message: "The source has multiple CFF2 private dictionaries; only the default dictionary is imported as master parameters. Per-glyph stems are retained, but variable private dictionaries are not preserved.".into(),
         });
     }
     font.extra.raw_tables = raw::raw_tables(face);

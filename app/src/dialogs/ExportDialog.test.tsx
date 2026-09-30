@@ -91,6 +91,14 @@ describe('ExportDialog', () => {
     )
     const autohint = screen.getByRole('checkbox', { name: 'Automatic hinting' })
     const overlap = screen.getByRole('checkbox', { name: 'Remove overlap' })
+    const extrema = screen.getByRole('checkbox', { name: 'Add extrema' })
+    const rounding = screen.getByRole('checkbox', { name: 'Round coordinates' })
+    const decomposition = screen.getByRole('checkbox', {
+      name: 'Decompose components',
+    })
+    await user.click(extrema)
+    await user.click(rounding)
+    await user.click(decomposition)
     await user.click(autohint)
     await user.click(overlap)
     const variable = screen.getByRole('checkbox', {
@@ -100,6 +108,9 @@ describe('ExportDialog', () => {
     expect(autohint).toBeDisabled()
     expect(autohint).not.toBeChecked()
     expect(overlap).toBeDisabled()
+    expect(extrema).toBeDisabled()
+    expect(rounding).toBeDisabled()
+    expect(decomposition).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'Export' }))
     await waitFor(() =>
       expect(
@@ -109,6 +120,10 @@ describe('ExportDialog', () => {
           variable: true,
           autohint: false,
           remove_overlap: false,
+          add_extrema: false,
+          round_coordinates: false,
+          decompose_components: false,
+          subroutinize: false,
           keep_tt_instructions: false,
         },
       }),
@@ -117,6 +132,9 @@ describe('ExportDialog', () => {
     expect(autohint).toBeEnabled()
     expect(autohint).toBeChecked()
     expect(overlap).toBeChecked()
+    expect(extrema).toBeChecked()
+    expect(rounding).toBeChecked()
+    expect(decomposition).toBeChecked()
   })
   it('maps the form onto session.export parameters', async () => {
     const user = userEvent.setup()
@@ -141,6 +159,10 @@ describe('ExportDialog', () => {
         variable: false,
         master: 'm1',
         remove_overlap: true,
+        add_extrema: false,
+        round_coordinates: false,
+        decompose_components: false,
+        subroutinize: false,
         keep_tt_instructions: true,
         preserve_untouched_tables: false,
         production_names: false,
@@ -156,7 +178,7 @@ describe('ExportDialog', () => {
       const user = userEvent.setup()
       const transport = setup()
       await user.click(screen.getByRole('tab', { name: tab }))
-      expect(screen.getAllByRole('checkbox')).toHaveLength(2)
+      expect(screen.getAllByRole('checkbox')).toHaveLength(5)
       await user.click(
         screen.getByRole('checkbox', { name: 'Automatic hinting' }),
       )
@@ -175,6 +197,39 @@ describe('ExportDialog', () => {
       })
     },
   )
+
+  it('requires an explicit glyph name for EPS and sends only supported options', async () => {
+    const user = userEvent.setup()
+    const transport = setup()
+    await user.click(screen.getByRole('tab', { name: 'EPS glyph' }))
+    expect(screen.getByRole('button', { name: 'Export' })).toBeDisabled()
+    await user.type(
+      screen.getByRole('textbox', { name: 'EPS glyph name' }),
+      ' A ',
+    )
+    await user.click(screen.getByRole('button', { name: 'Export' }))
+    await waitFor(() => expect(transport.calls).toHaveLength(1))
+    expect(transport.calls[0]?.params).toMatchObject({
+      options: {
+        format: 'Eps',
+        glyph: 'A',
+        preserve_untouched_tables: false,
+        keep_tt_instructions: false,
+        production_names: false,
+        add_extrema: false,
+        round_coordinates: false,
+        decompose_components: false,
+      },
+    })
+  })
+
+  it('keeps Enter on the batch disclosure from triggering a single export', async () => {
+    const user = userEvent.setup()
+    const transport = setup()
+    screen.getByText('Batch export').focus()
+    await user.keyboard('{Enter}')
+    expect(transport.calls).toHaveLength(0)
+  })
 
   it('follows the format tab into the file extension and the options', async () => {
     const user = userEvent.setup()
