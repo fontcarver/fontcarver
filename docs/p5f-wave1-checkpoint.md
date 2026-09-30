@@ -72,3 +72,13 @@ First real Linux packages of the current code were built into
 evidence in `acceptance/p5f-release/`. The AppImage bundles 73 copyleft-licensed
 shared objects with notices for only 10; prefer the deb until that is cleared.
 macOS and Windows workflows are reviewed but unexecuted.
+
+## Cut-off note
+
+The orchestrating session hit its usage limit right after this checkpoint was
+written. At that moment five agents were still running and may have been cut
+off mid-edit: task f (export, implementing), the reviews of tasks c and b, and
+the fix rounds of tasks a and e. On resume, expect their files to be in an
+intermediate state: run `pnpm --dir app check` and `cargo check --workspace`
+first, read the newest `docs/p5f-*-acceptance.md` and task-file gap analyses,
+and let the integration agent finish or revert only what does not compile.
