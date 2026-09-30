@@ -140,3 +140,14 @@ Task c's review (ACCEPT WITH FIXES) reported these open defects; **not fixed**:
    the key is dropped. At 1280×577 the canvas height is 0 (a real layout
    defect). Fix the spec to click the canvas centre; fix the layout.
    Row 35 downgrades to Partial; row 33 stays Partial.
+
+Task a's fix round finished after the cut-off note: all eleven review items
+fixed (palette keyboard order; detached Edit-tab panels via
+`DetachedGlyphSource`; `aria-keyshortcuts`/pinned exposure; translated history
+layer roles; per-glyph COLR/SVG/MATH scopes; all-or-nothing `replay_to`; panic
+guard limited to `Builder::build()`); Playwright `app.spec.ts panels.spec.ts`
+12 passed, p2a 10/11. The duplicate-Overview report was a P2a case that opens
+one file twice on purpose; behaviour pinned by tests. Still open, not task a's:
+`app/e2e/p2a-kerning.spec.ts:322` selects the tab by exact name `Regular.ufo`
+while an unlabelled Overview renders as `Overview · <file>`; match
+`(?:^|· )Regular\.ufo$`. Only task f (export) was still running at the end.
