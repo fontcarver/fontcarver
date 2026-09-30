@@ -157,3 +157,20 @@ adding a Playwright spec for the profile round trip) was resumed, and the
 inventory and editor agents received their review defect lists as fix rounds.
 The wave is being finished as planned: export review, fix rounds, zh-CN
 translation, integration, records, commits, then stop.
+
+## Closed, 2026-09-30
+
+The wave is finished. Export review and every fix round reported, both
+translation passes ran ([1](p5f-localization-pass1.md),
+[2](p5f-localization-pass2.md)), and the integration pass verified the tree
+(`cargo fmt`, Clippy, `cargo test --workspace` 1,978 passed / 0 failed / 2
+ignored, `tsc`, ESLint, Prettier, Vitest 2,517 tests in 314 files, production
+build, Playwright per configuration), made the small fixes listed in
+[the integration task](superpowers/plans/tasks/p5f-integration.md), updated
+[the audit](p5-feature-audit.md) to 75 Complete / 5 Partial / 32 Pending
+verification, [STATUS](STATUS.md), [TODO](TODO.md) and
+[the estimate](progress-estimate.md), and committed the wave as `a4b701d`
+plus the `docs(p5)` commit that follows it. Nothing is pushed. Everything in the
+"integration to-do" and "review findings" lists above is either fixed or recorded
+in [TODO](TODO.md); this file is now history, and [STATUS](STATUS.md) is the entry
+point. Wave 2 remains planned and not started.

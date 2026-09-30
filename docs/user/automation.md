@@ -35,27 +35,82 @@ a triple-slash `reference path`. The generated declarations describe the
 `fc`/`fontcarver` globals and infer each method's parameters and result. The
 console executes JavaScript; compile TypeScript source to JavaScript first.
 
+The console ships those declarations with the application. Its **API reference**
+tab shows the declaration file's path and full text, copies it to the clipboard,
+and searches every kernel method by name or parameter key. Each result lists the
+method's parameter and result types and its accepted keys, and **Insert call**
+appends a ready-to-run `await fc.call(...)` with every required parameter.
+
+Before a JavaScript run, the console checks each literal `fc.call` against the
+same generated contract:
+
+- an unknown method, or one the scripting facade withholds, is an **error** and
+  Run stays disabled until you correct it;
+- an unknown parameter key is a **warning**, because the kernel rejects it
+  anyway and the key scan is deliberately conservative.
+
+A *missing* key is never reported: many kernel parameters have a default, which
+the generated TypeScript does not distinguish from a required field.
+
+A call whose method name or parameter object is computed — a variable, a spread
+or a computed key — is left unchecked rather than guessed at, and a call written
+inside a comment or a string is never reported. The check is not a TypeScript
+compiler; use the shipped declarations in your editor for full type checking.
+
+## One run, one undo entry
+
+A run that captures a document opens a history transaction for it, so every
+change the script makes — however many kernel calls it takes — collapses into a
+single undo entry named after the script, such as `Script: widen.js`. The
+console reports the recorded entry when the run finishes. Undo reverses the
+whole run; redo reapplies it.
+
+Because the pending entry covers the whole run, `doc.undo` and `doc.redo` are
+rejected **inside** a run with an explicit error. Undo the run after it ends
+instead. A run that fails part-way still records the work it completed, so one
+undo restores the document. Saving during a run does not split the entry.
+
+A transaction cannot outlive its run. It carries a deadline — a minute for a
+console run — after which the next edit, gesture, undo, redo or save closes it,
+and starting another run closes any transaction an abandoned one left behind.
+So a reloaded page or a dropped connection costs at most that one entry; later
+edits are recorded separately and undo keeps working.
+
 Use **Stop script** for a JavaScript loop or a long-running macro. Stop terminates the
 worker and prevents new host calls. An API operation already dispatched is
 allowed to finish before the console reports that execution has stopped.
-Stopping does not undo edits that have already completed. Use the normal Undo
-command to reverse their labelled history entries. A sequence of independent
-API calls is not a transaction; use a kernel batch command for one undo entry.
+Stopping does not undo edits that have already completed; the run's transaction
+is closed, so one Undo reverses everything it managed to change.
 JavaScript runs have a 64 KiB source limit, 1 MiB message limit, 256-call limit,
 and 64 KiB/256-entry output limit. The default deadline is 10 seconds.
 
-## Local scripts and reload
+## Local scripts, folders and reload
 
-The console displays its scripts directory inside FontCarver's configuration
-directory. Save trusted UTF-8 `.js` or `.py` files directly in that directory,
-then press **Reload scripts**. Selecting a script loads it into the editor;
-press Run separately. Editing the console source does not overwrite the file.
+The console searches three script folders and lists each one with its path:
 
-Discovery lists up to 256 files and examines at most 4,096 directory entries.
-Files must be regular files of at most 64 KiB. Nested paths, symlinks and
-oversized files are rejected; skipped entries produce bounded diagnostics.
-Reload refreshes the cached list and re-reads the selected file if its console
-source has not been edited. A manually edited console draft is preserved.
+| Folder                 | Where it comes from                                              |
+| ---------------------- | ----------------------------------------------------------------- |
+| **Configured folder**  | The absolute path you enter in *Extra scripts folder* and save.   |
+| **Preferences folder** | `scripts` inside FontCarver's configuration directory.            |
+| **Project folder**     | `scripts` beside the active document's file or project directory. |
+
+Only the preferences folder is created for you; the other two are listed as
+*not present* until they exist. Names are resolved inside the folder a script
+was listed from, so two folders may hold files with the same name. Save trusted
+UTF-8 `.js` or `.py` files in any of them. Selecting a script loads it into the
+editor; press Run separately. Editing the console source does not overwrite the
+file.
+
+Discovery lists up to 256 files per search and examines at most 4,096 directory
+entries. Files must be regular files of at most 64 KiB. Nested paths, symlinks
+and oversized files are rejected; skipped entries produce bounded diagnostics.
+
+**Reload scripts** refreshes the list on demand and re-reads the selected file
+if its console source has not been edited; a manually edited console draft is
+preserved. While the console is open it also **reloads on change**: it re-reads
+the searched folders every two seconds and refreshes the list when their
+contents change, so a script saved from an editor appears without pressing
+Reload. Reading a folder never executes a script.
 
 ## Python
 
@@ -77,6 +132,9 @@ to the captured document; session lifecycle, configuration writes, nested
 automation and external-process operations are rejected. A failed RPC raises
 a Python exception. Normal `print` output and exceptions appear in the console.
 
+A Python run with a captured document is also one history transaction, so the
+whole run is a single undo entry, named by the `label` the console sends.
+
 The console sets a 10-second deadline. The API accepts 100–30,000 ms, with a
 64 KiB source limit, 256 KiB protocol-message limit, 64 KiB captured-output
 limit and 1,000-call limit. Only one Python run per API session is accepted at
@@ -95,20 +153,40 @@ be exposed as a remote automation service.
 
 ## Bundled plugin manager
 
-Open the plugin manager from the scripts console. Its curated index currently
-contains **Bounds reporter** and **Translate filter**. Installing an entry
-records it locally in the disabled state; enabling it activates its behavior. Disable removes its
-active behavior and Remove also clears the installed entry. These choices
-persist in browser/WebView storage. Unknown stored IDs are ignored.
+Open the plugin manager from the scripts console. Its curated index is the
+bundled JSON file `app/src/plugins/index.json`, and each entry carries its
+provenance: author, licence and the repository path of the shipped
+implementation. The manager shows those values beside every plugin. The index
+currently contains **Bounds reporter**, **Metrics reporter** and **Translate
+filter**.
+
+Installing an entry records it locally in the disabled state; enabling it
+activates its behavior. Disable removes its active behavior and Remove also
+clears the installed entry. **Reload plugins** re-reads the curated index and
+the stored installation record — useful after another window changed it — and
+never downloads or re-evaluates code, because every implementation is compiled
+into the application. These choices persist in browser/WebView storage together
+with each plugin's settings. Unknown stored IDs, versions and settings are
+ignored or repaired against the index.
+
+An entry may declare numeric or toggle **settings**. The manager shows them
+below an installed plugin, clamps each value to its declared range and step,
+and persists it. The Translate filter's X/Y offsets are settings, so they are
+restored the next time you open the manager.
 
 The index contains code shipped with FontCarver. It does not download or run
 third-party code, and there is no remote marketplace or external plugin loader.
 
-The Bounds reporter adds an outline bounding box to the glyph canvas while it
-is enabled. Reporter plugins receive read-only geometry and return declarative
-font-space overlays. They receive neither the canvas context nor document
-mutation access. Disabling the reporter removes its overlay without changing
-the font.
+The Bounds reporter draws the outline bounding box on the glyph canvas, and
+optionally the advance width. The Metrics reporter draws the baseline and,
+optionally, the x-height and cap-height lines across exactly the visible part of
+the canvas. Reporter plugins receive read-only geometry, a document context
+(document, glyph, layer, master and the resolved layer metrics), a view context
+(zoom and the visible font-space rectangle) and their persisted settings, and
+return declarative font-space overlays. They receive neither the canvas context
+nor document mutation access. Disabling a reporter removes its overlay without
+changing the font. Overlays are not drawn while the glyph tab is showing a text
+run rather than an editable glyph.
 
 The Translate filter targets the active editable master layer. Enter X/Y
 offsets and request a preview. The preview is transient and does not create an
@@ -122,8 +200,12 @@ pending previews. An apply operation already dispatched finishes normally;
 cancel does not recall it.
 
 Host contracts live in `app/src/plugins/contracts.ts`: `PluginManifest`,
-`ReporterPlugin`, `FilterPlugin`, `PluginOverlay` and `FilterPlan`. To add a
-bundled implementation, provide metadata and a pure reporter or filter-plan
-function, add it to the curated registry, and add English display strings and
-tests. A filter plan uses an existing revision-checked kernel operation; the
-host owns preview, stale checking, apply, cancellation and lifecycle cleanup.
+`PluginIndexEntry`, `PluginSetting`, `ReporterPlugin`, `ReporterInput`,
+`FilterPlugin`, `PluginOverlay` and `FilterPlan`. To add a bundled
+implementation, write a pure reporter or filter-plan function in
+`app/src/plugins/`, add an entry with its provenance and settings to
+`app/src/plugins/index.json`, and add English display strings and tests. An
+entry whose implementation, provenance or settings do not validate is dropped
+from the index rather than offered for installation. A filter plan uses an
+existing revision-checked kernel operation; the host owns preview, stale
+checking, apply, cancellation and lifecycle cleanup.

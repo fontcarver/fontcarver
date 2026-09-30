@@ -63,3 +63,149 @@ transactions), `crates/fc-doc/src/session.rs`, `crates/fc-model/src/glyph.rs`,
 `app/src/dialogs/DialogHost.tsx`, `app/src/stores/documentStore.ts`,
 `app/src/views/glyph/GlyphCanvas.tsx` (plugin overlay hook only), `app/src/i18n/en.json`,
 `crates/fc-api/src/handlers/mod.rs`, `crates/fc-api/src/types/mod.rs`, `app/package.json` (scripts only).
+
+## Gap analysis
+
+Method: the 2026-09-30 batch left this area implemented but unaccepted. The first
+action was therefore to run every backend suite the earlier reports recorded as
+**not run**, against the current checkout:
+
+| Command                                     | Result          |
+| ------------------------------------------- | --------------- |
+| `cargo test -p fc-api --test automation`    | 20 passed       |
+| `cargo test -p fc-api --test cross_paste`   | 8 passed        |
+| `cargo test -p fc-api --test font_compare`  | 10 passed       |
+| `cargo test -p fc-doc --test replace_glyph` | 7 passed        |
+| `cargo test -p fc-api --bin gen_ts`         | 3 passed        |
+| `cargo test -p fc-devserver --test http`    | 5 passed        |
+
+That closes the "queued/cancelled, not recorded as passing" hole in
+`docs/acceptance/p5-automation.md`, `docs/acceptance/p5-automation-build-blocked.log`
+and `docs/p5-cross-document-acceptance.md`. The remaining work per row:
+
+### Row 77 — Paste Special matrix
+
+Works: all three destinations × four payloads are reachable in
+`PasteSpecialDialog`, validated by `plan.rs`, and covered cell-by-cell by
+`destination_and_content_matrix_preserves_unselected_fields` (12 cells, each with
+an undo assertion). Stale-revision and selection-count failures reject
+atomically; `.fcf`/`.fcf.gz` save-reopen is covered by the replace_glyph suite.
+
+Missing: no browser evidence with two real documents through the real kernel.
+
+Plan: verify in the headless browser (two documents, one paste per destination,
+undo, reopen), and keep the backend matrix test as the exhaustive cell evidence.
+
+### Row 78 — Cross-document relinking and placeholders
+
+Works: name relinking with transform preservation, cycle rejection, atomic
+failure, recursive base copy, decompose, and placeholder creation
+(`export = false`, tag `missing-component-base`, explanatory note).
+
+Missing: (a) the placeholder is **not flagged in the inventory** — the tag is
+written but nothing reads it, so the requirement's "flagged in the inventory"
+is unmet; (b) no browser evidence.
+
+Plan: expose the placeholder state from this area's own handler rather than
+editing task b's `types/glyphs.rs`: report placeholders explicitly in
+`PasteSpecialResult` (`placeholders`, with names and reasons) and make them
+findable in the existing inventory through a documented smart-filter expression
+on the tag. Record the exact `GlyphCell` field task b would need as the
+remaining coordination item.
+
+### Row 79 — TypeScript scripting, console, scripts folder
+
+Works: worker execution, Stop, bounds, output/errors, `automation.scripts_*`,
+a generated `fontcarver.d.ts`.
+
+Missing:
+1. The declaration is generated into `app/src/api/generated/` and never shown to
+   the user; the console has no type checking or completion, so "consumable by
+   the console's type checking/completion" is unmet.
+2. The scripts folder is only the application config directory — neither a
+   project folder nor a preference.
+3. Reload is on demand only; there is no reload **on change**.
+4. **One history transaction per run is absent.** `Document::apply` finalizes any
+   active gesture, so every script call is its own undo entry; the shipped user
+   doc states this as a boundary. This is a required behaviour, not a limit.
+
+Plan: generate a machine-readable API manifest next to the `.d.ts`; add console
+completion plus a pre-run check of `fc.call` literals (unknown method, missing
+or unknown parameter keys) and a declaration panel that shows the shipped path
+and text; add three script roots (configured / preferences / project) with
+root-scoped reads; add a directory fingerprint and reload-on-change while the
+console is open; add a real script transaction (`automation.transaction_*`,
+backed by a narrow sticky-gesture patch in `fc-doc`) so one run is one undo
+entry, used by both JavaScript and Python.
+
+### Row 96 — Compare Fonts / Family / reference binary
+
+Works: two-document comparison by persistent name, evaluated outlines with
+overlay, metrics, Unicode/variation sequences, topology, paging, counts,
+revision guards, bounded work budgets.
+
+Missing:
+1. No **metadata** diff beyond family name and UPEM.
+2. No **kerning** diff (groups or pairs).
+3. No **layout** diff (features/lookups).
+4. No **component** diff distinct from the evaluated outline.
+5. "Compare Family" only walks other open documents at their first master; the
+   masters of the family itself are never compared, so a mismatched master set
+   inside one document is invisible.
+6. A reference binary is opened as an ordinary editable document — nothing makes
+   it read-only.
+7. The merge is `same_name`/`all_data` for checked rows. There is **no
+   per-conflict choice** and no export/reopen evidence.
+
+Plan: extend `font.compare` with metadata/kerning/layout sections and a
+component flag; add `font.compare_family` covering every (document, master)
+member; add `font.open_reference` with a kernel-enforced read-only document; add
+`font.merge` in `cross_paste/merge.rs` with per-glyph keep/take choices and
+explicit font-level adoption (info, master metrics, kerning) applied as one
+transaction. Adopting a reference's OpenType layout stays out of the merge: the
+generic command path deliberately rejects feature drafts, which need the
+features editor's revision/provenance API (task e owns it). That is recorded as
+a limit with a named owner.
+
+### Row 105 — Python RPC and plugin manager
+
+Works: separate interpreter, versioned bounded line JSON RPC, typed errors,
+deadline/reaping, captured-document restriction, document preserved on failure —
+all covered by the 20 automation tests that now pass.
+
+Missing: the curated index is TypeScript code with no **provenance** data; there
+is no **reload**; there are no **persisted per-plugin settings** (only
+enabled/version). No browser evidence for the two sample plugins.
+
+Plan: ship `app/public/plugins/index.json` (bundled, with author/license/source
+provenance and a checksum-free local-only statement), validate it at load, add
+`reload` to the lifecycle store, and persist per-plugin settings (the translate
+filter's offsets) so a reopened session restores them.
+
+### Row 106 — Reporter and filter contracts
+
+Works: declarative reporter overlays, attach/detach on enable/disable, filter
+preview without mutation, single commit, cancel, stale rejection, plugin failure
+isolated from history.
+
+Missing: reporters receive only `bounds` — no **document or view context**, so
+the requirement's "document/view context" is unmet. No browser evidence.
+
+Plan: extend `ReporterInput` with document context (doc, glyph name, master,
+layer, advance width, upem, master metrics) and view context (scale, visible
+font-space rectangle), pass them from the canvas hook, and add a second reporter
+that demonstrably needs them.
+
+### Decisions recorded without asking
+
+- The reference binary becomes a genuine read-only document via a narrow
+  `fc-doc` patch, rather than a duplicate scratch session. `DocSummary` is owned
+  by another task, so the read-only state is returned by this area's own
+  `font.open_reference` result and surfaced in the compare dialog; the shell tab
+  bar is not badged.
+- Reload-on-change uses a bounded directory fingerprint polled only while the
+  console is open, instead of adding a filesystem-watch dependency.
+- Script type checking means: completion from the generated manifest plus
+  rejection of unknown methods and unknown/missing parameter keys in `fc.call`
+  literals before execution. A full in-browser TypeScript compiler is not
+  bundled; the generated `.d.ts` remains the editor-side contract.

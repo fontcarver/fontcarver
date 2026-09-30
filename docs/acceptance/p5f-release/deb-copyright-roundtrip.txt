@@ -1,0 +1,29 @@
+Debian copyright document: dpkg round trip on the real payload
+
+The Tauri build that installs the document through bundle.linux.deb.files was
+blocked by concurrent edits to the kernel crates. To check everything except
+that one step, the real package was unpacked, the DEP-5 document added at the
+policy path, and the package rebuilt with dpkg-deb and re-verified.
+
+  dpkg-deb -x / -e   FontCarver_0.1.0_amd64.deb -> payload + control
+  cp src-tauri/packaging/linux/copyright usr/share/doc/font-carver/copyright
+  dpkg-deb --build   -> building package 'font-carver'
+  python3 scripts/check_release_bundle.py --expected deb -> PASS
+
+  ok: True
+  Package: font-carver  Version: 0.1.0  Architecture: amd64
+  debian_copyright.path: usr/share/doc/font-carver/copyright
+  debian_copyright.sha256: 37c52f6ba78cf7396e996cb30bc8826b182b5f97e9260469042f593a961543d9
+  payload files: 1142 (one more than the built package)
+  desktop entry: usr/share/applications/FontCarver.desktop
+  notices: {'packages': 630, 'license_files': 1126, 'checksums_verified': True}
+
+The same verifier rejects the package built by Tauri, which has no such
+document:
+
+  missing Debian copyright document at usr/share/doc/font-carver/copyright
+
+So the check, the document and the extraction path are all verified against a
+real Debian package. What remains unverified is only whether a Tauri build
+places the file at that path; the wave's final rebuild settles it, and the
+verifier fails the package if it does not.

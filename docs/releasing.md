@@ -79,6 +79,16 @@ Build output is under `target/release/bundle`, or
 `$CARGO_TARGET_DIR/release/bundle` when an alternate Cargo target directory is
 already configured. An installed cross target or an arbitrary `--bundles` value
 does not make the helper cross-compile another operating system's package.
+
+An alternate `CARGO_TARGET_DIR` keeps a release build from disturbing a shared
+development cache, which is worth doing when other work is using the workspace
+`target` directory. The helper passes that directory to every resource check
+automatically, so no extra flag is needed inside the helper; a check you run
+yourself alongside it needs `--build-dir "$CARGO_TARGET_DIR"`. Expect the
+separate directory to cost extra time and space: the TypeScript API generator
+runs through Cargo, so it compiles its own dependency tree in the new directory
+in the development profile before the release build starts. A first build into
+an empty release directory measured about 6 GiB.
 The native helper rejects `CARGO_BUILD_TARGET` and `build.target` overrides in
 Cargo configuration; target-specific output layouts are outside this helper's
 supported path convention.
@@ -115,6 +125,17 @@ and platform metadata. Linux requires a desktop entry and matching icon; DMG
 inspection checks the application property list and icon. This verifies package
 structure and attribution files, not desktop launch or complete font behavior.
 
+A Debian package additionally has to carry the copyright document that Debian
+policy 12.5 makes mandatory. Tauri's deb bundler does not write one, so
+`bundle.linux.deb.files` installs
+[`src-tauri/packaging/linux/copyright`](../src-tauri/packaging/linux/copyright)
+at `/usr/share/doc/font-carver/copyright`, and the verifier rejects a package
+whose copyright document is missing, empty, outside the installed package's own
+directory, or silent about either project license. That destination repeats the
+package name Tauri derives from `productName`, so changing the product name
+means changing this path too — the verifier is what stops a renamed product from
+shipping a document nobody can find.
+
 Bundles carry both project licenses, `THIRD_PARTY.md`, an `INSTALL.md` copy of the
 user instructions and the generated dependency notice catalog. The catalog
 retains dependency versions, declared license expressions and upstream notice
@@ -122,11 +143,37 @@ text with checksums. Do not substitute a list of license identifiers for those
 notice files.
 
 The generated catalog covers Cargo/npm source packages. It does not inventory
-native libraries or bundler runtimes added to an installer, including GTK/WebKit
-libraries potentially included by linuxdeploy. The supplemental catalog READMEs
-also preserve upstream SDK and historical provenance limitations. Inspect actual
-native payloads and complete their redistribution notices before distribution;
-a passing source-package audit is not complete artifact license clearance.
+native libraries or bundler runtimes added to an installer. The supplemental
+catalog READMEs also preserve upstream SDK and historical provenance
+limitations. Inspect actual native payloads and complete their redistribution
+notices before distribution; a passing source-package audit is not complete
+artifact license clearance.
+
+### The AppImage payload is a separate licensing obligation
+
+The Debian package declares `libwebkit2gtk-4.1-0` and `libgtk-3-0` and links
+the rest of its libraries from the system, so its redistribution scope is
+FontCarver's own code plus the compiled Cargo/npm graph. The AppImage does not:
+linuxdeploy copies the GTK, WebKitGTK, GStreamer, TLS, printing and
+input-method stack into the image.
+
+The first real Linux build was inventoried on an Ubuntu 24.04 host: the AppImage
+carried **177 bundled shared objects from 126 Debian packages, 73 of which name
+a copyleft license in their own Debian copyright file**, while the image itself
+shipped copyright documents for only 10 of those packages (the ones
+linuxdeploy's GTK plugin happens to copy). The generated dependency catalog
+covers none of them, because it inventories Cargo and npm source packages only.
+The inventory and its method are recorded in
+[the packaging acceptance evidence](acceptance/p5f-release/appimage-bundled-licenses.txt).
+
+A copyleft name in a Debian copyright file does not by itself prove the linked
+object is copyleft — those documents cover whole source packages, including
+parts that are not built into the shipped library. It does mean the AppImage
+cannot be published until each bundled package has a per-file ruling, its notice
+text travels inside the image, and the LGPL relinking and source-offer
+obligations for the GTK/WebKitGTK/GStreamer core are satisfied. Until then,
+prefer the deb for distribution and treat the AppImage as a reviewable build
+artifact.
 
 Retain the final package report outside regenerable Cargo output before cleaning
 a release cache. For a distribution candidate, retain the exact installers and
@@ -144,6 +191,15 @@ is:
 | macOS 14            | arm64        | dmg                                         |
 | Windows Server 2022 | x86_64       | English and Simplified Chinese msi variants |
 
+A manual dispatch takes an optional `bundles` input: any comma-separated subset
+of `deb`, `appimage`, `dmg` and `msi`, case-insensitive, empty for every
+platform's native formats. A short `plan` job resolves that input into the
+matrix, so an unrecognised format name fails in seconds instead of after a
+90-minute build, and a runner whose formats were all excluded never starts.
+Each runner also restores the Cargo registry (sources only — a release `target`
+directory is far too large to cache), so a transient crates.io failure does not
+decide a three-platform packaging run.
+
 The workflow builds and inspects packages, then defines installation/removal
 checks on disposable runners: APT install/remove on Linux, a DMG app copy into a
 temporary Applications directory on macOS, and MSI install/uninstall on Windows.
@@ -160,9 +216,29 @@ publishing step.
 ## Acceptance before distribution
 
 Check that the Cargo workspace, npm packages and Tauri configuration use the
-intended version. Keep `com.fontcarver.app` stable unless a deliberate application
+intended version. Keep the application identifier stable unless a deliberate
 identity migration is being made. The desktop executable is
 `fontcarver-desktop`; the separately built `fontcarver` CLI is not a sidecar.
+
+Two naming facts are established only on Linux, where a package has actually
+been built and read: the executable installs as `/usr/bin/fontcarver-desktop`,
+and the Debian package name is `font-carver`, which Tauri derives from
+`productName`. The bundle verifier also expects
+`Contents/MacOS/fontcarver-desktop` inside the macOS app bundle and
+`fontcarver-desktop.exe` in the MSI. Those two are assumptions about how the
+bundler names a binary on platforms no build has run on; the first macOS and
+Windows runs either confirm them or fail the verifier, which is the intended
+outcome either way.
+
+The identifier is `com.fontcarver.desktop`. It was `com.fontcarver.app` until the
+Tauri CLI's warning on every build — an identifier ending in `.app` collides with
+the macOS application bundle extension — was acted on during the P5 completion
+wave, while nothing had been released under the old value. The Windows upgrade
+code is pinned explicitly in `tauri.conf.json`, so it did not move with the
+identifier, and the configuration directory is named `fontcarver` independently of
+both. The first Linux packages were built under the old identifier; it appears in
+macOS and Windows bundle metadata rather than in a deb's control fields, so no
+Linux evidence recorded for those packages depends on it.
 
 Run the repository's Rust, frontend and headless end-to-end checks. Native bundle
 verification then needs to establish that the expected application executable,

@@ -1,0 +1,41 @@
+FontCarver deb payload, excluding the generated dependency notice tree
+(the notice tree is indexed by DEPENDENCIES.json and verified by checksum).
+
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/bin
+-rwxr-xr-x 0/0 64657688 2026-09-30 13:07 usr/bin/fontcarver-desktop
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/share
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/share/icons
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/share/icons/hicolor
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/share/icons/hicolor/256x256@2
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/share/icons/hicolor/256x256@2/apps
+-rw-r--r-- 0/0 5712 2026-09-30 13:07 usr/share/icons/hicolor/256x256@2/apps/fontcarver-desktop.png
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/share/icons/hicolor/32x32
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/share/icons/hicolor/32x32/apps
+-rw-r--r-- 0/0 994 2026-09-30 13:07 usr/share/icons/hicolor/32x32/apps/fontcarver-desktop.png
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/share/icons/hicolor/128x128
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/share/icons/hicolor/128x128/apps
+-rw-r--r-- 0/0 3140 2026-09-30 13:07 usr/share/icons/hicolor/128x128/apps/fontcarver-desktop.png
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/share/applications
+-rw-r--r-- 0/0 239 2026-09-30 13:07 usr/share/applications/FontCarver.desktop
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/lib
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/lib/FontCarver
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/lib/FontCarver/licenses
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/lib/FontCarver/licenses/dependencies
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/lib/FontCarver/licenses/dependencies/dependencies
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/lib/FontCarver/licenses/dependencies/crates
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/lib/FontCarver/licenses/dependencies/crates/fc-glyphdata
+drwxr-xr-x 0/0 0 2026-09-30 13:07 usr/lib/FontCarver/licenses/dependencies/crates/fc-glyphdata/data
+-rw-r--r-- 0/0 1995 2026-09-30 13:07 usr/lib/FontCarver/licenses/dependencies/crates/fc-glyphdata/data/UNICODE-LICENSE.txt
+-rw-r--r-- 0/0 11370 2026-09-30 13:07 usr/lib/FontCarver/licenses/dependencies/LICENSE-APACHE
+-rw-r--r-- 0/0 505760 2026-09-30 13:07 usr/lib/FontCarver/licenses/dependencies/DEPENDENCIES.json
+-rw-r--r-- 0/0 22805 2026-09-30 13:07 usr/lib/FontCarver/licenses/dependencies/THIRD_PARTY.md
+-rw-r--r-- 0/0 872 2026-09-30 13:07 usr/lib/FontCarver/licenses/dependencies/README.txt
+-rw-r--r-- 0/0 1097 2026-09-30 13:07 usr/lib/FontCarver/licenses/dependencies/LICENSE-MIT
+-rw-r--r-- 0/0 11370 2026-09-30 13:07 usr/lib/FontCarver/licenses/LICENSE-APACHE
+-rw-r--r-- 0/0 22805 2026-09-30 13:07 usr/lib/FontCarver/licenses/THIRD_PARTY.md
+-rw-r--r-- 0/0 1097 2026-09-30 13:07 usr/lib/FontCarver/licenses/LICENSE-MIT
+-rw-r--r-- 0/0 6181 2026-09-30 13:07 usr/lib/FontCarver/INSTALL.md
+
+dependency notice entries under licenses/dependencies/dependencies/: 1758
+total payload entries: 1793

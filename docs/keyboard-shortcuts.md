@@ -43,6 +43,38 @@ tap-to-select and hold-to-borrow behavior after remapping. Space/pan, arrow
 nudging, text metrics and navigation gestures keep their existing behavior and
 are described separately from configurable commands.
 
+## Spacing and kerning
+
+These gestures belong to the Text tab's canvas and are fixed rather than
+remappable; the two Update Metrics commands are ordinary commands and can be
+rebound above. `Mod` is Command on macOS and Control elsewhere. The base step is
+the first **nudge** distance in Preferences.
+
+| Keys                      | Action                                              |
+| ------------------------- | --------------------------------------------------- |
+| `[` / `]`                 | Selected side −/+ one base step                     |
+| `Shift+[` / `Shift+]`     | …×10                                                |
+| `Mod+←` / `Mod+→`         | LSB − / RSB + one unit (`Shift` ×10)                |
+| `Mod+Alt+←` / `Mod+Alt+→` | Kern the selected boundary ∓1 (`Shift` ×10)         |
+| `Alt+,` / `Alt+.`         | Kern, ignoring the second glyph's group             |
+| `Ctrl+,` / `Ctrl+.`       | Kern, ignoring the first glyph's group (macOS)      |
+| `,` / `.`                 | Kern at the current scope, spacing-locked mode only |
+| `Mod+Alt+M`               | Update Metrics for the current master               |
+| `Mod+Alt+Shift+M`         | Update Metrics in all masters                       |
+
+Which side `[` and `]` change — LSB, RSB or both — is chosen in the text bar.
+`Mod+[` and `Mod+]` step to the previous and next glyph instead of spacing, so
+the bracket keys offer the base step and ×10 only; type an exact value in the
+Info box or the spacing matrix for anything larger.
+Both-side steps change each side by the same amount and are a single undo entry.
+Consecutive steps within 500 ms coalesce into one undo entry.
+
+The spacing keys are disabled in the **spacing locked** kerning mode, and the
+unmodified `,`/`.` kerning keys are available only in that mode, because
+elsewhere those characters are typed into the run. Control is the primary
+modifier on Windows and Linux, so the first-class suppression above is macOS
+only; use the Kerning panel's **Rule scope** menu there.
+
 Press **F1** for [context help](user/context-help.md), including while a dialog or
 field is focused. F1 itself can be reassigned through this editor. Help remains
 accessible from the Help menu even if its key is unbound.

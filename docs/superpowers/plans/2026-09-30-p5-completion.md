@@ -49,6 +49,23 @@ in different waves.
 
 Rows 84, 88 and 104 are already Complete and keep their records.
 
+## Wave 1: done, 2026-09-30
+
+All eight area tasks were implemented, reviewed ("accept with fixes" in every
+case) and fix-rounded; a two-pass zh-CN translation followed; the integration
+pass then verified the whole tree, fixed the regressions it found, updated the
+records and committed `a4b701d` (code) followed by the `docs(p5)` commit
+that records the acceptance and status. Result: the audit moves from 3 Complete /
+3 Partial / 106 Pending to **75 Complete / 5 Partial / 32 Pending verification**,
+with 72 of the wave's 74 rows accepted and rows 9 and 62 left Partial for want of
+native macOS/Windows execution and AppImage payload licensing. Integrated
+verification is listed in [STATUS](../../STATUS.md); per-row evidence is in
+`docs/p5f-{a,b,c,d,e,f,i,n}-*-acceptance.md`.
+
+**Wave 2 is not started.** The user asked for the work in hand to be finished,
+the records updated, and a stop; nothing in this plan authorises beginning
+wave 2 without a new explicit instruction.
+
 ## Per-area cycle
 
 1. Orchestrator writes the task file (scope, rows, ownership, ports).

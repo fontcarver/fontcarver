@@ -44,3 +44,22 @@ invalidates them. They accept at most 128 MiB of decoded font data; collection
 output is limited to 256 faces. SVG/EPS input/output is limited to 32 MiB. All
 codecs reject unsupported syntax before replacing output files. Native `.fcf`
 remains the format for full editable document preservation.
+
+## Profile-driven builds
+
+`fontcarver build --profile NAME` reads the export profiles the project file
+stores, so a continuous-integration build repeats what the editor did without a
+separate configuration file. `fontcarver profiles INPUT` lists the stored
+profiles and variable-font configurations, and `--json` prints them verbatim.
+
+A profile carries an output subfolder and a base file name, so `--out-dir`
+writes the same tree the export matrix previews. `--instances all` or
+`--instances "Regular,Bold"` repeats one profile over the document's active
+named instances, and `--variable-config NAME` applies a stored design-space
+subset. `--preflight` prints the same problem report `fontcarver check` prints
+before anything is written, and `--fail-on-preflight` stops on an error.
+
+A stored profile is the whole description of that output: combining `--profile`
+with the ad-hoc option flags is refused rather than silently merged, so the file
+the command line writes is the file the profile names. `docs/user/export.md`
+documents the fields and the dialog.

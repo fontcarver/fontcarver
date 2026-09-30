@@ -98,3 +98,33 @@ extraction or scripted installation would not establish native dialogs, keyboard
 parity, open/edit/undo/save/reopen/export, upgrade behavior or signed distribution.
 Audit rows 9 and 62 therefore remain pending native evidence. The P5 release item
 remains open for real installer build/inspection and actual platform acceptance.
+
+## Update — 2026-09-30, p5f-n: the packages were built
+
+The "unattempted" boundary above is superseded. The Linux deb and AppImage of the
+current code have been built, inspected and executed as far as a host without
+`sudo` or a usable display allows. The full record, with digests, payload
+listings, the dependency analysis and the workflow review, is
+[p5f-n-release-acceptance](p5f-n-release-acceptance.md); its small text evidence
+is under [acceptance/p5f-release](acceptance/p5f-release/).
+
+Headline results: `font-carver` 0.1.0 amd64, a 23.3 MB deb and a 95.8 MB
+AppImage, both passing `check_release_bundle.py` and `desktop-file-validate`,
+with all 15 of the executable's direct shared-library dependencies covered by the
+two packages the deb declares. Two defects were found in the artifacts: the deb
+shipped no `/usr/share/doc/font-carver/copyright`, which Debian policy requires —
+the verifier now rejects a package without it, and the document is wired into the
+bundle configuration, but the rebuild that would carry it was blocked by other
+agents' in-progress kernel edits, so it awaits the wave's final build; and the
+AppImage bundles
+177 shared objects from 126 Debian packages, 73 of which name a copyleft license,
+with notices for only 10 inside the image, so the AppImage is not redistributable
+yet. Two further defects are outside that task's ownership: the desktop binary has
+no `--version`/`--help` and panics rather than diagnosing a missing display, which
+leaves no way for any platform's CI to check that an installed binary runs; and the
+`com.fontcarver.app` identifier collided with the macOS bundle extension, which
+another task in the wave has since fixed by moving it to `com.fontcarver.desktop`.
+
+The macOS and Windows statements above still stand: no dmg or msi of this code
+exists, and rows 9 and 62 remain **Partial** — real Linux application-package
+evidence, macOS and Windows execution pending on the platform runners.

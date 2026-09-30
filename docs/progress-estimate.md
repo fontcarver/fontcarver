@@ -2,8 +2,9 @@
 
 Original estimate: 2026-09-28. Product baseline: `410cc97`
 (`p5-color-authoring`). Evidence reconciliation: **2026-09-30**, at historical
-checkout `91db6fa`. Development resumed at the user's explicit request. This
-document remains a planning estimate, not a feature-acceptance record.
+checkout `91db6fa`. Latest revision: **2026-09-30, after completion wave 1** —
+see the reassessment section below, which supersedes the 60% central estimate.
+This document remains a planning estimate, not a feature-acceptance record.
 
 The user's later instruction freezes the active batch: complete the work already
 underway, then stop and rest. The remaining acceptance checklist records future
@@ -58,13 +59,63 @@ The weighted assessment and sensitivity below preserve the original 2026-09-28
 baseline. Statements about code availability there describe that historical
 snapshot; the resume audit and later acceptance records govern new work.
 
+## Reassessment on 2026-09-30, after completion wave 1
+
+Completion wave 1 of the [P5 completion
+plan](superpowers/plans/2026-09-30-p5-completion.md) is implemented, reviewed,
+fix-rounded, integrated and committed. The [feature audit](p5-feature-audit.md)
+now reads **75 Complete, 5 Partial, 32 Pending verification** of 112 rows, up
+from 3 Complete, 3 Partial and 106 Pending. Each accepted row carries an
+acceptance document with the exact commands, browser evidence and limits, and a
+review that returned "accept with fixes" whose items were then fixed. Integrated
+verification for the wave: Rust 1,978 passed / 0 failed / 2 ignored across 271
+test binaries; the frontend suite, `tsc`, ESLint, Prettier and the production
+build pass; Playwright runs are recorded per configuration in
+[STATUS](STATUS.md).
+
+Only the completion bands of areas that gained accepted rows move, and each moves
+conservatively: an accepted row is a bounded workflow with stated limits, not a
+finished product area. Weights are unchanged, so the arithmetic is the same
+`sum(area_weight * area_completion / 100)`.
+
+| Product area                                                       | Weight | 2026-09-28 band |   Revised band | Why it moved                                                                                         |
+| ------------------------------------------------------------------ | -----: | --------------: | -------------: | ---------------------------------------------------------------------------------------------------- |
+| Document foundation, persistence, history, API and glyph inventory |      9 |          85–95% |         90–97% | Rows 6–8 and 10–18: workspaces, history panel, badges, labels, search, coverage, glyph data.         |
+| Core outline editor                                                |     13 |          75–90% |         85–95% | Rows 20–36, 81, 89–91 accepted with their limits; ordinary editing is now verified end to end.       |
+| Spacing, kerning and OpenType layout                               |     12 |          65–80% |         78–90% | Rows 37–45 and 46–51, 72, 99, 100: metrics keys, spacing matrix, kerning table, feature authoring.   |
+| Static source/binary formats and export workflows                  |      9 |          60–80% |         70–85% | Rows 58–60, 63: stored profiles, instance × profile matrix, preflight, processing, CLI parity.       |
+| Bitmap font workflows                                              |      7 |          70–90% |         70–90% | Unchanged; wave 2 task `g` owns rows 64–71 and 101–103.                                              |
+| Variable fonts and CJK                                             |      9 |          65–85% |         72–88% | Rows 54, 56, 57: named configurations, compound condition sets, live interpolated scrubbing.         |
+| Hinting, MATH and color authoring                                  |     10 |          65–85% |         65–85% | Unchanged; rows 61 and 98 stay Partial for wave 2 task `k`.                                          |
+| Advanced geometry and construction                                 |      9 |          20–40% |         20–40% | Unchanged; rows 82–86, 92–94 and 97 are wave 2 task `j`.                                             |
+| Cross-document and family workflows                                |      5 |           0–15% |         45–65% | Rows 77, 78, 96: paste matrix, relinking and placeholders, comparison and conflict-resolved merge.   |
+| Scripting and plugins                                              |      6 |           5–15% |         50–70% | Rows 79, 105, 106: console with declarations and reload, Python RPC, plugin lifecycle, reporters.    |
+| Shell refinements, proofing and UX parity                          |      5 |          25–45% |         40–55% | Rows 1–5 accepted; proofing (73–76, 95, 109) and help/keymaps/theming (80, 107, 108) remain.         |
+| Release, documentation completion and final cross-platform audit   |      6 |          10–25% |         18–32% | Row 62 has real Linux packages, but AppImage licensing, `apt install` and macOS/Windows runs remain. |
+| Total                                                              |    100 |      51.8–68.5% | **62.8–78.0%** | Rounded for planning to **60–80%**, central estimate **about 70%**.                                  |
+
+Lower endpoints: `9·0.90 + 13·0.85 + 12·0.78 + 9·0.70 + 7·0.70 + 9·0.72 +
+10·0.65 + 9·0.20 + 5·0.45 + 6·0.50 + 5·0.40 + 6·0.18 = 62.82`. Upper endpoints:
+`9·0.97 + 13·0.95 + 12·0.90 + 9·0.85 + 7·0.90 + 9·0.88 + 10·0.85 + 9·0.40 +
+5·0.65 + 6·0.70 + 5·0.55 + 6·0.32 = 77.97`. Their midpoint is 70.4. The decimals
+only make the calculation reproducible; the inputs are engineering judgments.
+
+What this revision deliberately does **not** do: it gives no credit for wave 2's
+written task files, none for implementations without accepted rows, and none for
+native macOS or Windows execution, which has never been run. The largest
+remaining risks are unchanged — advanced geometry and optical algorithms, bitmap
+and proofing surfaces, hinting completion, cross-platform packaging and the
+defects a final row-by-row gate will find.
+
 ## Conclusion
 
-The current central estimate is **about 60% of the work toward the approved
-complete product**, with a practical planning range of **50–70%**. The engineering
-judgment is that the project is probably beyond halfway, with substantial work
-remaining. The evidence does not support a guarantee that it is beyond halfway,
-a claim that P5 is almost finished, or a delivery date.
+After completion wave 1 the central estimate is **about 70% of the work toward
+the approved complete product**, with a practical planning range of **60–80%**
+(weighted band 62.8–78.0%). The 2026-09-28 baseline of about 60% with a 50–70%
+range is superseded by the reassessment above, which moves only the bands of
+areas holding newly accepted audit rows. The engineering judgment is that the
+project is past halfway with substantial work remaining; the evidence does not
+support a claim that P5 is almost finished, or a delivery date.
 
 This replaces the previous absence of a whole-project estimate. It does not
 change any accepted scope or close any pending audit row.

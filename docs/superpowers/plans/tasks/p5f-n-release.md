@@ -72,3 +72,99 @@ Environment facts: Linux host with `webkit2gtk-4.1` and `gtk+-3.0` dev packages,
 
 Shared files (narrow patches only): `Cargo.toml` (version only), `app/package.json`
 (version only), `THIRD_PARTY.md`.
+
+## Gap analysis
+
+Written 2026-09-30 before changing anything, after reading the protocol, the
+audit rows, `docs/p5-release-acceptance.md`, both release helpers, both
+workflows, `src-tauri/tauri.conf.json` and the P4 install evidence.
+
+Environment probe (no `sudo`, no display): `dpkg-deb`,
+`desktop-file-validate`, `pkg-config`/`pkgconf`, `glib-compile-schemas`,
+`gio-querymodules`, `gtk-update-icon-cache`, `/dev/fuse` and `fusermount` are
+present; `appimagetool`, `xvfb-run` and a system `patchelf` are not.
+`~/.cache/tauri/linuxdeploy-x86_64.AppImage` runs and carries its own
+`patchelf` and `strip`, and the GTK plugin's remaining helpers resolve through
+its `/usr/lib/x86_64-linux-gnu/...` fallbacks, so AppImage bundling has what it
+needs without `sudo`.
+
+### Row 9 — cross-platform parity (native execution evidence part)
+
+Works: one identifier/product name/version across `Cargo.toml`,
+`app/package.json` and `src-tauri/tauri.conf.json`; icons for all three
+platforms; a three-row native matrix in `release.yml`.
+
+Missing: the workflows have never run, so no macOS or Windows binary of this
+code exists. Nothing on this host can produce or execute one.
+
+Doing: build and inspect the real Linux packages; review both workflows for
+faults that would only appear on a macOS or Windows runner and fix what
+reasoning can settle.
+
+Limit: macOS/Windows execution stays "workflow defined, execution pending on
+the platform runners". Keymap parity is another task's UI concern; this task
+only supplies the packaging half of the row.
+
+### Row 62 — test install on all three platforms
+
+Works: P4 recorded a real temporary Linux install, but of _generated fonts_
+into `~/.local/share/fonts`, not of the FontCarver application. No application
+package of the current code had been built at all.
+
+Doing: build deb and AppImage, read the deb control metadata and file list,
+validate the desktop entry, extract the AppImage, verify bundled
+licenses/resources, and execute the packaged binaries as far as a display-less
+host allows.
+
+Limit: `apt install` needs `sudo`, so file-layout verification uses
+`dpkg-deb -x` into scratch instead of a systemwide install. The desktop
+application needs a WebKitGTK window, so a launch is expected to fail without a
+display; exactly what ran and what did not is recorded rather than glossed.
+
+### P5 release block
+
+Works: `build_release.py`, `check_release_bundle.py`,
+`check_release_licenses.py`, 32 passing helper tests, `release.yml`, `ci.yml`,
+`docs/releasing.md`, `docs/install.md`. All of it was configuration and
+synthetic-payload verification; no FontCarver installer had ever been produced.
+
+Doing: the first real build, on an out-of-workspace release target directory so
+the shared debug cache is untouched; the checks in work items 2–5; a
+`workflow_dispatch` bundle-list input; whatever the workflow review turns up.
+
+Decisions taken without asking:
+
+1. The shared cargo flock is held for exactly one `build_release.py`
+   invocation, which runs in the background while the lock-free review and
+   documentation work proceeds, so the seven concurrent agents lose the lock
+   only for the build itself.
+2. `CARGO_TARGET_DIR=/home/chen/.cache/fontcarver-release-target`, and
+   `--build-dir` on every `check_artifacts.py` call outside the helper. Inside
+   the helper the same directory is picked up automatically from
+   `CARGO_TARGET_DIR`, so no helper change is needed for the budget checks.
+3. The Tauri CLI warns that the `com.fontcarver.app` identifier ends in `.app`.
+   The identifier is outside my ownership (I own the `bundle` section only), so
+   it is reported with the exact change needed, not edited.
+4. No `.fcf` file association is added. It is a real packaging improvement, it
+   is outside this task's work list, and it would change the deb payload that
+   the same task is meant to verify.
+
+### Decisions taken after the first build
+
+5. The first deb shipped no `/usr/share/doc/<package>/copyright`, which Debian
+   policy requires. It was fixed rather than merely recorded: a verifier check
+   and four tests first, then a DEP-5 document at
+   `src-tauri/packaging/linux/copyright` wired in through
+   `bundle.linux.deb.files`. That adds one new file outside the literal
+   ownership list, in a new `src-tauri/packaging/` directory that no other task
+   touches.
+6. Three protocol retries of the rebuild all failed on other agents' in-progress
+   edits to `fc-api`, `fc-formats` and `fc-doc`. Rather than stop, the rebuild
+   was left retrying in the background on a longer interval while the review,
+   inspection and documentation work continued; each failed attempt holds the
+   shared cargo lock for about ten seconds.
+7. The display-less execution check was intended to need no display. It turned
+   out that this host has a live Wayland session that GTK reaches even with
+   `DISPLAY` and `WAYLAND_DISPLAY` unset, so the first probes really launched the
+   application. That is disclosed in the acceptance record, and every later check
+   forces a GTK backend that cannot connect.

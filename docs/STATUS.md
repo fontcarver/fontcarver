@@ -4,10 +4,10 @@ The single entry point for "where is the project". Update this file at every
 pause and every milestone commit. It links to the detailed records; it does
 not repeat them.
 
-Last updated: 2026-09-30. Branch: `p5-color-authoring` (uncommitted local
-changes; no push or main merge). The user requested finishing the active batch,
-then stopping. The active batch is finished and stopped; final integration results and remaining
-limits are recorded in [the batch checkpoint](p5-resume-integration.md).
+Last updated: 2026-09-30. Branch: `p5-color-authoring` (committed locally; no
+push, no `main` merge). The user requested finishing the work in hand, updating
+the progress records and stopping. Completion wave 1 is finished, verified,
+recorded and committed; wave 2 is planned and **not started**.
 
 The batch implements variable pen editing, document comparison/paste/merge,
 scripting/plugins, interchange/export workflows, shell workspaces, proofing,
@@ -17,18 +17,37 @@ ESLint, Prettier and the production build pass. Rust has 1,710 distinct passes a
 repair rerun, with two existing ignored gates; final Clippy passes. This is substantial implemented
 work, not acceptance of every P5 requirement or native platform.
 
-The historical effort estimate remains **about 60%, range 50–70%**, pending a
-new weighted assessment; it does not include credit for this batch. See
-[estimate](progress-estimate.md) and [evidence reconciliation](p5-resume-audit.md).
-[TODO](TODO.md) records the remaining scope for a future explicit resume.
+That batch's own effort estimate was **about 60%, range 50–70%**; after wave 1 the
+[estimate](progress-estimate.md) is reassessed at **about 70%, range 60–80%**, and
+[TODO](TODO.md) records the remaining scope.
 
 **2026-09-30, later:** the P5 completion drive started
-([plan](superpowers/plans/2026-09-30-p5-completion.md)). The resumed batch is
-committed (`6539b13`, `040609f`). Wave 1 (shell, inventory, editor, metrics,
-features, export, automation, release) is implemented in the working tree but
-**not yet integrated or committed**; the user asked to finish it, update the
-records and stop. The exact state and the integration to-do list are in
-[the wave 1 checkpoint](p5f-wave1-checkpoint.md). Wave 2 is planned, not started.
+([plan](superpowers/plans/2026-09-30-p5-completion.md)) and its **wave 1 is
+integrated**. Eight area agents (shell, glyph inventory, outline editor,
+metrics/spacing/kerning, OpenType features, font info/design space/export/CLI,
+cross-document/scripting/plugins, release packaging) implemented their rows, were
+reviewed ("accept with fixes" in every case), completed their fix rounds, and a
+zh-CN translation pass followed ([pass 1](p5f-localization-pass1.md),
+[pass 2](p5f-localization-pass2.md)). The integration commits are
+`a4b701d` (code) and the `docs(p5)` commit that follows it; the resumed
+batch baseline is `6539b13` / `040609f`.
+
+Integrated verification, all run in one pass on this checkout:
+`cargo fmt --all` clean; `cargo clippy --workspace --all-targets -- -D warnings`
+clean; `cargo test --workspace --no-fail-fast` **1,978 passed, 0 failed, 2
+ignored** over 271 test binaries; `pnpm check` (tsc) and `pnpm lint` (ESLint)
+clean; `prettier --check .` clean; Vitest **2,517 tests in 314 files**, all
+passing, including the zh-CN parity test (3,524 keys each side); the production
+build succeeds. Playwright: the default configuration runs its 81 specs on one worker and skips the CJK spec, whose corpus lives outside the repository. The last two full runs passed 79 and 78 of the 80 that execute; the cases that come and go are `text.spec.ts:122` and two P2b specs, all three recorded in [TODO](TODO.md). The three dedicated configurations pass in full: `e2e/p2a.config.ts` 11/11, `e2e/p2b.config.ts` 17/17, `e2e/p2cd.config.ts` 8/8.
+
+The [feature audit](p5-feature-audit.md) now reads **75 Complete, 5 Partial, 32
+Pending verification** of 112 rows, from 3/3/106 before the wave; every accepted
+row links its acceptance document. The effort estimate is reassessed at **about
+70%, range 60–80%** ([estimate](progress-estimate.md)). Per-area detail lives in
+`docs/p5f-{a,b,c,d,e,f,i,n}-*-acceptance.md`, the state of the wave while it ran
+in [the wave 1 checkpoint](p5f-wave1-checkpoint.md), and the remaining scope in
+[TODO](TODO.md). Wave 2 (bitmap, proofing, construction, hinting, CJK, help) is
+planned and not started.
 
 ## Phases
 
@@ -49,11 +68,16 @@ release packaging are unverified for every phase.
 
 ## P5 checkpoint
 
-The [feature audit](p5-feature-audit.md) remains the exit gate. Its three accepted
-rows (84, 88, 104) retain their documented scope; other rows are not automatically
-closed by a passing test suite. Thirteen historical acceptance candidates are
-identified in [the reconciliation](p5-resume-audit.md). New bounded implementations
-and direct browser evidence are linked from [the batch checkpoint](p5-resume-integration.md).
+The [feature audit](p5-feature-audit.md) remains the exit gate: **75 Complete, 5
+Partial, 32 Pending verification**. Rows 84, 88 and 104 retain their earlier
+documented scope; the 72 rows accepted in wave 1 each carry an acceptance
+document, a review and a fix round, and no row is closed by a passing test suite
+alone. The five Partial rows are 9 and 62 (no native macOS or Windows execution;
+AppImage payload licensing unresolved), 61 and 98 (hinting, wave 2 task `k`) and
+87 (non-destructive strokes, wave 2 task `j`). Thirteen historical acceptance
+candidates are identified in [the reconciliation](p5-resume-audit.md); new bounded
+implementations and browser evidence are linked from [the batch
+checkpoint](p5-resume-integration.md).
 
 MATH, static SVG/COLRv1 authoring, styles, stored masks and numeric smart corners
 retain their earlier acceptance records. Variable pen parameters now have real

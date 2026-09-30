@@ -15,20 +15,47 @@ writes keep the draft. Close applies the draft, while Discard and close reloads
 the saved document state. Document save flushes a pending design-space draft.
 
 The preview offers named instances, axis sliders, master overlays and a safe
-compatibility repair. The glyph inspector has the same live preview for its
-current glyph, beside the editable source. Scrubbing does not change outlines.
-Repair aligns contour ordering, direction and starting points in master, brace,
-smart and matching bracket source groups. It does not add or delete points;
-topology differences require manual editing.
+compatibility repair. Each axis has a number field beside its slider and a
+reset button that returns that one axis to its default. The slider and the
+field step in whole axis units — refined only as far as a named location needs,
+so a width axis carrying 87.5 steps by 0.5 — and the field also takes a typed
+coordinate, which is clamped to the axis range. Shift multiplies the step by
+ten, so ten presses move a weight axis from 400 to 500 exactly. The glyph inspector has the same live preview for its
+current glyph, beside the editable source: the axis sliders scrub an
+interpolated overlay on the editing canvas continuously, and scrubbing never
+changes outlines.
+
+The compatibility view colours and numbers shapes by **shape order**, which is
+the interpolation contract, so the same colour is the same shape in every
+source. Connectors join the corresponding start points and shape centres across
+sources; crossing connectors mean two compatible shapes are matched in the wrong
+order — the "shape shifter". Segments are coloured green when they agree, yellow
+when one source's direction differs by more than 20 degrees (usually a missing
+node) and red when the structure cannot interpolate.
+
+Fix a shape shifter by dragging one shape's handle onto another in the source
+the **Source to reorder** picker names, or with its _Move shape earlier_ and _Move
+shape later_ buttons. Either gesture is one undo entry and reorders only that
+source. **Repair source compatibility** aligns contour ordering, direction and
+starting points in master, brace, smart and matching bracket source groups. It
+does not add or delete points; topology differences require manual editing.
 
 ## Supplemental sources and smart components
 
 In a glyph's Layers panel, **Add variation source** duplicates the active layer
 as an intermediate, alternate or local smart source. An intermediate source
-inherits omitted global coordinates from its associated master. Alternate
-bounds are inclusive design coordinates on one axis. Each alternate region
-needs a default-master source for variable export. Overlapping regions and
-ambiguous overlapping component substitutions are rejected.
+inherits omitted global coordinates from its associated master.
+
+An alternate layer's condition is a **set** of inclusive design-coordinate
+ranges, one per axis, and the layer applies where every range holds — the
+OpenType `ConditionSet` model, written `[80‹wght, 25‹wdth‹50]`. The glyph
+inspector's **Conditional sources** section lists one row per alternate region
+with the sources that share it; _Edit condition_ adds and removes axis ranges
+and moves every source of the region together in one undo entry. _Add
+conditional source from this layer_ creates a new region from the layer being
+edited. Each alternate region needs a default-master source for variable export.
+Overlapping regions and ambiguous overlapping component substitutions are
+rejected; two regions that differ on any axis are disjoint and both compile.
 
 **Smart component axes** defines named local axes on the reusable base glyph.
 Add local source layers for the required neighboring corners in each global
@@ -38,29 +65,47 @@ the same evaluated geometry. Missing corners, incompatible topology, cycles
 and out-of-range values report errors.
 
 FCF keeps all source roles. Glyphs supports native brace/bracket and endpoint
-smart-pole data. UFO preserves local sources and parameters. Designspace exports
-single-axis bracket conditions as real alternate GLIFs and native `rvrn` rules.
-Rules that cannot be represented as editable bracket layers remain preserved
-for source round trips and explicitly block preview/binary compilation.
-These include compound multi-axis conditions, chained substitutions,
+smart-pole data, including multi-axis `axisRules`. UFO preserves local sources
+and parameters. Designspace exports bracket condition sets, including compound
+multi-axis ones, as real alternate GLIFs and native `rvrn` rules, and reads them
+back into editable alternate layers. Rules that cannot be represented as
+editable bracket layers remain preserved for source round trips and explicitly
+block preview/binary compilation. These include chained substitutions,
 late/custom-feature processing and alternates with supplemental sources.
 
 ## Export
 
-In Export, choose **Variable font**, select the source masters and retain the
-default master. TTF produces `gvar` outlines; OTF produces CFF2. WOFF and WOFF2
-wrap variable TrueType. A named static instance interpolates outlines, metrics,
-anchors and kerning and writes instance naming/style metadata. Point-indexed
-source hint programs are discarded when interpolation changes their input.
+In Export, choose **Variable font**, select the source masters, axes and named
+instances, and retain the default master. TTF produces `gvar` outlines; OTF
+produces CFF2. WOFF and WOFF2 wrap variable TrueType. A named static instance
+interpolates outlines, metrics, anchors and kerning and writes instance
+naming/style metadata, including the per-instance export overrides set in Axes /
+Instances. An overridden preferred family or subfamily name (name IDs 16 and 17)
+is also written into the full font name (name ID 4) and, in CFF, its FullName;
+overriding only the subfamily still writes the family, because the typographic
+pair is not valid half-written. Point-indexed source hint programs are discarded when interpolation
+changes their input.
+
+Reducing the design space really reduces it: each axis is clamped to the span
+its remaining masters cover, an axis whose masters no longer differ is dropped,
+named instances outside the retained space are not written, and alternate-layer
+condition ranges on a dropped axis are removed. Every one of these is reported
+as an export warning. A subset that leaves no varying axis, or no master at an
+axis default, is refused with the axis named.
+
+Save a design-space subset as a named **variable-font configuration** to reuse it
+from the export matrix and the command line; see
+[exporting fonts](export.md).
 
 The CLI uses the same kernel:
 
 ```sh
 fontcarver build Family.designspace Family-VF.ttf --variable
 fontcarver build Family.designspace Family-VF.otf --variable
-fontcarver build Family.designspace Family-Medium.ttf --instance 0
+fontcarver build Family.designspace Family-Medium.ttf --instance-name Medium
 fontcarver build Family.designspace Family-Subset.ttf --variable \
   --source-master Regular --source-master Bold
+fontcarver build Family.fcf --profile VF --variable-config "Text VF" --out-dir dist
 ```
 
 Variable sources use compatible topology and bounded source counts. CFF2

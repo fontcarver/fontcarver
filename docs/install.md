@@ -42,6 +42,26 @@ use `sudo apt remove PACKAGE_NAME`, substituting the `Package` value printed by
 the first command. This removes the application package while retaining your
 documents and user configuration.
 
+The 0.1.0 x86_64 build names the file `FontCarver_0.1.0_amd64.deb` and the
+package `font-carver`, so its removal command is `sudo apt remove font-carver`.
+It declares `libwebkit2gtk-4.1-0, libgtk-3-0`, which between them pull in every
+library the executable needs, and it installs:
+
+| Path                             | Contents                                         |
+| -------------------------------- | ------------------------------------------------ |
+| `/usr/bin/fontcarver-desktop`    | the application                                  |
+| `/usr/share/applications`        | the menu entry                                   |
+| `/usr/share/icons/hicolor`       | 32, 128 and 256@2 pixel icons                    |
+| `/usr/lib/FontCarver/licenses`   | both project licenses and dependency attribution |
+| `/usr/lib/FontCarver/INSTALL.md` | a copy of this page                              |
+
+From the next build onwards the package also installs the Debian copyright
+document at `/usr/share/doc/font-carver/copyright`. The first 0.1.0 package
+predates it and carries its licenses only under `/usr/lib/FontCarver/licenses`.
+
+On Ubuntu 24.04 and other releases that completed the 64-bit time transition,
+`libgtk-3-0` is satisfied by `libgtk-3-0t64`, which provides that name.
+
 For an AppImage, put it in a directory you own and make that one file executable:
 
 ```sh
@@ -53,6 +73,18 @@ The AppImage can be launched without installing a system package. If the runtime
 reports a missing FUSE dependency, follow your distribution's AppImage/FUSE
 instructions. Remove the AppImage file to uninstall this copy. A launcher added
 manually to your desktop or application menu must be removed separately.
+
+The AppImage carries its own copy of the GTK, WebKitGTK and related libraries,
+which is why the 0.1.0 x86_64 image is about 96 MB against the deb's 23 MB. Those
+bundled libraries keep the licenses of the distributions they came from, and
+their notices are not yet complete inside the image, so the AppImage is an
+evaluation artifact rather than a redistributable one. Prefer the deb where your
+system can use it.
+
+FontCarver needs a graphical session. Started without a reachable display it
+stops while initialising its window toolkit rather than printing a diagnostic,
+and it currently has no `--version` or `--help` output, so a terminal launch is
+not a way to check an installation without a desktop.
 
 ## macOS
 
