@@ -81,3 +81,15 @@ that row remains; otherwise **Partial** with the exact missing piece. Rows
    and a report (under 500 words): every command with counts, every fix you
    made, the audit status counts before/after, the commit hashes, and anything
    left failing or deferred with the reason.
+
+## Appended notes
+
+- Translation pass 1 (`docs/p5f-localization-pass1.md`) regenerated
+  `zh-CN.json` in `en.json` key order; the large diff is expected. It flagged
+  English source issues to fix in `en.json` (then tell the orchestrator so the
+  delta translation pass covers them): remove keys that `grep` proves unused
+  (`exportProfiles.hint`, `history.font`, `history.current`); normalise
+  "Licence"/"Colour" to the spelling that dominates the catalogue; reword
+  `exportMatrix.profiles` ("Compiled-font profiles"); prefer "node" over
+  "point" and "group" over "class" in kerning UI strings where both appear for
+  the same concept, unless the string is a FEA/OpenType term.
