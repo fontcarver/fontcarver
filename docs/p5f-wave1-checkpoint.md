@@ -82,3 +82,33 @@ the fix rounds of tasks a and e. On resume, expect their files to be in an
 intermediate state: run `pnpm --dir app check` and `cargo check --workspace`
 first, read the newest `docs/p5f-*-acceptance.md` and task-file gap analyses,
 and let the integration agent finish or revert only what does not compile.
+
+## Review findings not yet fixed (recorded after the cut-off)
+
+Task e's fix round finished (all eight items, Playwright p2b 17/17). Task b's
+review (ACCEPT WITH FIXES) reported these open defects; they are **not fixed**:
+
+1. **Blocking, data loss (row 16):** Update Glyph Info over a selection
+   destroys encodings. `crates/fc-doc/src/command/glyph_data.rs:44` writes
+   `glyph.unicodes = info.unicodes` unconditionally; `crates/fc-glyphdata/src/database.rs:153`
+   clears encodings for any suffixed name; `data/aglfn.txt:210` still maps
+   `Omega` to U+2126. Live on DejaVu: 25 PUA glyphs lost their cmap and Omega was
+   re-encoded U+03A9→U+2126. Fix: write unicodes only from an explicit record,
+   never clear an existing encoding; correct the AGLFN line.
+2. **Blocking (row 17):** Add Glyphs dialog is 710 px tall with no scroll
+   (`app/src/shell/dialog.module.css:3-19` lacks `max-height`/`overflow`), so
+   the confirm button is off-screen on short windows; this, not `gen:api`,
+   fails the e2e case.
+3. `app/e2e/fontview.spec.ts:316` matches `/^Batch rename/` but the menu item is
+   "Batch Rename Glyphs…", so that case can never pass.
+4. `crates/fc-doc/src/command/glyphs.rs:227` lists `markClass` in
+   `FEA_NAMING_KEYWORDS`, so `markClass acutecomb <anchor…>` is not rewritten on
+   rename; remove it.
+5. `handlers/glyph_status.rs:36` computes `has_custom_glyph_info` with
+   `GlyphDataOverlay::default()` instead of the document overlay.
+6. Low: `sidebar.generateMissing` says "missing letters" for every row and
+   prints an unformatted count; `GlyphSearch.tsx:131` prints a raw kernel
+   message untranslated; the builder-vocabulary drift test is a hand-written
+   list; `documentStore.tableColumns`/`moveTableColumn` are dead code.
+
+Task c's review and task a's fix round had not reported when the session ended.
