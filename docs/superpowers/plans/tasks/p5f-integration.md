@@ -93,3 +93,7 @@ that row remains; otherwise **Partial** with the exact missing piece. Rows
   `exportMatrix.profiles` ("Compiled-font profiles"); prefer "node" over
   "point" and "group" over "class" in kerning UI strings where both appear for
   the same concept, unless the string is a FEA/OpenType term.
+- From task c's fix round: the Edit tab's text/spacing chrome can still push
+  the canvas off-screen on short windows; `.view` in
+  `app/src/views/text/TextView.module.css` needs `overflow-y: auto` (task d has
+  finished, so make this one-line change yourself and rerun `e2e/draw.spec.ts`).
