@@ -21,8 +21,17 @@ a drag, source nodes show their temporary positions; the effect updates on commi
 - **描边 / Stroke:** 椭圆笔尖（宽高相等时为圆形）或旋转矩形笔尖，可调整
   完整宽度、高度、角度、端点、转角和斜接限制。Elliptical pens include circles;
   rectangular pens provide calligraphic expansion. Dimensions are full pen sizes,
-  not radii. Caps affect open ends; joins affect source corners. This is a uniform
-  pen per operation; variable-width pen points are outside this milestone.
+  not radii. Caps affect open ends; joins affect source corners. This operation
+  uses one pen size throughout the contour.
+- **Variable pen:** Add 2–64 pen points with width, height and angle at normalized
+  positions along each centerline. Positions run from 0 (start) to 1 (end), and
+  interior positions must increase strictly. Linear progression changes at a
+  constant rate; smooth progression eases into and out of each point. Angles
+  follow the shortest rotation. Each contour uses the same profile over its own
+  length. Closed contours require matching start/end sizes and angles. Source
+  edits automatically resample the profile against the edited centerline.
+  Expansion uses sampled geometry and reports an approximation warning before
+  applying or baking. Excessive sampling fails without changing the source.
 - **去除重叠 / Remove overlap:** 按非零填充规则去除内部边界，开放轮廓保持开放。
   Removes interior edges using nonzero fill; open contours remain open.
 - **布尔遮罩 / Boolean mask:** 并集、交集、减去遮罩或异或。可以输入闭合 SVG

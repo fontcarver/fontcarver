@@ -1,6 +1,7 @@
 # P5 professional finish
 
-Status: paused at the user's request on 2026-09-28 after P5-10. MATH, COLR v0/CPAL
+Status: active batch integrated and stopped on 2026-09-30 at the user’s request.
+See [batch checkpoint](../../p5-resume-integration.md). MATH, COLR v0/CPAL
 and the static SVG/COLRv1 authoring subsets have acceptance records. The P5 scope was
 authorized immediately after P4; the remaining work is not complete. Current
 progress and next actions: [STATUS](../../STATUS.md).

@@ -74,6 +74,14 @@ Edit vertical advance and origin in the glyph inspector. **Use master vertical
 metrics** clears per-layer overrides; an explicit zero remains an override.
 Master defaults and `vhea`/horizontal metrics are in the design-space editor.
 
+**TSB** is the distance from the top of the resolved outline to the vertical
+origin. Editing it changes the origin and retains the current advance.
+**BSB** is the remaining space below the resolved outline within that advance.
+Editing it changes the advance and retains the origin. These fields include
+component bounds and are disabled for glyphs without an outline. Resetting to
+master metrics also resets the derived sidebearings. CFF exports write edited
+origins into `VORG` and recompute vertical sidebearings from the compiled ink.
+
 Choose top-to-bottom direction in text preview. `vert`/`vrt2` alternates and
 `vkrn` are enabled according to the feature controls; explicitly disabled
 features stay disabled. Vertical kerning uses the same group/exception model

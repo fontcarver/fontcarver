@@ -1,0 +1,603 @@
+Final frontend run:
+ Test Files  289 passed (289)
+      Tests  2233 passed (2233)
+   Start at  04:59:52
+   Duration  164.43s (transform 5.98s, setup 37.62s, collect 56.47s, tests 67.01s, environment 101.91s, prepare 20.07s)
+
+
+
+Full workspace Rust run (exit 101):
+     Running unittests src/lib.rs (target/debug/deps/fc_api-eef0aaa92ee8e2f1)
+test result: ok. 175 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.06s
+     Running unittests src/bin/gen_ts.rs (target/debug/deps/gen_ts-09da348a2b6724ad)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/acceptance_workflow.rs (target/debug/deps/acceptance_workflow-9b949188007fb48b)
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/automation.rs (target/debug/deps/automation-6311a4506efc216b)
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.62s
+     Running tests/bitmap.rs (target/debug/deps/bitmap-b3c3e23c49bc8e19)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.65s
+     Running tests/bitmap_parity.rs (target/debug/deps/bitmap_parity-2effd87855eeeb69)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+     Running tests/cff_private_editor.rs (target/debug/deps/cff_private_editor-873cf93102ba935a)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/cjk.rs (target/debug/deps/cjk-74132782e40127e2)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.34s
+     Running tests/color.rs (target/debug/deps/color-d56a62b16f470f8f)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+     Running tests/color_render_state.rs (target/debug/deps/color_render_state-d06d731325ad94b0)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+     Running tests/constructions.rs (target/debug/deps/constructions-68388447bae2cf08)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/cross_paste.rs (target/debug/deps/cross_paste-77d13b0c96bbb4d6)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/directory_project.rs (target/debug/deps/directory_project-0ec53dd9a15f485f)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+     Running tests/dispatch.rs (target/debug/deps/dispatch-24085a713285b044)
+test result: FAILED. 10 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.38s
+     Running tests/edit_performance.rs (target/debug/deps/edit_performance-6771d5b9fc1df48e)
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/editing.rs (target/debug/deps/editing-3350221023a49858)
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.87s
+     Running tests/effects.rs (target/debug/deps/effects-3d21b876782e03e1)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+     Running tests/export.rs (target/debug/deps/export-bbbaf4f07c6ab6c5)
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.04s
+     Running tests/export_options.rs (target/debug/deps/export_options-6b97444f79c0a27a)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+     Running tests/features.rs (target/debug/deps/features-d93dae08a2552259)
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+     Running tests/font_compare.rs (target/debug/deps/font_compare-8afa7005f0d2cb4b)
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/glyph_data.rs (target/debug/deps/glyph_data-c614f01e78f13860)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/glyph_list.rs (target/debug/deps/glyph_list-25c9d92dc45e1d47)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.17s
+     Running tests/glyph_lists.rs (target/debug/deps/glyph_lists-1522f87234449396)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/glyph_recipes.rs (target/debug/deps/glyph_recipes-b04f4e188b080e9d)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/hints.rs (target/debug/deps/hints-a96d126d9e17da18)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/image.rs (target/debug/deps/image-41c14da185c649d8)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/kerning.rs (target/debug/deps/kerning-e8c782afbf473dda)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/kerning_workflow.rs (target/debug/deps/kerning_workflow-c558de36c4ce94ca)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.06s
+     Running tests/layout_conversion.rs (target/debug/deps/layout_conversion-a79fd1c1cf3e60f6)
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.32s
+     Running tests/layout_inspection.rs (target/debug/deps/layout_inspection-087fcd2ddf6dff06)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/math.rs (target/debug/deps/math-3c3b4e0404351c52)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.39s
+     Running tests/optical.rs (target/debug/deps/optical-f3dbdfd57873a77a)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.86s
+     Running tests/problems.rs (target/debug/deps/problems-ac076c23d5cf070a)
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+     Running tests/shaping.rs (target/debug/deps/shaping-8fa7fad8fd0c1167)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.34s
+     Running tests/sidebar_counts.rs (target/debug/deps/sidebar_counts-e7c94a66f95a8268)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/smart_component_editing.rs (target/debug/deps/smart_component_editing-bbcdb596a335eb80)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+     Running tests/smart_filter_search.rs (target/debug/deps/smart_filter_search-7a841e82551570af)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/smart_filters.rs (target/debug/deps/smart_filters-4ac4ed9f11da0189)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+     Running tests/style.rs (target/debug/deps/style-9797c8a1ec9419bb)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+     Running tests/svg.rs (target/debug/deps/svg-5cc784d49faa898a)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.24s
+     Running tests/tt_hints.rs (target/debug/deps/tt_hints-dda19725bdc9ffe5)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+     Running tests/type1_export.rs (target/debug/deps/type1_export-703471fceb9ce630)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+     Running tests/variable_proof.rs (target/debug/deps/variable_proof-8679c4f51d63965d)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/variation.rs (target/debug/deps/variation-a5d54f08c76014e8)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/visual_lookup_authoring.rs (target/debug/deps/visual_lookup_authoring-c5e48de1cc3f8dcf)
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.10s
+     Running unittests src/lib.rs (target/debug/deps/fc_cli-97b6112d70047dd4)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/main.rs (target/debug/deps/fontcarver-7fdec7fd4ce5ca47)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/acceptance_workflow.rs (target/debug/deps/acceptance_workflow-220abde2372078af)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+     Running tests/bitmap.rs (target/debug/deps/bitmap-5e098896d594befe)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+     Running tests/check.rs (target/debug/deps/check-b9a21c8b5457d496)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/cli.rs (target/debug/deps/cli-7490ac6a22dcd308)
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.93s
+     Running tests/collection.rs (target/debug/deps/collection-227374c97dd4ddc8)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+     Running tests/interchange.rs (target/debug/deps/interchange-7d7583bf69f27902)
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+     Running tests/p2_formats.rs (target/debug/deps/p2_formats-23f8dbbb40f15489)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+     Running unittests src/lib.rs (target/debug/deps/fc_compile-bd30b9996ea7e15f)
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+     Running tests/cid.rs (target/debug/deps/cid-a87027d21b12e2d8)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/color.rs (target/debug/deps/color-dbff430ffb92524e)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+     Running tests/export_geometry.rs (target/debug/deps/export_geometry-10d9d090503bf7e0)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+     Running tests/export_otf.rs (target/debug/deps/export_otf-e7a890708a58e6c1)
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+     Running tests/export_static.rs (target/debug/deps/export_static-fb0a304228c82a33)
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 12.06s
+     Running tests/feature_export_guards.rs (target/debug/deps/feature_export_guards-36204623628a36c4)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/feature_generation.rs (target/debug/deps/feature_generation-e82a57d45d7cdd9b)
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+     Running tests/feature_source.rs (target/debug/deps/feature_source-c9d2e73658799b9b)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+     Running tests/feature_tokens.rs (target/debug/deps/feature_tokens-18ebcdb78b6a36f2)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+     Running tests/feature_validation.rs (target/debug/deps/feature_validation-e2299a9b41074411)
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+     Running tests/feature_work_budget.rs (target/debug/deps/feature_work_budget-168e53069c08c9b2)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+     Running tests/feature_writers.rs (target/debug/deps/feature_writers-563fcc0e38ea3202)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+     Running tests/hints.rs (target/debug/deps/hints-f4368ccd25a7e9b3)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+     Running tests/kerning.rs (target/debug/deps/kerning-e612ad0d0cfc4997)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+     Running tests/layout_ownership.rs (target/debug/deps/layout_ownership-157ce71eff4fb633)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/math.rs (target/debug/deps/math-370a0310344355c6)
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 39.57s
+     Running tests/otf_preservation.rs (target/debug/deps/otf_preservation-60befb8da4916a85)
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.28s
+     Running tests/otf_preservation_aat.rs (target/debug/deps/otf_preservation_aat-822a38e8798e5911)
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+     Running tests/otf_vertical.rs (target/debug/deps/otf_vertical-1ccb0be33ad82e28)
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+     Running tests/preserve.rs (target/debug/deps/preserve-5ac5da19c5a81939)
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 19.97s
+     Running tests/roundtrip_shaping.rs (target/debug/deps/roundtrip_shaping-d5f06e7040fa72c6)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.11s
+     Running tests/shaping_incremental.rs (target/debug/deps/shaping_incremental-7ff9b3f7c49146c5)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+     Running tests/svg.rs (target/debug/deps/svg-4158224d0c5f5aae)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+     Running tests/tt_authored.rs (target/debug/deps/tt_authored-f56465ad7bd8b66d)
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+     Running tests/variable.rs (target/debug/deps/variable-41e07061cc32f388)
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+     Running tests/variable_pen.rs (target/debug/deps/variable_pen-dcb4c5a2b2be4f15)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+     Running tests/webfont.rs (target/debug/deps/webfont-cee6062deda3578e)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+     Running unittests src/lib.rs (target/debug/deps/fc_devserver-ead0e2f1c0827f0b)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/main.rs (target/debug/deps/fc_devserver-d207e143987e8f5b)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/http.rs (target/debug/deps/http-7b2f694a84c10ffd)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.12s
+     Running unittests src/lib.rs (target/debug/deps/fc_doc-87f17f679e0ad745)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+     Running tests/batch_rename.rs (target/debug/deps/batch_rename-2e29f7048bb8927e)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/bitmap_commands.rs (target/debug/deps/bitmap_commands-aeec19b38efe1dde)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/cid.rs (target/debug/deps/cid-8f632b1d74609280)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/cjk_construction.rs (target/debug/deps/cjk_construction-ea40f47581d3d6cf)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/color.rs (target/debug/deps/color-c063c1508340ad16)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+     Running tests/commands_undo.rs (target/debug/deps/commands_undo-58cc16488d8d3747)
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+     Running tests/component_locks.rs (target/debug/deps/component_locks-f166640241015bfb)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/construction_persistence.rs (target/debug/deps/construction_persistence-1db88747b8f9bba0)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/constructions.rs (target/debug/deps/constructions-574c1a991bbd5c38)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/delete_points.rs (target/debug/deps/delete_points-0551cf4f47b3eae0)
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.28s
+     Running tests/designspace_commands.rs (target/debug/deps/designspace_commands-049c2a8c1260e77a)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+     Running tests/directory_project.rs (target/debug/deps/directory_project-25b884394c2c5db2)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.85s
+     Running tests/edit_sessions.rs (target/debug/deps/edit_sessions-4e93783f9b96c1bd)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/editor_metadata.rs (target/debug/deps/editor_metadata-eb2b86e3f5c9cdcf)
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+     Running tests/effects.rs (target/debug/deps/effects-496e41af841ef63e)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+     Running tests/fcf_roundtrip.rs (target/debug/deps/fcf_roundtrip-5586819c12586ec7)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+     Running tests/feature_drafts.rs (target/debug/deps/feature_drafts-336ba1c55857c3d2)
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+     Running tests/feature_source_persistence.rs (target/debug/deps/feature_source_persistence-e4ac9998c8b10f90)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+     Running tests/hints.rs (target/debug/deps/hints-977a0d4fa934b42b)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/history_recovery.rs (target/debug/deps/history_recovery-8a4ef998fed2fd31)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+     Running tests/image_paths.rs (target/debug/deps/image_paths-4051cb6327bb799d)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+     Running tests/kerning.rs (target/debug/deps/kerning-18c8df3427626dc6)
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/kerning_commands.rs (target/debug/deps/kerning_commands-cbf8856b47e0dfc4)
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/kerning_eligibility.rs (target/debug/deps/kerning_eligibility-c3f5204d4aac065b)
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/kerning_maintenance.rs (target/debug/deps/kerning_maintenance-4ab6de8bd5c2dcd3)
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+     Running tests/layer_color.rs (target/debug/deps/layer_color-d4bee75ad33ec0dc)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/layer_workflows.rs (target/debug/deps/layer_workflows-1f0501e79acde473)
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+     Running tests/layers.rs (target/debug/deps/layers-6af985fb6e0790aa)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/math.rs (target/debug/deps/math-dc9bc7bd27922bf7)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+     Running tests/metrics.rs (target/debug/deps/metrics-28dde6582551b100)
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+     Running tests/node_link_commands.rs (target/debug/deps/node_link_commands-448cc7ff48a14053)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/outline_commands.rs (target/debug/deps/outline_commands-0355a098aae36708)
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/path_operations.rs (target/debug/deps/path_operations-ced98a10971be962)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/problems.rs (target/debug/deps/problems-0aee57619b624215)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+     Running tests/proof_library.rs (target/debug/deps/proof_library-893801dc8783824b)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+     Running tests/replace_glyph.rs (target/debug/deps/replace_glyph-b05d67f0c562767e)
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+     Running tests/session.rs (target/debug/deps/session-40034537c0f28d02)
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 14.95s
+     Running tests/smart_corners.rs (target/debug/deps/smart_corners-d0e573d92e3ba0f5)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+     Running tests/structure_commands.rs (target/debug/deps/structure_commands-e39097a373e77dd2)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/super_smooth.rs (target/debug/deps/super_smooth-a082ec528f76016c)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/tt_hints.rs (target/debug/deps/tt_hints-bd663da6c1cbe24a)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.14s
+     Running tests/unicode_index.rs (target/debug/deps/unicode_index-4aa90e147f155f67)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/variable_pen.rs (target/debug/deps/variable_pen-ece161b5b05cc40b)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+     Running tests/vertical.rs (target/debug/deps/vertical-631d075b8de85b2a)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/virtual_masters.rs (target/debug/deps/virtual_masters-a9f08fdf8d581dde)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+     Running unittests src/lib.rs (target/debug/deps/fc_fixtures-2eada6974fb95a4a)
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+     Running unittests src/lib.rs (target/debug/deps/fc_formats-53c9af1e5bcca7bf)
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.76s
+     Running tests/afm_bridge.rs (target/debug/deps/afm_bridge-f8a0b93fcdfa5ba2)
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+     Running tests/bitmap_bdf.rs (target/debug/deps/bitmap_bdf-eb7bab66c3e30979)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/bitmap_binary.rs (target/debug/deps/bitmap_binary-408e39408a102a6c)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+     Running tests/construction_sources.rs (target/debug/deps/construction_sources-857bb10778a35172)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+     Running tests/designspace.rs (target/debug/deps/designspace-c0803371e302a1d3)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.95s
+     Running tests/designspace_rules.rs (target/debug/deps/designspace_rules-4d3740754a9f54da)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
+     Running tests/feature_export_guards.rs (target/debug/deps/feature_export_guards-3853c17be7cb103f)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+     Running tests/feature_settings.rs (target/debug/deps/feature_settings-5dbcf93590f89570)
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.75s
+     Running tests/feature_source.rs (target/debug/deps/feature_source-c7089b2071574d8c)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.51s
+     Running tests/glyphs.rs (target/debug/deps/glyphs-48715b78e59a837c)
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.37s
+     Running tests/metrics.rs (target/debug/deps/metrics-4a05d010c202b0a5)
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+     Running tests/pfm_font.rs (target/debug/deps/pfm_font-5942773023696535)
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+     Running tests/pfm_metrics.rs (target/debug/deps/pfm_metrics-c253dc7d03abb5af)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/sfd_roundtrip.rs (target/debug/deps/sfd_roundtrip-f52ac545c1b0c56c)
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.51s
+     Running tests/sfd_validation.rs (target/debug/deps/sfd_validation-c05813a47e15bff0)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+     Running tests/smart.rs (target/debug/deps/smart-8640d127db9eca7c)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+     Running tests/type1.rs (target/debug/deps/type1-c9ac78f84d95e834)
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.91s
+     Running tests/type1_hints.rs (target/debug/deps/type1_hints-639a714c442a4913)
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.63s
+     Running tests/type1_replacement.rs (target/debug/deps/type1_replacement-397fa9556a476885)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.41s
+     Running tests/type1_seac_hints.rs (target/debug/deps/type1_seac_hints-4edad24280950edf)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.11s
+     Running tests/type42.rs (target/debug/deps/type42-0093361183799939)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 13.81s
+     Running tests/ufo_images.rs (target/debug/deps/ufo_images-e7f6b6e348a95cd4)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+     Running tests/ufo_read.rs (target/debug/deps/ufo_read-dd32ef25aa24adc8)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/ufo_write.rs (target/debug/deps/ufo_write-d5ab22c6d017abe7)
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.39s
+     Running tests/vector.rs (target/debug/deps/vector-35785d1c969a8950)
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.43s
+     Running tests/vector_eps.rs (target/debug/deps/vector_eps-8893ce176fc7b07e)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+     Running unittests src/lib.rs (target/debug/deps/fc_geom-c755ded3d35e5120)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.64s
+     Running tests/boolean.rs (target/debug/deps/boolean-1ff4c84489f52503)
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.11s
+     Running tests/compatibility.rs (target/debug/deps/compatibility-41418feeb19272e6)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/constructions.rs (target/debug/deps/constructions-b0e1634d72708a36)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/direction.rs (target/debug/deps/direction-0b9516f0d3ce4852)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/effects.rs (target/debug/deps/effects-d0014534a1f768ab)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+     Running tests/extrema.rs (target/debug/deps/extrema-4dab0dca5e951434)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/fit.rs (target/debug/deps/fit-7ddbe0603ec92d80)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+     Running tests/fixtures.rs (target/debug/deps/fixtures-9aacada3ae56b03f)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/harmonize.rs (target/debug/deps/harmonize-bb85480ea7d66d51)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/interpolate.rs (target/debug/deps/interpolate-057be98b5152bf01)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/nearest.rs (target/debug/deps/nearest-b10f22303c058173)
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.04s
+     Running tests/simplify.rs (target/debug/deps/simplify-2ac5204f8dfab43f)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+     Running tests/smart_corners.rs (target/debug/deps/smart_corners-8820f7f7f22b8b7d)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/stroke.rs (target/debug/deps/stroke-d165decfaab4b161)
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.73s
+     Running tests/style.rs (target/debug/deps/style-6f1f38f8b133fd91)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.85s
+     Running tests/transform.rs (target/debug/deps/transform-188604ef4ced349b)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/variable_pen.rs (target/debug/deps/variable_pen-df3af1e2dee142d9)
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.76s
+     Running tests/variation.rs (target/debug/deps/variation-e2753d1048ed3459)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running unittests src/lib.rs (target/debug/deps/fc_glyphdata-b55fa2785008bbf3)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/database.rs (target/debug/deps/database-7a6e494cc234be04)
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running tests/names.rs (target/debug/deps/names-da02befff951599d)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/unihan.rs (target/debug/deps/unihan-e7e1b0f84e4db836)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.40s
+     Running unittests src/lib.rs (target/debug/deps/fc_hint-0bf43bd87861e461)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+     Running tests/ps.rs (target/debug/deps/ps-0e27c75883598168)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/tt.rs (target/debug/deps/tt-b8004a7d0f76c850)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+     Running unittests src/lib.rs (target/debug/deps/fc_layout-0d607a5addec649e)
+test result: ok. 61 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.25s
+     Running tests/conversion_lifting.rs (target/debug/deps/conversion_lifting-9d44cca980a1d6a6)
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+     Running tests/layout_import.rs (target/debug/deps/layout_import-e671d0d074674dd9)
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.22s
+     Running tests/layout_inventory.rs (target/debug/deps/layout_inventory-4527704813c666b7)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+     Running tests/shaping.rs (target/debug/deps/shaping-f6a6a56e7a1025a7)
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.57s
+     Running tests/unicode_index.rs (target/debug/deps/unicode_index-ce943c8e7dd09ffe)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.53s
+     Running unittests src/lib.rs (target/debug/deps/fc_model-50a5e6f94db67ef2)
+test result: ok. 126 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.04s
+     Running tests/bitmap.rs (target/debug/deps/bitmap-624e69d28f34dd70)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/cff_private.rs (target/debug/deps/cff_private-1f2d8976a4215362)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/construction_references.rs (target/debug/deps/construction_references-f3458d944d452382)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/designspace.rs (target/debug/deps/designspace-1f07449ddc87b4e8)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/feature_assembly.rs (target/debug/deps/feature_assembly-312e4388c47de604)
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/feature_tokens.rs (target/debug/deps/feature_tokens-b27f3df6cea4f36b)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/flatten.rs (target/debug/deps/flatten-7381963436b3a300)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/invariants.rs (target/debug/deps/invariants-812b677346ba3c7c)
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+     Running tests/layer_effects.rs (target/debug/deps/layer_effects-25ff64bebc5dffe4)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/math.rs (target/debug/deps/math-1e95b8c92edddcdf)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/outline_filter.rs (target/debug/deps/outline_filter-860ecd736ae1e77d)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/serde_roundtrip.rs (target/debug/deps/serde_roundtrip-5cc3e86559858454)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/smart.rs (target/debug/deps/smart-ed9c4a6f571634fe)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/smart_corners.rs (target/debug/deps/smart_corners-10e55a259a28d333)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/tt_bindings.rs (target/debug/deps/tt_bindings-1756e3e4dc9a622e)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/variable_pen.rs (target/debug/deps/variable_pen-8fdea5791cdb3f88)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/lib.rs (target/debug/deps/fc_raster-867d7bc8d7dc1c04)
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s
+     Running tests/pixel_reconstruction.rs (target/debug/deps/pixel_reconstruction-5d215c4ff68c95ed)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/raster.rs (target/debug/deps/raster-31e5a30ae0bf3efa)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/trace_modes.rs (target/debug/deps/trace_modes-cb52354c55be64e8)
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.85s
+     Running unittests src/lib.rs (target/debug/deps/fc_sfnt-f28f515221ec89c3)
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+     Running tests/cff2_writer.rs (target/debug/deps/cff2_writer-e811abcca16df623)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/cff_flex.rs (target/debug/deps/cff_flex-f80be7e3f972acd0)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/cff_interchange.rs (target/debug/deps/cff_interchange-f4462b8478aa5a0b)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/cff_private.rs (target/debug/deps/cff_private-b310e36d58631668)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/cff_subroutinize.rs (target/debug/deps/cff_subroutinize-c7d44c511ab687c2)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/color.rs (target/debug/deps/color-5d6fd8e1bbe9ae52)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+     Running tests/colrv1.rs (target/debug/deps/colrv1-50117cfdde5d31e3)
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+     Running tests/interchange.rs (target/debug/deps/interchange-c32c8f3f2b8fc4ae)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.02s
+     Running tests/math.rs (target/debug/deps/math-c50ddf789fddd2a3)
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.57s
+     Running tests/origin.rs (target/debug/deps/origin-985d11cd96fe4dbd)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/read_cjk.rs (target/debug/deps/read_cjk-84c6459513453a03)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.77s
+     Running tests/read_containers.rs (target/debug/deps/read_containers-8f47df6c8c9b3d85)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 82.64s
+     Running tests/read_otf.rs (target/debug/deps/read_otf-540f8ec1135167ca)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.05s
+     Running tests/read_ttf.rs (target/debug/deps/read_ttf-b7b8f1d9c3091a39)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.20s
+     Running tests/robustness.rs (target/debug/deps/robustness-7b89d343fcbeec09)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.92s
+     Running tests/svg.rs (target/debug/deps/svg-9bcc14a974d654bb)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.67s
+     Running tests/tt_basis.rs (target/debug/deps/tt_basis-a4a29583e0c6abc1)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+     Running tests/tt_components.rs (target/debug/deps/tt_components-c38ac819e51b72af)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/tt_programs.rs (target/debug/deps/tt_programs-15598dfb18b8ad4a)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/tt_variable.rs (target/debug/deps/tt_variable-5fd43ee2e91d7065)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/write_cff.rs (target/debug/deps/write_cff-865612b6e7a8eef9)
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running unittests src/lib.rs (target/debug/deps/fontcarver_lib-52db22a056ec89ac)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/main.rs (target/debug/deps/fontcarver_desktop-6df52e583a2af425)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+   Doc-tests fc_api
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+   Doc-tests fc_cli
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+   Doc-tests fc_compile
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+   Doc-tests fc_devserver
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+   Doc-tests fc_doc
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+   Doc-tests fc_fixtures
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+   Doc-tests fc_formats
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+   Doc-tests fc_geom
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+   Doc-tests fc_glyphdata
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+   Doc-tests fc_hint
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+   Doc-tests fc_layout
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+   Doc-tests fc_model
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+   Doc-tests fc_raster
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+   Doc-tests fc_sfnt
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+   Doc-tests fontcarver_lib
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+error: 2 targets failed:
+    `-p fc-api --test dispatch`
+    `-p fc-cli --test interchange`
+
+Focused fixes (exit 0):
+   Compiling serde v1.0.229
+   Compiling float-cmp v0.10.0
+   Compiling predicates v3.1.4
+   Compiling assert_cmd v2.2.2
+   Compiling smallvec v1.16.0
+   Compiling font-types v0.12.4
+   Compiling ordered-float v5.5.0
+   Compiling chrono v0.4.45
+   Compiling plist v1.10.0
+   Compiling quick-xml v0.38.4
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling fc-glyphdata v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-glyphdata)
+   Compiling kurbo v0.13.1
+   Compiling parking_lot_core v0.9.12
+   Compiling tracing-subscriber v0.3.23
+   Compiling flo_curves v0.8.1
+   Compiling parking_lot v0.12.5
+   Compiling read-fonts v0.43.3
+   Compiling tracing-chrome v0.7.2
+   Compiling fc-model v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-model)
+   Compiling norad v0.18.4
+   Compiling fc-fixtures v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-fixtures)
+   Compiling write-fonts v0.52.0
+   Compiling skrifa v0.46.2
+   Compiling harfrust v0.13.3
+   Compiling fc-hint v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-hint)
+   Compiling fontdrasil v1.0.0
+   Compiling fc-sfnt v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-sfnt)
+   Compiling fontir v1.0.0
+   Compiling fea-rs v1.0.0
+   Compiling glyphs-reader v1.0.0
+   Compiling fc-geom v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-geom)
+   Compiling fc-raster v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-raster)
+   Compiling fc-formats v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-formats)
+   Compiling fontra2fontir v0.5.0
+   Compiling glyphs2fontir v1.0.0
+   Compiling ufo2fontir v1.0.0
+   Compiling fontbe v1.0.0
+   Compiling fc-doc v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-doc)
+   Compiling fontc v1.0.0
+   Compiling fc-compile v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-compile)
+   Compiling fc-layout v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-layout)
+   Compiling fc-api v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-api)
+   Compiling fc-cli v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-cli)
+    Finished `test` profile [unoptimized] target(s) in 34.28s
+     Running tests/dispatch.rs (target/debug/deps/dispatch-979030c6100a943b)
+
+running 11 tests
+test explicit_config_directory_is_used_without_an_environment_override ... ok
+test font_info_includes_named_instances ... ok
+test explicit_null_clears_glyph_color_label_through_json_dispatch ... ok
+test dispatches_queries_commands_edits_undo_and_events ... ok
+test collection_warning_uses_file_contents_not_extension ... ok
+test dispatches_session_open_and_reports_boundary_errors ... ok
+test damaged_preferences_fall_back_and_do_not_block_opening ... ok
+test representable_cff_hints_import_without_a_loss_warning ... ok
+test font_info_reports_preserved_and_consumed_table_lengths ... ok
+test recent_limit_only_limits_returned_history ... ok
+test save_without_path_never_overwrites_an_imported_font ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.11s
+
+     Running tests/interchange.rs (target/debug/deps/interchange-611bf4823b38e953)
+
+running 2 tests
+test unsupported_source_semantics_keep_the_destination_intact ... ok
+test new_interchange_outputs_reopen_through_cli_reader ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+
+
+Final Clippy (exit 0):
+    Checking fc-geom v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-geom)
+    Checking fc-model v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-model)
+    Checking fc-compile v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-compile)
+    Checking fc-doc v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-doc)
+    Checking fc-raster v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-raster)
+    Checking fc-layout v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-layout)
+    Checking fc-formats v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-formats)
+    Checking fc-api v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-api)
+    Checking fc-cli v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-cli)
+    Checking fc-devserver v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-devserver)
+    Checking fontcarver v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/src-tauri)
+    Finished `dev` profile [unoptimized] target(s) in 29.45s

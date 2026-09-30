@@ -1,51 +1,43 @@
-# Resume checklist
+# Stopped checkpoint and future work
 
-Paused by explicit user request on 2026-09-28 after completing P5-10 smart
-corners. The next session must wait for the user's instruction to resume.
-The branch is `p5-color-authoring`; changes are saved locally, with no push or
-main merge. Native/global desktop input automation remains prohibited.
+The latest user instruction is to finish the active batch, then stop and rest.
+Do not start another batch. Branch: `p5-color-authoring`; changes remain local and
+uncommitted, with no push or main merge. Native/global desktop input automation
+remains prohibited.
 
-## Saved milestones
+The [integration checkpoint](p5-resume-integration.md) records final verification.
+The [feature audit](p5-feature-audit.md) remains the completion gate; the following
+items are documented backlog, not instructions to continue now.
 
-- [x] P5-09: persistent layer effects and stored masks; [acceptance](p5-layer-effects-acceptance.md).
-- [x] P5-10: numeric live smart corners and ink traps; [acceptance](p5-smart-corners-acceptance.md).
-- [x] Resource controls: cleared approximately 491 GiB of stale development
-  artifacts, changed Cargo profiles, added task cleanup rules and CI/developer
-  checks; [record](build-artifacts.md).
-- [x] Preserve final reports/screenshots, remove this task's scratch output,
-  stop its browser/development services and leave the working tree clean.
+## Completed in the frozen batch
 
-## First work after resuming
+- Variable pen parameters and previews, bake/undo and native save/reopen.
+- Cross-document compare/paste/merge; local scripts, Python RPC and bundled plugins.
+- Interchange format subsets, export profiles/preflight and shared CLI options.
+- Workspaces/detached panels, shortcut editing/help, proofing and glyph workflows.
+- Construction/image/optical/bitmap/CJK/feature editing subsets and hint preservation.
+- Independent Chinese translation, licensing/release definitions and audit reconciliation.
 
-1. Read [STATUS](STATUS.md), [AGENTS.md](../AGENTS.md) and
-   [CONVENTIONS.md](../CONVENTIONS.md); run `python3 scripts/check_artifacts.py`.
-2. Refine the [whole-project estimate](progress-estimate.md) by reconciling earlier
-   acceptance evidence with pending audit rows and splitting the largest remaining
-   work areas. Current rough estimate: about 60%, with a 50–70% planning range.
-3. Scope P5-11 around **variable pen points**: source positions, width, height,
-   angle and progression on top of the existing uniform live stroke evaluator.
-   Write its task/acceptance plan before implementation. Row 87 stays partial
-   until the complete editing, persistence and export path is verified.
-4. Continue the remaining work below. The future `P5-NN` count is not fixed;
-   the original plan has fourteen broad work blocks and the exit audit has 112
-   numbered requirements. A task number is not a completion percentage.
+See owner reports linked from the integration checkpoint for exact boundaries.
+No broad requirement is complete merely because its implementation or tests exist.
 
-## Remaining P5 work
+## Remaining acceptance and product boundaries
 
-| Work | Remaining scope |
-| --- | --- |
-| Hinting | Variable hinting, flex and per-FD private data; remaining TT/PS acceptance boundaries. |
-| Geometry and construction | Variable pen points; corner/cap/segment/brush components; node-linked guides; servant nodes; image tracing/background images; optical spacing/kerning; remaining CJK/editor/variable requirements. |
-| Corner interaction follow-up | Dedicated radius drag handles and construction at crossings without a node; any broader reference behavior beyond P5-10's recorded bounds. |
-| Document workflows | Compare/family compare, merge, paste special, cross-document copy, visual diffs and reference binary handling. |
-| Automation | Scripts console/reload, Python RPC, plugin lifecycle/manager, reporter/filter contracts and documentation. |
-| Formats/export | Remaining SVG/EPS/AFM/PFM/TTX/collections, preprocessing, profiles, preflight and shared CLI behavior. |
-| Shell and UX | Windows/workspaces, filters, metadata, proofing, shortcuts, accessibility/help and remaining feature/preview gaps. |
-| Translation review | Independent review of the implemented Chinese strings; implementer browser checks do not replace that review. |
-| Release | Packaging definitions, locally verifiable installers, platform CI and user/developer documentation. |
-| Final acceptance | Verify every Must-have/Should-have audit row with working behavior and evidence; native-platform/package claims remain unverified. |
+| Area                | Remaining scope                                                                                                                                                                                             |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Audit               | Reconcile 13 historical acceptance candidates; verify every broad row's missing qualifiers and actual user workflows. The historical 60% estimate is not recalculated.                                      |
+| Hinting             | Authored variable-font hints, imported flex binding, dotsection and general counter semantics; CFF2 private variation data. CFF1 multi-dictionary preservation has independent decoding/rendering evidence. |
+| Geometry/editor     | Independent variable-pen export coverage beyond the current tests; radius drag/crossing construction, open-corner and remaining text/pixel tool behavior; broader problem detection.                        |
+| Construction/images | Affine construction is bounded; no general deformation/trim. Linked-node inspectors lack canvas drag magnets/global guide behavior. PNG tracing remains polygonal rather than photographic curve fitting.   |
+| Variable/CJK        | No cross-document Family hierarchy, drag-swap compatibility repair, compound bracket conditions or main-canvas smart-component handles. Several browser workflows remain unverified.                        |
+| Glyph/features      | Canvas2D grid, bounded language/name databases and filter vocabulary; nine bounded visual lookup types and a bounded token language, not arbitrary FEA/context graphs or an interpolated numeric manager.   |
+| Color/proofing      | Static palette-zero previews only; axis-dependent paints and color proof export remain unsupported.                                                                                                         |
+| Formats/export      | Supported static interchange subsets and raw-table TTX, not general semantic TTX XML; broader interoperability and actual export-dialog workflows require additional acceptance.                            |
+| Automation          | Built-in plugin index only; Python requires a local interpreter. An already dispatched synchronous kernel call is not interruptible. Native Tauri execution remains unverified.                             |
+| Release             | Real Linux deb/AppImage and macOS/Windows packages/installations remain unbuilt/unverified; CI definitions and helper tests are not package acceptance. Website deployment remains pending.                 |
+| UI acceptance       | Component tests and selected headless workflows pass; they do not establish native-window, all-platform or every-screen acceptance.                                                                         |
 
-The authoritative completion gate is [p5-feature-audit.md](p5-feature-audit.md).
-Its pending rows can include already implemented P1–P4 behavior awaiting scoped
-verification. The whole-project percentage is a rough weighted planning estimate;
-no firm remaining duration or verified completion percentage is claimed.
+Before a future build, run `python3 scripts/check_artifacts.py`. Retained shared
+build dependencies are subject to the 20 GiB ceiling and 10 GiB warning in
+`CONVENTIONS.md`; clean the development profile if another build would exceed the
+ceiling. Do not delete shared stores, source/fonts, Git data or another task's files.

@@ -1,0 +1,98 @@
+   Compiling fc-model v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-model)
+   Compiling fc-glyphdata v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-glyphdata)
+error: couldn't read `crates/fc-glyphdata/src/../data/glyphdata.json`: No such file or directory (os error 2)
+  --> crates/fc-glyphdata/src/database.rs:14:41
+   |
+14 | pub const BUNDLED_DATABASE_JSON: &str = include_str!("../data/glyphdata.json");
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: could not compile `fc-glyphdata` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error[E0432]: unresolved imports `node_links::GuidedNode`, `node_links::NodeAxis`, `node_links::NodeLink`, `node_links::NodeLinkedGuide`, `node_links::NodeRef`, `node_links::ServantHandle`
+  --> crates/fc-model/src/lib.rs:70:22
+   |
+70 | pub use node_links::{GuidedNode, NodeAxis, NodeLink, NodeLinkedGuide, NodeRef, ServantHandle};
+   |                      ^^^^^^^^^^  ^^^^^^^^  ^^^^^^^^  ^^^^^^^^^^^^^^^  ^^^^^^^  ^^^^^^^^^^^^^ no `ServantHandle` in `node_links`
+   |                      |           |         |         |                |
+   |                      |           |         |         |                no `NodeRef` in `node_links`
+   |                      |           |         |         no `NodeLinkedGuide` in `node_links`
+   |                      |           |         no `NodeLink` in `node_links`
+   |                      |           no `NodeAxis` in `node_links`
+   |                      no `GuidedNode` in `node_links`
+
+error[E0599]: no method named `node_index` found for reference `&Layer` in the current scope
+  --> crates/fc-model/src/construction.rs:89:33
+   |
+89 |             let (ci, pi) = self.node_index(entry.kind.anchor())?;
+   |                                 ^^^^^^^^^^ method not found in `&Layer`
+
+error[E0599]: no method named `node_index` found for reference `&Layer` in the current scope
+   --> crates/fc-model/src/construction.rs:108:49
+    |
+108 |                     let (end_ci, end_pi) = self.node_index(end)?;
+    |                                                 ^^^^^^^^^^ method not found in `&Layer`
+
+error[E0277]: `#[ts(optional)]` can only be used on fields of type `Option`
+   --> crates/fc-model/src/font.rs:164:26
+    |
+164 |     pub virtual_masters: Vec<VirtualMaster>,
+    |                          ^^^^^^^^^^^^^^^^^^ `#[ts(optional)]` is not allowed on field of type Vec<VirtualMaster>
+    |
+    = help: the trait `IsOption` is not implemented for `Vec<VirtualMaster>`
+    = note: `#[ts(optional)]` was used on a field of type Vec<VirtualMaster>, which is not permitted
+help: the trait `IsOption` is implemented for `std::option::Option<T>`
+   --> /home/chen/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ts-rs-12.0.1/src/lib.rs:721:1
+    |
+721 | impl<T> IsOption for Option<T> {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `validate_node_links` found for reference `&Layer` in the current scope
+   --> crates/fc-model/src/font.rs:332:19
+    |
+332 |             layer.validate_node_links()?;
+    |                   ^^^^^^^^^^^^^^^^^^^ method not found in `&Layer`
+
+error[E0599]: no method named `resolve_node_links` found for struct `Layer` in the current scope
+   --> crates/fc-model/src/query/outline.rs:237:19
+    |
+237 |             value.resolve_node_links()?;
+    |                   ^^^^^^^^^^^^^^^^^^ method not found in `Layer`
+    |
+   ::: crates/fc-model/src/layer.rs:211:1
+    |
+211 | pub struct Layer {
+    | ---------------- method `resolve_node_links` not found for this struct
+
+warning: taking a mutable reference to a `const` item
+   --> crates/fc-model/src/query/outline.rs:123:9
+    |
+123 |         &mut MAX_PATH_ELEMENTS, Some(OutlineFilter::Sources(filter)))
+    |         ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: each usage of a `const` item creates a new temporary
+    = note: the mutable reference will refer to this temporary, not the original `const` item
+note: `const` item defined here
+   --> crates/fc-model/src/query/outline.rs:10:1
+    |
+ 10 | const MAX_PATH_ELEMENTS: usize = 1_000_000;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    = note: `#[warn(const_item_mutation)]` on by default
+
+warning: taking a mutable reference to a `const` item
+   --> crates/fc-model/src/query/outline.rs:139:9
+    |
+139 |         &mut MAX_PATH_ELEMENTS, Some(OutlineFilter::Sources(filter)))
+    |         ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: each usage of a `const` item creates a new temporary
+    = note: the mutable reference will refer to this temporary, not the original `const` item
+note: `const` item defined here
+   --> crates/fc-model/src/query/outline.rs:10:1
+    |
+ 10 | const MAX_PATH_ELEMENTS: usize = 1_000_000;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Some errors have detailed explanations: E0277, E0432, E0599.
+For more information about an error, try `rustc --explain E0277`.
+warning: `fc-model` (lib) generated 2 warnings
+error: could not compile `fc-model` (lib) due to 6 previous errors; 2 warnings emitted

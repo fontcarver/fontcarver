@@ -11,6 +11,9 @@ place a mask before the edge returning to the first on-curve point.
 **Analyze stems and zones** computes a preview for a master layer. It finds
 facing horizontal/vertical edges with ink between them and proposes missing
 master private values. Existing explicit private values remain authoritative.
+Counter checks inspect three sections through each candidate, so a crossbar does
+not by itself make the surrounding counter qualify as a stem. This remains a
+geometric heuristic; inspect the proposed hints before applying them.
 Background and supplemental layers can be inspected and edited, but automatic
 analysis requires selecting the master layer. Apply any master-parameter draft
 before requesting another automatic analysis.
@@ -24,13 +27,26 @@ dialog is open, application fails and keeps the draft so edits are not silently
 overwritten. Outline edits clear stale hint sets on that source and its component
 dependents; undo restores the outline and hints together.
 
+For CID fonts, **Edit private dictionary** selects FD0 or another imported font
+dictionary. **Add private dictionary** copies FD0 values into a new dictionary;
+up to 256 dictionaries are supported. Each dictionary's private values can be
+edited independently. Alignment zones and named preferred stems belong to FD0.
+With a glyph open, **Glyph private dictionary** selects the dictionary used for
+that layer's CFF export. Dictionary edits and assignment changes apply together
+as one undo step and survive FCF save and reopen. Automatic analysis currently
+supports glyphs assigned to FD0 only; apply assignment changes and reopen the
+editor before running analysis.
+
 Static OTF export writes supported stems, masks, ghost hints and private values
 into CFF. Imported ordinary CFF hints become editable. Non-axis-aligned font
 matrices and seac transformations may prevent faithful hint import and produce a
-warning. CID sources with multiple private dictionaries retain only the first
-as editable master parameters; export currently uses this dictionary for every
-glyph and reports that limitation. Diagonal stems and coordinate-range hints must be converted to supported
-stems and point masks before CFF export.
+warning. CID sources with multiple private dictionaries retain the first
+as FD0 and retain the additional CFF1 dictionaries with each glyph's assignment.
+Static CFF1 output writes those dictionaries and assignments independently.
+CFF2 private variations remain unsupported. Diagonal stems and coordinate-range
+hints must be converted to supported stems and point masks before CFF export.
+An authored flex flag has no segment/depth binding in the current model, so CFF
+export rejects it instead of silently writing ordinary curves.
 
 ## TrueType instructions
 
@@ -88,8 +104,9 @@ transforms when needed to preserve zero-contour instructions. CFF output reports
 that authored TT programs cannot be included and leaves them in the document.
 
 Variable TT output, generated static instances, overlap removal, automatic TT
-hinting, smart-component resolution and bracket layers currently reject authored
-TT programs. Imported raw layout using point-index references can also prevent
+hinting, coordinate rounding, extrema insertion, component decomposition,
+smart-component resolution and bracket layers currently reject authored TT
+programs. Imported raw layout using point-index references can also prevent
 safe export after recompilation. Component alignment through phantom points is
 not yet supported in the point view. These are remaining hinting boundaries.
 
@@ -117,10 +134,19 @@ and each active mask must enable the complete triple or none of it. The same
 triple must be used throughout the glyph. General counter-control procedures
 are not yet supported.
 
+Terminal `seac` compositions inherit supported base and accent stems, ghost hints
+and replacement masks. The importer expands their outlines, adjusts accent hints
+for the sidebearings and offset, and keeps each component's active hints on its own
+contours. PFA/PFB output writes the expanded geometry and replacement masks.
+Nested compositions, parent drawing or hints before `seac`, a mismatched accent
+sidebearing, component-scoped counter groups and components without bindable
+contours remain unsupported. Their imported outlines retain the existing warning
+instead of receiving a partial stem set.
+
 The importer reads literal private values without executing PostScript. A literal
 private value followed by runtime PostScript is omitted with a warning; malformed
-numeric arrays are rejected. Glyphs using dot sections, flex, seac, general
-counter-control procedures or invalid replacement metadata retain their supported
+numeric arrays are rejected. Glyphs using dot sections, flex, unsupported `seac`,
+general counter-control procedures or invalid replacement metadata retain their supported
 outlines without a partial stem set. An import warning identifies the limitation;
 affected glyph names remain in source metadata. Private values that cannot be
 represented after reflection or an out-of-range transform remain in source

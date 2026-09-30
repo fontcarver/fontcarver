@@ -1,5 +1,9 @@
 # P5 hinting checkpoint — 2026-09-22
 
+The [2026-09-30 resumed implementation checkpoint](p5-hinting-resume-checkpoint.md)
+records the later CFF private-dictionary, PS analysis, Type 1 composition and
+variable TT binary work, including its pending centralized acceptance checks.
+
 Status: the first hinting slice is implemented and verified. P5 and the complete
 hinting milestone remain open. The complete exit audit is
 [p5-feature-audit.md](p5-feature-audit.md); user instructions are in

@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "fonttools": "4.63.0",
+  "freetype": [2, 13, 2],
+  "private_dictionaries": 2,
+  "std_vw": [70, 95],
+  "blue_values": [
+    [-10, 0, 700, 710],
+    [-20, 0, 800, 820]
+  ],
+  "fd_select": [0, 1],
+  "ppem": [12, 24, 48],
+  "glyph_renders": 6,
+  "nonempty_renders": 6,
+  "source_fixture": "SourceSerif4Min.otf",
+  "generator": "fc-sfnt cff_private::cid_reader_and_writer_round_trip_all_private_values_and_assignments"
+}

@@ -4,27 +4,23 @@ The single entry point for "where is the project". Update this file at every
 pause and every milestone commit. It links to the detailed records; it does
 not repeat them.
 
-Last updated: 2026-09-28 (paused by user after P5-10). Branch: `p5-color-authoring`
-(no push, no main merge). Static SVG and COLRv1 authoring are implemented within
-their acceptance boundaries. Batch styles and non-destructive layer effects are verified.
-Frontend checks passed: 1,160 tests in 145 files, followed by 19 affected tests
-including one added regression (1,161 distinct tests across the runs).
-TypeScript, lint, production build and formatting passed.
-The latest user instruction is to finish P5-10, save, update TODO and stop; resume only when requested.
+Last updated: 2026-09-30. Branch: `p5-color-authoring` (uncommitted local
+changes; no push or main merge). The user requested finishing the active batch,
+then stopping. The active batch is finished and stopped; final integration results and remaining
+limits are recorded in [the batch checkpoint](p5-resume-integration.md).
 
-P5-10 numeric live smart corners passed independent checks on 24 synthetic and
-eight real-font exports (369,468 containment samples), bilingual browser editing,
-bake/undo and compressed-native reopen. Rust coverage combines 1,007 tests before
-the disk-cleanup interruption, 40 resumed tests and two additional regressions
-(1,049 distinct passes; two pre-existing ignored). The interrupted run is not
-claimed as one full pass. See [acceptance](p5-smart-corners-acceptance.md).
-[Resource maintenance](build-artifacts.md) released approximately 491 GiB and
-introduced build/temp budgets. Current resume instructions are in [TODO](TODO.md).
+The batch implements variable pen editing, document comparison/paste/merge,
+scripting/plugins, interchange/export workflows, shell workspaces, proofing,
+glyph/editor/bitmap/CJK workflows, hint preservation and release definitions.
+The full frontend regression passes **2,233 tests in 289 files**. TypeScript,
+ESLint, Prettier and the production build pass. Rust has 1,710 distinct passes across the full run and
+repair rerun, with two existing ignored gates; final Clippy passes. This is substantial implemented
+work, not acceptance of every P5 requirement or native platform.
 
-A documentation-only estimate on 2026-09-28 puts whole-product effort completion
-at **about 60%, with a 50–70% planning range**. This is a weighted engineering
-estimate, not measured hours or a change to acceptance status. See the
-[weights, evidence and sensitivity](progress-estimate.md). Development remains paused.
+The historical effort estimate remains **about 60%, range 50–70%**, pending a
+new weighted assessment; it does not include credit for this batch. See
+[estimate](progress-estimate.md) and [evidence reconciliation](p5-resume-audit.md).
+[TODO](TODO.md) records the remaining scope for a future explicit resume.
 
 ## Phases
 
@@ -37,56 +33,35 @@ estimate, not measured hours or a change to acceptance status. See the
 | P2c/d | Static OTF/CFF; Glyphs, SFD, Type 1; Find problems       | Complete    | 2026-09-19 | [p2cd-acceptance](p2cd-acceptance.md)                                                                                            |
 | P3    | Bitmap fonts: strikes, editor, BDF/PCF/PSF/FNT, EBDT     | Complete    | 2026-09-22 | [p3-acceptance](p3-acceptance.md)                                                                                                |
 | P4    | Variable fonts, design space, CJK construction, vertical | Complete    | 2026-09-22 | [p4-acceptance](p4-acceptance.md)                                                                                                |
-| P5    | Professional finish (112-row exit checklist)             | Paused      | —          | [plan](superpowers/plans/2026-09-22-p5-professional-finish.md) · [feature audit](p5-feature-audit.md) (the row-by-row exit gate) |
+| P5    | Professional finish (112-row exit checklist)             | In progress | —          | [plan](superpowers/plans/2026-09-22-p5-professional-finish.md) · [feature audit](p5-feature-audit.md) (the row-by-row exit gate) |
 
 "Complete" means verified within the boundaries each acceptance report
 states, not exhaustive format coverage. Native desktop input automation and
 release packaging are unverified for every phase.
 
-## P5 work in progress
+## P5 checkpoint
 
-The [feature audit](p5-feature-audit.md) is the exit gate: a row is marked
-complete only after a working editing path, persistence/export and direct
-verification. Rows 84 (numeric smart corners), 88 (stored boolean layer masks) and 104
-(static COLR v0/CPAL) are complete within their recorded boundaries. Three rows are `Partial` (61
-autohinting, 87 uniform strokes with variable pen points pending, 98 manual PS
-hints); the other 106 rows are `Pending verification`. Pending verification
-does not mean no implementation exists; earlier phase evidence must be checked. MATH is a
-separate P5 design requirement, now verified in the audit’s supplemental section.
+The [feature audit](p5-feature-audit.md) remains the exit gate. Its three accepted
+rows (84, 88, 104) retain their documented scope; other rows are not automatically
+closed by a passing test suite. Thirteen historical acceptance candidates are
+identified in [the reconciliation](p5-resume-audit.md). New bounded implementations
+and direct browser evidence are linked from [the batch checkpoint](p5-resume-integration.md).
 
-| Work block                       | State                                                                                                                         | Detail                                                                                               |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Hinting (TT/PS editors, Type 1)  | Static TT and PS editing, Type 1 hint round trips and export preprocessing done; variable hinting, flex, per-FD dicts open    | [p5-hinting-checkpoint](p5-hinting-checkpoint.md)                                                    |
-| MATH authoring                   | Complete within the acceptance boundaries: editor, undo/save/reopen/export, FontTools/HarfBuzz and large-font checks verified | [p5-math-acceptance](p5-math-acceptance.md)                                                          |
-| COLR/CPAL authoring              | Complete within static COLR v0 / CPAL v0/v1 boundaries; synthetic/real-font exports, browser editing and persistence verified | [p5-color-acceptance](p5-color-acceptance.md)                                                        |
-| SVG colour documents             | Static subset verified; independent export/browser and regression checks passed                                               | [p5-svg-acceptance](p5-svg-acceptance.md)                                                            |
-| COLRv1 paint graphs              | Static graph editor, shared codecs, palettes, persistence and independent binary/pixel checks verified                        | [p5-colrv1-acceptance](p5-colrv1-acceptance.md)                                                      |
-| Geometry and construction        | Batch styles, non-destructive layer effects and numeric smart corners verified                                              | [style acceptance](p5-style-effects-acceptance.md) · [layer effects](p5-layer-effects-acceptance.md) · [smart corners](p5-smart-corners-acceptance.md) |
-| Compare/merge/paste special      | Not started                                                                                                                   | plan block "Document workflows"                                                                      |
-| Scripting and plugins            | Not started                                                                                                                   | plan block "Automation"                                                                              |
-| Remaining formats, profiles, CLI | Not started                                                                                                                   | plan block "Formats/export"                                                                          |
-| Shell/UX checklist gaps          | Not started                                                                                                                   | plan block "Shell/UX"                                                                                |
-| Release packaging and CI         | Not started                                                                                                                   | plan block "Release"                                                                                 |
-| Final acceptance                 | Not started                                                                                                                   | plan block "Final row-by-row acceptance"                                                             |
+MATH, static SVG/COLRv1 authoring, styles, stored masks and numeric smart corners
+retain their earlier acceptance records. Variable pen parameters now have real
+API/browser editing, bake/undo and native save/reopen evidence. Broader geometry
+and independent export acceptance limits remain explicit. Static color glyphs
+now render in grid/text previews; variable paints and color proof export remain open.
 
-The Tibetan layout expansion-budget defect is fixed: conversion eligibility
-now checks the compiler's work budget while retaining the imported lookup
-inventory and original tables. Affected Rust regression checks passed (1,032
-tests; two pre-existing ignored acceptance tests). This was not a full-workspace
-native-platform run.
+Release configuration and license/helper checks are implemented. Actual FontCarver
+installers and native macOS/Windows workflows remain unverified. Native/global
+desktop input automation remains prohibited. The bilingual website is implemented;
+its deployment and first release download links remain pending.
 
-## Paused / next session
-
-The user requested stopping after the current task. P5-10 is saved and verified
-within its acceptance boundaries; temporary task outputs and owned services are
-cleaned/stopped. See [TODO](TODO.md) for the remaining work. On an explicit resume,
-run the resource-budget check, refine the progress estimate against the audit,
-then scope P5-11 variable pen points.
-No P5-11 implementation has started. Native/global desktop input remains prohibited.
-
-The bilingual website is also complete, with deployment still pending. Its
-[completion record](superpowers/plans/2026-09-24-website.md) covers the website
-checks; release download links await the first packaged release.
+The batch used excessive recursive delegation. All delegated implementations are
+finished; centralized acceptance supersedes their earlier queued/cancelled-test
+notes only where the final report explicitly records a pass. No additional
+feature batch is authorized by this stopping checkpoint.
 
 ## Where things are written
 
