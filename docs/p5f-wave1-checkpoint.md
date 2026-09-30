@@ -151,3 +151,9 @@ one file twice on purpose; behaviour pinned by tests. Still open, not task a's:
 `app/e2e/p2a-kerning.spec.ts:322` selects the tab by exact name `Regular.ufo`
 while an unlabelled Overview renders as `Overview · <file>`; match
 `(?:^|· )Regular\.ufo$`. Only task f (export) was still running at the end.
+
+Update: the usage limit reset the same day. The export agent (cut off while
+adding a Playwright spec for the profile round trip) was resumed, and the
+inventory and editor agents received their review defect lists as fix rounds.
+The wave is being finished as planned: export review, fix rounds, zh-CN
+translation, integration, records, commits, then stop.
