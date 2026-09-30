@@ -13,16 +13,16 @@ not push, add features, or translate (a translation agent handles zh-CN).
   appended gap analysis under `docs/superpowers/plans/tasks/p5f-*.md`.
 - Review outcomes (the reviewers reported to the orchestrator, not to files):
 
-| Task | Review verdict    | Fix round result                                                                                                    |
-| ---- | ----------------- | ------------------------------------------------------------------------------------------------------------------- |
-| n    | accept with fixes | all 9 items fixed (release tests 37/37)                                                                             |
-| a    | accept with fixes | all 11 items fixed; rows 1–8 Complete on Linux, row 9 Partial (native macOS/Windows pending)                        |
-| d    | accept with fixes | all 7 items fixed plus the zero-exception regression; rows 37–45 Complete                                           |
-| i    | accept with fixes | all 9 items fixed (read-only enforcement, transaction reaping); rows 77, 78, 79, 96, 105, 106 Complete              |
-| e    | accept with fixes | all 8 items fixed; rows 46–51, 72, 99, 100 Complete (row 46 `include` limit stated)                                 |
-| b    | accept with fixes | all 8 items plus the sidebar consistency fix; rows 10–18 Complete (row 10 ascending-only limit)                     |
-| c    | accept with fixes | see the final fix-round note appended below                                                                         |
-| f    | accept with fixes | 9 items (false override markers, unscaled metrics keys, slider steps, matrix file names); see the appended fix note |
+| Task | Review verdict    | Fix round result                                                                                                  |
+| ---- | ----------------- | ----------------------------------------------------------------------------------------------------------------- |
+| n    | accept with fixes | all 9 items fixed (release tests 37/37)                                                                           |
+| a    | accept with fixes | all 11 items fixed; rows 1–8 Complete on Linux, row 9 Partial (native macOS/Windows pending)                      |
+| d    | accept with fixes | all 7 items fixed plus the zero-exception regression; rows 37–45 Complete                                         |
+| i    | accept with fixes | all 9 items fixed (read-only enforcement, transaction reaping); rows 77, 78, 79, 96, 105, 106 Complete            |
+| e    | accept with fixes | all 8 items fixed; rows 46–51, 72, 99, 100 Complete (row 46 `include` limit stated)                               |
+| b    | accept with fixes | all 8 items plus the sidebar consistency fix; rows 10–18 Complete (row 10 ascending-only limit)                   |
+| c    | accept with fixes | all 6 items fixed plus layout/spec fixes; rows 20–36, 81, 89–91 Complete (row 33 now Complete via anchor cascade) |
+| f    | accept with fixes | all 9 items fixed; rows 52–60, 63 Complete (52, 53, 55, 56 with stated limits)                                    |
 
 A row becomes **Complete** in `docs/p5-feature-audit.md` only when its
 acceptance document recommends Complete and no blocking review defect for
@@ -97,3 +97,7 @@ that row remains; otherwise **Partial** with the exact missing piece. Rows
   the canvas off-screen on short windows; `.view` in
   `app/src/views/text/TextView.module.css` needs `overflow-y: auto` (task d has
   finished, so make this one-line change yourself and rerun `e2e/draw.spec.ts`).
+- Task f notes a follow-up: `scale_metrics_key` lives in the variation handler
+  because `crates/fc-doc/src/metrics.rs` belonged to task d; moving it beside
+  `parse_key` is a TODO item, not an integration change. Headless Chrome in this
+  checkout needs the shell sandbox disabled for agent-browser runs.
