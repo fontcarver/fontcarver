@@ -112,3 +112,31 @@ review (ACCEPT WITH FIXES) reported these open defects; they are **not fixed**:
    list; `documentStore.tableColumns`/`moveTableColumn` are dead code.
 
 Task c's review and task a's fix round had not reported when the session ended.
+
+Task c's review (ACCEPT WITH FIXES) reported these open defects; **not fixed**:
+
+1. **Blocking (row 35):** Fix All inserts a node off the extremum.
+   `app/src/views/glyph/outlineAudit.ts:397-402` sorts `insertExtremum` fixes by
+   segment and `t`, but `InsertPointOnSegment` reparameterises the segment, so
+   a second insertion into the same segment uses a stale `t` (measured 3.3 units
+   off; the audit re-flags it). Fix: key the "one structural fix per contour"
+   grouping by `(contour, segment)` or rescale the remaining `t` after a split.
+2. **Blocking (rows 33/89):** `Command::AlignComponents` bypasses the component
+   lock (no arm in `crates/fc-doc/src/command/component_locks.rs` preflight,
+   falls through at :157, rewrites a locked component's transform at :206);
+   `layerCommands.ts:288-294` enables the menu when one component is unlocked
+   then aligns all. Add a preflight arm returning `locked_error()` or skip
+   locked components.
+3. Minor: chained composites align to a stale transform
+   (`component_locks.rs:310-330` reads the pre-pass clone); unstable comparator
+   at `outlineAudit.ts:398`; `ALL_OUTLINE_AUDIT_TESTS` aliases
+   `DEFAULT_OUTLINE_AUDIT` (:40-41); the audit debounce has no max-wait, so
+   markers lag during a continuous drag; locked-path drag/nudge is silent
+   because selection is refused first; the modifier docs never say Linux Ctrl
+   is both ×100 nudge and snap-suspend.
+4. Pen Playwright spec: `p` is not broken for users. At 1280×720 the Edit tab's
+   spacing/kerning chrome squeezes the canvas to ~140 px and the Info box
+   overlays its top-left, so the spec's click lands in an editable field and
+   the key is dropped. At 1280×577 the canvas height is 0 (a real layout
+   defect). Fix the spec to click the canvas centre; fix the layout.
+   Row 35 downgrades to Partial; row 33 stays Partial.
