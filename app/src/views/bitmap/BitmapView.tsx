@@ -35,6 +35,10 @@ export function BitmapView({ summary }: { summary: DocSummary }) {
     [items, setItems] = useState<GlyphCell[]>([]),
     [total, setTotal] = useState(0)
   const [ppem, setPpem] = useState(16),
+    [strikeMetrics, setStrikeMetrics] = useState<{
+      ascent: number
+      descent: number
+    } | null>(null),
     [depth, setDepth] = useState(1),
     [busy, setBusy] = useState(false),
     [master, setMaster] = useState(summary.masters[0]?.id ?? ''),
@@ -92,6 +96,7 @@ export function BitmapView({ summary }: { summary: DocSummary }) {
   const [hinting, setHinting] = useState<BitmapHinting>('None')
   const [rasterThreshold, setRasterThreshold] = useState(128)
   const strike = state.strikes.find((s) => `${s.ppem}:${s.depth}` === strikeKey)
+  const selectedCell = items.find((item) => item.name === glyph)
   const operation = (run: () => Promise<unknown>) => {
     if (busy) return
     setBusy(true)
@@ -222,9 +227,16 @@ export function BitmapView({ summary }: { summary: DocSummary }) {
           />
           <div className={styles.creation}>
             <BitmapGridPreset
-              unitsPerEm={summary.units_per_em}
+              doc={doc}
+              master={master}
               value={ppem}
-              onSelect={setPpem}
+              onSelect={(choice) => {
+                setPpem(choice.ppem)
+                setStrikeMetrics({
+                  ascent: choice.ascent,
+                  descent: choice.descent,
+                })
+              }}
               disabled={busy}
             />
             <label>
@@ -234,7 +246,10 @@ export function BitmapView({ summary }: { summary: DocSummary }) {
                 min={1}
                 max={4096}
                 value={ppem}
-                onChange={(e) => setPpem(Number(e.target.value))}
+                onChange={(e) => {
+                  setPpem(Number(e.target.value))
+                  setStrikeMetrics(null)
+                }}
               />
             </label>
             <label>
@@ -264,8 +279,10 @@ export function BitmapView({ summary }: { summary: DocSummary }) {
                     strike: {
                       ppem,
                       depth,
-                      ascent: Math.ceil(ppem * 0.8),
-                      descent: Math.floor(ppem * 0.2),
+                      // A grid preset carries the metrics the kernel derived
+                      // from the master; a typed size falls back to 80/20.
+                      ascent: strikeMetrics?.ascent ?? Math.ceil(ppem * 0.8),
+                      descent: strikeMetrics?.descent ?? Math.floor(ppem * 0.2),
                       properties: {},
                       glyphs: {},
                     },
@@ -366,7 +383,7 @@ export function BitmapView({ summary }: { summary: DocSummary }) {
                 strike={strike}
                 upm={summary.units_per_em}
                 master={master}
-                gid={items.find((item) => item.name === glyph)?.gid}
+                gid={selectedCell?.gid}
               />
               <BitmapOutlineTools
                 doc={doc}
@@ -394,7 +411,11 @@ export function BitmapView({ summary }: { summary: DocSummary }) {
               <StrikeProperties doc={doc} strike={strike} />
             </>
           )}
-          <BitmapWaterfall doc={doc} revision={state.generation} />
+          <BitmapWaterfall
+            doc={doc}
+            revision={state.generation}
+            glyph={glyph || undefined}
+          />
         </div>
       </div>
     </div>

@@ -22,6 +22,8 @@ describe('editorStore', () => {
       // The other masters are drawn only on request: on a multiple-master
       // font they would double the ink on every glyph.
       otherMasters: false,
+      // Vertical writing mode is off until a CJK font asks for it.
+      verticalMode: false,
     })
   })
 

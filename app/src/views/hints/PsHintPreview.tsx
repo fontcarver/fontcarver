@@ -7,10 +7,12 @@ export function PsHintPreview({
   path,
   hints,
   upem,
+  flexPaths = [],
 }: {
   path: string
   hints: PsHints
   upem: number
+  flexPaths?: string[]
 }) {
   const { t } = useTranslation()
   return (
@@ -22,6 +24,9 @@ export function PsHintPreview({
     >
       <g transform="scale(1,-1)">
         <path d={path} className={styles.outline} />
+        {flexPaths.map((flex, i) =>
+          flex ? <path key={`f${i}`} d={flex} className={styles.flex} /> : null,
+        )}
         {hints.h_stems.map((stem, i) => (
           <g key={`h${i}`}>
             <rect

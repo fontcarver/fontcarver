@@ -42,6 +42,7 @@ import {
 import { BeamPointer } from './beamPointer'
 
 import { componentDraws, type PathCache } from './componentDraws'
+import { withPreview } from './metricsHandles'
 import type { MetricLabels } from './drawMetrics'
 import type { UnderlayData } from './drawUnderlays'
 import styles from './glyphView.module.css'
@@ -54,6 +55,15 @@ import {
 } from '../../editor/editorMetadataStore'
 import { editorTargetKey } from '../../editor/editorMetadata'
 import { useSourceImage } from './useSourceImage'
+import { drawPlacement } from '../../canvas/sourceImagePlacement'
+import { ImagePlacementPointer } from './panels/imagePlacementPointer'
+import { canvasHandlesActive } from './panels/canvasHandleGuard'
+import { drawSmartHandles } from './panels/smartComponentCanvas'
+import { SmartComponentPointer } from './panels/smartComponentPointer'
+import {
+  imagePlacementFor,
+  useImagePlacement,
+} from './panels/imagePlacementSession'
 import { OutlineAudit, type OutlineAuditHandle } from './OutlineAudit'
 
 /** Padding kept around the glyph when the view is fitted, in CSS pixels. */
@@ -184,6 +194,21 @@ export function GlyphCanvas({
     scene.layer?.background_image ?? null,
     scene.layer,
   )
+  // Whether the pointer is placing this layer's source image on the canvas.
+  const placementRef = useRef(new ImagePlacementPointer())
+  const placementOwner = source
+    ? editorTargetKey({
+        doc: source.doc,
+        glyph: source.glyph,
+        layer: source.outline.layer,
+      })
+    : null
+  const placementSession = useImagePlacement((store) =>
+    store.session?.owner === placementOwner ? store.session : null,
+  )
+  // Smart-component axis handles, drawn for a selected smart component.
+  const smartRef = useRef(new SmartComponentPointer())
+  const selection = useEditorStore((state) => state.selection)
   const variation = useVariationPreviewStore((state) =>
     state.preview?.doc === source?.doc && state.preview?.glyph === scene.name
       ? state.preview
@@ -242,6 +267,7 @@ export function GlyphCanvas({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     const current = frame.current
+    const placing = imagePlacementFor(placementOwner) !== null
     const editing = controller.frame()
     const components = componentDraws(
       current.componentViews,
@@ -263,12 +289,7 @@ export function GlyphCanvas({
             contours: editing.contours ?? current.scene.contours,
             anchors: editing.anchors ?? current.scene.anchors,
             metrics: editing.metrics
-              ? {
-                  ...current.scene.metrics,
-                  width: editing.metrics.width,
-                  lsb: editing.metrics.lsb,
-                  rsb: editing.metrics.rsb,
-                }
+              ? withPreview(current.scene.metrics, editing.metrics)
               : current.scene.metrics,
           }
         : current.scene
@@ -289,7 +310,9 @@ export function GlyphCanvas({
       overlays: current.overlays,
       flattened: current.flattened,
       underlay: current.underlay,
-      sourceImage: current.sourceImage,
+      sourceImage: placing
+        ? placementRef.current.preview(current.sourceImage)
+        : current.sourceImage,
       components,
       pointer: pointerRef.current,
       selected: editing.selected,
@@ -330,6 +353,42 @@ export function GlyphCanvas({
         current.textRun.onVisibleIndexes(visible)
       }
     }
+    // A view tool owns the pointer, so its handles are not drawn either. A
+    // space-held pan is transient and only routes the press, so it does not
+    // repaint: reading that ref here would make every key press a paint input.
+    const handlesActive = canvasHandlesActive(tool, false)
+    const smartHandles = handlesActive
+      ? smartRef.current.handles(
+          current.componentViews,
+          selection,
+          viewport,
+          metadataSource?.glyphLocked ?? false,
+        )
+      : []
+    drawSmartHandles(
+      ctx,
+      viewport,
+      smartHandles,
+      {
+        track: current.theme.component,
+        handle: current.theme.selection,
+        text: current.theme.metricLabel,
+        font: current.theme.fontFamily,
+      },
+      smartRef.current.active(),
+    )
+    if (placing && handlesActive && current.sourceImage)
+      drawPlacement(
+        ctx,
+        viewport,
+        placementRef.current.preview(current.sourceImage) ??
+          current.sourceImage,
+        {
+          frame: current.theme.guideLocal,
+          handle: current.theme.selection,
+        },
+        placementRef.current.handle,
+      )
     auditRef.current?.refresh()
     if (import.meta.env.DEV) recordPaint(performance.now() - started)
   }, [
@@ -337,8 +396,11 @@ export function GlyphCanvas({
     handleSize,
     metadataSource?.glyphLocked,
     nodeSize,
+    placementOwner,
+    selection,
     source,
     textPaint,
+    tool,
     viewport,
   ])
 
@@ -384,6 +446,10 @@ export function GlyphCanvas({
   useEffect(
     () => controller.setRulersVisible(overlays.rulers),
     [controller, overlays.rulers],
+  )
+  useEffect(
+    () => controller.setVerticalMode(overlays.verticalMode),
+    [controller, overlays.verticalMode],
   )
   useEffect(() => {
     controller.setSnapSettings(snapSettings)
@@ -621,9 +687,45 @@ export function GlyphCanvas({
         }
         if (run.mode === 'text') return
       }
+      // Axis and placement handles sit above the outline, so they go first —
+      // unless a view gesture is active, which owns the press everywhere.
+      const handlesActive = canvasHandlesActive(tool, spaceRef.current.held)
+      if (
+        handlesActive &&
+        smartRef.current.down(
+          frame.current.componentViews,
+          useEditorStore.getState().selection,
+          viewport,
+          metadataSource?.glyphLocked ?? false,
+          input,
+        )
+      ) {
+        draw()
+        return
+      }
+      if (
+        handlesActive &&
+        placementRef.current.down(
+          viewport,
+          frame.current.sourceImage,
+          placementSession,
+          input,
+        )
+      ) {
+        draw()
+        return
+      }
       controller.pointerDown(input)
     },
-    [controller, pointerInput, tool, viewport],
+    [
+      controller,
+      draw,
+      metadataSource?.glyphLocked,
+      placementSession,
+      pointerInput,
+      tool,
+      viewport,
+    ],
   )
 
   const onPointerMove = useCallback(
@@ -632,16 +734,67 @@ export function GlyphCanvas({
       pointerRef.current = viewport.toFont({ x: input.x, y: input.y })
       onPointerFont(roundPoint(pointerRef.current))
       if (beamRef.current.move(frame.current.textRun, viewport, input)) return
+      const handlesActive = canvasHandlesActive(tool, spaceRef.current.held)
+      const overSmart =
+        handlesActive &&
+        smartRef.current.move(
+          frame.current.componentViews,
+          useEditorStore.getState().selection,
+          viewport,
+          metadataSource?.glyphLocked ?? false,
+          input,
+        )
+      if (smartRef.current.busy) {
+        if (overSmart) draw()
+        return
+      }
+      if (overSmart) draw()
+      if (handlesActive && placementSession) {
+        const changed = placementRef.current.move(
+          viewport,
+          frame.current.sourceImage,
+          input,
+        )
+        const cursor = placementRef.current.cursor()
+        if (cursor !== null) setCursor(cursor)
+        if (changed) draw()
+        if (placementRef.current.busy || cursor !== null) return
+      }
       // The controller repaints whatever the move changed; painting again
       // here would double the work of every pointer move.
       controller.pointerMove(input)
     },
-    [controller, onPointerFont, pointerInput, viewport],
+    [
+      controller,
+      draw,
+      metadataSource?.glyphLocked,
+      onPointerFont,
+      placementSession,
+      pointerInput,
+      tool,
+      viewport,
+    ],
   )
 
   const endPointer = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
-      if (!beamRef.current.up(frame.current.textRun))
+      if (
+        smartRef.current.up(
+          frame.current.componentViews,
+          source
+            ? {
+                doc: source.doc,
+                glyph: source.glyph,
+                layer: source.outline.layer,
+              }
+            : null,
+          onReload,
+        )
+      ) {
+        draw()
+      } else if (placementRef.current.up(placementSession)) {
+        draw()
+      } else if (!beamRef.current.up(frame.current.textRun))
         controller.pointerUp(pointerInput(event))
       try {
         event.currentTarget.releasePointerCapture(event.pointerId)
@@ -649,12 +802,14 @@ export function GlyphCanvas({
         // The capture was never established.
       }
     },
-    [controller, pointerInput],
+    [controller, draw, onReload, placementSession, pointerInput, source],
   )
 
   const onPointerLeave = useCallback(() => {
     pointerRef.current = null
     onPointerFont(null)
+    placementRef.current.cancel()
+    smartRef.current.cancel()
     controller.pointerLeave()
   }, [controller, onPointerFont])
 

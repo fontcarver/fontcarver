@@ -3,8 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '../components/Button'
 import { Dialog } from '../components/Dialog'
 import { useKeymapStore } from '../stores/keymapStore'
-import { keymapConflicts, shortcutFor, type KeymapOverrides } from './keymap'
-import { parseKeymapDocument, serializeKeymap } from './keymapDocument'
+import {
+  blockingConflicts,
+  conflictsByTarget,
+  keymapConflicts,
+  shortcutFor,
+  type KeymapOverrides,
+} from './keymap'
+import { parseKeymapFile, serializeKeymap } from './keymapDocument'
 import { KEYMAP_PRESETS } from './keymapPresets'
 import {
   FIXED_SHORTCUT_IDS,
@@ -16,6 +22,9 @@ import { helpHint } from './contextHelp'
 import { useCommandRegistry } from './useCommandRegistry'
 import styles from './ShortcutSettingsDialog.module.css'
 
+/** Rows shown at once; conflicting rows are always among them. */
+const VISIBLE_ROWS = 80
+
 /** Reviewed draft for explicit shortcut changes. */
 export function ShortcutSettingsForm() {
   const { t } = useTranslation()
@@ -23,6 +32,9 @@ export function ShortcutSettingsForm() {
   const [draft, setDraft] = useState<KeymapOverrides>(() => ({
     ...useKeymapStore.getState().overrides,
   }))
+  const [allowed, setAllowed] = useState<readonly string[]>(
+    () => useKeymapStore.getState().allowConflicts,
+  )
   const [query, setQuery] = useState('')
   const [preset, setPreset] = useState('default')
   const [error, setError] = useState('')
@@ -31,19 +43,37 @@ export function ShortcutSettingsForm() {
   const targets = keymapTargets()
   const allTargets = [...targets, ...reservedKeymapTargets()]
   const conflicts = keymapConflicts(allTargets, draft)
+  const byTarget = conflictsByTarget(conflicts)
+  const blocking = blockingConflicts(conflicts, allowed)
   const known = new Set(targets.map((target) => target.id))
   const unknown = Object.keys(draft).filter((id) => !known.has(id))
   let valid = true
   try {
-    parseKeymapDocument(serializeKeymap(draft))
+    parseKeymapFile(serializeKeymap(draft, allowed))
   } catch {
     valid = false
   }
-  const filtered = targets.filter((target) =>
+  const blocked = !valid || blocking.length > 0 || unknown.length > 0
+  const titleOf = (id: string) =>
+    t(allTargets.find((target) => target.id === id)?.title ?? id)
+  const others = (shortcut: string, id: string) =>
+    conflicts
+      .filter((conflict) => conflict.shortcut === shortcut)
+      .flatMap((conflict) => conflict.ids)
+      .filter((other) => other !== id)
+      .map(titleOf)
+      .join(', ')
+  const matches = targets.filter((target) =>
     `${t(target.title)} ${target.id} ${shortcutFor(target.id, target.shortcut, draft) ?? ''}`
       .toLowerCase()
       .includes(query.toLowerCase()),
   )
+  // A conflicting row must never be hidden behind the row limit: the reader is
+  // told the save is blocked, so the row that blocks it has to be reachable.
+  const filtered = [
+    ...matches.filter((target) => byTarget.has(target.id)),
+    ...matches.filter((target) => !byTarget.has(target.id)),
+  ]
   const close = () => {
     importVersion.current += 1
     useKeymapStore.getState().setOpen(false)
@@ -59,9 +89,22 @@ export function ShortcutSettingsForm() {
       delete next[id]
       return next
     })
+  const acceptConflict = (shortcut: string) => {
+    setError('')
+    setNotice('shortcuts.conflictAccepted')
+    setAllowed((old) => (old.includes(shortcut) ? old : [...old, shortcut]))
+  }
+  const rejectConflict = (shortcut: string) => {
+    setNotice('')
+    setAllowed((old) => old.filter((entry) => entry !== shortcut))
+  }
   const apply = () => {
-    if (!valid || conflicts.length > 0 || unknown.length > 0) return
-    if (useKeymapStore.getState().save(draft)) close()
+    if (blocked) return
+    // Only an accepted chord that is still a conflict is worth keeping, so a
+    // resolved binding does not leave a stale acceptance behind.
+    const live = new Set(conflicts.map((conflict) => conflict.shortcut))
+    const keep = allowed.filter((shortcut) => live.has(shortcut))
+    if (useKeymapStore.getState().save(draft, keep)) close()
     else setError('shortcuts.error.storage')
   }
   const importFile = async (file: File | undefined) => {
@@ -69,9 +112,10 @@ export function ShortcutSettingsForm() {
     const version = ++importVersion.current
     try {
       if (file.size > 262_144) throw new Error('shortcuts.error.tooLarge')
-      const imported = parseKeymapDocument(await file.text())
+      const imported = parseKeymapFile(await file.text())
       if (version !== importVersion.current) return
-      setDraft(imported)
+      setDraft(imported.bindings)
+      setAllowed(imported.allowConflicts)
       setError('')
       setNotice('shortcuts.imported')
     } catch (cause) {
@@ -84,7 +128,7 @@ export function ShortcutSettingsForm() {
     }
   }
   const exportFile = () => {
-    const blob = new Blob([serializeKeymap(draft)], {
+    const blob = new Blob([serializeKeymap(draft, allowed)], {
       type: 'application/json',
     })
     const url = URL.createObjectURL(blob)
@@ -104,11 +148,7 @@ export function ShortcutSettingsForm() {
       footer={
         <>
           <Button onClick={close}>{t('common.cancel')}</Button>
-          <Button
-            variant="primary"
-            onClick={apply}
-            disabled={!valid || conflicts.length > 0 || unknown.length > 0}
-          >
+          <Button variant="primary" onClick={apply} disabled={blocked}>
             {t('shortcuts.apply')}
           </Button>
         </>
@@ -131,26 +171,24 @@ export function ShortcutSettingsForm() {
           </select>
         </label>
         <Button
-          title={t('shortcuts.preset.hint')}
           onClick={() => {
             importVersion.current += 1
             setDraft({
               ...(KEYMAP_PRESETS.find((item) => item.id === preset)
                 ?.overrides ?? {}),
             })
+            setAllowed([])
             setError('')
             setNotice('shortcuts.preset.loaded')
           }}
         >
           {t('shortcuts.preset.load')}
         </Button>
-        <Button
-          onClick={exportFile}
-          disabled={!valid || conflicts.length > 0 || unknown.length > 0}
-        >
+        <Button onClick={exportFile} disabled={blocked}>
           {t('shortcuts.export')}
         </Button>
       </div>
+      <p className={styles.hint}>{t('shortcuts.preset.hint')}</p>
       <label className={styles.import}>
         {t('shortcuts.import')}
         <input
@@ -190,21 +228,35 @@ export function ShortcutSettingsForm() {
               </Button>
             </p>
           )}
-          {conflicts.map((conflict) => (
-            <p key={conflict.shortcut}>
-              {t('shortcuts.conflict', {
-                shortcut: formatShortcut(conflict.shortcut),
-                commands: conflict.ids
-                  .map((id) =>
-                    t(
-                      allTargets.find((target) => target.id === id)?.title ??
-                        id,
-                    ),
-                  )
-                  .join(', '),
-              })}
-            </p>
-          ))}
+          {conflicts.map((conflict) => {
+            const accepted = allowed.includes(conflict.shortcut)
+            const shortcut = formatShortcut(conflict.shortcut)
+            return (
+              <p key={conflict.shortcut}>
+                {t(
+                  accepted ? 'shortcuts.conflictAllowed' : 'shortcuts.conflict',
+                  {
+                    shortcut,
+                    commands: conflict.ids.map(titleOf).join(', '),
+                  },
+                )}{' '}
+                <Button
+                  onClick={() =>
+                    accepted
+                      ? rejectConflict(conflict.shortcut)
+                      : acceptConflict(conflict.shortcut)
+                  }
+                >
+                  {t(
+                    accepted
+                      ? 'shortcuts.rejectConflict'
+                      : 'shortcuts.allowConflict',
+                    { shortcut },
+                  )}
+                </Button>
+              </p>
+            )
+          })}
         </div>
       )}
       <label className={styles.search}>
@@ -221,38 +273,64 @@ export function ShortcutSettingsForm() {
         role="group"
         aria-label={t('shortcuts.bindings')}
       >
-        {filtered.slice(0, 80).map((target) => (
-          <div className={styles.row} key={target.id}>
-            <label htmlFor={`binding-${target.id}`}>
-              <span>{t(target.title)}</span>
-              <small>{t(`shortcuts.scope.${target.scope}`)}</small>
-            </label>
-            <input
-              id={`binding-${target.id}`}
-              aria-label={t('shortcuts.bindingLabel', {
-                command: t(target.title),
-              })}
-              value={shortcutFor(target.id, target.shortcut, draft) ?? ''}
-              placeholder={t('shortcuts.unbound')}
-              spellCheck={false}
-              onChange={(event) => setBinding(target.id, event.target.value)}
-            />
-            <Button
-              aria-label={t('shortcuts.restoreLabel', {
-                command: t(target.title),
-              })}
-              title={t('shortcuts.restoreHint')}
-              onClick={() => restore(target.id)}
-            >
-              {t('shortcuts.restore')}
-            </Button>
-          </div>
-        ))}
+        {filtered.slice(0, VISIBLE_ROWS).map((target) => {
+          const rowConflicts = byTarget.get(target.id) ?? []
+          const conflict = rowConflicts[0]
+          const accepted =
+            conflict !== undefined && allowed.includes(conflict.shortcut)
+          const messageId = conflict ? `conflict-${target.id}` : undefined
+          return (
+            <div className={styles.row} key={target.id}>
+              <label htmlFor={`binding-${target.id}`}>
+                <span>{t(target.title)}</span>
+                <small>{t(`shortcuts.scope.${target.scope}`)}</small>
+              </label>
+              <input
+                id={`binding-${target.id}`}
+                aria-label={t('shortcuts.bindingLabel', {
+                  command: t(target.title),
+                })}
+                aria-invalid={conflict !== undefined && !accepted}
+                aria-describedby={messageId}
+                className={conflict ? styles.conflicting : undefined}
+                value={shortcutFor(target.id, target.shortcut, draft) ?? ''}
+                placeholder={t('shortcuts.unbound')}
+                spellCheck={false}
+                onChange={(event) => setBinding(target.id, event.target.value)}
+              />
+              <Button
+                aria-label={t('shortcuts.restoreLabel', {
+                  command: t(target.title),
+                })}
+                aria-description={t('shortcuts.restoreHint')}
+                onClick={() => restore(target.id)}
+              >
+                {t('shortcuts.restore')}
+              </Button>
+              {conflict ? (
+                <p
+                  id={messageId}
+                  className={accepted ? styles.rowAllowed : styles.rowConflict}
+                >
+                  {t(
+                    accepted
+                      ? 'shortcuts.rowConflictAllowed'
+                      : 'shortcuts.rowConflict',
+                    {
+                      shortcut: formatShortcut(conflict.shortcut),
+                      commands: others(conflict.shortcut, target.id),
+                    },
+                  )}
+                </p>
+              ) : null}
+            </div>
+          )
+        })}
         {filtered.length === 0 && (
           <p className={styles.hint}>{t('shortcuts.empty')}</p>
         )}
       </div>
-      {filtered.length > 80 && (
+      {filtered.length > VISIBLE_ROWS && (
         <p className={styles.hint}>
           {t('shortcuts.more', { count: filtered.length })}
         </p>

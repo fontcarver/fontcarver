@@ -4,7 +4,11 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { useKeymapStore } from '../stores/keymapStore'
 import { initialUiState, useUiStore } from '../stores/uiStore'
 import { registerCommands, resetCommands } from './commands'
+import { formatShortcut } from './shortcuts'
 import { ShortcutSettingsDialog } from './ShortcutSettingsDialog'
+
+/** `Mod+S` as this platform spells it, which is what the editor shows. */
+const MOD_S = formatShortcut('Mod+S')
 
 beforeEach(() => {
   localStorage.clear()
@@ -87,4 +91,104 @@ it('keeps the editor open when persistence fails', async () => {
   expect(screen.getByRole('alert')).toHaveTextContent('Could not save')
   expect(screen.getByRole('dialog')).toBeInTheDocument()
   act(() => useKeymapStore.setState({ open: false }))
+})
+
+it('marks the conflicting row inline, not only the summary', async () => {
+  const user = userEvent.setup()
+  render(<ShortcutSettingsDialog />)
+  const binding = screen.getByLabelText('Shortcut for Open Font…')
+  await user.clear(binding)
+  await user.type(binding, 'Mod+S')
+  expect(binding).toHaveAttribute('aria-invalid', 'true')
+  const other = screen.getByLabelText('Shortcut for Save')
+  expect(other).toHaveAttribute('aria-invalid', 'true')
+  expect(
+    screen.getByText(`${MOD_S} is also bound to Save.`, { exact: false }),
+  ).toBeVisible()
+})
+
+it('applies a conflict only once it is explicitly allowed, and persists that', async () => {
+  const user = userEvent.setup()
+  render(<ShortcutSettingsDialog />)
+  const binding = screen.getByLabelText('Shortcut for Open Font…')
+  await user.clear(binding)
+  await user.type(binding, 'Mod+S')
+  expect(screen.getByRole('button', { name: 'Apply' })).toBeDisabled()
+
+  await user.click(
+    screen.getByRole('button', { name: `Allow ${MOD_S} to be shared` }),
+  )
+  expect(screen.getByLabelText('Shortcut for Open Font…')).toHaveAttribute(
+    'aria-invalid',
+    'false',
+  )
+  expect(screen.getByRole('button', { name: 'Apply' })).toBeEnabled()
+  await user.click(screen.getByRole('button', { name: 'Apply' }))
+  expect(useKeymapStore.getState().overrides).toEqual({
+    'file.open': 'Mod+S',
+  })
+  expect(useKeymapStore.getState().allowConflicts).toEqual(['Mod+S'])
+  expect(
+    JSON.parse(localStorage.getItem('fontcarver.keymap.v1') ?? '{}'),
+  ).toEqual({
+    version: 1,
+    bindings: { 'file.open': 'Mod+S' },
+    allowConflicts: ['Mod+S'],
+  })
+})
+
+it('blocks again when an allowed conflict is withdrawn', async () => {
+  const user = userEvent.setup()
+  useKeymapStore.setState({
+    overrides: { 'file.open': 'Mod+S' },
+    allowConflicts: ['Mod+S'],
+    open: true,
+  })
+  render(<ShortcutSettingsDialog />)
+  expect(screen.getByRole('button', { name: 'Apply' })).toBeEnabled()
+  await user.click(
+    screen.getByRole('button', { name: `Stop sharing ${MOD_S}` }),
+  )
+  expect(screen.getByRole('button', { name: 'Apply' })).toBeDisabled()
+})
+
+it('does not keep an acceptance whose conflict was resolved', async () => {
+  const user = userEvent.setup()
+  useKeymapStore.setState({
+    overrides: { 'file.open': 'Mod+S' },
+    allowConflicts: ['Mod+S'],
+    open: true,
+  })
+  render(<ShortcutSettingsDialog />)
+  const binding = screen.getByLabelText('Shortcut for Open Font…')
+  await user.clear(binding)
+  await user.type(binding, 'Mod+K')
+  await user.click(screen.getByRole('button', { name: 'Apply' }))
+  expect(useKeymapStore.getState().allowConflicts).toEqual([])
+  expect(
+    JSON.parse(localStorage.getItem('fontcarver.keymap.v1') ?? '{}'),
+  ).toEqual({ version: 1, bindings: { 'file.open': 'Mod+K' } })
+})
+
+it('shows a conflicting row even when the search matches many actions', async () => {
+  const user = userEvent.setup()
+  // More filler actions than the editor's row limit, registered after the two
+  // real ones so the unsorted list would push both conflicts out of sight.
+  registerCommands(
+    Array.from({ length: 120 }, (_, index) => ({
+      id: `filler.${index}`,
+      title: 'cmd.edit.selectAll',
+      run: vi.fn(),
+    })),
+  )
+  render(<ShortcutSettingsDialog />)
+  const binding = document.getElementById('binding-file.open')
+  expect(binding).not.toBeNull()
+  await user.clear(binding as HTMLElement)
+  await user.type(binding as HTMLElement, 'Mod+S')
+  expect(document.getElementById('conflict-file.open')).not.toBeNull()
+  expect(document.getElementById('conflict-file.save')).not.toBeNull()
+  expect(
+    screen.getAllByText(`${MOD_S} is also bound to`, { exact: false }),
+  ).toHaveLength(2)
 })

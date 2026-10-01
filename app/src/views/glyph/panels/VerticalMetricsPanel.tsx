@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '../../../components/Button'
@@ -35,8 +35,47 @@ export function VerticalMetricsPanel({
   const top = bounds ? origin - bounds[3] : 0
   const bottom = bounds ? advance - origin + bounds[1] : 0
 
+  /**
+   * The override pair this panel last sent, until the model reports it back.
+   *
+   * `SetVerticalMetrics` writes both fields, so each field sends the stored
+   * value of the other one. A second edit made before the first command's
+   * reload has landed would otherwise read the *old* record and clear what the
+   * first edit just wrote, which is how typing an advance and then a TSB used
+   * to lose the advance.
+   */
+  const sent = useRef<{
+    key: string
+    advance: number | null
+    origin: number | null
+  } | null>(null)
+  const key = `${target.doc}:${glyph.name}:${target.layer}`
+
+  /**
+   * The overrides the next command starts from. Called from the fields, never
+   * during render: the pending pair is dropped as soon as the model reports it
+   * back, or as soon as another glyph or layer is shown.
+   */
+  const basis = (): { advance: number | null; origin: number | null } => {
+    const stored = {
+      advance: layer?.vertical_width ?? null,
+      origin: layer?.vertical_origin ?? null,
+    }
+    const pending = sent.current
+    if (!pending || pending.key !== key) return stored
+    if (
+      pending.advance === stored.advance &&
+      pending.origin === stored.origin
+    ) {
+      sent.current = null
+      return stored
+    }
+    return { advance: pending.advance, origin: pending.origin }
+  }
+
   const write = (nextAdvance: number | null, nextOrigin: number | null) => {
     if (spacingLockedForDocument(target.doc)) return
+    sent.current = { key, advance: nextAdvance, origin: nextOrigin }
     commitField(
       target,
       {
@@ -65,7 +104,7 @@ export function VerticalMetricsPanel({
         disabled={locked || !layer}
         invalidHint={t('infoBox.invalid')}
         revision={revision}
-        onCommit={(value) => write(value, layer?.vertical_origin ?? null)}
+        onCommit={(value) => write(value, basis().origin)}
       />
       <NumberField
         label={t('glyphView.metric.verticalOrigin')}
@@ -73,7 +112,7 @@ export function VerticalMetricsPanel({
         disabled={locked || !layer}
         invalidHint={t('infoBox.invalid')}
         revision={revision}
-        onCommit={(value) => write(layer?.vertical_width ?? null, value)}
+        onCommit={(value) => write(basis().advance, value)}
       />
       <NumberField
         label={t('glyphView.metric.tsb')}
@@ -82,7 +121,7 @@ export function VerticalMetricsPanel({
         invalidHint={t('infoBox.invalid')}
         revision={revision}
         onCommit={(value) => {
-          if (bounds) write(layer?.vertical_width ?? null, bounds[3] + value)
+          if (bounds) write(basis().advance, bounds[3] + value)
         }}
       />
       <NumberField
@@ -92,8 +131,7 @@ export function VerticalMetricsPanel({
         invalidHint={t('infoBox.invalid')}
         revision={revision}
         onCommit={(value) => {
-          if (bounds)
-            write(origin - bounds[1] + value, layer?.vertical_origin ?? null)
+          if (bounds) write(origin - bounds[1] + value, basis().origin)
         }}
       />
       <p className={styles.hint}>

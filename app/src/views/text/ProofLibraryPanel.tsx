@@ -1,35 +1,52 @@
-import { useEffect, useMemo, useState, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
+import { reportError } from '../../shell/commands'
+import { saveArtifact } from '../../shell/saveArtifact'
+import { exportProofText, readProofFile } from './proofInterchange'
 import {
   filterProofLibrary,
   proofLibraryGroups,
   stepProofLibrary,
   type ProofEntry,
 } from './proofLibrary'
+import { builtinProofEntries } from './proofSamples'
+import { proofStepDirection } from './proofStepping'
 import { useProofLibrary } from './useProofLibrary'
 import { ProofExportControls } from './ProofExportControls'
 import type { TextRequestContext } from './textLayout'
 import styles from './ProofLibraryPanel.module.css'
+
+function fileName(title: string): string {
+  return `${title.replace(/[^\p{L}\p{N}._ -]/gu, '_') || 'proofs'}-proofs.txt`
+}
 
 /** Project-backed proof phrases; arrow stepping only consumes keys in the text input. */
 export function ProofLibraryPanel({
   context,
   title,
   inputRef,
+  selectedId,
+  stepRef,
   onSelect,
 }: {
   context: TextRequestContext
   title: string
   inputRef: RefObject<HTMLInputElement | null>
+  /** The entry the tab last applied, so stepping continues from it. */
+  selectedId?: string | null
+  /** Receives a stepper the text view calls while the canvas has focus. */
+  stepRef?: RefObject<((direction: -1 | 1) => void) | null>
   onSelect: (entry: ProofEntry) => void
 }) {
   const { t } = useTranslation()
   const library = useProofLibrary(context.doc)
-  const [selected, setSelected] = useState('')
+  const selected = selectedId ?? ''
   const [name, setName] = useState('')
   const [group, setGroup] = useState('')
   const [filterGroup, setFilterGroup] = useState('')
   const [filterScript, setFilterScript] = useState('')
+  const [importRejected, setImportRejected] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null)
   const groups = useMemo(
     () => proofLibraryGroups(library.entries),
     [library.entries],
@@ -54,39 +71,47 @@ export function ProofLibraryPanel({
     [library.entries, filterGroup, filterScript],
   )
   const current = library.entries.find((entry) => entry.id === selected)
+  // The name and group fields follow the selection without fighting an edit in
+  // progress: they are reset only when a different entry becomes current.
+  const [shownId, setShownId] = useState('')
+  if (current && shownId !== current.id) {
+    setShownId(current.id)
+    setName(current.name)
+    setGroup(current.group)
+  }
   const choose = (entry: ProofEntry) => {
-    setSelected(entry.id)
-    setName(entry.name)
-    setGroup(entry.group)
+    setImportRejected(false)
     onSelect(entry)
   }
+  const step = (direction: -1 | 1) => {
+    const entry = stepProofLibrary(entries, selected || null, direction)
+    if (entry) choose(entry)
+  }
+  // The two keyboard paths are installed once and always call the newest
+  // stepper, so a filter change takes effect without reinstalling listeners.
+  const stepLatest = useRef(step)
+  useEffect(() => {
+    stepLatest.current = step
+  })
   useEffect(() => {
     const input = inputRef.current
     const key = (event: KeyboardEvent) => {
-      if (
-        event.isComposing ||
-        event.altKey ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.shiftKey ||
-        (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')
-      )
-        return
-      const entry = stepProofLibrary(
-        entries,
-        selected,
-        event.key === 'ArrowUp' ? -1 : 1,
-      )
-      if (!entry) return
+      const direction = proofStepDirection(event)
+      if (direction === null) return
       event.preventDefault()
-      setSelected(entry.id)
-      setName(entry.name)
-      setGroup(entry.group)
-      onSelect(entry)
+      stepLatest.current(direction)
     }
     input?.addEventListener('keydown', key)
     return () => input?.removeEventListener('keydown', key)
-  }, [entries, inputRef, onSelect, selected])
+  }, [inputRef])
+  useEffect(() => {
+    if (!stepRef) return
+    const stepper = (direction: -1 | 1) => stepLatest.current(direction)
+    stepRef.current = stepper
+    return () => {
+      if (stepRef.current === stepper) stepRef.current = null
+    }
+  }, [stepRef])
   const save = async (replace: boolean) => {
     const entry: ProofEntry = {
       id: replace && current ? current.id : crypto.randomUUID(),
@@ -100,11 +125,22 @@ export function ProofLibraryPanel({
           ? context.direction
           : 'ltr',
     }
-    if (await library.save(entry)) setSelected(entry.id)
+    if (await library.save(entry)) onSelect(entry)
   }
-  const step = (direction: -1 | 1) => {
-    const entry = stepProofLibrary(entries, selected, direction)
-    if (entry) choose(entry)
+  const exportText = async () => {
+    setImportRejected(false)
+    await saveArtifact(
+      fileName(title),
+      new TextEncoder().encode(exportProofText(library.entries)),
+      'text/plain;charset=utf-8',
+      t('proof.library.interchangeFilter'),
+    )
+  }
+  const importFile = async (file: File) => {
+    setImportRejected(false)
+    const text = await readProofFile(file)
+    // The hook reports why; this only says that the stored library is unchanged.
+    setImportRejected(!(await library.importText(text)))
   }
   return (
     <details className={styles.panel}>
@@ -219,14 +255,50 @@ export function ProofLibraryPanel({
             type="button"
             disabled={library.saving || !current}
             onClick={() => {
-              if (current)
-                void library.remove(current.id).then((removed) => {
-                  if (removed) setSelected('')
-                })
+              if (current) void library.remove(current.id).catch(reportError)
             }}
           >
             {t('proof.library.remove')}
           </button>
+        </div>
+        <div className={styles.row}>
+          <button
+            type="button"
+            disabled={library.saving || library.loading}
+            onClick={() => {
+              setImportRejected(false)
+              void library.adopt(builtinProofEntries(t)).catch(reportError)
+            }}
+          >
+            {t('proof.library.adoptSamples')}
+          </button>
+          <button
+            type="button"
+            disabled={library.saving || !library.entries.length}
+            onClick={() => void exportText().catch(reportError)}
+          >
+            {t('proof.library.exportText')}
+          </button>
+          <button
+            type="button"
+            disabled={library.saving || library.loading}
+            onClick={() => fileInput.current?.click()}
+          >
+            {t('proof.library.importText')}
+          </button>
+          <input
+            ref={fileInput}
+            className={styles.fileInput}
+            type="file"
+            accept=".txt,.tsv,text/plain,text/tab-separated-values"
+            tabIndex={-1}
+            aria-hidden="true"
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0]
+              event.currentTarget.value = ''
+              if (file) void importFile(file).catch(reportError)
+            }}
+          />
         </div>
         <p className={styles.hint}>
           {t(
@@ -235,7 +307,16 @@ export function ProofLibraryPanel({
               : 'proof.library.empty',
           )}
         </p>
-        {library.error && <p role="alert">{library.error}</p>}
+        {(library.error || importRejected) && (
+          <p role="alert">
+            {[
+              importRejected ? t('proof.library.importFailed') : '',
+              library.error,
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          </p>
+        )}
         <ProofExportControls
           context={context}
           entries={entries}

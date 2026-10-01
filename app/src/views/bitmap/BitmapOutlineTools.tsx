@@ -7,6 +7,8 @@ import {
   type DocId,
 } from '../../api'
 import { withSettledDocument } from '../../editor/documentPersistence'
+import { openGlyphTab } from '../../shell/tabActions'
+import { emptyFilter } from '../../stores/documentStore'
 import { reportError } from '../../stores/uiStore'
 import styles from './BitmapView.module.css'
 
@@ -27,6 +29,7 @@ export function BitmapOutlineTools({
   const [join, setJoin] = useState(false)
   const [pixel, setPixel] = useState('pixel')
   const [all, setAll] = useState(false)
+  const [traceAll, setTraceAll] = useState(false)
   const [busy, setBusy] = useState(false)
   const valid =
     Number.isInteger(threshold) && threshold >= 1 && threshold <= 255
@@ -54,11 +57,35 @@ export function BitmapOutlineTools({
           depth: strike.depth,
           master,
           glyph,
+          // One undo step either way: the single glyph, or every image in this
+          // strike when the batch switch is on.
+          glyphs: [],
+          all_images: traceAll,
           threshold,
           mode,
           join_diagonals: join,
         })
     })
+      .catch(reportError)
+      .finally(() => setBusy(false))
+  }
+  const editPixelGlyph = () => {
+    if (busy) return
+    setBusy(true)
+    void call('glyphs.list', {
+      doc,
+      master: null,
+      filter: { ...emptyFilter(), query: pixel.trim() },
+      sort: 'Order',
+      offset: 0,
+      limit: 20,
+      include_paths: false,
+    })
+      .then(async (page) => {
+        const found = page.items.find((item) => item.name === pixel.trim())
+        if (!found) throw new Error(t('bitmapParity.pixelMissing'))
+        await openGlyphTab(doc, found.gid)
+      })
       .catch(reportError)
       .finally(() => setBusy(false))
   }
@@ -103,6 +130,14 @@ export function BitmapOutlineTools({
           />
           {t('bitmapParity.joinDiagonals')}
         </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={traceAll}
+            onChange={(event) => setTraceAll(event.target.checked)}
+          />
+          {t('bitmapParity.traceAll', { count: strike.glyph_count })}
+        </label>
         <button disabled={busy || !valid} onClick={() => run(false)}>
           {t('bitmap.trace')}
         </button>
@@ -131,6 +166,13 @@ export function BitmapOutlineTools({
             onClick={() => run(true)}
           >
             {t('bitmapParity.buildComponents')}
+          </button>
+          <button
+            type="button"
+            disabled={busy || !pixel.trim()}
+            onClick={editPixelGlyph}
+          >
+            {t('bitmapParity.editPixelGlyph')}
           </button>
         </div>
         <p className={styles.hint}>{t('bitmapParity.componentHint')}</p>

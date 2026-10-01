@@ -18,9 +18,13 @@ import type { SceneMetrics } from './glyphScene'
 import {
   METRIC_HIT,
   MetricsDrag,
+  metricCursor,
+  metricHandleAxis,
   metricLineX,
+  metricLineY,
   metricValue,
   metricsHit,
+  withPreview,
 } from './metricsHandles'
 import { RulerGuideDrag, rulerAt, shouldStartRulerGuide } from './rulerGuides'
 
@@ -225,6 +229,244 @@ describe('MetricsDrag', () => {
     gesture.move(120, false)
     await gesture.cancel()
 
+    expect(mock.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.undo',
+    ])
+  })
+})
+
+/** The same font with the vertical metrics a CJK face carries. */
+const cjkMetrics: SceneMetrics = {
+  ...metrics,
+  verticalOrigin: 880,
+  verticalWidth: 1000,
+}
+
+describe('vertical metric handles', () => {
+  it('puts each horizontal handle on the line the canvas draws', () => {
+    // `drawMetrics` draws the origin at its own y and the advance one advance
+    // height below it; the handles must agree exactly.
+    expect(metricLineY(cjkMetrics, 'vorigin')).toBe(880)
+    expect(metricLineY(cjkMetrics, 'vadvance')).toBe(-120)
+    // A font with no vertical metrics draws neither line and offers neither.
+    expect(metricLineY(metrics, 'vorigin')).toBeNull()
+    expect(metricLineY(metrics, 'vadvance')).toBeNull()
+    expect(
+      metricLineY({ ...cjkMetrics, verticalWidth: null }, 'vadvance'),
+    ).toBeNull()
+    expect(metricLineX(cjkMetrics, 'vorigin')).toBeNull()
+  })
+
+  it('names the axis and the cursor of every handle', () => {
+    expect(metricHandleAxis('lsb')).toBe('x')
+    expect(metricHandleAxis('width')).toBe('x')
+    expect(metricHandleAxis('vorigin')).toBe('y')
+    expect(metricHandleAxis('vadvance')).toBe('y')
+    expect(metricCursor('rsb')).toBe('ew-resize')
+    expect(metricCursor('vadvance')).toBe('ns-resize')
+  })
+
+  it('hits a horizontal line only where no vertical line is grabbed', () => {
+    const viewport = viewportOf()
+    // y = 880 font units maps to canvas y 500 − 880 = −380, off screen; use the
+    // advance line at −120, which maps to 620… also off screen, so move the
+    // viewport to frame them.
+    viewport.offset = { x: 100, y: 1000 }
+    expect(metricsHit(cjkMetrics, viewport, { x: 400, y: 120 }, true)).toBe(
+      'vorigin',
+    )
+    expect(
+      metricsHit(cjkMetrics, viewport, { x: 400, y: 120 + METRIC_HIT }, true),
+    ).toBe('vorigin')
+    expect(
+      metricsHit(
+        cjkMetrics,
+        viewport,
+        { x: 400, y: 120 + METRIC_HIT + 1 },
+        true,
+      ),
+    ).toBeNull()
+    expect(metricsHit(cjkMetrics, viewport, { x: 400, y: 1120 }, true)).toBe(
+      'vadvance',
+    )
+    // Where the origin line crosses the advance vertical, the vertical wins, so
+    // adding these handles cannot take a press away from the existing gesture.
+    expect(metricsHit(cjkMetrics, viewport, { x: 700, y: 120 }, true)).toBe(
+      'width',
+    )
+    // And a font without vertical metrics is completely unaffected.
+    expect(metricsHit(metrics, viewport, { x: 400, y: 120 }, true)).toBeNull()
+  })
+
+  it('offers the horizontal lines only in vertical writing mode', () => {
+    const viewport = viewportOf()
+    viewport.offset = { x: 100, y: 1000 }
+    // A CJK font gives every glyph these two lines through the master's default
+    // vertical origin. Out of vertical mode they must not take a press, because
+    // they are full-width bands that outrank segments and components.
+    for (const point of [
+      { x: 400, y: 120 },
+      { x: 400, y: 1120 },
+    ]) {
+      expect(metricsHit(cjkMetrics, viewport, point, true)).not.toBeNull()
+      expect(metricsHit(cjkMetrics, viewport, point, false)).toBeNull()
+      // The default is "off", so a caller that forgets the flag is safe.
+      expect(metricsHit(cjkMetrics, viewport, point)).toBeNull()
+    }
+    // The sidebearing and advance handles are unchanged by the mode.
+    for (const mode of [true, false]) {
+      expect(metricsHit(cjkMetrics, viewport, { x: 140, y: 300 }, mode)).toBe(
+        'lsb',
+      )
+      expect(metricsHit(cjkMetrics, viewport, { x: 700, y: 300 }, mode)).toBe(
+        'width',
+      )
+    }
+  })
+
+  it('reads the advance in the opposite sense and clamps both to OpenType', () => {
+    const start = {
+      width: 600,
+      lsb: 40,
+      rsb: 60,
+      verticalOrigin: 880,
+      verticalWidth: 1000,
+    }
+    expect(metricValue('vorigin', start, 25, 1)).toBe(905)
+    // Pulling the advance line *down* by 25 units lengthens the advance.
+    expect(metricValue('vadvance', start, -25, 1)).toBe(1025)
+    expect(metricValue('vadvance', start, 12.4, 10)).toBe(990)
+    // The kernel refuses a negative advance or an origin past 16 bits, so a
+    // long drag stops at the limit instead of failing.
+    expect(metricValue('vadvance', start, 5000, 1)).toBe(0)
+    expect(metricValue('vorigin', start, 99999, 1)).toBe(32767)
+    expect(metricValue('vorigin', start, -99999, 1)).toBe(-32768)
+  })
+
+  it('replaces only the fields a preview changed', () => {
+    const horizontal = withPreview(cjkMetrics, {
+      width: 650,
+      lsb: 90,
+      rsb: 60,
+    })
+    expect(horizontal.width).toBe(650)
+    expect(horizontal.verticalOrigin).toBe(880)
+    expect(horizontal.verticalWidth).toBe(1000)
+    const vertical = withPreview(cjkMetrics, {
+      width: 600,
+      lsb: 40,
+      rsb: 60,
+      verticalOrigin: 905,
+    })
+    expect(vertical.verticalOrigin).toBe(905)
+    expect(vertical.verticalWidth).toBe(1000)
+  })
+})
+
+describe('vertical MetricsDrag', () => {
+  function drag(
+    handle: 'vorigin' | 'vadvance',
+    stored: { origin: number | null; advance: number | null },
+  ): { gesture: MetricsDrag; mock: MockTransport } {
+    const mock = createEditingTransport()
+    setTransport(mock)
+    return {
+      mock,
+      gesture: new MetricsDrag({
+        doc: 1,
+        glyph: 'ideograph',
+        layer: 'layer-1',
+        handle,
+        origin: handle === 'vorigin' ? 880 : -120,
+        start: {
+          width: 1000,
+          lsb: 50,
+          rsb: 50,
+          verticalOrigin: 880,
+          verticalWidth: 1000,
+        },
+        stored,
+        outline: makeLayerOutline(makeLayer()),
+        label: 'Vertical metrics',
+        scheduler: immediateScheduler,
+      }),
+    }
+  }
+
+  function commands(mock: MockTransport): unknown[] {
+    return mock.calls
+      .filter((entry) => entry.method === 'doc.edit_apply')
+      .map((entry) => (entry.params as EditApplyParams).command)
+  }
+
+  it('writes the origin and keeps an inherited advance inherited', async () => {
+    const { gesture, mock } = drag('vorigin', { origin: null, advance: null })
+    gesture.move(0, false, 905)
+    expect(await gesture.finish()).toBe(true)
+    expect(commands(mock)).toEqual([
+      {
+        SetVerticalMetrics: {
+          glyph: 'ideograph',
+          layer: 'layer-1',
+          advance: null,
+          origin: 905,
+        },
+      },
+    ])
+    expect(gesture.preview.verticalOrigin).toBe(905)
+    expect(gesture.preview.verticalWidth).toBe(1000)
+    // The outline does not move with a vertical metric edit.
+    expect(gesture.geometryPreview.contours).toEqual(
+      makeLayerOutline(makeLayer()).contours,
+    )
+  })
+
+  it('writes the advance and carries the stored origin through', async () => {
+    const { gesture, mock } = drag('vadvance', { origin: 880, advance: null })
+    gesture.move(0, false, -220)
+    gesture.move(0, false, -220)
+    gesture.move(0, false, -320)
+    expect(await gesture.finish()).toBe(true)
+    expect(commands(mock)).toEqual([
+      {
+        SetVerticalMetrics: {
+          glyph: 'ideograph',
+          layer: 'layer-1',
+          advance: 1100,
+          origin: 880,
+        },
+      },
+      {
+        SetVerticalMetrics: {
+          glyph: 'ideograph',
+          layer: 'layer-1',
+          advance: 1200,
+          origin: 880,
+        },
+      },
+    ])
+    expect(mock.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+  })
+
+  it('ignores a move with no y, so a horizontal axis cannot drive it', () => {
+    const { gesture, mock } = drag('vorigin', { origin: 880, advance: 1000 })
+    gesture.move(905, false)
+    expect(commands(mock)).toHaveLength(0)
+    expect(gesture.value).toBe(880)
+  })
+
+  it('undoes what it applied when it is cancelled', async () => {
+    const { gesture, mock } = drag('vorigin', { origin: 880, advance: 1000 })
+    gesture.move(0, false, 905)
+    await gesture.cancel()
     expect(mock.calls.map((entry) => entry.method)).toEqual([
       'doc.edit_begin',
       'doc.edit_apply',

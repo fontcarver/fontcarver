@@ -205,6 +205,11 @@ P2b-01 adds only a test dependency from `fc-formats` to the existing `fc-compile
 workspace crate (`MIT OR Apache-2.0`) to verify real FEA compilation and shaping
 after UFO round trips. No third-party package or locked version is added.
 
+P5 proofing (2026-10-01) adds a direct `fc-api` dependency edge on the already
+locked workspace `base64` 0.22 (`MIT OR Apache-2.0`), which `fc-model` and
+`fc-formats` already use, so `text.proof_font` can return the compiled WOFF 2 of
+a proof sheet to the browser as text. No package or locked version is added.
+
 Surveyed 2026-09-04 with `cargo metadata --format-version 1`, over the fully
 resolved graph reachable from the 12 workspace members, all dependency kinds
 included (normal, build and dev): **596 external packages**.

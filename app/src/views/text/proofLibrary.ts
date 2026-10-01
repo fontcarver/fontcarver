@@ -40,6 +40,11 @@ function boundedString(value: unknown, maximum: number): value is string {
   return typeof value === 'string' && value.length <= maximum
 }
 
+/** The one validator every entry passes, whatever supplied it. */
+export function checkedProofEntry(value: unknown): ProofEntry {
+  return checkedEntry(value)
+}
+
 function checkedEntry(value: unknown): ProofEntry {
   if (
     !isRecord(value) ||

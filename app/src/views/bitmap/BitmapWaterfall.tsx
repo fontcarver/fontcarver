@@ -33,8 +33,8 @@ function Line({ line }: { line: BitmapPreviewLine }) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     const css = getComputedStyle(canvas),
-      paper = css.getPropertyValue('--color-canvas').trim() || '#fff',
-      ink = css.getPropertyValue('--color-text').trim() || '#171717'
+      paper = css.getPropertyValue('--bm-paper').trim() || '#fdfdfb',
+      ink = css.getPropertyValue('--bm-ink').trim() || '#101217'
     ctx.fillStyle = paper
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     let x = line.ppem
@@ -74,20 +74,40 @@ function Line({ line }: { line: BitmapPreviewLine }) {
     </div>
   )
 }
+/**
+ * Every strike's own pixels, for a sample string or for one glyph.
+ *
+ * Single-glyph mode names the glyph rather than spelling it, so an unencoded
+ * glyph — `.notdef`, a stylistic alternate, the reusable pixel glyph — is shown
+ * at every size just like an encoded one.
+ */
 export function BitmapWaterfall({
   doc,
   revision,
+  glyph,
 }: {
   doc: DocId
   revision: number
+  /** Selected glyph name, shown on its own in single-glyph mode. */
+  glyph?: string
 }) {
   const { t } = useTranslation(),
     [text, setText] = useState('FontCarver 字体点阵 0123456789'),
+    [single, setSingle] = useState(false),
     [lines, setLines] = useState<BitmapPreviewLine[]>([])
+  const named = single && Boolean(glyph)
+  const sample = named ? '' : text
+  const selection = named && glyph ? [glyph] : []
+  const key = selection.join(' ')
   useEffect(() => {
     let current = true
     const timer = setTimeout(() => {
-      void call('bitmap.preview', { doc, text })
+      const glyphs = key ? key.split(' ') : []
+      if (!sample && !glyphs.length) {
+        setLines([])
+        return
+      }
+      void call('bitmap.preview', { doc, text: sample, glyphs })
         .then((result) => {
           if (current) setLines(result)
         })
@@ -97,17 +117,29 @@ export function BitmapWaterfall({
       current = false
       clearTimeout(timer)
     }
-  }, [doc, text, revision])
+  }, [doc, sample, key, revision])
   return (
     <section className={styles.waterfall}>
       <label>
         {t('bitmap.waterfall')}
         <input
           value={text}
+          disabled={single}
           onChange={(e) => {
             if ([...e.target.value].length <= 128) setText(e.target.value)
           }}
         />
+      </label>
+      <label className={styles.inline}>
+        <input
+          type="checkbox"
+          checked={single}
+          disabled={!glyph}
+          onChange={(event) => setSingle(event.target.checked)}
+        />
+        {glyph
+          ? t('bitmap.waterfallGlyph', { glyph })
+          : t('bitmap.waterfallGlyphEmpty')}
       </label>
       <p className={styles.hint}>{t('bitmap.waterfallHint')}</p>
       {lines.map((line) => (

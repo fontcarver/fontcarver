@@ -7,6 +7,8 @@ export interface BitmapRenderOptions {
   frame?: BitmapFrame
   grid?: boolean
   advance?: number
+  /** Shade the column the advance width occupies, behind the pixels. */
+  advanceColumn?: boolean
   outlinePath?: string
   unitsPerPixel?: number
   resolved?: Bitmap
@@ -35,6 +37,20 @@ export function renderBitmap(
   if (guides) {
     ctx.fillStyle = colors.paper
     ctx.fillRect(0, 0, canvas.width, canvas.height)
+  }
+  // The advance column goes under the pixels: it is the space the glyph claims
+  // in a line of text, so ink standing outside it has to stay visible.
+  if (
+    guides &&
+    options.advanceColumn &&
+    options.advance !== undefined &&
+    options.advance > 0
+  ) {
+    ctx.save()
+    ctx.globalAlpha = 0.12
+    ctx.fillStyle = colors.accent
+    ctx.fillRect(-frame.left * zoom, 0, options.advance * zoom, canvas.height)
+    ctx.restore()
   }
   const pixels = options.resolved ?? b
   const offsetX = (pixels.origin_x - frame.left) * zoom

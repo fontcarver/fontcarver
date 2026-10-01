@@ -12,9 +12,11 @@
 import { spacingLockedForDocument } from '../views/text/kerningModes'
 import type { Point2, Viewport } from '../canvas/Viewport'
 import {
-  METRIC_CURSOR,
   MetricsDrag,
+  metricCursor,
+  metricHandleAxis,
   metricsHit,
+  withPreview,
 } from '../views/glyph/metricsHandles'
 import {
   RulerGuideDrag,
@@ -36,6 +38,8 @@ export interface AsideContext {
   labels: () => EditorLabels
   /** Whether the rulers are drawn; ⌥-dragging one only works when they are. */
   rulersVisible: () => boolean
+  /** Whether vertical writing mode is on, which the y-handles require. */
+  verticalMode: () => boolean
   /** A gesture still closing, which a new one's `edit_begin` waits for. */
   after: () => Promise<unknown> | undefined
   /** Closes any coalesced run before a single-shot `doc.apply`. */
@@ -80,7 +84,8 @@ export class AsideGestures {
 
   /** The cursor to show over a metric line, or `null` for none. */
   cursorAt(at: Point2 | null): string | null {
-    return this.handleAt(at) === null ? null : METRIC_CURSOR
+    const handle = this.handleAt(at)
+    return handle === null ? null : metricCursor(handle)
   }
 
   /** Reconciles a reload, cancelling live ownership when identity changed. */
@@ -114,7 +119,7 @@ export class AsideGestures {
   pointerMove(at: Point2, modifiers: Modifiers): boolean {
     const font = this.context.viewport.toFont(at)
     if (this.metrics) {
-      this.metrics.move(font.x, modifiers.shift)
+      this.metrics.move(font.x, modifiers.shift, font.y)
       this.context.repaint()
       return true
     }
@@ -189,9 +194,10 @@ export class AsideGestures {
     if (!at || !source || spacingLockedForDocument(source.doc)) return null
     const prior = this.priorMetrics(source)
     return metricsHit(
-      prior ? { ...source.metrics, ...prior.preview } : source.metrics,
+      prior ? withPreview(source.metrics, prior.preview) : source.metrics,
       this.context.viewport,
       at,
+      this.context.verticalMode(),
     )
   }
 
@@ -206,14 +212,20 @@ export class AsideGestures {
       glyph: target.glyph,
       layer: target.layer,
       handle,
-      origin: this.context.viewport.toFont(at).x,
+      origin:
+        metricHandleAxis(handle) === 'y'
+          ? this.context.viewport.toFont(at).y
+          : this.context.viewport.toFont(at).x,
       start: prior
         ? prior.preview
         : {
             width: source.outline.width,
             lsb: source.outline.lsb,
             rsb: source.outline.rsb,
+            verticalOrigin: source.metrics.verticalOrigin,
+            verticalWidth: source.metrics.verticalWidth,
           },
+      stored: source.verticalOverrides,
       outline: prior
         ? {
             ...source.outline,
@@ -222,7 +234,10 @@ export class AsideGestures {
             components: [...prior.geometryPreview.components],
           }
         : source.outline,
-      label: this.context.labels().setMetrics,
+      label:
+        metricHandleAxis(handle) === 'y'
+          ? this.context.labels().setVerticalMetrics
+          : this.context.labels().setMetrics,
       after: this.context.after(),
       onError: this.context.onError,
     })

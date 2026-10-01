@@ -72,3 +72,8 @@
   color: var(--color-text-muted);
   font-size: var(--text-size-xs);
 }
+/* The visible Import button is the accessible control; this input is only its
+   file picker, so it is removed from the tree rather than merely offscreen. */
+.fileInput {
+  display: none;
+}

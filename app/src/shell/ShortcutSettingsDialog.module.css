@@ -84,3 +84,26 @@
 .alert {
   flex-shrink: 0;
 }
+
+/*
+ * A conflicting binding is marked on its own row: the summary at the top of the
+ * dialog says a save is blocked, and this says which field blocks it.
+ */
+.row input.conflicting {
+  border-color: var(--color-danger);
+}
+
+.rowConflict,
+.rowAllowed {
+  grid-column: 1 / -1;
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-size-xs);
+}
+
+.rowConflict {
+  color: var(--color-danger);
+}
+
+.rowAllowed {
+  color: var(--color-warning);
+}

@@ -7,7 +7,10 @@ use serde::{Deserialize, Serialize};
 use crate::GlyphName;
 
 mod ops;
-pub use ops::{MAX_BITMAP_BYTES, MAX_BITMAP_SIZE, MAX_FONT_BITMAP_BYTES};
+pub use ops::{
+    validate_strike_property, MAX_BITMAP_BYTES, MAX_BITMAP_SIZE, MAX_FONT_BITMAP_BYTES,
+    MAX_PROPERTY_NAME_CHARS, MAX_PROPERTY_VALUE_BYTES, MAX_STRIKE_PROPERTIES,
+};
 
 /// A value from a BDF properties dictionary.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

@@ -311,3 +311,47 @@ fn native_save_reopens_transformed_references_and_original_contours() {
         })
         .unwrap();
 }
+
+/// Row 112: the transform grid applies every staged component in one batch, so
+/// a locked component must stop the whole set rather than let half of it land.
+#[test]
+fn a_locked_component_refuses_the_whole_transform_batch() {
+    let session = Session::new();
+    let id = session.open_font(test_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            doc.apply(construction(doc, WOOD), "Construct ⿰木木")
+                .unwrap();
+            let layer = doc.font.glyph(FOREST).unwrap().layers[0].id.clone();
+            doc.font.glyph_mut(FOREST).unwrap().layers[0].components[1].locked = true;
+            let constructed = doc.font.clone();
+            let entries = doc.undo_len();
+
+            // Exactly what the grid sends: one SetComponent per changed row.
+            let batch = Command::Batch(vec![
+                Command::SetComponent {
+                    glyph: FOREST.into(),
+                    layer: layer.clone(),
+                    index: 0,
+                    component: component(WOOD, [0.52, 0.0, 0.0, 1.0, 0.0, 20.0]),
+                },
+                Command::SetComponent {
+                    glyph: FOREST.into(),
+                    layer,
+                    index: 1,
+                    component: component(WOOD, [0.5, 0.0, 0.0, 1.0, 480.0, 0.0]),
+                },
+            ]);
+            let error = doc
+                .apply(batch, "Transform CJK components")
+                .expect_err("a locked component must refuse the batch");
+            assert!(
+                error.to_string().contains("locked"),
+                "unexpected error: {error}"
+            );
+            // Neither row was written and no history entry was added.
+            assert_eq!(doc.font, constructed);
+            assert_eq!(doc.undo_len(), entries);
+        })
+        .unwrap();
+}

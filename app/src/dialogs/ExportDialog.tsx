@@ -9,6 +9,7 @@ import {
   type ExportFormat,
   type ExportProfile,
   type ExportReport,
+  type TtAutohintOptions,
 } from '../api'
 import { Button } from '../components/Button'
 import { Dialog } from '../components/Dialog'
@@ -40,8 +41,10 @@ import {
   DEFAULT_EXPORT_PROCESSING,
   exportOptionsFor,
   processingFromProfile,
+  ttAutohintFromProfile,
 } from './exportOptionState'
 
+import { DEFAULT_TT_AUTOHINT } from '../views/hints/TtAutohintFields'
 import {
   ExportProcessingOptions,
   type ExportOptionField,
@@ -77,6 +80,9 @@ export function ExportDialog({ summary }: ExportDialogProps) {
   )
   const [options, setOptions] = useState<Record<ExportOptionField, boolean>>({
     ...DEFAULT_EXPORT_PROCESSING,
+  })
+  const [ttAutohint, setTtAutohint] = useState<TtAutohintOptions>({
+    ...DEFAULT_TT_AUTOHINT,
   })
   const [glyph, setGlyph] = useState('')
   const [busy, setBusy] = useState(false)
@@ -150,6 +156,7 @@ export function ExportDialog({ summary }: ExportDialogProps) {
     master,
     glyph,
     options,
+    ttAutohint,
   })
   const applyProfile = (profile: ExportProfile) => {
     const stored = profile.options
@@ -169,6 +176,7 @@ export function ExportDialog({ summary }: ExportDialogProps) {
         : (summary.masters[0]?.id ?? null),
     )
     setOptions(processingFromProfile(stored))
+    setTtAutohint(ttAutohintFromProfile(stored))
     setBitmapKey(stored.bitmap_strike?.join(':') ?? '')
     setGlyph(stored.glyph ?? '')
   }
@@ -359,6 +367,8 @@ export function ExportDialog({ summary }: ExportDialogProps) {
           onChange={(field, value) =>
             setOptions((current) => ({ ...current, [field]: value }))
           }
+          ttAutohint={ttAutohint}
+          onTtAutohintChange={setTtAutohint}
         />
 
         <ExportPreflight doc={summary.doc} busy={busy} onNavigate={close} />

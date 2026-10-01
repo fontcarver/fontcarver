@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Component } from '../../../api'
-import {
-  IdsError,
-  idsCommand,
-  layoutIds,
-  radicalCodepoints,
-} from './cjkConstruction'
+import { IdsError, idsCommand, layoutIds } from './cjkConstruction'
 
 const layout = (text: string) => layoutIds(text, 1000, 1000, -200)
 
@@ -154,21 +149,5 @@ describe('idsCommand', () => {
         AddComponent: { glyph: 'target', layer: 'regular', component: entry },
       })),
     })
-  })
-})
-
-describe('radicalCodepoints', () => {
-  it('includes Kangxi forms, normalized ideographs and common variants once', () => {
-    const points = radicalCodepoints()
-    expect(new Set(points).size).toBe(points.length)
-    for (let point = 0x2f00; point <= 0x2fd5; point += 1) {
-      expect(points).toContain(point)
-      expect(points).toContain(
-        String.fromCodePoint(point).normalize('NFKC').codePointAt(0),
-      )
-    }
-    for (const variant of '亻氵忄扌讠钅纟礻衤阝艹辶刂灬犭饣') {
-      expect(points).toContain(variant.codePointAt(0))
-    }
   })
 })

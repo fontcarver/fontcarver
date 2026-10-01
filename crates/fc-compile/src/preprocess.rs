@@ -64,10 +64,12 @@ pub(crate) fn ps_autohint(font: &Font, master: &MasterId) -> Result<Font, Error>
         .filter(|g| g.export)
         .map(|g| g.name.clone())
         .collect::<Vec<_>>();
-    let (hints, private) = fc_hint::ps::analyze(font, master, &names)
+    let analysis = fc_hint::ps::analyze(font, master, &names)
         .map_err(|e| Error::InvalidSource(e.to_string()))?;
     let mut prepared = font.clone();
-    for (name, hints) in hints {
+    // Analysis carries each layer's flex hints, dot sections and unresolved-flex
+    // marker through, so replacing the whole hint set loses nothing.
+    for (name, hints) in analysis.hints {
         if let Some(layer) = prepared
             .glyph_mut(&name)
             .and_then(|g| g.master_layer_mut(master))
@@ -76,7 +78,15 @@ pub(crate) fn ps_autohint(font: &Font, master: &MasterId) -> Result<Font, Error>
         }
     }
     if let Some(master) = prepared.masters.iter_mut().find(|m| m.id == *master) {
-        master.private_dict = private;
+        master.private_dict = analysis.private;
+        for (index, private) in analysis.cid_private {
+            if let Some(slot) = master
+                .cff_private_dicts
+                .get_mut(usize::from(index).saturating_sub(1))
+            {
+                *slot = private;
+            }
+        }
     }
     Ok(prepared)
 }

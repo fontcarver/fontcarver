@@ -18,6 +18,7 @@ import { activeEditor } from '../../../editor/activeEditor'
 import type { LayerTarget } from '../../../editor/pointCommands'
 import { errorNotice } from '../../../i18n/errors'
 import { StylePreview } from '../../style/StylePreview'
+import { ConstructionSources } from './ConstructionSources'
 import { GlyphPicker } from './GlyphPicker'
 import styles from './layerEffects.module.css'
 
@@ -297,6 +298,12 @@ export function ReusableConstructionEditor({
               }),
             )}
             onChange={(value) => changed(() => setMode(value))}
+          />
+          <ConstructionSources
+            doc={target.doc}
+            kind={mode}
+            source={source}
+            onPick={(name) => changed(() => setSource(name))}
           />
           <Button onClick={() => setPicking(true)}>
             {source || t('construction.chooseSource')}

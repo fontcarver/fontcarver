@@ -18,6 +18,9 @@ pub struct OpticalBatchParams {
     /// Permit replacing effective existing kerning with concrete pair exceptions.
     #[serde(default)]
     pub replace_existing: bool,
+    /// Apply only these reviewed proposals; absent applies every proposal.
+    #[serde(default)]
+    pub accepted: Option<Vec<fc_doc::optical::OpticalSelection>>,
     /// Validate and preview without mutation.
     pub dry_run: bool,
     /// Required on apply, from the reviewed preview.
@@ -35,8 +38,11 @@ pub struct OpticalBatchResult {
     pub generation: u64,
     /// Distinct selected glyph count.
     pub glyph_count: u32,
-    /// Changed master layers for spacing, or changed pairs for kerning.
+    /// Changed master layers for spacing, or changed pairs for kerning, after the
+    /// acceptance filter.
     pub changed_count: u32,
+    /// Every proposed change, for a review table that accepts or rejects rows.
+    pub proposals: Vec<fc_doc::optical::OpticalProposalEntry>,
     /// Skipped layers or pairs, with stable reason codes.
     pub skipped: Vec<fc_doc::optical::OpticalSkip>,
     /// First sixteen changed layers or pairs for review.

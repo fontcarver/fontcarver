@@ -46,13 +46,18 @@ export interface EditorLabels {
   insertPoint: string
   convertSegment: string
   setMetrics: string
+  /** Undo label of a vertical origin or vertical advance drag. */
+  setVerticalMetrics: string
   addGuide: string
   /** Why a press on a locked path, component or guide did nothing. */
   lockedTarget: string
   /** Why a press anywhere in a locked glyph does nothing. */
   lockedGlyph: string
-  /** The HUD line a sidebearing drag shows: the handle's name and its value. */
-  metricHud: (handle: 'lsb' | 'rsb' | 'width', value: number) => string
+  /** The HUD line a metric drag shows: the handle's name and its value. */
+  metricHud: (
+    handle: 'lsb' | 'rsb' | 'width' | 'vorigin' | 'vadvance',
+    value: number,
+  ) => string
   /** Names the HUD gives a snap target, already translated. */
   snap: SnapNames
   hud: HudLabels
@@ -71,6 +76,13 @@ export interface EditorSource {
   glyphLocked?: boolean
   guides: readonly ScopedGuide[]
   metrics: SceneMetrics
+  /**
+   * The layer's own vertical overrides, `null` where it inherits the master's.
+   *
+   * The effective values are in `metrics`; these are what the layer stores, so
+   * a vertical metric drag can leave an inherited field inherited.
+   */
+  verticalOverrides?: { origin: number | null; advance: number | null }
   master: string | null
   /** Which curve flavour a tool should draw new contours in. */
   curves: LayerCurves

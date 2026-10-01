@@ -485,3 +485,172 @@ fn snap_and_link_batch_projects_unlinked_node_and_undoes_as_one_edit() {
         })
         .unwrap();
 }
+
+#[test]
+fn a_locked_guide_refuses_every_change_until_it_is_explicitly_unlocked() {
+    let session = Session::new();
+    let id = session.open_font(plain_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let layer_id = layer(doc).id.clone();
+            // Link first, so the lock has both an owner and a binding to protect.
+            doc.apply(
+                Command::NodeLinks(NodeLinkCommand::LinkToGuide {
+                    glyph: "base".into(),
+                    layer: layer_id.clone(),
+                    guide_index: 0,
+                    points: vec![point_ref(0)],
+                }),
+                "Attach to guide",
+            )
+            .unwrap();
+            let stored = layer(doc).guides[0].clone();
+            doc.apply(
+                Command::SetGuide {
+                    glyph: Some("base".into()),
+                    layer: Some(layer_id.clone()),
+                    master: None,
+                    index: 0,
+                    guide: Guide {
+                        locked: true,
+                        ..stored.clone()
+                    },
+                },
+                "Lock the guide",
+            )
+            .unwrap();
+            let locked = doc.font.clone();
+            assert!(layer(doc).guides[0].locked);
+
+            let refused: Vec<Command> = vec![
+                Command::NodeLinks(NodeLinkCommand::LinkToGuide {
+                    glyph: "base".into(),
+                    layer: layer_id.clone(),
+                    guide_index: 0,
+                    points: vec![point_ref(2)],
+                }),
+                Command::NodeLinks(NodeLinkCommand::ProjectToGuide {
+                    glyph: "base".into(),
+                    layer: layer_id.clone(),
+                    guide_index: 0,
+                    points: vec![point_ref(2)],
+                }),
+                Command::NodeLinks(NodeLinkCommand::UnlinkGuide {
+                    glyph: "base".into(),
+                    layer: layer_id.clone(),
+                    guide_index: 0,
+                }),
+                Command::SetGuide {
+                    glyph: Some("base".into()),
+                    layer: Some(layer_id.clone()),
+                    master: None,
+                    index: 0,
+                    guide: Guide {
+                        y: 120.,
+                        locked: true,
+                        ..stored.clone()
+                    },
+                },
+                Command::RemoveGuide {
+                    glyph: Some("base".into()),
+                    layer: Some(layer_id.clone()),
+                    master: None,
+                    index: 0,
+                },
+            ];
+            for command in refused {
+                let error = doc.apply(command, "Refused").unwrap_err().to_string();
+                assert!(error.contains("locked"), "unexpected error: {error}");
+                assert_eq!(doc.font, locked, "a refused command changed the document");
+            }
+
+            // The one permitted write is the explicit unlock, and afterwards the
+            // ordinary edits work again.
+            doc.apply(
+                Command::SetGuide {
+                    glyph: Some("base".into()),
+                    layer: Some(layer_id.clone()),
+                    master: None,
+                    index: 0,
+                    guide: stored.clone(),
+                },
+                "Unlock the guide",
+            )
+            .unwrap();
+            assert!(!layer(doc).guides[0].locked);
+            doc.apply(
+                Command::NodeLinks(NodeLinkCommand::LinkToGuide {
+                    glyph: "base".into(),
+                    layer: layer_id.clone(),
+                    guide_index: 0,
+                    points: vec![point_ref(2)],
+                }),
+                "Attach after unlocking",
+            )
+            .unwrap();
+            assert_eq!(layer(doc).linked_guides[0].nodes.len(), 2);
+            // Undo walks back over the unlock without resurrecting a changed guide.
+            doc.undo().unwrap();
+            doc.undo().unwrap();
+            assert_eq!(doc.font, locked);
+        })
+        .unwrap();
+}
+
+#[test]
+fn a_locked_guide_still_moves_the_nodes_it_already_owns() {
+    let session = Session::new();
+    let id = session.open_font(plain_font(), None);
+    session
+        .with_doc_mut(id, |doc| {
+            let layer_id = layer(doc).id.clone();
+            doc.apply(
+                Command::NodeLinks(NodeLinkCommand::LinkToGuide {
+                    glyph: "base".into(),
+                    layer: layer_id.clone(),
+                    guide_index: 0,
+                    points: vec![point_ref(0)],
+                }),
+                "Attach to guide",
+            )
+            .unwrap();
+            let stored = layer(doc).guides[0].clone();
+            // Locking and moving in one command is still a move of a guide that
+            // ends up locked, which an unlocked guide is allowed to do.
+            doc.apply(
+                Command::SetGuide {
+                    glyph: Some("base".into()),
+                    layer: Some(layer_id.clone()),
+                    master: None,
+                    index: 0,
+                    guide: Guide {
+                        y: 40.,
+                        locked: true,
+                        ..stored.clone()
+                    },
+                },
+                "Move and lock",
+            )
+            .unwrap();
+            assert_eq!(layer(doc).contours[0].points[0].y, 60.);
+            doc.undo().unwrap();
+            // An unlocked guide moves its nodes as before.
+            doc.apply(
+                Command::SetGuide {
+                    glyph: Some("base".into()),
+                    layer: Some(layer_id.clone()),
+                    master: None,
+                    index: 0,
+                    guide: Guide {
+                        y: 60.,
+                        ..stored.clone()
+                    },
+                },
+                "Move the guide",
+            )
+            .unwrap();
+            // The node keeps its stored offset of twenty units from the guide.
+            assert_eq!(layer(doc).contours[0].points[0].y, 80.);
+        })
+        .unwrap();
+}

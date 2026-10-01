@@ -6,6 +6,23 @@ export interface ProofEntry {
   glyphs: readonly PreviewGlyph[]
   unitsPerEm: number
   size: number
+  /** Source text, required by the embedded-font HTML rendering. */
+  text?: string
+  /** Writing direction, which the embedded-font rendering reproduces in CSS. */
+  direction?: 'ltr' | 'rtl' | 'ttb'
+  /** BCP 47 language tag for the `lang` attribute. */
+  language?: string
+  /** Feature overrides written as `font-feature-settings`. */
+  features?: readonly [tag: string, enabled: boolean][]
+}
+
+/** The compiled face an embedded-font HTML sheet carries inside itself. */
+export interface ProofSheetFont {
+  /** Standard base64 of the WOFF 2 bytes, exactly as the kernel returned them. */
+  woff2Base64: string
+  familyName: string
+  styleName: string
+  unitsPerEm: number
 }
 
 type Segment = { command: string; values: number[] }
@@ -120,6 +137,12 @@ function prepare(entries: readonly ProofEntry[]): Run[] {
   })
 }
 
+/** The one CSS family name the sheet declares, so no name can inject CSS. */
+const EMBEDDED_FAMILY = 'FCProofFont'
+const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/
+const LANGUAGE = /^[A-Za-z0-9]{1,8}(?:-[A-Za-z0-9]{1,8})*$/
+const FEATURE_TAG = /^[\x20-\x7e]{4}$/
+
 function escapeHtml(text: string): string {
   return text.replace(
     /[&<>"']/g,
@@ -134,28 +157,76 @@ function escapeHtml(text: string): string {
   )
 }
 
-/** Exports a standalone printable HTML proof; all specimen glyphs are outlines. */
+function featureSettings(
+  features: readonly [string, boolean][] | undefined,
+): string {
+  // CSS strings use single quotes here: the value is written into a
+  // double-quoted HTML attribute, and a tag must never be able to close it.
+  const settings = (features ?? [])
+    .filter(([tag]) => FEATURE_TAG.test(tag) && !/['"\\]/.test(tag))
+    .map(([tag, enabled]) => `'${tag}' ${enabled ? 1 : 0}`)
+  return settings.length ? `font-feature-settings:${settings.join(',')};` : ''
+}
+
+function specimen(run: Run): string {
+  if (typeof run.text !== 'string' || run.text === '')
+    throw new Error('Invalid proof text')
+  const language =
+    run.language && LANGUAGE.test(run.language) ? run.language : undefined
+  const vertical = run.direction === 'ttb'
+  return `<p class="specimen${vertical ? ' vertical' : ''}" style="${escapeHtml(
+    `font-size:${number(run.size)}pt;${featureSettings(run.features)}`,
+  )}"${
+    language ? ` lang="${escapeHtml(language)}"` : ''
+  }${run.direction === 'rtl' ? ' dir="rtl"' : ' dir="ltr"'}>${escapeHtml(run.text)}</p>`
+}
+
+function outlines(run: Run): string {
+  const width = run.maxX - run.minX
+  const height = run.maxY - run.minY
+  const paths = run.glyphs
+    .map(
+      (glyph) =>
+        `<path d="${escapeHtml(glyph.path)}" transform="translate(${number(glyph.x)} ${number(glyph.y)})"/>`,
+    )
+    .join('')
+  return `<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${escapeHtml(run.label)}" viewBox="${number(run.minX)} ${number(-run.maxY)} ${number(width)} ${number(height)}" width="${number((width * run.size) / run.unitsPerEm)}pt" height="${number((height * run.size) / run.unitsPerEm)}pt"><g transform="scale(1 -1)">${paths}</g></svg>`
+}
+
+/**
+ * Exports a standalone printable HTML proof.
+ *
+ * Without `font` every specimen is a vector outline of the shaped run, which is
+ * exactly what the editor drew. With `font` the page embeds that compiled WOFF 2
+ * and sets the real text in it, so the sheet is selectable, searchable and
+ * re-flowable and proves the exported font itself works in a browser. Either way
+ * the file is self-contained: no network request, script or external stylesheet.
+ */
 export function exportProofHtml(
   title: string,
   entries: readonly ProofEntry[],
+  font?: ProofSheetFont,
 ): string {
+  if (font && !BASE64.test(font.woff2Base64))
+    throw new Error('Invalid embedded proof font')
   const sections = prepare(entries)
-    .map((run) => {
-      const width = run.maxX - run.minX
-      const height = run.maxY - run.minY
-      const paths = run.glyphs
-        .map(
-          (glyph) =>
-            `<path d="${escapeHtml(glyph.path)}" transform="translate(${number(glyph.x)} ${number(glyph.y)})"/>`,
-        )
-        .join('')
-      return `<section><h2>${escapeHtml(run.label)}</h2><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${escapeHtml(run.label)}" viewBox="${number(run.minX)} ${number(-run.maxY)} ${number(width)} ${number(height)}" width="${number((width * run.size) / run.unitsPerEm)}pt" height="${number((height * run.size) / run.unitsPerEm)}pt"><g transform="scale(1 -1)">${paths}</g></svg></section>`
-    })
+    .map(
+      (run) =>
+        `<section data-size="${number(run.size)}"><h2>${escapeHtml(run.label)}</h2><p class="meta">${number(run.size)} pt</p>${
+          font ? specimen(run) : outlines(run)
+        }</section>`,
+    )
     .join('\n')
+  const face = font
+    ? `@font-face{font-family:"${EMBEDDED_FAMILY}";src:url(data:font/woff2;base64,${font.woff2Base64}) format("woff2");font-display:block}.specimen{font-family:"${EMBEDDED_FAMILY}";margin:0;line-height:1.4;overflow-wrap:anywhere}.specimen.vertical{writing-mode:vertical-rl;text-orientation:upright;max-height:60vh}`
+    : ''
+  const subtitle = font
+    ? `<p class="meta">${escapeHtml(`${font.familyName} ${font.styleName}`.trim())} · ${font.unitsPerEm} units/em</p>`
+    : ''
   return `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title>
-<style>body{font:14px system-ui,sans-serif;color:#17202a;background:white;max-width:1000px;margin:40px auto;padding:0 24px}h1{font-size:24px;font-weight:600;margin-bottom:32px}section{break-inside:avoid;border-top:1px solid #d9dde2;padding:16px 0 24px}h2{font-size:12px;font-weight:500;overflow-wrap:anywhere;margin:0 0 16px;color:#525b66}svg{display:block;max-width:100%;height:auto;fill:currentColor}@page{size:A4;margin:16mm}@media print{body{margin:0;padding:0}h1{font-size:18pt}}</style></head>
-<body><h1>${escapeHtml(title)}</h1>${sections}</body></html>`
+<style>body{font:14px system-ui,sans-serif;color:#17202a;background:white;max-width:1000px;margin:40px auto;padding:0 24px}h1{font-size:24px;font-weight:600;margin-bottom:32px}section{break-inside:avoid;border-top:1px solid #d9dde2;padding:16px 0 24px}h2{font-size:12px;font-weight:500;overflow-wrap:anywhere;margin:0 0 16px;color:#525b66}.meta{font-size:11px;margin:0 0 12px;color:#6b7480}svg{display:block;max-width:100%;height:auto;fill:currentColor}${face}@page{size:A4;margin:16mm}@media print{body{margin:0;padding:0}h1{font-size:18pt}}</style></head>
+<body><h1>${escapeHtml(title)}</h1>${subtitle}${sections}</body></html>`
 }
 
 function unicodeHex(value: string): string {
@@ -181,11 +252,19 @@ function portableLabel(value: string): string {
 function labelLines(value: string, max: number): string[] {
   const lines: string[] = []
   let line = ''
+  let previousEscaped = false
   for (const character of value) {
-    const token = portableLabel(character)
+    const escaped = portableLabel(character)
+    // Two escapes in a row would otherwise read as one token
+    // (`U+6C38U+6771`), so a separator goes between them and nowhere else.
+    const token =
+      previousEscaped && escaped.startsWith('U+') ? ` ${escaped}` : escaped
+    previousEscaped = escaped.startsWith('U+')
     if (line.length + token.length > max) {
       lines.push(line)
       line = ''
+      line += token.trimStart()
+      continue
     }
     line += token
   }
@@ -278,7 +357,9 @@ function pdfPages(title: string, runs: Run[]): string[] {
       y -= chunk.length * 14 + 20
     }
     // Reserve one line for a numeric scale annotation when a run needs fitting.
-    const labelHeight = labels.length * 14 + 26
+    // Every row names its own point size on a line of its own, so a waterfall
+    // is readable as one and the extracted text says what each row is.
+    const labelHeight = labels.length * 14 + 28
     const availableHeight = PAGE_HEIGHT - 2 * MARGIN - 110 - labelHeight
     const scale = Math.min(
       run.size / run.unitsPerEm,
@@ -290,9 +371,17 @@ function pdfPages(title: string, runs: Run[]): string[] {
       finish()
       begin()
     }
-    if (scale < run.size / run.unitsPerEm - 1e-12)
-      labels.push(`[${number(run.size)} -> ${number(scale * run.unitsPerEm)}]`)
+    const annotation =
+      scale < run.size / run.unitsPerEm - 1e-12
+        ? `${number(run.size)} pt  [${number(run.size)} -> ${number(scale * run.unitsPerEm)}]`
+        : `${number(run.size)} pt`
     content += pdfLabel(originalLabel, labels, y - 10, 10)
+    content += pdfLabel(
+      annotation,
+      [annotation],
+      y - 10 - labels.length * 14,
+      9,
+    )
     const baseline = y - labelHeight - run.maxY * scale
     const preciseScale = scale.toFixed(12).replace(/0+$/, '').replace(/\.$/, '')
     content += `q\n${preciseScale} 0 0 ${preciseScale} ${number(MARGIN - run.minX * scale)} ${number(baseline)} cm\n`

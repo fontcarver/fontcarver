@@ -13,6 +13,7 @@ import {
   type ProofEntry,
   writeProofLibrary,
 } from './proofLibrary'
+import { builtinProofEntries } from './proofSamples'
 import { useProofLibrary } from './useProofLibrary'
 
 const entry: ProofEntry = {
@@ -236,6 +237,69 @@ describe('useProofLibrary', () => {
     })
     expect(result.current.entries[0]?.id).toBe('other-doc')
     expect(result.current.saving).toBe(false)
+  })
+
+  it('adopts built-in samples once and merges an imported document', async () => {
+    let view = fontView([entry])
+    const transport = createMockTransport({
+      'doc.font_info': () => view,
+      'doc.apply': (params) => {
+        const command = (
+          params as {
+            command: { SetFontInfo: { info: { user_data: unknown } } }
+          }
+        ).command
+        view = makeFontInfoView({
+          info: makeFontInfo({ user_data: command.SetFontInfo.info.user_data }),
+        })
+        return noChange()
+      },
+    })
+    setTransport(transport)
+    const { result } = renderHook(() => useProofLibrary(1))
+    await waitFor(() => expect(result.current.entries).toHaveLength(1))
+    const samples = builtinProofEntries((key) => key)
+    await act(async () =>
+      expect(await result.current.adopt(samples)).toBe(true),
+    )
+    await waitFor(() =>
+      expect(result.current.entries).toHaveLength(1 + samples.length),
+    )
+    // The stored library is still readable, with unrelated vendor data intact.
+    expect(readProofLibrary(view.info.user_data)).toHaveLength(
+      1 + samples.length,
+    )
+    expect(view.info.user_data).toMatchObject({ vendor: { untouched: true } })
+    // Adopting again is a no-op rather than a duplicate.
+    await act(async () =>
+      expect(await result.current.adopt(samples)).toBe(true),
+    )
+    await waitFor(() =>
+      expect(result.current.entries).toHaveLength(1 + samples.length),
+    )
+
+    await act(async () =>
+      expect(
+        await result.current.importText(
+          'Latin\tSpacing\tLatn\ten\tltr\tAV corrected\n',
+        ),
+      ).toBe(true),
+    )
+    await waitFor(() =>
+      expect(
+        result.current.entries.find((item) => item.id === entry.id)?.text,
+      ).toBe('AV corrected'),
+    )
+    expect(result.current.entries).toHaveLength(1 + samples.length)
+
+    // An unreadable document changes nothing and reports why.
+    await act(async () =>
+      expect(await result.current.importText('nonsense')).toBe(false),
+    )
+    expect(result.current.error).not.toBeNull()
+    expect(readProofLibrary(view.info.user_data)).toHaveLength(
+      1 + samples.length,
+    )
   })
 
   it('refuses saving over unknown library versions', async () => {

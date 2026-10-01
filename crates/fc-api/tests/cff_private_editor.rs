@@ -42,7 +42,18 @@ fn cid_dictionaries_and_layer_assignment_are_atomic_revision_checked_and_persist
     assert_eq!(edited["master"]["private_dict"]["std_hw"], 40.0);
     assert_eq!(edited["master"]["cff_private_dicts"][0]["std_hw"], 90.0);
     assert_eq!(edited["cff_private_dict_index"], 1);
-    assert_eq!(edited["can_autohint_ps"], false);
+    // Automatic analysis covers every dictionary the selection uses, so a glyph
+    // assigned to an additional CID dictionary is analysable too.
+    assert_eq!(edited["can_autohint_ps"], true);
+    let analysis = api
+        .call(
+            "hints.analyze",
+            json!({"doc":doc,"master":master,"glyphs":["I"]}),
+        )
+        .unwrap();
+    assert_eq!(analysis["cid_private"][0][0], 1);
+    assert_eq!(analysis["cid_private"][0][1]["std_hw"], 90.0);
+    assert_eq!(analysis["cid_private"][1], serde_json::Value::Null);
     session
         .with_doc_mut(doc, |doc| {
             let after = doc.font.clone();

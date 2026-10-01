@@ -4,6 +4,25 @@ use fc_model::MasterId;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+/// Pixel filter used when a copy between strikes changes the pixel size.
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, TS)]
+pub enum BitmapScaleFilter {
+    /// Take the source sample under each destination pixel's centre.
+    #[default]
+    Nearest,
+    /// Average the source over each destination pixel's exact footprint.
+    AreaAverage,
+}
+
+impl From<BitmapScaleFilter> for fc_raster::BitmapScaleFilter {
+    fn from(value: BitmapScaleFilter) -> Self {
+        match value {
+            BitmapScaleFilter::Nearest => Self::Nearest,
+            BitmapScaleFilter::AreaAverage => Self::AreaAverage,
+        }
+    }
+}
+
 /// Copy flattened glyph pixels into another strike, optionally scaling to its ppem.
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct BitmapTransferParams {
@@ -22,8 +41,12 @@ pub struct BitmapTransferParams {
     pub target_depth: u8,
     /// Glyph names; empty selects all images in the source strike.
     pub glyphs: Vec<String>,
-    /// Nearest-neighbour scale pixels, origins and metrics by target/source ppem.
+    /// Scale pixels, origins and metrics by target/source ppem.
     pub scale: bool,
+    /// Pixel filter used while scaling; omitted means nearest neighbour.
+    #[serde(default)]
+    #[ts(optional)]
+    pub filter: Option<BitmapScaleFilter>,
 }
 
 /// Replace outline pixels with references to a persistent editable pixel glyph.

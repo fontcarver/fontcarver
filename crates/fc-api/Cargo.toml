@@ -8,6 +8,7 @@ repository.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+base64.workspace = true
 dirs = "6"
 fc-compile = { path = "../fc-compile" }
 fc-doc = { path = "../fc-doc" }

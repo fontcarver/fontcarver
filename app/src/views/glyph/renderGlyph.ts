@@ -47,6 +47,12 @@ export interface GlyphOverlays {
   background: boolean
   /** The same glyph in every other master (design spec §4.1 item 4). */
   otherMasters: boolean
+  /**
+   * Vertical writing mode: the CJK vertical origin and advance become the
+   * primary metrics on the canvas, drawn solid with the vertical advance box,
+   * and their canvas handles are what the metric lines read as.
+   */
+  verticalMode: boolean
 }
 
 /** Every overlay on, which is the default for a read-only glyph tab. */
@@ -59,6 +65,7 @@ export const DEFAULT_OVERLAYS: GlyphOverlays = {
   rulers: true,
   background: true,
   otherMasters: false,
+  verticalMode: false,
 }
 
 /** Everything one frame needs. */
@@ -146,7 +153,12 @@ export function renderGlyph(
     drawMetrics(
       ctx,
       viewport,
-      { metrics: scene.metrics, labels: options.labels, showLabels: true },
+      {
+        metrics: scene.metrics,
+        labels: options.labels,
+        showLabels: true,
+        vertical: overlays.verticalMode,
+      },
       theme,
     )
 

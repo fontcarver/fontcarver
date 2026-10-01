@@ -186,6 +186,8 @@ fn repair_command_double_option(path: &Path) -> Result<(), std::io::Error> {
 fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
     VariableProofParams::export_all(config)?;
     VariableProof::export_all(config)?;
+    ProofFontParams::export_all(config)?;
+    ProofFont::export_all(config)?;
     SmartFiltersGetParams::export_all(config)?;
     SmartFiltersSetParams::export_all(config)?;
     SmartFiltersResult::export_all(config)?;
@@ -233,6 +235,9 @@ fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
     HintApplyParams::export_all(config)?;
     HintAnalyzeParams::export_all(config)?;
     HintAnalysis::export_all(config)?;
+    TtAutohinterParams::export_all(config)?;
+    TtAutohinterStatus::export_all(config)?;
+    TtAutohintOptions::export_all(config)?;
     VariationState::export_all(config)?;
     VariationApplyParams::export_all(config)?;
     VariationPreviewParams::export_all(config)?;
@@ -247,6 +252,7 @@ fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
     BitmapRasterParams::export_all(config)?;
     BitmapTraceParams::export_all(config)?;
     BitmapTransferParams::export_all(config)?;
+    BitmapScaleFilter::export_all(config)?;
     BitmapPixelComponentsParams::export_all(config)?;
     BitmapDetectParams::export_all(config)?;
     BitmapPixelDetection::export_all(config)?;
@@ -254,6 +260,9 @@ fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
     BitmapPreviewParams::export_all(config)?;
     BitmapPreviewLine::export_all(config)?;
     BitmapConfigureParams::export_all(config)?;
+    BitmapGridParams::export_all(config)?;
+    BitmapGridInfo::export_all(config)?;
+    BitmapGridChoice::export_all(config)?;
     BitmapState::export_all(config)?;
     BitmapGlyphParams::export_all(config)?;
     BitmapGlyphView::export_all(config)?;
@@ -357,6 +366,11 @@ fn export_api_types(config: &Config) -> Result<(), ts_rs::ExportError> {
     CidApplyParams::export_all(config)?;
     UnihanParams::export_all(config)?;
     UnihanInfo::export_all(config)?;
+    CjkRadicalsParams::export_all(config)?;
+    CjkRadicalForm::export_all(config)?;
+    CjkRadicalEntry::export_all(config)?;
+    CjkComponentUse::export_all(config)?;
+    CjkRadicalLibrary::export_all(config)?;
     GlyphFilter::export_all(config)?;
     GlyphSort::export_all(config)?;
     GlyphListParams::export_all(config)?;

@@ -1,9 +1,7 @@
 //! Atomic cross-strike transfers and editable pixel construction.
 use crate::{Api, ApiError, BitmapPixelComponentsParams, BitmapTransferParams, Change};
 use fc_doc::{command::BitmapCommand, Command};
-use fc_model::{
-    Bitmap, BitmapGlyph, BitmapStrike, Component, Contour, Glyph, Layer, Point, PointKind,
-};
+use fc_model::{BitmapGlyph, BitmapStrike, Component, Contour, Glyph, Layer, Point, PointKind};
 use std::collections::BTreeSet;
 
 fn invalid(message: impl Into<String>) -> ApiError {
@@ -16,6 +14,22 @@ fn metric(value: i16, factor: f64) -> Result<i16, ApiError> {
     }
     Ok(scaled as i16)
 }
+/// The glyph-name shape every FontCarver glyph source accepts.
+///
+/// A new pixel glyph becomes a real glyph in the font and is written to `.fcf`,
+/// to UFO and to the compiled `post` table, so a name with a space or a slash
+/// in it would only fail much later. The rule matches the Add Glyphs recipe
+/// grammar: an ASCII letter, `_` or `.` first, then letters, digits, `.` or `_`.
+fn conventional_glyph_name(name: &str) -> bool {
+    let mut characters = name.chars();
+    characters
+        .next()
+        .is_some_and(|first| first.is_ascii_alphabetic() || first == '_' || first == '.')
+        && name
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '.' | '_'))
+}
+
 fn names(strike: &BitmapStrike, selection: Vec<String>) -> Result<Vec<String>, ApiError> {
     let selected: BTreeSet<String> = if selection.is_empty() {
         strike.glyphs.keys().map(ToString::to_string).collect()
@@ -67,6 +81,7 @@ pub(crate) fn transfer(api: &Api, params: BitmapTransferParams) -> Result<Change
                     descent: metric(source.descent, factor)?,
                     ..Default::default()
                 });
+            let filter = fc_raster::BitmapScaleFilter::from(params.filter.unwrap_or_default());
             let mut work = 0usize;
             for name in names(source, params.glyphs)? {
                 let value = source
@@ -91,35 +106,11 @@ pub(crate) fn transfer(api: &Api, params: BitmapTransferParams) -> Result<Change
                 if work > 16_000_000 {
                     return Err(invalid("cross-strike pixel work limit"));
                 }
-                let mut bitmap = Bitmap::new(width, height, params.target_depth)
-                    .map_err(|e| invalid(e.to_string()))?;
+                let mut bitmap =
+                    fc_raster::scale_bitmap(src, width, height, params.target_depth, filter)
+                        .map_err(|e| invalid(e.to_string()))?;
                 bitmap.origin_x = metric(src.origin_x, factor)?;
                 bitmap.origin_y = metric(src.origin_y, factor)?;
-                for y in 0..height {
-                    for x in 0..width {
-                        let sx = (((u32::from(x) * 2 + 1) * u32::from(src.width))
-                            / (u32::from(width) * 2))
-                            .min(u32::from(src.width.saturating_sub(1)))
-                            as u16;
-                        let sy = (((u32::from(y) * 2 + 1) * u32::from(src.height))
-                            / (u32::from(height) * 2))
-                            .min(u32::from(src.height.saturating_sub(1)))
-                            as u16;
-                        let coverage = u32::from(src.coverage(sx, sy));
-                        let pixel = if params.target_depth == 32 {
-                            if src.depth == 32 {
-                                src.pixel(sx, sy)
-                            } else {
-                                coverage
-                            }
-                        } else {
-                            (coverage * ((1u32 << params.target_depth) - 1) + 127) / 255
-                        };
-                        bitmap
-                            .set_pixel(x, y, pixel)
-                            .map_err(|e| invalid(e.to_string()))?;
-                    }
-                }
                 target.glyphs.insert(
                     name.into(),
                     BitmapGlyph {
@@ -186,6 +177,13 @@ pub(crate) fn pixel_components(
                 return Err(invalid("units per em must be nonzero"));
             }
             let mut commands = Vec::new();
+            if doc.font.glyph(&params.pixel_glyph).is_none()
+                && !conventional_glyph_name(&params.pixel_glyph)
+            {
+                return Err(invalid(
+                    "a new pixel glyph name must start with a letter, `_` or `.` and use only letters, digits, `.` and `_`",
+                ));
+            }
             if let Some(pixel) = doc.font.glyph(&params.pixel_glyph) {
                 let layer = pixel
                     .master_layer(&master)

@@ -22,7 +22,10 @@ enum Command {
     /// Convert a font between document, source, and binary formats.
     Convert(cmd::convert::Args),
     /// Compile a document into a binary font.
-    Build(cmd::build::Args),
+    ///
+    /// Boxed because `build` takes every export and hinting option, which makes
+    /// its argument record much larger than any other subcommand's.
+    Build(Box<cmd::build::Args>),
     /// List the export profiles and variable-font configurations a project stores.
     Profiles(cmd::profiles::Args),
     /// Shape text with the document's own compiled font.
@@ -39,7 +42,7 @@ impl Command {
             Self::Inspect(args) => cmd::inspect::run(args),
             Self::Check(args) => cmd::check::run(args),
             Self::Convert(args) => cmd::convert::run(args),
-            Self::Build(args) => cmd::build::run(args),
+            Self::Build(args) => cmd::build::run(*args),
             Self::Profiles(args) => cmd::profiles::run(args),
             Self::Shape(args) => cmd::shape::run(args),
             Self::Glyphs(args) => cmd::glyphs::run(args),

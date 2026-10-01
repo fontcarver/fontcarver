@@ -21,7 +21,7 @@ import type { Point2, Viewport } from '../../canvas/Viewport'
 import type { EditorPreview } from '../editorTypes'
 import type { Scheduler } from '../editSession'
 import type { Modifiers } from '../gestures/drag'
-import type { Hit } from '../hitTest'
+import type { Hit, ScopedGuide } from '../hitTest'
 import type { HudLabels } from '../hud'
 import type { EditOutline } from '../outlineGeometry'
 import type { LayerCurves } from '../pathGeometry'
@@ -81,6 +81,8 @@ export interface ToolContext {
   outline: EditOutline
   anchors: readonly Anchor[]
   components: readonly ComponentView[]
+  /** Editable guides of this layer and its master, absent for tools that pass none. */
+  guides?: readonly ScopedGuide[]
   viewport: Viewport
   selection: Selection
   /** Lock/focus policy for selection tools. */

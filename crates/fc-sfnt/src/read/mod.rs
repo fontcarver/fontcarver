@@ -241,6 +241,21 @@ fn read_face(face: &FontRef<'_>, warnings: &mut Vec<Warning>) -> Result<Font, Er
                 .to_owned(),
         });
     }
+    if cff_source.as_ref().is_some_and(cff::CffSource::lost_flex) {
+        warnings.push(Warning {
+            code: "cff-flex-not-imported",
+            message: "Some CFF flex hints could not be bound to the imported outline; their curves were kept and the flex marker is retained so export does not claim the source had none".to_owned(),
+        });
+    }
+    if cff_source
+        .as_ref()
+        .is_some_and(cff::CffSource::dropped_dotsection)
+    {
+        warnings.push(Warning {
+            code: "cff-dotsection-not-imported",
+            message: "Some charstrings use the obsolete Type 2 dotsection operator, which has no Type 2 meaning and was not retained".to_owned(),
+        });
+    }
     if cff_source
         .as_ref()
         .is_some_and(cff::CffSource::unpreserved_private_dicts)

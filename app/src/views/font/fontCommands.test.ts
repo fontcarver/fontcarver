@@ -135,7 +135,7 @@ describe('font view commands', () => {
     ).toHaveLength(1)
     expect(transport.calls[0]?.params).toEqual({
       doc,
-      label: 'Set colour label',
+      label: 'Set color label',
       command: {
         Batch: [
           {

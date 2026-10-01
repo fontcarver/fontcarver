@@ -180,20 +180,26 @@ fn invalid_active_sets_and_counter_groups_preserve_destination() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("existing.pfb");
     std::fs::write(&path, b"original").unwrap();
-    for case in 0..6 {
+    // Unequal outer widths and unequal centre spacing are no longer failures:
+    // they are written as general counter control, which has its own test below.
+    for case in [0, 3, 4, 5, 6] {
         let mut font = sample();
         let name = if case == 0 || case == 5 { "H" } else { "C" };
         let hints = &mut font.glyph_mut(name).unwrap().layers[0].hints;
         match case {
             0 => hints.hint_masks[1].mask[0] = 0xf0,
-            1 => hints.h_stems[2].width = 41.0,
-            2 => hints.h_stems[1].start = 111.0,
             3 => hints.hint_masks[0].point = 2,
             5 => hints.h_stems[0].width = 1e-12,
-            _ => hints.hint_masks.push(HintMask {
+            // One stem alone delimits no counter.
+            4 => hints.hint_masks.push(HintMask {
                 mask: vec![0x90],
                 ..Default::default()
             }),
+            // Overlapping stems inside one counter group.
+            _ => {
+                hints.h_stems[1].start = 30.0;
+                hints.hint_masks[0].mask[0] = 0xe0;
+            }
         }
         assert!(
             write_type1(&font, &font.default_master().id, &path, true).is_err(),
@@ -201,6 +207,95 @@ fn invalid_active_sets_and_counter_groups_preserve_destination() {
         );
         assert_eq!(std::fs::read(&path).unwrap(), b"original");
     }
+}
+
+#[test]
+fn general_counter_groups_use_othersubrs_12_and_13_and_round_trip() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut font = sample();
+    font.glyphs.retain(|name, _| name.as_ref() == "C");
+    {
+        let hints = &mut font.glyph_mut("C").unwrap().layers[0].hints;
+        // Unequal widths and spacing: no hstem3 triple can describe this.
+        hints.h_stems[2].width = 41.0;
+        hints.h_stems[1].start = 115.0;
+        hints.v_stems.push(StemHint {
+            start: 300.0,
+            width: 40.0,
+            ..Default::default()
+        });
+        // A second group on the other axis exercises the `#V` section.
+        hints.hint_masks.push(HintMask {
+            counter: true,
+            mask: vec![0x18],
+            ..Default::default()
+        });
+    }
+    let original = font.glyph("C").unwrap().layers[0].hints.clone();
+    for binary in [false, true] {
+        let path = dir
+            .path()
+            .join(if binary { "general.pfb" } else { "general.pfa" });
+        write_type1(&font, &font.default_master().id, &path, binary).unwrap();
+        let result = read_type1(&path).unwrap();
+        assert!(
+            read_warnings(&result).is_empty(),
+            "{:?}",
+            read_warnings(&result)
+        );
+        let hints = &result.glyph("C").unwrap().layers[0].hints;
+        assert_eq!(hints.h_stems, original.h_stems);
+        assert_eq!(hints.v_stems, original.v_stems);
+        assert_eq!(
+            hints
+                .hint_masks
+                .iter()
+                .map(|mask| (mask.counter, mask.mask.clone()))
+                .collect::<Vec<_>>(),
+            [(true, vec![0xe0]), (true, vec![0x18])]
+        );
+    }
+    if !Command::new("python3")
+        .args(["-c", "import fontTools"])
+        .status()
+        .is_ok_and(|s| s.success())
+    {
+        eprintln!("skipping independent counter-control check: fontTools unavailable");
+        return;
+    }
+    let script = r#"
+import sys
+from fontTools.t1Lib import T1Font
+font = T1Font(sys.argv[1])
+c = font['CharStrings']['C']; c.decompile()
+calls = []
+for index, token in enumerate(c.program):
+    if token == 'callothersubr':
+        calls.append(c.program[:index + 1])
+assert len(calls) == 1, calls
+program = calls[0]
+# hsbw, then the data, the argument count and the OtherSubrs number.
+assert program[2] == 'hsbw', program[:4]
+assert program[-2] == 13 and program[-3] == len(program[3:-3]), program
+data = program[3:-3]
+# #H = 1, one group of three stems, #V = 1, one group of two stems.
+assert data == [1, 10, 40, 65, 40, 96, -41, 1, 50, 40, 250, -40], data
+print('ok')
+"#;
+    let file = dir.path().join("counters.py");
+    std::fs::write(&file, script).unwrap();
+    let output = Command::new("python3")
+        .arg(&file)
+        .arg(dir.path().join("general.pfa"))
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}
+{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
 }
 
 #[test]

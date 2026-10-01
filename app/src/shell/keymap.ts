@@ -56,3 +56,32 @@ export function keymapConflicts(
   }
   return conflicts
 }
+
+/**
+ * The conflicts of each action, keyed by action id.
+ *
+ * The editor marks a row from this rather than from the flat list, so a
+ * conflicting binding is visible on the row the reader is editing and not only
+ * in a summary at the top of the dialog.
+ */
+export function conflictsByTarget(
+  conflicts: readonly KeymapConflict[],
+): Map<string, KeymapConflict[]> {
+  const byId = new Map<string, KeymapConflict[]>()
+  for (const conflict of conflicts)
+    for (const id of conflict.ids)
+      byId.set(id, [...(byId.get(id) ?? []), conflict])
+  return byId
+}
+
+/**
+ * The conflicts that still block saving: the ones whose chord the user has not
+ * deliberately accepted.
+ */
+export function blockingConflicts(
+  conflicts: readonly KeymapConflict[],
+  allowed: readonly string[],
+): KeymapConflict[] {
+  const accepted = new Set(allowed)
+  return conflicts.filter((conflict) => !accepted.has(conflict.shortcut))
+}

@@ -243,10 +243,12 @@ pub(super) fn apply(font: &mut Font, command: &HintCommand) -> Result<(), Error>
                 (*index > 0).then_some(*index);
         }
         HintCommand::AutohintPs { master, glyphs } => {
-            let (hints, private) = fc_hint::ps::analyze(font, master, glyphs)
+            let analysis = fc_hint::ps::analyze(font, master, glyphs)
                 .map_err(|e| Error::InvalidCommand(e.to_string()))?;
-            // Every target was validated by analysis before this loop starts.
-            for (name, hints) in hints {
+            // Every target was validated by analysis before this loop starts,
+            // and the analysis carries each layer's flex hints, dot sections and
+            // unresolved-flex marker through, so replacing the set is complete.
+            for (name, hints) in analysis.hints {
                 if let Some(layer) = font
                     .glyph_mut(&name)
                     .and_then(|g| g.master_layer_mut(master))
@@ -255,7 +257,15 @@ pub(super) fn apply(font: &mut Font, command: &HintCommand) -> Result<(), Error>
                 }
             }
             if let Some(target) = font.masters.iter_mut().find(|m| m.id == *master) {
-                target.private_dict = private;
+                target.private_dict = analysis.private;
+                for (index, private) in analysis.cid_private {
+                    if let Some(slot) = target
+                        .cff_private_dicts
+                        .get_mut(usize::from(index).saturating_sub(1))
+                    {
+                        *slot = private;
+                    }
+                }
             }
         }
     }

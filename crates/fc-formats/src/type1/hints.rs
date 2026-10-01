@@ -18,7 +18,14 @@ pub(super) fn read(
 ) -> Result<PsHints, &'static str> {
     let mut scan = Scan::default();
     scan.walk(program, context, 0, budget)?;
-    if scan.result.is_some() || scan.replacement_call {
+    if scan.result.is_some()
+        || scan.replacement_call
+        || scan.flex.is_some()
+        || scan.flex_results > 0
+        || scan.expect_setcurrentpoint
+        || scan.dot_open.is_some()
+        || (!scan.counter_calls.is_empty() && !scan.counter_done)
+    {
         return Err("unconsumed OtherSubrs result");
     }
     if scan
@@ -73,6 +80,9 @@ struct Scan {
     active: Vec<Stem>,
     axis_modes: [Option<bool>; 2],
     counters: Vec<Vec<Stem>>,
+    general_counters: Vec<CounterGroup>,
+    counter_calls: Vec<Vec<f64>>,
+    counter_done: bool,
     events: Vec<Event>,
     contour: Option<usize>,
     point: usize,
@@ -80,6 +90,18 @@ struct Scan {
     dirty: bool,
     in_seac: bool,
     seac_contours: Option<usize>,
+    flex: Option<FlexScan>,
+    flex_results: u8,
+    expect_setcurrentpoint: bool,
+    dot_open: Option<usize>,
+}
+
+/// Accumulates the seven points of one in-progress flex sequence.
+struct FlexScan {
+    contour: usize,
+    point: usize,
+    collected: u8,
+    moved: bool,
 }
 
 impl Scan {
@@ -101,6 +123,8 @@ impl Scan {
         for token in tokens(program).map_err(|_| "invalid charstring")? {
             if self.result.is_some() && !matches!(token, ProgramToken::Operator(0x0c11))
                 || self.replacement_call && !matches!(token, ProgramToken::Operator(10))
+                || self.flex_results > 0 && !matches!(token, ProgramToken::Operator(0x0c11))
+                || self.expect_setcurrentpoint && !matches!(token, ProgramToken::Operator(0x0c21))
             {
                 return Err("nonstandard hint replacement result sequence");
             }
@@ -161,25 +185,54 @@ impl Scan {
                     self.stack.clear();
                 }
                 ProgramToken::Operator(0x0c10) => {
-                    // The standard hint replacement procedure returns its one
-                    // argument, which the following pop transfers back here.
                     let procedure = self.pop()?;
                     let count = self.pop()?;
-                    if procedure != 3.0 || count != 1.0 || self.result.is_some() {
-                        return Err("unsupported OtherSubrs hint mechanism");
+                    match (procedure, count) {
+                        // The standard hint replacement procedure returns its one
+                        // argument, which the following pop transfers back here.
+                        (3.0, 1.0) => {
+                            if self.result.is_some() {
+                                return Err("unsupported OtherSubrs hint mechanism");
+                            }
+                            let index = self.pop()?;
+                            if index.fract() != 0.0 || !(4.0..=65535.0).contains(&index) {
+                                return Err("invalid hint replacement subroutine");
+                            }
+                            self.result = Some(index);
+                            self.active.clear();
+                            self.dirty = true;
+                        }
+                        (1.0, 0.0) => self.begin_flex()?,
+                        (2.0, 0.0) => self.collect_flex()?,
+                        (0.0, 3.0) => self.end_flex()?,
+                        (12.0, _) | (13.0, _) => self.counter_call(procedure, count)?,
+                        _ => return Err("unsupported OtherSubrs hint mechanism"),
                     }
-                    let index = self.pop()?;
-                    if index.fract() != 0.0 || !(4.0..=65535.0).contains(&index) {
-                        return Err("invalid hint replacement subroutine");
-                    }
-                    self.result = Some(index);
-                    self.active.clear();
-                    self.dirty = true;
                 }
                 ProgramToken::Operator(0x0c11) => {
+                    if self.flex_results > 0 {
+                        // OtherSubrs 0 returns the end coordinate for the
+                        // setcurrentpoint that follows; the values are already known.
+                        self.flex_results -= 1;
+                        self.push(0.0)?;
+                        self.expect_setcurrentpoint = self.flex_results == 0;
+                        continue;
+                    }
                     let value = self.result.take().ok_or("missing OtherSubrs result")?;
                     self.push(value)?;
                     self.replacement_call = true;
+                }
+                ProgramToken::Operator(0x0c21) => {
+                    if !self.expect_setcurrentpoint {
+                        return Err("setcurrentpoint outside a flex sequence");
+                    }
+                    self.operands(2)?;
+                    self.expect_setcurrentpoint = false;
+                    self.stack.clear();
+                }
+                ProgramToken::Operator(0x0c00) => {
+                    self.operands(0)?;
+                    self.dot_section()?;
                 }
                 ProgramToken::Operator(10) => {
                     let index = self.pop()?;
@@ -201,18 +254,36 @@ impl Scan {
                 ProgramToken::Operator(11) => return Ok(false),
                 ProgramToken::Operator(14) => {
                     self.operands(0)?;
+                    if self.flex.is_some() || self.dot_open.is_some() {
+                        return Err("unterminated flex or dot section");
+                    }
                     return Ok(true);
                 }
                 ProgramToken::Operator(0x0c06) => {
                     self.seac(context, depth, budget)?;
                     return Ok(true);
                 }
+                ProgramToken::Operator(21) if self.flex.is_some() => {
+                    // Inside flex an rmoveto only supplies the next flex point.
+                    self.operands(2)?;
+                    let Some(flex) = self.flex.as_mut() else {
+                        return Err("flex state lost");
+                    };
+                    if flex.moved {
+                        return Err("flex point is not followed by OtherSubrs 2");
+                    }
+                    flex.moved = true;
+                    self.stack.clear();
+                }
                 ProgramToken::Operator(opcode @ (4..=9 | 21 | 22 | 30 | 31)) => {
+                    if self.flex.is_some() {
+                        return Err("drawing operator inside a flex sequence");
+                    }
                     self.draw(opcode)?;
                     self.stack.clear();
                 }
-                // Flex, dot sections and counter-control procedures need
-                // their own semantics. Never misapply a partial set of hints.
+                // Any remaining mechanism has no representation here. Never
+                // misapply a partial set of hints.
                 ProgramToken::Operator(_) => return Err("unsupported charstring hint mechanism"),
             }
         }
@@ -311,6 +382,10 @@ impl Scan {
                 self.point += if matches!(opcode, 8 | 30 | 31) { 3 } else { 1 };
             }
         }
+        self.record(closing)
+    }
+
+    fn record(&mut self, closing: bool) -> Result<(), &'static str> {
         if self.events.is_empty() || self.dirty {
             if self.events.len() >= 65535 {
                 return Err("hint mask count limit exceeded");
@@ -326,9 +401,125 @@ impl Scan {
         Ok(())
     }
 
+    /// Type 1 section 8.3: `Subrs` 1 begins a flex at the current point.
+    fn begin_flex(&mut self) -> Result<(), &'static str> {
+        self.operands(0)?;
+        if self.flex.is_some() || self.closed {
+            return Err("nested or closed flex sequence");
+        }
+        let contour = self.contour.ok_or("flex outside a contour")?;
+        self.flex = Some(FlexScan {
+            contour,
+            point: self.point,
+            collected: 0,
+            moved: false,
+        });
+        Ok(())
+    }
+
+    /// `Subrs` 2 accepts one of the seven flex coordinate pairs.
+    fn collect_flex(&mut self) -> Result<(), &'static str> {
+        self.operands(0)?;
+        let flex = self.flex.as_mut().ok_or("flex point outside a flex")?;
+        if !flex.moved || flex.collected == 7 {
+            return Err("unexpected flex point");
+        }
+        flex.moved = false;
+        flex.collected += 1;
+        Ok(())
+    }
+
+    /// `Subrs` 0 finishes a flex, leaving two values for `setcurrentpoint`.
+    fn end_flex(&mut self) -> Result<(), &'static str> {
+        self.operands(3)?;
+        let flex = self.flex.take().ok_or("flex end outside a flex")?;
+        if flex.collected != 7 || flex.moved {
+            return Err("a flex needs exactly seven coordinate pairs");
+        }
+        let depth = self.stack[0];
+        if !depth.is_finite() || !(0.0..=1000.0).contains(&depth) {
+            return Err("invalid flex height control parameter");
+        }
+        self.stack.clear();
+        if self.values.flex_hints.len() >= 64 {
+            return Err("flex hint count limit exceeded");
+        }
+        self.values.flex_hints.push(fc_model::FlexHint {
+            contour: flex.contour,
+            point: flex.point,
+            depth,
+        });
+        // The two curves add six stored points; the reference point is not one.
+        for _ in 0..2 {
+            self.point += 3;
+            self.record(false)?;
+        }
+        self.flex_results = 2;
+        Ok(())
+    }
+
+    /// Type 1 section 8.2: `dotsection` brackets one closed dot subpath.
+    fn dot_section(&mut self) -> Result<(), &'static str> {
+        let contour = self.contour.ok_or("dot section outside a contour")?;
+        match self.dot_open {
+            None => {
+                if self.closed || self.point != 0 {
+                    return Err("a dot section must open right after its rmoveto");
+                }
+                self.dot_open = Some(contour);
+            }
+            Some(open) => {
+                if open != contour || !self.closed {
+                    return Err("a dot section must close right after its closepath");
+                }
+                if self.values.dot_sections.len() >= 64 {
+                    return Err("dot section count limit exceeded");
+                }
+                self.values.dot_sections.push(contour);
+                self.dot_open = None;
+            }
+        }
+        Ok(())
+    }
+
+    /// Accumulates one general counter-control call (Technical Note #5015 2.2).
+    fn counter_call(&mut self, procedure: f64, count: f64) -> Result<(), &'static str> {
+        if self.counter_done
+            || self.sidebearing.is_none()
+            || self.contour.is_some()
+            || !self.values.h_stems.is_empty()
+            || !self.values.v_stems.is_empty()
+        {
+            return Err("counter control must immediately follow hsbw");
+        }
+        if count.fract() != 0.0 || !(0.0..=22.0).contains(&count) {
+            return Err("invalid counter-control argument count");
+        }
+        if self.stack.len() != count as usize || self.counter_calls.len() >= 10 {
+            return Err("invalid counter-control call");
+        }
+        self.counter_calls.push(std::mem::take(&mut self.stack));
+        if procedure == 13.0 {
+            self.counter_done = true;
+            // The interpreter replays the calls in reverse order, so the final
+            // call carries the start of the data and the first call its tail.
+            let data: Vec<f64> = self
+                .counter_calls
+                .iter()
+                .rev()
+                .flat_map(|call| call.iter().copied())
+                .collect();
+            self.general_counters = parse_counter_data(&data)?;
+        }
+        Ok(())
+    }
+
     fn bind(&mut self, contours: &[Contour]) -> Result<(), &'static str> {
         let count = self.values.h_stems.len() + self.values.v_stems.len();
         if count == 0 {
+            if !self.general_counters.is_empty() {
+                return Err("counter-control data without any declared stem hint");
+            }
             return Ok(());
         }
         // An unchanged set needs no active mask and also works for empty glyphs.
@@ -382,8 +573,93 @@ impl Scan {
                 ..Default::default()
             });
         }
+        let mut general = Vec::new();
+        for (horizontal, group) in &self.general_counters {
+            let (stems, offset, sidebearing) = if *horizontal {
+                (&self.values.h_stems, 0, 0.0)
+            } else {
+                (
+                    &self.values.v_stems,
+                    self.values.h_stems.len(),
+                    self.sidebearing.unwrap_or_default(),
+                )
+            };
+            let mut mask = vec![0; count.div_ceil(8)];
+            for (start, width) in group {
+                let start = start + sidebearing;
+                let index = stems
+                    .iter()
+                    .position(|stem| {
+                        (stem.start - start).abs() <= 1.0 / 65536.0
+                            && (stem.width - width).abs() <= 1.0 / 65536.0
+                    })
+                    .ok_or("counter-control stem is not declared as a stem hint")?;
+                let index = offset + index;
+                mask[index / 8] |= 0x80 >> (index % 8);
+            }
+            general.push(HintMask {
+                counter: true,
+                mask,
+                ..Default::default()
+            });
+        }
+        self.values.hint_masks.extend(general);
         Ok(())
     }
+}
+
+/// One counter-control group: whether it is horizontal, and its absolute stems.
+type CounterGroup = (bool, Vec<(f64, f64)>);
+
+/// Parses general counter-control data into absolute stems per group.
+///
+/// Technical Note #5015 section 2.4: each group lists pairs of
+/// (distance from the previous stem's far edge, width) in ascending order, and
+/// the final pair gives the distance to the last stem's far edge with a negated
+/// width. Horizontal groups come first, each list preceded by its count.
+fn parse_counter_data(data: &[f64]) -> Result<Vec<CounterGroup>, &'static str> {
+    let mut values = data.iter().copied();
+    let mut result = Vec::new();
+    for horizontal in [true, false] {
+        let count = values.next().ok_or("truncated counter-control data")?;
+        if count.fract() != 0.0 || !(0.0..=32.0).contains(&count) {
+            return Err("invalid counter-control group count");
+        }
+        for _ in 0..count as usize {
+            let mut stems: Vec<(f64, f64)> = Vec::new();
+            let mut previous = 0.0;
+            loop {
+                let delta = values.next().ok_or("truncated counter-control group")?;
+                let width = values.next().ok_or("truncated counter-control group")?;
+                if !delta.is_finite() || !width.is_finite() || width == 0.0 {
+                    return Err("invalid counter-control stem");
+                }
+                if stems.len() >= 48 {
+                    return Err("counter-control group limit exceeded");
+                }
+                if width < 0.0 {
+                    stems.push((previous + delta + width, -width));
+                    break;
+                }
+                stems.push((previous + delta, width));
+                previous += delta + width;
+            }
+            if stems.len() < 2 {
+                return Err("a counter-control group needs at least two stems");
+            }
+            if stems
+                .windows(2)
+                .any(|pair| pair[0].0 + pair[0].1 > pair[1].0)
+            {
+                return Err("counter-control stems in one group overlap");
+            }
+            result.push((horizontal, stems));
+        }
+    }
+    if values.next().is_some() {
+        return Err("excess counter-control data");
+    }
+    Ok(result)
 }
 
 /// Type 1 section 6.4: positive widths, equal outer widths and equal center spacing.

@@ -187,3 +187,66 @@ export function importSheetPixels(
   }
   return result
 }
+
+/** The complete description a sheet needs to be re-imported exactly. */
+export interface SheetLayout extends SheetOptions {
+  names: string[]
+}
+
+/** The keyword of the PNG text chunk that carries the layout. */
+export const SHEET_LAYOUT_KEYWORD = 'FontCarver'
+
+/**
+ * Serialise a layout as ASCII JSON for a PNG `tEXt` chunk.
+ *
+ * `tEXt` text is Latin-1, so every character above printable ASCII is written
+ * as a JSON `\uXXXX` escape. A reader that does not know the keyword ignores
+ * the chunk, and a sheet without it still imports from the form.
+ */
+export function encodeSheetLayout(layout: SheetLayout): string {
+  sheetDimensions(layout.names.length, layout)
+  return JSON.stringify({
+    version: 1,
+    cellWidth: layout.cellWidth,
+    cellHeight: layout.cellHeight,
+    columns: layout.columns,
+    names: layout.names,
+  }).replace(
+    /[^\x20-\x7e]/gu,
+    (character) =>
+      `\\u${character.codePointAt(0)!.toString(16).padStart(4, '0')}`,
+  )
+}
+
+/** Read a layout written by `encodeSheetLayout`, or null if it is unusable. */
+export function decodeSheetLayout(text: string): SheetLayout | null {
+  try {
+    const parsed: unknown = JSON.parse(text)
+    if (!parsed || typeof parsed !== 'object') return null
+    const record = parsed as Record<string, unknown>
+    const names = record.names
+    if (!Array.isArray(names) || names.some((name) => typeof name !== 'string'))
+      return null
+    const layout: SheetLayout = {
+      cellWidth: Number(record.cellWidth),
+      cellHeight: Number(record.cellHeight),
+      columns: Number(record.columns),
+      names: names as string[],
+    }
+    if (new Set(layout.names).size !== layout.names.length) return null
+    sheetDimensions(layout.names.length, layout)
+    return layout
+  } catch {
+    return null
+  }
+}
+
+/** The layout as the copyable text the panel shows beside the download. */
+export function describeSheetLayout(layout: SheetLayout): string {
+  return [
+    `cells ${layout.cellWidth}x${layout.cellHeight}`,
+    `columns ${layout.columns}`,
+    `glyphs ${layout.names.length}`,
+    layout.names.join(' '),
+  ].join('\n')
+}

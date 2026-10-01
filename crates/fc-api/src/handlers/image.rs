@@ -54,6 +54,16 @@ fn resolve(image: &Image, document_path: Option<&Path>) -> Result<Vec<u8>, ApiEr
     }
 }
 
+/// Absolute path an external link points at, for a broken-link prompt.
+fn linked_path(image: &Image, document_path: Option<&Path>) -> Option<String> {
+    if image.data.is_some() {
+        return None;
+    }
+    fc_doc::image_paths::resolve_image_path(document_path, &image.file_name)
+        .ok()
+        .map(|path| path.display().to_string())
+}
+
 pub(crate) fn state(api: &Api, target: ImageTarget) -> Result<ImageState, ApiError> {
     let (generation, image, path) = api
         .session
@@ -74,8 +84,10 @@ pub(crate) fn state(api: &Api, target: ImageTarget) -> Result<ImageState, ApiErr
         width: None,
         height: None,
         error: None,
+        source_path: None,
     };
     if let Some(image) = &state.image {
+        state.source_path = linked_path(image, path.as_deref());
         match resolve(image, path.as_deref()).and_then(|data| {
             fc_raster::image_dimensions(&data)
                 .map(|size| (data, size))
@@ -229,9 +241,30 @@ pub(crate) fn trace(api: &Api, params: ImageTraceParams) -> Result<ImageTraceRes
     if !params.dry_run && params.expected_source_hash.as_ref() != Some(&source_hash) {
         return Err(invalid("image source changed; preview again"));
     }
-    let contours =
-        fc_raster::trace_image(&data, image.transform, params.threshold, params.tolerance)
-            .map_err(invalid)?;
+    let outcome = fc_raster::trace_image_with_options(
+        &data,
+        image.transform,
+        &fc_raster::TraceOptions {
+            threshold: params.threshold,
+            tolerance: params.tolerance,
+            curves: params.curves,
+            corner_angle: params.corner_angle,
+            smoothing: params.smoothing,
+            min_area: params.min_area,
+        },
+    )
+    .map_err(invalid)?;
+    let contours = outcome.contours;
+    let nodes = contours
+        .iter()
+        .flat_map(|contour| &contour.points)
+        .filter(|point| point.kind != fc_model::PointKind::OffCurve)
+        .count() as u32;
+    let curve_segments = contours
+        .iter()
+        .flat_map(|contour| &contour.points)
+        .filter(|point| point.kind == fc_model::PointKind::Curve)
+        .count() as u32;
     let mut path = BezPath::new();
     for contour in &contours {
         path.extend(
@@ -250,6 +283,11 @@ pub(crate) fn trace(api: &Api, params: ImageTraceParams) -> Result<ImageTraceRes
         contours,
         path: path.to_svg(),
         bounds: [bounds.x0, bounds.y0, bounds.x1, bounds.y1],
+        nodes,
+        curve_segments,
+        max_error: outcome.max_error,
+        dropped: outcome.dropped,
+        fallback: outcome.fallback,
         change: None,
     };
     if !params.dry_run {

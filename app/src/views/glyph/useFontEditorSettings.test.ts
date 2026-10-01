@@ -99,9 +99,11 @@ describe('the editor asks each document for its own settings', () => {
     expect(snapSettingsOf(DEFAULT_PREFS, result.current).gridSize).toBe(5)
 
     // A new generation is a new answer: the settings are editable font data.
+    // The hook reports nothing until that answer arrives, by design, so the
+    // value is awaited rather than read in the same tick as the call.
     rerender({ doc: 1 as DocId, generation: 1 })
     await waitFor(() => expect(transport.calls).toHaveLength(2))
-    expect(result.current?.grid_size).toBe(20)
+    await waitFor(() => expect(result.current?.grid_size).toBe(20))
   })
 
   it('leaves the preference in charge when the read fails', async () => {

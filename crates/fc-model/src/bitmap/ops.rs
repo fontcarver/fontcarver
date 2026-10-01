@@ -1,6 +1,6 @@
 use std::collections::{BTreeSet, HashSet};
 
-use crate::{Bitmap, BitmapGlyph, BitmapStrike, Error, Font, GlyphName};
+use crate::{BdfValue, Bitmap, BitmapGlyph, BitmapStrike, Error, Font, GlyphName};
 
 /// Maximum bitmap dimension and strike size accepted by the editor.
 pub const MAX_BITMAP_SIZE: u16 = 4096;
@@ -8,9 +8,51 @@ pub const MAX_BITMAP_SIZE: u16 = 4096;
 pub const MAX_BITMAP_BYTES: usize = 16 * 1024 * 1024;
 /// Maximum decoded bitmap bytes in one font.
 pub const MAX_FONT_BITMAP_BYTES: usize = 256 * 1024 * 1024;
+/// Maximum number of format properties stored on one strike.
+pub const MAX_STRIKE_PROPERTIES: usize = 65_535;
+/// Maximum length of one property name, in characters.
+pub const MAX_PROPERTY_NAME_CHARS: usize = 255;
+/// Maximum length of one string property value, in bytes.
+pub const MAX_PROPERTY_VALUE_BYTES: usize = 65_535;
 
 pub(crate) fn invalid(message: impl Into<String>) -> Error {
     Error::InvalidBitmap(message.into())
+}
+
+/// Validate one strike property so that it survives every bitmap format.
+///
+/// A BDF, PCF or FNT property name is a single whitespace-delimited token and a
+/// string value is written between quotes on one line, so whitespace in a name
+/// and a line break or NUL in a value cannot be represented at all. Rejecting
+/// them here keeps an unrepresentable property out of the document instead of
+/// failing much later, at export.
+pub fn validate_strike_property(name: &str, value: &BdfValue) -> Result<(), Error> {
+    if name.is_empty() || name.chars().count() > MAX_PROPERTY_NAME_CHARS {
+        return Err(invalid(
+            "a strike property name must have 1 to 255 characters",
+        ));
+    }
+    if name
+        .chars()
+        .any(|character| character.is_whitespace() || character.is_control())
+    {
+        return Err(invalid(format!(
+            "strike property name `{name}` contains whitespace or a control character"
+        )));
+    }
+    if let BdfValue::Str(text) = value {
+        if text.len() > MAX_PROPERTY_VALUE_BYTES {
+            return Err(invalid(format!(
+                "strike property `{name}` exceeds 65535 bytes"
+            )));
+        }
+        if text.contains(['\n', '\r', '\0']) {
+            return Err(invalid(format!(
+                "strike property `{name}` contains a line break or NUL"
+            )));
+        }
+    }
+    Ok(())
 }
 
 impl Bitmap {
@@ -133,6 +175,12 @@ impl BitmapStrike {
         }
         if self.ascent < 0 || self.descent < 0 || self.glyphs.len() > 65535 {
             return Err(invalid("invalid strike metrics or glyph count"));
+        }
+        if self.properties.len() > MAX_STRIKE_PROPERTIES {
+            return Err(invalid("strike exceeds 65535 properties"));
+        }
+        for (name, value) in &self.properties {
+            validate_strike_property(name, value)?;
         }
         let mut bytes = 0usize;
         for glyph in self.glyphs.values() {

@@ -37,6 +37,38 @@ export function ContextHelpArticle({ context }: { context: HelpContext }) {
             <p>{context.surfaceTitle}</p>
           </div>
         ) : null}
+        {context.commandTitle ? (
+          <aside
+            className={styles.control}
+            aria-label={t('contextHelp.activeCommand')}
+          >
+            <strong>{context.commandTitle}</strong>
+            {context.commandSummary ? <p>{context.commandSummary}</p> : null}
+            {context.commandBinding ? (
+              <p className={styles.binding}>
+                {t('contextHelp.binding', { shortcut: context.commandBinding })}
+              </p>
+            ) : (
+              <p className={styles.binding}>{t('contextHelp.unbound')}</p>
+            )}
+            {context.commandReason ? (
+              <p className={styles.reason}>
+                {t('contextHelp.unavailableHere', {
+                  reason: context.commandReason,
+                })}
+              </p>
+            ) : null}
+          </aside>
+        ) : null}
+        {context.toolTitle ? (
+          <aside
+            className={styles.control}
+            aria-label={t('contextHelp.activeTool')}
+          >
+            <strong>{context.toolTitle}</strong>
+            {context.toolHint ? <p>{context.toolHint}</p> : null}
+          </aside>
+        ) : null}
         {context.controlHint ? (
           <aside
             className={styles.control}

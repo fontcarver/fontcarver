@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { call, type BitmapStrikeInfo, type DocId } from '../../api'
+import {
+  call,
+  type BitmapScaleFilter,
+  type BitmapStrikeInfo,
+  type DocId,
+} from '../../api'
 import { withSettledDocument } from '../../editor/documentPersistence'
 import { reportError } from '../../stores/uiStore'
 import styles from './BitmapView.module.css'
@@ -18,6 +23,7 @@ export function BitmapTransfer({
   const [ppem, setPpem] = useState(Math.min(4096, strike.ppem * 2))
   const [depth, setDepth] = useState(strike.depth)
   const [scale, setScale] = useState(true)
+  const [filter, setFilter] = useState<BitmapScaleFilter>('Nearest')
   const [all, setAll] = useState(false)
   const [busy, setBusy] = useState(false)
   const valid =
@@ -46,6 +52,7 @@ export function BitmapTransfer({
               target_depth: depth,
               glyphs: all ? [] : [glyph],
               scale,
+              filter,
             })
           })
             .catch(reportError)
@@ -82,6 +89,22 @@ export function BitmapTransfer({
             onChange={(event) => setScale(event.target.checked)}
           />
           {t('bitmapParity.scaleToSize')}
+        </label>
+        <label>
+          {t('bitmapParity.filter')}
+          <select
+            value={filter}
+            disabled={!scale}
+            onChange={(event) =>
+              setFilter(event.target.value as BitmapScaleFilter)
+            }
+          >
+            {(['Nearest', 'AreaAverage'] as const).map((value) => (
+              <option key={value} value={value}>
+                {t(`bitmapParity.filters.${value}`)}
+              </option>
+            ))}
+          </select>
         </label>
         <label>
           <input

@@ -69,6 +69,46 @@ pub struct OpticalExample {
     pub bounds: [f64; 4],
 }
 
+/// One layer or pair a review can accept or reject on its own.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+pub struct OpticalProposalEntry {
+    /// First glyph, or the glyph being respaced.
+    pub glyph: String,
+    /// Second glyph for a pair, null for sidebearings.
+    pub right: Option<String>,
+    /// Persistent master identifier, which is what an acceptance names.
+    #[ts(type = "string")]
+    pub master: MasterId,
+    /// Display name of that master.
+    pub master_name: String,
+    /// LSB, RSB and width before spacing, or [effective kern, 0, 0].
+    pub before: [f64; 3],
+    /// The same values after the proposed change.
+    pub after: [f64; 3],
+}
+
+/// One accepted proposal, named exactly as the proposal reported it.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, TS)]
+pub struct OpticalSelection {
+    /// First glyph, or the glyph being respaced.
+    pub glyph: String,
+    /// Second glyph for a pair, null for sidebearings.
+    pub right: Option<String>,
+    /// Persistent master identifier.
+    #[ts(type = "string")]
+    pub master: MasterId,
+}
+
+impl OpticalSelection {
+    fn of(entry: &OpticalProposalEntry) -> Self {
+        Self {
+            glyph: entry.glyph.clone(),
+            right: entry.right.clone(),
+            master: entry.master.clone(),
+        }
+    }
+}
+
 /// Options shared by pure preparation and the API.
 #[derive(Clone, Debug)]
 pub struct OpticalOptions {
@@ -82,6 +122,11 @@ pub struct OpticalOptions {
     pub density: f64,
     /// Replace effective existing rules when true.
     pub replace_existing: bool,
+    /// Apply only these reviewed proposals; absent applies every proposal.
+    ///
+    /// A selection that the recomputed proposal no longer contains is an error, so
+    /// a review of a stale document can never apply something it did not show.
+    pub accepted: Option<Vec<OpticalSelection>>,
 }
 
 /// Prepared atomic commands and their review data.
@@ -90,10 +135,12 @@ pub struct OpticalProposal {
     pub commands: Vec<crate::Command>,
     /// Distinct selected glyph count.
     pub glyph_count: u32,
-    /// Total changed source layers or pairs.
+    /// Changed source layers or pairs, after any acceptance filter.
     pub changed_count: u32,
     /// Every skipped layer or pair.
     pub skipped: Vec<OpticalSkip>,
-    /// First sixteen changed sources.
+    /// First sixteen changed sources, with outlines for a visual review.
     pub examples: Vec<OpticalExample>,
+    /// Every proposed change, for a review table that accepts or rejects rows.
+    pub proposals: Vec<OpticalProposalEntry>,
 }

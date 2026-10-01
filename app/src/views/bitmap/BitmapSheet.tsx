@@ -9,11 +9,13 @@ import {
 import { decodeSheetPng, encodeSheetPng } from '../../canvas/bitmapSheetImage'
 import { withSettledDocument } from '../../editor/documentPersistence'
 import {
+  describeSheetLayout,
   exportSheetPixels,
   importSheetPixels,
   parseSheetNames,
   sheetDimensions,
   SheetError,
+  type SheetLayout,
 } from './bitmapSheet'
 import styles from './BitmapSheet.module.css'
 
@@ -35,6 +37,7 @@ export function BitmapSheet({
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
   const [download, setDownload] = useState<string>()
+  const [description, setDescription] = useState('')
   useEffect(
     () => () => {
       if (download) URL.revokeObjectURL(download)
@@ -48,11 +51,21 @@ export function BitmapSheet({
     setError('')
     setStatus('')
     void withSettledDocument(doc, async () => {
-      const names = parseSheetNames(namesText)
-      const options = { cellWidth, cellHeight, columns }
-      sheetDimensions(names.length, options)
       const image = importing && file ? await decodeSheetPng(file) : undefined
       if (importing && !image) throw new SheetError('png')
+      // An exported sheet carries its own layout, so an import prefers it over
+      // whatever the form currently holds and shows what it used.
+      if (image?.layout) {
+        setNamesText(image.layout.names.join(' '))
+        setCellWidth(image.layout.cellWidth)
+        setCellHeight(image.layout.cellHeight)
+        setColumns(image.layout.columns)
+      }
+      const names = image?.layout
+        ? image.layout.names
+        : parseSheetNames(namesText)
+      const options = image?.layout ?? { cellWidth, cellHeight, columns }
+      sheetDimensions(names.length, options)
       const current = await call('bitmap.state', { doc })
       const latest = current.strikes.find(
         (s) => s.ppem === strike.ppem && s.depth === strike.depth,
@@ -79,8 +92,8 @@ export function BitmapSheet({
           if (!value && !importing) throw new SheetError('missing')
           if (value) {
             if (
-              value.bitmap.width > cellWidth ||
-              value.bitmap.height > cellHeight
+              value.bitmap.width > options.cellWidth ||
+              value.bitmap.height > options.cellHeight
             )
               throw new SheetError('clipped')
             glyphs[group[i]] = value
@@ -109,12 +122,15 @@ export function BitmapSheet({
           },
         })
         setStatus(t('bitmapSheet.imported', { count: names.length }))
+        setDescription(describeSheetLayout({ ...options, names }))
       } else {
+        const layout: SheetLayout = { ...options, names }
         const blob = await encodeSheetPng(
           exportSheetPixels(
             names.map((name) => glyphs[name]),
             options,
           ),
+          layout,
         )
         if (
           (await call('bitmap.state', { doc })).generation !==
@@ -122,6 +138,7 @@ export function BitmapSheet({
         )
           throw new SheetError('changed')
         setDownload(URL.createObjectURL(blob))
+        setDescription(describeSheetLayout(layout))
         setStatus(t('bitmapSheet.exported', { count: names.length }))
       }
     })
@@ -219,9 +236,16 @@ export function BitmapSheet({
           </button>
         </div>
       </fieldset>
+      <p className={styles.layoutHint}>{t('bitmapSheet.layoutHint')}</p>
       {busy && <p role="status">{t('bitmapSheet.busy')}</p>}
       {error && <p role="alert">{error}</p>}
       {status && <p role="status">{status}</p>}
+      {description && (
+        <label className={styles.mapping}>
+          {t('bitmapSheet.layout')}
+          <textarea readOnly rows={3} value={description} />
+        </label>
+      )}
       {download && (
         <div className={styles.preview}>
           <a

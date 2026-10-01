@@ -37,6 +37,18 @@ export interface TextTabState {
   readonly script?: string | null
   readonly language?: string | null
   readonly previewHeight?: number
+  /** Preview strip presentation, shared with the detached preview window. */
+  readonly previewFlipHorizontal?: boolean
+  readonly previewFlipVertical?: boolean
+  /** Canvas2D blur radius in CSS pixels, 0 to 4. */
+  readonly previewBlur?: number
+  readonly previewMode?: 'run' | 'single'
+  /** Ascending waterfall steps in pixels per em. */
+  readonly previewSizes?: readonly number[]
+  /** Index of the named instance the preview renders, or null for the master. */
+  readonly previewInstance?: number | null
+  /** Identifier of the selected saved proof string, for ↑/↓ stepping. */
+  readonly proofId?: string | null
 }
 
 /** One workspace tab. Tab ids are derived so re-opening focuses the same tab. */

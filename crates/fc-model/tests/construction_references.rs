@@ -68,3 +68,36 @@ fn insertion_rejects_mixed_construction_component_cycles_atomically() {
     ));
     assert!(font.glyph("_cap").is_none());
 }
+
+#[test]
+fn every_attachment_kind_names_its_conventional_prefix() {
+    use fc_model::{ConstructionKind, NodeRef, CONSTRUCTION_PREFIXES};
+    let node = || NodeRef { id: "n".into() };
+    let kinds = [
+        ConstructionKind::Corner {
+            at: node(),
+            scale: 1.,
+        },
+        ConstructionKind::Cap {
+            at: node(),
+            scale: 1.,
+        },
+        ConstructionKind::Segment {
+            start: node(),
+            end: NodeRef { id: "m".into() },
+            source_length: 100.,
+        },
+        ConstructionKind::Brush {
+            at: node(),
+            spacing: 10.,
+            scale: 1.,
+        },
+    ];
+    for (kind, prefix) in kinds.iter().zip(CONSTRUCTION_PREFIXES) {
+        assert_eq!(kind.glyph_prefix(), prefix);
+        assert!(kind.follows_convention(&format!("{prefix}serif")));
+        assert!(!kind.follows_convention("A"));
+        // The convention is advisory: an ordinary glyph still validates.
+        assert!(!kind.follows_convention("_other.serif"));
+    }
+}

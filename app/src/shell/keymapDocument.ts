@@ -34,8 +34,21 @@ export function canonicalShortcut(value: string): string | null {
     .join('+')
 }
 
+/**
+ * A keymap file: the explicit bindings, plus the chords whose conflict the user
+ * has deliberately accepted.
+ *
+ * An acknowledged chord is stored as its canonical form. A reader that does not
+ * know the field ignores it and still applies the bindings, which is why the
+ * document stays at version 1.
+ */
+export interface KeymapDocument {
+  readonly bindings: KeymapOverrides
+  readonly allowConflicts: readonly string[]
+}
+
 /** Validate a versioned, bounded JSON file without executing imported content. */
-export function parseKeymapDocument(text: string): KeymapOverrides {
+export function parseKeymapFile(text: string): KeymapDocument {
   if (text.length > 262_144) throw new Error('shortcuts.error.tooLarge')
   let value: unknown
   try {
@@ -81,10 +94,46 @@ export function parseKeymapDocument(text: string): KeymapOverrides {
       throw new Error('shortcuts.error.invalid')
     result[id] = canonical
   }
-  return result
+  return { bindings: result, allowConflicts: parseAllowConflicts(value) }
 }
 
-/** Serialize overrides only; unrelated command defaults remain forwards compatible. */
-export function serializeKeymap(overrides: KeymapOverrides): string {
-  return JSON.stringify({ version: 1, bindings: overrides }, null, 2)
+/** The accepted-conflict list of a parsed document, canonical and deduplicated. */
+function parseAllowConflicts(value: object): readonly string[] {
+  if (!('allowConflicts' in value) || value.allowConflicts === undefined)
+    return []
+  const list = value.allowConflicts
+  if (!Array.isArray(list) || list.length > 2000)
+    throw new Error('shortcuts.error.invalid')
+  const canonical = new Set<string>()
+  for (const entry of list) {
+    if (typeof entry !== 'string' || entry.length > 80)
+      throw new Error('shortcuts.error.invalid')
+    const normalized = canonicalShortcut(entry)
+    if (!normalized) throw new Error('shortcuts.error.invalid')
+    canonical.add(normalized)
+  }
+  return [...canonical]
+}
+
+/** The bindings of a keymap file. Kept for callers that need nothing else. */
+export function parseKeymapDocument(text: string): KeymapOverrides {
+  return parseKeymapFile(text).bindings
+}
+
+/**
+ * Serialize overrides only; unrelated command defaults remain forwards
+ * compatible. `allowConflicts` is written only when the user accepted one, so a
+ * map without accepted conflicts serializes exactly as it did before.
+ */
+export function serializeKeymap(
+  overrides: KeymapOverrides,
+  allowConflicts: readonly string[] = [],
+): string {
+  return JSON.stringify(
+    allowConflicts.length > 0
+      ? { version: 1, bindings: overrides, allowConflicts: [...allowConflicts] }
+      : { version: 1, bindings: overrides },
+    null,
+    2,
+  )
 }

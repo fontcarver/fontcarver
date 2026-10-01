@@ -213,3 +213,139 @@ it('fills a virtual master position with mapped defaults and preserves an editab
     },
   })
 })
+
+it('edits a compound condition set and submits every range of it', async () => {
+  const applied = vi.fn()
+  const axes = [
+    {
+      tag: [119, 103, 104, 116] as [number, number, number, number],
+      name: 'Weight',
+      min: 100,
+      default: 400,
+      max: 900,
+      hidden: false,
+      map: [
+        [100, 0],
+        [900, 100],
+      ] as [number, number][],
+    },
+    {
+      tag: [119, 100, 116, 104] as [number, number, number, number],
+      name: 'Width',
+      min: 50,
+      default: 100,
+      max: 200,
+      hidden: false,
+      map: [] as [number, number][],
+    },
+  ]
+  const transport = createMockTransport({
+    'variation.state': () => ({
+      generation: 4,
+      masters: [makeMaster({ id: 'm' })],
+      instances: [],
+      first_glyph: 'A',
+      axes,
+    }),
+    'variation.apply': () => noChange(),
+  })
+  setTransport(transport)
+  render(
+    <SourceLayerEditor
+      doc={1}
+      glyph="A"
+      source={makeLayer({
+        kind: {
+          Bracket: {
+            master: 'm',
+            axis: [119, 103, 104, 116],
+            min: 50,
+            max: null,
+            extra: [{ axis: [119, 100, 116, 104], min: 120 }],
+          },
+        },
+      })}
+      master="m"
+      duplicate={false}
+      smartAxes={[]}
+      onClose={() => {}}
+      onApplied={applied}
+    />,
+  )
+  const user = userEvent.setup()
+  // The stored second range is editable here, not only in the variation panel.
+  expect(
+    await screen.findByText('Active when [50‹wght, 120‹wdth] (inclusive).'),
+  ).toBeVisible()
+  const apply = screen.getByRole('button', { name: 'Apply changes' })
+  await user.click(apply)
+  await waitFor(() => expect(applied).toHaveBeenCalledOnce())
+  expect(
+    transport.calls.find((call) => call.method === 'variation.apply')?.params,
+  ).toMatchObject({
+    command: {
+      Layer: {
+        kind: {
+          Bracket: {
+            axis: [119, 103, 104, 116],
+            min: 50,
+            max: null,
+            extra: [{ axis: [119, 100, 116, 104], min: 120 }],
+          },
+        },
+      },
+    },
+  })
+})
+
+it('rejects a condition set that repeats an axis', async () => {
+  const transport = createMockTransport({
+    'variation.state': () => ({
+      generation: 4,
+      masters: [makeMaster({ id: 'm' })],
+      instances: [],
+      first_glyph: 'A',
+      axes: [
+        {
+          tag: [119, 103, 104, 116] as [number, number, number, number],
+          name: 'Weight',
+          min: 100,
+          default: 400,
+          max: 900,
+          hidden: false,
+          map: [] as [number, number][],
+        },
+      ],
+    }),
+    'variation.apply': () => noChange(),
+  })
+  setTransport(transport)
+  render(
+    <SourceLayerEditor
+      doc={1}
+      glyph="A"
+      source={makeLayer({
+        kind: {
+          Bracket: {
+            master: 'm',
+            axis: [119, 103, 104, 116],
+            min: 200,
+            max: null,
+            extra: [{ axis: [119, 103, 104, 116], min: 300 }],
+          },
+        },
+      })}
+      master="m"
+      duplicate={false}
+      smartAxes={[]}
+      onClose={() => {}}
+      onApplied={vi.fn()}
+    />,
+  )
+  expect(
+    await screen.findByText(
+      'Each axis can appear only once in a condition set.',
+    ),
+  ).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Apply changes' })).toBeDisabled()
+})

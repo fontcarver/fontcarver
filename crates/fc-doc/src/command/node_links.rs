@@ -104,6 +104,16 @@ pub enum NodeLinkCommand {
 }
 
 impl NodeLinkCommand {
+    /// The layer guide this command would change, when it names one.
+    fn guide_index(&self) -> Option<usize> {
+        match self {
+            Self::LinkToGuide { guide_index, .. }
+            | Self::UnlinkGuide { guide_index, .. }
+            | Self::ProjectToGuide { guide_index, .. } => Some(*guide_index),
+            _ => None,
+        }
+    }
+
     pub(crate) fn target(&self) -> (&GlyphName, &LayerId) {
         match self {
             Self::SetServant { glyph, layer, .. }
@@ -122,6 +132,17 @@ pub(super) fn apply(font: &mut Font, command: &NodeLinkCommand) -> Result<(), Er
     let target = layer_mut(font, glyph, layer)?;
     let mut candidate = target.clone();
     candidate.resolve_node_links()?;
+    // A locked guide owns nothing new and releases nothing: like a locked image,
+    // it has to be unlocked explicitly before anything may change it.
+    if let Some(index) = command.guide_index() {
+        let guide = candidate
+            .guides
+            .get(index)
+            .ok_or_else(|| invalid("guide index is outside the layer"))?;
+        if guide.locked {
+            return Err(super::structure::locked_guide());
+        }
+    }
     match command {
         NodeLinkCommand::SetServant {
             node,

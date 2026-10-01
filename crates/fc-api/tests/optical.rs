@@ -338,3 +338,129 @@ fn composite_preview_contains_actual_geometry_after_different_base_shifts() {
         assert_ne!(Affine::translate((shift, 0.)) * original, shown);
     }
 }
+
+#[test]
+fn a_review_applies_only_the_accepted_proposals_and_leaves_the_rest() {
+    let (api, session, doc, mut params) = fixture();
+    let preview = api.call("optical.batch", params.clone()).unwrap();
+    let proposals = preview["proposals"].as_array().unwrap().clone();
+    assert!(
+        proposals.len() >= 4,
+        "the review needs several rows: {proposals:?}"
+    );
+    assert_eq!(
+        preview["changed_count"].as_u64().unwrap() as usize,
+        proposals.len(),
+        "an unfiltered preview proposes exactly what it would change"
+    );
+    // Accept only the "H" rows; every other layer must keep its metrics.
+    let accepted: Vec<Value> = proposals
+        .iter()
+        .filter(|entry| entry["glyph"] == json!("H"))
+        .map(|entry| {
+            json!({"glyph": entry["glyph"], "right": entry["right"], "master": entry["master"]})
+        })
+        .collect();
+    assert_eq!(accepted.len(), 2, "H has a layer in both masters");
+    let before = font(&session, doc);
+    params["accepted"] = json!(accepted);
+    let applied = apply(&api, &params);
+    assert_eq!(applied["changed_count"], json!(2));
+    assert!(applied["change"].is_object());
+    let after = font(&session, doc);
+    for (name, glyph) in &after.glyphs {
+        let original = before.glyph(name).unwrap();
+        for (layer, source) in glyph.layers.iter().zip(&original.layers) {
+            if &**name == "H" {
+                assert_ne!(
+                    (layer.width, layer.contours[0].points[0].x),
+                    (source.width, source.contours[0].points[0].x),
+                    "the accepted glyph must have moved"
+                );
+            } else {
+                assert_eq!(layer, source, "{name} was not accepted and must not move");
+            }
+        }
+    }
+}
+
+#[test]
+fn an_empty_acceptance_changes_nothing_and_a_stale_one_is_refused() {
+    let (api, session, doc, mut params) = fixture();
+    let before = font(&session, doc);
+    let generation = api.call("optical.batch", params.clone()).unwrap()["generation"].clone();
+
+    params["accepted"] = json!([]);
+    let preview = api.call("optical.batch", params.clone()).unwrap();
+    assert_eq!(preview["changed_count"], json!(0));
+    assert!(!preview["proposals"].as_array().unwrap().is_empty());
+    let mut request = params.clone();
+    request["dry_run"] = json!(false);
+    request["expected_generation"] = generation.clone();
+    let applied = api.call("optical.batch", request).unwrap();
+    assert!(applied["change"].is_null(), "nothing to apply");
+    assert_eq!(font(&session, doc), before);
+
+    // A row the recomputed proposal does not hold is refused outright.
+    let master = api.call("optical.batch", params.clone()).unwrap()["proposals"][0]["master"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    for stale in [
+        json!({"glyph": "H", "right": "O", "master": master.clone()}),
+        json!({"glyph": "notaglyph", "right": null, "master": master.clone()}),
+        json!({"glyph": "space", "right": null, "master": master}),
+    ] {
+        let mut request = params.clone();
+        request["accepted"] = json!([stale]);
+        request["dry_run"] = json!(false);
+        request["expected_generation"] = generation.clone();
+        let error = api.call("optical.batch", request).unwrap_err().message;
+        assert!(
+            error.contains("no longer exists"),
+            "unexpected error: {error}"
+        );
+        assert_eq!(font(&session, doc), before);
+    }
+}
+
+#[test]
+fn an_accepted_kerning_subset_writes_only_those_pairs() {
+    let (api, session, doc, mut params) = fixture();
+    params["operation"] = json!("kerning");
+    let preview = api.call("optical.batch", params.clone()).unwrap();
+    let proposals = preview["proposals"].as_array().unwrap().clone();
+    assert!(proposals.len() >= 4, "{proposals:?}");
+    let chosen = &proposals[0];
+    params["accepted"] = json!([
+        {"glyph": chosen["glyph"], "right": chosen["right"], "master": chosen["master"]}
+    ]);
+    let applied = apply(&api, &params);
+    assert_eq!(applied["changed_count"], json!(1));
+    let after = font(&session, doc);
+    let master: MasterId = serde_json::from_value(chosen["master"].clone()).unwrap();
+    let written = after
+        .masters
+        .iter()
+        .find(|entry| entry.id == master)
+        .expect("accepted master");
+    assert_eq!(
+        written.kerning_h.0.len(),
+        1,
+        "only the accepted pair is written"
+    );
+    let (pair, value) = written.kerning_h.0.iter().next().unwrap();
+    assert_eq!(
+        *pair,
+        (
+            KernSide::Glyph(chosen["glyph"].as_str().unwrap().into()),
+            KernSide::Glyph(chosen["right"].as_str().unwrap().into())
+        )
+    );
+    assert_eq!(*value, chosen["after"][0].as_f64().unwrap());
+    assert!(after
+        .masters
+        .iter()
+        .filter(|entry| entry.id != master)
+        .all(|entry| entry.kerning_h.0.is_empty()));
+}

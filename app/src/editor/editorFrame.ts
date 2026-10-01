@@ -70,7 +70,13 @@ export interface FrameState {
    */
   aside?: {
     hud?: string | null
-    metrics?: { width: number; lsb: number; rsb: number } | null
+    metrics?: {
+      width: number
+      lsb: number
+      rsb: number
+      verticalOrigin?: number | null
+      verticalWidth?: number | null
+    } | null
     preview?: EditorPreview | null
     alignX?: number | null
     alignY?: number | null

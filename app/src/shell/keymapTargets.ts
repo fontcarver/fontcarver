@@ -10,6 +10,11 @@ export const FIXED_SHORTCUT_IDS = new Set([
 ])
 
 function scopeOf(command: Command): string {
+  // The strike editor's tools and overlays are live only while a Bitmap tab is
+  // mounted, and the glyph tools only on an Edit tab, so their single-key
+  // bindings are mutually exclusive and must not read as conflicts.
+  if (command.id.startsWith('bitmap.') && command.id !== 'bitmap.open')
+    return 'bitmap'
   if (
     ['edit.selectAll', 'edit.selectNone', 'edit.copyGlyphNames'].includes(
       command.id,

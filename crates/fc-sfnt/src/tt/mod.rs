@@ -6,6 +6,7 @@ mod span;
 mod variation;
 mod write;
 
+pub use variation::CvtRegion;
 pub use write::{with_instructions, GlyphProgram};
 
 use crate::Error;
@@ -80,6 +81,23 @@ pub fn fingerprints(bytes: &[u8], glyph_ids: &[u16]) -> Result<Vec<String>, Erro
         return Err(invalid("too many glyph binding requests"));
     }
     let mut source = basis::Source::new(bytes)?;
+    glyph_ids.iter().map(|id| source.fingerprint(*id)).collect()
+}
+
+/// Bindings that describe only the stored outlines, components and metrics.
+///
+/// A variable font's ordinary binding also covers every variation table, because
+/// an imported program was written for one exact variation context. A program the
+/// document authored was instead written against the stored default outline the
+/// editor shows, and variation deltas move points without reordering them, so
+/// this is the identity such a program is bound to. Use it only for programs the
+/// document itself authored; for an imported program the stricter binding stands.
+pub fn stored_fingerprints(bytes: &[u8], glyph_ids: &[u16]) -> Result<Vec<String>, Error> {
+    if glyph_ids.len() > 65535 {
+        return Err(invalid("too many glyph binding requests"));
+    }
+    let face = read_fonts::FontRef::new(bytes).map_err(invalid)?;
+    let mut source = basis::Source::from_face_with(face, false)?;
     glyph_ids.iter().map(|id| source.fingerprint(*id)).collect()
 }
 

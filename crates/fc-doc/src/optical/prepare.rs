@@ -5,8 +5,8 @@ use kurbo::{BezPath, Shape};
 
 use super::{
     profile::{invalid, Profile},
-    OpticalExample, OpticalOperation, OpticalOptions, OpticalProposal, OpticalSkip,
-    OpticalSkipReason,
+    OpticalExample, OpticalOperation, OpticalOptions, OpticalProposal, OpticalProposalEntry,
+    OpticalSelection, OpticalSkip, OpticalSkipReason,
 };
 use crate::{Command, Error, MetricsSource};
 
@@ -59,12 +59,20 @@ pub fn prepare(mut font: Font, options: &OpticalOptions) -> Result<OpticalPropos
             ));
         }
     }
+    if let Some(accepted) = &options.accepted {
+        if accepted.len() > MAX_PAIRS {
+            return Err(invalid(
+                "an optical review cannot accept more than 16384 proposals",
+            ));
+        }
+    }
     let mut result = OpticalProposal {
         commands: Vec::new(),
         glyph_count: names.len() as u32,
         changed_count: 0,
         skipped: Vec::new(),
         examples: Vec::new(),
+        proposals: Vec::new(),
     };
     let mut budget = 16_000_000usize;
     for (master, master_name) in masters {
@@ -89,7 +97,35 @@ pub fn prepare(mut font: Font, options: &OpticalOptions) -> Result<OpticalPropos
             )?,
         }
     }
+    // A selection the recomputed proposal no longer holds means the review was
+    // made against a different document; nothing is applied.
+    if let Some(accepted) = &options.accepted {
+        let proposed: BTreeSet<OpticalSelection> =
+            result.proposals.iter().map(OpticalSelection::of).collect();
+        if let Some(missing) = accepted.iter().find(|entry| !proposed.contains(entry)) {
+            return Err(invalid(format!(
+                "the reviewed proposal for {}{} no longer exists; preview again",
+                missing.glyph,
+                missing
+                    .right
+                    .as_ref()
+                    .map(|right| format!("/{right}"))
+                    .unwrap_or_default()
+            )));
+        }
+    }
     Ok(result)
+}
+
+/// Whether one proposed change is in the reviewed acceptance, if there is one.
+fn is_accepted(options: &OpticalOptions, entry: &OpticalProposalEntry) -> bool {
+    match &options.accepted {
+        None => true,
+        Some(accepted) => {
+            let key = OpticalSelection::of(entry);
+            accepted.contains(&key)
+        }
+    }
 }
 
 fn skip(
@@ -260,6 +296,21 @@ fn spacing(
         if (b.x0 - lsb).abs() <= 1e-8 && (current_width - b.x1 - rsb).abs() <= 1e-8 {
             continue;
         }
+        let entry = OpticalProposalEntry {
+            glyph: name.to_string(),
+            right: None,
+            master: master.clone(),
+            master_name: master_name.to_owned(),
+            before,
+            after,
+        };
+        let accepted = is_accepted(options, &entry);
+        result.proposals.push(entry);
+        if !accepted {
+            // A rejected layer must not move, so dependents keep measuring the
+            // snapshot as it stands.
+            continue;
+        }
         let command = Command::SetMetrics {
             glyph: name.clone(),
             layer: original.layer.clone(),
@@ -353,6 +404,19 @@ fn kerning(
             }
             let before = existing.as_ref().map_or(0., |pair| pair.value);
             if (before - value).abs() <= 1e-8 {
+                continue;
+            }
+            let entry = OpticalProposalEntry {
+                glyph: left.to_string(),
+                right: Some(right.to_string()),
+                master: master.clone(),
+                master_name: master_name.to_owned(),
+                before: [before, 0., 0.],
+                after: [value, 0., 0.],
+            };
+            let accepted = is_accepted(options, &entry);
+            result.proposals.push(entry);
+            if !accepted {
                 continue;
             }
             result.commands.push(Command::SetHorizontalKerning {

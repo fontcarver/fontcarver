@@ -63,6 +63,13 @@ pub struct CidState {
     pub cid: Option<fc_model::CidInfo>,
     /// Complete persistent glyph order.
     pub glyphs: Vec<String>,
+    /// Names of `glyphs` that participate in export, in the same order.
+    ///
+    /// CID-keyed CFF needs a CID for exactly these, so the editor's
+    /// incomplete-mapping notice counts them rather than the whole font: a
+    /// non-exporting helper glyph never needs a CID.
+    #[serde(default)]
+    pub exported: Vec<String>,
 }
 
 /// Atomic CID mapping and optional numeric glyph-order update.
@@ -79,4 +86,66 @@ pub struct CidApplyParams {
     pub reorder: bool,
     /// User-visible undo label.
     pub label: String,
+}
+
+/// A document whose radical library should be built.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+#[ts(export)]
+pub struct CjkRadicalsParams {
+    /// Open document identifier.
+    pub doc: fc_doc::DocId,
+}
+
+/// One ideograph that writes a radical, with the document glyph encoding it.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+#[ts(export)]
+pub struct CjkRadicalForm {
+    /// Unicode scalar value of the ideograph.
+    pub unicode: u32,
+    /// Smallest recorded kTotalStrokes value, absent when the source has none.
+    pub strokes: Option<u16>,
+    /// Document glyph encoding this scalar, absent when the font lacks it.
+    pub glyph: Option<String>,
+}
+
+/// One Kangxi radical as the radical library shows it for one document.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+#[ts(export)]
+pub struct CjkRadicalEntry {
+    /// Kangxi radical number, from 1 through 214.
+    pub number: u16,
+    /// Character of the Kangxi Radicals block for this radical number.
+    pub kangxi: u32,
+    /// Document glyph encoding the block character, when the font has one.
+    pub kangxi_glyph: Option<String>,
+    /// Ideographs that write the radical, in ascending scalar order.
+    pub forms: Vec<CjkRadicalForm>,
+    /// Glyphs of this document whose encoding uses this radical.
+    pub members: u32,
+}
+
+/// One glyph the document already uses as a component, with its use count.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+#[ts(export)]
+pub struct CjkComponentUse {
+    /// Name of the base glyph.
+    pub name: String,
+    /// How many component references name it, across every layer.
+    pub uses: u32,
+    /// First Unicode scalar of the base glyph, when it is encoded.
+    pub unicode: Option<u32>,
+}
+
+/// The radical library: pinned Unihan radicals plus this font's own components.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+#[ts(export)]
+pub struct CjkRadicalLibrary {
+    /// Pinned Unihan database version the radicals come from.
+    pub unihan_version: String,
+    /// Every Kangxi radical, in radical order.
+    pub radicals: Vec<CjkRadicalEntry>,
+    /// Component bases, most used first, then by name; at most 2,000 entries.
+    pub components: Vec<CjkComponentUse>,
+    /// Whether the component list was truncated at that limit.
+    pub components_truncated: bool,
 }

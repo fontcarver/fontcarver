@@ -29,6 +29,10 @@ pub struct ImageState {
     pub height: Option<u32>,
     /// Missing or invalid source description, without failing the layer query.
     pub error: Option<String>,
+    /// Absolute path the external link resolved to, for a relink prompt.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub source_path: Option<String>,
 }
 
 /// Import a PNG from a path or embedded browser-upload bytes.
@@ -86,12 +90,28 @@ pub struct ImageTraceParams {
     pub expected_source_hash: Option<String>,
     /// Minimum alpha-composited dark ink coverage, 1..255.
     pub threshold: u8,
-    /// Polygon simplification tolerance in source pixels, 0..16.
+    /// Largest permitted deviation from the pixel edges, in source pixels, 0..16.
     pub tolerance: f64,
+    /// Fit cubic curves; false simplifies to straight lines only.
+    #[serde(default)]
+    pub curves: bool,
+    /// Turn angle in degrees at or above which a vertex stays a corner, 0..180.
+    #[serde(default = "default_corner_angle")]
+    pub corner_angle: f64,
+    /// Low-pass radius applied before fitting, in source pixels, 0..8.
+    #[serde(default)]
+    pub smoothing: f64,
+    /// Smallest retained ring area in square source pixels, 0..1048576.
+    #[serde(default)]
+    pub min_area: f64,
     /// Preview without mutating document state.
     pub dry_run: bool,
     /// Append traced contours; false replaces outlines and components.
     pub append: bool,
+}
+
+fn default_corner_angle() -> f64 {
+    35.0
 }
 
 /// Proposed polygon geometry and optional applied change.
@@ -108,6 +128,16 @@ pub struct ImageTraceResult {
     pub path: String,
     /// Font-space bounds; zero for empty output.
     pub bounds: [f64; 4],
+    /// On-curve nodes in the traced result.
+    pub nodes: u32,
+    /// Cubic segments in the traced result; zero for a straight-line trace.
+    pub curve_segments: u32,
+    /// Largest deviation from the pixel edges, in source pixels.
+    pub max_error: f64,
+    /// Rings the minimum-area filter removed.
+    pub dropped: u32,
+    /// Whether a ring kept its exact pixel edges because a fit changed topology.
+    pub fallback: bool,
     /// Null for previews.
     pub change: Option<fc_doc::Change>,
 }

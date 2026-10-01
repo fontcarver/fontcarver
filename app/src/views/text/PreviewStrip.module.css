@@ -139,12 +139,19 @@
 }
 
 .sizesInput {
-  width: 11em;
+  width: 13em;
 }
 
 .error {
   margin: var(--space-1) var(--space-2);
+  color: var(--color-danger);
   font-size: var(--text-size-xs);
+}
+
+.hint {
+  margin: var(--space-1) var(--space-2);
+  font-size: var(--text-size-xs);
+  opacity: 0.65;
 }
 
 .iconButton:focus-visible {

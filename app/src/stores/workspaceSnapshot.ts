@@ -144,7 +144,40 @@ function readText(value: unknown): TextTabState | undefined {
     ...(typeof state.previewHeight === 'number'
       ? { previewHeight: boundedNumber(state.previewHeight, 120, 600, 160) }
       : {}),
+    ...(state.previewFlipHorizontal === true
+      ? { previewFlipHorizontal: true }
+      : {}),
+    ...(state.previewFlipVertical === true
+      ? { previewFlipVertical: true }
+      : {}),
+    ...(typeof state.previewBlur === 'number'
+      ? { previewBlur: Math.min(4, Math.max(0, state.previewBlur)) || 0 }
+      : {}),
+    ...(state.previewMode === 'single'
+      ? { previewMode: 'single' as const }
+      : {}),
+    ...readPreviewSizes(state.previewSizes),
+    ...(typeof state.previewInstance === 'number' &&
+    Number.isSafeInteger(state.previewInstance) &&
+    state.previewInstance >= 0
+      ? { previewInstance: state.previewInstance }
+      : {}),
   }
+}
+
+/** Keeps a stored waterfall only when every step is in range and unique. */
+function readPreviewSizes(value: unknown): { previewSizes?: number[] } {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 8) return {}
+  const sizes = value.filter(
+    (size): size is number =>
+      typeof size === 'number' &&
+      Number.isFinite(size) &&
+      size >= 6 &&
+      size <= 256,
+  )
+  if (sizes.length !== value.length || new Set(sizes).size !== sizes.length)
+    return {}
+  return { previewSizes: [...sizes].sort((left, right) => left - right) }
 }
 
 /** Validates persisted input, discarding invalid tabs and bounding geometry. */

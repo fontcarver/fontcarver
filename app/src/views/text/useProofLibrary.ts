@@ -5,12 +5,14 @@ import { i18n } from '../../i18n'
 import { errorNotice } from '../../i18n/errors'
 import { useDocumentStore } from '../../stores/documentStore'
 import { invalidateFontInfo } from '../../stores/fontInfoCache'
+import { importProofText } from './proofInterchange'
 import {
   ProofLibraryError,
   readProofLibrary,
   writeProofLibrary,
   type ProofEntry,
 } from './proofLibrary'
+import { withBuiltinSamples } from './proofSamples'
 
 interface LoadedLibrary {
   doc: DocId | null
@@ -37,6 +39,10 @@ export interface ProofLibraryResult {
   error: string | null
   save: (entry: ProofEntry) => Promise<boolean>
   remove: (id: string) => Promise<boolean>
+  /** Adds the built-in samples this project does not already hold. */
+  adopt: (samples: readonly ProofEntry[]) => Promise<boolean>
+  /** Merges a tab-separated document, matching entries by group and name. */
+  importText: (text: string) => Promise<boolean>
 }
 
 /**
@@ -152,6 +158,24 @@ export function useProofLibrary(doc: DocId | null): ProofLibraryResult {
       ),
     [mutate],
   )
+  const adopt = useCallback(
+    (samples: readonly ProofEntry[]) =>
+      mutate(
+        (entries) => withBuiltinSamples(entries, samples),
+        i18n.t('proof.library.undoAdopt'),
+      ),
+    [mutate],
+  )
+  // The merge runs inside the same barrier as every other write, so an import
+  // is resolved against the library as it is on disk, not as it was displayed.
+  const importText = useCallback(
+    (text: string) =>
+      mutate(
+        (entries) => importProofText(text, entries, () => crypto.randomUUID()),
+        i18n.t('proof.library.undoImport'),
+      ),
+    [mutate],
+  )
 
   const operation = doc === null ? undefined : operations[doc]
   return {
@@ -161,5 +185,7 @@ export function useProofLibrary(doc: DocId | null): ProofLibraryResult {
     error: operation?.error ?? (loaded.doc === doc ? loaded.error : null),
     save,
     remove,
+    adopt,
+    importText,
   }
 }

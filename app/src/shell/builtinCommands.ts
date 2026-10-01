@@ -14,12 +14,14 @@ import {
   type ThemePreference,
 } from '../stores/uiStore'
 
+import { SUPPORTED_LANGUAGES, type Language } from '../i18n'
 import { registerFontViewCommands } from '../views/font/fontCommands'
 import { glyphName } from '../views/font/glyphNames'
 import {
   registerGlyphViewCommands,
   zoomActiveGlyphView,
 } from '../views/glyph/glyphCommands'
+import { registerBitmapCommands } from '../views/bitmap/bitmapCommands'
 import { registerLayerCommands } from '../views/glyph/layerCommands'
 import { registerMetricsCommands } from '../views/glyph/panels/metricsCommands'
 import { registerPathCommands } from '../views/glyph/pathCommands'
@@ -66,6 +68,26 @@ function themeCommand(theme: ThemePreference): Command {
     // Through the preference store so the menu and the Preferences dialog
     // write the same record; it mirrors the choice into the shell itself.
     run: () => usePrefsStore.getState().update({ theme }),
+  }
+}
+
+/**
+ * A direct interface-language choice.
+ *
+ * Row 80 of the P5 checklist asks for an English-UI toggle: a reader who cannot
+ * read the current language must be able to get back to English without finding
+ * the right row of the Preferences dialog, so the languages are commands in the
+ * View menu and the command palette as well, beside the theme choices.
+ */
+function languageCommand(language: Language): Command {
+  return {
+    id: `view.language.${language}`,
+    title: `cmd.view.language.${language}`,
+    menu: 'view',
+    group: 'language',
+    when: () => useUiStore.getState().language !== language,
+    disabledReason: 'cmd.reason.languageActive',
+    run: () => usePrefsStore.getState().update({ language }),
   }
 }
 
@@ -382,6 +404,10 @@ export function registerBuiltinCommands(): void {
     themeCommand('light'),
     themeCommand('dark'),
     themeCommand('system'),
+    ...SUPPORTED_LANGUAGES.map(languageCommand),
     ...shellCommands(),
   ])
+  // After the block above, so the Bitmap menu opens with the editor itself and
+  // lists the strike tools and overlays under it.
+  registerBitmapCommands()
 }

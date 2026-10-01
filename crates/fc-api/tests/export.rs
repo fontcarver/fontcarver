@@ -720,3 +720,43 @@ fn autosave_starts_from_preferences() {
 
     assert_eq!(wait_for_recoverable(&api).len(), 1);
 }
+
+#[test]
+fn dot_sections_are_reported_for_every_cff_flavoured_output() {
+    let mut font = export_font();
+    let master = font.default_master().id.clone();
+    font.glyph_mut("A")
+        .expect("A")
+        .master_layer_mut(&master)
+        .expect("layer")
+        .hints
+        .dot_sections = vec![0];
+    let session = Arc::new(Session::new());
+    let doc = session.open_font(font, None);
+    let api = Api::new(session);
+    let directory = tempfile::tempdir().expect("temporary directory");
+    // Bare CFF compiles through the same OpenType path, so the disclosure that
+    // Type 2 has no dotsection operator has to reach both outputs.
+    for (format, name) in [("Otf", "dots.otf"), ("Cff", "dots.cff")] {
+        let report: ExportReport = serde_json::from_value(
+            api.call(
+                "session.export",
+                json!({
+                    "doc": doc,
+                    "path": directory.path().join(name).to_string_lossy(),
+                    "options": {"format": format, "master": null},
+                }),
+            )
+            .expect("export"),
+        )
+        .expect("report");
+        assert!(
+            report
+                .warnings
+                .iter()
+                .any(|warning| warning.code == "cff-dotsection-dropped"),
+            "{format}: {:?}",
+            report.warnings
+        );
+    }
+}

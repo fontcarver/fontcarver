@@ -60,7 +60,7 @@ fn attaches_exact_programs_to_simple_composite_and_empty_glyphs() {
         bound(&bytes, 2, &[0x01, 0xb0, 1, 0x2f]),
         bound(&bytes, 3, &[0x00]),
     ];
-    let result = with_instructions(&bytes, &programs, &globals()).unwrap();
+    let result = with_instructions(&bytes, &programs, &globals(), &[]).unwrap();
     for entry in &programs {
         assert_eq!(program(&result, entry.glyph_id), entry.bytes);
         assert_eq!(
@@ -100,7 +100,7 @@ fn replacement_preserves_wrapped_coordinate_encoding_and_removes_unlisted_progra
     parent.extend([0, 1, 0x00]); // The instruction flag is valid on an earlier component.
     let bytes = font(&[child, parent]);
     let entry = bound(&bytes, 1, &[0xb0, 0, 0x2f]);
-    let result = with_instructions(&bytes, &[entry], &globals()).unwrap();
+    let result = with_instructions(&bytes, &[entry], &globals(), &[]).unwrap();
     assert_eq!(program(&result, 0), Vec::<u8>::new());
     assert_eq!(program(&result, 1), vec![0xb0, 0, 0x2f]);
     assert_eq!(
@@ -151,19 +151,19 @@ fn stale_duplicate_out_of_range_and_malformed_programs_are_rejected() {
     let entry = bound(&bytes, 0, &[0]);
     let other = font(&[simple(&[(11, 20, true)], &[])]);
     assert!(
-        with_instructions(&other, std::slice::from_ref(&entry), &globals())
+        with_instructions(&other, std::slice::from_ref(&entry), &globals(), &[])
             .unwrap_err()
             .to_string()
             .contains("stale")
     );
-    assert!(with_instructions(&bytes, &[entry.clone(), entry.clone()], &globals()).is_err());
+    assert!(with_instructions(&bytes, &[entry.clone(), entry.clone()], &globals(), &[]).is_err());
     let mut invalid = entry.clone();
     invalid.glyph_id = 1;
-    assert!(with_instructions(&bytes, &[invalid], &globals()).is_err());
+    assert!(with_instructions(&bytes, &[invalid], &globals(), &[]).is_err());
     for data in [vec![0xb0], vec![0x41, 1, 0], vec![0; 65536]] {
         let mut invalid = entry.clone();
         invalid.bytes = data;
-        assert!(with_instructions(&bytes, &[invalid], &globals()).is_err());
+        assert!(with_instructions(&bytes, &[invalid], &globals(), &[]).is_err());
     }
 }
 
@@ -200,13 +200,13 @@ fn globals_require_complete_valid_maxima_and_complete_programs() {
             ..globals()
         },
     ] {
-        assert!(with_instructions(&bytes, &[], &data).is_err());
+        assert!(with_instructions(&bytes, &[], &data, &[]).is_err());
     }
     let mut signed = bytes;
     for tag in [b"DSIG", b"hdmx", b"LTSH", b"VDMX"] {
         signed = support::replace(&signed, Tag::new(tag), vec![0; 8]);
     }
-    let result = with_instructions(&signed, &[], &globals()).unwrap();
+    let result = with_instructions(&signed, &[], &globals(), &[]).unwrap();
     for tag in [b"DSIG", b"hdmx", b"LTSH", b"VDMX"] {
         assert!(FontRef::new(&result)
             .unwrap()
@@ -224,8 +224,8 @@ fn interpreter_executes_phantom_only_program_and_changes_empty_glyph_advance() {
     };
     let bytes = font(&[simple(&[], &[])]);
     let instruction = bound(&bytes, 0, &[0x01, 0xb0, 1, 0x2f, 0xb1, 1, 64, 0x38]);
-    let with = with_instructions(&bytes, &[instruction], &globals()).unwrap();
-    let without = with_instructions(&bytes, &[], &globals()).unwrap();
+    let with = with_instructions(&bytes, &[instruction], &globals(), &[]).unwrap();
+    let without = with_instructions(&bytes, &[], &globals(), &[]).unwrap();
     let advance = |data: &[u8]| {
         let face = skrifa::FontRef::new(data).unwrap();
         let outlines = face.outline_glyphs();

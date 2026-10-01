@@ -1,8 +1,12 @@
 import { useTranslation } from 'react-i18next'
 
-import type { ExportFormat } from '../api'
+import type { ExportFormat, TtAutohintOptions } from '../api'
+import { TtAutohintFields } from '../views/hints/TtAutohintFields'
 import styles from './dialogs.module.css'
 import { SFNT_FORMATS, TYPE1_FORMATS } from './exportFormats'
+
+/** The output flavours whose automatic hinting uses the external tool. */
+const TRUETYPE_FORMATS = ['Ttf', 'Woff', 'Woff2'] as const
 
 const OPTION_KEYS = {
   remove_overlap: 'removeOverlap',
@@ -28,6 +32,8 @@ export function ExportProcessingOptions({
   busy,
   options,
   onChange,
+  ttAutohint,
+  onTtAutohintChange,
 }: {
   format: ExportFormat
   canVary: boolean
@@ -36,6 +42,8 @@ export function ExportProcessingOptions({
   busy: boolean
   options: Record<ExportOptionField, boolean>
   onChange: (field: ExportOptionField, value: boolean) => void
+  ttAutohint: TtAutohintOptions
+  onTtAutohintChange: (options: TtAutohintOptions) => void
 }) {
   const { t } = useTranslation()
   const fields: ExportOptionField[] = TYPE1_FORMATS.includes(format)
@@ -90,6 +98,16 @@ export function ExportProcessingOptions({
           </span>
         </div>
       ))}
+      {fields.includes('autohint') &&
+      !unavailable('autohint') &&
+      options.autohint &&
+      (TRUETYPE_FORMATS as readonly string[]).includes(format) ? (
+        <TtAutohintFields
+          options={ttAutohint}
+          busy={busy}
+          onChange={onTtAutohintChange}
+        />
+      ) : null}
     </div>
   )
 }

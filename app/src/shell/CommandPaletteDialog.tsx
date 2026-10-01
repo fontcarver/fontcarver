@@ -5,6 +5,7 @@ import { useUiStore } from '../stores/uiStore'
 import { useKeymapStore } from '../stores/keymapStore'
 import { shortcutFor } from './keymap'
 
+import { commandHelp } from './commandHelp'
 import { reportError } from './commands'
 import paletteStyles from './CommandPalette.module.css'
 import dialogStyles from './dialog.module.css'
@@ -38,6 +39,15 @@ export function CommandPaletteDialog() {
       ? document.activeElement
       : null,
   )
+
+  // The palette owns the keyboard while it is open: its own Escape, Tab, arrow
+  // and Enter handling is below, and counting itself as a modal keeps the global
+  // dispatcher from running a document command behind it.
+  useEffect(() => {
+    const ui = useUiStore.getState()
+    ui.openModal()
+    return ui.closeModal
+  }, [])
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -211,6 +221,13 @@ export function CommandPaletteDialog() {
                     !enabled && command.disabledReason
                       ? command.disabledReason
                       : undefined
+                  const entry =
+                    command.kind === 'commands'
+                      ? commandHelp(command.id)
+                      : undefined
+                  const help = entry
+                    ? { topic: entry.topic, summary: t(entry.summary) }
+                    : undefined
                   // The four states are mutually exclusive so no cascade order
                   // can put disabled (faint) text on the solid accent fill.
                   const classes = [paletteStyles.paletteItem]
@@ -228,8 +245,12 @@ export function CommandPaletteDialog() {
                       role="option"
                       aria-selected={index === activeIndex}
                       aria-disabled={!enabled}
-                      aria-description={reason}
+                      aria-description={reason ?? help?.summary}
                       data-active={index === activeIndex}
+                      {...(command.kind === 'commands'
+                        ? { 'data-help-command': command.id }
+                        : {})}
+                      {...(help ? { 'data-help-topic': help.topic } : {})}
                       tabIndex={-1}
                       className={classes.join(' ')}
                       onPointerEnter={() => setActive(index)}

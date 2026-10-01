@@ -259,6 +259,31 @@ pub struct HintMask {
     pub mask: Vec<u8>,
 }
 
+/// One flex hint bound to two consecutive curve segments of a contour.
+///
+/// `point` is the stored index of the on-curve point the first curve leaves, so
+/// the hint follows that point through ordinary editing exactly as a hint mask
+/// does. `depth` is the Type 1/Type 2 flex height control parameter in hundredths
+/// of a device pixel; Adobe's recommended value for cupped serifs is `50`.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
+pub struct FlexHint {
+    /// Contour index.
+    #[serde(default)]
+    pub contour: usize,
+    /// Stored index of the on-curve point where the first curve starts.
+    #[serde(default)]
+    pub point: usize,
+    /// Flex height control parameter in hundredths of a device pixel.
+    #[serde(default = "default_flex_depth")]
+    pub depth: f64,
+}
+
+fn default_flex_depth() -> f64 {
+    50.0
+}
+
 /// PostScript hints attached to one layer.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
@@ -273,9 +298,19 @@ pub struct PsHints {
     /// Diagonal stem hints.
     #[serde(default)]
     pub d_stems: Vec<DiagonalHint>,
-    /// Whether the layer contains a flex hint.
+    /// An imported flex hint whose curve pair could not be identified. Editable
+    /// flex lives in `flex_hints`; this legacy marker only records that output
+    /// must not pretend the source had no flex.
     #[serde(default)]
     pub flex: bool,
+    /// Editable flex hints, each bound to two consecutive curve segments.
+    #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(as = "Option<Vec<FlexHint>>", optional))]
+    pub flex_hints: Vec<FlexHint>,
+    /// Contours bracketed by Type 1 `dotsection` commands.
+    #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(as = "Option<Vec<usize>>", optional))]
+    pub dot_sections: Vec<usize>,
     /// Hint substitution masks.
     #[serde(default)]
     pub hint_masks: Vec<HintMask>,
@@ -288,6 +323,8 @@ impl PsHints {
             && self.v_stems.is_empty()
             && self.d_stems.is_empty()
             && !self.flex
+            && self.flex_hints.is_empty()
+            && self.dot_sections.is_empty()
             && self.hint_masks.is_empty()
     }
 }

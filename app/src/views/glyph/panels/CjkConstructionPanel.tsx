@@ -138,7 +138,7 @@ export function CjkConstructionPanel({
           master={master}
           glyph={target.glyph}
           generation={generation}
-          onPick={(name) => setIds((value) => `${value}[${name}]`)}
+          onPick={(token) => setIds((value) => `${value}${token}`)}
         />
       )}
       <label className={panelStyles.label}>
@@ -204,7 +204,12 @@ export function CjkConstructionPanel({
           </ol>
         </>
       )}
-      <CjkTransformGrid target={target} outline={outline} reload={reload} />
+      <CjkTransformGrid
+        target={target}
+        scene={scene}
+        outline={outline}
+        reload={reload}
+      />
     </div>
   )
 }

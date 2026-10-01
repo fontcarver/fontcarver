@@ -1,7 +1,8 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FocusEvent, KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { textClusters } from './textClusters'
 import type { PositionedGlyph } from './textLayout'
 import styles from './TextShapingControls.module.css'
 
@@ -17,6 +18,8 @@ export interface TextShapingControlsProps {
   features: [string, boolean][]
   script: string | null
   language: string | null
+  /** The shaped text, so each cluster can show the characters it came from. */
+  text?: string
   glyphs: readonly PositionedGlyph[]
   onChange: (change: TextShapingChange) => void
 }
@@ -112,11 +115,13 @@ export function TextShapingControls({
   features,
   script,
   language,
+  text = '',
   glyphs,
   onChange,
 }: TextShapingControlsProps) {
   const { t } = useTranslation()
   const id = useId()
+  const clusters = useMemo(() => textClusters(text, glyphs), [glyphs, text])
   const [customTag, setCustomTag] = useState('')
   const [customTags, setCustomTags] = useState<string[]>([])
   const [featureInvalid, setFeatureInvalid] = useState(false)
@@ -257,7 +262,7 @@ export function TextShapingControls({
         </div>
         <details>
           <summary className={styles.summary}>
-            {t('proofShaping.clusters', { count: glyphs.length })}
+            {t('proofShaping.clusters', { count: clusters.length })}
           </summary>
           <p className={styles.hint}>{t('proofShaping.clusterHint')}</p>
           {glyphs.length === 0 ? (
@@ -267,13 +272,22 @@ export function TextShapingControls({
               <table
                 className={styles.table}
                 aria-label={t('proofShaping.clusters', {
-                  count: glyphs.length,
+                  count: clusters.length,
                 })}
               >
                 <thead>
                   <tr>
                     {(
-                      ['sourceByte', 'glyph', 'xAdvance', 'yAdvance'] as const
+                      [
+                        'cluster',
+                        'sourceByte',
+                        'source',
+                        'glyph',
+                        'x',
+                        'y',
+                        'xAdvance',
+                        'yAdvance',
+                      ] as const
                     ).map((key) => (
                       <th key={key} scope="col">
                         {t(`proofShaping.${key}`)}
@@ -282,14 +296,20 @@ export function TextShapingControls({
                   </tr>
                 </thead>
                 <tbody>
-                  {glyphs.map((glyph, index) => (
-                    <tr key={index}>
-                      <td>{glyph.sourceByte}</td>
-                      <td>{glyph.name ?? t('proofShaping.unnamed')}</td>
-                      <td>{glyph.xAdvance}</td>
-                      <td>{glyph.yAdvance}</td>
-                    </tr>
-                  ))}
+                  {clusters.flatMap((cluster) =>
+                    cluster.glyphs.map((glyph, position) => (
+                      <tr key={`${cluster.index}:${position}`}>
+                        <td>{cluster.index}</td>
+                        <td>{cluster.sourceByte}</td>
+                        <td>{position === 0 ? cluster.source : ''}</td>
+                        <td>{glyph.name ?? t('proofShaping.unnamed')}</td>
+                        <td>{glyph.x}</td>
+                        <td>{glyph.y}</td>
+                        <td>{glyph.xAdvance}</td>
+                        <td>{glyph.yAdvance}</td>
+                      </tr>
+                    )),
+                  )}
                 </tbody>
               </table>
             </div>

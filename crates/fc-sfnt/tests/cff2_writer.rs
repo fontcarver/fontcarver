@@ -1,4 +1,4 @@
-use fc_sfnt::write::{cff2_outline, write_cff2, Cff2Delta, Cff2Glyph, Cff2Outline};
+use fc_sfnt::write::{cff2_outline, write_cff2, Cff2Delta, Cff2Glyph, Cff2Outline, Cff2Private};
 
 fn glyph() -> Cff2Glyph {
     Cff2Glyph {
@@ -15,7 +15,7 @@ fn glyph() -> Cff2Glyph {
 
 #[test]
 fn malformed_dimensions_regions_programs_and_numbers_fail_cleanly() {
-    assert!(write_cff2(1000, 1, &[glyph()]).is_ok());
+    assert!(write_cff2(1000, 1, &[glyph()], &Cff2Private::default()).is_ok());
     for malformed in 0..8 {
         let mut glyph = glyph();
         match malformed {
@@ -44,7 +44,10 @@ fn malformed_dimensions_regions_programs_and_numbers_fail_cleanly() {
                 glyph.deltas[0].values[2] = f64::NAN;
             }
         }
-        assert!(write_cff2(1000, 1, &[glyph]).is_err(), "case {malformed}");
+        assert!(
+            write_cff2(1000, 1, &[glyph], &Cff2Private::default()).is_err(),
+            "case {malformed}"
+        );
     }
     let mut path = kurbo::BezPath::new();
     path.move_to((0., 0.));
@@ -60,7 +63,7 @@ fn charstrings_obey_the_specification_length_limit() {
         .chain(std::iter::repeat_n(5, 22_000))
         .collect();
     glyph.outline.operands = vec![0.; 44_002];
-    assert!(write_cff2(1000, 1, &[glyph])
+    assert!(write_cff2(1000, 1, &[glyph], &Cff2Private::default())
         .unwrap_err()
         .to_string()
         .contains("65535"));

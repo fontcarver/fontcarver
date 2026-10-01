@@ -57,14 +57,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         max_zones: Some(2),
         max_size_of_instructions: None,
     };
-    let output = with_instructions(&bytes, &programs, &globals)?;
+    let output = with_instructions(&bytes, &programs, &globals, &[])?;
     if fingerprints(&bytes, &ids)? != fingerprints(&output, &ids)? {
         return Err("point identity changed after writing programs".into());
     }
     fs::write(directory.join("instructed.ttf"), output)?;
     fs::write(
         directory.join("control.ttf"),
-        with_instructions(&bytes, &[], &globals)?,
+        with_instructions(&bytes, &[], &globals, &[])?,
     )?;
     let mut manifest = fs::File::create(directory.join("programs.tsv"))?;
     for program in &programs {

@@ -227,6 +227,13 @@ export function GlyphView({
       outline,
       guides: scene.guides as readonly ScopedGuide[],
       metrics: scene.metrics,
+      // The effective vertical metrics are in `scene.metrics`; the canvas's
+      // vertical handles also need what this layer itself stores, so dragging
+      // one field leaves an inherited one inherited.
+      verticalOverrides: {
+        origin: scene.layer?.vertical_origin ?? null,
+        advance: scene.layer?.vertical_width ?? null,
+      },
       master: outline.master,
       curves: inferCurves(
         outline.contours,

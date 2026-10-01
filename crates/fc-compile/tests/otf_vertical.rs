@@ -198,3 +198,52 @@ fn empty_vertical_fonts_have_zero_bounds_extrema_but_keep_metrics() {
         900
     );
 }
+
+/// Row 111: `VORG` carries a record only for an origin that differs from the
+/// default, so a CJK font with one exceptional glyph writes one record and a
+/// uniform font writes none while every glyph still reads the right origin.
+#[test]
+fn vorg_records_only_the_origins_that_differ_from_the_default() {
+    fn vorg_bytes(font: &Font) -> Vec<u8> {
+        let report = export(font, &|_| 0, &options()).expect("export vertical OTF");
+        let face = FontRef::new(&report.bytes).unwrap();
+        let v = gid_for(&face, 0x56);
+        let raw = face
+            .table_data(read_fonts::types::Tag::new(b"VORG"))
+            .expect("VORG table")
+            .as_bytes()
+            .to_vec();
+        // Whatever the record list holds, the resolved origins are unchanged.
+        let vorg = face.vorg().unwrap();
+        assert_eq!(vorg.vertical_origin_y(gid_for(&face, 0x41)), 900);
+        assert_eq!(vorg.vertical_origin_y(gid_for(&face, 0x20)), 900);
+        assert_eq!(
+            vorg.vertical_origin_y(v),
+            font.glyph("V").unwrap().layers[0]
+                .vertical_origin
+                .unwrap_or(900.0) as i16
+        );
+        raw
+    }
+
+    let mut font = vertical_font();
+    font.masters[0].metrics.default_vertical_origin = Some(900.0);
+    for name in [".notdef", "space"] {
+        font.glyph_mut(name).unwrap().layers[0].vertical_origin = Some(900.0);
+    }
+    // Only V keeps a different origin, so exactly one record is written.
+    let raw = vorg_bytes(&font);
+    assert_eq!(&raw[..4], &[0, 1, 0, 0], "VORG version 1.0 header");
+    assert_eq!(i16::from_be_bytes([raw[4], raw[5]]), 900);
+    assert_eq!(u16::from_be_bytes([raw[6], raw[7]]), 1);
+    assert_eq!(raw.len(), 12, "one record of four bytes");
+    assert_eq!(i16::from_be_bytes([raw[10], raw[11]]), 850);
+
+    // Give V the default too: the record list is empty, not a full table of
+    // repeated defaults, and nothing about the resolved origins changes.
+    font.glyph_mut("V").unwrap().layers[0].vertical_origin = Some(900.0);
+    let raw = vorg_bytes(&font);
+    assert_eq!(i16::from_be_bytes([raw[4], raw[5]]), 900);
+    assert_eq!(u16::from_be_bytes([raw[6], raw[7]]), 0);
+    assert_eq!(raw.len(), 8, "header only");
+}

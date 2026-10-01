@@ -6,6 +6,8 @@ pub use brackets::{expand_brackets, BracketRule};
 mod curves;
 mod hint_masks;
 pub use hint_masks::{path_hint_masks, PathHintMasks};
+mod path_hints;
+pub use path_hints::{element_indices, path_dot_sections, path_flex, PathFlex};
 mod outline;
 mod relationships;
 mod unicode_index;

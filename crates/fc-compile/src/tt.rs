@@ -6,16 +6,29 @@ use fc_sfnt::tt::GlyphProgram;
 use crate::{Error, ExportFormat, ExportOptions, ExportWarning};
 
 pub(crate) fn authored(font: &Font, master: &MasterId) -> bool {
+    authored_globals(font, master) || authored_glyphs(font, master)
+}
+
+/// Whether the master carries authored global programs, CVT and maxima.
+///
+/// Global data is geometry independent: it addresses control values and the
+/// interpreter's state, not outline points, so geometry preprocessing and
+/// variable compilation cannot invalidate it.
+pub(crate) fn authored_globals(font: &Font, master: &MasterId) -> bool {
     font.master(master)
         .is_some_and(|m| m.tt.authored_units_per_em.is_some())
-        || font.glyphs.values().any(|glyph| {
-            glyph.master_layer(master).is_some_and(|layer| {
-                layer
-                    .tt_binding
-                    .as_ref()
-                    .is_some_and(|binding| binding.authored)
-            })
+}
+
+/// Whether any glyph in the master carries an explicitly authored program.
+pub(crate) fn authored_glyphs(font: &Font, master: &MasterId) -> bool {
+    font.glyphs.values().any(|glyph| {
+        glyph.master_layer(master).is_some_and(|layer| {
+            layer
+                .tt_binding
+                .as_ref()
+                .is_some_and(|binding| binding.authored)
         })
+    })
 }
 
 pub(crate) fn selected_authored(font: &Font, options: &ExportOptions) -> bool {
@@ -31,6 +44,22 @@ pub(crate) fn selected_authored(font: &Font, options: &ExportOptions) -> bool {
 
 pub(crate) fn preflight(font: &Font, options: &ExportOptions) -> Result<(), Error> {
     if options.format == ExportFormat::Otf || !selected_authored(font, options) {
+        return Ok(());
+    }
+    // Authored global programs, CVT and interpreter maxima do not address
+    // outline points, so they survive every geometry option and variable
+    // compilation; only authored glyph programs carry a point binding.
+    let glyphs = if options.variable || options.instance.is_some() {
+        font.masters
+            .iter()
+            .any(|master| authored_glyphs(font, &master.id))
+    } else {
+        authored_glyphs(
+            font,
+            options.master.as_ref().unwrap_or(&font.default_master().id),
+        )
+    };
+    if !glyphs {
         return Ok(());
     }
     if font
@@ -72,11 +101,17 @@ pub(crate) fn apply(
     master: &MasterId,
     order: &[GlyphName],
     keep_imported: bool,
+    variable: bool,
 ) -> Result<(Vec<u8>, Vec<ExportWarning>), Error> {
     let data = &font
         .master(master)
         .ok_or_else(|| Error::MissingMaster(master.clone()))?
         .tt;
+    let mut variation = Vec::new();
+    let mut extra = Vec::new();
+    if variable {
+        variation = cvt_variation(font, master, data, &mut extra)?;
+    }
     if data
         .authored_units_per_em
         .is_some_and(|upem| upem != font.info.units_per_em)
@@ -130,15 +165,106 @@ pub(crate) fn apply(
                 "authored TrueType output cannot preserve this point-dependent layout: {error}"
             ))
         })?;
-    let bytes = fc_sfnt::tt::with_instructions(bytes, &programs, data)
+    let bytes = fc_sfnt::tt::with_instructions(bytes, &programs, data, &variation)
         .map_err(|e| Error::InvalidSource(e.to_string()))?;
-    let warnings = if omitted == 0 {
-        Vec::new()
-    } else {
-        vec![ExportWarning {
+    let mut warnings = extra;
+    if omitted != 0 {
+        warnings.push(ExportWarning {
         code: "tt-imported-programs-omitted",
         message: format!("{omitted} imported TrueType programs could not be retained because their point bindings do not match the compiled outlines; authored programs were retained"),
-    }]
-    };
+    });
+    }
     Ok((bytes, warnings))
+}
+
+/// Builds `cvar` regions from the masters' control value tables.
+///
+/// Every master's CVT must declare the same number of control values, because a
+/// `cvar` delta addresses one control value by index. A source that does not is
+/// reported and exported with the selected master's control values alone.
+fn cvt_variation(
+    font: &Font,
+    master: &MasterId,
+    data: &fc_model::TtMasterData,
+    warnings: &mut Vec<ExportWarning>,
+) -> Result<Vec<fc_sfnt::tt::CvtRegion>, Error> {
+    use fontdrasil::{
+        types::Tag,
+        variations::{RoundingBehaviour, VariationModel},
+    };
+    if data.cvt.is_empty() || font.axes.is_empty() || font.masters.len() < 2 {
+        return Ok(Vec::new());
+    }
+    let axis_order: Vec<_> = font.axes.iter().map(|axis| Tag::new(&axis.tag.0)).collect();
+    let mut sources = std::collections::HashMap::new();
+    for source in &font.masters {
+        if source.tt.cvt.len() != data.cvt.len() {
+            warnings.push(ExportWarning {
+                code: "cvar-not-authored",
+                message: format!("Master `{}` declares {} control values and the exported master declares {}; the control value table was written without variation", source.name, source.tt.cvt.len(), data.cvt.len()),
+            });
+            return Ok(Vec::new());
+        }
+        let location = font
+            .complete_location(&source.location)
+            .map_err(|error| Error::InvalidSource(error.to_string()))?;
+        let values: Vec<f64> = source
+            .tt
+            .cvt
+            .iter()
+            .map(|value| f64::from(*value))
+            .collect();
+        sources.insert(
+            fc_geom::variation::normalized_location(&font.axes, &location),
+            values,
+        );
+    }
+    if sources.len() < 2 {
+        return Ok(Vec::new());
+    }
+    // The exported master must be the design default, or its control values are
+    // not the ones the default instance would use.
+    let default = font
+        .design_default_master()
+        .map_err(|error| Error::InvalidSource(error.to_string()))?;
+    if &default.id != master {
+        warnings.push(ExportWarning {
+            code: "cvar-not-authored",
+            message: "Control value variation is written from the design default master; the selected master's values were written without variation".to_owned(),
+        });
+        return Ok(Vec::new());
+    }
+    let model = VariationModel::new(sources.keys().cloned().collect(), axis_order.clone());
+    let deltas = model
+        .deltas_with_rounding::<f64, f64>(&sources, RoundingBehaviour::RoundTiesEven)
+        .map_err(|error| Error::InvalidSource(error.to_string()))?;
+    let mut regions = Vec::new();
+    for (region, values) in deltas {
+        if region.is_default() || values.iter().all(|value| *value == 0.0) {
+            continue;
+        }
+        let deltas = values
+            .iter()
+            .map(|value| {
+                let rounded = value.round();
+                i16::try_from(rounded as i32).map_err(|_| {
+                    Error::InvalidSource(
+                        "a control value delta exceeds the signed 16-bit range".into(),
+                    )
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        regions.push(fc_sfnt::tt::CvtRegion {
+            region: axis_order
+                .iter()
+                .map(|tag| {
+                    region.get(tag).map_or((0.0, 0.0, 0.0), |tent| {
+                        (tent.min.to_f64(), tent.peak.to_f64(), tent.max.to_f64())
+                    })
+                })
+                .collect(),
+            deltas,
+        });
+    }
+    Ok(regions)
 }

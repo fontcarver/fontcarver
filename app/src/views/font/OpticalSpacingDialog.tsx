@@ -14,6 +14,7 @@ import { Select } from '../../components/Select'
 import { withSettledDocument } from '../../editor/documentPersistence'
 import { errorNotice } from '../../i18n/errors'
 import { OpticalMetricsPreview } from './OpticalMetricsPreview'
+import { OpticalProposalTable, proposalKey } from './OpticalProposalTable'
 import styles from './opticalSpacing.module.css'
 
 /** Preview a captured glyph selection before one generation-checked optical edit. */
@@ -45,6 +46,11 @@ export function OpticalSpacingDialog({
     params: OpticalBatchParams
     result: OpticalBatchResult
   } | null>(null)
+  // Rejected rows of the reviewed proposal, keyed as the kernel names them.
+  const [rejected, setRejected] = useState<ReadonlySet<string>>(new Set())
+  const accepted = (preview?.result.proposals ?? []).filter(
+    (entry) => !rejected.has(proposalKey(entry)),
+  )
   const validSelection =
     captured.glyphs.length > 0 &&
     captured.glyphs.length <= 128 &&
@@ -52,6 +58,7 @@ export function OpticalSpacingDialog({
   const invalidate = () => {
     setPreview(null)
     setError(null)
+    setRejected(new Set())
   }
   const showError = (reason: unknown) => {
     const notice = errorNotice(reason, t)
@@ -77,6 +84,7 @@ export function OpticalSpacingDialog({
         operation,
         density: value,
         replace_existing: operation === 'kerning' && replaceExisting,
+        accepted: null,
         dry_run: true,
         expected_generation: null,
         label: t('opticalSpacing.title'),
@@ -92,13 +100,20 @@ export function OpticalSpacingDialog({
     }
   }
   const apply = async () => {
-    if (!preview || preview.result.changed_count === 0) return
+    if (!preview || accepted.length === 0) return
     setBusy(true)
     setError(null)
     try {
       await withSettledDocument(captured.doc, () =>
         call('optical.batch', {
           ...preview.params,
+          // The reviewed rows are named explicitly, so a proposal that no longer
+          // holds one of them is refused rather than partly applied.
+          accepted: accepted.map((entry) => ({
+            glyph: entry.glyph,
+            right: entry.right,
+            master: entry.master,
+          })),
           dry_run: false,
           expected_generation: preview.result.generation,
         }),
@@ -137,7 +152,7 @@ export function OpticalSpacingDialog({
           </Button>
           <Button
             variant="primary"
-            disabled={busy || !preview || preview.result.changed_count === 0}
+            disabled={busy || !preview || accepted.length === 0}
             onClick={() => void apply()}
           >
             {t('opticalSpacing.apply')}
@@ -236,6 +251,16 @@ export function OpticalSpacingDialog({
                   examples={preview.result.examples}
                   operation={preview.params.operation}
                 />
+                <OpticalProposalTable
+                  proposals={preview.result.proposals}
+                  rejected={rejected}
+                  onRejected={setRejected}
+                />
+                {accepted.length === 0 && (
+                  <p role="alert" className={styles.error}>
+                    {t('opticalSpacing.nothingAccepted')}
+                  </p>
+                )}
               </>
             )}
             {skipped.size > 0 && (

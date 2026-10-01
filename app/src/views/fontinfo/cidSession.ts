@@ -56,6 +56,34 @@ export function parseCid(draft: CidDraft, invalid: string): CidInfo | null {
   }
 }
 
+/**
+ * Exported glyph names the mapping does not cover, in glyph order.
+ *
+ * CID-keyed CFF export needs a CID for every *exported* glyph and refuses the
+ * whole font otherwise, so the editor reports the gap while it can still be
+ * fixed. Glyphs that do not export never reach the writer's glyph order and are
+ * therefore never reported; `.notdef` is excluded too, because the writer
+ * always gives it CID 0. An unparseable draft reports nothing, because the
+ * invalid-entry notice already explains what is wrong.
+ */
+export function unmappedGlyphs(
+  source: CidState,
+  draft: CidDraft,
+  invalid: string,
+): readonly string[] {
+  if (!draft.enabled) return []
+  let mapped: Set<string>
+  try {
+    mapped = new Set(Object.values(parseCid(draft, invalid)?.cid_map ?? {}))
+  } catch {
+    return []
+  }
+  const exported = new Set(source.exported)
+  return source.glyphs.filter(
+    (name) => name !== '.notdef' && exported.has(name) && !mapped.has(name),
+  )
+}
+
 /** Fill an Adobe-Identity mapping, retaining existing IDs and glyph order. */
 export function identityMapping(
   source: CidState,

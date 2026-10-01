@@ -5,7 +5,7 @@ import styles from './MenuBar.module.css'
 import { formatShortcut } from './shortcuts'
 import { shortcutFor } from './keymap'
 import { useKeymapStore } from '../stores/keymapStore'
-import { helpHint } from './contextHelp'
+import { commandHelp } from './commandHelp'
 
 export interface MenuItemProps {
   command: Command
@@ -15,23 +15,15 @@ export interface MenuItemProps {
 
 /**
  * One row of a menu popup. Disabled commands stay listed and explain why they
- * are unavailable through their tooltip and accessible description.
+ * are unavailable through an inline hint and their accessible description;
+ * hovering a row is Quick Help's job, so there is no native tooltip.
  */
 export function MenuItem({ command, onRun, onKeyDown }: MenuItemProps) {
   const { t } = useTranslation()
   const overrides = useKeymapStore((state) => state.overrides)
   const shortcut = shortcutFor(command.id, command.shortcut, overrides)
-  const hint = helpHint(
-    command.menu === 'glyph' ||
-      command.menu === 'path' ||
-      command.menu === 'layer'
-      ? 'glyph'
-      : command.menu === 'font'
-        ? 'font'
-        : command.menu === 'file'
-          ? 'files'
-          : 'shortcuts',
-  )
+  const help = commandHelp(command.id)
+  const summary = help ? t(help.summary) : undefined
   const enabled = command.when?.() ?? true
   const detail = command.detail?.()
   const label = detail ? `${t(command.title)} ${detail}` : t(command.title)
@@ -43,12 +35,10 @@ export function MenuItem({ command, onRun, onKeyDown }: MenuItemProps) {
       type="button"
       role="menuitem"
       disabled={!enabled}
-      title={
-        reason ??
-        `${label}${shortcut ? ` (${formatShortcut(shortcut)})` : ''}. ${hint.title}`
-      }
-      data-help-topic={hint['data-help-topic']}
-      aria-description={reason ?? hint['aria-description']}
+      data-help-command={command.id}
+      {...(help ? { 'data-help-topic': help.topic } : {})}
+      aria-keyshortcuts={shortcut ? formatShortcut(shortcut) : undefined}
+      aria-description={reason ?? summary}
       className={styles.menuItem}
       onClick={onRun}
       onKeyDown={onKeyDown}

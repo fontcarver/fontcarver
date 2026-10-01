@@ -44,7 +44,7 @@
 .active {
   position: relative;
   background: var(--color-accent-soft);
-  color: var(--color-accent);
+  color: var(--color-text);
 }
 
 .active::before {

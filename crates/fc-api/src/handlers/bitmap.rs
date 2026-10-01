@@ -188,6 +188,81 @@ pub(crate) fn rasterize(api: &Api, params: crate::BitmapRasterParams) -> Result<
     )
 }
 
+/// Smallest pixel size offered as a grid preset.
+///
+/// Four pixels per em is also the floor `detect_pixel_font` accepts, and below
+/// it a "grid" has no shape to speak of. The ceiling is the units per em
+/// itself, bounded by the largest strike the model stores: one font unit per
+/// pixel is the finest grid that means anything, since a pixel smaller than a
+/// unit can no longer land on integer coordinates.
+const GRID_MIN_PPEM: u16 = 4;
+
+/// Exact pixel grids for the document's units per em, with strike metrics.
+///
+/// A grid is exact when one pixel is a whole number of font units, so pixel
+/// edges land on integer coordinates and a traced outline needs no rounding.
+/// A requested size is reported with its own verdict and, when it is not
+/// exact, the nearest size that is.
+pub(crate) fn grid(
+    api: &Api,
+    params: crate::BitmapGridParams,
+) -> Result<crate::BitmapGridInfo, ApiError> {
+    api.session
+        .with_doc(params.doc, |doc| {
+            let upm = doc.font.info.units_per_em;
+            if upm == 0 {
+                return Err(ApiError::invalid_params("units per em must be nonzero"));
+            }
+            let master = match &params.master {
+                Some(id) => doc
+                    .font
+                    .master(id)
+                    .ok_or_else(|| ApiError::not_found("master does not exist"))?,
+                None => doc.font.default_master(),
+            };
+            let (ascender, descender) = (master.metrics.ascender, master.metrics.descender);
+            let choice = |ppem: u16| -> crate::BitmapGridChoice {
+                let scale = f64::from(ppem) / f64::from(upm);
+                let metric = |value: f64| -> i16 {
+                    let scaled = (value * scale).round();
+                    if scaled.is_finite() {
+                        scaled.clamp(0.0, f64::from(i16::MAX)) as i16
+                    } else {
+                        0
+                    }
+                };
+                crate::BitmapGridChoice {
+                    ppem,
+                    units_per_pixel: f64::from(upm) / f64::from(ppem),
+                    exact: upm % ppem == 0,
+                    ascent: metric(ascender),
+                    descent: metric(-descender),
+                }
+            };
+            let presets = (GRID_MIN_PPEM..=upm.min(fc_model::MAX_BITMAP_SIZE))
+                .filter(|ppem| upm % ppem == 0)
+                .map(choice)
+                .collect::<Vec<_>>();
+            let requested = params.ppem.filter(|ppem| *ppem > 0).map(choice);
+            // The nearest exact size, preferring the smaller one on a tie so
+            // the suggestion never silently grows the strike.
+            let nearest = requested.filter(|choice| !choice.exact).and_then(|choice| {
+                presets
+                    .iter()
+                    .map(|preset| preset.ppem)
+                    .min_by_key(|ppem| (ppem.abs_diff(choice.ppem), *ppem))
+            });
+            Ok(crate::BitmapGridInfo {
+                generation: doc.generation,
+                units_per_em: upm,
+                presets,
+                requested,
+                nearest,
+            })
+        })
+        .map_err(ApiError::from)?
+}
+
 pub(crate) fn trace(api: &Api, params: crate::BitmapTraceParams) -> Result<Change, ApiError> {
     api.session
         .with_doc_mut(params.doc, |doc| {
@@ -202,9 +277,27 @@ pub(crate) fn trace(api: &Api, params: crate::BitmapTraceParams) -> Result<Chang
                 .iter()
                 .find(|s| (s.ppem, s.depth) == (params.ppem, params.depth))
                 .ok_or_else(|| ApiError::not_found("strike does not exist"))?;
-            let glyph = strike
-                .flattened(&params.glyph.as_str().into())
-                .map_err(|e| ApiError::invalid_params(e.to_string()))?;
+            // One undo step covers the whole selection: the single `glyph` plus
+            // any extra names, in a stable order and without duplicates.
+            let mut selected = Vec::new();
+            let all = if params.all_images {
+                strike.glyphs.keys().map(ToString::to_string).collect()
+            } else {
+                Vec::new()
+            };
+            for name in std::iter::once(&params.glyph)
+                .chain(params.glyphs.iter())
+                .chain(all.iter())
+            {
+                if !selected.contains(name) {
+                    selected.push(name.clone());
+                }
+            }
+            if selected.len() > 4096 {
+                return Err(ApiError::invalid_params(
+                    "trace at most 4096 glyphs per operation",
+                ));
+            }
             let mode = match params.mode.unwrap_or_default() {
                 crate::BitmapTraceMode::PixelEdges => fc_raster::BitmapTraceMode::PixelEdges,
                 crate::BitmapTraceMode::ChamferedCorners => {
@@ -217,41 +310,45 @@ pub(crate) fn trace(api: &Api, params: crate::BitmapTraceParams) -> Result<Chang
                     fc_raster::BitmapTraceMode::DiagonalSmoothing
                 }
             };
-            let contours = fc_raster::trace_bitmap_with_options(
-                &glyph.bitmap,
-                params.ppem,
-                doc.font.info.units_per_em,
-                params.threshold,
-                fc_raster::BitmapTraceOptions {
-                    mode,
-                    join_diagonals: params.join_diagonals.unwrap_or(false),
-                },
-            )
-            .map_err(|e| ApiError::invalid_params(e.to_string()))?;
             let master = params
                 .master
                 .unwrap_or_else(|| doc.font.default_master().id.clone());
-            let layer = doc
-                .font
-                .glyph(&params.glyph)
-                .and_then(|g| g.master_layer(&master))
-                .ok_or_else(|| ApiError::not_found("outline layer does not exist"))?;
-            let command = fc_doc::Command::Batch(vec![
-                fc_doc::Command::ReplaceLayerOutline {
-                    glyph: params.glyph.as_str().into(),
+            let mut commands = Vec::with_capacity(selected.len() * 2);
+            for name in &selected {
+                let glyph = strike
+                    .flattened(&name.as_str().into())
+                    .map_err(|e| ApiError::invalid_params(e.to_string()))?;
+                let contours = fc_raster::trace_bitmap_with_options(
+                    &glyph.bitmap,
+                    params.ppem,
+                    doc.font.info.units_per_em,
+                    params.threshold,
+                    fc_raster::BitmapTraceOptions {
+                        mode,
+                        join_diagonals: params.join_diagonals.unwrap_or(false),
+                    },
+                )
+                .map_err(|e| ApiError::invalid_params(e.to_string()))?;
+                let layer = doc
+                    .font
+                    .glyph(name)
+                    .and_then(|g| g.master_layer(&master))
+                    .ok_or_else(|| ApiError::not_found("outline layer does not exist"))?;
+                commands.push(fc_doc::Command::ReplaceLayerOutline {
+                    glyph: name.as_str().into(),
                     layer: layer.id.clone(),
                     contours,
                     components: Vec::new(),
                     anchors: layer.anchors.clone(),
-                },
-                fc_doc::Command::SetWidth {
-                    glyph: params.glyph.into(),
+                });
+                commands.push(fc_doc::Command::SetWidth {
+                    glyph: name.as_str().into(),
                     layer: layer.id.clone(),
                     width: f64::from(glyph.advance) * f64::from(doc.font.info.units_per_em)
                         / f64::from(params.ppem),
-                },
-            ]);
-            doc.apply(command, "Trace bitmap outlines")
+                });
+            }
+            doc.apply(fc_doc::Command::Batch(commands), "Trace bitmap outlines")
                 .map_err(ApiError::from)
         })
         .map_err(ApiError::from)?
@@ -261,9 +358,9 @@ pub(crate) fn preview(
     api: &Api,
     params: crate::BitmapPreviewParams,
 ) -> Result<Vec<crate::BitmapPreviewLine>, ApiError> {
-    if params.text.chars().count() > 128 {
+    if params.text.chars().count() > 128 || params.glyphs.len() > 128 {
         return Err(ApiError::invalid_params(
-            "waterfall text exceeds 128 characters",
+            "waterfall sample exceeds 128 entries",
         ));
     }
     api.session
@@ -282,15 +379,38 @@ pub(crate) fn preview(
                     }
                 }
             }
+            // Named glyphs win over the text, so a glyph with no Unicode value
+            // — `.notdef`, a stylistic alternate, the reusable pixel glyph —
+            // can still be compared across the strikes.
+            let selection: Vec<Option<fc_model::GlyphName>> = if params.glyphs.is_empty() {
+                params
+                    .text
+                    .chars()
+                    .map(|ch| names.get(&(ch as u32)).map(|name| (*name).clone()))
+                    .collect()
+            } else {
+                params
+                    .glyphs
+                    .iter()
+                    .map(|name| {
+                        doc.font
+                            .glyph(name)
+                            .map(|glyph| glyph.name.clone())
+                            .ok_or_else(|| {
+                                ApiError::not_found(format!("glyph `{name}` does not exist"))
+                            })
+                    })
+                    .map(|found| found.map(Some))
+                    .collect::<Result<_, ApiError>>()?
+            };
             doc.font
                 .bitmap_strikes
                 .iter()
                 .map(|strike| {
-                    let glyphs = params
-                        .text
-                        .chars()
-                        .map(|ch| {
-                            let name = names.get(&(ch as u32)).copied();
+                    let glyphs = selection
+                        .iter()
+                        .map(|entry| {
+                            let name = entry.as_ref();
                             let Some(name) = name.filter(|n| strike.glyphs.contains_key(*n)) else {
                                 return Ok(None);
                             };

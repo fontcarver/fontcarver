@@ -107,6 +107,12 @@ export async function prepareProofSheet(
         glyphs,
         unitsPerEm: context.unitsPerEm,
         size,
+        // Carried so an embedded-font sheet can set the same text, in the same
+        // direction, language and features the proof was shaped with.
+        text: sample.text,
+        direction: sample.direction,
+        ...(sample.language ? { language: sample.language } : {}),
+        features: request.features,
       })
   }
   check()

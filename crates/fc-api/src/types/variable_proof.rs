@@ -65,3 +65,34 @@ pub struct VariableProof {
     /// Non-fatal shaping diagnostics.
     pub warnings: Vec<String>,
 }
+
+/// Compile one face of the live document for a self-contained proof sheet.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
+pub struct ProofFontParams {
+    /// Open document identifier.
+    pub doc: DocId,
+    /// Master to compile, or the default master when absent.
+    #[serde(default)]
+    pub master: Option<fc_model::MasterId>,
+    /// Named instance to interpolate instead of compiling a master.
+    #[serde(default)]
+    pub instance: Option<u32>,
+}
+
+/// One compiled WOFF 2 face, with what an `@font-face` rule needs to use it.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Serialize, TS)]
+pub struct ProofFont {
+    /// Snapshot revision this face was compiled from.
+    #[ts(type = "number")]
+    pub generation: u64,
+    /// Standard base64 of the WOFF 2 bytes, without a data-URI prefix.
+    pub woff2_base64: String,
+    /// Family name the embedded font declares.
+    pub family_name: String,
+    /// Style name of the compiled master or instance.
+    pub style_name: String,
+    /// Font scale, so a sheet can relate point sizes to font units.
+    pub units_per_em: u16,
+    /// Non-fatal compilation diagnostics, already formatted for display.
+    pub warnings: Vec<String>,
+}

@@ -108,10 +108,21 @@ pub(super) fn apply(font: &mut Font, command: &Command) -> Result<(), Error> {
                 .get_mut(*index)
                 .ok_or_else(|| index_error("guide", *index, len))?;
             let id = target.id.clone();
-            *target = guide.clone();
+            // The stored identity survives the write, so compare what would be
+            // stored. A locked guide takes only its own value back, or the same
+            // value unlocked — the explicit-unlock escape a locked image has.
+            let mut candidate = guide.clone();
             if id.is_some() {
-                target.id = id;
+                candidate.id = id.clone();
             }
+            if target.locked {
+                let mut unlocked = target.clone();
+                unlocked.locked = false;
+                if candidate != unlocked && candidate != *target {
+                    return Err(locked_guide());
+                }
+            }
+            *target = candidate;
             Ok(())
         }
         Command::RemoveGuide {
@@ -123,6 +134,9 @@ pub(super) fn apply(font: &mut Font, command: &Command) -> Result<(), Error> {
             let guides = guide_vec(font, glyph, layer, master)?;
             if *index >= guides.len() {
                 return Err(index_error("guide", *index, guides.len()));
+            }
+            if guides[*index].locked {
+                return Err(locked_guide());
             }
             guides.remove(*index);
             Ok(())
@@ -231,4 +245,9 @@ fn index_error(what: &str, index: usize, len: usize) -> Error {
     Error::InvalidCommand(format!(
         "{what} index {index} is out of bounds for length {len}"
     ))
+}
+
+/// Why a command that would change a locked guide did nothing.
+pub(crate) fn locked_guide() -> Error {
+    Error::InvalidCommand("the guide is locked; unlock it first".into())
 }

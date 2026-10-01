@@ -1,8 +1,10 @@
 //! Preserve cubic source curves while encoding CFF2 variation deltas.
-use crate::Error;
+use crate::{Error, ExportWarning};
 use fc_geom::variation::{glyph_sources, interpolated_path, normalized_location};
 use fc_model::{DesignLocation, Font, GlyphName};
-use fc_sfnt::write::{cff2_outline, Cff2Delta, Cff2Glyph, Cff2Outline};
+use fc_sfnt::write::{
+    cff2_outline, private_layout, Cff2Delta, Cff2Glyph, Cff2Outline, Cff2Private,
+};
 use fontdrasil::{
     types::Tag,
     variations::{RoundingBehaviour, VariationModel},
@@ -16,7 +18,12 @@ fn invalid(error: impl std::fmt::Display) -> Error {
     Error::InvalidSource(error.to_string())
 }
 
-pub(crate) fn convert(sfnt: &[u8], font: &Font, order: &[GlyphName]) -> Result<Vec<u8>, Error> {
+pub(crate) fn convert(
+    sfnt: &[u8],
+    font: &Font,
+    order: &[GlyphName],
+    warnings: &mut Vec<ExportWarning>,
+) -> Result<Vec<u8>, Error> {
     let axis_order: Vec<_> = font.axes.iter().map(|a| Tag::new(&a.tag.0)).collect();
     let default = font
         .complete_location(&DesignLocation::new())
@@ -71,8 +78,10 @@ pub(crate) fn convert(sfnt: &[u8], font: &Font, order: &[GlyphName]) -> Result<V
             .collect();
         glyphs.push(Cff2Glyph { outline, deltas });
     }
-    let cff = fc_sfnt::write::write_cff2(font.info.units_per_em, font.axes.len(), &glyphs)
-        .map_err(invalid)?;
+    let private = private_values(font, &axis_order, warnings)?;
+    let cff =
+        fc_sfnt::write::write_cff2(font.info.units_per_em, font.axes.len(), &glyphs, &private)
+            .map_err(invalid)?;
     let face = FontRef::new(sfnt).map_err(|e| Error::parse("variable CFF2 source", e))?;
     let mut builder = FontBuilder::new();
     for record in face.table_directory().table_records() {
@@ -134,6 +143,78 @@ pub(crate) fn convert(sfnt: &[u8], font: &Font, order: &[GlyphName]) -> Result<V
     )?;
     builder.add_raw(Tag::new(b"CFF2"), cff);
     Ok(builder.build())
+}
+
+/// Authors the CFF2 Private DICT from the masters' PostScript private values.
+///
+/// CFF2 has no stem or hint-mask operators, but its Private DICT keeps the
+/// blue zones, stem snaps and standard widths, and every numeric value may vary.
+/// Values are taken from the design default master and varied with the same
+/// interpolation model as the outlines, as differences of the absolute values;
+/// `fc_sfnt::write::write_cff2` converts an array operator's deltas into the
+/// relative basis its DICT operands are stored in. Masters that declare different array
+/// lengths or a different set of optional values cannot be interpolated
+/// elementwise; that is reported and the default master's values are written
+/// without variation rather than guessed at.
+fn private_values(
+    font: &Font,
+    axis_order: &[Tag],
+    warnings: &mut Vec<ExportWarning>,
+) -> Result<Cff2Private, Error> {
+    let default = font.design_default_master().map_err(invalid)?;
+    let values = default.private_dict.clone();
+    let layout = private_layout(&values);
+    let plain = Cff2Private {
+        values: values.clone(),
+        regions: Vec::new(),
+        deltas: Vec::new(),
+    };
+    if layout.is_empty() || font.masters.len() < 2 || font.axes.is_empty() {
+        return Ok(plain);
+    }
+    let mut sources = HashMap::new();
+    for master in &font.masters {
+        let other = private_layout(&master.private_dict);
+        if other.len() != layout.len() {
+            warnings.push(ExportWarning {
+                code: "cff2-private-not-varied",
+                message: format!("Master `{}` declares a different set of PostScript private values than the default master, so the CFF2 private dictionary was written from the default master without variation", master.name),
+            });
+            return Ok(plain);
+        }
+        let location = font.complete_location(&master.location).map_err(invalid)?;
+        sources.insert(normalized_location(&font.axes, &location), other);
+    }
+    if sources.len() < 2 {
+        return Ok(plain);
+    }
+    let model = VariationModel::new(sources.keys().cloned().collect(), axis_order.to_vec());
+    let deltas = model
+        .deltas_with_rounding::<f64, f64>(&sources, RoundingBehaviour::None)
+        .map_err(invalid)?;
+    let mut regions = Vec::new();
+    let mut rows = Vec::new();
+    for (region, row) in deltas {
+        if region.is_default() || row.iter().all(|value| *value == 0.0) {
+            continue;
+        }
+        regions.push(
+            axis_order
+                .iter()
+                .map(|tag| {
+                    region.get(tag).map_or([0.0; 3], |tent| {
+                        [tent.min.to_f64(), tent.peak.to_f64(), tent.max.to_f64()]
+                    })
+                })
+                .collect(),
+        );
+        rows.push(row);
+    }
+    Ok(Cff2Private {
+        values,
+        regions,
+        deltas: rows,
+    })
 }
 
 fn collect_locations(

@@ -1,4 +1,8 @@
-import type { ExportFormat, ExportOptions } from '../api'
+import type { ExportFormat, ExportOptions, TtAutohintOptions } from '../api'
+import {
+  DEFAULT_TT_AUTOHINT,
+  isDefaultTtAutohint,
+} from '../views/hints/TtAutohintFields'
 import type { ExportOptionField } from './ExportProcessingOptions'
 import {
   ALL_MASTER_FORMATS,
@@ -32,6 +36,7 @@ export function exportOptionsFor(values: {
   master: string | null
   glyph: string
   options: Record<ExportOptionField, boolean>
+  ttAutohint?: TtAutohintOptions
 }): ExportOptions {
   const {
     format,
@@ -45,6 +50,7 @@ export function exportOptionsFor(values: {
     master,
     glyph,
     options,
+    ttAutohint,
   } = values
   const sfnt = SFNT_FORMATS.includes(format)
   const preprocess =
@@ -77,8 +83,19 @@ export function exportOptionsFor(values: {
       sfnt && format !== 'Cff' && options.preserve_untouched_tables,
     production_names: sfnt && options.production_names,
     autohint: preprocess && options.autohint,
+    // Only sent when the user changed something: the kernel's defaults are the
+    // tool's own, so an untouched dialog keeps the request it always sent.
+    tt_autohint:
+      ttAutohint && !isDefaultTtAutohint(ttAutohint) ? ttAutohint : undefined,
     table_subset: null,
   }
+}
+
+/** Restores the external hinter's options from a persisted profile. */
+export function ttAutohintFromProfile(
+  options: ExportOptions,
+): TtAutohintOptions {
+  return { ...DEFAULT_TT_AUTOHINT, ...(options.tt_autohint ?? {}) }
 }
 
 /** Restores supported processing choices from a persisted profile. */

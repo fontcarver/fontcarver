@@ -81,6 +81,7 @@ export function SmartComponentControls({
           />
         </div>
       ))}
+      <p className={styles.hint}>{t('panel.smartComponent.canvasHint')}</p>
       <SmartComponentHandle
         axes={axes}
         values={values}

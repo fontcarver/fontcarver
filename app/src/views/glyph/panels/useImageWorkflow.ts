@@ -20,7 +20,28 @@ import { useEditorStore } from '../../../stores/editorStore'
 export interface ImageTraceSettings {
   threshold: number
   tolerance: number
+  /** Fit cubic curves; false simplifies to straight lines only. */
+  curves: boolean
+  /** Turn angle in degrees at or above which a vertex stays a corner. */
+  corner_angle: number
+  /** Low-pass radius applied before fitting, in source pixels. */
+  smoothing: number
+  /** Smallest retained ring area in square source pixels. */
+  min_area: number
   append: boolean
+}
+
+/** The settings a freshly opened section starts from. */
+export const DEFAULT_TRACE_SETTINGS: ImageTraceSettings = {
+  threshold: 128,
+  tolerance: 1,
+  curves: true,
+  corner_angle: 35,
+  smoothing: 0,
+  // A scan carries dust: four square pixels drops a speck without touching any
+  // mark a designer drew. Zero remains reachable, and keeps every ring.
+  min_area: 4,
+  append: true,
 }
 
 /** Waits for gestures and publishes the mutation before save or navigation can overtake it. */

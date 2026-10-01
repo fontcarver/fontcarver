@@ -96,7 +96,7 @@ fn table(bytes: &[u8], tag: &[u8; 4]) -> Vec<u8> {
 fn variable_program_replacement_preserves_points_cvt_and_all_variation_tables() {
     let bytes = variable();
     let programs = [bound(&bytes, 0), bound(&bytes, 2)];
-    let result = with_instructions(&bytes, &programs, &globals()).unwrap();
+    let result = with_instructions(&bytes, &programs, &globals(), &[]).unwrap();
     for tag in [b"fvar", b"gvar", b"cvar", b"cvt "] {
         assert_eq!(table(&bytes, tag), table(&result, tag));
     }
@@ -158,7 +158,7 @@ fn changing_any_variation_dependency_invalidates_a_program_binding() {
         let other = point_basis(&changed, 0).unwrap();
         assert_ne!(program.fingerprint, other.fingerprint, "{tag:?}");
         assert!(
-            with_instructions(&changed, std::slice::from_ref(&program), &globals())
+            with_instructions(&changed, std::slice::from_ref(&program), &globals(), &[])
                 .unwrap_err()
                 .to_string()
                 .contains("stale")
@@ -177,7 +177,7 @@ fn cvar_requires_the_same_indexed_cvt_before_replacing_instructions() {
         vec![40, -20, 0],
     ] {
         let data = TtMasterData { cvt, ..globals() };
-        assert!(with_instructions(&bytes, &[], &data)
+        assert!(with_instructions(&bytes, &[], &data, &[])
             .unwrap_err()
             .to_string()
             .contains("cvar"));
@@ -187,7 +187,7 @@ fn cvar_requires_the_same_indexed_cvt_before_replacing_instructions() {
         Tag::new(b"cvar"),
         table(&bytes, b"cvar"),
     );
-    assert!(with_instructions(&orphan, &[], &globals())
+    assert!(with_instructions(&orphan, &[], &globals(), &[])
         .unwrap_err()
         .to_string()
         .contains("cvar"));
@@ -209,7 +209,7 @@ fn malformed_variation_headers_and_orphan_cvt_are_rejected() {
         let changed = support::replace(&bytes, Tag::new(&tag), data);
         assert!(point_basis(&changed, 0).is_err(), "{tag:?}");
         assert!(
-            with_instructions(&changed, &[], &globals()).is_err(),
+            with_instructions(&changed, &[], &globals(), &[]).is_err(),
             "{tag:?}"
         );
     }
@@ -228,7 +228,7 @@ fn static_fingerprints_remain_compatible_and_cannot_bind_variable_programs() {
     assert_eq!(original.points, changed.points);
     assert_ne!(original.fingerprint, changed.fingerprint);
     assert!(
-        with_instructions(&variable_bytes, &[bound(&static_bytes, 0)], &globals())
+        with_instructions(&variable_bytes, &[bound(&static_bytes, 0)], &globals(), &[])
             .unwrap_err()
             .to_string()
             .contains("stale")
@@ -244,7 +244,7 @@ fn cvar_packed_indices_and_delta_runs_are_checked_without_execution() {
     let bytes = variable();
     let valid = support::replace(&bytes, Tag::new(b"cvar"), cvar.clone());
     assert!(point_basis(&valid, 0).is_ok());
-    assert!(with_instructions(&valid, &[], &globals()).is_ok());
+    assert!(with_instructions(&valid, &[], &globals(), &[]).is_ok());
     for end in 0..cvar.len() {
         let truncated = support::replace(&bytes, Tag::new(b"cvar"), cvar[..end].to_vec());
         assert!(point_basis(&truncated, 0).is_err(), "cvar length {end}");
@@ -275,4 +275,78 @@ fn missing_variation_context_and_inconsistent_gvar_ranges_are_rejected() {
         let orphan = support::replace(&original, Tag::new(tag), vec![0; 32]);
         assert!(point_basis(&orphan, 0).is_err(), "{tag:?}");
     }
+}
+
+#[test]
+fn authored_control_value_variation_replaces_the_source_cvar() {
+    use read_fonts::{tables::cvar::Cvar, FontData, FontRead};
+    let bytes = variable();
+    let regions = vec![fc_sfnt::tt::CvtRegion {
+        region: vec![(0.0, 1.0, 1.0)],
+        deltas: vec![7, -3],
+    }];
+    let result = with_instructions(&bytes, &[], &globals(), &regions).unwrap();
+    assert_ne!(table(&result, b"cvar"), table(&bytes, b"cvar"));
+    // Every other variation table and the control values survive unchanged.
+    for tag in [b"fvar", b"gvar", b"cvt "] {
+        assert_eq!(table(&bytes, tag), table(&result, tag));
+    }
+    let encoded = table(&result, b"cvar");
+    let cvar = Cvar::read(FontData::new(&encoded)).unwrap();
+    for (coordinate, expected) in [
+        (0.0f32, [0, 0]),
+        (1.0, [7 << 16, -3 << 16]),
+        (0.5, [7 << 15, -3 << 15]),
+    ] {
+        let mut deltas = [0i32; 2];
+        cvar.deltas(1, &[F2Dot14::from_f32(coordinate)], &mut deltas)
+            .unwrap();
+        assert_eq!(deltas, expected, "at {coordinate}");
+    }
+}
+
+#[test]
+fn an_intermediate_control_value_region_peaks_inside_the_axis() {
+    use read_fonts::{tables::cvar::Cvar, FontData, FontRead};
+    let bytes = variable();
+    let regions = vec![fc_sfnt::tt::CvtRegion {
+        region: vec![(0.0, 0.5, 1.0)],
+        deltas: vec![0, 16],
+    }];
+    let result = with_instructions(&bytes, &[], &globals(), &regions).unwrap();
+    let encoded = table(&result, b"cvar");
+    let cvar = Cvar::read(FontData::new(&encoded)).unwrap();
+    for (coordinate, expected) in [(0.0f32, 0), (0.5, 16 << 16), (1.0, 0)] {
+        let mut deltas = [0i32; 2];
+        cvar.deltas(1, &[F2Dot14::from_f32(coordinate)], &mut deltas)
+            .unwrap();
+        assert_eq!(deltas[1], expected, "at {coordinate}");
+        assert_eq!(deltas[0], 0, "a zero delta run stays zero at {coordinate}");
+    }
+}
+
+#[test]
+fn control_value_variation_needs_a_variable_font_and_control_values() {
+    let static_bytes = support::font(&[support::simple(&[(10, 20, true)], &[])]);
+    let regions = vec![fc_sfnt::tt::CvtRegion {
+        region: vec![(0.0, 1.0, 1.0)],
+        deltas: vec![7, -3],
+    }];
+    let error = with_instructions(&static_bytes, &[], &globals(), &regions).unwrap_err();
+    assert!(error.to_string().contains("variable font"), "{error}");
+    let mut empty = globals();
+    empty.cvt.clear();
+    assert!(with_instructions(&variable(), &[], &empty, &regions).is_err());
+    // A delta vector that does not describe every control value is refused.
+    let wrong = vec![fc_sfnt::tt::CvtRegion {
+        region: vec![(0.0, 1.0, 1.0)],
+        deltas: vec![7],
+    }];
+    assert!(with_instructions(&variable(), &[], &globals(), &wrong).is_err());
+    // So is an axis count the font does not declare.
+    let extra = vec![fc_sfnt::tt::CvtRegion {
+        region: vec![(0.0, 1.0, 1.0), (0.0, 1.0, 1.0)],
+        deltas: vec![7, -3],
+    }];
+    assert!(with_instructions(&variable(), &[], &globals(), &extra).is_err());
 }

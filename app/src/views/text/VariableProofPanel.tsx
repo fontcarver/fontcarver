@@ -5,6 +5,8 @@ import { selectDocView, useDocumentStore } from '../../stores/documentStore'
 import type { TextTabState } from '../../stores/uiStore'
 import { userToDesign } from '../fontinfo/designCoordinates'
 import { PreviewStrip } from './PreviewStrip'
+import type { PreviewSettings } from './presentationTypes'
+import { PREVIEW_SIZES } from './previewPaint'
 import { kerningFeatures } from './kerningModes'
 import { useVariableProof } from './useVariableProof'
 import styles from './VariableProofPanel.module.css'
@@ -29,6 +31,16 @@ export function VariableProofPanel({
   const [location, setLocation] = useState<Record<string, number>>({})
   const [instance, setInstance] = useState('')
   const [theme, setTheme] = useState(state.previewTheme)
+  // The axis panel is its own read-only proof, so its waterfall settings are
+  // local: changing them must not move the docked strip or the saved workspace.
+  const [settings, setSettings] = useState<PreviewSettings>(() => ({
+    flipHorizontal: false,
+    flipVertical: false,
+    blur: 0,
+    mode: 'run',
+    sizes: [...PREVIEW_SIZES],
+    instance: '',
+  }))
   const [dismissedStatus, setDismissedStatus] = useState('')
   useEffect(() => {
     if (!open) return
@@ -192,6 +204,10 @@ export function VariableProofPanel({
             onThemeChange={setTheme}
             collapsed={false}
             onCollapsedChange={(collapsed) => setOpen(!collapsed)}
+            settings={settings}
+            onSettingsChange={(changes) =>
+              setSettings((current) => ({ ...current, ...changes }))
+            }
           />
         </div>
       )}

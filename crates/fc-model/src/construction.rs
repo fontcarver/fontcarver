@@ -61,7 +61,29 @@ pub enum ConstructionKind {
     },
 }
 
+/// Glyph-name prefixes the construction convention reserves, in kind order.
+///
+/// A source glyph named with its kind's prefix says what it is for, which is the
+/// convention other editors use. It is a convention, not a rule: any glyph may be
+/// attached, because a document that predates the convention must keep working.
+pub const CONSTRUCTION_PREFIXES: [&str; 4] = ["_corner.", "_cap.", "_segment.", "_brush."];
+
 impl ConstructionKind {
+    /// Glyph-name prefix this attachment kind is conventionally named with.
+    pub fn glyph_prefix(&self) -> &'static str {
+        match self {
+            Self::Corner { .. } => CONSTRUCTION_PREFIXES[0],
+            Self::Cap { .. } => CONSTRUCTION_PREFIXES[1],
+            Self::Segment { .. } => CONSTRUCTION_PREFIXES[2],
+            Self::Brush { .. } => CONSTRUCTION_PREFIXES[3],
+        }
+    }
+
+    /// Whether a source glyph name follows this kind's naming convention.
+    pub fn follows_convention(&self, source: &str) -> bool {
+        source.starts_with(self.glyph_prefix())
+    }
+
     /// First attachment, which identifies the carrier contour.
     pub fn anchor(&self) -> &NodeRef {
         match self {

@@ -281,7 +281,7 @@ describe('kerning table', () => {
     )
     openTable()
     await screen.findByRole('table')
-    expect(screen.getByText('Class')).toBeInTheDocument()
+    expect(screen.getByText('Group')).toBeInTheDocument()
     expect(screen.getByText('Exception')).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Record kind'), {
       target: { value: 'exceptions' },

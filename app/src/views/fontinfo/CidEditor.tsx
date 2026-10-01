@@ -5,7 +5,7 @@ import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
 import { reportError } from '../../stores/uiStore'
 import { errorNotice } from '../../i18n/errors'
-import { CidSession, identityMapping } from './cidSession'
+import { CidSession, identityMapping, unmappedGlyphs } from './cidSession'
 import styles from './designSpace.module.css'
 
 /** Staged CID identity and pasteable numeric mapping, applied as one undo step. */
@@ -38,6 +38,12 @@ export function CidEditor({
   }
   const error = state.error ? errorNotice(state.error, t) : null
   const draft = state.draft
+  // Export refuses a CID-keyed font with an incomplete mapping, so the gap is
+  // reported here, where it can still be filled.
+  const unmapped =
+    state.source && draft
+      ? unmappedGlyphs(state.source, draft, t('cid.invalid'))
+      : []
   return (
     <Dialog
       title={t('cid.title')}
@@ -160,6 +166,14 @@ export function CidEditor({
                   {t('cid.reorder')}
                 </label>
               </div>
+              {unmapped.length > 0 && (
+                <p role="status">
+                  {t('cid.unmapped', {
+                    count: unmapped.length,
+                    names: unmapped.slice(0, 6).join(', '),
+                  })}
+                </p>
+              )}
               <p>{t('cid.identityHint')}</p>
             </fieldset>
           </fieldset>

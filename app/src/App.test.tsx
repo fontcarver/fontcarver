@@ -106,7 +106,9 @@ describe('App shell', () => {
     const menu = screen.getByRole('menu', { name: 'File' })
     const saveAs = within(menu).getByRole('menuitem', { name: /Save As/ })
     expect(saveAs).toBeDisabled()
-    expect(saveAs).toHaveAttribute('title', 'No font is open')
+    // The reason is the row's accessible description and its inline hint; the
+    // native tooltip was dropped when Quick Help took over hovering a menu row.
+    expect(saveAs).toHaveAttribute('aria-description', 'No font is open')
     expect(within(menu).getAllByText('No font is open').length).toBeGreaterThan(
       0,
     )

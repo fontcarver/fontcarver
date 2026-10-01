@@ -34,6 +34,8 @@ export function TextWorkspaceControls({
   onChange,
   onSample,
   onProofSelect,
+  proofId,
+  stepRef,
 }: {
   summary: DocSummary
   state: TextTabState
@@ -50,6 +52,8 @@ export function TextWorkspaceControls({
   onChange: (changes: Partial<TextTabState>) => void
   onSample: (id: TextSampleId) => void
   onProofSelect: (entry: ProofEntry) => void
+  proofId: string | null
+  stepRef: RefObject<((direction: -1 | 1) => void) | null>
 }) {
   return (
     <>
@@ -77,12 +81,15 @@ export function TextWorkspaceControls({
         context={context}
         title={`${summary.family_name} ${summary.style_name}`}
         inputRef={inputRef}
+        selectedId={proofId}
+        stepRef={stepRef}
         onSelect={onProofSelect}
       />
       <TextShapingControls
         features={state.features}
         script={state.script ?? null}
         language={state.language ?? null}
+        text={state.text}
         glyphs={glyphs}
         onChange={onChange}
       />

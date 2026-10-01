@@ -128,7 +128,7 @@ describe('vertical metrics inspector', () => {
     })
   })
 
-  it('retains the other override when changing advance or origin directly', async () => {
+  it('carries the other override through, including one still in flight', async () => {
     const { mock } = show({
       layer: { vertical_width: 1300, vertical_origin: 900 },
     })
@@ -137,10 +137,23 @@ describe('vertical metrics inspector', () => {
     expect(edits(mock)[0]?.command).toMatchObject({
       SetVerticalMetrics: { advance: 1200, origin: 900 },
     })
+
+    // The model has not caught up here — the fixture still reports the old
+    // layer — and `SetVerticalMetrics` writes both fields. The second edit must
+    // therefore carry the advance this panel *just sent*, not the stale 1300,
+    // or typing an advance and then an origin would silently undo the advance.
     await enter('vert. origin', '920')
     await waitFor(() => expect(edits(mock)).toHaveLength(2))
     expect(edits(mock)[1]?.command).toMatchObject({
-      SetVerticalMetrics: { advance: 1300, origin: 920 },
+      SetVerticalMetrics: { advance: 1200, origin: 920 },
+    })
+
+    // A third edit keeps carrying it, and TSB — which owns the origin — leaves
+    // the advance alone too.
+    await enter('TSB', '40')
+    await waitFor(() => expect(edits(mock)).toHaveLength(3))
+    expect(edits(mock)[2]?.command).toMatchObject({
+      SetVerticalMetrics: { advance: 1200 },
     })
   })
 

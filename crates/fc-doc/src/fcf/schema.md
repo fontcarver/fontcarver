@@ -268,6 +268,14 @@ comparison with current compiled geometry can establish export eligibility.
 `glyphs` dictionary keyed by existing persistent glyph names. Supported depths
 are 1, 2, 4, 8 (coverage) and 32 (straight RGBA8).
 
+A property name is one token of 1 to 255 characters with no whitespace and no
+control characters, and a string property value is a single line of at most
+65535 bytes (no line break and no NUL); a strike holds at most 65535 properties.
+Those are the limits of the BDF, PCF and FNT records the properties are written
+to, so a document that cannot be written is refused when it is edited rather
+than at export. Reading an older document applies the same rule: a strike that
+breaks it is invalid data, not a recoverable state.
+
 Each bitmap glyph stores `advance`, nullable `vertical_advance`, optional
 `vertical_origin: [x,y]` (default null), `bitmap` and `refs`. Vertical origin is
 relative to the horizontal writing origin. References are `{base,dx,dy}` in y-up
@@ -345,6 +353,19 @@ FD 0. Layer `cff_private_dict_index` selects a dictionary within its master;
 absent or zero selects FD 0. Both fields are optional for backward compatibility.
 The vector and selection persist in JSON and compressed FCF. CFF1 export rejects
 out-of-range selections or additional dictionaries without CID metadata.
+
+`layer.hints` gained two optional arrays, both defaulting to empty:
+
+- `flex_hints` holds editable flex hints. Each is a `contour` index, the stored
+  `point` index of the on-curve point the first of two consecutive curve
+  segments leaves, and a `depth` (the flex height control parameter in
+  hundredths of a device pixel; `50` when omitted). Two hints may not share a
+  segment, a hint mask may bind to the pair's joint but not to any point from
+  there to its end point, and the flex height must be 20 units or less. The legacy boolean `flex` keeps its meaning: an
+  imported flex whose curve pair could not be identified, which export refuses
+  rather than writing as ordinary curves.
+- `dot_sections` holds the indices of closed contours bracketed by Type 1
+  `dotsection` commands. Each index must be distinct and name a closed contour.
 
 Master alignment zones, named preferred stems and `private_dict` retain their
 existing version-1 shapes. The editor validates format limits before applying
@@ -455,6 +476,20 @@ an empty, non-exporting glyph tagged `missing-component-base`, so the inventory
 filter `tags~"missing-component-base"` finds every placeholder. Nothing else
 writes that tag, and removing it only removes the marker.
 
+P5-76/95 stores the project proof library as the JSON object
+`font.info.user_data["com.fontcarver.proofLibrary"]`. Its `version` is `1` and
+`entries` is an array of at most 256 records, each with a unique `id` matching
+`[A-Za-z0-9][A-Za-z0-9._:-]{0,95}`, a non-blank `name` and a `group`, `script` and
+`language` of at most 128, 64 and 64 UTF-16 code units, a `direction` of `ltr`,
+`rtl` or `ttb`, and a non-empty `text` of at most 32,768 UTF-16 code units. The
+built-in samples use reserved `fc.sample.*` identifiers so adopting them twice
+adds nothing and an edited copy is never replaced. A malformed library, a
+duplicate identifier or a higher `version` is reported and left in place rather
+than overwritten, and every write preserves unrelated user-data keys and unknown
+keys inside this object. Writes go through the ordinary undoable `SetFontInfo`
+command, so a saved `.fcf` reopens with the same library and undo restores the
+previous one.
+
 Read-only reference documents and script history transactions are session state
 and are not serialized: a reopened document is always editable and carries no
 open transaction.
@@ -486,6 +521,11 @@ of at most 256 bytes. `keep_carrier` defaults to false. The externally tagged
   baseline onto the chord between distinct on-curve nodes on one contour.
 - `{Brush: {at: NodeRef, spacing, scale}}`: repeat source origins along the
   carrier by arc length, starting at the selected node.
+
+`source` is conventionally named with its kind's prefix — `_corner.`, `_cap.`,
+`_segment.` or `_brush.` — which is what the editor offers for the chosen kind.
+The prefix is advisory and is not validated: any existing glyph may be a source,
+so a document written before the convention still reads.
 
 A layer permits at most 128 constructions. Finite scale is in `[0.001,1000]`,
 source baseline length in `[0.01,32767]`, and brush spacing in `[0.1,32767]`.

@@ -63,3 +63,43 @@
 .editor .error {
   color: var(--color-danger);
 }
+
+.proposals {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.proposalActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-size-sm);
+}
+
+.proposalTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.proposalTable caption {
+  padding-bottom: var(--space-1);
+  color: var(--color-text-muted);
+  text-align: left;
+}
+
+.proposalTable th,
+.proposalTable td {
+  padding: var(--space-1);
+  border-bottom: 1px solid var(--color-border-subtle);
+  text-align: left;
+}
+
+.proposalTable thead th {
+  color: var(--color-text-muted);
+  font-weight: var(--text-weight-medium);
+}

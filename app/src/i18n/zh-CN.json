@@ -17,7 +17,7 @@
     "inherited": "继承自偏好设置：{{value}}",
     "perFont": "保存在此字体中：{{value}}",
     "upm": "每 em 单位数",
-    "upmHint": "更改每 em 单位数时，可同时缩放绘制内容。取消勾选某个分组，即可保持该组内容不变。备选图层和度量公式会随所在分组一起缩放；图层效果、可复用构造、关联节点、彩色轮廓以及可编辑的 MATH 或 SVG 数据必须先烘焙。",
+    "upmHint": "更改每 em 单位数时，可同时缩放绘制内容。取消勾选某个分组，即可保持该组内容不变。备选图层和度量公式会随所在分组一起缩放。图层效果、可复用构造、关联节点、参考线所属节点和彩色轮廓必须先烘焙或移除，可编辑的 MATH 或 SVG 数据须先移除或重新制作。",
     "upmValue": "每 em 单位数",
     "scaleOutlines": "缩放轮廓、组件、锚点和前进宽度",
     "scaleMetrics": "缩放母版度量、对齐区、字干和 PostScript 值",
@@ -140,10 +140,10 @@
     "help": "导出每个选中的命名实例和可变字体配置，并与每个选中的导出预设组合。每批最多导出 100 个文件；输出文件名必须互不相同。输出路径下的已有文件可能被覆盖。",
     "directory": "输出目录",
     "load": "加载实例和导出预设",
-    "loading": "正在加载实例…",
+    "loading": "正在加载实例和导出预设…",
     "instances": "命名实例和可变字体",
-    "profiles": "已编译字体导出预设",
-    "noInstances": "没有已启用的命名实例。请在“设计空间”面板中添加。",
+    "profiles": "导出预设",
+    "noInstances": "没有已启用的命名实例或可变字体配置。请在“设计空间”面板中添加。",
     "noProfiles": "在上方保存一个导出预设，即可用于批量导出。",
     "preview_one": "预览 {{count}} 个输出路径",
     "preview_other": "预览 {{count}} 个输出路径",
@@ -153,13 +153,13 @@
     "progress": "已完成 {{done}} 项导出，共 {{total}} 项。",
     "succeeded": "成功",
     "failed": "失败",
-    "changed": "设计空间已发生变化。请在导出前重新加载命名实例。",
+    "changed": "设计空间已发生变化。请在导出前重新加载这些行。",
     "error": {
       "empty-directory": "请输入输出目录。",
       "empty-profiles": "请至少选择一个导出预设。",
       "empty-instances": "请至少选择一个命名实例。",
       "too-many-items": "每批最多可包含 100 项导出。",
-      "invalid-instance": "某个命名实例无效。请重新加载命名实例。",
+      "invalid-instance": "某一行的命名实例或可变字体配置无效。请重新加载这些行。",
       "unsupported-format": "批量导出的预设必须使用已编译字体格式。",
       "path-collision": "部分选项组合会生成相同的输出路径。请在导出前重命名相关导出预设或实例。",
       "invalid-name": "每个导出预设和实例都需要一个可用于文件名的名称。",
@@ -171,7 +171,6 @@
   },
   "exportProfiles": {
     "title": "导出预设",
-    "hint": "将导出设置保存在项目文件中，供以后使用。预设不保存输出路径。",
     "name": "预设名称",
     "save": "保存预设",
     "selected": "已保存的预设",
@@ -274,6 +273,10 @@
         "dark": "深色主题",
         "system": "跟随系统主题"
       },
+      "language": {
+        "en": "English Interface（英文界面）",
+        "zh-CN": "中文界面"
+      },
       "zoomFit": "使字形适应窗口",
       "glyph": {
         "filled": "填充预览",
@@ -283,7 +286,8 @@
         "guides": "显示参考线",
         "rulers": "显示标尺",
         "background": "显示背景图层",
-        "otherMasters": "显示其他母版"
+        "otherMasters": "显示其他母版",
+        "verticalMode": "竖排书写模式"
       },
       "toggleInfoBox": "显示信息框",
       "toggleSnapping": "吸附",
@@ -314,6 +318,7 @@
       "oneTab": "只打开了一个标签页",
       "noTab": "没有打开的标签页",
       "themeActive": "已是当前主题",
+      "languageActive": "已是当前语言",
       "noFontTab": "当前标签页不是字体标签页",
       "noGlyphTab": "当前标签页不是字形标签页",
       "noGlyphLayer": "编辑标签页未加载图层",
@@ -1466,6 +1471,8 @@
     "knife": "切割",
     "rectangle": "矩形",
     "ellipse": "椭圆",
+    "magnet": "磁铁",
+    "magnetHint": "将图层参考线拖到节点上，即可把节点关联到该参考线。按住 Alt 会先将节点投影到参考线上。",
     "measure": "测量",
     "rotate": "旋转",
     "scale": "缩放",
@@ -1731,7 +1738,9 @@
       "adjust": "调整 {{x}} 和 {{y}}",
       "horizontal": "水平轴",
       "vertical": "垂直轴",
-      "handleHint": "拖动可同时调整两个轴。方向键移动 1%；按住 Shift 移动 10%。Escape 取消。"
+      "handleHint": "拖动可同时调整两个轴。方向键移动 1%；按住 Shift 移动 10%。Escape 取消。",
+      "undo": "设置智能参数",
+      "canvasHint": "选中的智能组件会在画布上为每个局部轴显示一条轴轨道：拖动其控制柄可设置该实例的坐标。前四个轴有轨道，其余的轴仍在此栏中调整。"
     },
     "glyph": {
       "addUnicode": "添加 Unicode 值",
@@ -2170,7 +2179,11 @@
   "bitmapGrid": {
     "title": "整数像素网格",
     "custom": "自定义（{{ppem}} ppem）",
-    "preset": "{{ppem}} ppem · {{unitsPerPixel}} 单位/像素"
+    "preset": "{{ppem}} ppem · {{unitsPerPixel}} 单位/像素",
+    "choose": "选择精确网格",
+    "inexact": "{{ppem}} ppem 对应每像素 {{unitsPerPixel}} 个字体单位，这不是整数，因此像素边缘不会落在整数坐标上。此字号仍可使用；多数点阵字体并非绘制在精确网格上。",
+    "exact": "{{ppem}} ppem 恰好对应每像素 {{unitsPerPixel}} 个字体单位；新建点阵字号会从母版取上升高度 {{ascent}} 和下降高度 {{descent}}。",
+    "useNearest": "改用 {{ppem}} ppem"
   },
   "bitmapReferences": {
     "title": "点阵组件",
@@ -2207,8 +2220,8 @@
     "undo": "导入点阵图集",
     "imported_one": "已导入 {{count}} 个字形。撤销可恢复其原有图像。",
     "imported_other": "已导入 {{count}} 个字形。撤销一次即可恢复它们的原有图像。",
-    "exported_one": "包含 {{count}} 个字形的 PNG 已准备好。导入时请使用相同的单元格设置和字形名称。",
-    "exported_other": "包含 {{count}} 个字形的 PNG 已准备好。导入时请使用相同的单元格设置和字形名称。",
+    "exported_one": "包含 {{count}} 个字形的 PNG 已准备好。文件自带此布局，因此重新导入时无需任何设置。",
+    "exported_other": "包含 {{count}} 个字形的 PNG 已准备好。文件自带此布局，因此重新导入时无需任何设置。",
     "errors": {
       "mapping": "请按单元格顺序输入 1–256 个不重复的字形名称。",
       "dimensions": "PNG 或网格超出尺寸限制，或 PNG 尺寸与所选单元格不匹配。",
@@ -2219,7 +2232,9 @@
       "missing": "某个所选字形在此点阵字号中没有点阵图像。请先创建或栅格化其图像，再导出。",
       "decode": "浏览器无法读取或创建此 PNG。",
       "failed": "无法处理点阵图集。请检查每个字形名称是否都存在于字体中，然后重试。"
-    }
+    },
+    "layout": "图集布局",
+    "layoutHint": "导出的 PNG 自带布局信息，因此重新导入时会自动还原单元格、列数和字形顺序，无需重新输入。"
   },
   "bitmap": {
     "title": "点阵编辑器",
@@ -2314,7 +2329,43 @@
       "Auto": "自动对齐"
     },
     "rasterThreshold": "单色阈值",
-    "clipboardDepth": "复制的像素位深与当前字号不同，请切换到相同位深的点阵字号后粘贴。"
+    "clipboardDepth": "复制的像素位深与当前字号不同，请切换到相同位深的点阵字号后粘贴。",
+    "strikeGone": "该点阵字号已不存在。请重新载入编辑器。",
+    "waterfallGlyph": "每个字号只显示 {{glyph}}",
+    "waterfallGlyphEmpty": "每个字号只显示所选字形",
+    "reason": {
+      "noEditor": "请先在点阵编辑器中打开一个点阵字号。"
+    },
+    "property": {
+      "hint": "标准 XLFD 属性名自带固定的值类型。属性名不能含空格，字符串值只能是一行，因为 BDF、PCF 和 FNT 只能存储这些内容。",
+      "valueType": "值类型",
+      "derived": "由点阵字号写入",
+      "edit": "编辑 {{name}} 的值",
+      "editShort": "编辑",
+      "newValue": "{{name}} 的新值",
+      "confirmValue": "保存值",
+      "rename": "重命名 {{name}}",
+      "renameShort": "重命名",
+      "newName": "{{name}} 的新名称",
+      "confirmRename": "保存名称",
+      "retype": "更改 {{name}} 的类型",
+      "asString": "设为字符串",
+      "asInteger": "设为整数",
+      "type": {
+        "int": "整数",
+        "string": "字符串"
+      },
+      "error": {
+        "emptyName": "请输入属性名。",
+        "nameLength": "属性名最多 255 个字符。",
+        "nameCharacters": "属性名不能包含空格或控制字符。",
+        "valueCharacters": "字符串属性不能包含换行符。",
+        "valueLength": "字符串属性最多 65535 字节。",
+        "notAnInteger": "整数属性请输入整数。",
+        "integerRange": "该数值超出了属性可存储的范围。",
+        "duplicate": "已存在同名属性。"
+      }
+    }
   },
   "scopedInfo": {
     "metricsHint": "母版数值用于自动生成 OpenType 度量。启用覆盖可为此母版保留单独的数值。",
@@ -2506,7 +2557,18 @@
     "rsb": "右侧边距",
     "width": "字宽",
     "effectiveKerning": "有效字偶距",
-    "outline": "轮廓"
+    "outline": "轮廓",
+    "reviewTable": "每一项建议更改。取消勾选某一行即可保持其不变。",
+    "accept": "接受",
+    "acceptRow": "接受 {{subject}}",
+    "subject": "字形或字形对",
+    "master": "母版",
+    "acceptAll": "全部接受",
+    "rejectAll": "全部拒绝",
+    "acceptedCount": "已接受 {{total}} 项中的 {{count}} 项",
+    "showMore": "显示更多行",
+    "windowed": "显示 {{total}} 行中的 {{shown}} 行。",
+    "nothingAccepted": "应用前请至少接受一行。"
   },
   "cjk": {
     "filters": "CJK 筛选",
@@ -2567,9 +2629,44 @@
     "fillIdentity": "补齐 Identity CID",
     "reorder": "按 CID 数值调整字形网格顺序",
     "identityHint": "自动编号仅适用于 Adobe-Identity。已注册字符集必须使用其公布的字符与 CID 映射。CID 元数据用于静态 CFF OTF 导出。",
+    "unmapped": "{{count}} 个字形没有 CID，例如 {{names}}。CID 键控 CFF 导出要求每个导出的字形都有 CID。",
+    "unmapped_one": "{{count}} 个字形没有 CID：{{names}}。CID 键控 CFF 导出要求每个导出的字形都有 CID。",
+    "unmapped_other": "{{count}} 个字形没有 CID，例如 {{names}}。CID 键控 CFF 导出要求每个导出的字形都有 CID。",
     "invalid": "CID 映射无效。编号须为 0 至 65535 且不能重复，字形名称也不能重复；0 保留给 .notdef。"
   },
   "hints": {
+    "ttAutohintInvalid": "该提示工具会拒绝这些选项：",
+    "removeFlex": "移除 Flex 提示 {{number}}",
+    "removeDotSection": "移除点区段 {{number}}",
+    "ttAutohintTitle": "外部 TrueType 提示工具",
+    "ttAutohintFound": "已找到 ttfautohint：{{version}}",
+    "ttAutohintMissing": "PATH 中未安装 ttfautohint。导出时会报告未执行 TrueType 自动提示；请安装该工具并重新打开此对话框。",
+    "ttAutohintUnknown": "正在检查是否已安装 ttfautohint…",
+    "ttAutohintNumbersHelp": "字段留空则沿用该工具自身的默认值。提示上限或 x 高度提升值设为 0 会关闭对应行为。",
+    "ttAutohintTextHelp": "文字系统为四个小写字母，例如 latn 或 none。强字干宽度可包含 g（灰度）、G（GDI ClearType）和 D（DirectWrite）。吸附例外为 ppem 值和范围，例如 10,14-16；用 - 表示所有字号。",
+    "ttAutohint": {
+      "hinting_range_min": "提示范围最小值（ppem）",
+      "hinting_range_max": "提示范围最大值（ppem）",
+      "hinting_limit": "提示上限（ppem）",
+      "fallback_stem_width": "备用字干宽度",
+      "increase_x_height": "x 高度提升上限（ppem）",
+      "default_script": "默认文字系统",
+      "fallback_script": "备用文字系统",
+      "strong_stem_width": "强字干宽度",
+      "x_height_snapping_exceptions": "x 高度吸附例外",
+      "adjust_subglyphs": "调整子字形",
+      "composites": "将复合字形作为整体提示",
+      "dehint": "改为移除全部提示",
+      "symbol": "接受符号字体",
+      "ttfa_table": "将参数记录到 TTFA 表",
+      "windows_compatibility": "Windows 兼容性对齐区",
+      "info": "名称表中的版本信息"
+    },
+    "ttAutohintInfo": {
+      "None": "无",
+      "Short": "简短",
+      "Detailed": "详细选项列表"
+    },
     "title": "字形提示",
     "psTitle": "PostScript 字形提示",
     "preview": "带编号横向和纵向笔画提示的轮廓",
@@ -2590,7 +2687,7 @@
     "privateDictionaryNumber": "FD {{index}}",
     "addPrivateDictionary": "添加私有字典",
     "cidPrivateHelp": "每个 CID 字体字典都具有独立的私有值。新字典初始使用 FD0 的值。字形的分配决定 CFF 导出使用哪个字典；对齐区和命名字干属于 FD0。",
-    "cidAnalysisUnavailable": "自动分析目前仅支持 FD0。请手动编辑此字典及其字形提示。",
+    "cidAnalysisUnavailable": "自动分析会为所选内容用到的每个字典提出建议值。请选择母版图层后运行。",
     "privateHelp": "对齐区由有序数值对定义。可选值留空时使用字体默认值。已有的显式值优先于自动分析。",
     "blue_values": "BlueValues",
     "other_blues": "OtherBlues",
@@ -2626,7 +2723,17 @@
     "clear": "清除字形提示",
     "analysisHelp": "分析预览当前母版图层，在点击应用前不会更改文档。再次分析前请先应用母版参数修改。",
     "masterParameters": "提示参数：{{master}}",
-    "masterLayerRequired": "自动分析仅适用于母版图层。请选择母版图层以分析其字干。"
+    "masterLayerRequired": "自动分析仅适用于母版图层。请选择母版图层以分析其字干。",
+    "flexTitle": "Flex 提示",
+    "flexHelp": "Flex 提示作用于两条相邻的曲线段。请给出轮廓索引，以及第一条曲线离开的曲线上节点的索引；高亮的轮廓会显示这一对曲线。Flex 深度是曲线取代直线时的高度，单位为百分之一像素；Adobe 推荐值为 50。Type 1 输出还要求两个外侧端点的 x 或 y 坐标相同，且 Flex 高度不超过 20 个单位；CFF 输出没有此限制。",
+    "flexNumber": "Flex {{number}}",
+    "flexDepth": "Flex 深度",
+    "flexStale": "此节点处没有曲线对",
+    "flexUnresolved": "此图层带有导入的 Flex 提示，但无法识别其曲线对。请添加所需的 Flex 提示，并清除字形提示以去掉该标记；导出时会拒绝该标记，而不会写入普通曲线。",
+    "addFlex": "添加 Flex 提示",
+    "dotSections": "点区段",
+    "dotSectionHelp": "点区段用于括住一条闭合轮廓（例如 i 上的点），使笔画提示不会使其变形。Type 1 输出会写入 dotsection 命令；Type 2 已将该操作符列为过时，因此 CFF 导出会在此保留数据，并报告其未被写入。",
+    "addDotSection": "添加点区段"
   },
   "tt": {
     "open": "TrueType 指令",
@@ -3049,13 +3156,11 @@
     "title": "历史记录",
     "list": "历史记录条目",
     "empty": "尚未进行任何编辑。",
-    "current": "当前状态",
     "currentMarker": "当前",
     "undone": "已撤销",
     "jumpTo": "跳转到 {{label}}",
     "jumpToStart": "回到任何编辑之前的状态",
     "start": "文档打开时的状态",
-    "font": "字体",
     "scopeGlyphs": "字形：{{names}}",
     "scopeLayers": "图层：{{names}}",
     "scopeStrikes": "点阵字号：{{names}}",
@@ -3065,7 +3170,7 @@
       "background": "背景图层",
       "intermediate": "中间图层",
       "alternate": "备选图层",
-      "smart": "智能图层",
+      "smart": "智能源图层",
       "backup": "备份图层",
       "other": "图层"
     },
@@ -3132,13 +3237,25 @@
     "flipVertical": "垂直翻转预览",
     "blur": "模糊（px）",
     "sizes": "多字号预览（px）",
-    "sizesHint": "输入 1 至 8 个互不重复的字号，范围为 6 至 256，以逗号分隔。",
+    "sizesHint": "输入 6 至 256 之间的字号：最多 8 个的列表（例如 12, 24, 48），或带步长的范围（例如 8-72/8）。",
+    "sizesTruncated": "该范围超过了多字号预览可显示的 {{count}} 个字号，因此只绘制前 {{count}} 个。",
+    "sizesError": {
+      "empty": "请至少输入一个字号。",
+      "token": "只能输入数字，以逗号或空格分隔。",
+      "range": "范围需要先写较小的字号，且步长必须大于 0。",
+      "bounds": "每个字号都必须在 6 到 256 之间。",
+      "duplicate": "每个字号只能出现一次。",
+      "count": "列表最多包含 8 个字号；如需覆盖更宽的跨度，请使用范围。"
+    },
     "applySizes": "应用字号",
     "mode": "预览内容",
     "run": "文本段",
     "single": "当前字形",
     "resize": "调整预览大小",
-    "detach": "分离预览窗口"
+    "detach": "分离预览窗口",
+    "instance": "预览实例",
+    "masters": "母版",
+    "instances": "命名实例"
   },
   "proofShaping": {
     "title": "排版设置",
@@ -3157,6 +3274,11 @@
     "languagePlaceholder": "自动（例如 en）",
     "languageInvalid": "输入由 ASCII 子标签组成、以连字符分隔的语言标签，例如 en 或 zh-Hant，也可留空。",
     "clusters": "字形簇（{{count}}）",
+    "cluster": "字形簇",
+    "source": "源文本",
+    "glyphs": "字形",
+    "x": "X 位置",
+    "y": "Y 位置",
     "clusterHint": "源文本偏移以 UTF-8 字节计数；步进量以字体单位表示。",
     "sourceByte": "源文本字节偏移",
     "glyph": "字形",
@@ -3185,13 +3307,20 @@
       "allScripts": "所有文字系统",
       "previous": "上一条校样文本",
       "next": "下一条校样文本",
-      "stepping": "在文本框中按 ↑ / ↓，可逐条浏览此分组。",
+      "stepping": "在文本框中按 ↑ / ↓，或在调整间距时在画布上按 ↑ / ↓，可逐条浏览此分组。",
       "save": "保存当前文本",
       "update": "更新所选文本",
       "remove": "移除所选文本",
       "empty": "将字对或短语保存到此项目，用于调整间距和制作校样。",
       "undoSave": "保存校样文本",
       "undoRemove": "移除校样文本",
+      "undoAdopt": "添加内置校样示例",
+      "undoImport": "导入校样文本",
+      "adoptSamples": "添加内置示例",
+      "exportText": "导出为文本",
+      "importText": "从文本导入",
+      "interchangeFilter": "校样文本列表",
+      "importFailed": "未导入任何内容。",
       "errors": {
         "invalidEntry": "校样文本包含无效数据或数据量过大。",
         "invalidLibrary": "此项目的校样文本库无效。",
@@ -3200,12 +3329,49 @@
         "full": "校样文本库已包含 256 条文本。"
       }
     },
+    "samples": {
+      "groups": {
+        "latin": "拉丁文",
+        "latinPairs": "拉丁文字对与间距",
+        "cyrillic": "西里尔文",
+        "greek": "希腊文",
+        "cjk": "CJK",
+        "arabic": "阿拉伯文"
+      },
+      "names": {
+        "latinPangram": "拉丁文全字母句",
+        "latinUppercase": "拉丁文大写字母",
+        "latinLowercase": "拉丁文小写字母",
+        "latinFigures": "数字与标点",
+        "latinDiacritics": "拉丁文变音符号",
+        "latinCapitalPairs": "大写字母字偶距对",
+        "latinLowercasePairs": "小写字母字偶距对",
+        "latinPunctuationPairs": "标点字偶距对",
+        "latinSpacingWords": "间距控制词",
+        "latinPhrases": "间距短语",
+        "cyrillicPangram": "西里尔文全字母句",
+        "cyrillicUppercase": "西里尔文大写字母",
+        "cyrillicPairs": "西里尔文字对与间距",
+        "greekPangram": "希腊文全字母句",
+        "greekUppercase": "希腊文大写字母",
+        "greekPairs": "希腊文字对与间距",
+        "cjkPhrase": "汉字短语",
+        "cjkVertical": "汉字竖排示例",
+        "cjkMixed": "汉字与拉丁文混排",
+        "arabicPhrase": "阿拉伯文短语",
+        "arabicJoining": "阿拉伯文连写形式"
+      }
+    },
     "export": {
       "title": "校样页",
       "scope": "校样内容",
       "current": "当前文本",
       "library": "筛选后的文本库",
       "sizes": "校样字号（pt）",
+      "rendering": "HTML 呈现方式",
+      "renderingFont": "嵌入字体",
+      "renderingOutlines": "轮廓",
+      "renderingHint": "“嵌入字体”会写入内含已编译 WOFF2 的独立页面，文字仍可选中；“轮廓”会将精确的排版快照写为矢量图形。",
       "html": "导出 HTML",
       "pdf": "导出 PDF",
       "busy": "正在准备校样页…",
@@ -3217,16 +3383,35 @@
         "changed": "导出期间文档发生了变化，请重试。",
         "compile": "无法编译字体，请先解决预览错误再导出。",
         "stale": "已编译的字体仍在更新，请重试。",
-        "unresolved": "校样文本包含无法识别的字形，请替换后再导出。"
+        "unresolved": "校样文本包含无法识别的字形，请替换后再导出。",
+        "font": "无法编译校样字体。请解决导出错误，或选择轮廓呈现方式。"
       }
     }
   },
   "cjkConstruction": {
     "title": "CJK 字形构造",
     "library": "部首库",
-    "libraryHint": "此字体中可用的部首及常见变体。选择一个轮廓，将其字形名称追加到 IDS 输入框。",
+    "libraryHint": "214 个康熙部首及其对应的表意文字。选择一项时，若此字体包含该字形，则将其字形名称追加到 IDS 输入框；否则追加其字符。",
+    "componentsHint": "此字体已作为组件使用的字形，按使用次数从多到少排列。选择一项会将其字形名称追加到 IDS 输入框。",
+    "librarySource": "部首编号、书写形式和笔画数来自 Unicode {{version}} Unihan 数据库；组件列表来自此字体。",
+    "tabs": {
+      "radicals": "部首",
+      "components": "字体组件"
+    },
+    "radicalLabel": "部首 {{number}}",
+    "strokesLabel": "{{count}} 画",
+    "strokesLabel_one": "{{count}} 画",
+    "strokesLabel_other": "{{count}} 画",
+    "membersLabel": "此字体中有 {{count}} 个字形",
+    "membersLabel_one": "此字体中有 {{count}} 个字形",
+    "membersLabel_other": "此字体中有 {{count}} 个字形",
+    "usesLabel": "作为组件使用 {{count}} 次",
+    "usesLabel_one": "作为组件使用 {{count}} 次",
+    "usesLabel_other": "作为组件使用 {{count}} 次",
+    "presentOnly": "仅显示此字体已有的字形",
+    "noComponentBases": "此字体尚未使用任何组件。请先用 IDS 追加部首。",
     "libraryError": "无法加载部首库。",
-    "search": "搜索文档中的部首",
+    "search": "搜索部首和组件",
     "pick": "将 {{name}} 插入 IDS",
     "noRadicals": "此字体中没有匹配的部首。可在 IDS 输入框中使用 [glyph.name] 引用任意现有字形。",
     "previous": "上一页",
@@ -3242,6 +3427,11 @@
     "loading": "正在加载…",
     "undo": "构造 CJK 组件",
     "transforms": "组件变换",
+    "transformPreview": "组件变换预览",
+    "transformHint": "编辑各组件的位置和缩放，查看预览，然后将整组变换作为一个历史记录条目应用。",
+    "applyTransforms": "应用变换",
+    "revertTransforms": "还原变换",
+    "undoTransforms": "变换 CJK 组件",
     "component": "{{index}} · {{base}}",
     "transformField": "组件 {{index}}（{{base}}）的 {{coefficient}}",
     "coefficients": {
@@ -3262,7 +3452,9 @@
       "empty": "{{token}} 在所选母版中没有轮廓。",
       "width": "{{token}} 的前进宽度必须为正值，才能用于 IDS 布局。",
       "resolve": "无法在此字体中解析 IDS。",
-      "apply": "无法添加这些组件。请检查报告的文档错误，然后重新预览。"
+      "apply": "无法添加这些组件。请检查报告的文档错误，然后重新预览。",
+      "transformInvalid": "组件变换需要六个有限数值。",
+      "transformCollapsed": "缩放为零会使组件消失。请使用非零缩放，或直接移除该组件。"
     }
   },
   "automation": {
@@ -3486,7 +3678,12 @@
     "pointer": "点阵指针坐标",
     "position": "X {{x}}, Y {{y}} px",
     "positionEmpty": "X —, Y — px",
-    "delta": "ΔX {{x}}, ΔY {{y}} px"
+    "delta": "ΔX {{x}}, ΔY {{y}} px",
+    "advanceColumn": "步进宽度列",
+    "fontUnits": "字体单位",
+    "unitsValue": "{{value}} 单位",
+    "positionUnits": "({{x}}, {{y}} 单位)",
+    "deltaUnits": "({{x}}, {{y}} 单位)"
   },
   "imageWorkflow": {
     "title": "源图像",
@@ -3512,9 +3709,9 @@
     "applyPlacement": "应用放置变换",
     "remove": "移除图像",
     "trace": "描摹 PNG",
-    "traceHelp": "结合 alpha 透明度，将深色着墨区域描摹为多边形轮廓。简化程度以源图像像素为单位。源图像会保留。",
+    "traceHelp": "结合 alpha 透明度，将深色着墨区域描摹为轮廓。容差、平滑度和最小面积均以源图像像素为单位。源图像会保留。",
     "threshold": "着墨阈值",
-    "tolerance": "简化程度（像素）",
+    "tolerance": "容差（像素）",
     "append": "追加到现有轮廓",
     "replaceHelp": "应用后会替换此图层的轮廓和组件。源图像会保留。",
     "preview": "预览描摹",
@@ -3526,7 +3723,37 @@
     "linkedStatus": "链接的 PNG · {{width}} × {{height}} 像素",
     "unresolved": "无法解析图像。请检查路径，然后刷新。",
     "tooLarge": "请选择不超过 16 MiB 的 PNG。",
-    "pngOnly": "仅支持 PNG 图像。"
+    "pngOnly": "仅支持 PNG 图像。",
+    "curves": "拟合曲线",
+    "curveHelp": "曲线拟合会先找出像素边缘中结构性的直线段和转角，再拟合三次曲线段。1 位栅格在每个极值处都会保留一段平直边缘，因此无论设置多大的容差，都会残留约一个像素的偏差；提高平滑度可降低该偏差。",
+    "polygonHelp": "直线描摹会让每条边保持为直线，只移除容差允许移除的节点。",
+    "corner_angle": "转角角度（度）",
+    "smoothing": "平滑度（像素）",
+    "min_area": "最小面积（平方像素）",
+    "quality": "{{nodes}} 个节点、{{curves}} 个曲线段，最大偏差 {{error}} 个源图像像素。",
+    "droppedRings_one": "已丢弃 {{count}} 条小于最小面积的轮廓。",
+    "droppedRings_other": "已丢弃 {{count}} 条小于最小面积的轮廓。",
+    "fallback": "拟合后的轮廓会改变图形的拓扑结构，因此保留了其精确的像素边缘。",
+    "brokenLink": "链接已断开",
+    "brokenHelp": "无法读取链接的 PNG。放置变换和锁定状态均已保留；请重新链接或恢复该文件。",
+    "triedPath": "已尝试：{{path}}",
+    "retryLink": "重试",
+    "relinkSame": "重新链接到同一路径",
+    "relinkPath": "重新链接到上方路径",
+    "onCanvas": "在画布上调整",
+    "onCanvasHelp": "拖动图像可移动，拖动角点可缩放，拖动边缘可错切，拖动上边缘上方的圆钮可旋转。按住 Shift 可使角点缩放保持等比，并将旋转吸附到 15°。每次手势为一步撤销。",
+    "moveStep": "移动步长（单位）",
+    "scaleStep": "缩放步长（%）",
+    "angleStep": "角度步长（度）",
+    "stepLeft": "向左移动",
+    "stepRight": "向右移动",
+    "stepDown": "向下移动",
+    "stepUp": "向上移动",
+    "stepScale": "缩放",
+    "stepRotate": "旋转",
+    "stepSkewX": "X 错切",
+    "stepSkewY": "Y 错切",
+    "stepsNeedSource": "缩放、旋转和错切需要已解码的源图像尺寸；请先修复链接。"
   },
   "glyphMetadata": {
     "tagSuggestions": "现有标签",
@@ -3572,7 +3799,13 @@
       "text": "文本视图",
       "bitmap": "点阵编辑器"
     },
-    "conflict": "{{shortcut}} 存在冲突：{{commands}}。请更改或清除其中一个绑定。",
+    "conflict": "{{shortcut}} 存在冲突：{{commands}}。请更改或清除其中一个绑定，或有意允许此冲突。",
+    "conflictAllowed": "{{shortcut}} 已被 {{commands}} 有意共用。其中第一个可用的命令会被执行。",
+    "allowConflict": "允许共用 {{shortcut}}",
+    "rejectConflict": "停止共用 {{shortcut}}",
+    "conflictAccepted": "此草稿中已允许该冲突。点击“应用”以保留。",
+    "rowConflict": "{{shortcut}} 还绑定到 {{commands}}。",
+    "rowConflictAllowed": "{{shortcut}} 已与 {{commands}} 有意共用。",
     "removeUnknown": "移除不支持的绑定",
     "toolHint": "轻按可选择工具；按住片刻可临时使用，松开后恢复。按上下文帮助快捷键可查看编辑指引。",
     "error": {
@@ -3592,6 +3825,15 @@
     "focusedControl": "当前焦点控件",
     "topic": "帮助主题",
     "navigationHint": "使用 Tab 在控件间移动。Escape 可关闭帮助并将焦点返回工作区。没有网络连接时仍可使用帮助。",
+    "quickHelp": "快速帮助",
+    "quickHelpHint": "按 {{shortcut}} 查看完整帮助文章，或按 Escape 关闭。",
+    "quickHelpHintNoKey": "选择“帮助”→“上下文帮助”查看完整帮助文章，或按 Escape 关闭。",
+    "openArticle": "打开帮助文章",
+    "activeTool": "当前工具",
+    "activeCommand": "命令",
+    "binding": "快捷键 {{shortcut}}",
+    "unbound": "未分配快捷键",
+    "unavailableHere": "当前不可用：{{reason}}",
     "topics": {
       "welcome": {
         "title": "入门",
@@ -3704,6 +3946,55 @@
         "first": "使用 Tab 和 Shift+Tab 在控件间移动。标签、校验消息和悬停提示会说明各字段的用途。",
         "second": "执行对话框中的确认操作前，请检查各项值。选择“取消”或按 Escape 可返回之前的操作流程。",
         "third": "关闭此帮助后，焦点会返回之前使用的控件。可在上方选择其他帮助主题，了解相关操作流程。"
+      },
+      "history": {
+        "title": "历史记录和撤销",
+        "summary": "每次编辑都会记为一个条目，因此可以前后单步移动，也可以直接跳回较早的状态。",
+        "first": "“撤销”和“重做”每次移动一个条目，并会显示所作用的编辑名称。",
+        "second": "检查器的“历史记录”栏列出各条目及其作用范围。选择一个条目会使文档回到该状态。",
+        "third": "跳转到较早状态时，在你从该状态重新编辑之前，较晚的条目不会被丢弃。达到历史记录内存预算后，最早的条目会被丢弃。"
+      },
+      "spacing": {
+        "title": "间距和字偶距",
+        "summary": "侧边距、度量公式和字偶距可在编辑标签页的文本栏、其画布以及间距矩阵中编辑。",
+        "first": "先选择方括号键调整哪一侧，再逐步调整所选字形的侧边距，或在信息框或间距矩阵中输入精确值。",
+        "second": "字偶距作用于文本段中相邻两个字形之间的边界。“字偶距”面板会显示该值属于哪条规则或字组。",
+        "third": "度量公式使相关字形保持同步；“更新度量”会为当前母版或所有母版重新计算它们。"
+      },
+      "variations": {
+        "title": "母版、实例和设计空间",
+        "summary": "可变字体由位于命名轴上的母版构成，并在它们之间设置命名实例和中间图层。",
+        "first": "在“字体信息”中定义轴和母版，然后检查每个字形在它们之间是否兼容。",
+        "second": "“设计空间”面板可让预览在设计空间中移动；大括号、方括号和智能源图层会添加中间绘制。",
+        "third": "命名实例和可变字体配置是批量导出所写出的行。导出前请检查兼容性。"
+      },
+      "crossDocument": {
+        "title": "跨文档工作",
+        "summary": "已打开的文档之间可以相互比较，也可以在它们之间传输字形数据。",
+        "first": "“比较字体”会列出当前文档与另一个已打开文档之间的差异。",
+        "second": "“选择性粘贴”会传输你所选的字形部分；“重新链接组件”会修复目标缺失或已重命名的组件。",
+        "third": "一次传输在接收文档中是一个撤销条目。保存前请检查报告。"
+      },
+      "batchRename": {
+        "title": "重命名多个字形",
+        "summary": "“批量重命名”对每个所选字形应用同一条规则，并在应用前显示结果。",
+        "first": "先选择字形，再选择规则。预览会列出每个将被更改的字形的旧名称和新名称。",
+        "second": "会冲突或无效的名称会被报告，必须先解决才能应用重命名。",
+        "third": "重命名会改写对该字形的引用：组件、OpenType 特性代码和字偶距分组都会随之更新，并作为一个撤销条目。"
+      },
+      "workspace": {
+        "title": "标签页、面板和工作区",
+        "summary": "标签页、侧边栏、检查器和预览共同构成可保存和恢复的工作区。",
+        "first": "文档打开时带有固定的总览标签页；编辑标签页添加在它旁边，并可按位置访问。",
+        "second": "面板可以显示、隐藏，或移入独立窗口；标签页也可用同样的方法分离。",
+        "third": "“工作区”会以名称保存当前布局，并在以后恢复，包括已分离的窗口。"
+      },
+      "automation": {
+        "title": "脚本和插件",
+        "summary": "脚本控制台针对已打开的文档运行脚本；插件管理器列出已安装的内容。",
+        "first": "运行脚本前，请先了解它将更改什么。脚本的编辑与界面使用相同的命令和撤销条目。",
+        "second": "输出和错误会显示在控制台中。脚本失败时，文档会保持在其最后一个已完成命令之后的状态。",
+        "third": "插件会列出其作者、许可证和来源。只有内置索引可在离线时使用。"
       }
     }
   },
@@ -3897,6 +4188,10 @@
       "segment": "线段",
       "brush": "笔刷"
     },
+    "conventionHelp": "此类型的源字形通常以 {{prefix}} 为前缀命名。任何字形都可以附着；前缀只用于说明字形的用途。",
+    "conventionalSources": "名为 {{prefix}}… 的字形",
+    "noConventionalSources": "此字体中还没有名为 {{prefix}}… 的字形。请从下方选择任意字形，或新增一个以该前缀命名的字形。",
+    "unconventionalSource": "{{source}} 未使用 {{prefix}} 前缀，但仍会被附着。",
     "chooseSource": "选择源字形",
     "clearSource": "清除新增附着部件",
     "preview": "预览",
@@ -3907,7 +4202,7 @@
     "servantHelp": "选择一个非端点节点，将其 X 或 Y 坐标设为相邻独立节点之间的插值。相邻控制柄会随同一间距缩放。",
     "setServant": "设为 {{axis}} 从属节点",
     "removeServant": "解除 {{axis}} 从属关系",
-    "magnetHelp": "磁性关联：选择节点和图层参考线，再建立关联。移动参考线时会保留节点相对参考线的带符号偏移。“吸附并关联”会先将节点移到参考线上。",
+    "magnetHelp": "磁铁：选择节点和图层参考线，再建立关联。移动参考线时会保留节点相对参考线的带符号偏移。“吸附并关联”会先将节点移到参考线上。",
     "targetGuide": "目标参考线",
     "guideNumber": "参考线 {{index}}",
     "link": "关联到参考线",
@@ -3920,8 +4215,17 @@
     "addStemGuides": "添加关联字干参考线",
     "stemCount": "检测到 {{count}} 个直线字干。",
     "stemGuide": "字干 {{width}}",
+    "magnetNoGuide": "在图层参考线上按下即可拾取它。",
+    "magnetLayerOnly": "只有图层参考线可以拥有节点；母版参考线不可以。",
+    "magnetLocked": "此参考线已锁定。",
+    "magnetHud_one": "磁铁：{{count}} 个节点将跟随此参考线。按住 Alt 会先将它们投影到参考线上。",
+    "magnetHud_other": "磁铁：{{count}} 个节点将跟随此参考线。按住 Alt 会先将它们投影到参考线上。",
+    "magnetSnapHud_one": "磁铁：{{count}} 个节点将被投影到此参考线上并跟随它。",
+    "magnetSnapHud_other": "磁铁：{{count}} 个节点将被投影到此参考线上并跟随它。",
     "undo": {
       "servant": "更改从属节点",
+      "magnet": "将节点关联到参考线",
+      "moveGuide": "移动参考线",
       "link": "将节点关联到参考线",
       "unlink": "解除参考线节点关联",
       "stems": "添加关联字干参考线"
@@ -3934,7 +4238,7 @@
     "scaleToSize": "将像素和度量缩放到目标字号",
     "allImages": "此点阵字号中的所有图像",
     "copyStrike": "复制到目标点阵字号",
-    "transferHint": "使用最近邻缩放复制组合后的像素。已有的目标字形会被替换，可一步撤销。转换为 RGBA 时，覆盖度会转为黑色像素的 alpha 值。",
+    "transferHint": "复制组合后的像素，并按字号比例使用所选滤镜缩放。“最近邻”保留锐利的像素边缘；“区域平均”会产生覆盖度，因此请为其选择位深更高的目标。已有的目标字形会被替换，可一步撤销。转换为 RGBA 时，覆盖度会转为黑色像素的 alpha 值。",
     "cornerMode": "像素转角模式",
     "modes": {
       "PixelEdges": "锐角",
@@ -3952,7 +4256,15 @@
     "noGrid": "未找到支持的精确像素网格。检测需要至少三个不同的阶梯形字形，且轮廓沿坐标轴对齐并使用相同网格。",
     "detecting": "正在检查轮廓是否符合精确像素网格…",
     "detectAgain": "重新检查像素网格",
-    "reconstructStrike": "重建检测到的点阵字号"
+    "reconstructStrike": "重建检测到的点阵字号",
+    "filter": "缩放滤镜",
+    "filters": {
+      "Nearest": "最近邻",
+      "AreaAverage": "区域平均"
+    },
+    "traceAll": "此点阵字号中的每个图像（{{count}}）",
+    "editPixelGlyph": "编辑像素字形",
+    "pixelMissing": "该像素字形尚不存在。请先构建组件。"
   },
   "editorMetadata": {
     "title": "路径与批注",
@@ -4050,5 +4362,183 @@
     "undoKey": "设置度量公式",
     "undoMetrics": "设置度量",
     "noMaster": "请先选择母版，再更新此行。"
+  },
+  "quickHelp": {
+    "file": {
+      "new": "打开“新建字体”对话框，用你输入的名称和基本设置创建一个可编辑文档。",
+      "open": "将字体或项目文件作为新文档打开。保存之前，不会写入原始文件。",
+      "openProject": "将基于目录的项目文件夹作为一个文档打开。",
+      "openRecent": "列出你以前打开过的路径，并重新打开你选择的那一个。",
+      "save": "将当前文档写回其所在文件；首次保存时会询问路径。",
+      "saveAs": "将当前文档写入你选择的路径，并继续编辑这个新文件。",
+      "close": "关闭当前文档；若有未保存的编辑，会先提示保存。",
+      "fontInfo": "打开“字体信息”标签页，在其中编辑名称、垂直度量和适用于整个字体的设置。",
+      "export": "打开“导出”，编译供其他应用程序使用的字体文件并报告诊断信息。"
+    },
+    "edit": {
+      "undo": "撤销当前文档的上一次已记录编辑。菜单会显示将被撤销的编辑名称。",
+      "redo": "重新应用被“撤销”退回的编辑。",
+      "history": "在检查器中显示“历史记录”时间线，可从中跳转到文档的任何较早状态。",
+      "preferences": "打开“偏好设置”：外观、语言、编辑器行为和吸附距离。",
+      "selectAll": "在总览网格中选择字体的所有字形。",
+      "selectNone": "清除总览网格中的字形选择。",
+      "copyGlyphNames": "将所选字形的名称复制到剪贴板，每行一个。",
+      "selectAllPoints": "选择编辑标签页中当前图层的所有节点。",
+      "deselectPoints": "清除编辑画布上的节点选择。",
+      "deletePoints": "删除所选节点并合上缺口，保持轮廓闭合。",
+      "deletePointsBreak": "删除所选节点，并在原处保持轮廓断开。",
+      "pasteSpecial": "从另一个已打开的文档传输字形数据，并可选择带入哪些部分。",
+      "relinkComponents": "修复指向缺失或已重命名字形的组件。"
+    },
+    "font": {
+      "findProblems": "运行轮廓和字体数据检查，并列出在文档或所选内容中发现的问题。",
+      "compare": "将当前文档与另一个已打开的文档比较，并列出差异。",
+      "styleEffects": "对所选字形批量应用样式，例如更改字重或倾斜。"
+    },
+    "glyph": {
+      "open": "在独立的编辑标签页中打开当前焦点字形。",
+      "previous": "将编辑标签页切换到字体顺序中的上一个字形。",
+      "next": "将编辑标签页切换到字体顺序中的下一个字形。",
+      "add": "打开“添加字形”，根据名称、字符或方案创建字形。",
+      "duplicate": "用新名称创建所选字形的副本。",
+      "renameBatch": "用查找替换规则一次重命名多个字形，并先预览结果。",
+      "updateInfo": "根据字形名称数据库刷新所选字形的 Unicode 和类别数据。",
+      "updateMetrics": "在当前母版中重新计算所选字形的度量公式。",
+      "updateMetricsAll": "在所有母版中重新计算所选字形的度量公式。",
+      "decomposeAll": "用轮廓副本替换字形的所有组件。",
+      "alignComponents": "将字形中自动对齐的组件移动到其锚点上。",
+      "colorLabel": "用此颜色标签标记所选字形，总览网格和筛选器可据此排序和筛选。",
+      "colorLabelNone": "移除所选字形的颜色标签。"
+    },
+    "path": {
+      "removeOverlap": "合并图层的各条轮廓，移除重叠的部分。",
+      "correctDirection": "设置每条轮廓的方向，使外轮廓和字腔都能正确填充。",
+      "correctDirectionAllMasters": "将字形所有母版图层的轮廓方向作为一次编辑一并校正。",
+      "addExtrema": "在曲线到达最左、最右、最高或最低点的位置插入节点。",
+      "forceExtrema": "即使曲线只是接近极值，也插入极值节点。",
+      "addInflections": "在曲线弯曲方向改变处插入节点。",
+      "simplify": "打开“简化”，在你选择的容差内移除节点并保持形状。",
+      "roundToGrid": "将图层的每个坐标舍入到偏好设置中设定的编辑网格。",
+      "tidy": "执行标准整理流程：方向、起点、重复节点和多余控制柄。",
+      "tidyAllMasters": "将整理流程作为一次编辑应用到字形的所有母版图层。",
+      "expandStroke": "打开“扩展描边”，将轮廓转换为你所选宽度的描边轮廓。",
+      "convertCubic": "将图层的曲线转换为三次贝塞尔曲线。",
+      "convertQuadratic": "在标准误差预算内将图层的曲线转换为二次贝塞尔曲线。",
+      "reverse": "反转所选轮廓的方向；未选择任何轮廓时，反转所有轮廓。",
+      "setStartPoint": "将所选的曲线上节点设为轮廓的起点。",
+      "join": "将所选的两个开放轮廓端点连接为一条轮廓。",
+      "break": "在所选的曲线上节点处断开轮廓。",
+      "openCorner": "将所选转角打开为两个带退让距离的节点，就像绘制笔画交叠的连接处那样。",
+      "reconnectNodes": "重新连接两个节点，再次闭合已打开的转角。",
+      "toggleSmooth": "在平滑节点与角点之间切换所选节点，并相应移动控制柄。",
+      "toggleSmoothKeepOutline": "在平滑节点与角点之间切换所选节点，同时保持轮廓不动。",
+      "superSmooth": "使所选三次曲线连接处保持曲率连续：拖动时控制柄会保持协调。",
+      "harmonize": "一次性协调所选三次曲线连接处，平衡节点两侧的控制柄。"
+    },
+    "layer": {
+      "editBackground": "在母版图层与其背景图层之间切换编辑对象；背景图层不存在时会先创建。",
+      "selectionToBackground": "将所选轮廓复制到背景图层，前景保持不变。",
+      "addBackground": "为此母版添加一个空的背景图层。",
+      "copyToBackground": "用当前绘制内容的副本替换背景图层。",
+      "swapWithBackground": "将绘制内容与其背景图层互换。",
+      "clearBackground": "清空此母版的背景图层。",
+      "addBackup": "将当前绘制内容保存为带日期的备份图层，以便日后返回。"
+    },
+    "view": {
+      "toggleSidebar": "显示或隐藏工作区旁边的侧边栏。",
+      "toggleInspector": "显示或隐藏右侧的检查器面板。",
+      "zoomIn": "放大总览网格的单元格；编辑标签页处于活动状态时，则放大编辑画布。",
+      "zoomOut": "缩小总览网格的单元格；编辑标签页处于活动状态时，则缩小编辑画布。",
+      "zoomFit": "使正在编辑的字形适应画布。",
+      "features": "打开当前文档的 OpenType 特性标签页。",
+      "textPreview": "显示或隐藏编辑标签页的文本预览栏。",
+      "previewCollapse": "将预览栏折叠为只剩标题栏，或重新展开。",
+      "toggleInfoBox": "显示或隐藏信息框，其中包含所选内容的精确坐标。",
+      "toggleSnapping": "开启或关闭编辑画布的吸附，不更改吸附距离。",
+      "toggleFill": "按住按键期间预览填充后的字形，松开后回到轮廓显示。",
+      "glyph": {
+        "filled": "持续显示字形的填充预览，直到你再次将其关闭。",
+        "points": "显示或隐藏编辑画布上的节点和控制柄。",
+        "metrics": "显示或隐藏垂直度量线和侧边距带。",
+        "anchors": "显示或隐藏字形的锚点。",
+        "guides": "显示或隐藏局部和全局参考线。",
+        "rulers": "显示或隐藏画布标尺。",
+        "background": "显示或隐藏绘制内容后方的背景图层。",
+        "otherMasters": "显示或隐藏绘制内容后方来自字体其他母版的同一字形。",
+        "verticalMode": "将竖排原点和竖排步进作为画布的主要度量，用于竖排书写。"
+      },
+      "theme": "在浅色和深色配色之间切换界面，或切换回跟随操作系统。",
+      "language": "立即切换界面语言，并记住所做选择。"
+    },
+    "bitmap": {
+      "open": "打开点阵字号编辑器，在某个像素尺寸下逐像素编辑点阵字形。",
+      "tool": {
+        "pencil": "拖动时将像素设为所选着墨。",
+        "erase": "拖动时清除像素，恢复为背景。",
+        "line": "在两点之间拖出一条像素直线。",
+        "rectangle": "拖出一个像素矩形。",
+        "ellipse": "拖出一个像素椭圆。",
+        "fill": "用所选着墨填充指针下相连的区域。",
+        "select": "拖出可移动或变换的矩形像素选区。",
+        "eyedropper": "拾取指针下像素的着墨值。",
+        "hand": "拖动以平移像素画布。"
+      },
+      "overlay": {
+        "grid": "显示或隐藏像素网格线。",
+        "outline": "按此点阵字号的缩放比例，在像素后方显示或隐藏母版轮廓。",
+        "advanceColumn": "为从原点到水平步进宽度的列添加底色。",
+        "fontUnits": "在像素坐标旁添加字体单位读数。"
+      }
+    },
+    "automation": {
+      "console": "打开脚本控制台和内置插件。"
+    },
+    "palette": {
+      "open": "打开命令面板，可搜索所有命令、筛选器、脚本和字形。",
+      "quickOpen": "以相同的搜索方式打开命令面板，作为第二个快捷键绑定。"
+    },
+    "window": {
+      "nextTab": "切换到标签栏中的下一个标签页。",
+      "previousTab": "切换到标签栏中的上一个标签页。",
+      "cycleNext": "按顺序向前循环切换已打开的标签页。",
+      "cyclePrevious": "向后循环切换已打开的标签页。",
+      "closeTab": "关闭当前标签页。文档固定的总览标签页须通过“关闭字体”关闭。",
+      "tab": "按位置选择当前文档的某个标签页：第一个是它的总览。",
+      "detachTab": "将当前标签页移入独立窗口。",
+      "detachSidebar": "将侧边栏移入独立窗口。",
+      "detachInspector": "将检查器移入独立窗口。",
+      "detachPreview": "将文本预览移入独立窗口。",
+      "document": "为当前文档再打开一个窗口。"
+    },
+    "workspace": {
+      "manage": "保存、恢复和删除工作区，即你工作时使用的标签页、面板和窗口的组合。"
+    },
+    "help": {
+      "context": "针对当前获得焦点或指针所指的内容打开此帮助。在对话框内和没有网络连接时也可使用。",
+      "shortcuts": "打开键盘快捷键编辑器，支持预设、导入、导出和冲突检查。",
+      "about": "显示应用程序版本和许可证信息。"
+    },
+    "text": {
+      "kerning": "在文本预览中为所选边界调整字偶距。该手势属于文本标签页的画布，不能在此重新绑定。"
+    },
+    "tool": {
+      "select": "选择并拖动节点、控制柄、轮廓和组件；在空白画布上拖动可框选。",
+      "lasso": "绘制自由形状的区域，并选择其中的节点。",
+      "eraser": "拖过节点即可擦除它们，整个操作记为一次编辑。",
+      "magnet": "将图层参考线拖到节点上，使节点跟随它；按住 Alt 会先将节点投影到参考线上。",
+      "annotation": "在字形上放置和编辑批注，用于你自己的备注。",
+      "pen": "逐节点绘制新轮廓，拖动可设置每段曲线的控制柄。",
+      "pencil": "绘制自由手绘轮廓，松开时拟合为曲线。",
+      "knife": "沿你拖出的直线切割轮廓。",
+      "rectangle": "拖出一个矩形，作为新的闭合轮廓。",
+      "ellipse": "拖出一个椭圆，作为新的闭合轮廓。",
+      "measure": "测量字形上的距离，并可留下一条参考线。",
+      "rotate": "围绕你放置的中心旋转所选内容。",
+      "scale": "以你放置的原点缩放所选内容。",
+      "zoom": "通过点击或拖出要填满的区域来缩放画布。",
+      "hand": "拖动以平移画布。",
+      "text": "将编辑标签页切换到排版文本模式，可对整个字符串调整间距和字偶距。",
+      "pixel": "将字形交给点阵字号编辑器，由它负责像素绘制。"
+    }
   }
 }

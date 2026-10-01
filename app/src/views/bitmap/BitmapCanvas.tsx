@@ -17,7 +17,8 @@ import {
   type PixelSelection,
   type PixelTool,
 } from './pixels'
-import { moveSelection } from './bitmapTransforms'
+import { copySelection, moveSelection } from './bitmapTransforms'
+import { useBitmapToolStore } from './bitmapToolStore'
 import { BitmapCanvasControls } from './BitmapCanvasControls'
 import styles from './BitmapCanvas.module.css'
 
@@ -45,6 +46,8 @@ interface Gesture {
   tool: PixelTool
   ink: number
   moving?: PixelSelection
+  /** Alt-drag leaves the original pixels in place and stamps a copy. */
+  stamping?: boolean
   pan?: { x: number; y: number; left: number; top: number }
 }
 
@@ -70,8 +73,9 @@ export function BitmapCanvas({
   const area = useRef<HTMLDivElement>(null)
   const gesture = useRef<Gesture | null>(null)
   const [activeFrame, setActiveFrame] = useState<BitmapFrame | null>(null)
-  const [grid, setGrid] = useState(true)
-  const [outline, setOutline] = useState(false)
+  const overlays = useBitmapToolStore((state) => state.overlays)
+  const setOverlay = useBitmapToolStore((state) => state.setOverlay)
+  const { grid, outline, advanceColumn, fontUnits } = overlays
   const [pointer, setPointer] = useState<PixelPoint | null>(null)
   const [delta, setDelta] = useState<PixelPoint | null>(null)
   const theme = useUiStore((state) => state.theme)
@@ -94,10 +98,10 @@ export function BitmapCanvas({
       value.bitmap,
       scale,
       {
-        paper: token('--color-canvas', '#fff'),
-        ink: token('--color-text', '#151515'),
-        grid: token('--color-border', '#bbb'),
-        accent: token('--color-accent', '#547ce5'),
+        paper: token('--bm-paper', '#fdfdfb'),
+        ink: token('--bm-ink', '#101217'),
+        grid: token('--bm-grid', '#c8ccd4'),
+        accent: token('--bm-accent', '#2b5fa8'),
       },
       selection,
       true,
@@ -105,6 +109,7 @@ export function BitmapCanvas({
         frame,
         grid,
         advance: value.advance,
+        advanceColumn,
         outlinePath: outline ? outlinePath : undefined,
         unitsPerPixel,
         resolved: resolved?.bitmap,
@@ -118,6 +123,7 @@ export function BitmapCanvas({
     theme,
     grid,
     outline,
+    advanceColumn,
     outlinePath,
     unitsPerPixel,
     frame,
@@ -156,12 +162,11 @@ export function BitmapCanvas({
   return (
     <>
       <BitmapCanvasControls
-        grid={grid}
-        onGrid={setGrid}
-        outline={outline}
-        onOutline={setOutline}
+        overlays={overlays}
+        onOverlay={setOverlay}
         hasOutline={Boolean(outlinePath && unitsPerPixel)}
-        unitsPerPixel={unitsPerPixel}
+        unitsPerPixel={fontUnits ? unitsPerPixel : undefined}
+        unitsPerPixelLabel={unitsPerPixel}
         pointer={pointer}
         delta={delta}
         advance={value.advance}
@@ -262,6 +267,7 @@ export function BitmapCanvas({
               tool,
               ink: gestureInk,
               moving,
+              stamping: Boolean(moving) && event.altKey,
             }
             if (tool === 'select') {
               if (!moving) onSelect(rectangle(start, start))
@@ -285,7 +291,11 @@ export function BitmapCanvas({
             if (active.moving) {
               const dx = end[0] - active.start[0],
                 dy = end[1] - active.start[1]
-              onEdit(moveSelection(active.source, active.moving, dx, dy))
+              onEdit(
+                active.stamping
+                  ? copySelection(active.source, active.moving, dx, dy)
+                  : moveSelection(active.source, active.moving, dx, dy),
+              )
               onSelect({
                 ...active.moving,
                 x: active.moving.x + dx,

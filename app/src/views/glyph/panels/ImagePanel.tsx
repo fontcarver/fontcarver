@@ -1,24 +1,23 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Image } from '../../../api'
+import type { Affine } from '../../../editor/affine'
+import { editorTargetKey } from '../../../editor/editorMetadata'
 import type { LayerTarget } from '../../../editor/pointCommands'
+import { ImagePlacementFields } from './ImagePlacementFields'
+import { useImagePlacement } from './imagePlacementSession'
+import { ImageTraceFields, validTraceSettings } from './ImageTraceFields'
 import { ImageTracePreview } from './ImageTracePreview'
-import { useImageWorkflow, type ImageTraceSettings } from './useImageWorkflow'
+import {
+  DEFAULT_TRACE_SETTINGS,
+  useImageWorkflow,
+  type ImageTraceSettings,
+} from './useImageWorkflow'
 import styles from './imagePanel.module.css'
 import panel from './panels.module.css'
 
-const IDENTITY: Image['transform'] = [1, 0, 0, 1, 0, 0]
 const MAX_PNG_BYTES = 16 * 1024 * 1024
-const FIELDS = [
-  'scaleX',
-  'shearY',
-  'shearX',
-  'scaleY',
-  'translateX',
-  'translateY',
-] as const
 
-/** Imports, places, locks, and traces one PNG source image without discarding it. */
+/** Imports, places, locks, relinks and traces one PNG source image. */
 export function ImagePanel({
   target,
   glyphLocked,
@@ -32,36 +31,38 @@ export function ImagePanel({
   const workflow = useImageWorkflow(target, reload)
   const { state, busy, preview } = workflow
   const image = state?.image ?? null
-  const [draft, setDraft] = useState<{
-    source: string
-    values: string[]
-  } | null>(null)
   const [path, setPath] = useState('')
   const [embed, setEmbed] = useState(false)
-  const [settings, setSettings] = useState<ImageTraceSettings>({
-    threshold: 128,
-    tolerance: 1,
-    append: true,
-  })
+  const [settings, setSettings] = useState<ImageTraceSettings>(
+    DEFAULT_TRACE_SETTINGS,
+  )
   const [fileError, setFileError] = useState<string | null>(null)
-  const transformKey = JSON.stringify(image?.transform ?? IDENTITY)
-  const placement =
-    draft?.source === transformKey
-      ? draft.values
-      : (image?.transform ?? IDENTITY).map(String)
+  const [onCanvas, setOnCanvas] = useState(false)
   const blocked = busy || workflow.editing || glyphLocked || !state
   const placementBlocked = blocked || Boolean(image?.locked)
-  const transform = placement.map((value) =>
-    value.trim() === '' ? NaN : Number(value),
-  ) as Image['transform']
-  const validTransform = transform.every(Number.isFinite)
-  const validTrace =
-    Number.isInteger(settings.threshold) &&
-    settings.threshold >= 1 &&
-    settings.threshold <= 255 &&
-    Number.isFinite(settings.tolerance) &&
-    settings.tolerance >= 0 &&
-    settings.tolerance <= 16
+  const owner = editorTargetKey(target)
+  const openPlacement = useImagePlacement((store) => store.open)
+  const closePlacement = useImagePlacement((store) => store.close)
+  const broken = Boolean(state?.error) && image !== null
+  const writeTransform = (transform: Affine) => {
+    if (image) workflow.setImage({ ...image, transform })
+  }
+
+  // The canvas owns the handles; this section owns the revision and the write.
+  useEffect(() => {
+    if (!onCanvas || !image || !state) {
+      closePlacement(owner)
+      return
+    }
+    openPlacement({
+      owner,
+      locked: placementBlocked,
+      commit: writeTransform,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onCanvas, owner, image, state, placementBlocked, closePlacement])
+  useEffect(() => () => closePlacement(owner), [closePlacement, owner])
+
   const changeSettings = (next: Partial<ImageTraceSettings>) => {
     setSettings((value) => ({ ...value, ...next }))
     workflow.clearPreview()
@@ -78,6 +79,13 @@ export function ImagePanel({
     }
     workflow.importFile(file)
   }
+  const relink = (from: string) =>
+    workflow.importImage({
+      path: from,
+      data: null,
+      file_name: from.split(/[\\/]/).at(-1) ?? 'image.png',
+      embed: false,
+    })
   return (
     <>
       <p className={styles.hint}>{t('imageWorkflow.pngHelp')}</p>
@@ -94,11 +102,6 @@ export function ImagePanel({
           {workflow.error || fileError}
         </p>
       )}
-      {state?.error && (
-        <p role="alert" className={styles.error}>
-          {state.error}
-        </p>
-      )}
       {image && (
         <>
           <p className={styles.hint}>{image.file_name}</p>
@@ -113,6 +116,49 @@ export function ImagePanel({
               : t('imageWorkflow.unresolved')}
           </p>
         </>
+      )}
+      {broken && (
+        <fieldset className={styles.broken} disabled={placementBlocked}>
+          <legend>{t('imageWorkflow.brokenLink')}</legend>
+          <p role="alert" className={styles.error}>
+            {t('imageWorkflow.brokenHelp')}
+          </p>
+          <p className={styles.hint}>{state?.error}</p>
+          {state?.source_path && (
+            <p className={styles.hint}>
+              {t('imageWorkflow.triedPath', { path: state.source_path })}
+            </p>
+          )}
+          <div className={styles.steps}>
+            <button
+              type="button"
+              className={panel.actionButton}
+              onClick={() => {
+                workflow.refresh()
+                reload()
+              }}
+            >
+              {t('imageWorkflow.retryLink')}
+            </button>
+            {state?.source_path && (
+              <button
+                type="button"
+                className={panel.actionButton}
+                onClick={() => relink(state.source_path as string)}
+              >
+                {t('imageWorkflow.relinkSame')}
+              </button>
+            )}
+            <button
+              type="button"
+              className={panel.actionButton}
+              disabled={!path.trim()}
+              onClick={() => relink(path.trim())}
+            >
+              {t('imageWorkflow.relinkPath')}
+            </button>
+          </div>
+        </fieldset>
       )}
       <button
         type="button"
@@ -188,38 +234,25 @@ export function ImagePanel({
           </label>
           <fieldset className={styles.group} disabled={placementBlocked}>
             <legend>{t('imageWorkflow.placement')}</legend>
-            <div className={styles.matrix}>
-              {FIELDS.map((field, index) => (
-                <label key={field} className={styles.field}>
-                  {t(`imageWorkflow.${field}`)}
-                  <input
-                    type="number"
-                    step="any"
-                    className={panel.textInput}
-                    value={placement[index]}
-                    onChange={(event) => {
-                      const value = event.target.value
-                      setDraft({
-                        source: transformKey,
-                        values: placement.map((old, i) =>
-                          i === index ? value : old,
-                        ),
-                      })
-                      workflow.clearPreview()
-                    }}
-                  />
-                </label>
-              ))}
-            </div>
-            <p className={styles.hint}>{t('imageWorkflow.affineHelp')}</p>
-            <button
-              type="button"
-              className={panel.actionButton}
-              disabled={!validTransform}
-              onClick={() => workflow.setImage({ ...image, transform })}
-            >
-              {t('imageWorkflow.applyPlacement')}
-            </button>
+            <label className={styles.hint}>
+              <input
+                type="checkbox"
+                checked={onCanvas}
+                onChange={(event) => setOnCanvas(event.target.checked)}
+              />
+              {t('imageWorkflow.onCanvas')}
+            </label>
+            <p className={styles.hint}>{t('imageWorkflow.onCanvasHelp')}</p>
+            <ImagePlacementFields
+              image={image}
+              size={
+                state?.width && state?.height
+                  ? { width: state.width, height: state.height }
+                  : null
+              }
+              disabled={placementBlocked}
+              onTransform={writeTransform}
+            />
             <button
               type="button"
               className={panel.actionButton}
@@ -233,56 +266,11 @@ export function ImagePanel({
             disabled={busy || workflow.editing || !state?.png}
           >
             <legend>{t('imageWorkflow.trace')}</legend>
-            <p className={styles.hint}>{t('imageWorkflow.traceHelp')}</p>
-            <label className={styles.field}>
-              {t('imageWorkflow.threshold')}
-              <input
-                type="number"
-                min={1}
-                max={255}
-                step={1}
-                className={panel.textInput}
-                value={
-                  Number.isFinite(settings.threshold) ? settings.threshold : ''
-                }
-                onChange={(event) =>
-                  changeSettings({ threshold: event.target.valueAsNumber })
-                }
-              />
-            </label>
-            <label className={styles.field}>
-              {t('imageWorkflow.tolerance')}
-              <input
-                type="number"
-                min={0}
-                max={16}
-                step={0.1}
-                className={panel.textInput}
-                value={
-                  Number.isFinite(settings.tolerance) ? settings.tolerance : ''
-                }
-                onChange={(event) =>
-                  changeSettings({ tolerance: event.target.valueAsNumber })
-                }
-              />
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={settings.append}
-                onChange={(event) =>
-                  changeSettings({ append: event.target.checked })
-                }
-              />
-              {t('imageWorkflow.append')}
-            </label>
-            {!settings.append && (
-              <p className={styles.hint}>{t('imageWorkflow.replaceHelp')}</p>
-            )}
+            <ImageTraceFields settings={settings} onChange={changeSettings} />
             <button
               type="button"
               className={panel.actionButton}
-              disabled={!validTrace}
+              disabled={!validTraceSettings(settings)}
               onClick={() => workflow.previewTrace(settings)}
             >
               {t('imageWorkflow.preview')}

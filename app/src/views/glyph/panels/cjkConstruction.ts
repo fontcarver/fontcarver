@@ -173,23 +173,3 @@ export function idsCommand(
     })),
   }
 }
-
-/** Candidate Unicode mappings for a document-backed radical library. */
-export function radicalCodepoints(): number[] {
-  const points = new Set<number>()
-  const add = (text: string) => {
-    for (const scalar of text) {
-      const point = scalar.codePointAt(0)
-      if (point !== undefined) points.add(point)
-    }
-  }
-  for (let point = 0x2f00; point <= 0x2fd5; point += 1) {
-    const radical = String.fromCodePoint(point)
-    add(radical)
-    add(radical.normalize('NFKC'))
-  }
-  add(
-    '亻氵忄扌讠钅纟礻衤阝艹辶刂灬犭饣牜攵罒疒爫耂龵糹釒飠訁⺅⺉⺌⺗⺡⺣⺨⺭⺮⺶⺷⺹⺾⻂⻊⻏⻖⻗⻟',
-  )
-  return [...points]
-}

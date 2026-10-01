@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   call,
+  type BracketCondition,
   type DocId,
   type Layer,
   type LayerKind,
@@ -16,7 +17,11 @@ import { errorNotice } from '../../../i18n/errors'
 import styles from '../../fontinfo/designSpace.module.css'
 import { userToDesign } from '../../fontinfo/designCoordinates'
 import { BracketConditionFields } from './BracketConditionFields'
-import { bracketConditionError } from './bracketConditions'
+import {
+  canonicalConditions,
+  conditionSetError,
+  conditionsOf,
+} from './bracketConditions'
 
 /** Clone a source or edit its intermediate/conditional role without replacing its outline. */
 export function SourceLayerEditor({
@@ -69,14 +74,26 @@ export function SourceLayerEditor({
   const [max, setMax] = useState<number | null>(
     'Bracket' in source.kind ? source.kind.Bracket.max : null,
   )
+  // A condition is a set of per-axis ranges; the first is edited above, the
+  // rest live here so this dialog offers the same compound condition the
+  // variation panel does.
+  const [extra, setExtra] = useState<BracketCondition[]>(
+    'Bracket' in source.kind ? (source.kind.Bracket.extra ?? []) : [],
+  )
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('')
+  const selectedAxis = state?.axes.find(
+    (value) => String.fromCharCode(...value.tag) === axis,
+  )
   const conditionError =
     kind === 'Bracket' &&
-    bracketConditionError(
-      state?.axes.find((value) => String.fromCharCode(...value.tag) === axis),
-      min,
-      max,
+    conditionSetError(
+      state?.axes ?? [],
+      selectedAxis
+        ? conditionsOf({
+            Bracket: { axis: selectedAxis.tag, min, max, extra },
+          })
+        : [],
     )
   useEffect(() => {
     let current = true
@@ -131,6 +148,7 @@ export function SourceLayerEditor({
                 ],
                 min,
                 max,
+                extra: canonicalConditions(extra),
               },
             }
     setBusy(true)
@@ -276,9 +294,11 @@ export function SourceLayerEditor({
             min={min}
             max={max}
             location={location}
+            extra={extra}
             onAxis={setAxis}
             onMin={setMin}
             onMax={setMax}
+            onExtra={setExtra}
           />
         )}
       </fieldset>

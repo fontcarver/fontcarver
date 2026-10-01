@@ -6,6 +6,7 @@ import { Dialog } from '../../components/Dialog'
 import { activeEditor } from '../../editor/activeEditor'
 import { errorNotice } from '../../i18n/errors'
 import { CffPrivateSelector } from './CffPrivateSelector'
+import { PsFlexFields } from './PsFlexFields'
 import { PsHintPreview } from './PsHintPreview'
 import { PsPrivateFields } from './PsPrivateFields'
 import { PsStemFields } from './PsStemFields'
@@ -75,10 +76,20 @@ export function PsHintEditor({
           setError(t('hints.stale'))
           return
         }
+        // Analysis also proposes values for every additional CID dictionary the
+        // selection uses, so apply each one it returns.
+        const dictionaries = [...(state.master.cff_private_dicts ?? [])]
+        for (const [index, values] of result.cid_private)
+          if (index >= 1 && index <= dictionaries.length)
+            dictionaries[index - 1] = values
         setState({
           ...state,
           hints: result.hints[0]?.[1] ?? state.hints,
-          master: { ...state.master, private_dict: result.private },
+          master: {
+            ...state.master,
+            private_dict: result.private,
+            cff_private_dicts: dictionaries,
+          },
         })
       })
       .catch(report)
@@ -207,6 +218,7 @@ export function PsHintEditor({
                   path={state.path}
                   hints={state.hints}
                   upem={state.units_per_em}
+                  flexPaths={state.flex_paths}
                 />
                 <div className={styles.row}>
                   <Button
@@ -230,6 +242,8 @@ export function PsHintEditor({
                           d_stems: [],
                           hint_masks: [],
                           flex: false,
+                          flex_hints: [],
+                          dot_sections: [],
                         },
                       })
                     }
@@ -248,6 +262,12 @@ export function PsHintEditor({
                 </p>
                 <PsStemFields
                   hints={state.hints}
+                  onChange={(hints) => setState({ ...state, hints })}
+                />
+                <PsFlexFields
+                  hints={state.hints}
+                  contourCount={state.contour_count}
+                  flexPaths={state.flex_paths}
                   onChange={(hints) => setState({ ...state, hints })}
                 />
               </>

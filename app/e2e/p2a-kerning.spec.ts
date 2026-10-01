@@ -566,7 +566,7 @@ test('marks kerning exceptions and maintains the table across masters', async ({
   const table = page.getByRole('table')
   await expect(table).toBeVisible()
   await expect(table.getByText('Exception')).toBeVisible()
-  await expect(table.getByText('Class')).toBeVisible()
+  await expect(table.getByText('Group')).toBeVisible()
 
   await page
     .getByRole('combobox', { name: 'Record kind' })
@@ -585,7 +585,7 @@ test('marks kerning exceptions and maintains the table across masters', async ({
     .poll(async () => (await resolution(page, source.doc, bold!.id)).value)
     .toBe(-20)
 
-  // Compress folds the agreeing pairs of that master back into one class rule.
+  // Compress folds the agreeing pairs of that master back into one group rule.
   await page.getByRole('button', { name: 'Compress' }).click()
   await expect
     .poll(async () => (await resolution(page, source.doc, bold!.id)).value)

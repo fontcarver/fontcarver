@@ -700,6 +700,7 @@ fn compile_options(options: &ExportOptions, master: &MasterId) -> Result<Compile
             && options.format != ExportFormat::Cff,
         production_names: options.production_names,
         autohint: options.autohint,
+        tt_autohint: options.tt_autohint.resolve()?,
         table_subset,
     })
 }

@@ -140,6 +140,13 @@
   fill: var(--color-text);
   opacity: 0.5;
 }
+.flex {
+  fill: none;
+  stroke: var(--color-warning);
+  stroke-width: 12;
+  stroke-linecap: round;
+  stroke-dasharray: 40 24;
+}
 .band {
   fill: var(--color-accent);
   opacity: 0.14;

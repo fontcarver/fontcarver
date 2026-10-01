@@ -99,6 +99,8 @@ pub struct ExportOptions {
     pub production_names: bool,
     /// Infer CFF hints or run the optional external TrueType hinter.
     pub autohint: bool,
+    /// Validated options handed to the external TrueType hinter when it runs.
+    pub tt_autohint: fc_hint::external::AutohintOptions,
     /// Optional allowlist for non-core tables in the output.
     pub table_subset: Option<Vec<Tag>>,
 }
@@ -122,6 +124,7 @@ impl Default for ExportOptions {
             preserve_untouched_tables: true,
             production_names: false,
             autohint: false,
+            tt_autohint: fc_hint::external::AutohintOptions::default(),
             table_subset: None,
         }
     }
@@ -419,6 +422,18 @@ fn export_inner(
         });
     }
     warnings.extend(value_clamp_warnings(font, master));
+    if options.format == ExportFormat::Otf
+        && font.glyphs.values().any(|glyph| {
+            glyph
+                .master_layer(master)
+                .is_some_and(|layer| !layer.hints.dot_sections.is_empty())
+        })
+    {
+        warnings.push(ExportWarning {
+            code: "cff-dotsection-dropped",
+            message: "Type 2 charstrings list dotsection as obsolete, so dot sections were kept in the document but not written to CFF; Type 1 output retains them".to_owned(),
+        });
+    }
     if crate::large_font::requires_workaround(font, options.production_names) {
         warnings.push(ExportWarning {
             code: "post-names-omitted-capacity",
@@ -461,6 +476,7 @@ fn export_inner(
             master,
             &compiled.glyph_order,
             options.keep_tt_instructions,
+            options.variable,
         )?;
         warnings.extend(diagnostics);
         bytes
@@ -477,7 +493,7 @@ fn export_inner(
             })?;
     }
     let merged = if options.format == ExportFormat::Otf && options.variable {
-        crate::variable_cff::convert(&merged, font, &compiled.glyph_order)?
+        crate::variable_cff::convert(&merged, font, &compiled.glyph_order, &mut warnings)?
     } else if let Some(prepared) = prepared_cff {
         crate::otf::convert(
             &merged,
@@ -492,8 +508,17 @@ fn export_inner(
         merged
     };
     let merged = if options.autohint {
-        match fc_hint::external::autohint(&merged) {
-            Ok(bytes) => bytes,
+        match fc_hint::external::autohint(&merged, &options.tt_autohint) {
+            Ok(outcome) => {
+                // A successful run still reports what it had to work around.
+                for message in &outcome.messages {
+                    warnings.push(ExportWarning {
+                        code: "autohint-message",
+                        message: format!("ttfautohint: {message}"),
+                    });
+                }
+                outcome.bytes
+            }
             Err(fc_hint::Error::Unavailable) => {
                 warnings.push(ExportWarning {code:"autohint-unavailable",message:"ttfautohint is not installed on PATH; the exported TrueType font was not automatically hinted".into()});
                 merged

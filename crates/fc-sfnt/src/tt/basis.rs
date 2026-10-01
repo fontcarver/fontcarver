@@ -41,6 +41,15 @@ impl<'a> Source<'a> {
     }
 
     pub(super) fn from_face(face: FontRef<'a>) -> Result<Self, Error> {
+        Self::from_face_with(face, true)
+    }
+
+    /// Builds a source whose identity covers only the stored outlines.
+    ///
+    /// Variation tables are still validated; they just do not take part in the
+    /// digest, so a program authored against a static compile of the same
+    /// sources keeps its binding in a variable compile.
+    pub(super) fn from_face_with(face: FontRef<'a>, variation: bool) -> Result<Self, Error> {
         let head = face.head().map_err(invalid)?;
         if head.units_per_em() == 0 || !matches!(head.index_to_loc_format(), 0 | 1) {
             return Err(invalid("invalid head values"));
@@ -81,7 +90,7 @@ impl<'a> Source<'a> {
                     .ok_or_else(|| invalid("truncated OS/2 metrics"))?,
             );
         }
-        let variation_identity = variation::identity(&face, count)?;
+        let variation_identity = variation::identity(&face, count)?.filter(|_| variation);
         if let Some(digest) = variation_identity {
             global.extend(digest);
         }

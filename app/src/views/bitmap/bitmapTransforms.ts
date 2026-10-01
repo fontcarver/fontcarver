@@ -21,6 +21,25 @@ export function moveSelection(
       )
   return next
 }
+/** Stamp the selected patch at an offset, keeping the original pixels. */
+export function copySelection(
+  source: BitmapGlyph,
+  region: PixelSelection,
+  dx: number,
+  dy: number,
+): BitmapGlyph {
+  const next = structuredClone(source),
+    patch = crop(source.bitmap, region)
+  for (let y = 0; y < region.height; y++)
+    for (let x = 0; x < region.width; x++)
+      put(
+        next.bitmap,
+        region.x + x + dx,
+        region.y + y + dy,
+        sample(patch, x, y),
+      )
+  return next
+}
 export function cropGlyph(
   source: BitmapGlyph,
   region?: PixelSelection,

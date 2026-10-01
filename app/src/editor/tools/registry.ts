@@ -17,6 +17,7 @@ import {
   Eraser,
   Grid2x2,
   Lasso,
+  Magnet,
   MessageSquare,
   Hand,
   MousePointer2,
@@ -43,6 +44,7 @@ export type ToolId =
   | 'knife'
   | 'rectangle'
   | 'ellipse'
+  | 'magnet'
   | 'measure'
   | 'rotate'
   | 'scale'
@@ -147,6 +149,16 @@ export const TOOLS: readonly ToolDefinition[] = [
     icon: Circle,
     cursor: 'crosshair',
     group: 'shape',
+  },
+  {
+    id: 'magnet',
+    key: 'm',
+    shift: false,
+    labelKey: 'tool.magnet',
+    hintKey: 'tool.magnetHint',
+    icon: Magnet,
+    cursor: 'crosshair',
+    group: 'transform',
   },
   {
     id: 'measure',

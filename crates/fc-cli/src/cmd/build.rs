@@ -57,6 +57,54 @@ pub(crate) struct Args {
     /// Automatically hint a static sfnt export (TrueType requires ttfautohint on PATH).
     #[arg(long, conflicts_with = "variable")]
     pub(crate) autohint: bool,
+    /// Smallest ppem the external TrueType hinter hints.
+    #[arg(long, value_name = "PPEM", requires = "autohint")]
+    pub(crate) hint_range_min: Option<u16>,
+    /// Largest ppem the external TrueType hinter hints.
+    #[arg(long, value_name = "PPEM", requires = "autohint")]
+    pub(crate) hint_range_max: Option<u16>,
+    /// Largest ppem hinted at all; zero removes the limit.
+    #[arg(long, value_name = "PPEM", requires = "autohint")]
+    pub(crate) hint_limit: Option<u16>,
+    /// Stem width for scripts without blue zones.
+    #[arg(long, value_name = "UNITS", requires = "autohint")]
+    pub(crate) hint_fallback_stem_width: Option<u16>,
+    /// Ppem limit for rounding the x-height up; zero switches it off.
+    #[arg(long, value_name = "PPEM", requires = "autohint")]
+    pub(crate) hint_increase_x_height: Option<u16>,
+    /// Four-letter script tag for glyphs without a script.
+    #[arg(long, value_name = "SCRIPT", requires = "autohint")]
+    pub(crate) hint_default_script: Option<String>,
+    /// Four-letter script tag for unassigned glyphs.
+    #[arg(long, value_name = "SCRIPT", requires = "autohint")]
+    pub(crate) hint_fallback_script: Option<String>,
+    /// Strong stem widths: any of g (grayscale), G (GDI) and D (DirectWrite).
+    #[arg(long, value_name = "MODES", requires = "autohint")]
+    pub(crate) hint_strong_stem_width: Option<String>,
+    /// Ppem values and ranges, or `-` for every size.
+    #[arg(long, value_name = "LIST", requires = "autohint")]
+    pub(crate) hint_x_height_snapping_exceptions: Option<String>,
+    /// Run the external hinter's subglyph adjustment pass.
+    #[arg(long, requires = "autohint")]
+    pub(crate) hint_adjust_subglyphs: bool,
+    /// Hint composite glyphs as a whole.
+    #[arg(long, requires = "autohint")]
+    pub(crate) hint_composites: bool,
+    /// Remove all TrueType hints instead of generating new ones.
+    #[arg(long, requires = "autohint")]
+    pub(crate) hint_dehint: bool,
+    /// Accept a font without standard characters.
+    #[arg(long, requires = "autohint")]
+    pub(crate) hint_symbol: bool,
+    /// Record the external hinter's parameters in a TTFA table.
+    #[arg(long, requires = "autohint")]
+    pub(crate) hint_ttfa_table: bool,
+    /// Add blue zones for Windows vertical clipping.
+    #[arg(long, requires = "autohint")]
+    pub(crate) hint_windows_compatibility: bool,
+    /// How much provenance the external hinter records in the name table.
+    #[arg(long, value_name = "MODE", requires = "autohint", value_parser = ["none", "short", "detailed"])]
+    pub(crate) hint_info: Option<String>,
     /// Compile from the model alone, without imported tables or hinting.
     #[arg(long)]
     pub(crate) no_preserve: bool,
@@ -77,6 +125,81 @@ pub(crate) struct Args {
     pub(crate) master: Option<String>,
 }
 
+/// The external hinter options this invocation set, for the ad-hoc flag list.
+fn tt_autohint_flags(args: &Args) -> Vec<&'static str> {
+    [
+        ("--hint-range-min", args.hint_range_min.is_some()),
+        ("--hint-range-max", args.hint_range_max.is_some()),
+        ("--hint-limit", args.hint_limit.is_some()),
+        (
+            "--hint-fallback-stem-width",
+            args.hint_fallback_stem_width.is_some(),
+        ),
+        (
+            "--hint-increase-x-height",
+            args.hint_increase_x_height.is_some(),
+        ),
+        ("--hint-default-script", args.hint_default_script.is_some()),
+        (
+            "--hint-fallback-script",
+            args.hint_fallback_script.is_some(),
+        ),
+        (
+            "--hint-strong-stem-width",
+            args.hint_strong_stem_width.is_some(),
+        ),
+        (
+            "--hint-x-height-snapping-exceptions",
+            args.hint_x_height_snapping_exceptions.is_some(),
+        ),
+        ("--hint-adjust-subglyphs", args.hint_adjust_subglyphs),
+        ("--hint-composites", args.hint_composites),
+        ("--hint-dehint", args.hint_dehint),
+        ("--hint-symbol", args.hint_symbol),
+        ("--hint-ttfa-table", args.hint_ttfa_table),
+        (
+            "--hint-windows-compatibility",
+            args.hint_windows_compatibility,
+        ),
+        ("--hint-info", args.hint_info.is_some()),
+    ]
+    .into_iter()
+    .filter_map(|(name, present)| present.then_some(name))
+    .collect()
+}
+
+/// The external TrueType hinter's options, in the shared API's own record.
+///
+/// The kernel validates them before any process starts, so an invalid value
+/// fails the build with the kernel's own message rather than being dropped.
+fn tt_autohint(args: &Args) -> fc_api::TtAutohintOptions {
+    fc_api::TtAutohintOptions {
+        hinting_range_min: args.hint_range_min,
+        hinting_range_max: args.hint_range_max,
+        hinting_limit: args.hint_limit,
+        fallback_stem_width: args.hint_fallback_stem_width,
+        increase_x_height: args.hint_increase_x_height,
+        x_height_snapping_exceptions: args
+            .hint_x_height_snapping_exceptions
+            .clone()
+            .unwrap_or_default(),
+        default_script: args.hint_default_script.clone().unwrap_or_default(),
+        fallback_script: args.hint_fallback_script.clone().unwrap_or_default(),
+        strong_stem_width: args.hint_strong_stem_width.clone().unwrap_or_default(),
+        adjust_subglyphs: args.hint_adjust_subglyphs,
+        composites: args.hint_composites,
+        dehint: args.hint_dehint,
+        symbol: args.hint_symbol,
+        ttfa_table: args.hint_ttfa_table,
+        windows_compatibility: args.hint_windows_compatibility,
+        info: match args.hint_info.as_deref() {
+            Some("short") => fc_api::TtAutohintInfo::Short,
+            Some("detailed") => fc_api::TtAutohintInfo::Detailed,
+            _ => fc_api::TtAutohintInfo::None,
+        },
+    }
+}
+
 /// Flags that describe an ad-hoc export and may not be mixed with a profile.
 fn ad_hoc_flags(args: &Args) -> Vec<&'static str> {
     [
@@ -87,6 +210,7 @@ fn ad_hoc_flags(args: &Args) -> Vec<&'static str> {
         ("--production-names", args.production_names),
         ("--subroutinize", args.subroutinize),
         ("--autohint", args.autohint),
+        ("--hint-*", !tt_autohint_flags(args).is_empty()),
         ("--no-preserve", args.no_preserve),
         ("--variable", args.variable),
         ("--instance", args.instance.is_some()),
@@ -247,6 +371,7 @@ fn run_ad_hoc(args: &Args, opened: &OpenedDocument) -> Result<(), Error> {
         subroutinize: args.subroutinize,
         remove_overlap: args.remove_overlap,
         autohint: args.autohint,
+        tt_autohint: tt_autohint(args),
         keep_tt_instructions: !args.no_preserve,
         preserve_untouched_tables: !args.no_preserve,
         ..ExportOptions::default()

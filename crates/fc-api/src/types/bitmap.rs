@@ -129,6 +129,13 @@ pub struct BitmapTraceParams {
     pub depth: u8,
     /// Glyph to trace.
     pub glyph: String,
+    /// Extra glyphs traced in the same undo step; empty traces only `glyph`.
+    #[serde(default)]
+    pub glyphs: Vec<String>,
+    /// Trace every glyph with an image in this strike, in the same undo step.
+    #[serde(default)]
+    #[ts(as = "Option<bool>", optional)]
+    pub all_images: bool,
     /// Destination master.
     pub master: Option<fc_model::MasterId>,
     /// Minimum coverage, 1..255.
@@ -142,13 +149,17 @@ pub struct BitmapTraceParams {
     #[ts(optional)]
     pub join_diagonals: Option<bool>,
 }
-/// Bounded Unicode sample rendered at every strike size.
+/// Bounded sample rendered at every strike size.
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]
 pub struct BitmapPreviewParams {
     /// Open document.
     pub doc: DocId,
-    /// At most 128 Unicode scalar values.
+    /// At most 128 Unicode scalar values; ignored when `glyphs` is not empty.
     pub text: String,
+    /// At most 128 glyph names, used instead of `text` so that a glyph with no
+    /// Unicode value can be previewed.
+    #[serde(default)]
+    pub glyphs: Vec<String>,
 }
 /// One waterfall line; absent entries denote missing glyphs.
 #[derive(Clone, Debug, Serialize, Deserialize, TS)]

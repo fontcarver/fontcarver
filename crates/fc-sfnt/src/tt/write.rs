@@ -4,7 +4,7 @@ use fc_model::TtMasterData;
 use read_fonts::{tables::glyf::bytecode::Decoder, types::Tag, FontRef, TableProvider};
 use write_fonts::FontBuilder;
 
-use super::{basis::Source, invalid, span, variation};
+use super::{basis::Source, invalid, span, variation, variation::CvtRegion};
 use crate::Error;
 
 const MAX_FONT_BYTES: usize = 256 * 1024 * 1024;
@@ -38,6 +38,7 @@ pub fn with_instructions(
     bytes: &[u8],
     programs: &[GlyphProgram],
     globals: &TtMasterData,
+    cvt_variation: &[CvtRegion],
 ) -> Result<Vec<u8>, Error> {
     let mut source = Source::new(bytes)?;
     let face = FontRef::new(bytes).map_err(invalid)?;
@@ -50,7 +51,23 @@ pub fn with_instructions(
     if globals.cvt.len() > 65536 {
         return Err(invalid("CVT exceeds the 16-bit index range"));
     }
-    variation::check_cvt(&face, &globals.cvt)?;
+    let authored_cvar = if cvt_variation.is_empty() {
+        variation::check_cvt(&face, &globals.cvt)?;
+        None
+    } else {
+        // An authored cvar replaces whatever the input carried, so the input's
+        // CVT no longer has to match.
+        let axes = variation::axis_count(&face)
+            .ok_or_else(|| invalid("control value variation requires a variable font"))?;
+        if globals.cvt.is_empty() {
+            return Err(invalid(
+                "control value variation requires a nonempty control value table",
+            ));
+        }
+        let cvar = variation::write_cvar(axes, globals.cvt.len(), cvt_variation)?;
+        variation::check_authored_cvar(&face, &cvar, globals.cvt.len())?;
+        Some(cvar)
+    };
     let mut maxp = table(&face, b"maxp")?;
     if maxp.len() != 32 || maxp[..4] != [0, 1, 0, 0] {
         return Err(invalid("TrueType instructions require maxp version 1.0"));
@@ -111,6 +128,7 @@ pub fn with_instructions(
         ]
         .iter()
         .any(|value| tag == Tag::new(value))
+            || (authored_cvar.is_some() && tag == Tag::new(b"cvar"))
         {
             continue;
         }
@@ -144,6 +162,9 @@ pub fn with_instructions(
         if !data.is_empty() {
             builder.add_raw(Tag::new(tag), data);
         }
+    }
+    if let Some(cvar) = authored_cvar {
+        builder.add_raw(Tag::new(b"cvar"), cvar);
     }
     let result = builder.build();
     if result.len() > MAX_FONT_BYTES {

@@ -11,7 +11,8 @@ mod unicode;
 mod unihan;
 
 pub use unihan::{
-    iicore_codepoints, normalize_reading, unihan, unihan_codepoints, RadicalStroke, UnihanRecord,
+    iicore_codepoints, kangxi_radical, kangxi_radicals, normalize_reading, unihan,
+    unihan_codepoints, Radical, RadicalForm, RadicalStroke, UnihanRecord, KANGXI_RADICAL_COUNT,
     UNIHAN_VERSION,
 };
 

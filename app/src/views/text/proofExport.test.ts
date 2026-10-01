@@ -115,8 +115,16 @@ describe('standalone proof export', () => {
       { ...entry, size: 1000, label: `${'W'.repeat(47)}中` },
     ])
     expect(pdf).toContain('(U+4E2D) Tj')
-    expect(pdf).toMatch(/\(\[1000 -> \d+\.\d+\]\) Tj/)
+    expect(pdf).toMatch(/\(1000 pt {2}\[1000 -> \d+\.\d+\]\) Tj/)
     expect(pdf).not.toContain('(U+) Tj')
+  })
+
+  it('separates consecutive escaped characters so a CJK label stays readable', () => {
+    const pdf = pdfText([{ ...entry, label: '永東國' }])
+    expect(pdf).toContain('(U+6C38 U+6771 U+570B) Tj')
+    expect(pdf).toContain('/ActualText <FEFF6C3867715' + '70B>')
+    // A space already in the source is not doubled.
+    expect(pdfText([{ ...entry, label: '中 A' }])).toContain('(U+4E2D A) Tj')
   })
 
   it('paginates exceptionally long labels without duplicating their ActualText', () => {
@@ -128,6 +136,149 @@ describe('standalone proof export', () => {
     expect(
       pdf.match(new RegExp(`FEFF${'4E2D'.repeat(500)}`, 'g')),
     ).toHaveLength(1)
+  })
+
+  it("names each row's point size in both outputs so a waterfall reads as one", () => {
+    const html = exportProofHtml('Waterfall', [
+      { ...entry, label: 'Pangram', size: 12 },
+      { ...entry, label: 'Pangram', size: 48 },
+    ])
+    const doc = new DOMParser().parseFromString(html, 'text/html')
+    expect(
+      [...doc.querySelectorAll('section')].map((section) =>
+        section.getAttribute('data-size'),
+      ),
+    ).toEqual(['12', '48'])
+    expect(
+      [...doc.querySelectorAll('.meta')].map((node) => node.textContent),
+    ).toEqual(['12 pt', '48 pt'])
+    // The heading stays the sample's own name, so a reader can still match rows.
+    expect(doc.querySelector('h2')?.textContent).toBe('Pangram')
+    const pdf = pdfText([{ ...entry, label: 'Pangram', size: 12 }])
+    expect(pdf).toContain('(12 pt) Tj')
+  })
+
+  it('embeds the compiled WOFF2 and sets real text in it', () => {
+    const html = exportProofHtml(
+      'Specimen',
+      [
+        {
+          ...entry,
+          label: 'Pangram',
+          text: 'The quick brown fox',
+          direction: 'ltr',
+          language: 'en',
+          features: [
+            ['kern', true],
+            ['liga', false],
+          ],
+        },
+      ],
+      {
+        woff2Base64: 'd09GMgABAAAA',
+        familyName: 'Example Sans',
+        styleName: 'Regular',
+        unitsPerEm: 1000,
+      },
+    )
+    const doc = new DOMParser().parseFromString(html, 'text/html')
+    const style = doc.querySelector('style')!.textContent!
+    expect(style).toContain(
+      'src:url(data:font/woff2;base64,d09GMgABAAAA) format("woff2")',
+    )
+    expect(style).toContain('@font-face')
+    const specimen = doc.querySelector('.specimen')!
+    expect(specimen.textContent).toBe('The quick brown fox')
+    expect(specimen.getAttribute('lang')).toBe('en')
+    expect(specimen.getAttribute('dir')).toBe('ltr')
+    expect(specimen.getAttribute('style')).toContain('font-size:48pt')
+    expect(specimen.getAttribute('style')).toContain(
+      "font-feature-settings:'kern' 1,'liga' 0",
+    )
+    // The embedded rendering replaces the outlines; nothing is loaded remotely.
+    expect(doc.querySelectorAll('svg')).toHaveLength(0)
+    expect(doc.querySelector('script,link,img')).toBeNull()
+    expect(html).toContain('Example Sans Regular')
+  })
+
+  it('sets a vertical sample in vertical writing mode with its own direction', () => {
+    const html = exportProofHtml(
+      'Vertical',
+      [
+        { ...entry, text: '永東國', direction: 'ttb', language: 'zh-Hans' },
+        { ...entry, text: 'العربية', direction: 'rtl', language: 'ar' },
+      ],
+      {
+        woff2Base64: 'd09GMg==',
+        familyName: 'Example',
+        styleName: 'Regular',
+        unitsPerEm: 1000,
+      },
+    )
+    const doc = new DOMParser().parseFromString(html, 'text/html')
+    const [vertical, rtl] = [...doc.querySelectorAll('.specimen')]
+    expect(vertical?.classList.contains('vertical')).toBe(true)
+    expect(rtl?.classList.contains('vertical')).toBe(false)
+    expect(rtl?.getAttribute('dir')).toBe('rtl')
+    expect(doc.querySelector('style')?.textContent).toContain(
+      'writing-mode:vertical-rl',
+    )
+  })
+
+  it('escapes embedded text and refuses unusable font bytes, tags and languages', () => {
+    const font = {
+      woff2Base64: 'd09GMg==',
+      familyName: '</style><script>bad()</script>',
+      styleName: 'Regular',
+      unitsPerEm: 1000,
+    }
+    const html = exportProofHtml(
+      'Specimen',
+      [
+        {
+          ...entry,
+          text: '<img onerror="bad">',
+          language: 'not a tag',
+          features: [
+            // Four printable characters, but one of them would close the
+            // CSS string the value is written into.
+            ["ke'n", true],
+            ['bad', true],
+            ['liga', true],
+          ],
+        },
+      ],
+      font,
+    )
+    const doc = new DOMParser().parseFromString(html, 'text/html')
+    expect(doc.querySelector('script,img')).toBeNull()
+    expect(doc.querySelector('.specimen')?.textContent).toBe(
+      '<img onerror="bad">',
+    )
+    expect(doc.querySelector('.specimen')?.hasAttribute('lang')).toBe(false)
+    expect(doc.querySelector('.specimen')?.getAttribute('style')).toContain(
+      "font-feature-settings:'liga' 1",
+    )
+    expect(doc.querySelector('.specimen')?.getAttribute('style')).not.toContain(
+      'ke',
+    )
+    expect(() =>
+      exportProofHtml('Specimen', [{ ...entry, text: 'a' }], {
+        ...font,
+        woff2Base64: 'not base64!',
+      }),
+    ).toThrow()
+  })
+
+  it('refuses an embedded-font sheet whose entry has no source text', () => {
+    expect(() =>
+      exportProofHtml('Specimen', [entry], {
+        woff2Base64: 'd09GMg==',
+        familyName: 'Example',
+        styleName: 'Regular',
+        unitsPerEm: 1000,
+      }),
+    ).toThrow('Invalid proof text')
   })
 
   it.each([

@@ -80,6 +80,7 @@ export class EditorController {
   /** Sidebearing drags and guides pulled off a ruler. */
   private readonly aside: AsideGestures
   private rulersVisible = true
+  private verticalMode = false
   private readonly tools: ToolHost
   private spaceHeld = false
   private toolEditing = false
@@ -103,6 +104,7 @@ export class EditorController {
       target: () => this.geometry.layerTarget(),
       labels: () => this.labels,
       rulersVisible: () => this.rulersVisible,
+      verticalMode: () => this.verticalMode,
       after: () => this.handover.pending,
       settle: () => this.settle(),
       gate: (closing) => this.gate(closing),
@@ -119,6 +121,7 @@ export class EditorController {
         outline: () => this.geometry.editOutline(),
         anchors: () => this.geometry.anchors(),
         components: () => this.geometry.components(),
+        guides: () => this.geometry.source?.guides ?? [],
         selection: () => this.selection,
         canSelect: (target) => this.geometry.canSelect(target),
         curves: () => this.geometry.source?.curves ?? 'cubic',
@@ -255,6 +258,16 @@ export class EditorController {
   /** Enables guide dragging from the visible rulers. */
   setRulersVisible(visible: boolean): void {
     this.rulersVisible = visible
+  }
+
+  /**
+   * Vertical writing mode: the vertical origin and advance are the primary
+   * metrics, which is also what makes their canvas handles grabbable.
+   */
+  setVerticalMode(enabled: boolean): void {
+    if (this.verticalMode === enabled) return
+    this.verticalMode = enabled
+    this.updateCursor()
   }
 
   /** Which tool the strip currently has active (or borrowed). */

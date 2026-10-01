@@ -172,6 +172,10 @@ pub struct ExportOptions {
     /// Request automatic hinting.
     #[serde(default)]
     pub autohint: bool,
+    /// Options for the external TrueType hinter when automatic hinting runs.
+    #[serde(default)]
+    #[ts(as = "Option<crate::TtAutohintOptions>", optional)]
+    pub tt_autohint: crate::TtAutohintOptions,
     /// Optional allowlist of non-core table tags to keep.
     #[serde(default)]
     pub table_subset: Option<Vec<String>>,
@@ -202,6 +206,7 @@ impl Default for ExportOptions {
             preserve_untouched_tables: true,
             production_names: false,
             autohint: false,
+            tt_autohint: crate::TtAutohintOptions::default(),
             table_subset: None,
         }
     }

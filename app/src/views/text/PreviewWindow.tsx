@@ -6,6 +6,8 @@ import { initialTextState } from './textState'
 import { useTextShape } from './useTextShape'
 import { useTextRunCells } from './useTextRunCells'
 import { PreviewStrip } from './PreviewStrip'
+import { previewSettingsOf, previewSettingsPatch } from './previewSettings'
+import { usePreviewInstance } from './usePreviewInstance'
 import { useTextContext } from './useTextContext'
 import type { PositionedGlyph } from './textLayout'
 
@@ -49,11 +51,27 @@ export function PreviewWindow({
       ? 'stale'
       : 'ready'
   const statusKey = `${context.generation}:${context.text}:${status}`
+  const previewSource = usePreviewInstance({
+    summary,
+    state,
+    generation: view.generation,
+    documentGlyphs: previewGlyphs,
+    documentActiveGlyph:
+      active && active.documentGid !== null
+        ? {
+            ...active,
+            path: cells.get(active.documentGid)?.path ?? '',
+            color: colors.get(active.documentGid),
+          }
+        : null,
+  })
   return (
     <PreviewStrip
-      glyphs={previewGlyphs}
+      glyphs={[...previewSource.glyphs]}
       unitsPerEm={summary.units_per_em}
-      status={dismissed === statusKey ? 'ready' : status}
+      status={
+        dismissed === statusKey ? 'ready' : (previewSource.status ?? status)
+      }
       onDismissStatus={() => setDismissed(statusKey)}
       theme={state.previewTheme}
       onThemeChange={(previewTheme) => patch({ previewTheme })}
@@ -61,15 +79,10 @@ export function PreviewWindow({
       onCollapsedChange={(previewCollapsed) => patch({ previewCollapsed })}
       height={state.previewHeight ?? 600}
       onHeightChange={(previewHeight) => patch({ previewHeight })}
-      activeGlyph={
-        active && active.documentGid !== null
-          ? {
-              ...active,
-              path: cells.get(active.documentGid)?.path ?? '',
-              color: colors.get(active.documentGid),
-            }
-          : null
-      }
+      settings={previewSettingsOf(state)}
+      onSettingsChange={(changes) => patch(previewSettingsPatch(changes))}
+      instances={previewSource.instances}
+      activeGlyph={previewSource.activeGlyph}
     />
   )
 }

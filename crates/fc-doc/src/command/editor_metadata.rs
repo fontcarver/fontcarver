@@ -334,17 +334,32 @@ fn require_unlocked(font: &Font, glyph: &GlyphName) -> Result<(), Error> {
 fn check_bitmap_locks(font: &Font, command: &Command) -> Result<(), Error> {
     match command {
         Command::Bitmap(BitmapCommand::SetGlyph { glyph, .. }) => require_unlocked(font, glyph),
-        Command::Bitmap(BitmapCommand::SetStrike { strike }) => {
-            for glyph in strike.glyphs.keys() {
+        // A batch replaces exactly the images it names and keeps the rest, so
+        // only those glyphs need to be unlocked. Its own `apply` reaches the
+        // strike arm below the preflight, which is why it is checked here.
+        Command::Bitmap(BitmapCommand::SetGlyphs { glyphs, .. }) => {
+            for glyph in glyphs.keys() {
                 require_unlocked(font, glyph)?;
             }
-            for current in font
+            Ok(())
+        }
+        // A whole-strike write also carries the strike's metrics and its format
+        // properties, and the property editor sends one for every such change.
+        // Only the images it actually adds, removes or alters need an unlocked
+        // glyph: a lock protects a glyph's pixels, not the strike it sits in.
+        Command::Bitmap(BitmapCommand::SetStrike { strike }) => {
+            let current = font
                 .bitmap_strikes
                 .iter()
-                .filter(|current| (current.ppem, current.depth) == (strike.ppem, strike.depth))
-            {
-                for glyph in current.glyphs.keys() {
-                    require_unlocked(font, glyph)?;
+                .find(|current| (current.ppem, current.depth) == (strike.ppem, strike.depth));
+            for (name, value) in &strike.glyphs {
+                if current.is_none_or(|current| current.glyphs.get(name) != Some(value)) {
+                    require_unlocked(font, name)?;
+                }
+            }
+            for name in current.iter().flat_map(|current| current.glyphs.keys()) {
+                if !strike.glyphs.contains_key(name) {
+                    require_unlocked(font, name)?;
                 }
             }
             Ok(())

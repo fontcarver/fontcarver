@@ -15,6 +15,8 @@ import { BitmapScale } from './BitmapScale'
 import { BitmapMetrics } from './BitmapMetrics'
 import { BitmapCanvas } from './BitmapCanvas'
 import { BitmapSession } from './bitmapSession'
+import { PIXEL_TOOL_KEYS } from './bitmapCommands'
+import { useBitmapToolStore } from './bitmapToolStore'
 import {
   blank,
   crop,
@@ -22,7 +24,6 @@ import {
   sample,
   transformSelection,
   type PixelSelection,
-  type PixelTool,
 } from './pixels'
 import styles from './BitmapView.module.css'
 let clipboard: Bitmap | null = null
@@ -56,8 +57,13 @@ export function BitmapEditor({
   })
   const state = useSyncExternalStore(session.subscribe, session.snapshot),
     value = state.value
-  const [tool, setTool] = useState<PixelTool>('pencil'),
-    [zoom, setZoom] = useState(16),
+  const tool = useBitmapToolStore((store) => store.tool),
+    setTool = useBitmapToolStore((store) => store.setTool)
+  const registerEditor = useBitmapToolStore((store) => store.registerEditor)
+  // While a strike editor is on screen the pixel tool commands and their
+  // single-key shortcuts are bound; with none mounted they are not.
+  useEffect(() => registerEditor(), [registerEditor])
+  const [zoom, setZoom] = useState(16),
     [shade, setShade] = useState(255),
     [color, setColor] = useState('#171717'),
     [selection, setSelection] = useState<PixelSelection>()
@@ -183,28 +189,16 @@ export function BitmapEditor({
       }}
     >
       <div className={styles.toolbar}>
-        {(
-          [
-            'pencil',
-            'erase',
-            'line',
-            'rectangle',
-            'ellipse',
-            'fill',
-            'select',
-            'eyedropper',
-            'hand',
-          ] as const
-        ).map((name) => (
+        {PIXEL_TOOL_KEYS.map(({ tool: name, shortcut, titleKey }) => (
           <button
             key={name}
             disabled={disabled}
             aria-pressed={tool === name}
+            aria-keyshortcuts={shortcut}
+            title={`${t(titleKey)} (${shortcut})`}
             onClick={() => setTool(name)}
           >
-            {name === 'eyedropper' || name === 'hand'
-              ? t(`bitmapCanvas.${name}`)
-              : t(`bitmap.tool.${name}`)}
+            {t(titleKey)}
           </button>
         ))}
         <label>

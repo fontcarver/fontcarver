@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use fc_model::{BitmapStrike, Font, Layer, MasterId, PointKind};
+use fc_model::{Bitmap, BitmapStrike, Font, Layer, MasterId, PointKind};
 use kurbo::{BezPath, PathEl, Point};
 
 use crate::Error;
@@ -351,4 +351,139 @@ fn canonical_rotation(points: &[(i32, i32)]) -> Vec<(i32, i32)> {
     (0..count)
         .map(|index| points[(start + index) % count])
         .collect()
+}
+
+/// Pixel filter used when a bitmap is copied to a different strike size.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum BitmapScaleFilter {
+    /// Take the source sample under each destination pixel's centre.
+    #[default]
+    Nearest,
+    /// Average the source over each destination pixel's exact footprint.
+    AreaAverage,
+}
+
+/// Largest number of source-by-destination sample visits one rescale may make.
+const MAX_SCALE_WORK: usize = 16_000_000;
+
+/// Rescale one bitmap to new dimensions and depth, without touching origins.
+///
+/// Dimensions, depth and the resulting buffer obey the model's bitmap limits;
+/// a zero-sized source or destination yields a correctly shaped empty image.
+/// Coverage becomes black with the source alpha when the destination is RGBA,
+/// and RGBA becomes its alpha when the destination stores coverage. Origins
+/// and glyph metrics belong to the caller, which knows the strike scale.
+pub fn scale_bitmap(
+    source: &Bitmap,
+    width: u16,
+    height: u16,
+    depth: u8,
+    filter: BitmapScaleFilter,
+) -> Result<Bitmap, Error> {
+    source.validate()?;
+    let mut out = Bitmap::new(width, height, depth)?;
+    if width == 0 || height == 0 || source.width == 0 || source.height == 0 {
+        return Ok(out);
+    }
+    let work = (usize::from(source.width) + usize::from(width))
+        .saturating_mul(usize::from(source.height) + usize::from(height));
+    if work > MAX_SCALE_WORK {
+        return Err(crate::invalid("bitmap rescale work limit"));
+    }
+    let max = if depth == 32 {
+        255
+    } else {
+        (1u32 << depth) - 1
+    };
+    for y in 0..height {
+        for x in 0..width {
+            let value = match filter {
+                BitmapScaleFilter::Nearest => {
+                    let sx = nearest(x, width, source.width);
+                    let sy = nearest(y, height, source.height);
+                    let coverage = u32::from(source.coverage(sx, sy));
+                    if depth == 32 {
+                        if source.depth == 32 {
+                            source.pixel(sx, sy)
+                        } else {
+                            coverage
+                        }
+                    } else {
+                        (coverage * max + 127) / 255
+                    }
+                }
+                BitmapScaleFilter::AreaAverage => average(source, x, y, width, height, depth, max),
+            };
+            out.set_pixel(x, y, value)?;
+        }
+    }
+    Ok(out)
+}
+
+/// The source index whose pixel contains the destination pixel's centre.
+fn nearest(index: u16, count: u16, source: u16) -> u16 {
+    (((u32::from(index) * 2 + 1) * u32::from(source)) / (u32::from(count) * 2))
+        .min(u32::from(source.saturating_sub(1))) as u16
+}
+
+/// Overlap of `[low, high)` with source cell `index`, in source pixels.
+fn overlap(index: usize, low: f64, high: f64) -> f64 {
+    let start = (index as f64).max(low);
+    let end = ((index + 1) as f64).min(high);
+    (end - start).max(0.0)
+}
+
+/// Exact box filter over the destination pixel's source footprint.
+fn average(source: &Bitmap, x: u16, y: u16, width: u16, height: u16, depth: u8, max: u32) -> u32 {
+    let sx0 = f64::from(x) * f64::from(source.width) / f64::from(width);
+    let sx1 = f64::from(x + 1) * f64::from(source.width) / f64::from(width);
+    let sy0 = f64::from(y) * f64::from(source.height) / f64::from(height);
+    let sy1 = f64::from(y + 1) * f64::from(source.height) / f64::from(height);
+    let columns = (sx0.floor() as usize)..(sx1.ceil() as usize).min(usize::from(source.width));
+    let rows = (sy0.floor() as usize)..(sy1.ceil() as usize).min(usize::from(source.height));
+    let mut total = 0.0;
+    let mut coverage = 0.0;
+    let mut channels = [0.0f64; 3];
+    for row in rows {
+        let weight_y = overlap(row, sy0, sy1);
+        if weight_y <= 0.0 {
+            continue;
+        }
+        for column in columns.clone() {
+            let weight = overlap(column, sx0, sx1) * weight_y;
+            if weight <= 0.0 {
+                continue;
+            }
+            total += weight;
+            let alpha = f64::from(source.coverage(column as u16, row as u16));
+            coverage += alpha * weight;
+            if source.depth == 32 && depth == 32 {
+                let rgba = source.pixel(column as u16, row as u16).to_be_bytes();
+                for (channel, value) in channels.iter_mut().zip(rgba) {
+                    // Premultiply so a transparent neighbour cannot tint the result.
+                    *channel += f64::from(value) * alpha * weight;
+                }
+            }
+        }
+    }
+    if total <= 0.0 {
+        return 0;
+    }
+    let alpha = coverage / total;
+    if depth != 32 {
+        return (alpha * f64::from(max) / 255.0).round() as u32;
+    }
+    let out_alpha = alpha.round().clamp(0.0, 255.0) as u8;
+    if source.depth != 32 {
+        return u32::from(out_alpha);
+    }
+    if coverage <= 0.0 {
+        return 0;
+    }
+    let mut bytes = [0u8; 4];
+    for (byte, channel) in bytes.iter_mut().zip(channels) {
+        *byte = (channel / coverage).round().clamp(0.0, 255.0) as u8;
+    }
+    bytes[3] = out_alpha;
+    u32::from_be_bytes(bytes)
 }

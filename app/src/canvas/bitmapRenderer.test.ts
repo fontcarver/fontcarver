@@ -67,6 +67,42 @@ describe('bitmap renderer guides', () => {
     expect(ctx.scale).toHaveBeenCalledWith(0.2, -0.2)
     vi.unstubAllGlobals()
   })
+  it('shades the advance column behind the pixels, only when asked', () => {
+    const bitmap = { ...blank(7, 5, 1), origin_x: -2, origin_y: -1 }
+    put(bitmap, 0, 0, 1)
+    const shaded = surface()
+    renderBitmap(shaded.canvas, bitmap, 10, colors, undefined, true, {
+      frame: bitmapFrame(bitmap, 9),
+      advance: 9,
+      advanceColumn: true,
+      grid: false,
+    })
+    // Paper, then the column from the origin to the advance, then the pixel.
+    expect(shaded.ctx.fillRect.mock.calls).toEqual([
+      [0, 0, 130, 70],
+      [30, 0, 90, 70],
+      [10, 10, 10, 10],
+    ])
+    const plain = surface()
+    renderBitmap(plain.canvas, bitmap, 10, colors, undefined, true, {
+      frame: bitmapFrame(bitmap, 9),
+      advance: 9,
+      grid: false,
+    })
+    expect(plain.ctx.fillRect.mock.calls).toEqual([
+      [0, 0, 130, 70],
+      [10, 10, 10, 10],
+    ])
+    // A zero advance has no column to shade.
+    const zero = surface()
+    renderBitmap(zero.canvas, bitmap, 10, colors, undefined, true, {
+      frame: bitmapFrame(bitmap, 0),
+      advance: 0,
+      advanceColumn: true,
+      grid: false,
+    })
+    expect(zero.ctx.fillRect).toHaveBeenCalledTimes(2)
+  })
   it('keeps waterfall transparent and free of editor guides', () => {
     const { ctx, canvas } = surface()
     const bitmap = blank(3, 2, 1)

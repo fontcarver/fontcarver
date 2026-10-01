@@ -442,7 +442,7 @@ describe('glyph grid colour labels', () => {
     await waitFor(() => expect(selection()).toEqual([1]))
     fireEvent.contextMenu(cellAt(1), { clientX: 40, clientY: 40 })
 
-    const group = await screen.findByRole('group', { name: 'Colour label' })
+    const group = await screen.findByRole('group', { name: 'Color label' })
     expect(within(group).getAllByRole('menuitem')).toHaveLength(13)
     const blue = within(group).getByRole('menuitem', { name: 'Blue' })
     fireEvent.click(blue)
@@ -453,7 +453,7 @@ describe('glyph grid colour labels', () => {
       ),
     )
     expect(
-      screen.queryByRole('group', { name: 'Colour label' }),
+      screen.queryByRole('group', { name: 'Color label' }),
     ).not.toBeInTheDocument()
   })
 })

@@ -93,6 +93,9 @@ pub(super) fn encode(font: &Font, master: &MasterId, binary: bool) -> Result<Vec
         let path = quantized_path(&path)?;
         let plan = super::hint_writer::Plan::new(hints, contours)
             .map_err(|e| source_error(format!("glyph {name}: {e}")))?;
+        if plan.needs_standard_subrs() {
+            subrs.reserve();
+        }
         let data = charstring(&path, width, &plan, &mut subrs)
             .map_err(|e| source_error(format!("glyph {name}: {e}")))?;
         if !path.elements().is_empty() {
@@ -323,8 +326,22 @@ fn charstring(
     let mut current = Point::ZERO;
     let mut source_current = Point::ZERO;
     let mut open = false;
+    let mut consumed = None;
     for (index, element) in path.elements().iter().enumerate() {
+        if consumed == Some(index) {
+            continue;
+        }
         hints.at(index, &mut out, subrs)?;
+        if let Some((placement, _)) = hints.flex(index) {
+            let second = path
+                .elements()
+                .get(placement.second)
+                .ok_or_else(|| source_error("flex hint runs past the outline"))?;
+            flex(&mut out, &mut current, *element, *second, placement.depth)?;
+            source_current = current;
+            consumed = Some(placement.second);
+            continue;
+        }
         match *element {
             PathEl::MoveTo(point) => {
                 if open {
@@ -366,6 +383,11 @@ fn charstring(
                 // Type 1 closepath leaves the current point at the previous endpoint.
             }
         }
+        if hints.dot_section(index) {
+            // Type 1 section 8.2: one command after the opening rmoveto and one
+            // after the closepath that finishes the dot.
+            out.extend_from_slice(&[12, 0]);
+        }
     }
     if open {
         return Err(source_error("open contour"));
@@ -377,6 +399,56 @@ fn charstring(
         ));
     }
     Ok(encrypt(&out, 4330))
+}
+
+/// Writes one flex hint as the standard `Subrs` 1/2/0 sequence.
+///
+/// Adobe Type 1 specification section 8.3: the reference point shares the joining
+/// point's cross coordinate and the starting point's own coordinate, the first
+/// control point is measured from the reference point, and the call to `Subrs` 0
+/// carries the flex height control parameter and the absolute end coordinate.
+fn flex(
+    out: &mut Vec<u8>,
+    current: &mut Point,
+    first: PathEl,
+    second: PathEl,
+    depth: f64,
+) -> Result<(), Error> {
+    let (PathEl::CurveTo(c1, c2, joint), PathEl::CurveTo(c3, c4, end)) = (first, second) else {
+        return Err(source_error("a flex hint must cover two curve segments"));
+    };
+    let start = *current;
+    let reference = if start.y == end.y {
+        Point::new(joint.x, start.y)
+    } else if start.x == end.x {
+        Point::new(start.x, joint.y)
+    } else {
+        return Err(source_error("Type 1 flex requires the two outer endpoints of the curve pair to share an x or y coordinate (Adobe Type 1 section 8.3)"));
+    };
+    if (joint - reference).hypot() > 20.0 {
+        return Err(source_error(
+            "a Type 1 flex height must be 20 units or less (Adobe Type 1 section 8.3)",
+        ));
+    }
+    number(out, 1.0)?;
+    out.push(10); // 1 callsubr: begin flex
+    let mut previous = start;
+    for point in [reference, c1, c2, joint, c3, c4, end] {
+        let point = quantized(point)?;
+        vector(out, point - previous)?;
+        out.push(21); // rmoveto
+        number(out, 2.0)?;
+        out.push(10); // 2 callsubr: collect one flex point
+        previous = point;
+    }
+    number(out, depth)?;
+    let end = quantized(end)?;
+    number(out, end.x)?;
+    number(out, end.y)?;
+    number(out, 0.0)?;
+    out.push(10); // 0 callsubr: finish flex at the absolute end point
+    *current = end;
+    Ok(())
 }
 
 fn quantized_path(path: &BezPath) -> Result<BezPath, Error> {

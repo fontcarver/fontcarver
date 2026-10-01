@@ -6,6 +6,7 @@ import { useSessionStore } from '../stores/sessionStore'
 import { useUiStore, type PathPrompt } from '../stores/uiStore'
 
 import styles from './dialog.module.css'
+import { useModalChrome } from './useModalChrome'
 
 export interface PathPromptFormProps {
   prompt: PathPrompt
@@ -20,6 +21,7 @@ export function PathPromptForm({ prompt }: PathPromptFormProps) {
   const save = useSessionStore((state) => state.save)
   const closeDocument = useSessionStore((state) => state.requestClose)
   const [path, setPath] = useState('')
+  const chrome = useModalChrome(() => setPathPrompt(null))
 
   const isOpen = prompt.mode === 'open'
   const namespace = isOpen ? 'dialog.open' : 'dialog.saveAs'
@@ -50,16 +52,11 @@ export function PathPromptForm({ prompt }: PathPromptFormProps) {
       }}
     >
       <div
+        {...chrome}
         role="dialog"
         aria-modal="true"
         aria-label={t(`${namespace}.title`)}
         className={styles.dialog}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') {
-            event.stopPropagation()
-            close()
-          }
-        }}
       >
         <div className={styles.dialogHeader}>
           <h2 className={styles.dialogTitle}>{t(`${namespace}.title`)}</h2>

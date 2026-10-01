@@ -177,7 +177,7 @@ describe('TextShapingControls', () => {
     expect(callbacks.onChange).not.toHaveBeenCalled()
   })
 
-  it('preserves visual glyph order and repeated UTF-8 source clusters in the inspector', () => {
+  it('groups glyphs by source cluster in visual order with positions', () => {
     const glyph: PositionedGlyph = {
       compiledGid: 3,
       documentGid: 3,
@@ -193,16 +193,27 @@ describe('TextShapingControls', () => {
     render(
       <TextShapingControls
         {...props({
+          // Three source characters, the last of which is right of the first in
+          // the text but drawn first, as a right-to-left run is.
+          text: 'abcde',
           glyphs: [
             glyph,
-            { ...glyph, name: 'mark', xAdvance: 0, yAdvance: 0 },
-            { ...glyph, name: null, sourceByte: 0, xAdvance: 600, yAdvance: 0 },
+            { ...glyph, name: 'mark', x: 20, y: 40, xAdvance: 0, yAdvance: 0 },
+            {
+              ...glyph,
+              name: null,
+              sourceByte: 0,
+              x: 550,
+              y: 0,
+              xAdvance: 600,
+              yAdvance: 0,
+            },
           ],
         })}
       />,
     )
     openControls()
-    fireEvent.click(screen.getByText('Glyph clusters (3)'))
+    fireEvent.click(screen.getByText('Glyph clusters (2)'))
     const rows = within(screen.getByRole('table')).getAllByRole('row').slice(1)
     expect(
       rows.map((row) =>
@@ -211,9 +222,9 @@ describe('TextShapingControls', () => {
           .map((cell) => cell.textContent),
       ),
     ).toEqual([
-      ['4', 'alef', '550', '-1000'],
-      ['4', 'mark', '0', '0'],
-      ['0', 'Unnamed glyph', '600', '0'],
+      ['0', '4', 'e', 'alef', '0', '0', '550', '-1000'],
+      ['0', '4', '', 'mark', '20', '40', '0', '0'],
+      ['1', '0', 'abcd', 'Unnamed glyph', '550', '0', '600', '0'],
     ])
   })
 })

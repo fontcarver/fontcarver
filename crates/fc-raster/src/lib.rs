@@ -1,5 +1,6 @@
 //! Bounded outline rasterization and exact pixel-edge tracing.
 #![warn(missing_docs)]
+mod autotrace;
 mod hint;
 mod pixel;
 pub mod source_image;
@@ -7,8 +8,13 @@ mod trace;
 use fc_model::{Bitmap, BitmapGlyph, BitmapStrike, Font, MasterId};
 pub use hint::{compiled_outline, hinted_paths, preview_glyph, GlyphDrawing};
 use kurbo::{Affine, PathEl, Shape};
-pub use pixel::{detect_pixel_font, reconstruct_pixel_font, PixelFontDetection};
-pub use source_image::{image_dimensions, trace_image, MAX_IMAGE_BYTES};
+pub use pixel::{
+    detect_pixel_font, reconstruct_pixel_font, scale_bitmap, BitmapScaleFilter, PixelFontDetection,
+};
+pub use source_image::{
+    image_dimensions, trace_image, trace_image_with_options, TraceOptions, TraceOutcome,
+    MAX_IMAGE_BYTES,
+};
 pub use trace::{
     trace_bitmap, trace_bitmap_with_mode, trace_bitmap_with_options, BitmapTraceMode,
     BitmapTraceOptions,

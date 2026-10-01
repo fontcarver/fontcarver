@@ -116,6 +116,61 @@ describe('bitmap conversion controls', () => {
       ),
     )
   })
+  it('offers both rescaling filters and sends the chosen one', async () => {
+    const transfer = vi.fn(() => noChange())
+    setTransport(
+      createMockTransport({
+        'bitmap.state': () => ({ generation: 11, strikes: [strike] }),
+        'bitmap.transfer': transfer,
+      }),
+    )
+    render(<BitmapTransfer doc={804} strike={strike} glyph="A" />)
+    fireEvent.click(screen.getByText('Copy between strikes'))
+    const filter = screen.getByLabelText('Scale filter')
+    expect(
+      [...(filter as HTMLSelectElement).options].map((option) => option.value),
+    ).toEqual(['Nearest', 'AreaAverage'])
+    fireEvent.change(filter, { target: { value: 'AreaAverage' } })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Copy to target strike' }),
+    )
+    await waitFor(() =>
+      expect(transfer).toHaveBeenCalledWith(
+        expect.objectContaining({ filter: 'AreaAverage', scale: true }),
+      ),
+    )
+    // Without scaling there is nothing for a filter to do.
+    fireEvent.click(
+      screen.getByLabelText('Scale pixels and metrics to target size'),
+    )
+    expect(filter).toBeDisabled()
+  })
+  it('traces every image in the strike in one request when asked', async () => {
+    const trace = vi.fn(() => noChange())
+    setTransport(
+      createMockTransport({
+        'bitmap.state': () => ({ generation: 12, strikes: [strike] }),
+        'bitmap.trace': trace,
+      }),
+    )
+    render(
+      <BitmapOutlineTools
+        doc={805}
+        strike={strike}
+        glyph="A"
+        master="master"
+      />,
+    )
+    fireEvent.click(screen.getByLabelText('Every image in this strike (2)'))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Replace outline with pixel trace' }),
+    )
+    await waitFor(() =>
+      expect(trace).toHaveBeenCalledWith(
+        expect.objectContaining({ all_images: true, glyph: 'A', glyphs: [] }),
+      ),
+    )
+  })
   it('crops and resamples local pixels without destroying linked bitmap references', () => {
     const bitmap = blank(4, 4, 1)
     put(bitmap, 1, 1, 1)

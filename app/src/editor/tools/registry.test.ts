@@ -15,6 +15,7 @@ describe('tool registry', () => {
       'eraser',
       'rectangle',
       'ellipse',
+      'magnet',
       'measure',
       'rotate',
       'scale',

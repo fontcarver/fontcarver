@@ -9,16 +9,24 @@ import {
   Sun,
   X,
 } from 'lucide-react'
-import { useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { PreviewCanvas } from './PreviewCanvas'
 import type { PreviewStripProps } from './presentationTypes'
-import { PREVIEW_SIZES } from './previewPaint'
+import {
+  formatWaterfallSizes,
+  parseWaterfallSizes,
+  MAX_WATERFALL_STEPS,
+  type WaterfallReason,
+} from './waterfallSizes'
 import styles from './PreviewStrip.module.css'
 
 export type {
   PreviewGlyph,
+  PreviewInstanceOption,
+  PreviewMode,
+  PreviewSettings,
   PreviewStatus,
   PreviewStripProps,
   PreviewTheme,
@@ -38,16 +46,24 @@ export function PreviewStrip({
   onDetach,
   height,
   onHeightChange,
+  settings,
+  onSettingsChange,
+  instances,
 }: PreviewStripProps) {
   const { t } = useTranslation()
   const nextTheme = theme === 'light' ? 'dark' : 'light'
-  const [flipHorizontal, setFlipHorizontal] = useState(false)
-  const [flipVertical, setFlipVertical] = useState(false)
-  const [blur, setBlur] = useState(0)
-  const [mode, setMode] = useState('run')
-  const [sizes, setSizes] = useState<number[]>([...PREVIEW_SIZES])
-  const [sizeDraft, setSizeDraft] = useState(PREVIEW_SIZES.join(', '))
-  const [invalidSizes, setInvalidSizes] = useState(false)
+  const sizes = settings.sizes
+  const canonical = useMemo(() => formatWaterfallSizes(sizes), [sizes])
+  const [sizeDraft, setSizeDraft] = useState(canonical)
+  // What the last attempt to apply the field produced: a refusal reason, a note
+  // that a long range was cut, or nothing at all.
+  const [sizeNotice, setSizeNotice] = useState<
+    WaterfallReason | 'truncated' | null
+  >(null)
+  const editingSizes = useRef(false)
+  // The list this strip itself just applied. The settings coming back are not a
+  // new list from elsewhere, so they must not wipe the note that explains them.
+  const applied = useRef('')
   const [localHeight, setLocalHeight] = useState(160)
   const resizeStart = useRef<{
     y: number
@@ -55,6 +71,13 @@ export function PreviewStrip({
     pointerId: number
   } | null>(null)
   const sizeErrorId = useId()
+  // A list arriving from the workspace or the docked strip replaces the draft,
+  // but never while it is being typed into.
+  useEffect(() => {
+    if (editingSizes.current || canonical === applied.current) return
+    setSizeDraft(canonical)
+    setSizeNotice(null)
+  }, [canonical])
   const previewHeight = Math.max(
     120,
     Math.min(
@@ -63,10 +86,10 @@ export function PreviewStrip({
     ),
   )
   const previewGlyphs = useMemo(() => {
-    if (mode === 'run') return glyphs
+    if (settings.mode === 'run') return glyphs
     const glyph = activeGlyph === undefined ? glyphs[0] : activeGlyph
     return glyph ? [{ ...glyph, x: 0, y: 0, yAdvance: 0 }] : []
-  }, [activeGlyph, glyphs, mode])
+  }, [activeGlyph, glyphs, settings.mode])
 
   function resize(next: number) {
     const bounded = Math.max(120, Math.min(600, next))
@@ -75,22 +98,26 @@ export function PreviewStrip({
   }
 
   function applySizes() {
-    const values = sizeDraft.split(',').map((value) => Number(value.trim()))
-    const valid =
-      values.length > 0 &&
-      values.length <= 8 &&
-      values.every(
-        (value) => Number.isFinite(value) && value >= 6 && value <= 256,
-      ) &&
-      new Set(values).size === values.length
-    setInvalidSizes(!valid)
-    if (valid) setSizes(values)
+    const parsed = parseWaterfallSizes(sizeDraft)
+    if (!parsed.sizes) {
+      setSizeNotice(parsed.reason)
+      return
+    }
+    editingSizes.current = false
+    const canonicalised = formatWaterfallSizes(parsed.sizes)
+    applied.current = canonicalised
+    setSizeNotice(parsed.truncated ? 'truncated' : null)
+    setSizeDraft(canonicalised)
+    onSettingsChange({ sizes: parsed.sizes })
   }
+  const rejected = sizeNotice !== null && sizeNotice !== 'truncated'
 
   return (
     <section
       className={`${styles.strip} ${theme === 'light' ? styles.light : styles.dark} ${collapsed ? styles.collapsed : ''}`}
       data-preview-theme={theme}
+      data-preview-mode={settings.mode}
+      data-preview-sizes={canonical}
       aria-label={t('textControls.preview.label')}
       style={collapsed ? undefined : { height: previewHeight }}
     >
@@ -178,8 +205,10 @@ export function PreviewStrip({
           className={styles.iconButton}
           type="button"
           aria-label={t('proofPreview.flipHorizontal')}
-          aria-pressed={flipHorizontal}
-          onClick={() => setFlipHorizontal(!flipHorizontal)}
+          aria-pressed={settings.flipHorizontal}
+          onClick={() =>
+            onSettingsChange({ flipHorizontal: !settings.flipHorizontal })
+          }
         >
           <FlipHorizontal size={14} aria-hidden="true" />
         </button>
@@ -187,8 +216,10 @@ export function PreviewStrip({
           className={styles.iconButton}
           type="button"
           aria-label={t('proofPreview.flipVertical')}
-          aria-pressed={flipVertical}
-          onClick={() => setFlipVertical(!flipVertical)}
+          aria-pressed={settings.flipVertical}
+          onClick={() =>
+            onSettingsChange({ flipVertical: !settings.flipVertical })
+          }
         >
           <FlipVertical size={14} aria-hidden="true" />
         </button>
@@ -247,11 +278,47 @@ export function PreviewStrip({
               applySizes()
             }}
           >
+            {instances && instances.length > 1 && (
+              <label>
+                {t('proofPreview.instance')}
+                <select
+                  value={settings.instance}
+                  onChange={(event) =>
+                    onSettingsChange({ instance: event.target.value })
+                  }
+                >
+                  <optgroup label={t('proofPreview.masters')}>
+                    {instances
+                      .filter((option) => option.kind === 'master')
+                      .map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.name}
+                        </option>
+                      ))}
+                  </optgroup>
+                  {instances.some((option) => option.kind === 'instance') && (
+                    <optgroup label={t('proofPreview.instances')}>
+                      {instances
+                        .filter((option) => option.kind === 'instance')
+                        .map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.name}
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
+                </select>
+              </label>
+            )}
             <label>
               {t('proofPreview.mode')}
               <select
-                value={mode}
-                onChange={(event) => setMode(event.target.value)}
+                value={settings.mode}
+                onChange={(event) =>
+                  onSettingsChange({
+                    mode: event.target.value === 'single' ? 'single' : 'run',
+                  })
+                }
               >
                 <option value="run">{t('proofPreview.run')}</option>
                 <option value="single">{t('proofPreview.single')}</option>
@@ -265,14 +332,14 @@ export function PreviewStrip({
                 min={0}
                 max={4}
                 step={0.25}
-                value={blur}
+                value={settings.blur}
                 onChange={(event) => {
                   const value = Number(event.target.value)
-                  setBlur(
-                    Number.isFinite(value)
+                  onSettingsChange({
+                    blur: Number.isFinite(value)
                       ? Math.max(0, Math.min(4, value))
                       : 0,
-                  )
+                  })
                 }}
               />
             </label>
@@ -281,22 +348,40 @@ export function PreviewStrip({
               <input
                 className={styles.sizesInput}
                 value={sizeDraft}
-                aria-invalid={invalidSizes}
-                aria-describedby={invalidSizes ? sizeErrorId : undefined}
-                onChange={(event) => setSizeDraft(event.target.value)}
+                aria-invalid={rejected}
+                aria-describedby={sizeErrorId}
+                title={t('proofPreview.sizesHint')}
+                onFocus={() => {
+                  editingSizes.current = true
+                }}
+                onBlur={() => {
+                  editingSizes.current = false
+                }}
+                onChange={(event) => {
+                  setSizeDraft(event.target.value)
+                  setSizeNotice(null)
+                }}
               />
             </label>
             <button type="submit">{t('proofPreview.applySizes')}</button>
           </form>
-          {invalidSizes && (
-            <p id={sizeErrorId} className={styles.error} role="alert">
-              {t('proofPreview.sizesHint')}
-            </p>
-          )}
+          <p
+            id={sizeErrorId}
+            className={rejected ? styles.error : styles.hint}
+            {...(sizeNotice === null ? {} : { role: 'alert' })}
+          >
+            {sizeNotice === null
+              ? t('proofPreview.sizesHint')
+              : sizeNotice === 'truncated'
+                ? t('proofPreview.sizesTruncated', {
+                    count: MAX_WATERFALL_STEPS,
+                  })
+                : t(`proofPreview.sizesError.${sizeNotice}`)}
+          </p>
           <div
             className={styles.previews}
             style={{
-              gridTemplateColumns: `repeat(${sizes.length}, minmax(120px, 1fr))`,
+              gridTemplateColumns: `repeat(${Math.min(sizes.length, MAX_WATERFALL_STEPS)}, minmax(120px, 1fr))`,
             }}
           >
             {sizes.map((size) => (
@@ -306,9 +391,9 @@ export function PreviewStrip({
                 unitsPerEm={unitsPerEm}
                 size={size}
                 theme={theme}
-                flipHorizontal={flipHorizontal}
-                flipVertical={flipVertical}
-                blur={blur}
+                flipHorizontal={settings.flipHorizontal}
+                flipVertical={settings.flipVertical}
+                blur={settings.blur}
               />
             ))}
           </div>

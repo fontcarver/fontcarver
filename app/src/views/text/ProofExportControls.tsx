@@ -6,7 +6,11 @@ import { saveArtifact } from '../../shell/saveArtifact'
 import { reportError } from '../../shell/commands'
 import { useDocumentStore } from '../../stores/documentStore'
 import { useUiStore } from '../../stores/uiStore'
-import { exportProofHtml, exportProofPdf } from './proofExport'
+import {
+  exportProofHtml,
+  exportProofPdf,
+  type ProofSheetFont,
+} from './proofExport'
 import { prepareProofSheet } from './prepareProofSheet'
 import type { ProofEntry } from './proofLibrary'
 import type { TextRequestContext } from './textLayout'
@@ -24,6 +28,7 @@ export function ProofExportControls({
 }) {
   const { t } = useTranslation()
   const [scope, setScope] = useState('current')
+  const [rendering, setRendering] = useState<'font' | 'outlines'>('font')
   const [sizes, setSizes] = useState('24, 48, 72')
   const [busy, setBusy] = useState(false)
   const abort = useRef<AbortController | null>(null)
@@ -56,26 +61,49 @@ export function ProofExportControls({
                 language: context.language ?? '',
               },
             ]
-      const sheet = await withSettledDocument(context.doc, () => {
-        const generation =
-          useDocumentStore.getState().byDoc[context.doc]?.generation ?? 0
-        return prepareProofSheet(
-          getTransport(),
-          { ...context, generation },
-          samples,
-          values,
-          {
-            signal: controller.signal,
-            isCurrent: () =>
-              generation ===
-              (useDocumentStore.getState().byDoc[context.doc]?.generation ?? 0),
-          },
-        )
-      })
+      const embedFont = format === 'html' && rendering === 'font'
+      const { sheet, font } = await withSettledDocument(
+        context.doc,
+        async () => {
+          const generation =
+            useDocumentStore.getState().byDoc[context.doc]?.generation ?? 0
+          const isCurrent = () =>
+            generation ===
+            (useDocumentStore.getState().byDoc[context.doc]?.generation ?? 0)
+          const prepared = await prepareProofSheet(
+            getTransport(),
+            { ...context, generation },
+            samples,
+            values,
+            { signal: controller.signal, isCurrent },
+          )
+          // The face is compiled inside the same barrier as the shaping, so the
+          // embedded font and the text it sets come from one document revision.
+          if (!embedFont) return { sheet: prepared, font: undefined }
+          const compiled = await getTransport()
+            .call('text.proof_font', {
+              doc: context.doc,
+              master: context.master,
+              instance: null,
+            })
+            .catch(() => {
+              throw new Error('proof.export.errors.font')
+            })
+          controller.signal.throwIfAborted()
+          if (!isCurrent()) throw new Error('proof.export.errors.changed')
+          const embedded: ProofSheetFont = {
+            woff2Base64: compiled.woff2_base64,
+            familyName: compiled.family_name,
+            styleName: compiled.style_name,
+            unitsPerEm: compiled.units_per_em,
+          }
+          return { sheet: prepared, font: embedded }
+        },
+      )
       controller.signal.throwIfAborted()
       const bytes =
         format === 'html'
-          ? new TextEncoder().encode(exportProofHtml(title, sheet))
+          ? new TextEncoder().encode(exportProofHtml(title, sheet, font))
           : exportProofPdf(title, sheet)
       const saved = await saveArtifact(
         `${title.replace(/[^\p{L}\p{N}._ -]/gu, '_') || 'proof'}.${format}`,
@@ -130,6 +158,24 @@ export function ProofExportControls({
           aria-invalid={!valid}
           disabled={busy}
         />
+      </label>
+      <label>
+        {t('proof.export.rendering')}
+        <select
+          value={rendering}
+          title={t('proof.export.renderingHint')}
+          onChange={(event) =>
+            setRendering(
+              event.currentTarget.value === 'outlines' ? 'outlines' : 'font',
+            )
+          }
+          disabled={busy}
+        >
+          <option value="font">{t('proof.export.renderingFont')}</option>
+          <option value="outlines">
+            {t('proof.export.renderingOutlines')}
+          </option>
+        </select>
       </label>
       {(['html', 'pdf'] as const).map((format) => (
         <button

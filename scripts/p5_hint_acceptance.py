@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -72,6 +73,109 @@ def cff_stems(path: Path, name: str) -> dict[str, list[tuple[float, float]]]:
     return result
 
 
+# Small sizes are where hinting earns its keep; 20 ppem checks it does no harm.
+QUALITY_PPEMS = (9, 10, 11, 12, 14, 16, 20)
+
+
+def edge_alignment(path: Path, ppems: tuple[int, ...], hinted: bool) -> tuple[int, float]:
+    """Mean distance from a glyph's outer edges to the pixel grid, in pixels.
+
+    A hint set exists to put the alignment edges of a glyph on whole pixels, so
+    the mean distance from the hinted outline's extreme coordinates to the
+    nearest integer is a direct, implementation-independent measure of how well
+    it does that. Zero is perfect snapping; an unhinted outline averages about a
+    quarter of a pixel because its edges fall wherever the scale puts them.
+    """
+    face = freetype.Face(str(path))
+    flags = freetype.FT_LOAD_NO_BITMAP | freetype.FT_LOAD_TARGET_MONO
+    if not hinted:
+        flags |= freetype.FT_LOAD_NO_HINTING
+    total = 0.0
+    cells = 0
+    for ppem in ppems:
+        face.set_pixel_sizes(0, ppem)
+        for gid in range(face.num_glyphs):
+            face.load_glyph(gid, flags)
+            points = face.glyph.outline.points
+            if not points:
+                continue
+            xs = [point[0] / 64.0 for point in points]
+            ys = [point[1] / 64.0 for point in points]
+            for value in (min(xs), max(xs), min(ys), max(ys)):
+                total += abs(value - round(value))
+                cells += 1
+    return cells, total / cells if cells else 0.0
+
+
+def quality_gate(cli: Path, root: Path, source: Path, name: str) -> dict:
+    """Compares FontCarver's analysis with the font's own hints and no hints.
+
+    The source's own hints are exported untouched, the same source is exported
+    with automatic hinting, and the first output is also measured with hinting
+    switched off in FreeType. The analysis must snap edges at least as well as
+    the source's own hints, within one hundredth of a pixel, and clearly better
+    than no hints at all.
+    """
+    native = root / f"{name}-quality.fcf"
+    run(cli, "convert", source, native)
+    kept = root / f"{name}-kept.otf"
+    run(cli, "build", native, kept)
+    auto = root / f"{name}-quality-auto.otf"
+    run(cli, "build", native, auto, "--autohint")
+    cells, original = edge_alignment(kept, QUALITY_PPEMS, hinted=True)
+    _, analysed = edge_alignment(auto, QUALITY_PPEMS, hinted=True)
+    _, unhinted = edge_alignment(kept, QUALITY_PPEMS, hinted=False)
+    def stem_count(path: Path) -> int:
+        return sum(
+            len(stems["h"]) + len(stems["v"])
+            for stems in (cff_stems(path, glyph) for glyph in TTFont(path).getGlyphOrder())
+        )
+
+    source_stems = stem_count(kept)
+    analysed_stems = stem_count(auto)
+    assert analysed_stems > 0, name
+    assert analysed < unhinted, (name, analysed, unhinted)
+    if source_stems:
+        assert analysed <= original + 0.01, (name, analysed, original)
+    return {
+        "measure": "mean pixels from a glyph's outer edges to the pixel grid",
+        "ppem": list(QUALITY_PPEMS),
+        "edges": cells,
+        "source_stems": source_stems,
+        "analysed_stems": analysed_stems,
+        "with_source_hints": round(original, 5),
+        "with_analysis": round(analysed, 5),
+        "without_hints": round(unhinted, 5),
+    }
+
+
+def absent_hinter(cli: Path, root: Path) -> dict:
+    """The TrueType path must disclose an absent hinter, never imply success."""
+    source = root / "absent-source.ttf"
+    font = TTFont("fixtures/fonts/NotoSans-Regular.ttf")
+    options = subset.Options()
+    options.hinting = False
+    subsetter = subset.Subsetter(options)
+    subsetter.populate(unicodes=range(65, 91))
+    subsetter.subset(font)
+    font.save(source)
+    output = root / "absent-auto.ttf"
+    warnings = run(cli, "build", source, output, "--autohint", "--no-preserve")
+    assert "autohint-unavailable" in warnings, warnings
+    result = TTFont(output)
+    assert not {"cvt ", "prep", "fpgm"} & set(result.keys()), result.keys()
+    programs = sum(
+        bool(
+            getattr(result["glyf"][name], "program", None)
+            and result["glyf"][name].program.getBytecode()
+        )
+        for name in result.getGlyphOrder()
+    )
+    assert programs == 0, programs
+    count, digest = render(output)
+    return {"warning": "autohint-unavailable", "renders": count, "digest": digest}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cli", type=Path, default=Path("target/debug/fontcarver"))
@@ -112,6 +216,10 @@ def main() -> None:
         assert any(cff_stems(auto, glyph_name).values())
         count, digest = render(auto)
         results[auto.name] = {"renders": count, "digest": digest}
+        results[f"{name}-quality"] = quality_gate(cli, root, source, name)
+
+    if shutil.which("ttfautohint") is None:
+        results["ttfautohint-absent"] = absent_hinter(cli, root)
 
     if args.ttfautohint:
         source = root / "NotoSans-latin.ttf"

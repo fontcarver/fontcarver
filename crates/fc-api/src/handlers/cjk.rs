@@ -1,6 +1,13 @@
 //! Unicode-backed CJK search, filters and metadata.
-use crate::{Api, ApiError, CjkFilter, UnihanInfo, UnihanParams};
-use fc_glyphdata::{cjk_charset_membership, unihan, CjkCharsets};
+use crate::{
+    Api, ApiError, CjkComponentUse, CjkFilter, CjkRadicalEntry, CjkRadicalForm, CjkRadicalLibrary,
+    CjkRadicalsParams, UnihanInfo, UnihanParams,
+};
+use fc_glyphdata::{cjk_charset_membership, kangxi_radicals, unihan, CjkCharsets};
+use std::collections::{BTreeMap, HashMap, HashSet};
+
+/// Largest component-base list the radical library returns.
+const MAX_COMPONENT_BASES: usize = 2_000;
 
 pub(crate) fn info(_: &Api, params: UnihanParams) -> Result<Option<UnihanInfo>, ApiError> {
     if char::from_u32(params.unicode).is_none() {
@@ -143,4 +150,102 @@ fn charset(name: &str) -> Option<CjkCharsets> {
         "ksx1001" => CjkCharsets::KS_X_1001,
         _ => return None,
     })
+}
+
+/// Builds the radical library: pinned Unihan radicals plus the font's components.
+///
+/// Both halves come from data rather than a hard-coded list: the radicals and
+/// their written forms are derived from the pinned `kRSUnicode` values, and the
+/// component bases are the glyphs this document's layers actually reference.
+pub(crate) fn radicals(
+    api: &Api,
+    params: CjkRadicalsParams,
+) -> Result<CjkRadicalLibrary, ApiError> {
+    api.session
+        .with_doc(params.doc, |document| {
+            let font = &document.font;
+            // Only the radical scalars need a reverse encoding map, so the
+            // whole 65,535-glyph cmap is never materialised.
+            let mut wanted: HashSet<u32> = HashSet::new();
+            for radical in kangxi_radicals() {
+                wanted.insert(radical.kangxi);
+                wanted.extend(radical.forms.iter().map(|form| form.unicode));
+            }
+            let mut encoded: HashMap<u32, &str> = HashMap::new();
+            let mut members = vec![0u32; kangxi_radicals().len()];
+            let mut uses: BTreeMap<&str, u32> = BTreeMap::new();
+            let mut seen = Vec::new();
+            for (name, glyph) in &font.glyphs {
+                for unicode in &glyph.unicodes {
+                    if wanted.contains(unicode) {
+                        // The first glyph in persistent order wins, so the
+                        // library is stable across reloads.
+                        encoded.entry(*unicode).or_insert(name.as_ref());
+                    }
+                }
+                // A glyph with two encodings of the same radical counts once.
+                seen.clear();
+                for unicode in &glyph.unicodes {
+                    let Some(record) = unihan(*unicode) else {
+                        continue;
+                    };
+                    for value in record.radicals() {
+                        if seen.contains(&value.radical) {
+                            continue;
+                        }
+                        seen.push(value.radical);
+                        if let Some(slot) =
+                            members.get_mut(usize::from(value.radical).wrapping_sub(1))
+                        {
+                            *slot += 1;
+                        }
+                    }
+                }
+                for layer in &glyph.layers {
+                    for component in &layer.components {
+                        *uses.entry(component.base.as_ref()).or_default() += 1;
+                    }
+                }
+            }
+            let radicals = kangxi_radicals()
+                .iter()
+                .zip(&members)
+                .map(|(radical, members)| CjkRadicalEntry {
+                    number: radical.number,
+                    kangxi: radical.kangxi,
+                    kangxi_glyph: encoded.get(&radical.kangxi).map(ToString::to_string),
+                    forms: radical
+                        .forms
+                        .iter()
+                        .map(|form| CjkRadicalForm {
+                            unicode: form.unicode,
+                            strokes: form.strokes,
+                            glyph: encoded.get(&form.unicode).map(ToString::to_string),
+                        })
+                        .collect(),
+                    members: *members,
+                })
+                .collect();
+            let mut components: Vec<CjkComponentUse> = uses
+                .into_iter()
+                .map(|(name, uses)| CjkComponentUse {
+                    name: name.to_owned(),
+                    uses,
+                    unicode: font
+                        .glyph(name)
+                        .and_then(|glyph| glyph.unicodes.first().copied()),
+                })
+                .collect();
+            // Most used first; the BTreeMap already settled the name order.
+            components.sort_by(|left, right| right.uses.cmp(&left.uses));
+            let components_truncated = components.len() > MAX_COMPONENT_BASES;
+            components.truncate(MAX_COMPONENT_BASES);
+            Ok(CjkRadicalLibrary {
+                unihan_version: fc_glyphdata::UNIHAN_VERSION.into(),
+                radicals,
+                components,
+                components_truncated,
+            })
+        })
+        .map_err(ApiError::from)?
 }

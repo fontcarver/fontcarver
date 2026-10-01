@@ -90,7 +90,7 @@
 }
 .mode button[aria-pressed='true'] {
   background: var(--color-accent-soft);
-  color: var(--color-accent);
+  color: var(--color-text);
   border-color: var(--color-accent);
 }
 .notice {
@@ -149,7 +149,7 @@
 }
 .root .sourceItem[aria-current='true'] {
   background: var(--color-accent-soft);
-  color: var(--color-accent);
+  color: var(--color-text);
 }
 .emptySection {
   color: var(--color-text-faint);

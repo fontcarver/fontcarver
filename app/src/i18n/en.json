@@ -17,7 +17,7 @@
     "inherited": "Inherited from preferences: {{value}}",
     "perFont": "Stored in this font: {{value}}",
     "upm": "Units per em",
-    "upmHint": "Changing units per em can scale the drawing with it. Clear a group to leave it untouched. Alternate layers and metrics formulas scale with their group; layer effects, reusable constructions, linked nodes, colour outlines and editable MATH or SVG data must be resolved first.",
+    "upmHint": "Changing units per em can scale the drawing with it. Clear a group to leave it untouched. Alternate layers and metrics formulas scale with their group. Layer effects, reusable constructions, linked nodes, guide-owned nodes and color outlines must be baked or removed first, and editable MATH or SVG data removed or re-authored.",
     "upmValue": "Units per em",
     "scaleOutlines": "Scale outlines, components, anchors and advances",
     "scaleMetrics": "Scale master metrics, zones, stems and PostScript values",
@@ -48,7 +48,7 @@
     "cleanup": "Clean Up",
     "cleanupHint": "Remove records with missing glyphs, invalid groups or invalid values, and explicit zeros that change nothing.",
     "compress": "Compress",
-    "compressHint": "Fold pairs into class rules wherever every member already agrees, then remove redundant exceptions. Resolved kerning never changes.",
+    "compressHint": "Fold pairs into group rules wherever every member already agrees, then remove redundant exceptions. Resolved kerning never changes.",
     "copy": "Copy table",
     "paste": "Paste table",
     "copied": "Copied {{count}} records from {{master}}. Select another master to paste.",
@@ -91,7 +91,7 @@
     },
     "scope": "Rule",
     "exception": "Exception",
-    "classRule": "Class",
+    "classRule": "Group",
     "pairRule": "Pair",
     "conflict": "On conflict",
     "conflicts": {
@@ -140,10 +140,10 @@
     "help": "Export every selected named instance and variable-font configuration with every selected profile. Up to 100 files per batch; destination names must be unique. Existing files at these paths may be replaced.",
     "directory": "Output directory",
     "load": "Load instances and profiles",
-    "loading": "Loading instances…",
+    "loading": "Loading instances and profiles…",
     "instances": "Named instances and variable fonts",
-    "profiles": "Compiled-font profiles",
-    "noInstances": "No active named instances are available. Add them in the Variations panel.",
+    "profiles": "Export profiles",
+    "noInstances": "No active named instance or variable-font configuration is available. Add them in the Variations panel.",
     "noProfiles": "Save an export profile above to include it in a batch.",
     "preview_one": "Preview {{count}} destination",
     "preview_other": "Preview {{count}} destinations",
@@ -153,13 +153,13 @@
     "progress": "{{done}} of {{total}} exports finished.",
     "succeeded": "Succeeded",
     "failed": "Failed",
-    "changed": "The design space changed. Load named instances again before exporting.",
+    "changed": "The design space changed. Load the rows again before exporting.",
     "error": {
       "empty-directory": "Enter an output directory.",
       "empty-profiles": "Select at least one profile.",
       "empty-instances": "Select at least one named instance.",
       "too-many-items": "A batch can contain at most 100 exports.",
-      "invalid-instance": "A named instance is invalid. Load named instances again.",
+      "invalid-instance": "A row’s named instance or variable-font configuration is invalid. Load the rows again.",
       "unsupported-format": "Batch profiles must use a compiled-font format.",
       "path-collision": "Some selections generate the same destination. Rename the profiles or instances before exporting.",
       "invalid-name": "Every profile and instance needs a name that can be used in a filename.",
@@ -171,7 +171,6 @@
   },
   "exportProfiles": {
     "title": "Export profiles",
-    "hint": "Save export settings in the project file for reuse. Profiles do not store a destination path.",
     "name": "Profile name",
     "save": "Save profile",
     "selected": "Saved profile",
@@ -274,6 +273,10 @@
         "dark": "Dark Theme",
         "system": "Match System Theme"
       },
+      "language": {
+        "en": "English Interface",
+        "zh-CN": "中文界面 (Chinese Interface)"
+      },
       "zoomFit": "Fit Glyph in Window",
       "glyph": {
         "filled": "Fill Preview",
@@ -283,7 +286,8 @@
         "guides": "Show Guides",
         "rulers": "Show Rulers",
         "background": "Show Background Layer",
-        "otherMasters": "Show Other Masters"
+        "otherMasters": "Show Other Masters",
+        "verticalMode": "Vertical Writing Mode"
       },
       "toggleInfoBox": "Show Info Box",
       "toggleSnapping": "Snapping",
@@ -314,6 +318,7 @@
       "oneTab": "Only one tab is open",
       "noTab": "No tab is open",
       "themeActive": "Already the current theme",
+      "languageActive": "Already the current language",
       "noFontTab": "The active tab is not a Font tab",
       "noGlyphTab": "The active tab is not a Glyph tab",
       "noGlyphLayer": "The Edit tab has no layer loaded",
@@ -773,7 +778,7 @@
     "categories": "Categories",
     "scripts": "Scripts",
     "blocks": "Unicode blocks",
-    "colors": "Colour labels",
+    "colors": "Color labels",
     "unencoded": "Unencoded",
     "all": "All glyphs",
     "overview": "Overview",
@@ -1098,7 +1103,7 @@
       "pink": "Pink",
       "lightGray": "Light Gray",
       "darkGray": "Dark Gray",
-      "unknown": "Other colour"
+      "unknown": "Other color"
     },
     "gridView": "Grid view",
     "listView": "List view",
@@ -1127,7 +1132,7 @@
     "chooseColumns": "Choose columns",
     "referenceCharacters": "Reference characters",
     "referenceCharactersHint": "Draw the character with a system face in cells whose glyph is still empty",
-    "colorLabelGroup": "Colour label"
+    "colorLabelGroup": "Color label"
   },
   "glyphSearch": {
     "scopeLabel": "Search scope",
@@ -1203,7 +1208,7 @@
     "subCategory": "Sub-category",
     "script": "Script",
     "export": "Exports",
-    "color": "Colour label",
+    "color": "Color label",
     "tags": "Tags",
     "kernGroups": "Kerning groups",
     "note": "Note",
@@ -1466,6 +1471,8 @@
     "knife": "Knife",
     "rectangle": "Rectangle",
     "ellipse": "Ellipse",
+    "magnet": "Magnet",
+    "magnetHint": "Drag a layer guide onto nodes to link them to it. Alt projects them onto the guide first.",
     "measure": "Measure",
     "rotate": "Rotate",
     "scale": "Scale",
@@ -1508,7 +1515,7 @@
       "renameGlyph": "Rename glyph",
       "setUnicodes": "Set Unicode",
       "setGlyphExport": "Set export flag",
-      "setColorLabel": "Set colour label",
+      "setColorLabel": "Set color label",
       "setGlyphTags": "Set tags",
       "setGlyphNote": "Set note",
       "setMetricsKeys": "Set metrics keys",
@@ -1544,7 +1551,7 @@
       "breakContour": "Break contour",
       "align": {
         "left": "Align left",
-        "centerH": "Align centres",
+        "centerH": "Align centers",
         "right": "Align right",
         "top": "Align top",
         "middle": "Align middles",
@@ -1613,7 +1620,7 @@
         "openManual": "Open contour at {{x}}, {{y}}. Its ends are not two on-curve nodes, so close it by hand.",
         "fractional": "Point at {{x}}, {{y}} is off the integer grid. Fix rounds this point to the nearest font unit.",
         "coincident": "{{count}} stored nodes share {{x}}, {{y}}. Fix deletes the duplicates and keeps the shape.",
-        "coincidentManual": "{{count}} stored points share {{x}}, {{y}} across contours or handles. Coincidence may be intentional; review them manually.",
+        "coincidentManual": "{{count}} stored nodes share {{x}}, {{y}} across contours or handles. Coincidence may be intentional; review them manually.",
         "extrema": "The curve reaches {{x}}, {{y}} with no node there. Fix inserts one at the extreme."
       },
       "fix": "Fix",
@@ -1702,13 +1709,13 @@
     "origin": "Origin",
     "originPoint": {
       "0": "Top left",
-      "1": "Top centre",
+      "1": "Top center",
       "2": "Top right",
       "3": "Middle left",
-      "4": "Centre",
+      "4": "Center",
       "5": "Middle right",
       "6": "Bottom left",
-      "7": "Bottom centre",
+      "7": "Bottom center",
       "8": "Bottom right"
     },
     "proportional": "Proportional",
@@ -1731,12 +1738,14 @@
       "adjust": "Adjust {{x}} and {{y}}",
       "horizontal": "Horizontal axis",
       "vertical": "Vertical axis",
-      "handleHint": "Drag to adjust both axes. Arrow keys move 1%; Shift moves 10%. Escape cancels."
+      "handleHint": "Drag to adjust both axes. Arrow keys move 1%; Shift moves 10%. Escape cancels.",
+      "undo": "Set smart parameter",
+      "canvasHint": "A selected smart component shows one axis track per local axis on the canvas: drag its handle to set that instance's coordinate. The first four axes get a track; the rest stay in this section."
     },
     "glyph": {
       "addUnicode": "Add a Unicode value",
       "removeUnicode": "Remove {{value}}",
-      "noColor": "No colour label",
+      "noColor": "No color label",
       "tagsPlaceholder": "comma, separated"
     },
     "metrics": {
@@ -1844,10 +1853,10 @@
       "selection": "{{count, number}} points selected.",
       "align": {
         "left": "Align left",
-        "centerH": "Align horizontal centres",
+        "centerH": "Align horizontal centers",
         "right": "Align right",
         "top": "Align top",
-        "middle": "Align vertical centres",
+        "middle": "Align vertical centers",
         "bottom": "Align bottom",
         "distributeH": "Distribute horizontally",
         "distributeV": "Distribute vertically"
@@ -2170,7 +2179,11 @@
   "bitmapGrid": {
     "title": "Integer pixel grid",
     "custom": "Custom ({{ppem}} ppem)",
-    "preset": "{{ppem}} ppem · {{unitsPerPixel}} units/pixel"
+    "preset": "{{ppem}} ppem · {{unitsPerPixel}} units/pixel",
+    "choose": "Choose an exact grid",
+    "inexact": "{{ppem}} ppem gives {{unitsPerPixel}} font units per pixel, which is not a whole number, so pixel edges will not land on integer coordinates. The size is still usable; most bitmap fonts were not drawn on an exact grid.",
+    "exact": "{{ppem}} ppem gives exactly {{unitsPerPixel}} font units per pixel; a new strike takes ascent {{ascent}} and descent {{descent}} from the master.",
+    "useNearest": "Use {{ppem}} ppem instead"
   },
   "bitmapReferences": {
     "title": "Bitmap components",
@@ -2207,8 +2220,8 @@
     "undo": "Import bitmap sprite sheet",
     "imported_one": "Imported {{count}} glyph. Undo restores its previous image.",
     "imported_other": "Imported {{count}} glyphs. One undo restores their previous images.",
-    "exported_one": "PNG ready with {{count}} glyph. Keep the same cell settings and names when importing it.",
-    "exported_other": "PNG ready with {{count}} glyphs. Keep the same cell settings and names when importing it.",
+    "exported_one": "PNG ready with {{count}} glyph. The file carries this layout, so importing it back needs no settings.",
+    "exported_other": "PNG ready with {{count}} glyphs. The file carries this layout, so importing it back needs no settings.",
     "errors": {
       "mapping": "Enter 1–256 unique glyph names in cell order.",
       "dimensions": "The PNG or grid exceeds the size limits, or its dimensions do not match the chosen cells.",
@@ -2219,7 +2232,9 @@
       "missing": "A selected glyph has no bitmap in this strike. Create or rasterize its image before exporting.",
       "decode": "The browser could not read or create this PNG.",
       "failed": "The sprite sheet could not be processed. Check that every glyph name exists in the font and retry."
-    }
+    },
+    "layout": "Sheet layout",
+    "layoutHint": "An exported PNG carries its own layout, so importing it back restores the cells, the columns and the glyph order without retyping them."
   },
   "bitmap": {
     "title": "Bitmap editor",
@@ -2314,7 +2329,43 @@
       "Auto": "Automatic"
     },
     "rasterThreshold": "Mono threshold",
-    "clipboardDepth": "The copied pixels use a different depth. Select a strike with the same depth to paste."
+    "clipboardDepth": "The copied pixels use a different depth. Select a strike with the same depth to paste.",
+    "strikeGone": "That bitmap strike no longer exists. Reload the editor.",
+    "waterfallGlyph": "Show only {{glyph}} at every size",
+    "waterfallGlyphEmpty": "Show only the selected glyph at every size",
+    "reason": {
+      "noEditor": "Open a strike in the bitmap editor first."
+    },
+    "property": {
+      "hint": "Standard XLFD names come with their type. A name has no spaces and a string value is one line, because that is all BDF, PCF and FNT can store.",
+      "valueType": "Value type",
+      "derived": "written from the strike",
+      "edit": "Edit the value of {{name}}",
+      "editShort": "Edit",
+      "newValue": "New value for {{name}}",
+      "confirmValue": "Save value",
+      "rename": "Rename {{name}}",
+      "renameShort": "Rename",
+      "newName": "New name for {{name}}",
+      "confirmRename": "Save name",
+      "retype": "Change the type of {{name}}",
+      "asString": "As string",
+      "asInteger": "As integer",
+      "type": {
+        "int": "integer",
+        "string": "string"
+      },
+      "error": {
+        "emptyName": "Enter a property name.",
+        "nameLength": "A property name has at most 255 characters.",
+        "nameCharacters": "A property name cannot contain spaces or control characters.",
+        "valueCharacters": "A string property cannot contain a line break.",
+        "valueLength": "A string property is limited to 65535 bytes.",
+        "notAnInteger": "Enter a whole number for an integer property.",
+        "integerRange": "That number is outside the range a property can store.",
+        "duplicate": "A property with that name already exists."
+      }
+    }
   },
   "scopedInfo": {
     "metricsHint": "Master values supply automatic OpenType metrics. Enable an override to keep a separate value for this master.",
@@ -2506,7 +2557,18 @@
     "rsb": "RSB",
     "width": "Width",
     "effectiveKerning": "Effective kerning",
-    "outline": "Outline"
+    "outline": "Outline",
+    "reviewTable": "Every proposed change. Clear a row to leave it unchanged.",
+    "accept": "Accept",
+    "acceptRow": "Accept {{subject}}",
+    "subject": "Glyph or pair",
+    "master": "Master",
+    "acceptAll": "Accept all",
+    "rejectAll": "Reject all",
+    "acceptedCount": "{{count}} of {{total}} accepted",
+    "showMore": "Show more rows",
+    "windowed": "Showing {{shown}} of {{total}} rows.",
+    "nothingAccepted": "Accept at least one row before applying."
   },
   "cjk": {
     "filters": "CJK filters",
@@ -2567,9 +2629,44 @@
     "fillIdentity": "Fill missing Identity CIDs",
     "reorder": "Apply numeric CID order to the glyph grid",
     "identityHint": "Automatic numbering is available for Adobe-Identity only. Registered collections require their published character-to-CID mapping. CID metadata is used for static CFF OTF export.",
+    "unmapped": "{{count}} glyphs have no CID, starting with {{names}}. CID-keyed CFF export needs one for every exported glyph.",
+    "unmapped_one": "{{count}} glyph has no CID: {{names}}. CID-keyed CFF export needs one for every exported glyph.",
+    "unmapped_other": "{{count}} glyphs have no CID, starting with {{names}}. CID-keyed CFF export needs one for every exported glyph.",
     "invalid": "Invalid CID mapping. Use unique numbers from 0 to 65535 and unique glyph names; reserve 0 for .notdef."
   },
   "hints": {
+    "ttAutohintInvalid": "The hinter would refuse these options:",
+    "removeFlex": "Remove flex hint {{number}}",
+    "removeDotSection": "Remove dot section {{number}}",
+    "ttAutohintTitle": "External TrueType hinter",
+    "ttAutohintFound": "ttfautohint found: {{version}}",
+    "ttAutohintMissing": "ttfautohint is not installed on PATH. Export will report that automatic TrueType hinting was not performed; install the tool and reopen this dialog.",
+    "ttAutohintUnknown": "Checking whether ttfautohint is installed…",
+    "ttAutohintNumbersHelp": "Leave a field empty to keep the tool's own default. A hinting limit or x-height increase of zero switches that behavior off.",
+    "ttAutohintTextHelp": "Scripts are four lowercase letters, such as latn or none. Strong stem widths may contain g (grayscale), G (GDI ClearType) and D (DirectWrite). Snapping exceptions are ppem values and ranges, such as 10,14-16, or - for every size.",
+    "ttAutohint": {
+      "hinting_range_min": "Hinting range minimum (ppem)",
+      "hinting_range_max": "Hinting range maximum (ppem)",
+      "hinting_limit": "Hinting limit (ppem)",
+      "fallback_stem_width": "Fallback stem width",
+      "increase_x_height": "Increase x-height up to (ppem)",
+      "default_script": "Default script",
+      "fallback_script": "Fallback script",
+      "strong_stem_width": "Strong stem widths",
+      "x_height_snapping_exceptions": "x-height snapping exceptions",
+      "adjust_subglyphs": "Adjust subglyphs",
+      "composites": "Hint composites as a whole",
+      "dehint": "Remove all hints instead",
+      "symbol": "Accept a symbol font",
+      "ttfa_table": "Record parameters in a TTFA table",
+      "windows_compatibility": "Windows compatibility blue zones",
+      "info": "Version information in the name table"
+    },
+    "ttAutohintInfo": {
+      "None": "None",
+      "Short": "Short",
+      "Detailed": "Detailed option list"
+    },
     "title": "Hinting",
     "psTitle": "PostScript hints",
     "preview": "Outline with numbered horizontal and vertical stem hints",
@@ -2590,7 +2687,7 @@
     "privateDictionaryNumber": "FD {{index}}",
     "addPrivateDictionary": "Add private dictionary",
     "cidPrivateHelp": "Each CID font dictionary has independent private values. New dictionaries start with FD0 values. Glyph assignment controls which dictionary is used for CFF export; alignment zones and named stems belong to FD0.",
-    "cidAnalysisUnavailable": "Automatic analysis currently supports FD0 only. Edit this dictionary and its glyph hints manually.",
+    "cidAnalysisUnavailable": "Automatic analysis proposes values for every dictionary the selection uses. Select the master layer to run it.",
     "privateHelp": "Blue zones are ordered pairs. Leave optional values empty to use font defaults. Existing explicit values take priority over automatic analysis.",
     "blue_values": "BlueValues",
     "other_blues": "OtherBlues",
@@ -2626,7 +2723,17 @@
     "clear": "Clear glyph hints",
     "analysisHelp": "Analysis previews this master layer and does not change the document until Apply. Apply master parameter edits before running analysis again.",
     "masterParameters": "Hint parameters: {{master}}",
-    "masterLayerRequired": "Automatic analysis is available on master layers. Select a master layer to analyze its stems."
+    "masterLayerRequired": "Automatic analysis is available on master layers. Select a master layer to analyze its stems.",
+    "flexTitle": "Flex hints",
+    "flexHelp": "A flex hint covers two consecutive curve segments. Give the contour and the index of the on-curve point the first curve leaves; the highlighted outline shows the pair. Flex depth is the height at which the curves replace a straight line, in hundredths of a pixel; 50 is Adobe's recommended value. Type 1 output also requires the two outer endpoints to share an x or y coordinate and the flex height to be 20 units or less; CFF output has no such restriction.",
+    "flexNumber": "Flex {{number}}",
+    "flexDepth": "Flex depth",
+    "flexStale": "no curve pair at this point",
+    "flexUnresolved": "This layer carries an imported flex hint whose curve pair could not be identified. Add the flex hints you want and clear the glyph hints to drop the marker; export refuses the marker rather than writing ordinary curves.",
+    "addFlex": "Add flex hint",
+    "dotSections": "Dot sections",
+    "dotSectionHelp": "A dot section brackets one closed contour, such as the dot of an i, so stem hints do not distort it. Type 1 output writes the dotsection commands; Type 2 lists the operator as obsolete, so CFF export keeps the data here and reports that it was not written.",
+    "addDotSection": "Add dot section"
   },
   "tt": {
     "open": "TrueType instructions",
@@ -3049,13 +3156,11 @@
     "title": "History",
     "list": "History entries",
     "empty": "Nothing has been edited yet.",
-    "current": "Current state",
     "currentMarker": "current",
     "undone": "undone",
     "jumpTo": "Go to {{label}}",
     "jumpToStart": "Go back to the state before any edit",
     "start": "Document as opened",
-    "font": "Font",
     "scopeGlyphs": "Glyphs: {{names}}",
     "scopeLayers": "Layers: {{names}}",
     "scopeStrikes": "Strikes: {{names}}",
@@ -3065,7 +3170,7 @@
       "background": "Background layer",
       "intermediate": "Intermediate layer",
       "alternate": "Alternate layer",
-      "smart": "Smart layer",
+      "smart": "Smart source",
       "backup": "Backup layer",
       "other": "Layer"
     },
@@ -3132,13 +3237,25 @@
     "flipVertical": "Flip preview vertically",
     "blur": "Blur (px)",
     "sizes": "Waterfall sizes (px)",
-    "sizesHint": "Enter 1 to 8 unique sizes between 6 and 256, separated by commas.",
+    "sizesHint": "Enter steps between 6 and 256: a list of up to 8, such as 12, 24, 48, or a range with a step, such as 8-72/8.",
+    "sizesTruncated": "That range is longer than the {{count}} steps a waterfall shows, so only the first {{count}} are drawn.",
+    "sizesError": {
+      "empty": "Enter at least one step.",
+      "token": "Only numbers are allowed, separated by commas or spaces.",
+      "range": "A range needs a smaller first size and a step above zero.",
+      "bounds": "Every step has to be between 6 and 256.",
+      "duplicate": "Each step can appear only once.",
+      "count": "A list holds at most 8 steps; use a range to cover a wider span."
+    },
     "applySizes": "Apply sizes",
     "mode": "Preview content",
     "run": "Text run",
     "single": "Active glyph",
     "resize": "Resize preview",
-    "detach": "Detach preview"
+    "detach": "Detach preview",
+    "instance": "Preview instance",
+    "masters": "Masters",
+    "instances": "Named instances"
   },
   "proofShaping": {
     "title": "Shaping controls",
@@ -3157,6 +3274,11 @@
     "languagePlaceholder": "Auto (e.g. en)",
     "languageInvalid": "Enter a language tag with ASCII subtags separated by hyphens, such as en or zh-Hant, or leave blank.",
     "clusters": "Glyph clusters ({{count}})",
+    "cluster": "Cluster",
+    "source": "Source",
+    "glyphs": "Glyphs",
+    "x": "X position",
+    "y": "Y position",
     "clusterHint": "Source offsets are UTF-8 bytes; advances are in font units.",
     "sourceByte": "Source byte",
     "glyph": "Glyph",
@@ -3185,13 +3307,20 @@
       "allScripts": "All scripts",
       "previous": "Previous proof string",
       "next": "Next proof string",
-      "stepping": "Use ↑ / ↓ in the text field to step through this group.",
+      "stepping": "Use ↑ / ↓ in the text field, or on the canvas while spacing, to step through this group.",
       "save": "Save current string",
       "update": "Update selected string",
       "remove": "Remove selected string",
       "empty": "Save pairs or phrases in this project for spacing and proof sheets.",
       "undoSave": "Save proof string",
       "undoRemove": "Remove proof string",
+      "undoAdopt": "Add built-in proof samples",
+      "undoImport": "Import proof strings",
+      "adoptSamples": "Add built-in samples",
+      "exportText": "Export as text",
+      "importText": "Import from text",
+      "interchangeFilter": "Proof string list",
+      "importFailed": "Nothing was imported.",
       "errors": {
         "invalidEntry": "The proof string contains invalid or excessive data.",
         "invalidLibrary": "This project contains an invalid proof library.",
@@ -3200,12 +3329,49 @@
         "full": "The proof library already contains 256 entries."
       }
     },
+    "samples": {
+      "groups": {
+        "latin": "Latin",
+        "latinPairs": "Latin pairs and spacing",
+        "cyrillic": "Cyrillic",
+        "greek": "Greek",
+        "cjk": "CJK",
+        "arabic": "Arabic"
+      },
+      "names": {
+        "latinPangram": "Latin pangram",
+        "latinUppercase": "Latin uppercase",
+        "latinLowercase": "Latin lowercase",
+        "latinFigures": "Figures and punctuation",
+        "latinDiacritics": "Latin diacritics",
+        "latinCapitalPairs": "Capital kerning pairs",
+        "latinLowercasePairs": "Lowercase kerning pairs",
+        "latinPunctuationPairs": "Punctuation kerning pairs",
+        "latinSpacingWords": "Spacing control words",
+        "latinPhrases": "Spacing phrases",
+        "cyrillicPangram": "Cyrillic pangram",
+        "cyrillicUppercase": "Cyrillic uppercase",
+        "cyrillicPairs": "Cyrillic pairs and spacing",
+        "greekPangram": "Greek pangram",
+        "greekUppercase": "Greek uppercase",
+        "greekPairs": "Greek pairs and spacing",
+        "cjkPhrase": "Han phrase",
+        "cjkVertical": "Han vertical sample",
+        "cjkMixed": "Han with Latin",
+        "arabicPhrase": "Arabic phrase",
+        "arabicJoining": "Arabic joining forms"
+      }
+    },
     "export": {
       "title": "Proof sheet",
       "scope": "Proof content",
       "current": "Current string",
       "library": "Filtered library",
       "sizes": "Proof sizes (pt)",
+      "rendering": "HTML rendering",
+      "renderingFont": "Embedded font",
+      "renderingOutlines": "Outlines",
+      "renderingHint": "Embedded font writes a self-contained page with the compiled WOFF2, so its text stays selectable; Outlines writes the exact shaped snapshot as vectors.",
       "html": "Export HTML",
       "pdf": "Export PDF",
       "busy": "Preparing proof sheet…",
@@ -3217,16 +3383,35 @@
         "changed": "The document changed during export. Try again.",
         "compile": "The font could not compile. Resolve preview errors before exporting.",
         "stale": "The compiled font is still updating. Try again.",
-        "unresolved": "A proof string includes unresolved glyphs. Replace them before exporting."
+        "unresolved": "A proof string includes unresolved glyphs. Replace them before exporting.",
+        "font": "The proof font could not be compiled. Resolve export errors, or choose the outline rendering."
       }
     }
   },
   "cjkConstruction": {
     "title": "CJK construction",
     "library": "Radical library",
-    "libraryHint": "Radicals and common variants available in this font. Pick an outline to append its glyph name to the IDS input.",
+    "libraryHint": "The 214 Kangxi radicals and the ideographs that write them. Picking one appends its glyph name when this font has the glyph, and its character when it does not.",
+    "componentsHint": "Glyphs this font already uses as components, most used first. Picking one appends its glyph name to the IDS input.",
+    "librarySource": "Radical numbers, written forms and stroke counts come from Unicode {{version}} Unihan; the component list comes from this font.",
+    "tabs": {
+      "radicals": "Radicals",
+      "components": "Font components"
+    },
+    "radicalLabel": "Radical {{number}}",
+    "strokesLabel": "{{count}} strokes",
+    "strokesLabel_one": "{{count}} stroke",
+    "strokesLabel_other": "{{count}} strokes",
+    "membersLabel": "{{count}} glyphs in this font",
+    "membersLabel_one": "{{count}} glyph in this font",
+    "membersLabel_other": "{{count}} glyphs in this font",
+    "usesLabel": "{{count}} component uses",
+    "usesLabel_one": "{{count}} component use",
+    "usesLabel_other": "{{count}} component uses",
+    "presentOnly": "Only forms this font has",
+    "noComponentBases": "This font uses no components yet. Append radicals with an IDS first.",
     "libraryError": "Could not load the radical library.",
-    "search": "Search document radicals",
+    "search": "Search radicals and components",
     "pick": "Insert {{name}} into IDS",
     "noRadicals": "No matching radicals in this font. Use [glyph.name] in the IDS input to reference any existing glyph.",
     "previous": "Previous",
@@ -3242,6 +3427,11 @@
     "loading": "Loading…",
     "undo": "Construct CJK components",
     "transforms": "Component transforms",
+    "transformPreview": "Component transform preview",
+    "transformHint": "Edit the position and scale of each component, watch the preview, then apply the whole set as one history entry.",
+    "applyTransforms": "Apply transforms",
+    "revertTransforms": "Revert transforms",
+    "undoTransforms": "Transform CJK components",
     "component": "{{index}} · {{base}}",
     "transformField": "{{coefficient}} for component {{index}} ({{base}})",
     "coefficients": {
@@ -3262,7 +3452,9 @@
       "empty": "{{token}} has no outline in the selected master.",
       "width": "{{token}} needs a positive advance width for IDS placement.",
       "resolve": "Could not resolve the IDS in this font.",
-      "apply": "Could not add these components. Check the reported document error and preview again."
+      "apply": "Could not add these components. Check the reported document error and preview again.",
+      "transformInvalid": "A component transform needs six finite numbers.",
+      "transformCollapsed": "A scale of zero would erase the component. Use a non-zero scale, or remove the component instead."
     }
   },
   "automation": {
@@ -3383,7 +3575,7 @@
     "title": "Plugins",
     "localOnly": "Curated plugins bundled with FontCarver. Install and enable each plugin explicitly; no code is downloaded.",
     "reloadIndex": "Reload plugins",
-    "provenance": "Author {{author}} · Licence {{license}} · Shipped from {{source}}",
+    "provenance": "Author {{author}} · License {{license}} · Shipped from {{source}}",
     "settingsTitle": "Plugin settings",
     "settings": {
       "advance": "Also mark the advance width",
@@ -3486,7 +3678,12 @@
     "pointer": "Bitmap pointer coordinates",
     "position": "X {{x}}, Y {{y}} px",
     "positionEmpty": "X —, Y — px",
-    "delta": "ΔX {{x}}, ΔY {{y}} px"
+    "delta": "ΔX {{x}}, ΔY {{y}} px",
+    "advanceColumn": "Advance column",
+    "fontUnits": "Font units",
+    "unitsValue": "{{value}} units",
+    "positionUnits": "({{x}}, {{y}} units)",
+    "deltaUnits": "({{x}}, {{y}} units)"
   },
   "imageWorkflow": {
     "title": "Source image",
@@ -3512,9 +3709,9 @@
     "applyPlacement": "Apply placement",
     "remove": "Remove image",
     "trace": "Trace PNG",
-    "traceHelp": "Trace alpha-aware dark ink as polygon outlines. Simplification is measured in source pixels. The source image is retained.",
+    "traceHelp": "Trace alpha-aware dark ink into outlines. Tolerance, smoothing and minimum area are measured in source pixels. The source image is retained.",
     "threshold": "Ink threshold",
-    "tolerance": "Simplification (pixels)",
+    "tolerance": "Tolerance (pixels)",
     "append": "Append to existing outlines",
     "replaceHelp": "Applying replaces this layer’s contours and components. The source image remains.",
     "preview": "Preview trace",
@@ -3526,7 +3723,37 @@
     "linkedStatus": "Linked PNG · {{width}} × {{height}} pixels",
     "unresolved": "Image could not be resolved. Check the path, then refresh.",
     "tooLarge": "Choose a PNG no larger than 16 MiB.",
-    "pngOnly": "Only PNG images are supported."
+    "pngOnly": "Only PNG images are supported.",
+    "curves": "Fit curves",
+    "curveHelp": "Curve fitting finds the structural straight runs and corners of the pixel edges, then fits cubic segments. A one-bit raster keeps a flat run at every extreme, so about one pixel of deviation remains whatever tolerance is asked for; raise smoothing to lower it.",
+    "polygonHelp": "Straight-line tracing keeps every edge a line and only removes points the tolerance allows.",
+    "corner_angle": "Corner angle (degrees)",
+    "smoothing": "Smoothing (pixels)",
+    "min_area": "Minimum area (square pixels)",
+    "quality": "{{nodes}} nodes, {{curves}} curve segments, largest deviation {{error}} source pixels.",
+    "droppedRings_one": "{{count}} ring below the minimum area was dropped.",
+    "droppedRings_other": "{{count}} rings below the minimum area were dropped.",
+    "fallback": "A fitted ring would have changed the drawing's topology, so its exact pixel edges were kept.",
+    "brokenLink": "Broken link",
+    "brokenHelp": "The linked PNG could not be read. The placement and lock are kept; relink or restore the file.",
+    "triedPath": "Tried: {{path}}",
+    "retryLink": "Try again",
+    "relinkSame": "Relink the same path",
+    "relinkPath": "Relink to the path above",
+    "onCanvas": "Adjust on canvas",
+    "onCanvasHelp": "Drag the image to move it, a corner to scale, an edge to skew, the knob above the top edge to rotate. Shift keeps a corner scale uniform and snaps rotation to 15°. Each gesture is one undo step.",
+    "moveStep": "Move step (units)",
+    "scaleStep": "Scale step (%)",
+    "angleStep": "Angle step (degrees)",
+    "stepLeft": "Move left",
+    "stepRight": "Move right",
+    "stepDown": "Move down",
+    "stepUp": "Move up",
+    "stepScale": "Scale",
+    "stepRotate": "Rotate",
+    "stepSkewX": "Skew X",
+    "stepSkewY": "Skew Y",
+    "stepsNeedSource": "Scale, rotate and skew need the decoded source size; repair the link first."
   },
   "glyphMetadata": {
     "tagSuggestions": "Existing tags",
@@ -3572,7 +3799,13 @@
       "text": "Text view",
       "bitmap": "Bitmap editor"
     },
-    "conflict": "{{shortcut}} conflicts: {{commands}}. Change or clear one of these bindings.",
+    "conflict": "{{shortcut}} conflicts: {{commands}}. Change or clear one of these bindings, or allow the conflict deliberately.",
+    "conflictAllowed": "{{shortcut}} is deliberately shared by {{commands}}. The first of them that is available runs.",
+    "allowConflict": "Allow {{shortcut}} to be shared",
+    "rejectConflict": "Stop sharing {{shortcut}}",
+    "conflictAccepted": "The conflict is allowed in this draft. Apply to keep it.",
+    "rowConflict": "{{shortcut}} is also bound to {{commands}}.",
+    "rowConflictAllowed": "{{shortcut}} is deliberately shared with {{commands}}.",
     "removeUnknown": "Remove unsupported bindings",
     "toolHint": "Tap to select; hold briefly to borrow until release. Press the context-help shortcut for editing guidance.",
     "error": {
@@ -3592,6 +3825,15 @@
     "focusedControl": "Focused control",
     "topic": "Help topic",
     "navigationHint": "Use Tab to move between controls. Escape closes help and returns focus to your work. Help stays available without an internet connection.",
+    "quickHelp": "Quick help",
+    "quickHelpHint": "Press {{shortcut}} for the full article, or Escape to dismiss.",
+    "quickHelpHintNoKey": "Choose Help → Context Help for the full article, or press Escape to dismiss.",
+    "openArticle": "Open help article",
+    "activeTool": "Active tool",
+    "activeCommand": "Command",
+    "binding": "Shortcut {{shortcut}}",
+    "unbound": "No shortcut assigned",
+    "unavailableHere": "Unavailable right now: {{reason}}",
     "topics": {
       "welcome": {
         "title": "Getting started",
@@ -3704,6 +3946,55 @@
         "first": "Use Tab and Shift+Tab to move between controls. Labels, validation messages and hover hints describe each field.",
         "second": "Review the values before choosing the dialog’s confirmation action. Cancel or Escape returns to the previous workflow.",
         "third": "Closing this help returns focus to the control you were using. Choose another help topic above for guidance on the related workflow."
+      },
+      "history": {
+        "title": "History and undo",
+        "summary": "Every edit is recorded as one entry, so you can step back and forth or jump straight to an earlier state.",
+        "first": "Undo and Redo move one entry at a time and name the edit they act on.",
+        "second": "The History section of the Inspector lists the entries with their scope. Selecting one returns the document to that state.",
+        "third": "Jumping to an earlier state does not discard the later entries until you edit again from there. Oldest entries are dropped when the history budget is reached."
+      },
+      "spacing": {
+        "title": "Spacing and kerning",
+        "summary": "Sidebearings, metrics formulas and kerning are edited in the Edit tab’s text bar, its canvas and the spacing matrix.",
+        "first": "Choose which side the bracket keys change, then step the selected glyph’s sidebearing, or type an exact value in the Info box or the spacing matrix.",
+        "second": "Kerning acts on the boundary between two glyphs of the run. The Kerning panel shows which rule or group the value belongs to.",
+        "third": "Metrics formulas keep related glyphs in step; Update Metrics recomputes them for the current master or for every master."
+      },
+      "variations": {
+        "title": "Masters, instances and the design space",
+        "summary": "A variable font is authored as masters on named axes, with named instances and intermediate sources between them.",
+        "first": "Define the axes and masters in Font Info, then check that every glyph is compatible across them.",
+        "second": "The Variations panel moves the preview through the design space; brace, bracket and smart sources add intermediate drawings.",
+        "third": "Named instances and variable-font configurations are the rows the batch export writes. Review compatibility before exporting."
+      },
+      "crossDocument": {
+        "title": "Working across documents",
+        "summary": "Open documents can be compared with each other, and glyph data can be transferred between them.",
+        "first": "Compare Fonts lists what differs between the active document and another open one.",
+        "second": "Paste Special transfers the parts of a glyph you choose; Relink Components repairs components whose target is missing or renamed.",
+        "third": "A transfer is one undo entry in the receiving document. Review the report before you save."
+      },
+      "batchRename": {
+        "title": "Renaming many glyphs",
+        "summary": "Batch Rename applies one rule to every selected glyph and shows the result before it is applied.",
+        "first": "Choose the selection first, then the rule. The preview lists the old and new name of every glyph it would change.",
+        "second": "Names that would collide or are invalid are reported and must be resolved before the rename is applied.",
+        "third": "Renaming rewrites references to the glyph: components, OpenType feature code and kerning groups follow it as one undo entry."
+      },
+      "workspace": {
+        "title": "Tabs, panels and workspaces",
+        "summary": "Tabs, the sidebar, the Inspector and the preview make up a workspace that can be saved and restored.",
+        "first": "A document opens with a pinned Overview tab; editing tabs are added beside it and can be reached by position.",
+        "second": "Panels can be shown, hidden and moved into their own window; a tab can be detached the same way.",
+        "third": "Manage Workspaces saves the current arrangement under a name and restores it later, including the detached windows."
+      },
+      "automation": {
+        "title": "Scripts and plugins",
+        "summary": "The script console runs a script against the open documents; the plugin manager lists what is installed.",
+        "first": "Read what a script will change before running it. A script’s edits go through the same commands and undo entries as the interface.",
+        "second": "Output and errors appear in the console. A failing script leaves the document as it was at its last completed command.",
+        "third": "Plugins are listed with their author, license and origin. Only the bundled index is available offline."
       }
     }
   },
@@ -3897,6 +4188,10 @@
       "segment": "Segment",
       "brush": "Brush"
     },
+    "conventionHelp": "Source glyphs for this kind are conventionally named with the {{prefix}} prefix. Any glyph can be attached; the prefix only says what a glyph is for.",
+    "conventionalSources": "Glyphs named {{prefix}}…",
+    "noConventionalSources": "This font has no glyph named {{prefix}}… yet. Choose any glyph below, or add one with that name.",
+    "unconventionalSource": "{{source}} does not use the {{prefix}} prefix. It will still be attached.",
     "chooseSource": "Choose source glyph",
     "clearSource": "Clear new attachment",
     "preview": "Preview",
@@ -3920,8 +4215,17 @@
     "addStemGuides": "Add linked stem guides",
     "stemCount": "{{count}} straight stems detected.",
     "stemGuide": "Stem {{width}}",
+    "magnetNoGuide": "Press a layer guide to pick it up.",
+    "magnetLayerOnly": "Only a layer guide can own nodes; master guides cannot.",
+    "magnetLocked": "This guide is locked.",
+    "magnetHud_one": "Magnet: {{count}} node will follow this guide. Alt projects it onto the guide.",
+    "magnetHud_other": "Magnet: {{count}} nodes will follow this guide. Alt projects them onto the guide.",
+    "magnetSnapHud_one": "Magnet: {{count}} node will be projected onto this guide and follow it.",
+    "magnetSnapHud_other": "Magnet: {{count}} nodes will be projected onto this guide and follow it.",
     "undo": {
       "servant": "Change servant node",
+      "magnet": "Link nodes to guide",
+      "moveGuide": "Move guide",
       "link": "Link nodes to guide",
       "unlink": "Unlink guide nodes",
       "stems": "Add linked stem guides"
@@ -3934,7 +4238,7 @@
     "scaleToSize": "Scale pixels and metrics to target size",
     "allImages": "All images in this strike",
     "copyStrike": "Copy to target strike",
-    "transferHint": "Copies resolved pixels with nearest-neighbour scaling. Existing target glyphs are replaced in one undo step. Coverage becomes black alpha when converting to RGBA.",
+    "transferHint": "Copies resolved pixels, scaling by the size ratio with the chosen filter. Nearest keeps hard pixel edges; area average produces coverage, so pick a deeper target for it. Existing target glyphs are replaced in one undo step. Coverage becomes black alpha when converting to RGBA.",
     "cornerMode": "Pixel corner mode",
     "modes": {
       "PixelEdges": "Sharp",
@@ -3952,7 +4256,15 @@
     "noGrid": "No supported exact pixel grid found. Detection requires at least three distinct staircase glyphs and axis-aligned outlines on a shared grid.",
     "detecting": "Checking outlines for an exact pixel grid…",
     "detectAgain": "Check pixel grid again",
-    "reconstructStrike": "Reconstruct detected strike"
+    "reconstructStrike": "Reconstruct detected strike",
+    "filter": "Scale filter",
+    "filters": {
+      "Nearest": "Nearest pixel",
+      "AreaAverage": "Area average"
+    },
+    "traceAll": "Every image in this strike ({{count}})",
+    "editPixelGlyph": "Edit the pixel glyph",
+    "pixelMissing": "That pixel glyph does not exist yet. Build the components first."
   },
   "editorMetadata": {
     "title": "Paths and annotations",
@@ -4050,5 +4362,183 @@
     "undoKey": "Set metrics formula",
     "undoMetrics": "Set metrics",
     "noMaster": "Select a master before updating this row."
+  },
+  "quickHelp": {
+    "file": {
+      "new": "Opens the New Font dialog, which creates an editable document with the names and basic settings you enter.",
+      "open": "Opens a font or project file as a new document. The original file is never written until you save.",
+      "openProject": "Opens a directory-based project folder as one document.",
+      "openRecent": "Lists the paths you opened before and reopens the one you pick.",
+      "save": "Writes the active document back to its own file, asking for a path the first time.",
+      "saveAs": "Writes the active document to a path you choose and keeps editing that new file.",
+      "close": "Closes the active document, offering to save it first when it has unsaved edits.",
+      "fontInfo": "Opens the Font Info tab, where names, vertical metrics and font-wide settings are edited.",
+      "export": "Opens Export, which compiles a font file for other applications and reports its diagnostics."
+    },
+    "edit": {
+      "undo": "Steps back one recorded edit of the active document. The menu names the edit it will undo.",
+      "redo": "Re-applies the edit that Undo stepped back from.",
+      "history": "Shows the History timeline in the Inspector, where you can jump to any earlier state of the document.",
+      "preferences": "Opens Preferences: appearance, language, editor behavior and snapping distances.",
+      "selectAll": "Selects every glyph of the font in the overview grid.",
+      "selectNone": "Clears the glyph selection in the overview grid.",
+      "copyGlyphNames": "Copies the names of the selected glyphs to the clipboard, one per line.",
+      "selectAllPoints": "Selects every node of the layer being edited in the Edit tab.",
+      "deselectPoints": "Clears the node selection on the editing canvas.",
+      "deletePoints": "Deletes the selected nodes and closes the gap, keeping the contour closed.",
+      "deletePointsBreak": "Deletes the selected nodes and leaves the contour open where they were.",
+      "pasteSpecial": "Transfers glyph data from another open document, choosing which parts to bring over.",
+      "relinkComponents": "Repairs components that point at glyphs which are missing or were renamed."
+    },
+    "font": {
+      "findProblems": "Runs the outline and font-data checks and lists what it found for the document or selection.",
+      "compare": "Compares the active document with another open one and lists the differences.",
+      "styleEffects": "Applies a batch style — such as a weight or slant change — to the selected glyphs."
+    },
+    "glyph": {
+      "open": "Opens the focused glyph in its own Edit tab.",
+      "previous": "Moves the Edit tab to the previous glyph in the font's order.",
+      "next": "Moves the Edit tab to the next glyph in the font's order.",
+      "add": "Opens Add Glyphs, which creates glyphs from names, characters or a recipe.",
+      "duplicate": "Creates a copy of the selected glyph under a new name.",
+      "renameBatch": "Renames many glyphs at once with a search-and-replace rule, previewing the result first.",
+      "updateInfo": "Refreshes the selected glyphs' Unicode and category data from the glyph-name database.",
+      "updateMetrics": "Recomputes the selected glyph's metrics formulas in the current master.",
+      "updateMetricsAll": "Recomputes the selected glyph's metrics formulas in every master.",
+      "decomposeAll": "Replaces every component of the glyph with a copy of its outlines.",
+      "alignComponents": "Moves the glyph's automatically aligned components onto their anchors.",
+      "colorLabel": "Marks the selected glyphs with this color label, which the overview grid and filters can sort on.",
+      "colorLabelNone": "Removes the color label from the selected glyphs."
+    },
+    "path": {
+      "removeOverlap": "Unions the layer's contours, removing the parts that overlap.",
+      "correctDirection": "Sets each contour's direction so outer contours and counters fill correctly.",
+      "correctDirectionAllMasters": "Corrects contour direction in every master layer of the glyph as one edit.",
+      "addExtrema": "Inserts nodes where a curve reaches its leftmost, rightmost, highest or lowest point.",
+      "forceExtrema": "Inserts extremum nodes even where the curve only nearly reaches an extreme.",
+      "addInflections": "Inserts a node where a curve changes the direction it bends in.",
+      "simplify": "Opens Simplify, which removes nodes within a tolerance you choose while keeping the shape.",
+      "roundToGrid": "Rounds every coordinate of the layer to the editing grid set in Preferences.",
+      "tidy": "Applies the standard clean-up pass: direction, start points, duplicate nodes and stray handles.",
+      "tidyAllMasters": "Applies the clean-up pass to every master layer of the glyph as one edit.",
+      "expandStroke": "Opens Expand Stroke, which converts the contours into an outlined stroke of the width you choose.",
+      "convertCubic": "Converts the layer's curves to cubic béziers.",
+      "convertQuadratic": "Converts the layer's curves to quadratic béziers within the standard error budget.",
+      "reverse": "Reverses the direction of the selected contours, or of every contour when nothing is selected.",
+      "setStartPoint": "Makes the selected on-curve node the contour's start point.",
+      "join": "Joins the two selected open contour ends into one contour.",
+      "break": "Opens the contour at the selected on-curve node.",
+      "openCorner": "Opens the selected corner into two nodes with a setback, the way an overlapping stroke joint is drawn.",
+      "reconnectNodes": "Closes an open corner again by reconnecting its two nodes.",
+      "toggleSmooth": "Switches the selected nodes between smooth and corner, moving the handles to match.",
+      "toggleSmoothKeepOutline": "Switches the selected nodes between smooth and corner without moving the outline.",
+      "superSmooth": "Keeps the selected cubic joins curvature-continuous: the handles stay harmonized as you drag.",
+      "harmonize": "Harmonizes the selected cubic joins once, balancing the handles across the node."
+    },
+    "layer": {
+      "editBackground": "Switches editing between the master layer and its background layer, creating the background if needed.",
+      "selectionToBackground": "Copies the selected contours into the background layer, leaving the foreground untouched.",
+      "addBackground": "Adds an empty background layer to this master.",
+      "copyToBackground": "Replaces the background layer with a copy of the current drawing.",
+      "swapWithBackground": "Exchanges the drawing with its background layer.",
+      "clearBackground": "Empties the background layer of this master.",
+      "addBackup": "Stores the current drawing as a dated backup layer you can return to."
+    },
+    "view": {
+      "toggleSidebar": "Shows or hides the sidebar beside the workspace.",
+      "toggleInspector": "Shows or hides the Inspector dock on the right.",
+      "zoomIn": "Enlarges the overview grid's cells, or zooms the editing canvas in when an Edit tab is active.",
+      "zoomOut": "Shrinks the overview grid's cells, or zooms the editing canvas out when an Edit tab is active.",
+      "zoomFit": "Fits the edited glyph into the canvas.",
+      "features": "Opens the OpenType features tab for the active document.",
+      "textPreview": "Shows or hides the Edit tab's text preview strip.",
+      "previewCollapse": "Collapses the preview strip to its header, or expands it again.",
+      "toggleInfoBox": "Shows or hides the Info box, which holds the exact coordinates of the selection.",
+      "toggleSnapping": "Turns snapping on or off for the editing canvas without changing the snap distances.",
+      "toggleFill": "Previews the glyph filled while the key is held, then returns to the outline.",
+      "glyph": {
+        "filled": "Keeps the glyph's filled preview on until you switch it off again.",
+        "points": "Shows or hides the nodes and handles on the editing canvas.",
+        "metrics": "Shows or hides the vertical metric lines and sidebearing bands.",
+        "anchors": "Shows or hides the glyph's anchors.",
+        "guides": "Shows or hides local and global guides.",
+        "rulers": "Shows or hides the canvas rulers.",
+        "background": "Shows or hides the background layer behind the drawing.",
+        "otherMasters": "Shows or hides the same glyph from the font's other masters behind the drawing.",
+        "verticalMode": "Makes the vertical origin and advance the canvas’s primary metrics, for vertical writing."
+      },
+      "theme": "Switches the interface between the light and dark palettes, or back to following the operating system.",
+      "language": "Switches the interface language straight away and remembers the choice."
+    },
+    "bitmap": {
+      "open": "Opens the strike editor, where a bitmap glyph is edited pixel by pixel at one pixel size.",
+      "tool": {
+        "pencil": "Sets pixels to the selected ink as you drag.",
+        "erase": "Clears pixels back to the background as you drag.",
+        "line": "Drags a straight run of pixels between two points.",
+        "rectangle": "Drags a rectangle of pixels.",
+        "ellipse": "Drags an ellipse of pixels.",
+        "fill": "Fills the connected area under the pointer with the selected ink.",
+        "select": "Drags a rectangular pixel selection you can move or transform.",
+        "eyedropper": "Picks the ink value of the pixel under the pointer.",
+        "hand": "Pans the pixel canvas by dragging."
+      },
+      "overlay": {
+        "grid": "Shows or hides the pixel grid lines.",
+        "outline": "Shows or hides the master outline behind the pixels at this strike’s scale.",
+        "advanceColumn": "Shades the column from the origin to the horizontal advance.",
+        "fontUnits": "Adds font-unit readouts beside the pixel coordinates."
+      }
+    },
+    "automation": {
+      "console": "Opens the script console and the bundled plugins."
+    },
+    "palette": {
+      "open": "Opens the command palette, which searches every command, filter, script and glyph.",
+      "quickOpen": "Opens the command palette with the same search, on a second binding."
+    },
+    "window": {
+      "nextTab": "Moves to the next tab in the strip.",
+      "previousTab": "Moves to the previous tab in the strip.",
+      "cycleNext": "Cycles forwards through the open tabs.",
+      "cyclePrevious": "Cycles backwards through the open tabs.",
+      "closeTab": "Closes the active tab. A document's pinned Overview is closed with Close Font instead.",
+      "tab": "Selects a tab of the active document by its position: the first is its Overview.",
+      "detachTab": "Moves the active tab into a window of its own.",
+      "detachSidebar": "Moves the sidebar into a window of its own.",
+      "detachInspector": "Moves the Inspector into a window of its own.",
+      "detachPreview": "Moves the text preview into a window of its own.",
+      "document": "Opens a second window on the active document."
+    },
+    "workspace": {
+      "manage": "Saves, restores and deletes workspaces: the set of tabs, panels and windows you work in."
+    },
+    "help": {
+      "context": "Opens this help for whatever is focused or under the pointer. It works inside dialogs and without a network connection.",
+      "shortcuts": "Opens the keyboard shortcut editor, with presets, import, export and conflict review.",
+      "about": "Shows the application version and license information."
+    },
+    "text": {
+      "kerning": "Kerns the selected boundary in the text preview. The gesture belongs to the Text tab's canvas and is not rebindable here."
+    },
+    "tool": {
+      "select": "Selects and drags nodes, handles, contours and components; drag on empty canvas for a marquee.",
+      "lasso": "Draws a freehand region and selects the nodes inside it.",
+      "eraser": "Drags across nodes to erase them in one edit.",
+      "magnet": "Drags a layer guide onto nodes so they follow it; Alt projects them onto the guide first.",
+      "annotation": "Places and edits annotations on the glyph for your own notes.",
+      "pen": "Draws a new contour node by node, dragging to set each curve's handles.",
+      "pencil": "Draws a freehand contour that is fitted to curves as you release.",
+      "knife": "Cuts contours along a line you drag across them.",
+      "rectangle": "Drags out a rectangle as a new closed contour.",
+      "ellipse": "Drags out an ellipse as a new closed contour.",
+      "measure": "Measures distances across the glyph and can leave a guide behind.",
+      "rotate": "Rotates the selection around a center you place.",
+      "scale": "Scales the selection from an origin you place.",
+      "zoom": "Zooms the canvas by clicking or by dragging out the area to fill.",
+      "hand": "Pans the canvas by dragging.",
+      "text": "Switches the Edit tab into shaped-text mode, where a whole string is spaced and kerned.",
+      "pixel": "Hands the glyph to the strike editor, which owns pixel drawing."
+    }
   }
 }

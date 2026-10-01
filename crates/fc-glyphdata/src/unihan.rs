@@ -158,3 +158,171 @@ pub fn normalize_reading(text: &str) -> String {
         })
         .collect()
 }
+
+/// Number of Kangxi radicals, which is also the length of [`kangxi_radicals`].
+pub const KANGXI_RADICAL_COUNT: u16 = 214;
+
+/// First character of the Unicode Kangxi Radicals block, which is radical 1.
+///
+/// The block assigns its 214 characters in radical order, so radical `n` is
+/// `KANGXI_BLOCK_START + n - 1`. `kangxi_block_is_radical_ordered` pins that
+/// layout against the shipped `Blocks.txt` and the compiled assignment data.
+const KANGXI_BLOCK_START: u32 = 0x2F00;
+
+/// One ideographic form of a Kangxi radical.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RadicalForm {
+    /// Unicode scalar value of the ideograph that writes the radical.
+    pub unicode: u32,
+    /// Smallest recorded `kTotalStrokes` value, or `None` when unrecorded.
+    pub strokes: Option<u16>,
+}
+
+/// One Kangxi radical: its block character and the ideographs that write it.
+///
+/// The forms are exactly the Basic Multilingual Plane ideographs whose
+/// `kRSUnicode` assigns this radical with no residual strokes, which is how the
+/// pinned source spells "this character *is* the radical". Traditional and
+/// simplified radical indicators are both kept, so `forms` of radical 149 holds
+/// 言, 訁 and 讠. Compatibility ideographs are excluded because they only repeat
+/// characters already listed.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Radical {
+    /// Kangxi radical number, from 1 through 214.
+    pub number: u16,
+    /// Character of the Kangxi Radicals block for this radical number.
+    pub kangxi: u32,
+    /// Ideographs that write the radical, in ascending scalar order.
+    pub forms: Vec<RadicalForm>,
+}
+
+/// The 214 Kangxi radicals in radical order, derived once from the pinned data.
+pub fn kangxi_radicals() -> &'static [Radical] {
+    static VALUES: std::sync::LazyLock<Vec<Radical>> = std::sync::LazyLock::new(|| {
+        let mut forms = vec![Vec::new(); usize::from(KANGXI_RADICAL_COUNT)];
+        for unicode in unihan_codepoints() {
+            // Radical forms are BMP ideographs; the CJK Compatibility
+            // Ideographs block repeats characters that are already listed.
+            if unicode > 0xffff || (0xf900..=0xfaff).contains(&unicode) {
+                continue;
+            }
+            let Some(record) = unihan(unicode) else {
+                continue;
+            };
+            let strokes = record.strokes().min();
+            let mut numbers: Vec<u16> = record
+                .radicals()
+                .filter(|value| value.residual == 0)
+                .map(|value| value.radical)
+                .collect();
+            numbers.sort_unstable();
+            numbers.dedup();
+            for number in numbers {
+                if let Some(slot) = forms.get_mut(usize::from(number).wrapping_sub(1)) {
+                    slot.push(RadicalForm { unicode, strokes });
+                }
+            }
+        }
+        forms
+            .into_iter()
+            .enumerate()
+            .map(|(index, forms)| {
+                let number = index as u16 + 1;
+                Radical {
+                    number,
+                    kangxi: KANGXI_BLOCK_START + u32::from(number) - 1,
+                    forms,
+                }
+            })
+            .collect()
+    });
+    &VALUES
+}
+
+/// One Kangxi radical by number, or `None` outside 1 through 214.
+pub fn kangxi_radical(number: u16) -> Option<&'static Radical> {
+    kangxi_radicals().get(usize::from(number).wrapping_sub(1))
+}
+
+#[cfg(test)]
+mod radical_tests {
+    use super::*;
+
+    #[test]
+    fn every_radical_number_has_its_block_character() {
+        let radicals = kangxi_radicals();
+        assert_eq!(radicals.len(), usize::from(KANGXI_RADICAL_COUNT));
+        for (index, radical) in radicals.iter().enumerate() {
+            assert_eq!(radical.number, index as u16 + 1);
+            assert_eq!(radical.kangxi, 0x2f00 + index as u32);
+        }
+        assert_eq!(kangxi_radical(1).unwrap().kangxi, 0x2f00);
+        assert_eq!(kangxi_radical(214).unwrap().kangxi, 0x2fd5);
+        assert!(kangxi_radical(0).is_none());
+        assert!(kangxi_radical(215).is_none());
+    }
+
+    #[test]
+    fn kangxi_block_is_radical_ordered() {
+        for number in 1..=KANGXI_RADICAL_COUNT {
+            let scalar = 0x2f00 + u32::from(number) - 1;
+            assert_eq!(crate::block_name(scalar), "Kangxi Radicals");
+            assert!(crate::is_assigned(scalar), "U+{scalar:04X}");
+        }
+        // The block allocates to U+2FDF but assigns only the 214 radicals.
+        assert!(!crate::is_assigned(0x2fd6));
+    }
+
+    #[test]
+    fn forms_hold_the_radical_and_its_variant_writings() {
+        let scalars = |number: u16| -> Vec<u32> {
+            kangxi_radical(number)
+                .unwrap()
+                .forms
+                .iter()
+                .map(|form| form.unicode)
+                .collect()
+        };
+        // 人 with 亻, 心 with 忄, 水 with 氵 and 氺, 言 with 訁 and 讠.
+        assert_eq!(scalars(9), [0x4eba, 0x4ebb]);
+        assert_eq!(scalars(61), [0x5fc3, 0x5fc4]);
+        assert_eq!(scalars(85), [0x6c34, 0x6c35, 0x6c3a]);
+        assert_eq!(scalars(149), [0x8a00, 0x8a01, 0x8ba0]);
+        // One stroke, one form.
+        assert_eq!(scalars(1), [0x4e00]);
+    }
+
+    #[test]
+    fn forms_are_ascending_and_carry_their_own_stroke_counts() {
+        for radical in kangxi_radicals() {
+            assert!(
+                !radical.forms.is_empty(),
+                "radical {} has no form",
+                radical.number
+            );
+            assert!(
+                radical
+                    .forms
+                    .windows(2)
+                    .all(|pair| pair[0].unicode < pair[1].unicode),
+                "radical {} is unsorted or repeats a scalar",
+                radical.number
+            );
+            for form in &radical.forms {
+                assert!(form.unicode <= 0xffff);
+                assert!(!(0xf900..=0xfaff).contains(&form.unicode));
+                assert_eq!(
+                    form.strokes,
+                    unihan(form.unicode).and_then(|record| record.strokes().min()),
+                );
+            }
+        }
+        assert_eq!(
+            kangxi_radical(214).unwrap().forms[0],
+            RadicalForm {
+                unicode: 0x9fa0,
+                strokes: Some(17)
+            }
+        );
+    }
+}

@@ -268,5 +268,6 @@ export function registerGlyphViewCommands(): void {
     overlayCommand('rulers'),
     overlayCommand('background'),
     overlayCommand('otherMasters'),
+    overlayCommand('verticalMode'),
   ])
 }

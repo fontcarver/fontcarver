@@ -12,6 +12,12 @@ use read_fonts::{
 use super::{cff_data_and_top_dict, cff_font, dict_entries, effective_transform};
 use crate::{Error, Warning};
 
+/// Whether a Private DICT blends any of its values across variation regions.
+fn blends(private: &[u8]) -> bool {
+    dict::tokens(private)
+        .any(|token| matches!(token, Ok(dict::Token::Operator(dict::Operator::Blend))))
+}
+
 pub(crate) fn apply_private(
     face: &FontRef<'_>,
     info: &mut FontInfo,
@@ -31,14 +37,29 @@ pub(crate) fn apply_private(
         }
     }
     let ranges = private_ranges(data.data, &entries, data.is_cff2)?;
+    // A CFF2 Private DICT may blend every numeric value. Resolving the blends at
+    // the default location keeps the imported values meaningful instead of
+    // failing the whole import, and the caller discloses that the variation data
+    // itself is flattened.
+    let store = data
+        .is_cff2
+        .then(|| variation_store(data.data, &entries))
+        .transpose()?
+        .flatten();
     let mut has_hints = false;
     for (index, range) in ranges.into_iter().enumerate() {
         let private = data.data.get(range).ok_or_else(|| Error::Parse {
             table: "CFF/CFF2 Private DICT",
             reason: "private dictionary range is out of bounds".into(),
         })?;
+        if blends(private) {
+            warnings.push(Warning {
+                code: "cff2-private-variation-flattened",
+                message: "The CFF2 private dictionary varies across the design space; its values were imported at the default location, and a re-export writes variation computed from this document's masters".into(),
+            });
+        }
         let mut target = PsPrivate::default();
-        for entry in dict_entries(private, "CFF/CFF2 Private DICT")? {
+        for entry in private_entries(private, store.clone())? {
             match entry {
                 dict::Entry::BlueValues(v) => target.blue_values = flatten_blues(&v),
                 dict::Entry::OtherBlues(v) => target.other_blues = flatten_blues(&v),
@@ -87,6 +108,70 @@ pub(crate) fn apply_private(
         }
     }
     Ok(has_hints)
+}
+
+/// Private DICT byte ranges in Font DICT order, or one range for a plain CFF.
+pub(super) fn ranges(face: &FontRef<'_>) -> Result<Vec<Range<usize>>, Error> {
+    let Some(data) = super::cff_data_and_top_dict(face)? else {
+        return Ok(Vec::new());
+    };
+    let entries = dict_entries(data.top_dict, "CFF/CFF2 Top DICT")?;
+    private_ranges(data.data, &entries, data.is_cff2)
+}
+
+/// The local subroutine index one Private DICT declares, if it declares any.
+///
+/// `Subrs` is stored as an offset from the start of the Private DICT.
+pub(super) fn local_subrs<'a>(
+    data: &'a [u8],
+    range: &Range<usize>,
+) -> Option<read_fonts::ps::cff::index::Index<'a>> {
+    let private = data.get(range.clone())?;
+    let offset = dict::entries(private, None)
+        .filter_map(Result::ok)
+        .find_map(|entry| match entry {
+            dict::Entry::SubrsOffset(offset) => Some(offset),
+            _ => None,
+        })?;
+    read_fonts::ps::cff::index::Index::new(data.get(range.start + offset..)?, false).ok()
+}
+
+/// The CFF2 item variation store a Top DICT points at, when it has one.
+fn variation_store<'a>(
+    data: &'a [u8],
+    entries: &[dict::Entry],
+) -> Result<Option<read_fonts::tables::variations::ItemVariationStore<'a>>, Error> {
+    let Some(offset) = entries.iter().find_map(|entry| match entry {
+        dict::Entry::VariationStoreOffset(offset) => Some(*offset),
+        _ => None,
+    }) else {
+        return Ok(None);
+    };
+    // The CFF2 store is preceded by its own two-byte length.
+    let bytes = data.get(offset + 2..).ok_or_else(|| Error::Parse {
+        table: "CFF2 VariationStore",
+        reason: "variation store offset is out of bounds".into(),
+    })?;
+    read_fonts::FontRead::read(read_fonts::FontData::new(bytes))
+        .map(Some)
+        .map_err(|error| Error::parse("CFF2 VariationStore", error))
+}
+
+/// Private DICT entries, resolving CFF2 blends at the default location.
+fn private_entries<'a>(
+    private: &'a [u8],
+    store: Option<read_fonts::tables::variations::ItemVariationStore<'a>>,
+) -> Result<Vec<dict::Entry>, Error> {
+    let blend = match store {
+        Some(store) => Some(
+            read_fonts::ps::cff::blend::BlendState::new(store, &[], 0)
+                .map_err(|error| Error::parse("CFF2 VariationStore", error))?,
+        ),
+        None => None,
+    };
+    dict::entries(private, blend)
+        .map(|entry| entry.map_err(|error| Error::parse("CFF/CFF2 Private DICT", error)))
+        .collect()
 }
 
 fn private_ranges(

@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type DocSummary } from '../../api'
@@ -35,7 +36,11 @@ import { useTextFeedback } from './useTextFeedback'
 import { useTextTyping } from './useTextTyping'
 import { allEncodedText } from './textSamples'
 import type { ProofEntry } from './proofLibrary'
+import { previewSettingsOf, previewSettingsPatch } from './previewSettings'
+import { canStepFromSurface, proofStepDirection } from './proofStepping'
+import { usePreviewInstance } from './usePreviewInstance'
 import { useTextContext } from './useTextContext'
+import { isEditableTarget, isInteractiveTarget } from '../../shell/shortcuts'
 import { detachPanel } from '../../shell/windowActions'
 import { useKerningGhosts } from './useKerningGhosts'
 import { useSpacingOverlay } from './useSpacingOverlay'
@@ -367,10 +372,34 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
           direction: entry.direction,
           activeIndex: null,
           mode: 'text',
+          proofId: entry.id,
         })
       }).catch(reportError)
     },
     [patch, transition],
+  )
+  // The proof library owns the visible, filtered list; it registers its stepper
+  // here so bare Up/Down also work while spacing, where the canvas has focus.
+  const stepProof = useRef<((direction: -1 | 1) => void) | null>(null)
+  const onSurfaceKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      const direction = proofStepDirection(event)
+      if (direction === null) return
+      if (
+        !canStepFromSurface({
+          hasSelection: useEditorStore.getState().selection.size > 0,
+          editableTarget: isEditableTarget(event.target),
+          interactiveTarget: isInteractiveTarget(event.target),
+        })
+      )
+        return
+      const step = stepProof.current
+      if (!step) return
+      event.preventDefault()
+      event.stopPropagation()
+      step(direction)
+    },
+    [],
   )
   const sample = async (id: TextSampleId) => {
     if (id !== 'all-encoded') return changeText(TEXT_SAMPLE_TEXT[id])
@@ -394,11 +423,31 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
       : 'ready'
   useTextFeedback(tab.id, glyphs.length, status === 'stale')
   const statusKey = `${view.generation}:${state.text}:${status}`
+  const documentActiveGlyph =
+    active && active.documentGid !== null
+      ? {
+          ...active,
+          path: cells.get(active.documentGid)?.path ?? '',
+          color: colors.get(active.documentGid),
+        }
+      : null
+  const previewSource = usePreviewInstance({
+    summary,
+    state,
+    generation: view.generation,
+    documentGlyphs: previewGlyphs,
+    documentActiveGlyph,
+  })
   return (
     <div
       className={styles.view}
       data-text-mode={state.mode}
       data-run-count={glyphs.length}
+      // A run count of zero means "nothing shaped yet" while the kernel is
+      // still compiling and "this text has no glyphs" once it is not; the two
+      // must be distinguishable to a reader, a test and a screen reader.
+      data-text-shaping={status === 'stale' ? 'true' : 'false'}
+      onKeyDownCapture={onSurfaceKeyDown}
     >
       <TextWorkspaceControls
         summary={summary}
@@ -418,6 +467,8 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
         }
         onSample={(id) => void sample(id).catch(reportError)}
         onProofSelect={applyProof}
+        proofId={state.proofId ?? null}
+        stepRef={stepProof}
       />
       <GlyphView
         summary={summary}
@@ -429,26 +480,23 @@ export function TextView({ summary, tab }: { summary: DocSummary; tab: Tab }) {
       />
       {previewVisible && (
         <PreviewStrip
-          glyphs={previewGlyphs}
-          activeGlyph={
-            active && active.documentGid !== null
-              ? {
-                  ...active,
-                  path: cells.get(active.documentGid)?.path ?? '',
-                  color: colors.get(active.documentGid),
-                }
-              : null
-          }
+          glyphs={[...previewSource.glyphs]}
+          activeGlyph={previewSource.activeGlyph}
           height={state.previewHeight}
           onHeightChange={(previewHeight) => patch({ previewHeight })}
           onDetach={() => void detachPanel('preview').catch(reportError)}
           unitsPerEm={summary.units_per_em}
-          status={dismissed === statusKey ? 'ready' : status}
+          status={
+            dismissed === statusKey ? 'ready' : (previewSource.status ?? status)
+          }
           onDismissStatus={() => setDismissed(statusKey)}
           theme={state.previewTheme}
           onThemeChange={(previewTheme) => patch({ previewTheme })}
           collapsed={state.previewCollapsed}
           onCollapsedChange={(previewCollapsed) => patch({ previewCollapsed })}
+          settings={previewSettingsOf(state)}
+          onSettingsChange={(changes) => patch(previewSettingsPatch(changes))}
+          instances={previewSource.instances}
         />
       )}
       <span className={styles.srOnly} role="status">

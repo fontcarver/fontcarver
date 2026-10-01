@@ -14,12 +14,13 @@ import type { Point2, Viewport } from '../canvas/Viewport'
 
 import type { EditorPreview, PointerInput } from './editorTypes'
 import type { Modifiers } from './gestures/drag'
-import type { Hit } from './hitTest'
+import type { Hit, ScopedGuide } from './hitTest'
 import type { EditOutline } from './outlineGeometry'
 import type { LayerCurves } from './pathGeometry'
 import type { LayerTarget } from './pointCommands'
 import { AnnotationTool } from './tools/annotation'
 import { LassoTool } from './tools/lasso'
+import { MagnetTool } from './tools/magnet'
 import { EraserTool } from './tools/eraser'
 import { KnifeTool } from './tools/knife'
 import { MeasureTool } from './tools/measure'
@@ -62,6 +63,8 @@ export function createTool(id: ToolId): EditorTool | null {
       return new ShapeTool('rectangle')
     case 'ellipse':
       return new ShapeTool('ellipse')
+    case 'magnet':
+      return new MagnetTool()
     case 'measure':
       return new MeasureTool()
     case 'rotate':
@@ -83,6 +86,7 @@ export interface ToolHostSources {
   outline: () => EditOutline
   anchors: () => readonly Anchor[]
   components: () => readonly ComponentView[]
+  guides: () => readonly ScopedGuide[]
   selection: () => Selection
   canSelect?: (target: EditTarget) => boolean
   curves: () => LayerCurves
@@ -134,6 +138,7 @@ export class ToolHost {
       outline: sources.outline(),
       anchors: sources.anchors(),
       components: sources.components(),
+      guides: sources.guides(),
       viewport: sources.viewport,
       selection: sources.selection(),
       canSelect: sources.canSelect,

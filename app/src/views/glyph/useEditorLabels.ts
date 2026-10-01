@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { EditorLabels } from '../../editor/editorController'
 import type { HudLabels } from '../../editor/hud'
+import { METRIC_LABEL_KEYS } from './metricsHandles'
 
 /** Builds the editor's label bundle for the current language. */
 export function useEditorLabels(): EditorLabels {
@@ -42,17 +43,11 @@ export function useEditorLabels(): EditorLabels {
       insertPoint: t('editor.undo.insertPoint'),
       convertSegment: t('editor.undo.convertSegment'),
       setMetrics: t('editor.undo.setMetrics'),
+      setVerticalMetrics: t('variation.verticalMetrics'),
       addGuide: t('editor.undo.addGuide'),
       lockedTarget: t('editorMetadata.lockedTargetReason'),
       lockedGlyph: t('editorMetadata.glyphLockedReason'),
-      metricHud: (handle, value) =>
-        `${t(
-          handle === 'width'
-            ? 'glyphView.metric.advance'
-            : handle === 'lsb'
-              ? 'glyphView.metric.lsb'
-              : 'glyphView.metric.rsb',
-        )} ${value}`,
+      metricHud: (handle, value) => `${t(METRIC_LABEL_KEYS[handle])} ${value}`,
       snap: {
         node: t('editor.snap.node'),
         handle: t('editor.snap.handle'),

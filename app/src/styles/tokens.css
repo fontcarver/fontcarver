@@ -61,7 +61,7 @@
   --color-border-subtle: #e2e2e5;
   --color-text: #17171a;
   --color-text-muted: #5a5a63;
-  --color-text-faint: #6b6b74;
+  --color-text-faint: #64646b;
   --color-text-inverted: #ffffff;
   --color-accent: #3a6ea5;
   --color-accent-hover: #33608f;
@@ -90,10 +90,10 @@
   --cv-node-corner: #3b6fb6;
   --cv-node-smooth: #2e8b57;
   --cv-node-implied: #2f7f8f;
-  --cv-handle: #8e96a2;
+  --cv-handle: #8b939f;
   --cv-selection: #2b5fa8;
   --cv-selection-ink: #ffffff;
-  --cv-component: #8e96a2;
+  --cv-component: #8b939f;
   --cv-background-layer: #c9a227;
   --cv-other-master: #9e7bb5;
   --cv-anchor: #c2413b;
@@ -103,6 +103,15 @@
   --cv-hud-ink: #ffffff;
   --cv-ruler: #f8f9fa;
   --cv-sidebearing: #9ab0c8;
+
+  /* Bitmap (pixel) canvas. A separate palette from both the interface and the
+     glyph canvas: the strike editor paints ink on paper at one pixel per cell,
+     so its ground must not read as a panel and its ink must not read as label
+     text. Resolved per theme and handed to `renderBitmap` as plain colours. */
+  --bm-paper: #fdfdfb;
+  --bm-ink: #101217;
+  --bm-grid: #c8ccd4;
+  --bm-accent: #2b5fa8;
 }
 
 :root[data-theme='dark'] {
@@ -119,8 +128,8 @@
   --color-text-muted: #b4b4be;
   --color-text-faint: #a0a0aa;
   --color-text-inverted: #17171a;
-  --color-accent: #5f92cc;
-  --color-accent-hover: #6f9fd5;
+  --color-accent: #7fa6dc;
+  --color-accent-hover: #93b6e6;
   --color-accent-text: #0f1620;
   --color-accent-soft: #2b3a4d;
   --color-hover: #303037;
@@ -156,4 +165,10 @@
   --cv-hud-ink: #15181c;
   --cv-ruler: #23282f;
   --cv-sidebearing: #566d86;
+
+  /* Bitmap (pixel) canvas (dark). */
+  --bm-paper: #15181d;
+  --bm-ink: #eef0f3;
+  --bm-grid: #353d47;
+  --bm-accent: #9bc0f0;
 }

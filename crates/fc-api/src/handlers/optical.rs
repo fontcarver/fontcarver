@@ -41,6 +41,7 @@ pub(crate) fn run(api: &Api, params: OpticalBatchParams) -> Result<OpticalBatchR
             operation: params.operation,
             density: params.density,
             replace_existing: params.replace_existing,
+            accepted: params.accepted,
         },
     )
     .map_err(ApiError::from)?;
@@ -96,6 +97,7 @@ pub(crate) fn run(api: &Api, params: OpticalBatchParams) -> Result<OpticalBatchR
         generation,
         glyph_count: proposal.glyph_count,
         changed_count: proposal.changed_count,
+        proposals: proposal.proposals,
         skipped: proposal.skipped,
         examples: proposal.examples,
         change,

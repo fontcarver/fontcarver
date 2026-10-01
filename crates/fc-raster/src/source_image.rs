@@ -1,14 +1,68 @@
-//! Bounded static PNG source images and alpha-aware polygon tracing.
+//! Bounded static PNG source images, polygon tracing and curve-fitted autotrace.
 
-use crate::{invalid, Error};
+use crate::{autotrace::FitOptions, invalid, Error};
 use fc_model::{Bitmap, Contour};
-use kurbo::{Affine, Point};
+use kurbo::{flatten, Affine, Point};
 
 /// Maximum compressed size of a source PNG, in bytes.
 pub const MAX_IMAGE_BYTES: usize = 16 * 1024 * 1024;
 const MAX_PIXELS: u32 = 1_000_000;
 const MAX_DIMENSION: u32 = 4096;
 const MAX_SIMPLIFY_POINTS: usize = 4096;
+/// Largest minimum-area filter, in square source pixels.
+const MAX_MIN_AREA: f64 = 1_048_576.0;
+
+/// Everything one autotrace run may be asked to do.
+///
+/// `threshold` is the minimum alpha-composited darkness that counts as ink, 1
+/// through 255. `tolerance` is the largest permitted deviation from the pixel
+/// ring in source pixels, 0 through 16, where zero keeps the exact pixel edges.
+/// `curves` chooses between cubic curve fitting and straight-line simplification.
+/// `corner_angle` is the turn angle in degrees at or above which a structural
+/// vertex stays a corner. `smoothing` low-pass filters the ring before fitting,
+/// in source pixels. `min_area` drops rings smaller than that many square source
+/// pixels, which removes scanner speckle.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TraceOptions {
+    /// Minimum alpha-composited dark coverage that counts as ink, 1..=255.
+    pub threshold: u8,
+    /// Largest permitted deviation from the pixel ring, in source pixels.
+    pub tolerance: f64,
+    /// Fit cubic curves; false simplifies to straight lines only.
+    pub curves: bool,
+    /// Turn angle in degrees at or above which a vertex stays a corner, 0..=180.
+    pub corner_angle: f64,
+    /// Low-pass radius applied before fitting, in source pixels, 0..=8.
+    pub smoothing: f64,
+    /// Smallest retained ring area in square source pixels, 0..=1048576.
+    pub min_area: f64,
+}
+
+impl Default for TraceOptions {
+    fn default() -> Self {
+        Self {
+            threshold: 128,
+            tolerance: 1.0,
+            curves: true,
+            corner_angle: 35.0,
+            smoothing: 0.0,
+            min_area: 0.0,
+        }
+    }
+}
+
+/// Traced geometry and the quality information a review needs before applying it.
+#[derive(Clone, Debug)]
+pub struct TraceOutcome {
+    /// Placed contours, in source-ring order.
+    pub contours: Vec<Contour>,
+    /// Rings the minimum-area filter removed.
+    pub dropped: u32,
+    /// Largest fitted deviation from the pixel ring, in source pixels.
+    pub max_error: f64,
+    /// Whether exact pixel edges were kept because a fit changed the topology.
+    pub fallback: bool,
+}
 
 /// Validate a complete static PNG and return its dimensions.
 ///
@@ -32,11 +86,48 @@ pub fn trace_image(
     threshold: u8,
     tolerance: f64,
 ) -> Result<Vec<Contour>, Error> {
-    if threshold == 0 {
+    trace_image_with_options(
+        data,
+        transform,
+        &TraceOptions {
+            threshold,
+            tolerance,
+            curves: false,
+            ..Default::default()
+        },
+    )
+    .map(|outcome| outcome.contours)
+}
+
+/// Trace dark pixels with curve fitting or polygon simplification, then place them.
+///
+/// Rings keep the orientation and containment of the exact pixel boundaries:
+/// outside contours clockwise in font coordinates, holes counterclockwise. When a
+/// fitted or simplified result would change that relationship or cross itself,
+/// the exact pixel edges are kept and the outcome says so. Work is bounded by the
+/// decoder limits, the pixel-edge budget, 4096 compared polygon points and the
+/// per-ring fitting budget.
+pub fn trace_image_with_options(
+    data: &[u8],
+    transform: Affine,
+    options: &TraceOptions,
+) -> Result<TraceOutcome, Error> {
+    if options.threshold == 0 {
         return Err(invalid("image ink threshold must be at least 1"));
     }
-    if !tolerance.is_finite() || !(0.0..=16.0).contains(&tolerance) {
+    if !options.tolerance.is_finite() || !(0.0..=16.0).contains(&options.tolerance) {
         return Err(invalid("image simplification tolerance must be in 0..=16"));
+    }
+    if !options.corner_angle.is_finite() || !(0.0..=180.0).contains(&options.corner_angle) {
+        return Err(invalid("image corner angle must be in 0..=180 degrees"));
+    }
+    if !options.smoothing.is_finite() || !(0.0..=8.0).contains(&options.smoothing) {
+        return Err(invalid("image smoothing must be in 0..=8 source pixels"));
+    }
+    if !options.min_area.is_finite() || !(0.0..=MAX_MIN_AREA).contains(&options.min_area) {
+        return Err(invalid(
+            "image minimum area must be in 0..=1048576 square source pixels",
+        ));
     }
     if transform.as_coeffs().iter().any(|value| !value.is_finite())
         || !transform.determinant().is_finite()
@@ -44,6 +135,8 @@ pub fn trace_image(
     {
         return Err(invalid("image transform must be finite and invertible"));
     }
+    let threshold = options.threshold;
+    let tolerance = options.tolerance;
     let image = decode(data)?;
     let mut bitmap = Bitmap::new(image.width as u16, image.height as u16, 1)?;
     let channels = image.color.samples();
@@ -68,9 +161,18 @@ pub fn trace_image(
             )?;
         }
     }
-    let exact = crate::trace_bitmap(&bitmap, 1, 1, 1)?;
-    let simplified = simplify(&exact, tolerance);
-    let placed = fc_geom::transform(&simplified, transform);
+    let mut exact = crate::trace_bitmap(&bitmap, 1, 1, 1)?;
+    let before = exact.len();
+    if options.min_area > 0.0 {
+        exact.retain(|contour| signed_area(&model_ring(contour)).abs() >= options.min_area);
+    }
+    let dropped = (before - exact.len()) as u32;
+    let (traced, max_error, fallback) = if options.curves && tolerance > 0.0 {
+        fit_curves(&exact, options)
+    } else {
+        (simplify(&exact, tolerance), 0.0, false)
+    };
+    let placed = fc_geom::transform(&traced, transform);
     if placed
         .iter()
         .flat_map(|contour| &contour.points)
@@ -78,7 +180,74 @@ pub fn trace_image(
     {
         return Err(invalid("image transform coordinates overflow"));
     }
-    Ok(placed)
+    Ok(TraceOutcome {
+        contours: placed,
+        dropped,
+        max_error,
+        fallback,
+    })
+}
+
+/// Fit every exact ring with curves, keeping the pixel edges if topology changes.
+///
+/// The fitted rings are compared as polylines against the exact rings. A
+/// comparison that would need more than [`MAX_SIMPLIFY_POINTS`] points is
+/// flattened more coarsely rather than skipped, so the orientation, containment
+/// and crossing checks always run.
+fn fit_curves(exact: &[Contour], options: &TraceOptions) -> (Vec<Contour>, f64, bool) {
+    let fit = FitOptions {
+        tolerance: options.tolerance,
+        corner_angle: options.corner_angle,
+        smoothing: options.smoothing,
+    };
+    let original: Vec<Vec<Point>> = exact.iter().map(model_ring).collect();
+    let fits: Vec<_> = original
+        .iter()
+        .map(|ring| crate::autotrace::fit_ring(ring, &fit))
+        .collect();
+    let max_error = fits.iter().fold(0.0_f64, |worst, f| worst.max(f.error));
+    let fallback = fits.iter().any(|f| f.fallback);
+    let fitted: Vec<Contour> = fits.into_iter().map(|f| f.contour).collect();
+    let candidates: Vec<Vec<Point>> = fitted.iter().map(flattened_ring).collect();
+    // Containment compares against the exact rings, which is only affordable
+    // inside the same budget the straight-line simplification uses. Beyond it the
+    // orientation and crossing checks still run over the fitted polylines.
+    let containment = original.iter().map(Vec::len).sum::<usize>() <= MAX_SIMPLIFY_POINTS;
+    if preserves_topology(&original, &candidates, containment) {
+        return (fitted, max_error, fallback);
+    }
+    // A fit that would merge, invert or cross a ring is never offered; the
+    // straight-line simplification is tried next and exact edges last.
+    (simplify(exact, options.tolerance), 0.0, true)
+}
+
+/// Point list of a contour, without interpreting its curve segments.
+fn model_ring(contour: &Contour) -> Vec<Point> {
+    contour
+        .points
+        .iter()
+        .map(|p| Point::new(p.x, p.y))
+        .collect()
+}
+
+/// Polyline approximation of a possibly curved contour, inside the compare budget.
+fn flattened_ring(contour: &Contour) -> Vec<Point> {
+    let path = contour.to_bezpath();
+    for tolerance in [0.25_f64, 1.0, 4.0, 16.0] {
+        let mut ring = Vec::new();
+        flatten(path.iter(), tolerance, |element| match element {
+            kurbo::PathEl::MoveTo(point) | kurbo::PathEl::LineTo(point) => ring.push(point),
+            _ => {}
+        });
+        if ring.len() <= MAX_SIMPLIFY_POINTS {
+            // A closed path repeats its start as the last line; drop the repeat.
+            if ring.len() > 1 && ring.first() == ring.last() {
+                ring.pop();
+            }
+            return ring;
+        }
+    }
+    model_ring(contour)
 }
 
 struct DecodedImage {
@@ -169,7 +338,9 @@ fn simplify(exact: &[Contour], tolerance: f64) -> Vec<Contour> {
         .iter()
         .map(|ring| simplify_ring(ring, tolerance))
         .collect();
-    if !preserves_topology(&original, &original) || !preserves_topology(&original, &candidates) {
+    if !preserves_topology(&original, &original, true)
+        || !preserves_topology(&original, &candidates, true)
+    {
         return exact.to_vec();
     }
     exact
@@ -265,7 +436,18 @@ fn contains(ring: &[Point], point: Point) -> bool {
     inside
 }
 
-fn preserves_topology(original: &[Vec<Point>], candidates: &[Vec<Point>]) -> bool {
+/// Whether candidate rings keep the orientation, nesting and simplicity of the originals.
+///
+/// `containment` enables the pairwise inside/outside comparison against the
+/// original rings; the orientation, spike and crossing checks always run.
+fn preserves_topology(
+    original: &[Vec<Point>],
+    candidates: &[Vec<Point>],
+    containment: bool,
+) -> bool {
+    if original.len() != candidates.len() {
+        return false;
+    }
     for (index, ring) in candidates.iter().enumerate() {
         if ring.len() < 3 || signed_area(ring) * signed_area(&original[index]) <= 0.0 {
             return false;
@@ -278,7 +460,8 @@ fn preserves_topology(original: &[Vec<Point>], candidates: &[Vec<Point>]) -> boo
             }
         }
         for (other_index, other) in candidates.iter().enumerate() {
-            if index != other_index
+            if containment
+                && index != other_index
                 && contains(&original[index], original[other_index][0]) != contains(ring, other[0])
             {
                 return false;
@@ -553,6 +736,253 @@ mod tests {
             trace_image(&data, Affine::IDENTITY, 128, 16.0).unwrap(),
             exact
         );
+    }
+
+    /// A filled disc PNG of `size` pixels, used for the curve-fitting checks.
+    fn disc(size: u32, radius: f64) -> Vec<u8> {
+        let centre = f64::from(size) / 2.;
+        let pixels: Vec<u8> = (0..size)
+            .flat_map(|y| (0..size).map(move |x| (x, y)))
+            .flat_map(|(x, y)| {
+                let inside =
+                    (f64::from(x) + 0.5 - centre).hypot(f64::from(y) + 0.5 - centre) <= radius;
+                if inside {
+                    [0, 0, 0, 255]
+                } else {
+                    [255; 4]
+                }
+            })
+            .collect();
+        png(size, size, &pixels)
+    }
+
+    fn node_count(contours: &[Contour]) -> usize {
+        contours
+            .iter()
+            .flat_map(|c| &c.points)
+            .filter(|p| p.kind != fc_model::PointKind::OffCurve)
+            .count()
+    }
+
+    #[test]
+    fn curve_fitting_beats_the_pixel_edge_result_on_a_clean_disc() {
+        let data = disc(400, 160.);
+        let exact = trace_image(&data, Affine::IDENTITY, 128, 0.0).expect("exact");
+        let polygon = trace_image(&data, Affine::IDENTITY, 128, 1.0).expect("polygon");
+        let curved = trace_image_with_options(
+            &data,
+            Affine::IDENTITY,
+            &TraceOptions {
+                tolerance: 1.0,
+                ..Default::default()
+            },
+        )
+        .expect("curved");
+        assert_eq!(curved.contours.len(), 1);
+        assert_eq!(curved.dropped, 0);
+        assert!(!curved.fallback);
+        let exact_nodes = node_count(&exact);
+        let polygon_nodes = node_count(&polygon);
+        let curved_nodes = node_count(&curved.contours);
+        assert!(
+            curved_nodes * 10 < exact_nodes,
+            "curve fit {curved_nodes} against {exact_nodes} pixel edges"
+        );
+        assert!(
+            curved_nodes < polygon_nodes,
+            "curve fit {curved_nodes} against {polygon_nodes} simplified edges"
+        );
+        assert!(
+            curved.contours[0]
+                .points
+                .iter()
+                .any(|p| p.kind == fc_model::PointKind::OffCurve),
+            "a disc must be fitted with curves"
+        );
+        // Both results describe the same disc; compare them where it matters.
+        let bounds = |contours: &[Contour]| {
+            let mut path = kurbo::BezPath::new();
+            for contour in contours {
+                path.extend(contour.to_bezpath().iter());
+            }
+            path.bounding_box()
+        };
+        let a = bounds(&exact);
+        let b = bounds(&curved.contours);
+        assert!(
+            (a.x0 - b.x0).abs() < 2.
+                && (a.y0 - b.y0).abs() < 2.
+                && (a.x1 - b.x1).abs() < 2.
+                && (a.y1 - b.y1).abs() < 2.,
+            "curve fit bounds {b:?} against pixel edges {a:?}"
+        );
+        assert!(
+            curved.max_error < 2.0,
+            "reported deviation {}",
+            curved.max_error
+        );
+    }
+
+    #[test]
+    fn curve_fitting_keeps_holes_and_their_opposite_winding() {
+        let size = 200u32;
+        let centre = f64::from(size) / 2.;
+        let pixels: Vec<u8> = (0..size)
+            .flat_map(|y| (0..size).map(move |x| (x, y)))
+            .flat_map(|(x, y)| {
+                let distance = (f64::from(x) + 0.5 - centre).hypot(f64::from(y) + 0.5 - centre);
+                if (40. ..80.).contains(&distance) {
+                    [0, 0, 0, 255]
+                } else {
+                    [255; 4]
+                }
+            })
+            .collect();
+        let data = png(size, size, &pixels);
+        let traced = trace_image_with_options(&data, Affine::IDENTITY, &TraceOptions::default())
+            .expect("ring");
+        assert_eq!(traced.contours.len(), 2);
+        assert!(!traced.fallback);
+        let signs: Vec<f64> = traced
+            .contours
+            .iter()
+            .map(|c| c.to_bezpath().area().signum())
+            .collect();
+        assert_ne!(signs[0], signs[1], "a hole must wind the other way");
+        let mut path = kurbo::BezPath::new();
+        for contour in &traced.contours {
+            path.extend(contour.to_bezpath().iter());
+        }
+        assert_eq!(path.winding(Point::new(centre, centre)), 0, "hole filled");
+        assert_ne!(
+            path.winding(Point::new(centre + 60., centre)),
+            0,
+            "ring body empty"
+        );
+    }
+
+    #[test]
+    fn the_minimum_area_filter_removes_speckle_and_keeps_the_drawing() {
+        let size = 120u32;
+        let pixels: Vec<u8> = (0..size)
+            .flat_map(|y| (0..size).map(move |x| (x, y)))
+            .flat_map(|(x, y)| {
+                let body = (20..100).contains(&x) && (20..100).contains(&y);
+                let speck = (110..112).contains(&x) && (110..112).contains(&y);
+                if body || speck {
+                    [0, 0, 0, 255]
+                } else {
+                    [255; 4]
+                }
+            })
+            .collect();
+        let data = png(size, size, &pixels);
+        let all = trace_image_with_options(&data, Affine::IDENTITY, &TraceOptions::default())
+            .expect("all");
+        assert_eq!(all.contours.len(), 2);
+        assert_eq!(all.dropped, 0);
+        let filtered = trace_image_with_options(
+            &data,
+            Affine::IDENTITY,
+            &TraceOptions {
+                min_area: 16.,
+                ..Default::default()
+            },
+        )
+        .expect("filtered");
+        assert_eq!(filtered.contours.len(), 1);
+        assert_eq!(filtered.dropped, 1);
+        assert_eq!(
+            node_count(&filtered.contours),
+            4,
+            "the square stays a square"
+        );
+    }
+
+    #[test]
+    fn invalid_autotrace_options_are_rejected_before_decoding() {
+        let data = mask(&["#"]);
+        for options in [
+            TraceOptions {
+                threshold: 0,
+                ..Default::default()
+            },
+            TraceOptions {
+                tolerance: 17.,
+                ..Default::default()
+            },
+            TraceOptions {
+                corner_angle: -1.,
+                ..Default::default()
+            },
+            TraceOptions {
+                corner_angle: 181.,
+                ..Default::default()
+            },
+            TraceOptions {
+                smoothing: 9.,
+                ..Default::default()
+            },
+            TraceOptions {
+                smoothing: f64::NAN,
+                ..Default::default()
+            },
+            TraceOptions {
+                min_area: -1.,
+                ..Default::default()
+            },
+            TraceOptions {
+                min_area: f64::INFINITY,
+                ..Default::default()
+            },
+        ] {
+            assert!(
+                trace_image_with_options(&data, Affine::IDENTITY, &options).is_err(),
+                "{options:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn curve_fitting_places_through_the_same_transform_as_exact_tracing() {
+        let data = disc(100, 40.);
+        let transform = Affine::new([2., 0.5, -0.25, -3., 10., 20.]);
+        let placed = trace_image_with_options(
+            &data,
+            transform,
+            &TraceOptions {
+                tolerance: 1.5,
+                ..Default::default()
+            },
+        )
+        .expect("placed");
+        let origin = trace_image_with_options(
+            &data,
+            Affine::IDENTITY,
+            &TraceOptions {
+                tolerance: 1.5,
+                ..Default::default()
+            },
+        )
+        .expect("origin");
+        assert_eq!(
+            placed.contours,
+            fc_geom::transform(&origin.contours, transform)
+        );
+        assert!(
+            trace_image_with_options(&data, Affine::scale(0.), &TraceOptions::default()).is_err()
+        );
+    }
+
+    #[test]
+    fn diagonal_contacts_are_not_merged_by_curve_fitting() {
+        let data = mask(&["#.", ".#"]);
+        let traced = trace_image_with_options(&data, Affine::IDENTITY, &TraceOptions::default())
+            .expect("contacts");
+        assert_eq!(traced.contours.len(), 2);
+        for contour in &traced.contours {
+            assert_eq!(contour.points.len(), 4, "a single pixel stays a square");
+        }
     }
 
     #[test]

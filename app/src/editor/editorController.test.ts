@@ -55,6 +55,7 @@ const labels: EditorLabels = {
   insertPoint: 'Insert point',
   convertSegment: 'Convert segment',
   setMetrics: 'Set metrics',
+  setVerticalMetrics: 'Set vertical metrics',
   addGuide: 'Add guide',
   lockedTarget: 'That path is locked',
   lockedGlyph: 'This glyph is locked',
@@ -321,6 +322,55 @@ describe('metric handles and ruler guides', () => {
     )
     expect(recorded.editing).toEqual([true, false])
     expect(recorded.errors).toEqual([])
+  })
+
+  it('offers the vertical metric handles only in vertical writing mode', async () => {
+    const { controller, transport } = makeController(createEditingTransport())
+    // A CJK font: the master's default vertical origin gives every glyph the
+    // two horizontal metric lines, at screen y 50 and y 350 here.
+    controller.setSource({
+      ...source(),
+      metrics: {
+        ...source().metrics,
+        verticalOrigin: 250,
+        verticalWidth: 300,
+      },
+      verticalOverrides: { origin: null, advance: null },
+    })
+
+    // Ordinary horizontal editing: the band is not a handle, so the press
+    // starts a marquee and nothing reaches the kernel.
+    controller.pointerDown(at(300, 50))
+    controller.pointerMove(at(300, 70))
+    controller.pointerUp(at(300, 70))
+    await settle()
+    expect(transport.calls).toEqual([])
+
+    controller.setVerticalMode(true)
+    controller.pointerDown(at(300, 50))
+    controller.pointerMove(at(300, 30))
+    controller.pointerUp(at(300, 30))
+    await settle()
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(
+      (transport.calls[1]?.params as { command: unknown }).command,
+    ).toEqual({
+      SetVerticalMetrics: {
+        glyph: 'a',
+        layer: 'layer-1',
+        // The layer inherits its advance, and a drag of the origin leaves
+        // that inheritance alone.
+        advance: null,
+        origin: 270,
+      },
+    })
+    expect((transport.calls[0]?.params as { label: string }).label).toBe(
+      'Set vertical metrics',
+    )
   })
 
   it('leaves a node alone even when it sits on a metric line', async () => {

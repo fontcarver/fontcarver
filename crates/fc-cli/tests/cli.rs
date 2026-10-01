@@ -295,3 +295,98 @@ fn build_and_convert_share_static_geometry_options_and_reject_inapplicable_flags
         .stderr(predicate::str::contains("round_coordinates"));
     assert_eq!(std::fs::read(existing).unwrap(), b"previous");
 }
+
+#[test]
+fn external_hinter_options_are_validated_and_shared_with_the_application() {
+    let directory = tempfile::tempdir().expect("create temporary directory");
+    let source = fc_fixtures::path("SourceSans3Min.otf");
+    let native = directory.path().join("hinted.fcf");
+    fontcarver()
+        .arg("convert")
+        .arg(&source)
+        .arg(&native)
+        .assert()
+        .success();
+
+    // The kernel owns the option rules, so its own message reaches the shell.
+    fontcarver()
+        .arg("build")
+        .arg(&native)
+        .arg(directory.path().join("bad.ttf"))
+        .args([
+            "--autohint",
+            "--hint-range-min",
+            "40",
+            "--hint-range-max",
+            "10",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "hinting range minimum exceeds its maximum",
+        ));
+    assert!(!directory.path().join("bad.ttf").exists());
+
+    fontcarver()
+        .arg("build")
+        .arg(&native)
+        .arg(directory.path().join("bad-script.ttf"))
+        .args(["--autohint", "--hint-default-script", "Latin"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("four lowercase ASCII letters"));
+
+    // An option without automatic hinting is a usage error, not a silent no-op.
+    fontcarver()
+        .arg("build")
+        .arg(&native)
+        .arg(directory.path().join("orphan.ttf"))
+        .args(["--hint-range-min", "8"])
+        .assert()
+        .failure();
+
+    // A valid set builds; this host has no ttfautohint, so the build discloses
+    // that automatic hinting did not run rather than claiming success.
+    let output = directory.path().join("hinted.ttf");
+    let valid = fontcarver()
+        .arg("build")
+        .arg(&native)
+        .arg(&output)
+        .args([
+            "--autohint",
+            "--hint-range-min",
+            "8",
+            "--hint-range-max",
+            "50",
+            "--hint-default-script",
+            "latn",
+            "--hint-strong-stem-width",
+            "gGD",
+            "--hint-info",
+            "detailed",
+            "--hint-ttfa-table",
+        ])
+        .assert()
+        .success();
+    assert!(output.exists());
+    if which_ttfautohint().is_none() {
+        valid.stderr(predicate::str::contains("autohint-unavailable"));
+    }
+
+    // A stored profile carries its own options, so mixing the two is refused.
+    fontcarver()
+        .arg("build")
+        .arg(&native)
+        .arg(directory.path().join("profile.ttf"))
+        .args(["--profile", "Web", "--autohint", "--hint-range-min", "8"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--hint-"));
+}
+
+/// Whether this host has the optional external hinter on `PATH`.
+fn which_ttfautohint() -> Option<std::path::PathBuf> {
+    std::env::split_paths(&std::env::var_os("PATH")?)
+        .map(|directory| directory.join("ttfautohint"))
+        .find(|path| path.is_file())
+}

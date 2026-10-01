@@ -8,6 +8,14 @@ pub(crate) fn state(api: &Api, params: DocParams) -> Result<CidState, ApiError> 
             generation: doc.generation,
             cid: doc.font.cid.clone(),
             glyphs: doc.font.glyph_order().map(ToString::to_string).collect(),
+            // `otf::compile` orders `.notdef` plus the exporting glyphs, and
+            // the CFF writer needs a CID for each of them.
+            exported: doc
+                .font
+                .glyph_order()
+                .filter(|name| doc.font.glyph(name).is_some_and(|glyph| glyph.export))
+                .map(ToString::to_string)
+                .collect(),
         })
         .map_err(ApiError::from)
 }
