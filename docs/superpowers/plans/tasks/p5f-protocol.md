@@ -101,3 +101,22 @@ of most rows, and the gap between "implemented" and "accepted" is your work.
 - Anything blocked and what you need from whom.
 - Final `check_artifacts.py` output and confirmation that your processes and
   scratch are gone.
+
+## Lessons from wave 1 (binding for wave 2)
+
+- Never run `agent-browser close --all`; name your session (`p5f-<area>`) and
+  close only it. Headless Chrome in this checkout needs the shell sandbox
+  disabled for agent-browser and Playwright runs.
+- `pnpm gen:api` now stages atomically, but still run it under the cargo flock.
+- The default Playwright config runs with one worker and autosave disabled;
+  e2e fixtures must close only the documents they opened. Use your own ports.
+- Give every row's acceptance a kernel-level check of invalid input and locks:
+  wave 1 reviews found data loss (encodings overwritten), lock bypasses
+  (`AlignComponents`) and read-only bypasses that unit tests had missed.
+- Shared files touched by several wave 1 tasks (`crates/fc-api/src/api.rs`,
+  `bin/gen_ts.rs`, `handlers/mod.rs`, `types/mod.rs`, `fc-doc/src/command/apply.rs`,
+  `fcf/schema.md`, `app/src/shell/builtinCommands.ts`, `app/src/i18n/en.json`):
+  re-read immediately before every edit; additive hunks only.
+- Finish with a "Review round" section in your acceptance document when a
+  reviewer's defects come back; state per item what changed and which test
+  proves it.
