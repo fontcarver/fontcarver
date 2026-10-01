@@ -14,14 +14,14 @@ tree green. You do not push, add features, or translate.
   analysis under `docs/superpowers/plans/tasks/p5f-*.md`.
 - Review outcomes (filled in by the orchestrator before this task starts):
 
-| Task | Review verdict    | Fix round result                                                                                                                                                                                                                   |
-| ---- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| g    | accept with fixes | all 6 items fixed (SetStrike lock scope, unencoded single-glyph waterfall, retained `scripts/p5f_g_bitmap_acceptance.py` 34/34, preset range to the UPM, tEXt decoding cap, deterministic e2e setup); rows 64–71, 101–103 Complete |
-| h    | accept with fixes | all 5 items fixed (range truncation with note, TSV `#` escaping and trailing spaces, keyed rejection reasons, three-state `dlig` test, stepping hint); rows 73–76, 95, 109, 111 (proofing) Complete                                |
-| j    |                   |                                                                                                                                                                                                                                    |
-| k    |                   |                                                                                                                                                                                                                                    |
-| l    | accept with fixes | all 5 items fixed plus a VerticalMetricsPanel stale-override defect found by new e2e; rows 19, 110, 111 (Edit View/VORG), 112 Complete with stated limits                                                                          |
-| m    | accept with fixes | all 5 items fixed (quick-help button reachable by pointer and keyboard, spelling, a11y guards, `--bm-*` test); rows 80, 107, 108 Complete                                                                                          |
+| Task | Review verdict    | Fix round result                                                                                                                                                                                                                            |
+| ---- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| g    | accept with fixes | all 6 items fixed (SetStrike lock scope, unencoded single-glyph waterfall, retained `scripts/p5f_g_bitmap_acceptance.py` 34/34, preset range to the UPM, tEXt decoding cap, deterministic e2e setup); rows 64–71, 101–103 Complete          |
+| h    | accept with fixes | all 5 items fixed (range truncation with note, TSV `#` escaping and trailing spaces, keyed rejection reasons, three-state `dlig` test, stepping hint); rows 73–76, 95, 109, 111 (proofing) Complete                                         |
+| j    |                   |                                                                                                                                                                                                                                             |
+| k    | accept with fixes | 6 items (CFF2 private delta basis, flex-end hint mask dropped, autohint dropping flex/dot sections, bare-CFF warning, TT autohint field ranges, remove-button names) plus CLI ttfautohint options; fix round pending at the time of writing |
+| l    | accept with fixes | all 5 items fixed plus a VerticalMetricsPanel stale-override defect found by new e2e; rows 19, 110, 111 (Edit View/VORG), 112 Complete with stated limits                                                                                   |
+| m    | accept with fixes | all 5 items fixed (quick-help button reachable by pointer and keyboard, spelling, a11y guards, `--bm-*` test); rows 80, 107, 108 Complete                                                                                                   |
 
 A row becomes **Complete** in `docs/p5-feature-audit.md` only when its
 acceptance document recommends Complete and no blocking review defect for
