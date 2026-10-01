@@ -54,3 +54,10 @@ Follow `p5f-integration.md` steps 1–6 with these wave 2 specifics:
    counts before/after, commit hashes, and anything left failing or deferred.
 
 ## Appended notes
+
+- Task m's English wording edit `kerningTable.classRule` ("Class" → "Group")
+  breaks task d's `app/src/views/text/KerningTable.test.tsx` expectation; update
+  the test string (narrow patch).
+- Task h fixed the `text.spec.ts:122` regression: it was the cold first
+  `text.shape` compile (about 4 s), not dropped input; the spec now waits on
+  `data-text-shaping`. Correct `docs/TODO.md` accordingly.
