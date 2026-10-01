@@ -126,6 +126,34 @@ Editing it changes the advance and retains the origin. These fields include
 component bounds and are disabled for glyphs without an outline. Resetting to
 master metrics also resets the derived sidebearings. CFF exports write edited
 origins into `VORG` and recompute vertical sidebearings from the compiled ink.
+`VORG` records only the glyphs whose origin differs from the font's default
+origin; every other glyph reads that default.
+
+## Vertical writing mode in the Edit View
+
+**View → Vertical Writing Mode** makes the vertical origin and the vertical
+advance the canvas's primary metrics: both lines are drawn solid and labelled,
+and the vertical advance box is outlined around the glyph. The mode is
+remembered like the other overlay switches and has no effect on a font without
+vertical metrics, where neither line exists.
+
+In vertical mode the two horizontal lines are also draggable handles. They are
+drawn whenever the font has vertical metrics, but they take a press only in this
+mode: they run the whole width of the canvas and outrank segments and
+components, so in ordinary horizontal editing of a CJK font they would otherwise
+put two bands in front of the outline.
+
+- Dragging the **vertical origin** line moves the origin. Hold Shift for
+  ten-unit steps.
+- Dragging the **vertical advance** line below it changes the advance; pulling
+  it down lengthens the advance.
+
+A drag is one history entry, Escape abandons it, and the readout shows the live
+value. A drag writes only the metric it owns: the other one is sent exactly as
+the layer stores it, so dragging the origin of a glyph that inherits its advance
+from the master leaves that inheritance in place. The drag clamps to the ranges
+OpenType allows, and locked-spacing mode disables the handles exactly as it
+disables the inspector fields.
 
 Choose top-to-bottom direction in text preview. `vert`/`vrt2` alternates and
 `vkrn` are enabled according to the feature controls; explicitly disabled
@@ -156,5 +184,57 @@ positioned before selected composites.
 `CID glyphName` lines. Identity auto-fill is available only for Adobe-Identity.
 CID 0 belongs to `.notdef`; duplicate IDs or glyph assignments are invalid.
 Optional CID ordering places mapped glyphs numerically and keeps unmapped
-relative order. CID-keyed CFF export requires complete mappings for exported
-glyphs. Rename/delete and undo maintain CID references.
+relative order. The dialog counts the glyphs that still have no CID and names
+the first few. CID-keyed CFF export requires a mapping for every glyph it
+orders — `.notdef` plus the glyphs that export — and refuses the whole font
+otherwise; a glyph that does not export never needs a CID and is never counted. Rename/delete and undo
+maintain CID references. The grid's **CID** sort order lists glyphs by their
+mapped CID, with unmapped glyphs last.
+
+A CID-keyed export writes one FontDICT per private dictionary: the master's own
+dictionary is FontDICT 0 and each entry of the CFF private-dictionary list adds
+another, selected per glyph in the Hints inspector. The written font carries the
+matching FDArray and FDSelect, which is how a CJK font gives its ideographs
+their own stem widths and `LanguageGroup 1` while Latin glyphs keep theirs.
+
+## Building CJK characters from components
+
+The glyph inspector's **CJK construction** section builds a character out of
+existing glyphs.
+
+**Radical library.** The **Radicals** tab lists all 214 Kangxi radicals in
+radical order. Each entry shows the radical's own drawing when this font has it,
+its radical number, its recorded stroke count, its Unicode scalar and how many
+glyphs of this font use that radical. The radicals, the variant forms that write
+them — 人 with 亻, 水 with 氵 and 氺, 言 with 訁 and 讠 — and the stroke counts all
+come from the shipped Unicode Unihan data, not from a hand-written list. Search
+by radical number, stroke count, character, glyph name or `U+XXXX`, and switch
+off **Only forms this font has** to see the forms the font is still missing. The
+**Font components** tab lists the glyphs this font already uses as components,
+most used first. Picking from either tab appends it to the IDS input: by glyph
+name when the font has the glyph, by character when it does not.
+
+**Ideographic description sequences.** Type a sequence with the twelve original
+description operators ⿰ ⿱ ⿲ ⿳ ⿴ ⿵ ⿶ ⿷ ⿸ ⿹ ⿺ ⿻, nested as deeply as needed, with
+characters or `[glyph.name]` leaves. **Preview IDS** resolves every leaf in the
+current master and lays the components out in the em; it reports a missing,
+ambiguous, empty, zero-width or self-referencing leaf instead of guessing.
+**Append components** adds them to the active layer as ordinary components in
+one history entry. A document change makes a pending preview stale. Newer
+description operators are rejected explicitly. The layouts are geometric
+starting positions for manual refinement, not optical decomposition, and no
+per-character decomposition database is bundled: the sequence is yours to type
+or to assemble from the library.
+
+**Component transforms.** The grid below the IDS input edits the position, the
+scale and the two shear coefficients of every component in the layer. The
+numbers are staged: the preview above the fields follows them immediately,
+**Apply transforms** writes every changed component as a single history entry,
+and **Revert transforms** discards them. An entry typed back to its stored value
+stops counting as a change, a non-numeric entry is refused by the field, and a
+scale that would collapse a component to nothing is refused with the reason. A
+reload that changed the component list drops the staged numbers rather than
+applying them to different components.
+
+Components survive export as components, or are flattened into the outline when
+the export options ask for decomposition.

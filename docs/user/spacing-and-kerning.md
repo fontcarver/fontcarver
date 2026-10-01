@@ -68,7 +68,9 @@ row cannot be left inheriting the formula it just replaced.
   button.
 
 Saved proof strings live in the **Proof library** panel of the same tab; pick one
-to load its text, script, language and direction.
+to load its text, script, language and direction, or press `↑` and `↓` to step
+through them without leaving the spacing keys. See
+[Previewing and proofing text](proofing.md).
 
 ## Spacing shortcuts
 

@@ -9,6 +9,20 @@ and proposed kerning values. Review the changes, then **Apply** records the batc
 as one undo step. Changing the options discards the preview. A document edit
 made after preview requires another preview before application.
 
+## Accepting and rejecting single proposals
+
+The preview lists every proposed change in a review table: the glyph or the
+pair, its master, and the values before and after. Each row has an **Accept**
+box, ticked to begin with. Clear a row to leave that layer or that pair
+unchanged. **Accept all** and **Reject all** act on every row, not just the ones
+on screen; a large proposal is shown a window at a time, with **Show more rows**.
+
+Applying sends exactly the accepted rows, so spacing one glyph of a selection or
+taking half the proposed pairs is one undo step like any other. A row the kernel
+no longer proposes — because the document changed after the preview — is refused
+by name and nothing is applied, so a review of a stale document cannot write
+something it did not show. Clearing every row disables **Apply**.
+
 Spacing measures the resolved outlines, including components and live geometry.
 It compares the left and right curve silhouettes to a density-scaled space
 budget, so round and slanted edges can receive different sidebearings from

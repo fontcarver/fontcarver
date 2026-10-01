@@ -10,20 +10,20 @@ tools or interaction model. FontCarver tools still use tap to select and a
 200 ms hold to borrow until release. The palette displays the effective binding;
 an unbound tool remains available by clicking it.
 
-| FontCarver tool | Glyphs | FontLab | RoboFont |
-| --- | --- | --- | --- |
-| Select | V | A | 1 |
-| Pen | P | P | 2 |
-| Pencil | B | N | default |
-| Knife | E | J | 3 |
-| Rectangle | F | I | default |
-| Ellipse | Shift+F | O | default |
-| Measure | L | default | 4 |
-| Rotate | R | R | default |
-| Scale | S | S | default |
-| Zoom | Z | default | default |
-| Hand | H | default | default |
-| Text | T | T | default |
+| FontCarver tool | Glyphs  | FontLab | RoboFont |
+| --------------- | ------- | ------- | -------- |
+| Select          | V       | A       | 1        |
+| Pen             | P       | P       | 2        |
+| Pencil          | B       | N       | default  |
+| Knife           | E       | J       | 3        |
+| Rectangle       | F       | I       | default  |
+| Ellipse         | Shift+F | O       | default  |
+| Measure         | L       | default | 4        |
+| Rotate          | R       | R       | default  |
+| Scale           | S       | S       | default  |
+| Zoom            | Z       | default | default  |
+| Hand            | H       | default | default  |
+| Text            | T       | T       | default  |
 
 The Glyphs preset includes New (`Mod+N`), Save (`Mod+S`) and Save As
 (`Mod+Shift+S`). FontLab and RoboFont also include Open (`Mod+O`), Undo
@@ -63,3 +63,19 @@ modifiers. Text fields and open dialogs keep ownership of typing.
 The FontLab subset unbinds FontCarver’s Annotation tool so that its default A
 does not conflict with FontLab-style Select. The annotation tool remains
 available from the tool strip and can be assigned another key in the editor.
+
+## Presets and conflicts
+
+Loading a preset replaces the whole draft, including any conflicts you had
+deliberately allowed: a preset is a clean starting point, not a patch. The three
+subsets are checked against the shipped defaults and against each other by
+`src/shell/keymapIntegration.test.ts`, which fails if a preset introduces a
+conflict in a context where both bindings are live, so none of them needs an
+allowance to be applied.
+
+The strike editor's pixel tools use plain single keys (B, E, L, R, O, G, M, I, H)
+and the outline editor's tools use their own (V, P, B, E, F, ⇧F, L, R, S, Z, H, T).
+They overlap on paper and never in practice: a pixel tool is live only while a
+Bitmap tab is mounted and an outline tool only on an Edit tab, so the editor
+treats them as different contexts and reports no conflict. Rebinding one does not
+free the other.

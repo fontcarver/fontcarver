@@ -1,0 +1,210 @@
+{
+  "fonttools": "4.63.0",
+  "freetype": [2, 13, 2],
+  "complete": true,
+  "rows": {
+    "87": {
+      "band": 1.0,
+      "cases": [
+        {
+          "taper-ellipse": {
+            "nib": "ellipse",
+            "cap": "butt",
+            "join": "bevel",
+            "progression": "linear",
+            "sampled": 1400,
+            "exports": {
+              "Ttf": {
+                "fonttools_mismatches": 0,
+                "freetype_mismatches": 0
+              },
+              "Otf": {
+                "fonttools_mismatches": 0,
+                "freetype_mismatches": 0
+              }
+            }
+          }
+        },
+        {
+          "height-only": {
+            "nib": "ellipse",
+            "cap": "butt",
+            "join": "bevel",
+            "progression": "linear",
+            "sampled": 1400,
+            "exports": {
+              "Ttf": {
+                "fonttools_mismatches": 0,
+                "freetype_mismatches": 0
+              },
+              "Otf": {
+                "fonttools_mismatches": 0,
+                "freetype_mismatches": 0
+              }
+            }
+          }
+        },
+        {
+          "angle-rectangle": {
+            "nib": "rectangle",
+            "cap": "butt",
+            "join": "bevel",
+            "progression": "linear",
+            "sampled": 1400,
+            "exports": {
+              "Ttf": {
+                "fonttools_mismatches": 0,
+                "freetype_mismatches": 0
+              },
+              "Otf": {
+                "fonttools_mismatches": 0,
+                "freetype_mismatches": 0
+              }
+            }
+          }
+        },
+        {
+          "smooth-progression": {
+            "nib": "ellipse",
+            "cap": "butt",
+            "join": "bevel",
+            "progression": "smooth",
+            "sampled": 1400,
+            "exports": {
+              "Ttf": {
+                "fonttools_mismatches": 0,
+                "freetype_mismatches": 0
+              },
+              "Otf": {
+                "fonttools_mismatches": 0,
+                "freetype_mismatches": 0
+              }
+            }
+          }
+        },
+        {
+          "cap-round": {
+            "nib": "ellipse",
+            "cap": "round",
+            "join": "bevel",
+            "progression": "linear",
+            "sampled": 1400,
+            "exports": {
+              "Ttf": {
+                "fonttools_mismatches": 0,
+                "freetype_mismatches": 0
+              },
+              "Otf": {
+                "fonttools_mismatches": 0,
+                "freetype_mismatches": 0
+              }
+            }
+          }
+        },
+        {
+          "cap-square": {
+            "nib": "rectangle",
+            "cap": "square",
+            "join": "bevel",
+            "progression": "linear",
+            "sampled": 1400,
+            "exports": {
+              "Ttf": {
+                "fonttools_mismatches": 0,
+                "freetype_mismatches": 0
+              },
+              "Otf": {
+                "fonttools_mismatches": 0,
+                "freetype_mismatches": 0
+              }
+            }
+          }
+        },
+        {
+          "join-round": {
+            "nib": "ellipse",
+            "cap": "butt",
+            "join": "round",
+            "progression": "linear",
+            "sampled": 1400,
+            "exports": {
+              "Ttf": {
+                "fonttools_mismatches": 0,
+                "freetype_mismatches": 0
+              },
+              "Otf": {
+                "fonttools_mismatches": 0,
+                "freetype_mismatches": 0
+              }
+            }
+          }
+        },
+        {
+          "join-miter": {
+            "nib": "rectangle",
+            "cap": "butt",
+            "join": "miter",
+            "progression": "linear",
+            "sampled": 1400,
+            "exports": {
+              "Ttf": {
+                "fonttools_mismatches": 0,
+                "freetype_mismatches": 0
+              },
+              "Otf": {
+                "fonttools_mismatches": 0,
+                "freetype_mismatches": 0
+              }
+            }
+          }
+        },
+        {
+          "join-bevel": {
+            "nib": "rectangle",
+            "cap": "butt",
+            "join": "bevel",
+            "progression": "linear",
+            "sampled": 1400,
+            "exports": {
+              "Ttf": {
+                "fonttools_mismatches": 0,
+                "freetype_mismatches": 0
+              },
+              "Otf": {
+                "fonttools_mismatches": 0,
+                "freetype_mismatches": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "93": {
+      "band": 3.0,
+      "straight_segments": 12,
+      "curve_nodes": 36,
+      "curve_segments": 24,
+      "polygon_nodes": 315,
+      "max_error": 1.5033896150551915,
+      "fallback": false,
+      "sampled": 4000,
+      "mismatches": 0
+    },
+    "82": {
+      "bounds": {
+        "A": [0, 0, 100, 100],
+        "B": [0, 0, 300, 100],
+        "C": [0, 0, 100, 700]
+      }
+    },
+    "97": {
+      "gvar_peaks": [0.5, 1.0],
+      "avar": {},
+      "instances": {
+        "100.0": [0, 0, 100, 700],
+        "500.0": [0, 0, 400, 700],
+        "900.0": [0, 0, 400, 700]
+      }
+    }
+  }
+}

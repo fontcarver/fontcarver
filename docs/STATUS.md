@@ -4,50 +4,77 @@ The single entry point for "where is the project". Update this file at every
 pause and every milestone commit. It links to the detailed records; it does
 not repeat them.
 
-Last updated: 2026-09-30. Branch: `p5-color-authoring` (committed locally; no
-push, no `main` merge). The user requested finishing the work in hand, updating
-the progress records and stopping. Completion wave 1 is finished, verified,
-recorded and committed; wave 2 is planned and **not started**.
+Last updated: 2026-10-01. Branch: `p5-color-authoring` (committed locally; no
+push, no `main` merge). Completion waves 1 and 2 of the
+[P5 completion plan](superpowers/plans/2026-09-30-p5-completion.md) are
+finished, verified, recorded and committed. What remains of P5 is wave 3:
+the two Partial rows, the release rebuild and its licensing, native macOS and
+Windows execution, and the final row-by-row gate — all recorded in
+[TODO](TODO.md).
 
-The batch implements variable pen editing, document comparison/paste/merge,
-scripting/plugins, interchange/export workflows, shell workspaces, proofing,
-glyph/editor/bitmap/CJK workflows, hint preservation and release definitions.
-The full frontend regression passes **2,233 tests in 289 files**. TypeScript,
-ESLint, Prettier and the production build pass. Rust has 1,710 distinct passes across the full run and
-repair rerun, with two existing ignored gates; final Clippy passes. This is substantial implemented
-work, not acceptance of every P5 requirement or native platform.
+The [feature audit](p5-feature-audit.md), the P5 exit gate, now reads
+**110 Complete, 2 Partial, 0 Pending verification** of 112 rows, from
+75 / 5 / 32 after wave 1 and 3 / 3 / 106 before it. Every accepted row links an
+acceptance document carrying its commands, browser evidence and limits; no row
+is closed by a passing test suite alone. The effort
+[estimate](progress-estimate.md) is reassessed at **about 77%, range 70–85%**.
 
-That batch's own effort estimate was **about 60%, range 50–70%**; after wave 1 the
-[estimate](progress-estimate.md) is reassessed at **about 70%, range 60–80%**, and
-[TODO](TODO.md) records the remaining scope.
-
-**2026-09-30, later:** the P5 completion drive started
-([plan](superpowers/plans/2026-09-30-p5-completion.md)) and its **wave 1 is
-integrated**. Eight area agents (shell, glyph inventory, outline editor,
+**Wave 1 (2026-09-30)** — shell, glyph inventory, outline editor,
 metrics/spacing/kerning, OpenType features, font info/design space/export/CLI,
-cross-document/scripting/plugins, release packaging) implemented their rows, were
-reviewed ("accept with fixes" in every case), completed their fix rounds, and a
-zh-CN translation pass followed ([pass 1](p5f-localization-pass1.md),
-[pass 2](p5f-localization-pass2.md)). The integration commits are
-`a4b701d` (code) and the `docs(p5)` commit that follows it; the resumed
-batch baseline is `6539b13` / `040609f`.
+cross-document/scripting/plugins and release packaging. Eight area agents
+implemented their rows, were reviewed ("accept with fixes" in every case),
+completed their fix rounds, and a two-pass zh-CN translation followed
+([1](p5f-localization-pass1.md), [2](p5f-localization-pass2.md)). Integration
+commits `a4b701d` (code) and `976d213` (docs); the resumed batch baseline is
+`6539b13` / `040609f`.
 
-Integrated verification, all run in one pass on this checkout:
-`cargo fmt --all` clean; `cargo clippy --workspace --all-targets -- -D warnings`
-clean; `cargo test --workspace --no-fail-fast` **1,978 passed, 0 failed, 2
-ignored** over 271 test binaries; `pnpm check` (tsc) and `pnpm lint` (ESLint)
-clean; `prettier --check .` clean; Vitest **2,517 tests in 314 files**, all
-passing, including the zh-CN parity test (3,524 keys each side); the production
-build succeeds. Playwright: the default configuration runs its 81 specs on one worker and skips the CJK spec, whose corpus lives outside the repository. The last two full runs passed 79 and 78 of the 80 that execute; the cases that come and go are `text.spec.ts:122` and two P2b specs, all three recorded in [TODO](TODO.md). The three dedicated configurations pass in full: `e2e/p2a.config.ts` 11/11, `e2e/p2b.config.ts` 17/17, `e2e/p2cd.config.ts` 8/8.
+**Wave 2 (2026-10-01)** — bitmap fonts, preview/proofing, construction and
+images, hinting completion, CJK completion, and help/keymaps/theming/accessibility.
+Six area agents (`docs/p5f-{g,h,j,k,l,m}-*-acceptance.md`) implemented rows 19,
+61, 64–76, 80, 82–83, 85–87, 92–95, 97–98, 101–103 and 107–112, were reviewed
+("accept with fixes" in every case: 6 + 5 + 7 + 7 + 5 + 5 review items, plus a
+`VerticalMetricsPanel` stale-override defect task l's own new e2e case found),
+completed their fix rounds, and a two-pass zh-CN translation followed
+([1](p5f-localization-wave2-pass1.md), [2](p5f-localization-wave2-pass2.md);
+the Chinese catalogue is 3,936 keys against the same English set). The
+integration commits are `9b72af8` (code) and the `docs(p5)` commit
+that follows it, and the wave is summarised in
+[the wave 2 checkpoint](p5f-wave2-checkpoint.md).
 
-The [feature audit](p5-feature-audit.md) now reads **75 Complete, 5 Partial, 32
-Pending verification** of 112 rows, from 3/3/106 before the wave; every accepted
-row links its acceptance document. The effort estimate is reassessed at **about
-70%, range 60–80%** ([estimate](progress-estimate.md)). Per-area detail lives in
-`docs/p5f-{a,b,c,d,e,f,i,n}-*-acceptance.md`, the state of the wave while it ran
-in [the wave 1 checkpoint](p5f-wave1-checkpoint.md), and the remaining scope in
-[TODO](TODO.md). Wave 2 (bitmap, proofing, construction, hinting, CJK, help) is
-planned and not started.
+Integrated verification of wave 2, all run in one pass on this checkout:
+`cargo fmt --all --check` clean; `cargo clippy --workspace --all-targets -- -D warnings`
+clean; `cargo test --workspace --no-fail-fast` **2,086 passed, 0 failed, 2
+ignored** over 277 test binaries; `pnpm check` (tsc) and `pnpm lint` (ESLint)
+clean; `prettier --check .` clean; Vitest **2,775 tests in 339 files**, all
+passing, including the zh-CN parity test (3,936 keys each side); the production
+build succeeds.
+Playwright: the default configuration holds 95 specs, runs them on one worker
+and skips the CJK spec whose corpus lives outside the repository. Two full runs
+were made, the second after the fixes above, and each passed **91 of the 94 that
+execute** — but on a different three. The first run failed
+`app.spec.ts:217` and `p2a-kerning.spec.ts:546` (both fixed here, and both pass
+in a targeted rerun) and `p2b-imported.spec.ts:75`; the second failed
+`fontview.spec.ts:303` (a grid cell detached during virtualisation),
+`panels.spec.ts:108` (an Edit tab not yet created) and `p2b-source.spec.ts:26`
+(a draft read back undefined). All three of the latter passed in the other run;
+they are shared-document and virtualisation timing failures of that one
+configuration, recorded in [TODO](TODO.md), not product defects demonstrated
+twice. The three dedicated configurations pass in full: `e2e/p2a.config.ts`
+11/11, `e2e/p2b.config.ts` 17/17, `e2e/p2cd.config.ts` 8/8.
+
+Two regressions were found and fixed while integrating, both where a wave 2
+change met another task's test: the File menu's disabled rows carry their reason
+as `aria-description` and an inline hint now that Quick Help owns hovering, so
+`App.test.tsx` asserts that instead of the dropped native `title`; and
+`useFontEditorSettings.test.ts` read the hook's value in the same tick as the
+refetch it had just triggered, which the hook answers one microtask later, so
+the assertion is now awaited. `KerningTable.test.tsx` was updated to task m's
+"Group" wording.
+
+The batch that preceded the waves implements variable pen editing, document
+comparison/paste/merge, scripting/plugins, interchange/export workflows, shell
+workspaces, proofing, glyph/editor/bitmap/CJK workflows, hint preservation and
+release definitions. Its own effort estimate was **about 60%, range 50–70%**.
 
 ## Phases
 
@@ -68,22 +95,26 @@ release packaging are unverified for every phase.
 
 ## P5 checkpoint
 
-The [feature audit](p5-feature-audit.md) remains the exit gate: **75 Complete, 5
-Partial, 32 Pending verification**. Rows 84, 88 and 104 retain their earlier
-documented scope; the 72 rows accepted in wave 1 each carry an acceptance
-document, a review and a fix round, and no row is closed by a passing test suite
-alone. The five Partial rows are 9 and 62 (no native macOS or Windows execution;
-AppImage payload licensing unresolved), 61 and 98 (hinting, wave 2 task `k`) and
-87 (non-destructive strokes, wave 2 task `j`). Thirteen historical acceptance
-candidates are identified in [the reconciliation](p5-resume-audit.md); new bounded
-implementations and browser evidence are linked from [the batch
+The [feature audit](p5-feature-audit.md) remains the exit gate: **110 Complete,
+2 Partial, 0 Pending verification**. Rows 84, 88 and 104 retain their earlier
+documented scope; the 107 rows accepted across the two waves each carry an
+acceptance document, a review and a fix round. The two Partial rows are **9**
+(no native macOS or Windows execution) and **62** (the same, plus the AppImage
+copyleft payload licensing and an `apt install` that has only been simulated by
+extraction). Thirteen historical acceptance candidates are identified in
+[the reconciliation](p5-resume-audit.md); new bounded implementations and
+browser evidence are linked from [the batch
 checkpoint](p5-resume-integration.md).
 
 MATH, static SVG/COLRv1 authoring, styles, stored masks and numeric smart corners
 retain their earlier acceptance records. Variable pen parameters now have real
-API/browser editing, bake/undo and native save/reopen evidence. Broader geometry
-and independent export acceptance limits remain explicit. Static color glyphs
-now render in grid/text previews; variable paints and color proof export remain open.
+API/browser editing, bake/undo, native save/reopen and independent stroker
+evidence in TTF and OTF (row 87). Static color glyphs render in grid/text
+previews and in the proofing surfaces; variable paints and color proof sheets
+remain open. The limits each wave 2 acceptance document states — one brightness
+threshold for autotrace, sampled optical spacing, affine attachment placement,
+static-only TrueType glyph programs, no bundled IDS database — are listed in
+[TODO](TODO.md).
 
 Release configuration and license/helper checks are implemented. Actual FontCarver
 installers and native macOS/Windows workflows remain unverified. Native/global
@@ -92,8 +123,8 @@ its deployment and first release download links remain pending.
 
 The batch used excessive recursive delegation. All delegated implementations are
 finished; centralized acceptance supersedes their earlier queued/cancelled-test
-notes only where the final report explicitly records a pass. No additional
-feature batch is authorized by this stopping checkpoint.
+notes only where the final report explicitly records a pass. Wave 3 is scoped in
+[TODO](TODO.md) and is not started.
 
 ## Where things are written
 

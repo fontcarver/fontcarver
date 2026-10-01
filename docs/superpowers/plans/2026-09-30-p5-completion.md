@@ -44,7 +44,7 @@ in different waves.
 | 2    | `tasks/p5f-k-hinting.md`      | Hinting completion                       | 61, 98                             |
 | 2    | `tasks/p5f-l-cjk.md`          | CJK completion                           | 19, 110, 111 (edit view), 112      |
 | 2    | `tasks/p5f-m-help.md`         | Help, keymaps, theming, accessibility    | 80, 107, 108                       |
-| 3    | follow-ups from reviews       | Remaining Partial rows                   | as reported                        |
+| 3    | follow-ups from reviews       | Remaining Partial rows 9 and 62          | native macOS/Windows, AppImage     |
 | 3    | final acceptance              | Row-by-row gate, docs, estimate, release | all                                |
 
 Rows 84, 88 and 104 are already Complete and keep their records.
@@ -62,9 +62,29 @@ native macOS/Windows execution and AppImage payload licensing. Integrated
 verification is listed in [STATUS](../../STATUS.md); per-row evidence is in
 `docs/p5f-{a,b,c,d,e,f,i,n}-*-acceptance.md`.
 
-**Wave 2 is not started.** The user asked for the work in hand to be finished,
-the records updated, and a stop; nothing in this plan authorises beginning
-wave 2 without a new explicit instruction.
+## Wave 2: done, 2026-10-01
+
+All six area tasks were implemented, reviewed ("accept with fixes" in every
+case) and fix-rounded; a two-pass zh-CN translation followed
+([1](../../p5f-localization-wave2-pass1.md),
+[2](../../p5f-localization-wave2-pass2.md)). The integration pass then verified
+the whole tree (`cargo fmt --all --check`, Clippy over the workspace,
+`cargo test --workspace --no-fail-fast` 2,086 passed / 0 failed / 2 ignored,
+`tsc`, ESLint, Prettier, Vitest 2,774 tests in 339 files, the production build,
+and Playwright per configuration), fixed the two cross-task test regressions it
+found, updated the records and committed `9b72af8` (code) followed by
+the `docs(p5)` commit that records the acceptance and status. Result: the audit
+moves from 75 Complete / 5 Partial / 32 Pending verification to **110 Complete /
+2 Partial / 0 Pending verification**, with all 35 of the wave's rows accepted.
+Integrated verification is listed in [STATUS](../../STATUS.md); per-row evidence
+is in `docs/p5f-{g,h,j,k,l,m}-*-acceptance.md` and the wave is summarised in
+[the wave 2 checkpoint](../../p5f-wave2-checkpoint.md).
+
+**Wave 3 is not started.** What it covers — rows 9 and 62, the AppImage copyleft
+payload licensing, a release rebuild from this code, native macOS and Windows
+execution, the English wording items from the translation reports and the final
+row-by-row gate — is recorded in [TODO](../../TODO.md). Nothing in this plan
+authorises beginning it without a new explicit instruction.
 
 ## Per-area cycle
 
