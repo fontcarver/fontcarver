@@ -61,3 +61,10 @@ Follow `p5f-integration.md` steps 1–6 with these wave 2 specifics:
 - Task h fixed the `text.spec.ts:122` regression: it was the cold first
   `text.shape` compile (about 4 s), not dropped input; the spec now waits on
   `data-text-shaping`. Correct `docs/TODO.md` accordingly.
+- Translation wave 2 pass 1 (`docs/p5f-localization-wave2-pass1.md`) flagged
+  English wording to record in `docs/TODO.md` (do not edit en.json here):
+  `proofPreview.sizesHint` says "steps" where sibling keys say "sizes";
+  `bitmapParity.transferHint` says "Nearest" but the option reads "Nearest
+  pixel"; `contextHelp.topics.workspace.third` says "Manage Workspaces" but
+  the command reads "Workspaces…"; straight and curly apostrophes are mixed.
+  (`construction.magnetHud`/`magnetSnapHud` plurals go to task j's fix round.)
