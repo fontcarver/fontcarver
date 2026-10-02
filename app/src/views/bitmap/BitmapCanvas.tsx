@@ -98,6 +98,24 @@ export function BitmapCanvas({
   const unitsPerPixel =
     upm && ppem && upm > 0 && ppem > 0 ? upm / ppem : undefined
   useEffect(() => {
+    // The editor can finish loading after its opening menu has closed. Hand
+    // keyboard ownership to the new canvas, but respect anywhere the user
+    // moved while waiting, including another open menu or a modal dialog.
+    if (
+      useUiStore.getState().modalCount > 0 ||
+      document.querySelector('[role="menu"], [aria-modal="true"]')
+    )
+      return
+    const focused = document.activeElement
+    if (
+      focused === document.body ||
+      focused?.matches(
+        '[role="menubar"] [role="menuitem"][aria-haspopup="menu"][aria-expanded="false"]',
+      )
+    )
+      ref.current?.focus({ preventScroll: true })
+  }, [])
+  useEffect(() => {
     const canvas = ref.current
     if (!canvas) return
     const style = getComputedStyle(canvas)
