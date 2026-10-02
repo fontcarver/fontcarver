@@ -34,9 +34,10 @@ Frontend **2,914 tests / 348 files**, type checking, lint, Prettier and producti
 build pass ([output](acceptance/p5ux/zoom-200/frontend.log)). The earlier complete
 105-case E2E milestone was not rerun or relabelled as 109 passing cases.
 
-The English global menu's Help title extends to x=703.68 beyond the 683-pixel
-viewport ([measurement](acceptance/p5ux/zoom-200/menu-followup.json)); this
-separate shell issue is in [TODO](TODO.md). Hardware high-DPI, other dialogs and
+This check found the English global menu's Help title extending to x=703.68
+beyond the 683-pixel viewport
+([measurement](acceptance/p5ux/zoom-200/menu-followup.json)); the subsequent
+[menu repair](p5ux-menu-zoom-acceptance.md) closes that issue. Hardware high-DPI, other dialogs and
 larger zoom levels remain unverified. Existing `f6f6cf9` installers predate this
 CSS change. No translation keys or dependencies changed.
 

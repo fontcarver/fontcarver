@@ -10,7 +10,10 @@
      widest row's max-content, and a wide view would push the page sideways. */
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows:
-    var(--menubar-height) var(--tabbar-height) minmax(0, 1fr)
+    minmax(var(--menubar-height), max-content) var(--tabbar-height) minmax(
+      0,
+      1fr
+    )
     var(--statusbar-height);
 }
 
@@ -38,8 +41,10 @@
  */
 .progressLine {
   position: absolute;
+  grid-column: 1;
+  grid-row: 3;
   z-index: 2;
-  top: calc(var(--menubar-height) + var(--tabbar-height));
+  top: 0;
   right: 0;
   left: 0;
   height: 2px;

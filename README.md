@@ -50,8 +50,9 @@ are also complete. The latest browser walkthrough improved compact layouts,
 editing gestures, shortcuts and focus; the welcome page now links directly to
 getting-started help, command search and shortcut settings.
 The later [200% zoom check](docs/p5ux-zoom-acceptance.md) fixes long command-palette
-text and adds four targeted browser regressions; the complete 105-case run above
-belongs to the earlier milestone.
+text, and the [menu repair](docs/p5ux-menu-zoom-acceptance.md) keeps Help and its
+popup inside the window. Their eight targeted browser regressions pass together;
+the complete 105-case run above belongs to the earlier milestone.
 
 Actual Linux deb and thin AppImage candidates from `f6f6cf9` have been rebuilt and verified,
 including isolated APT install/reinstall/removal and AppImage startup.

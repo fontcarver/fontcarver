@@ -17,6 +17,13 @@ out, so extra views open as named browser popups instead. A browser that blocks
 popups reports that the window could not be opened and the view stays where it
 was.
 
+## Menus in small windows
+
+When zoom or a narrow window leaves less room, the FontCarver wordmark gives
+way to the menu titles. Menus wrap onto another row when needed, and their
+popups stay inside the window. Focus a menu title and use Left/Right to move
+between menus, Enter to open one and Escape to close it.
+
 ## The tab strip
 
 Every document's tabs form one run in the strip, and its **Overview** tab is

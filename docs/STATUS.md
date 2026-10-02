@@ -22,15 +22,19 @@ Documentation verification passed: visual inspection of the reused captures,
 checks. Application/tooling inputs are unchanged; no application tests were rerun
 for this documentation task.
 
-The latest bounded follow-up verifies welcome and command palette at actual
+The earlier bounded follow-up verifies welcome and command palette at actual
 200% browser zoom in English/Chinese and light/dark, repairs clipped command
 names and adds four passing reflow cases. See [zoom acceptance](p5ux-zoom-acceptance.md).
-The final frontend rerun passes 2,914 tests / 348 files, type/lint/format and build.
-Its private browser/servers and 37.8 MB of temporary data are cleaned; resource
-check passes at 5.33 GiB build, 0.00 GiB temporary and 616.31 GiB free.
-The separate global-menu overflow found there is recorded in TODO. Existing
-Linux candidates below predate this CSS repair and remain the earlier package
-checkpoint. The user requested stopping after this task.
+The latest [menu repair](p5ux-menu-zoom-acceptance.md) closes the separate English
+Help overflow found there. All menu titles and popups fit at 200%, including
+live resizing to a narrower window; English/Chinese × light/dark pass actual
+browser checks. Four new menu regressions and the four welcome/palette cases
+pass together, with zero retries. The full frontend rerun passes 2,914 tests /
+348 files, type/lint/format and build. Its private browser/servers and 28.9 MB
+of temporary data are cleaned; resource check passes at 5.33 GiB build,
+0.00 GiB temporary and 616.21 GiB free. Existing Linux candidates below predate
+both reflow repairs and remain the earlier package checkpoint. Work stops here
+as requested.
 
 The prior integrated application/tooling source **`f6f6cf9`** passes **2,914 frontend tests /
 348 files**, type checking, lint, formatting and production build. The final

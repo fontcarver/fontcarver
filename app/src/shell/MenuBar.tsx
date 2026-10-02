@@ -10,6 +10,7 @@ import {
 import styles from './MenuBar.module.css'
 import { MenuItem } from './MenuItem'
 import { useCommandRegistry } from './useCommandRegistry'
+import { useMenuPopupPosition } from './useMenuPopupPosition'
 
 /**
  * The in-app menu bar. Every entry comes from the command registry, so a
@@ -25,6 +26,7 @@ export function MenuBar() {
   const returnFocusRef = useRef<HTMLElement | null>(null)
   const barRef = useRef<HTMLDivElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
+  useMenuPopupPosition(open, barRef, popupRef)
 
   const focusTitle = useCallback((menu: MenuId) => {
     barRef.current
