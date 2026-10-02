@@ -13,7 +13,7 @@ import type { Point2 } from '../../canvas/Viewport'
 import type { FontBox } from '../../canvas/Viewport'
 
 import { toolCursor, type CursorId } from '../cursors'
-import { controlModifier, type Modifiers } from '../gestures/drag'
+import { controlModifier, NO_MODIFIERS, type Modifiers } from '../gestures/drag'
 import {
   TransformGesture,
   type TransformAmount,
@@ -129,6 +129,15 @@ export abstract class TransformTool implements EditorTool {
 
   claimsKey(key: string): boolean {
     return key === 'Escape' && (this.gesture !== null || this.origin !== null)
+  }
+
+  /** Interrupted pointers cancel the edit instead of finishing a transform. */
+  cancel(): ToolOutcome {
+    return this.keyDown({
+      key: 'Escape',
+      modifiers: NO_MODIFIERS,
+      repeat: false,
+    })
   }
 
   finish(): ToolOutcome {

@@ -40,6 +40,10 @@ import {
   shiftRunOrigin,
 } from '../text/textCanvasBridge'
 import { BeamPointer } from './beamPointer'
+import {
+  CanvasPointerSession,
+  bindCanvasPointerLifecycle,
+} from './canvasPointerSession'
 
 import { componentDraws, type PathCache } from './componentDraws'
 import { withPreview } from './metricsHandles'
@@ -632,10 +636,26 @@ export function GlyphCanvas({
     return () => canvas.removeEventListener('wheel', onWheel)
   }, [controller, draw, onPointerFont, viewport])
 
-  // Space is both "pan while held" and "toggle the fill preview when tapped".
-  const spaceRef = useRef({ held: false, dragged: false })
   // Whether the pointer is dragging the spacing beam rather than the outline.
   const beamRef = useRef(new BeamPointer())
+  const pointerSession = useMemo(() => new CanvasPointerSession(), [])
+  useLayoutEffect(() => {
+    pointerSession.setCallbacks({
+      cancel: () => {
+        smartRef.current.cancel()
+        placementRef.current.cancel()
+        beamRef.current.up(frame.current.textRun)
+        controller.cancelPointer()
+        draw()
+      },
+      space: (held) => controller.setSpaceHeld(held),
+      toggle: onToggleFilled,
+    })
+  }, [controller, draw, onToggleFilled, pointerSession])
+  useLayoutEffect(() => {
+    const canvas = canvasRef.current
+    if (canvas) return bindCanvasPointerLifecycle(canvas, pointerSession)
+  }, [pointerSession])
 
   const pointerInput = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>): PointerInput => {
@@ -652,20 +672,14 @@ export function GlyphCanvas({
 
   const onPointerDown = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
+      if (!pointerSession.down(event)) return
       event.preventDefault()
-      event.currentTarget.focus({ preventScroll: true })
-      spaceRef.current.dragged = spaceRef.current.held
-      try {
-        event.currentTarget.setPointerCapture(event.pointerId)
-      } catch {
-        // A synthetic pointer id has nothing to capture; the move still tracks.
-      }
       const input = pointerInput(event)
       const run = frame.current.textRun
       if (
         run &&
         input.button === 0 &&
-        !spaceRef.current.held &&
+        !pointerSession.spaceHeld &&
         tool !== 'hand' &&
         tool !== 'zoom'
       ) {
@@ -689,7 +703,7 @@ export function GlyphCanvas({
       }
       // Axis and placement handles sit above the outline, so they go first —
       // unless a view gesture is active, which owns the press everywhere.
-      const handlesActive = canvasHandlesActive(tool, spaceRef.current.held)
+      const handlesActive = canvasHandlesActive(tool, pointerSession.spaceHeld)
       if (
         handlesActive &&
         smartRef.current.down(
@@ -723,6 +737,7 @@ export function GlyphCanvas({
       metadataSource?.glyphLocked,
       placementSession,
       pointerInput,
+      pointerSession,
       tool,
       viewport,
     ],
@@ -730,11 +745,12 @@ export function GlyphCanvas({
 
   const onPointerMove = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
+      if (!pointerSession.move(event)) return
       const input = pointerInput(event)
       pointerRef.current = viewport.toFont({ x: input.x, y: input.y })
       onPointerFont(roundPoint(pointerRef.current))
       if (beamRef.current.move(frame.current.textRun, viewport, input)) return
-      const handlesActive = canvasHandlesActive(tool, spaceRef.current.held)
+      const handlesActive = canvasHandlesActive(tool, pointerSession.spaceHeld)
       const overSmart =
         handlesActive &&
         smartRef.current.move(
@@ -771,6 +787,7 @@ export function GlyphCanvas({
       onPointerFont,
       placementSession,
       pointerInput,
+      pointerSession,
       tool,
       viewport,
     ],
@@ -778,6 +795,7 @@ export function GlyphCanvas({
 
   const endPointer = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
+      if (!pointerSession.up(event)) return
       if (
         smartRef.current.up(
           frame.current.componentViews,
@@ -796,13 +814,16 @@ export function GlyphCanvas({
         draw()
       } else if (!beamRef.current.up(frame.current.textRun))
         controller.pointerUp(pointerInput(event))
-      try {
-        event.currentTarget.releasePointerCapture(event.pointerId)
-      } catch {
-        // The capture was never established.
-      }
     },
-    [controller, draw, onReload, placementSession, pointerInput, source],
+    [
+      controller,
+      draw,
+      onReload,
+      placementSession,
+      pointerInput,
+      pointerSession,
+      source,
+    ],
   )
 
   const onPointerLeave = useCallback(() => {
@@ -815,6 +836,12 @@ export function GlyphCanvas({
 
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLCanvasElement>) => {
+      if (event.key === 'Escape' && pointerSession.active) {
+        event.preventDefault()
+        event.stopPropagation()
+        pointerSession.cancel()
+        return
+      }
       const modifiers = modifiersOf(event)
       if (['Shift', 'Alt', 'Control', 'Meta'].includes(event.key))
         controller.modifiersChanged(modifiers)
@@ -842,9 +869,7 @@ export function GlyphCanvas({
         return
       if (event.key === ' ' && !modifiers.mod && !modifiers.alt) {
         event.preventDefault()
-        if (event.repeat) return
-        spaceRef.current = { held: true, dragged: false }
-        controller.setSpaceHeld(true)
+        pointerSession.spaceDown(event.repeat)
         return
       }
       const arrows: Record<string, { x: number; y: number }> = {
@@ -888,7 +913,7 @@ export function GlyphCanvas({
       // shortcut layer owns them and the menu lists them; handling them here
       // as well would run each action twice.
     },
-    [controller],
+    [controller, pointerSession],
   )
 
   const onKeyUp = useCallback(
@@ -897,12 +922,9 @@ export function GlyphCanvas({
         controller.modifiersChanged(modifiersOf(event))
       if (event.key !== ' ') return
       event.preventDefault()
-      const { held, dragged } = spaceRef.current
-      spaceRef.current = { held: false, dragged: false }
-      controller.setSpaceHeld(false)
-      if (held && !dragged) onToggleFilled()
+      pointerSession.spaceUp()
     },
-    [controller, onToggleFilled],
+    [controller, pointerSession],
   )
 
   return (
@@ -917,7 +939,6 @@ export function GlyphCanvas({
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endPointer}
-        onPointerCancel={endPointer}
         onPointerLeave={onPointerLeave}
         onDoubleClick={(event) => {
           const rect = event.currentTarget.getBoundingClientRect()

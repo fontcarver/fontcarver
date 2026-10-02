@@ -370,6 +370,7 @@ export class EditorController {
 
   /** Pointer went down on the canvas. */
   pointerDown(input: PointerInput): void {
+    if (input.button !== 0 && input.button !== 1) return
     if (documentEditingSuspended(this.documentId)) return
     void this.settle()
     // A gesture that never saw its pointer-up — a lost capture, a cancelled
@@ -515,6 +516,7 @@ export class EditorController {
 
   /** Double-click toggles a node between smooth and corner. */
   doubleClick(input: PointerInput): void {
+    if (input.button !== 0) return
     if (documentEditingSuspended(this.documentId)) return
     const hit = this.geometry.hitAt(this.viewport, this.selection, {
       x: input.x,
@@ -725,6 +727,21 @@ export class EditorController {
     if (this.selection.size === 0) return false
     this.setSelection(EMPTY_SELECTION)
     return true
+  }
+
+  /** Abandon interrupted pointer gestures while retaining the selection. */
+  cancelPointer(): void {
+    this.setSpaceHeld(false)
+    const viewGesture = this.view.active
+    this.view.reset()
+    if (!viewGesture && !this.aside.escape()) {
+      if (this.drag) this.cancelDrag()
+      else this.tools.cancel()
+    }
+    this.pointer = null
+    this.hover = null
+    this.updateCursor()
+    this.callbacks.repaint()
   }
 
   /** Drops a live outline drag and publishes its close for handover. */

@@ -467,6 +467,111 @@ afterEach(async () => {
 })
 
 describe('EditorController selection', () => {
+  it('does not select or edit with a secondary button', async () => {
+    const { controller, transport } = makeController(createEditingTransport())
+    controller.pointerDown({ ...at(200, 300), button: 2 })
+    controller.pointerMove({ ...at(220, 300), button: 2 })
+    controller.pointerUp({ ...at(220, 300), button: 2 })
+    controller.doubleClick({ ...at(200, 300), button: 2 })
+    await controller.settle()
+    expect(controller.currentSelection.size).toBe(0)
+    expect(transport.calls).toEqual([])
+  })
+
+  it('ends an owned drag when a mouse chord releases its secondary button last', async () => {
+    const { controller, transport } = makeController(createEditingTransport())
+    controller.pointerDown(at(200, 300))
+    controller.pointerMove(at(220, 300))
+    await settleFrame()
+    controller.pointerUp({ ...at(220, 300), button: 2 })
+    await settle()
+    expect(transport.calls.map(({ method }) => method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect(controller.frame().contours).toBeNull()
+  })
+
+  it('cancels a lost pointer with its token while retaining the selected node', async () => {
+    const { controller, transport } = makeController(createEditingTransport())
+    controller.pointerDown(at(200, 300))
+    controller.pointerMove(at(220, 300))
+    await settleFrame()
+    controller.cancelPointer()
+    await controller.settle()
+    expect(controller.currentSelection.has('node:0:1')).toBe(true)
+    expect(controller.frame().contours).toBeNull()
+    expect(transport.calls.map(({ method }) => method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_cancel',
+    ])
+    expect(transport.calls[2]?.params).toEqual({ doc: 1, token: 101 })
+  })
+
+  it('discards an interrupted unfinished pen path without committing it on the next press', async () => {
+    const { controller, transport } = makeController(createEditingTransport())
+    controller.setTool('pen')
+    controller.pointerDown(at(60, 60))
+    controller.pointerUp(at(60, 60))
+    controller.pointerDown(at(120, 70))
+    controller.pointerMove(at(135, 80))
+    controller.cancelPointer()
+    await controller.settle()
+    expect(transport.calls).toEqual([])
+    expect(controller.frame().tool.marks).toEqual([])
+    controller.setTool('select')
+    await controller.settle()
+    expect(transport.calls).toEqual([])
+  })
+
+  it.each(['metrics', 'rotate'] as const)(
+    'cancels an interrupted %s edit atomically',
+    async (kind) => {
+      const { controller, transport } = makeController(createEditingTransport())
+      if (kind === 'rotate') {
+        controller.setTool('rotate')
+        controller.pointerDown(at(200, 200))
+        controller.pointerMove(at(100, 100))
+      } else {
+        controller.pointerDown(at(600, 200))
+        controller.pointerMove(at(680, 200))
+      }
+      await settleFrame()
+      controller.cancelPointer()
+      await controller.settle()
+      expect(transport.calls.map(({ method }) => method)).toEqual([
+        'doc.edit_begin',
+        'doc.edit_apply',
+        'doc.edit_cancel',
+      ])
+      expect(controller.frame().metrics).toBeNull()
+      expect(controller.frame().contours).toBeNull()
+    },
+  )
+
+  it('keeps an unfinished pen path when only its temporary pan is interrupted', async () => {
+    const { controller, transport } = makeController(createEditingTransport())
+    controller.setTool('pen')
+    controller.pointerDown(at(60, 60))
+    controller.pointerUp(at(60, 60))
+    controller.pointerDown(at(120, 70))
+    controller.pointerUp(at(120, 70))
+    const marks = controller.frame().tool.marks
+    controller.setSpaceHeld(true)
+    controller.pointerDown(at(300, 200))
+    controller.pointerMove(at(320, 220))
+    controller.cancelPointer()
+    expect(controller.frame().tool.marks).toEqual(marks)
+    expect(transport.calls).toEqual([])
+    controller.setTool('select')
+    await settle()
+    expect(
+      transport.calls.filter(({ method }) => method === 'doc.apply'),
+    ).toHaveLength(1)
+  })
+
   it('selects the node under the pointer and clears on empty canvas', () => {
     const { controller } = makeController()
     // Font (200, 0) → canvas (200, 300).

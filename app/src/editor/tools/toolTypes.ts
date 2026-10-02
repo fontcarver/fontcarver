@@ -190,6 +190,8 @@ export interface EditorTool {
   setSpaceHeld?(held: boolean, context: ToolContext): ToolOutcome
   /** The tool is being put away: commit or discard whatever is open. */
   finish(context: ToolContext): ToolOutcome
+  /** Cancel a live kernel edit; local-only drafts are discarded by the host. */
+  cancel?(context: ToolContext): ToolOutcome
   overlay(context: ToolContext): ToolOverlay
   /** The cursor for the current hover. */
   cursor(

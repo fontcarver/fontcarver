@@ -132,6 +132,13 @@ describe('TextView integration', () => {
     })
     const target = viewport.toScreen({ x: 1300, y: 100 })
     fireEvent.pointerDown(canvas, {
+      pointerId: 1,
+      clientX: target.x,
+      clientY: target.y,
+      button: 0,
+    })
+    fireEvent.pointerUp(canvas, {
+      pointerId: 1,
       clientX: target.x,
       clientY: target.y,
       button: 0,
@@ -325,6 +332,7 @@ describe('TextView integration', () => {
     await screen.findByRole('img', { name: /^Glyph A,/ })
     const strip = document.querySelector('[data-preview-theme]')!
     expect(strip).toHaveAttribute('data-preview-sizes', '12, 24, 48')
+    fireEvent.click(screen.getByRole('button', { name: 'Preview settings' }))
     fireEvent.change(
       screen.getByRole('textbox', { name: 'Waterfall sizes (px)' }),
       { target: { value: '9-27/9' } },

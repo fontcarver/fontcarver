@@ -248,6 +248,16 @@ export class ToolHost {
     this.consume(tool.finish(this.context()))
   }
 
+  /** Discard local drafts and cancel any live tool-owned kernel transaction. */
+  cancel(): void {
+    const tool = this.tool
+    if (!tool) return
+    const outcome = tool.cancel?.(this.context()) ?? {}
+    this.tool = createTool(tool.id)
+    this.consume({ ...outcome, preview: null, editing: false, handled: true })
+    this.callbacks.gestureEnded()
+  }
+
   private route(
     run: (tool: EditorTool, context: ToolContext) => ToolOutcome,
   ): boolean {

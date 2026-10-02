@@ -1,6 +1,14 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  onTestFinished,
+  vi,
+} from 'vitest'
 
 import { setTransport, type GlyphDetailParams } from '../../api'
 import { Viewport } from '../../canvas/Viewport'
@@ -171,6 +179,7 @@ describe('GlyphView', () => {
       const event = new MouseEvent(type, {
         bubbles: true,
         button: 0,
+        buttons: type === 'pointerup' ? 0 : 1,
         clientX,
         clientY,
       })
@@ -191,6 +200,9 @@ describe('GlyphView', () => {
     const until = new Promise<void>((resolve) => {
       release = resolve
     })
+    // A failed assertion must not leave this mock cancellation blocking the
+    // next test's document transition.
+    onTestFinished(release)
     const transport = createMockTransport({
       'glyphs.detail': () => makeGlyphDetail(glyph),
       'glyphs.cell': () => makeCell({ gid: 42, name: 'aacute', width: 600 }),
@@ -223,18 +235,22 @@ describe('GlyphView', () => {
       canvas,
       new PointerEvent('pointerdown', {
         bubbles: true,
+        pointerId: 7,
         clientX: 40,
         clientY: 200,
         button: 0,
+        buttons: 1,
       }),
     )
     fireEvent(
       canvas,
       new PointerEvent('pointermove', {
         bubbles: true,
+        pointerId: 7,
         clientX: 50,
         clientY: 200,
         button: 0,
+        buttons: 1,
       }),
     )
     await waitFor(() =>
