@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import { defineConfig } from '@playwright/test'
@@ -27,50 +27,20 @@ const repoRoot = fileURLToPath(new URL('..', import.meta.url))
  * The pre-built binary when there is one, so a run costs no compilation, and
  * the release one first: only a release kernel opens the 65,535-glyph corpus
  * the CJK spec wants inside the transport's request timeout. A checkout that
- * has built neither falls back to Cargo, which is why the kernel server gets a
- * longer start-up budget than Vite.
+ * has built neither must first run `cargo build -p fc-devserver`.
  */
 const devserver =
   [
     `${repoRoot}target/release/fc-devserver`,
     `${repoRoot}target/debug/fc-devserver`,
   ].find((binary) => existsSync(binary)) ??
-  'cargo run --quiet -p fc-devserver --'
-
-/**
- * The kernel's configuration home for the run, emptied as the suite starts.
- *
- * Preferences and crash-recovery snapshots live under it, so the suite is given
- * one of its own inside `target/`: a snapshot an editing spec leaves behind
- * cannot reach the developer's own FontCarver, and "a clean launch" means the
- * same thing on a machine that has run the suite before as on one that has not.
- */
-const configDir = `${repoRoot}target/e2e-config-${apiPort}`
-rmSync(configDir, { recursive: true, force: true })
-// Autosave is off for the run. The kernel starts its autosave worker once at
-// startup, and a snapshot of a document a spec left unsaved makes every later
-// page load open the Recover Documents dialog, whose overlay swallows the
-// clicks of every spec that follows. No spec needs a live autosave: the clean
-// launch is asserted by `dialogs.spec.ts`, and `draw.spec.ts` only dismisses
-// the dialog when one appears.
-mkdirSync(configDir, { recursive: true })
-writeFileSync(
-  `${configDir}/prefs.json`,
-  JSON.stringify({
-    autosave_seconds: 0,
-    recent_limit: 20,
-    language: 'en',
-    theme: 'light',
-  }),
-)
-
-/** The font every spec but the CJK one is written against. */
-const fixture = 'fixtures/fonts/DejaVuSans.ttf'
+  `${repoRoot}target/debug/fc-devserver`
 
 export default defineConfig({
   testDir: './e2e',
-  // Every spec drives the one kernel document `fc-devserver` opened, so two
-  // workers fight over it and both time out; the suite runs one file at a time.
+  metadata: { kernelBinary: devserver, kernelPort: apiPort },
+  // Each test owns a kernel process on the proxy port; keep these lifetimes
+  // sequential. Browser contexts and source documents are isolated as well.
   workers: 1,
   fullyParallel: false,
   // A red CI run has to be diagnosable from the artifact alone: the default
@@ -79,10 +49,8 @@ export default defineConfig({
   reporter: process.env.CI ? [['html', { open: 'never' }], ['list']] : 'list',
   retries: process.env.CI ? 1 : 0,
   forbidOnly: !!process.env.CI,
-  // Bounds a hung suite below the workflow's own step timeout. One worker over
-  // eighty specs takes about nine minutes here, so the budget leaves room for a
-  // slower runner; the slowest spec (CJK, when it runs at all) budgets four
-  // minutes of it.
+  // Bound a hung suite below the workflow's own step timeout, with room for
+  // cold imports in each test; the optional CJK spec budgets four minutes.
   globalTimeout: 25 * 60 * 1000,
   use: {
     baseURL,
@@ -96,24 +64,10 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: `${devserver} --port ${apiPort} --open ${fixture}`,
-      cwd: repoRoot,
-      env: { FC_CONFIG_DIR: configDir },
-      url: `${apiURL}/health`,
-      // `/health` answers before any document is open, so a `fc-devserver`
-      // already running on this port without the fixture satisfies the probe
-      // and every spec then fails on a missing document. Stop a stray server
-      // before running the suite, or point `FC_API_PORT` somewhere else.
-      reuseExistingServer: !process.env.CI,
-      timeout: 180_000,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    },
-    {
       command: `pnpm exec vite --port ${uiPort} --strictPort`,
       url: baseURL,
       env: { FC_DEV_PROXY: apiURL, VITE_FC_API: baseURL },
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
     },
   ],
 })

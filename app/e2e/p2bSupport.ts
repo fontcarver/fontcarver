@@ -1,5 +1,6 @@
 import { basename } from 'node:path'
-import { expect, test as base, type Page, type Route } from '@playwright/test'
+import { expect, type Page, type Route } from '@playwright/test'
+import { sourceTest as base } from './sessionFixtures'
 import type { DocSummary } from '../src/api/generated/DocSummary'
 import type { FeatureState } from '../src/api/generated/FeatureState'
 import type { FeatureApplyResult } from '../src/api/generated/FeatureApplyResult'
@@ -16,19 +17,9 @@ export const test = base.extend<{ source: SourceFixture }>({
     const files = featureFixture()
     let inherited = new Set<number>()
     try {
-      // This suite owns the server/profile. Timed recovery snapshots must not
-      // appear as unrelated startup dialogs between independent scenarios.
-      const prefs = (
-        await (await page.request.post('/api/prefs.get', { data: {} })).json()
-      ).result
-      await page.request.post('/api/prefs.set', {
-        data: { prefs: { ...prefs, autosave_seconds: 0 } },
-      })
       await page.goto('/')
-      await dismissRecovery(page)
-      // Whatever the session already held stays open: under the default
-      // configuration this suite shares a kernel that was started with the
-      // DejaVu fixture, and the specs that run after it need that document.
+      // The outer fixture owns the kernel session; this inner fixture closes
+      // its fonts before removing the source files they came from.
       inherited = new Set(
         (await api<DocSummary[]>(page, 'session.list', {})).map(
           (document) => document.doc,
@@ -65,23 +56,6 @@ export const test = base.extend<{ source: SourceFixture }>({
     }
   },
 })
-
-/**
- * Dismiss a recovery prompt left by an earlier scenario in this worker.
- *
- * Each test opens its own font; an unsaved document from the previous test must
- * not block the menu bar with a modal.
- */
-export async function dismissRecovery(page: Page) {
-  const later = page.getByRole('button', { name: 'Later', exact: true })
-  // The prompt is decided after the app asks the kernel, so wait briefly for
-  // it rather than racing the first render.
-  await later.waitFor({ state: 'visible', timeout: 4_000 }).catch(() => {})
-  if (await later.isVisible().catch(() => false)) {
-    await later.click()
-    await expect(later).toBeHidden()
-  }
-}
 
 export async function openFont(page: Page, path: string) {
   const before = new Set(

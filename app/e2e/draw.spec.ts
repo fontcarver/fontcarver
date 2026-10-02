@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
+import { test } from './sessionFixtures'
 
 import { api } from './support'
 
@@ -31,20 +32,6 @@ interface Outline {
   contours: { closed: boolean; points: { x: number; y: number }[] }[]
 }
 
-/**
- * Dismisses the recovery prompt, which blocks every click while it is up.
- *
- * A spec that creates and discards its own font leaves an autosave snapshot
- * behind, so the *next* launch in the same run starts inside the modal. "Later"
- * keeps the snapshot and gets out of the way.
- */
-async function dismissRecovery(page: Page): Promise<void> {
-  const dialog = page.getByRole('dialog', { name: 'Recover Documents' })
-  if ((await dialog.count()) === 0) return
-  await dialog.getByRole('button', { name: 'Later' }).click()
-  await expect(dialog).toBeHidden()
-}
-
 /** The document this spec created, by the family name it was given. */
 async function findDoc(page: Page, family: string): Promise<number> {
   const docs = await api<DocSummary[]>(page, 'session.list', {})
@@ -60,7 +47,6 @@ test.describe('drawing', () => {
     test.slow()
     const family = `Draw ${Date.now()}`
     await page.goto('/')
-    await dismissRecovery(page)
 
     // A document of its own, with no starter glyphs to slow it down.
     await page.getByRole('menuitem', { name: 'File', exact: true }).click()
@@ -151,7 +137,7 @@ test.describe('drawing', () => {
       // One gesture, one undo entry.
       await expect(page.getByRole('contentinfo')).toContainText('Draw path')
     } finally {
-      // The kernel session is shared with every other spec.
+      // Close the document created by this drawing workflow.
       await api(page, 'session.close', { doc, force: true })
     }
   })
@@ -174,7 +160,6 @@ test.describe('open corner', () => {
     test.slow()
     const family = `Corner ${Date.now()}`
     await page.goto('/')
-    await dismissRecovery(page)
     await page.getByRole('menuitem', { name: 'File', exact: true }).click()
     await page
       .getByRole('menu', { name: 'File' })

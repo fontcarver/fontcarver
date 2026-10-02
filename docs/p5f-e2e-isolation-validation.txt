@@ -1,0 +1,488 @@
+FontCarver E2E isolation validation, 2026-10-02
+
+Browser runs: cwd=app; FC_API_PORT=8843; FC_UI_PORT=1453; absolute TMPDIR under .scratch/p5f-e2e-isolation/tmp.
+Each run used its own --output directory in that scratch folder.
+Repeated Vite socket-reset and Node colour-warning lines are omitted.
+Historical scratch paths in failure output were removed after retaining this record.
+
+$ pnpm check && pnpm lint && pnpm exec prettier --check .
+tsc -b: exit 0
+eslint .: exit 0
+Checking formatting...
+All matched files use Prettier code style!
+
+
+$ cargo build -p fc-devserver
+    Finished `dev` profile [unoptimized] target(s) in 39.53s
+
+
+$ cargo build -p fc-cli
+    Finished `dev` profile [unoptimized] target(s) in 1m 43s
+
+
+$ pnpm test
+ ✓ src/stores/variationPreviewStore.test.ts (1 test) 22ms
+ ✓ src/views/text/textState.test.ts (2 tests) 13ms
+
+ Test Files  339 passed (339)
+      Tests  2775 passed (2775)
+   Start at  12:50:34
+   Duration  420.71s (transform 19.27s, setup 81.22s, collect 185.90s, tests 222.48s, environment 210.85s, prepare 41.36s)
+
+
+
+$ pnpm exec playwright test --retries=0 (complete suite before timing follow-ups)
+
+Running 97 tests using 1 worker
+
+  ✘   1 e2e/acceptance-performance.spec.ts:35:1 › 300-point drag repaints synchronously within eight milliseconds (40.0s)
+  ✓   2 e2e/acceptance-workflows.spec.ts:28:3 › P1 browser acceptance workflows › opens DejaVu, pointer-edits A/B/C, exports and reopens (15.6s)
+  ✓   3 e2e/acceptance-workflows.spec.ts:105:3 › P1 browser acceptance workflows › creates A-C, pen-draws and widths them, exports and reopens (5.5s)
+  ✓   4 e2e/app.spec.ts:4:1 › shows the workspace shell (805ms)
+  ✓   5 e2e/app.spec.ts:29:3 › shell windows and tabs › pins the Overview and reaches every tab by its ordinal (1.8s)
+  ✓   6 e2e/app.spec.ts:72:3 › shell windows and tabs › tears the Inspector into its own window and takes it back (2.3s)
+  ✓   7 e2e/app.spec.ts:101:3 › a detached panel of an Edit tab › shows live glyph content and follows the glyph (3.3s)
+  ✓   8 e2e/app.spec.ts:149:3 › command palette › searches commands, filters and glyph names in scoped sections (1.7s)
+  ✓   9 e2e/app.spec.ts:178:3 › document history › lists one entry per gesture with its scope and moves back through it (3.0s)
+  ✓  10 e2e/app.spec.ts:216:3 › preview strip › resizes with its divider and collapses from the keyboard (2.2s)
+  ✓  11 e2e/app.spec.ts:254:3 › reopening a saved file › gives each document exactly one pinned Overview (3.6s)
+  ✓  12 e2e/app.spec.ts:309:3 › a second document › opens with its own Overview selected, beside the first document (3.0s)
+  ✓  13 e2e/bitmap.spec.ts:105:1 › BDF pixels survive drawing, undo, redo, save, export and reopen (3.0s)
+  ✓  14 e2e/bitmap.spec.ts:142:1 › failed pixel writes retain the draft and block tab navigation until retry (2.5s)
+  ✓  15 e2e/bitmap.spec.ts:175:1 › trace, regenerate, strike properties, tools and strike removal are undoable (3.0s)
+  ✓  16 e2e/bitmap.spec.ts:252:1 › focused metrics are saved, and ellipse, crop, invert and scaling retain pixels (3.0s)
+  ✓  17 e2e/bitmap.spec.ts:307:1 › pixel tools, the marquee copy and the persisted overlays (3.4s)
+  ✓  18 e2e/bitmap.spec.ts:378:1 › an exact grid preset sets the strike metrics and a custom size is corrected (2.2s)
+  ✘  19 e2e/bitmap.spec.ts:414:1 › properties are renamed and a sprite sheet round trips through its own layout (4.2s)
+  ✓  20 e2e/bitmap.spec.ts:479:1 › cross-strike copies, batch tracing and the single-glyph waterfall (2.9s)
+  ✓  21 e2e/bitmap.spec.ts:574:1 › every pixel tool has a working single-key shortcut (2.1s)
+  -  22 e2e/cjk.spec.ts:45:3 › CJK font view › opens Source Han Sans and renders cells at the end of the grid
+  ✓  23 e2e/cjk.spec.ts:136:3 › vertical metrics, the canvas handles and the radical library › edits TSB and BSB, then drags the origin only in vertical mode (3.8s)
+  ✓  24 e2e/cjk.spec.ts:207:3 › vertical metrics, the canvas handles and the radical library › lists the pinned radicals even in a font with no ideographs (2.4s)
+  ✓  25 e2e/dialogs.spec.ts:51:3 › dialogs › creates a font with the Basic Latin starter set (2.2s)
+  ✓  26 e2e/dialogs.spec.ts:69:3 › dialogs › previews a recipe and adds exactly what it previewed (2.8s)
+  ✓  27 e2e/dialogs.spec.ts:105:3 › dialogs › round trips preferences through the kernel (3.0s)
+  ✓  28 e2e/dialogs.spec.ts:118:3 › dialogs › shows no recovery dialog on a clean launch (1.0s)
+  ✓  29 e2e/draw.spec.ts:58:3 › drawing › pen-draws a closed triangle into a new font (2.7s)
+  ✓  30 e2e/draw.spec.ts:170:3 › open corner › opens a reflex corner and reconnects it from the Path menu (3.5s)
+  ✓  31 e2e/export.spec.ts:57:3 › export › edits a glyph and exports a TTF the CLI can read back (2.6s)
+  ✓  32 e2e/export.spec.ts:139:3 › export profiles › saves a profile into the document and applies it after a reload (3.9s)
+  ✓  33 e2e/fontview.spec.ts:16:3 › font view › renders the glyph grid for the pre-opened font (1.4s)
+  ✓  34 e2e/fontview.spec.ts:32:3 › font view › searches by Unicode scalar (1.7s)
+  ✓  35 e2e/fontview.spec.ts:48:3 › font view › filters by a sidebar category and reports the count (1.5s)
+  ✓  36 e2e/fontview.spec.ts:72:3 › font view › reports the selection in the status bar (1.5s)
+  ✓  37 e2e/fontview.spec.ts:90:3 › font view list mode › sorts by every column, chooses columns and keeps the choice (3.3s)
+  ✓  38 e2e/fontview.spec.ts:158:3 › font view search and filters › reports an invalid regular expression under the field (2.6s)
+  ✓  39 e2e/fontview.spec.ts:197:3 › font view search and filters › badges a Unicode block with its coverage and filters by a badge (2.4s)
+  ✓  40 e2e/fontview.spec.ts:221:3 › font view editing workflows › labels a whole selection in one undo step (2.5s)
+  ✓  41 e2e/fontview.spec.ts:247:3 › font view editing workflows › generates a composite from the glyph database (2.8s)
+  ✓  42 e2e/fontview.spec.ts:290:3 › font view editing workflows › renames a selection with a regular expression (3.9s)
+  ✓  43 e2e/glyphview.spec.ts:11:3 › glyph view › opens a glyph tab from the grid and draws its metrics (1.7s)
+  ✓  44 e2e/glyphview.spec.ts:38:3 › glyph view › steps to the next glyph in the current order (1.9s)
+  ✓  45 e2e/glyphview.spec.ts:63:3 › glyph view › shows the font info sections and searches across them (1.3s)
+  ✓  46 e2e/glyphview.spec.ts:93:3 › editor tools, guides and snapping › hands the Pixel tool over to the strike editor (1.9s)
+  ✓  47 e2e/glyphview.spec.ts:119:3 › editor tools, guides and snapping › anchors a guide to a sidebearing and stores the rebased offset (2.7s)
+  ✓  48 e2e/glyphview.spec.ts:195:3 › editor tools, guides and snapping › gives one snap target its own reach in the preferences (1.5s)
+  ✓  49 e2e/hints.spec.ts:98:1 › flex hints and dot sections are edited, applied and refused when invalid (3.5s)
+  ✓  50 e2e/hints.spec.ts:177:1 › the export dialog discloses whether the external TrueType hinter is installed (1.6s)
+  ✓  51 e2e/p2a-kerning.spec.ts:58:1 › authors groups and pair exceptions, coalesces shortcuts, saves and exports matching layout (8.7s)
+  ✓  52 e2e/p2a-kerning.spec.ts:124:1 › creates, assigns, renames and explicitly removes an in-use shared group (3.7s)
+  ✓  53 e2e/p2a-kerning.spec.ts:212:1 › settles a delayed pair edit before master handover and ignores its late selection response (2.7s)
+  ✓  54 e2e/p2a-kerning.spec.ts:254:1 › keeps a failed delayed edit out of stored kerning and allows recovery (3.9s)
+  ✓  55 e2e/p2a-kerning.spec.ts:279:1 › saves a pending edit and keeps document handover isolated (3.6s)
+  ✓  56 e2e/p2a-kerning.spec.ts:341:1 › keeps imported spacing previewable and explains unavailable authoring (2.7s)
+  ✓  57 e2e/p2a-kerning.spec.ts:390:1 › edits metrics formulas with inline validation and synchronises every master (2.6s)
+  ✓  58 e2e/p2a-kerning.spec.ts:438:1 › measures and edits the run through the spacing matrix, beam and cut-off (2.6s)
+  ✓  59 e2e/p2a-kerning.spec.ts:546:1 › marks kerning exceptions and maintains the table across masters (2.8s)
+  ✓  60 e2e/p2a-kerning.spec.ts:601:1 › locks every spacing control while kerning with spacing locked (1.9s)
+  ✓  61 e2e/p2a-kerning.spec.ts:625:1 › edits vertical kerning and vertical metrics in the vertical direction (2.0s)
+  ✓  62 e2e/p2b-barriers.spec.ts:18:1 › persists pending drafts before master and tab handovers (2.3s)
+  ✓  63 e2e/p2b-barriers.spec.ts:63:1 › blocks a tab handover on a failed draft write and keeps the text available for retry (1.9s)
+  ✓  64 e2e/p2b-barriers.spec.ts:97:1 › finishes composition before Ctrl+S persists the complete invalid draft (3.1s)
+  ✓  65 e2e/p2b-imported.spec.ts:75:1 › renders original rules as glyphs, converts source, exports and restores the native original baseline (5.5s)
+  ✓  66 e2e/p2b-imported.spec.ts:149:1 › proves a kerning lift before exposing pair controls and preserves zero exceptions through revert undo (5.6s)
+  ✓  67 e2e/p2b-imported.spec.ts:249:1 › offers editable source while leaving non-equivalent model kerning source-owned (2.9s)
+  ✓  68 e2e/p2b-imported.spec.ts:275:1 › reports an unsupported competing table without changing the imported document (2.5s)
+  ✓  69 e2e/p2b-recipes.spec.ts:20:1 › generates every enumerated feature family from the glyph inventory (2.1s)
+  ✓  70 e2e/p2b-recipes.spec.ts:123:1 › switches one entry between automatic and manual without touching the others (4.1s)
+  ✓  71 e2e/p2b-recipes.spec.ts:206:1 › keeps a hand-written sibling while switching one figure style to automatic (2.8s)
+  ✓  72 e2e/p2b-recipes.spec.ts:268:1 › generates glyph classes from metadata and keeps a frozen class editable (2.6s)
+  ✓  73 e2e/p2b-recipes.spec.ts:305:1 › compiles feature tokens and target conditionals from the editor (2.5s)
+  ✓  74 e2e/p2b-recipes.spec.ts:341:1 › previews class members from the source editor with Alt-click (2.2s)
+  ✓  75 e2e/p2b-recipes.spec.ts:372:1 › authors one rule per supported lookup type in the visual editor (2.2s)
+  ✘  76 e2e/p2b-source.spec.ts:26:1 › retains invalid Unicode drafts through native save and separates validation from activation (1.8s)
+  ✓  77 e2e/p2b-source.spec.ts:120:1 › generates and freezes an opt-in recipe without changing active layout during draft edits (3.5s)
+  ✓  78 e2e/p2b-source.spec.ts:167:1 › rejects stale source activation and ignores delayed diagnostics after glyph deletion (2.2s)
+  ✓  79 e2e/p2cd-drafts.spec.ts:19:1 › all new export formats reject unapplied feature drafts and problem scans preserve active layout (4.4s)
+  ✓  80 e2e/p2cd-formats.spec.ts:32:3 › OTF (CFF) exports through the UI and reopens with Latin outlines, kerning and ligatures (2.5s)
+  ✓  81 e2e/p2cd-formats.spec.ts:32:3 › Glyphs exports through the UI and reopens with Latin outlines, kerning and ligatures (2.9s)
+  ✓  82 e2e/p2cd-formats.spec.ts:32:3 › SFD exports through the UI and reopens with Latin outlines, kerning and ligatures (2.7s)
+  ✓  83 e2e/p2cd-formats.spec.ts:113:3 › Type 1 PFA discloses loss before export and reopens static outlines (2.5s)
+  ✓  84 e2e/p2cd-formats.spec.ts:113:3 › Type 1 PFB discloses loss before export and reopens static outlines (2.5s)
+  ✓  85 e2e/p2cd-problems.spec.ts:6:1 › Find problems is read-only, navigates to a glyph, and refreshes an invalidated report (2.7s)
+  ✓  86 e2e/p2cd-problems.spec.ts:45:1 › a delayed real scan cannot make an old glyph location actionable after deletion (2.3s)
+  ✓  87 e2e/panels.spec.ts:51:3 › editor panels › edits metrics, geometry and anchors, then undoes all of it (3.8s)
+  ✓  88 e2e/panels.spec.ts:110:3 › editor panels › switches glyph from the sidebar and layer from the layer list (2.9s)
+  ✓  89 e2e/panels.spec.ts:146:3 › saved workspaces › saves a named arrangement and restores it on demand (3.0s)
+  ✓  90 e2e/session-isolation.spec.ts:7:1 › owns dirty documents and preferences even after its page closes (731ms)
+  ✓  91 e2e/session-isolation.spec.ts:44:1 › starts with a pristine font and preferences after the preceding test (10ms)
+  ✓  92 e2e/text.spec.ts:130:1 › shapes text and edits the third glyph in local coordinates (7.9s)
+  ✓  93 e2e/text.spec.ts:324:1 › configures the waterfall as a list and as a range with a step (6.8s)
+  ✓  94 e2e/text.spec.ts:360:1 › adopts the built-in samples and steps them from the field and the canvas (7.0s)
+  ✘  95 e2e/text.spec.ts:412:1 › exports a self-contained HTML proof with the compiled font embedded (11.2s)
+  ✘  96 e2e/text.spec.ts:480:1 › exports a vector PDF proof and a vertical outline sheet (6.9s)
+  ✓  97 e2e/text.spec.ts:534:1 › previews a named instance and a second master from the strip (3.6s)
+
+  1) e2e/acceptance-performance.spec.ts:35:1 › 300-point drag repaints synchronously within eight milliseconds 
+
+    TimeoutError: page.waitForResponse: Timeout 30000ms exceeded while waiting for event "response"
+
+      87 |     // that closure before the gesture; timing samples still measure only paint.
+      88 |     const [closed, measurement] = await Promise.all([
+    > 89 |       page.waitForResponse(
+         |            ^
+      90 |         (response) =>
+      91 |           response.url().endsWith('/api/doc.edit_end') &&
+      92 |           (response.request().postDataJSON() as { doc: number }).doc ===
+        at /home/chen/githubprojects/fontpixel/fontcarver/app/e2e/acceptance-performance.spec.ts:89:12
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../.scratch/p5f-e2e-isolation/full-process-results/acceptance-performance-300-b1f3b-y-within-eight-milliseconds/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../.scratch/p5f-e2e-isolation/full-process-results/acceptance-performance-300-b1f3b-y-within-eight-milliseconds/error-context.md
+
+  2) e2e/bitmap.spec.ts:414:1 › properties are renamed and a sprite sheet round trips through its own layout 
+
+    Error: download.saveAs: canceled
+
+      460 |   ]).then(([event]) => event)
+      461 |   const sheet = join(directory, 'sheet.png')
+    > 462 |   await download.saveAs(sheet)
+          |                  ^
+      463 |   // Clearing the form proves the PNG alone carries the mapping.
+      464 |   await page.getByLabel('Glyph names in cell order').fill('A')
+      465 |   await page.getByLabel('Columns', { exact: true }).fill('1')
+        at /home/chen/githubprojects/fontpixel/fontcarver/app/e2e/bitmap.spec.ts:462:18
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../.scratch/p5f-e2e-isolation/full-process-results/bitmap-properties-are-rena-c0757-rips-through-its-own-layout/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../.scratch/p5f-e2e-isolation/full-process-results/bitmap-properties-are-rena-c0757-rips-through-its-own-layout/error-context.md
+
+  3) e2e/p2b-source.spec.ts:26:1 › retains invalid Unicode drafts through native save and separates validation from activation 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: "# 草稿 😀 — preserved exactly
+    feature liga { sub f i by ; } liga;"
+    Received: undefined
+
+      41 |   await expect(save).toBeHidden()
+      42 |   const saved = await featureState(page, source.doc.doc)
+    > 43 |   expect(saved.draft?.source.prefixes[0].code).toBe(INVALID)
+         |                                                ^
+      44 |   expect(saved.compile_revision).toBe(before.compile_revision)
+      45 |   expect(saved.has_unapplied_changes).toBe(true)
+      46 |   // The shell focuses a path it already has open instead of opening it twice,
+        at /home/chen/githubprojects/fontpixel/fontcarver/app/e2e/p2b-source.spec.ts:43:48
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../.scratch/p5f-e2e-isolation/full-process-results/p2b-source-retains-invalid-5d6dc--validation-from-activation/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: page-before-cleanup (text/plain) ────────────────────────────────────────────────
+    - text: FontCarver
+    - menubar "Application menu":
+      - menuitem "File"
+      - menuitem "Edit"
+      - menuitem "Glyph"
+      - menuitem "Path"
+      - menuitem "Layer"
+      - menuitem "Font"
+      - menuitem "Features"
+      - menuitem "Bitmap"
+      - menuitem "View"
+      - menuitem "Window"
+      - menuitem "Help"
+    - tablist "Open tabs"...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../.scratch/p5f-e2e-isolation/full-process-results/p2b-source-retains-invalid-5d6dc--validation-from-activation/error-context.md
+
+  4) e2e/text.spec.ts:412:1 › exports a self-contained HTML proof with the compiled font embedded ──
+
+    Error: download.saveAs: canceled
+
+      424 |   await group.getByRole('button', { name: 'Export HTML' }).click()
+      425 |   const file = testInfo.outputPath('proof-embedded.html')
+    > 426 |   await (await download).saveAs(file)
+          |                          ^
+      427 |
+      428 |   const html = await import('node:fs/promises').then((fs) =>
+      429 |     fs.readFile(file, 'utf8'),
+        at /home/chen/githubprojects/fontpixel/fontcarver/app/e2e/text.spec.ts:426:26
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../.scratch/p5f-e2e-isolation/full-process-results/text-exports-a-self-contai-7cdb6--the-compiled-font-embedded/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../.scratch/p5f-e2e-isolation/full-process-results/text-exports-a-self-contai-7cdb6--the-compiled-font-embedded/error-context.md
+
+  5) e2e/text.spec.ts:480:1 › exports a vector PDF proof and a vertical outline sheet ──────────────
+
+    Error: download.saveAs: canceled
+
+      489 |   await group.getByRole('button', { name: 'Export PDF' }).click()
+      490 |   const pdfPath = testInfo.outputPath('proof.pdf')
+    > 491 |   await (await pdfDownload).saveAs(pdfPath)
+          |                             ^
+      492 |   const fs = await import('node:fs/promises')
+      493 |   const pdf = await fs.readFile(pdfPath)
+      494 |   expect(pdf.subarray(0, 8).toString('latin1')).toBe('%PDF-1.7')
+        at /home/chen/githubprojects/fontpixel/fontcarver/app/e2e/text.spec.ts:491:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../.scratch/p5f-e2e-isolation/full-process-results/text-exports-a-vector-PDF-proof-and-a-vertical-outline-sheet/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../.scratch/p5f-e2e-isolation/full-process-results/text-exports-a-vector-PDF-proof-and-a-vertical-outline-sheet/error-context.md
+
+  5 failed
+    e2e/acceptance-performance.spec.ts:35:1 › 300-point drag repaints synchronously within eight milliseconds 
+    e2e/bitmap.spec.ts:414:1 › properties are renamed and a sprite sheet round trips through its own layout 
+    e2e/p2b-source.spec.ts:26:1 › retains invalid Unicode drafts through native save and separates validation from activation 
+    e2e/text.spec.ts:412:1 › exports a self-contained HTML proof with the compiled font embedded ───
+    e2e/text.spec.ts:480:1 › exports a vector PDF proof and a vertical outline sheet ───────────────
+  1 skipped
+  91 passed (7.5m)
+
+
+$ playwright test acceptance-performance + p2b-source; grep 300-point|retains invalid; --retries=0 --trace=on
+
+Running 2 tests using 1 worker
+
+pointer-to-paint 300 points/200 frame-paced samples: median=1.000ms p95=1.500ms max=3.200ms over8=0 pointerDown=2.900ms rendererP95=0.800ms rendererMax=1.700ms
+  ✓  1 e2e/acceptance-performance.spec.ts:35:1 › 300-point drag repaints synchronously within eight milliseconds (19.8s)
+  ✓  2 e2e/p2b-source.spec.ts:26:1 › retains invalid Unicode drafts through native save and separates validation from activation (5.3s)
+
+  2 passed (27.7s)
+
+
+$ playwright test fontview panels p2b-source p2b-imported session-isolation; --repeat-each=2 --retries=0
+
+Running 44 tests using 1 worker
+
+  ✓   1 e2e/fontview.spec.ts:16:3 › font view › renders the glyph grid for the pre-opened font (1.2s)
+  ✓   2 e2e/fontview.spec.ts:32:3 › font view › searches by Unicode scalar (1.5s)
+  ✓   3 e2e/fontview.spec.ts:48:3 › font view › filters by a sidebar category and reports the count (1.5s)
+  ✓   4 e2e/fontview.spec.ts:72:3 › font view › reports the selection in the status bar (1.4s)
+  ✓   5 e2e/fontview.spec.ts:90:3 › font view list mode › sorts by every column, chooses columns and keeps the choice (3.2s)
+  ✓   6 e2e/fontview.spec.ts:158:3 › font view search and filters › reports an invalid regular expression under the field (2.4s)
+  ✓   7 e2e/fontview.spec.ts:197:3 › font view search and filters › badges a Unicode block with its coverage and filters by a badge (2.2s)
+  ✓   8 e2e/fontview.spec.ts:221:3 › font view editing workflows › labels a whole selection in one undo step (2.4s)
+  ✓   9 e2e/fontview.spec.ts:247:3 › font view editing workflows › generates a composite from the glyph database (2.8s)
+  ✓  10 e2e/fontview.spec.ts:290:3 › font view editing workflows › renames a selection with a regular expression (3.8s)
+  ✓  11 e2e/p2b-imported.spec.ts:75:1 › renders original rules as glyphs, converts source, exports and restores the native original baseline (5.4s)
+  ✓  12 e2e/p2b-imported.spec.ts:149:1 › proves a kerning lift before exposing pair controls and preserves zero exceptions through revert undo (5.5s)
+  ✓  13 e2e/p2b-imported.spec.ts:249:1 › offers editable source while leaving non-equivalent model kerning source-owned (2.9s)
+  ✓  14 e2e/p2b-imported.spec.ts:275:1 › reports an unsupported competing table without changing the imported document (2.3s)
+  ✓  15 e2e/p2b-source.spec.ts:26:1 › retains invalid Unicode drafts through native save and separates validation from activation (4.7s)
+  ✓  16 e2e/p2b-source.spec.ts:125:1 › generates and freezes an opt-in recipe without changing active layout during draft edits (3.3s)
+  ✓  17 e2e/p2b-source.spec.ts:172:1 › rejects stale source activation and ignores delayed diagnostics after glyph deletion (2.7s)
+  ✘  18 e2e/panels.spec.ts:51:3 › editor panels › edits metrics, geometry and anchors, then undoes all of it (16.8s)
+  ✓  19 e2e/panels.spec.ts:110:3 › editor panels › switches glyph from the sidebar and layer from the layer list (9.9s)
+  ✓  20 e2e/panels.spec.ts:146:3 › saved workspaces › saves a named arrangement and restores it on demand (7.9s)
+  ✓  21 e2e/session-isolation.spec.ts:7:1 › owns dirty documents and preferences even after its page closes (1.9s)
+  ✓  22 e2e/session-isolation.spec.ts:44:1 › starts with a pristine font and preferences after the preceding test (44ms)
+  ✓  23 e2e/fontview.spec.ts:16:3 › font view › renders the glyph grid for the pre-opened font (3.6s)
+  ✓  24 e2e/fontview.spec.ts:32:3 › font view › searches by Unicode scalar (4.9s)
+  ✓  25 e2e/fontview.spec.ts:48:3 › font view › filters by a sidebar category and reports the count (4.2s)
+  ✓  26 e2e/fontview.spec.ts:72:3 › font view › reports the selection in the status bar (3.5s)
+  ✓  27 e2e/fontview.spec.ts:90:3 › font view list mode › sorts by every column, chooses columns and keeps the choice (5.6s)
+  ✓  28 e2e/fontview.spec.ts:158:3 › font view search and filters › reports an invalid regular expression under the field (2.6s)
+  ✓  29 e2e/fontview.spec.ts:197:3 › font view search and filters › badges a Unicode block with its coverage and filters by a badge (1.7s)
+  ✓  30 e2e/fontview.spec.ts:221:3 › font view editing workflows › labels a whole selection in one undo step (2.3s)
+  ✓  31 e2e/fontview.spec.ts:247:3 › font view editing workflows › generates a composite from the glyph database (3.1s)
+  ✓  32 e2e/fontview.spec.ts:290:3 › font view editing workflows › renames a selection with a regular expression (3.7s)
+  ✘  33 e2e/p2b-imported.spec.ts:75:1 › renders original rules as glyphs, converts source, exports and restores the native original baseline (10.0s)
+  ✓  34 e2e/p2b-imported.spec.ts:149:1 › proves a kerning lift before exposing pair controls and preserves zero exceptions through revert undo (5.8s)
+  ✓  35 e2e/p2b-imported.spec.ts:249:1 › offers editable source while leaving non-equivalent model kerning source-owned (2.9s)
+  ✓  36 e2e/p2b-imported.spec.ts:275:1 › reports an unsupported competing table without changing the imported document (2.4s)
+  ✓  37 e2e/p2b-source.spec.ts:26:1 › retains invalid Unicode drafts through native save and separates validation from activation (4.8s)
+  ✓  38 e2e/p2b-source.spec.ts:125:1 › generates and freezes an opt-in recipe without changing active layout during draft edits (3.4s)
+  ✓  39 e2e/p2b-source.spec.ts:172:1 › rejects stale source activation and ignores delayed diagnostics after glyph deletion (2.3s)
+  ✓  40 e2e/panels.spec.ts:51:3 › editor panels › edits metrics, geometry and anchors, then undoes all of it (8.4s)
+  ✓  41 e2e/panels.spec.ts:110:3 › editor panels › switches glyph from the sidebar and layer from the layer list (9.3s)
+  ✓  42 e2e/panels.spec.ts:146:3 › saved workspaces › saves a named arrangement and restores it on demand (7.8s)
+  ✓  43 e2e/session-isolation.spec.ts:7:1 › owns dirty documents and preferences even after its page closes (1.9s)
+  ✓  44 e2e/session-isolation.spec.ts:44:1 › starts with a pristine font and preferences after the preceding test (21ms)
+
+  1) e2e/p2b-imported.spec.ts:75:1 › renders original rules as glyphs, converts source, exports and restores the native original baseline 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: "ImportedTables"
+    Received: "Fea"
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      70 |   await expect
+      71 |     .poll(async () => (await featureState(page, doc.doc)).authority)
+    > 72 |     .toBe('ImportedTables')
+         |      ^
+      73 | }
+      74 |
+      75 | test('renders original rules as glyphs, converts source, exports and restores the native original baseline', async ({
+        at revert (/home/chen/githubprojects/fontpixel/fontcarver/app/e2e/p2b-imported.spec.ts:72:6)
+        at /home/chen/githubprojects/fontpixel/fontcarver/app/e2e/p2b-imported.spec.ts:138:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../.scratch/p5f-e2e-isolation/repeat-results/p2b-imported-renders-origi-dc75f-he-native-original-baseline-repeat1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: page-before-cleanup (text/plain) ────────────────────────────────────────────────
+    - text: FontCarver
+    - menubar "Application menu":
+      - menuitem "File"
+      - menuitem "Edit"
+      - menuitem "Glyph"
+      - menuitem "Path"
+      - menuitem "Layer"
+      - menuitem "Font"
+      - menuitem "Features"
+      - menuitem "Bitmap"
+      - menuitem "View"
+      - menuitem "Window"
+      - menuitem "Help"
+    - tablist "Open tabs"...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../.scratch/p5f-e2e-isolation/repeat-results/p2b-imported-renders-origi-dc75f-he-native-original-baseline-repeat1/error-context.md
+
+  2) e2e/panels.spec.ts:51:3 › editor panels › edits metrics, geometry and anchors, then undoes all of it 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByRole('region', { name: 'Inspector' }).getByLabel('LSB', { exact: true })
+    Expected: "16"
+    Received: "200"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" with timeout 5000ms
+      - waiting for getByRole('region', { name: 'Inspector' }).getByLabel('LSB', { exact: true })
+        13 × locator resolved to <input type="text" value="200" aria-label="LSB" inputmode="numeric" class="_numberInput_1paft_303"/>
+           - unexpected value "200"
+
+       99 |     await expect.poll(() => undoLabel(page)).toBe(metricsUndo)
+      100 |     await page.keyboard.press('Control+z')
+    > 101 |     await expect(lsb).toHaveValue(originalLsb)
+          |                       ^
+      102 |     await expect(inspector.getByLabel('advance', { exact: true })).toHaveValue(
+      103 |       originalWidth,
+      104 |     )
+        at /home/chen/githubprojects/fontpixel/fontcarver/app/e2e/panels.spec.ts:101:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../.scratch/p5f-e2e-isolation/repeat-results/panels-editor-panels-edits-3fa03-chors-then-undoes-all-of-it/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../.scratch/p5f-e2e-isolation/repeat-results/panels-editor-panels-edits-3fa03-chors-then-undoes-all-of-it/error-context.md
+
+  2 failed
+    e2e/p2b-imported.spec.ts:75:1 › renders original rules as glyphs, converts source, exports and restores the native original baseline 
+    e2e/panels.spec.ts:51:3 › editor panels › edits metrics, geometry and anchors, then undoes all of it 
+  42 passed (4.2m)
+
+
+$ playwright test panels + p2b-imported; grep edits metrics, geometry|renders original rules; --repeat-each=3 --retries=0 --trace=on
+
+Running 6 tests using 1 worker
+
+  ✓  1 e2e/p2b-imported.spec.ts:85:1 › renders original rules as glyphs, converts source, exports and restores the native original baseline (7.8s)
+  ✓  2 e2e/panels.spec.ts:60:3 › editor panels › edits metrics, geometry and anchors, then undoes all of it (8.8s)
+  ✓  3 e2e/p2b-imported.spec.ts:85:1 › renders original rules as glyphs, converts source, exports and restores the native original baseline (6.5s)
+  ✓  4 e2e/panels.spec.ts:60:3 › editor panels › edits metrics, geometry and anchors, then undoes all of it (9.2s)
+  ✓  5 e2e/p2b-imported.spec.ts:85:1 › renders original rules as glyphs, converts source, exports and restores the native original baseline (6.8s)
+  ✓  6 e2e/panels.spec.ts:60:3 › editor panels › edits metrics, geometry and anchors, then undoes all of it (27.3s)
+
+  6 passed (1.4m)
+
+
+$ playwright test --config=e2e/p2a.config.ts --grep creates, assigns --retries=0
+
+Running 1 test using 1 worker
+
+  ✓  1 e2e/p2a-kerning.spec.ts:124:1 › creates, assigns, renames and explicitly removes an in-use shared group (16.1s)
+
+  1 passed (20.0s)
+
+
+$ playwright test --config=e2e/p2b.config.ts --grep retains invalid --retries=0
+
+Running 1 test using 1 worker
+
+  ✓  1 e2e/p2b-source.spec.ts:26:1 › retains invalid Unicode drafts through native save and separates validation from activation (6.8s)
+
+  1 passed (8.1s)
+
+
+$ playwright test --config=e2e/p2cd.config.ts --grep all new export formats --retries=0
+
+Running 1 test using 1 worker
+
+  ✓  1 e2e/p2cd-drafts.spec.ts:19:1 › all new export formats reject unapplied feature drafts and problem scans preserve active layout (5.7s)
+
+  1 passed (7.0s)
+
+
+$ playwright test bitmap draw --grep-invert properties are renamed --retries=0
+
+Running 10 tests using 1 worker
+
+  ✓   1 e2e/bitmap.spec.ts:82:1 › BDF pixels survive drawing, undo, redo, save, export and reopen (3.2s)
+  ✓   2 e2e/bitmap.spec.ts:119:1 › failed pixel writes retain the draft and block tab navigation until retry (2.6s)
+  ✓   3 e2e/bitmap.spec.ts:152:1 › trace, regenerate, strike properties, tools and strike removal are undoable (3.2s)
+  ✓   4 e2e/bitmap.spec.ts:229:1 › focused metrics are saved, and ellipse, crop, invert and scaling retain pixels (3.1s)
+  ✓   5 e2e/bitmap.spec.ts:284:1 › pixel tools, the marquee copy and the persisted overlays (3.6s)
+  ✓   6 e2e/bitmap.spec.ts:355:1 › an exact grid preset sets the strike metrics and a custom size is corrected (2.3s)
+  ✓   7 e2e/bitmap.spec.ts:456:1 › cross-strike copies, batch tracing and the single-glyph waterfall (2.9s)
+  ✓   8 e2e/bitmap.spec.ts:551:1 › every pixel tool has a working single-key shortcut (2.3s)
+  ✓   9 e2e/draw.spec.ts:44:3 › drawing › pen-draws a closed triangle into a new font (2.7s)
+  ✓  10 e2e/draw.spec.ts:155:3 › open corner › opens a reflex corner and reconnects it from the Path menu (3.8s)
+
+  10 passed (48.3s)
+
+
+Independent download probe: no FontCarver page or kernel; launched the same
+bundled headless Chromium with acceptDownloads: true and a writable private
+downloadsPath under this task's scratch directory. A blank page created a Blob
+containing "plain download probe", then clicked an <a download="probe.txt">.
+Result: plain browser download failure: canceled
+
+Minimal reproduction body (inside a launched browser, closed in finally):
+const page = await browser.newPage({acceptDownloads: true})
+await page.setContent('<button>Download</button>')
+await page.evaluate(() => {
+  document.querySelector('button').onclick = () => {
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(new Blob(['plain download probe']))
+    link.download = 'probe.txt'
+    link.click()
+  }
+})
+const downloading = page.waitForEvent('download')
+await page.getByRole('button').click()
+console.log('plain browser download failure:', await (await downloading).failure())
+
+The PNG case also reproduced in isolation with tracing. Browser protocol showed
+allowAndName and all 274 bytes received, followed by state=canceled. strace showed
+a successful creation of the temporary download file. No product download code
+or browser installation was changed. The PNG, HTML and PDF download failures
+remain open environment checks, not passing tests.
+
+The earlier full run using per-document cleanup was interrupted and is not
+counted as a passed complete run. Final code uses per-test kernel processes.

@@ -1,11 +1,12 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
+import { test } from './sessionFixtures'
 
 import { api } from './support'
 
 /**
  * The four dialogs that need no outline editor: New Font, Add Glyphs,
- * Preferences and Recovery. Each test works on a document it creates itself so
- * the shared kernel session stays predictable for the other specs.
+ * Preferences and Recovery. The session fixture disposes any documents these
+ * workflows create and restores their preference changes.
  */
 
 interface DocSummary {

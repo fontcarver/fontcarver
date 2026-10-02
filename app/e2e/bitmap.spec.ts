@@ -1,7 +1,8 @@
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { test, expect, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
+import { test } from './sessionFixtures'
 import { api } from './support'
 import { menuItem, openPathThroughDialog } from './acceptanceSupport'
 import type { BitmapGlyphView, BitmapState } from '../src/api/generated'
@@ -48,34 +49,11 @@ BITMAP
 ENDCHAR
 ENDFONT
 `
-/**
- * Dismisses the prompts a shared kernel can greet a fresh page with.
- *
- * A crash-recovery snapshot left by an earlier run, or a close prompt from a
- * document another spec left dirty, puts a modal overlay over the whole shell;
- * the next click is then intercepted and the spec fails on whatever it was
- * reaching for. Both are answered here before anything else runs, and a page
- * with neither costs one `count()`.
- */
-async function dismissPrompts(page: Page) {
-  for (const [name, button] of [
-    ['Recover Documents', 'Later'],
-    ['Unsaved changes', 'Cancel'],
-  ] as const) {
-    const dialog = page.getByRole('dialog', { name })
-    if ((await dialog.count()) === 0) continue
-    await expect(dialog).toBeVisible()
-    await dialog.getByRole('button', { name: button, exact: true }).click()
-    await expect(dialog).toBeHidden()
-  }
-}
-
 async function setup(page: Page) {
   const directory = mkdtempSync(join(tmpdir(), 'fontcarver-p3-e2e-')),
     path = join(directory, 'BitmapTest.bdf')
   writeFileSync(path, sample)
   await page.goto('/')
-  await dismissPrompts(page)
   const doc = await openPathThroughDialog(page, path)
   await menuItem(page, 'Bitmap', /^Bitmap editor$/)
   await expect(
@@ -155,9 +133,8 @@ test('failed pixel writes retain the draft and block tab navigation until retry'
   await expect(
     page.getByRole('alert').filter({ hasText: 'local pixels' }),
   ).toBeVisible()
-  // Earlier specs leave their own BitmapTest.bdf open in the shared kernel, so
-  // this document's tab is the newest one with that name.
-  await page.getByRole('tab', { name: FONT_TAB }).last().click()
+  // The isolated session contains only this workflow's bitmap document.
+  await page.getByRole('tab', { name: FONT_TAB }).click()
   await expect(
     page.getByRole('tab', { name: 'Bitmap editor', exact: true }),
   ).toHaveAttribute('aria-selected', 'true')

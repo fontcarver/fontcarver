@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { test } from './sessionFixtures'
 
 import { resolve } from 'node:path'
 
@@ -363,8 +364,7 @@ test('adopts the built-in samples and steps them from the field and the canvas',
   const { view, input } = await openTextTab(page, 'Hamburg')
   const [document] = await docs(page)
   if (!document) throw new Error('the fixture is not open')
-  // The library is project data, so the original metadata is captured and put
-  // back at the end: the suite's shared document is left exactly as found.
+  // The library is project data, so restore the original metadata at the end.
   const before = await api<{ info: unknown }>(page, 'doc.font_info', {
     doc: document.doc,
   })

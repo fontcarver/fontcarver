@@ -2,7 +2,8 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
+import { test } from './sessionFixtures'
 
 import { api, fixture, inspect } from './support'
 
@@ -132,8 +133,7 @@ test.describe('export', () => {
  * kernel, and applied again after a reload — which is what makes the same
  * record available to `fontcarver build --profile`.
  *
- * This spec uses the document the development server opens at start-up, so it
- * adds no second document to the session the other specs share.
+ * The session fixture supplies this test's own DejaVu document.
  */
 test.describe('export profiles', () => {
   test('saves a profile into the document and applies it after a reload', async ({
@@ -143,10 +143,7 @@ test.describe('export profiles', () => {
     await page.goto('/')
     const docs = await api<DocSummary[]>(page, 'session.list', {})
     const startup = docs.find((doc) => doc.path?.endsWith('DejaVuSans.ttf'))
-    expect(
-      startup,
-      'the development server opened its startup font',
-    ).toBeTruthy()
+    expect(startup, 'the session fixture opened its font').toBeTruthy()
     const doc = startup!.doc
     await page.reload()
 

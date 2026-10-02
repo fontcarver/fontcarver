@@ -37,7 +37,12 @@ test('retains invalid Unicode drafts through native save and separates validatio
   await editor(page).press('Control+s')
   const save = page.getByRole('dialog', { name: 'Save As' })
   await save.getByRole('textbox', { name: 'Document path' }).fill(native)
-  await save.getByRole('button', { name: 'Save', exact: true }).click()
+  // The dialog closes when saving starts, before draft flushing and disk I/O.
+  const [savedResponse] = await Promise.all([
+    page.waitForResponse('**/api/session.save'),
+    save.getByRole('button', { name: 'Save', exact: true }).click(),
+  ])
+  expect((await savedResponse.json()).error).toBeUndefined()
   await expect(save).toBeHidden()
   const saved = await featureState(page, source.doc.doc)
   expect(saved.draft?.source.prefixes[0].code).toBe(INVALID)

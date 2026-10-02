@@ -1,27 +1,16 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
+import { test } from './sessionFixtures'
 
-/**
- * Opens the app and waits for the pre-opened document's tab.
- *
- * The shell lists the kernel's open documents once at start-up; under the load
- * of a shared checkout that listing occasionally lands after the first paint and
- * the shell stays on its empty state. One reload recovers it, which keeps these
- * specs about the font view rather than about that race.
- */
+/** Opens the app after the isolated fixture has finished importing its font. */
 async function openFont(page: Page): Promise<void> {
   await page.goto('/')
   const tab = page.getByRole('tab', { name: 'DejaVuSans.ttf' })
-  if (await tab.isVisible().catch(() => false)) return
-  await tab.waitFor({ state: 'visible', timeout: 5_000 }).catch(async () => {
-    await page.reload()
-    await tab.waitFor({ state: 'visible', timeout: 15_000 })
-  })
+  await expect(tab).toBeVisible({ timeout: 20_000 })
 }
 
 /**
- * Runs against `fc-devserver --open fixtures/fonts/DejaVuSans.ttf` plus the
- * Vite dev server. DejaVu Sans has 6,253 glyphs, 3,245 of them in the Letter
- * category, which is what the counts below are checked against.
+ * Each test opens a fresh copy of DejaVu Sans, which has 6,253 glyphs,
+ * 3,245 of them in the Letter category. Counts are checked against that font.
  */
 test.describe('font view', () => {
   test('renders the glyph grid for the pre-opened font', async ({ page }) => {
@@ -69,8 +58,7 @@ test.describe('font view', () => {
 
     const status = page.getByRole('contentinfo')
     await expect(status.getByText('of 6,253')).toBeVisible()
-    // Matched whole: the bar also flashes the label of an edit that just
-    // happened, which another spec's document event can put here too.
+    // Match the count whole, separately from the status bar's edit messages.
     const shown = await status.getByText(/^[\d,]+ glyphs?$/).innerText()
     const count = Number(shown.replace(/[^\d]/g, ''))
     expect(count).toBeGreaterThan(0)
@@ -235,7 +223,6 @@ test.describe('font view editing workflows', () => {
     const grid = page.getByRole('listbox', { name: 'Glyphs' })
     const cell = grid.getByRole('option', { name: 'A', exact: true })
     await expect(cell).toBeVisible()
-    await cell.scrollIntoViewIfNeeded()
     await cell.click()
     // The command acts on the selection, so prove which cell is in it.
     await expect(cell).toHaveAttribute('aria-selected', 'true')
@@ -295,7 +282,7 @@ test.describe('font view editing workflows', () => {
     // A composite: the cell marks its components, and it is not empty.
     await expect(created.first()).toHaveAttribute('data-glyph', 'f_f')
 
-    // Leave the shared fixture as it was found.
+    // Undo must remove the generated composite, too.
     await page.keyboard.press('Control+z')
     await expect(created).toHaveCount(0, { timeout: 20_000 })
   })
@@ -306,7 +293,7 @@ test.describe('font view editing workflows', () => {
     await page.getByRole('searchbox', { name: 'Search glyphs' }).fill('aacute')
     const cell = grid.getByRole('option', { name: /^aacute/ })
     await expect(cell).toHaveCount(1)
-    await cell.scrollIntoViewIfNeeded()
+    // Click re-resolves and scrolls the locator if filtering remounts the grid.
     await cell.click()
     await expect(cell).toHaveAttribute('aria-selected', 'true')
 

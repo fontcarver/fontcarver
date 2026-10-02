@@ -51,9 +51,14 @@ async function prepare(page: Page, preferLift = true) {
 }
 
 async function convert(page: Page, doc: DocSummary) {
-  await page
-    .getByRole('button', { name: 'Use editable source', exact: true })
-    .click()
+  const [response] = await Promise.all([
+    page.waitForResponse('**/api/layout.apply_conversion'),
+    page
+      .getByRole('button', { name: 'Use editable source', exact: true })
+      .click(),
+  ])
+  expect(response.request().postDataJSON().doc).toBe(doc.doc)
+  expect((await response.json()).error).toBeUndefined()
   await expect
     .poll(async () => (await featureState(page, doc.doc)).authority)
     .toBe('Fea')
@@ -64,9 +69,14 @@ async function revert(page: Page, doc: DocSummary) {
   await page
     .getByRole('button', { name: 'Restore original layout…', exact: true })
     .click()
-  await page
-    .getByRole('button', { name: 'Restore original layout', exact: true })
-    .click()
+  const [response] = await Promise.all([
+    page.waitForResponse('**/api/layout.revert_original'),
+    page
+      .getByRole('button', { name: 'Restore original layout', exact: true })
+      .click(),
+  ])
+  expect(response.request().postDataJSON().doc).toBe(doc.doc)
+  expect((await response.json()).error).toBeUndefined()
   await expect
     .poll(async () => (await featureState(page, doc.doc)).authority)
     .toBe('ImportedTables')

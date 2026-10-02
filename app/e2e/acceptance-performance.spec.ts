@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { sourceTest as test } from './sessionFixtures'
 
 import { api } from './support'
 import {
@@ -90,7 +91,9 @@ test('300-point drag repaints synchronously within eight milliseconds', async ({
           response.url().endsWith('/api/doc.edit_end') &&
           (response.request().postDataJSON() as { doc: number }).doc ===
             created.doc,
-        { timeout: 30_000 },
+        // The test's 120-second deadline bounds both frame-paced sampling and
+        // queue draining; do not expire this listener before pointer-up.
+        { timeout: 0 },
       ),
       page.getByRole('img', { name: /^Glyph A/ }).evaluate(
         async (canvas, setup) => {

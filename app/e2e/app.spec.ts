@@ -1,10 +1,11 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
+import { test } from './sessionFixtures'
 
 test('shows the workspace shell', async ({ page }) => {
   await page.goto('/')
 
   // The empty state is only rendered while no document is open, and the dev
-  // server opens one at startup, so assert the always-present chrome instead.
+  // session fixture opens one, so assert the always-present chrome instead.
   await expect(
     page.getByRole('menubar', { name: 'Application menu' }),
   ).toBeVisible()
@@ -18,7 +19,6 @@ async function openGlyph(page: Page, name: string): Promise<void> {
   // The grid is virtualised and its cells arrive with their thumbnails, so the
   // cell is waited for rather than assumed to be in the first paint.
   await expect(cell).toBeAttached({ timeout: 20_000 })
-  await cell.scrollIntoViewIfNeeded()
   await cell.dblclick()
   await expect(
     page.getByRole('img', { name: new RegExp(`^Glyph ${name}`) }),
@@ -139,8 +139,7 @@ test.describe('a detached panel of an Edit tab', () => {
     ])
     await expect(page.getByRole('region', { name: 'Inspector' })).toBeVisible()
 
-    // The kernel document is shared with every other spec, so this case leaves
-    // it on its Overview rather than on the glyph it stepped to.
+    // Closing the Edit tab returns this document to its Overview.
     await page.keyboard.press('Control+Shift+W')
     await expect(page.getByRole('img', { name: /^Glyph / })).toHaveCount(0)
   })
@@ -180,7 +179,7 @@ test.describe('document history', () => {
     page,
   }) => {
     await page.goto('/')
-    // Its own glyph, so the edit cannot collide with another spec's.
+    // Use E for the history gesture and its visible scope label.
     await openGlyph(page, 'E')
 
     const inspector = page.getByRole('region', { name: 'Inspector' })
@@ -207,7 +206,7 @@ test.describe('document history', () => {
     await entries.first().click()
     await expect(lsb).toHaveValue('210')
 
-    // Leave the shared document as it was found.
+    // Verify that returning to the initial entry restores the metrics.
     await entries.last().click()
     await expect(lsb).toHaveValue(original)
   })
@@ -253,6 +252,8 @@ test.describe('preview strip', () => {
 
 test.describe('reopening a saved file', () => {
   test('gives each document exactly one pinned Overview', async ({ page }) => {
+    // Two cold imports and their tab transitions are a multi-document workflow.
+    test.slow()
     await page.goto('/')
     const strip = page.getByRole('tablist', { name: 'Open tabs' })
     await expect(strip.getByRole('tab').first()).toBeVisible()
@@ -295,7 +296,7 @@ test.describe('reopening a saved file', () => {
     ).toHaveCount(first + 1)
     await expect(strip.getByRole('tab')).toHaveCount(before + 2)
 
-    // Closing each of them leaves the session as the other specs expect.
+    // Closing the documents removes exactly their own tabs.
     await page.keyboard.press('Control+w')
     await expect(overview).toHaveCount(1)
     await overview.click()
@@ -311,7 +312,7 @@ test.describe('a second document', () => {
     await page.goto('/')
     const strip = page.getByRole('tablist', { name: 'Open tabs' })
     await expect(strip.getByRole('tab').first()).toBeVisible()
-    // The kernel is shared, so the count this spec cares about is relative.
+    // Record the first document's tabs before opening the second one.
     const before = await strip.getByRole('tab').count()
 
     // Leave the first document on a Glyph tab: opening another document still
@@ -345,8 +346,7 @@ test.describe('a second document', () => {
       'true',
     )
 
-    // Leave the shared session as the other specs expect it: the document this
-    // case opened is the active one, so File ▸ Close Font closes it.
+    // File ▸ Close Font closes the active second document.
     await page.keyboard.press('Control+w')
     await expect(opened).toHaveCount(0)
   })

@@ -2,7 +2,8 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { test } from './sessionFixtures'
 
 import { api, fixture } from './support'
 import {

@@ -1,8 +1,9 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
+import { test } from './sessionFixtures'
 
 /**
  * The Edit tab's inspector panels and the Path menu, against
- * `fc-devserver --open fixtures/fonts/DejaVuSans.ttf`.
+ * an isolated copy of `fixtures/fonts/DejaVuSans.ttf`.
  *
  * Every step is one undoable command, so the spec ends by walking the history
  * back and checking that the layer really is where it started: that is the
@@ -17,7 +18,6 @@ async function openA(page: Page): Promise<void> {
   const cell = grid.getByRole('option', { name: 'A', exact: true })
   // The grid is virtualised and its cells arrive with their thumbnails.
   await expect(cell).toBeAttached({ timeout: 20_000 })
-  await cell.scrollIntoViewIfNeeded()
   await cell.dblclick()
   await expect(page.getByRole('tab', { name: 'A', exact: true })).toBeVisible()
   await expect(page.getByRole('img', { name: /^Glyph A/ })).toBeVisible()
@@ -47,15 +47,22 @@ async function undoLabel(page: Page): Promise<string | null> {
   return text?.replace(/\s+/g, ' ').trim() ?? null
 }
 
+/** Focus the editor for its shortcut and wait for the kernel history change. */
+async function undo(page: Page): Promise<void> {
+  const [response] = await Promise.all([
+    page.waitForResponse('**/api/doc.undo'),
+    page.getByRole('img', { name: /^Glyph A/ }).press('Control+z'),
+  ])
+  expect((await response.json()).error).toBeUndefined()
+}
+
 test.describe('editor panels', () => {
   test('edits metrics, geometry and anchors, then undoes all of it', async ({
     page,
   }) => {
     await openA(page)
 
-    // The document is shared with every other spec, and one of them leaves an
-    // entry of its own on the undo stack, so the state this test restores is
-    // the one it found rather than an empty stack.
+    // Every test gets a clean document and must restore its initial history.
     const undoBefore = await undoLabel(page)
 
     const inspector = page.getByRole('region', { name: 'Inspector' })
@@ -76,6 +83,7 @@ test.describe('editor panels', () => {
     await expect(
       page.getByRole('region', { name: 'Info box' }).getByLabel('LSB'),
     ).toHaveValue('200')
+    const metricsUndo = await undoLabel(page)
 
     // 2. The Path menu runs a whole-layer operation. The advance is the same
     // afterwards, so the Edit menu is what says the command actually ran.
@@ -90,12 +98,14 @@ test.describe('editor panels', () => {
 
     // Three edits, three undos: the anchor goes, the outline operation goes,
     // and the layer is back at the metrics the font shipped.
-    await page.keyboard.press('Control+z')
+    await undo(page)
     await expect(
       inspector.getByRole('button', { name: 'Delete anchor top' }),
     ).toHaveCount(0)
-    await page.keyboard.press('Control+z')
-    await page.keyboard.press('Control+z')
+    await undo(page)
+    // Wait for the UI to show the remaining metrics entry as well.
+    await expect.poll(() => undoLabel(page)).toBe(metricsUndo)
+    await undo(page)
     await expect(lsb).toHaveValue(originalLsb)
     await expect(inspector.getByLabel('advance', { exact: true })).toHaveValue(
       originalWidth,

@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import type { Page } from '@playwright/test'
+import type { APIRequestContext, Page } from '@playwright/test'
 
 /** Repository root, resolved from this file so the specs need no cwd. */
 export const REPO_ROOT = resolve(
@@ -19,6 +19,21 @@ export function fixture(name: string): string {
 interface ResultEnvelope<T> {
   result?: T
   error?: { code: string; message: string }
+}
+
+/** Calls the kernel even before navigation or after the test page has closed. */
+export async function requestApi<T>(
+  request: APIRequestContext,
+  method: string,
+  params: unknown,
+): Promise<T> {
+  const response = await request.post(`/api/${method}`, { data: params })
+  const envelope = (await response.json()) as ResultEnvelope<T>
+  if (envelope.error)
+    throw new Error(`${method} failed: ${envelope.error.message}`)
+  if (!response.ok())
+    throw new Error(`${method} failed with HTTP ${response.status()}`)
+  return envelope.result as T
 }
 
 /**

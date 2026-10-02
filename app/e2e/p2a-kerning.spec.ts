@@ -22,7 +22,7 @@ import {
   sourceFixture,
   test,
 } from './p2aSupport'
-import { api, fixture, REPO_ROOT } from './support'
+import { api, fixture } from './support'
 
 async function seedGroups(page: Page, doc: DocSummary) {
   for (const [side, name, members] of [
@@ -533,13 +533,13 @@ test('measures and edits the run through the spacing matrix, beam and cut-off', 
     page.getByRole('spinbutton', { name: 'Cut off from' }),
   ).toBeVisible()
   await page.screenshot({
-    path: join(REPO_ROOT, 'docs/screenshots/p5f-d-metrics/spacing-matrix.png'),
+    path: test.info().outputPath('spacing-matrix.png'),
   })
   // The canvas alone, so the beam line, its measurement and the cut-off band
   // are legible at the size the acceptance report embeds.
   await page.getByRole('button', { name: 'Fit Glyph in Window' }).click()
   await canvas.screenshot({
-    path: join(REPO_ROOT, 'docs/screenshots/p5f-d-metrics/beam-cutoff.png'),
+    path: test.info().outputPath('beam-cutoff.png'),
   })
 })
 
@@ -594,7 +594,7 @@ test('marks kerning exceptions and maintains the table across masters', async ({
     .poll(async () => (await resolution(page, source.doc, bold!.id)).exception)
     .toBe(true)
   await page.screenshot({
-    path: join(REPO_ROOT, 'docs/screenshots/p5f-d-metrics/kerning-table.png'),
+    path: test.info().outputPath('kerning-table.png'),
   })
 })
 

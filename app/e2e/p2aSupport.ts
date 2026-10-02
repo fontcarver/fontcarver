@@ -8,7 +8,8 @@ import {
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
-import { expect, test as base, type Page, type Route } from '@playwright/test'
+import { expect, type Page, type Route } from '@playwright/test'
+import { sourceTest as base } from './sessionFixtures'
 
 import type { DocSummary } from '../src/api/generated/DocSummary'
 import type { KerningResolution } from '../src/api/generated/KerningResolution'
@@ -102,9 +103,8 @@ export const test = base.extend<{ source: Source }>({
   source: async ({ page }, runTest) => {
     const files = sourceFixture(true)
     await page.goto('/')
-    // Whatever the session already held stays open: under the default
-    // configuration this spec shares a kernel that was started with the DejaVu
-    // fixture, and the specs that run after it need that document.
+    // Close only documents created by this source workflow. The outer session
+    // fixture also cleans up when a test has already closed its page.
     const inherited = new Set(
       (await api<DocSummary[]>(page, 'session.list', {})).map(
         (document) => document.doc,

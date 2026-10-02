@@ -2,7 +2,8 @@ import { existsSync, readFileSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { test } from './sessionFixtures'
 
 function primaryRepositoryRoot(): string {
   const worktreeRoot = fileURLToPath(new URL('../..', import.meta.url))

@@ -1,8 +1,9 @@
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
+import { test } from './sessionFixtures'
 
 import {
   menuItem,
@@ -11,9 +12,6 @@ import {
   type DocSummary,
 } from './acceptanceSupport'
 import { api, fixture, REPO_ROOT } from './support'
-
-const SCRATCH = resolve(REPO_ROOT, '.scratch', 'p5f-k-hinting', 'e2e')
-const SHOTS = resolve(REPO_ROOT, 'docs', 'screenshots', 'p5f-k-hinting')
 
 interface HintState {
   generation: number
@@ -35,8 +33,7 @@ interface HintState {
  * what it is hinting; the command line only converts the committed fixture.
  */
 function flexProject(): string {
-  mkdirSync(SCRATCH, { recursive: true })
-  const path = resolve(SCRATCH, 'flex-demo.fcf')
+  const path = test.info().outputPath('flex-demo.fcf')
   const binary = resolve(REPO_ROOT, 'target', 'debug', 'fontcarver')
   execFileSync(binary, ['convert', fixture('SourceSans3Min.otf'), path], {
     cwd: REPO_ROOT,
@@ -101,7 +98,6 @@ async function openHintEditor(page: Page): Promise<void> {
 test('flex hints and dot sections are edited, applied and refused when invalid', async ({
   page,
 }) => {
-  mkdirSync(SHOTS, { recursive: true })
   await page.goto('/')
   const opened: DocSummary = await openPathThroughDialog(page, flexProject())
   await openGlyphFromGrid(page, 'o')
@@ -125,11 +121,11 @@ test('flex hints and dot sections are edited, applied and refused when invalid',
   // The preview highlights the resolved curve pair; the fields below it edit it.
   await page
     .getByRole('img', { name: /numbered horizontal and vertical stem hints/ })
-    .screenshot({ path: resolve(SHOTS, 'flex-preview.png') })
+    .screenshot({ path: test.info().outputPath('flex-preview.png') })
   await page
     .getByRole('textbox', { name: 'Flex depth' })
     .scrollIntoViewIfNeeded()
-  await page.screenshot({ path: resolve(SHOTS, 'flex-editor.png') })
+  await page.screenshot({ path: test.info().outputPath('flex-editor.png') })
 
   // Changing the depth and adding a dot section applies as one undo step.
   await page.getByRole('textbox', { name: 'Flex depth' }).fill('60')
@@ -156,7 +152,7 @@ test('flex hints and dot sections are edited, applied and refused when invalid',
   await expect(page.getByRole('textbox', { name: 'Point index' })).toHaveValue(
     '7',
   )
-  await page.screenshot({ path: resolve(SHOTS, 'flex-refused.png') })
+  await page.screenshot({ path: test.info().outputPath('flex-refused.png') })
   const unchanged = await hintState(page, opened.doc, master)
   expect(unchanged.hints?.flex_hints).toEqual(applied.hints?.flex_hints)
   expect(unchanged.generation).toBe(applied.generation)
@@ -181,7 +177,6 @@ test('flex hints and dot sections are edited, applied and refused when invalid',
 test('the export dialog discloses whether the external TrueType hinter is installed', async ({
   page,
 }) => {
-  mkdirSync(SHOTS, { recursive: true })
   await page.goto('/')
   const status = await api<{ installed: boolean; version: string }>(
     page,
@@ -209,6 +204,6 @@ test('the export dialog discloses whether the external TrueType hinter is instal
   await expect(
     section.getByRole('textbox', { name: 'Default script' }),
   ).toBeVisible()
-  await page.screenshot({ path: resolve(SHOTS, 'autohint-status.png') })
+  await page.screenshot({ path: test.info().outputPath('autohint-status.png') })
   await dialog.getByRole('button', { name: 'Close' }).click()
 })
