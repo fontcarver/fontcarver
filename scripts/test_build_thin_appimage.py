@@ -9,6 +9,58 @@ import build_thin_appimage as builder
 
 
 class ThinAppImageTests(unittest.TestCase):
+    def test_bundle_type_changes_only_three_bytes_and_preserves_source(self):
+        import shutil
+        prefix = b'__TAURI_BUNDLE_TYPE_VAR_'
+        original = b'\x7fELFbefore' + prefix + b'DEBafter\x00'
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / 'deb-source-elf'
+            extracted = Path(directory) / 'extracted-appimage-elf'
+            source.write_bytes(original)
+            source.chmod(0o755)
+            shutil.copy2(source, extracted)
+            receipt = builder.patch_bundle_type(extracted)
+            expected = original.replace(prefix + b'DEB', prefix + b'APP')
+            self.assertEqual(source.read_bytes(), original)
+            self.assertEqual(extracted.read_bytes(), expected)
+            self.assertEqual(extracted.stat().st_mode & 0o777, 0o755)
+            offset = original.index(prefix) + len(prefix)
+            changed = [i for i, (a, b) in enumerate(zip(original, expected)) if a != b]
+            self.assertEqual(changed, [offset, offset + 1, offset + 2])
+            self.assertEqual(receipt, {
+                'source_sha256': hashlib.sha256(original).hexdigest(),
+                'appimage_sha256': hashlib.sha256(expected).hexdigest(),
+                'marker_offset': offset, 'before': 'DEB', 'after': 'APP',
+            })
+
+    def test_bundle_type_rejects_missing_duplicate_or_conflicting_markers(self):
+        prefix = b'__TAURI_BUNDLE_TYPE_VAR_'
+        cases = [b'none', prefix + b'DEB' + prefix + b'DEB',
+                 prefix + b'DEB' + prefix + b'UNK', prefix + b'DEB' + prefix + b'APP',
+                 prefix + b'APP', prefix + b'UNK', prefix + b'RPM', prefix + b'DE']
+        with tempfile.TemporaryDirectory() as directory:
+            binary = Path(directory) / 'extracted'
+            for content in cases:
+                original = b'\x7fELF' + content
+                with self.subTest(content=content):
+                    binary.write_bytes(original)
+                    with self.assertRaisesRegex(ValueError, 'bundle'):
+                        builder.patch_bundle_type(binary)
+                    self.assertEqual(binary.read_bytes(), original)
+
+    def test_bundle_type_rejects_non_elf_and_symlink_without_modification(self):
+        with tempfile.TemporaryDirectory() as directory:
+            binary = Path(directory) / 'source'
+            content = b'not-elf __TAURI_BUNDLE_TYPE_VAR_DEB'
+            binary.write_bytes(content)
+            with self.assertRaisesRegex(ValueError, 'ELF'):
+                builder.patch_bundle_type(binary)
+            link = Path(directory) / 'linked'
+            link.symlink_to(binary)
+            with self.assertRaisesRegex(ValueError, 'regular'):
+                builder.patch_bundle_type(link)
+            self.assertEqual(binary.read_bytes(), content)
+
     def test_download_rejects_changed_upstream_bytes(self):
         with tempfile.TemporaryDirectory() as directory:
             with mock.patch('urllib.request.urlopen') as request:

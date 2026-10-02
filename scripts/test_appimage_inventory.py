@@ -100,7 +100,7 @@ class ThinPolicyTests(unittest.TestCase):
         self.evidence.mkdir(parents=True)
         self.binary = self.root / 'usr/bin/fontcarver-desktop'
         self.binary.parent.mkdir(parents=True)
-        self.binary.write_bytes(elf())
+        self.binary.write_bytes(elf() + b'__TAURI_BUNDLE_TYPE_VAR_APP\0')
         self.launcher = self.root / 'AppRun'
         self.launcher.write_bytes(b'#!/bin/sh\nexec "$APPDIR/usr/bin/fontcarver-desktop" "$@"\n')
         self.launcher.chmod(0o755)
@@ -119,6 +119,11 @@ class ThinPolicyTests(unittest.TestCase):
                         'inputs': {**self.recipe.APPROVED_INPUTS,
                                    'runtime.map': hashlib.sha256(self.link_map.read_bytes()).hexdigest()},
                         'apprun_sha256': hashlib.sha256(self.recipe.APP_RUN).hexdigest(),
+                        'application': {
+                            'source_sha256': hashlib.sha256(elf() + b'__TAURI_BUNDLE_TYPE_VAR_DEB\0').hexdigest(),
+                            'appimage_sha256': hashlib.sha256(self.binary.read_bytes()).hexdigest(),
+                            'marker_offset': len(elf()) + len(b'__TAURI_BUNDLE_TYPE_VAR_'),
+                            'before': 'DEB', 'after': 'APP'},
                         'runtime': {'bytes': 64, 'sha256': hashlib.sha256(elf()).hexdigest(),
                                     'needed': sorted(self.needed)}}
         self.write_receipt()
@@ -140,6 +145,40 @@ class ThinPolicyTests(unittest.TestCase):
         (self.evidence / 'BUILD.json').unlink()
         with self.assertRaisesRegex(ValueError, 'missing audited'):
             self.verify()
+
+    def test_actual_application_marker_must_be_unique_appimage(self):
+        prefix = b'__TAURI_BUNDLE_TYPE_VAR_'
+        for markers in (b'', prefix + b'DEB', prefix + b'UNK',
+                        prefix + b'APP' + prefix + b'APP', prefix + b'APP' + prefix + b'DEB'):
+            with self.subTest(markers=markers):
+                self.binary.write_bytes(elf() + markers)
+                with self.assertRaisesRegex(ValueError, 'application'):
+                    self.verify()
+
+    def test_application_conversion_receipt_is_required(self):
+        for value in (None, [], {}):
+            with self.subTest(value=value):
+                self.receipt['application'] = value
+                self.write_receipt()
+                with self.assertRaisesRegex(ValueError, 'application'):
+                    self.verify()
+
+    def test_application_conversion_claims_must_match_bytes(self):
+        original = dict(self.receipt['application'])
+        for field, value in (('source_sha256', '0' * 64), ('appimage_sha256', '0' * 64),
+                             ('marker_offset', 0), ('marker_offset', True),
+                             ('before', 'UNK'), ('after', 'DEB')):
+            with self.subTest(field=field, value=value):
+                self.receipt['application'] = {**original, field: value}
+                self.write_receipt()
+                with self.assertRaisesRegex(ValueError, 'application'):
+                    self.verify()
+
+    def test_accepted_application_conversion_records_source_and_three_changed_bytes(self):
+        proof = self.verify()['application']
+        self.assertEqual(proof['source_sha256'], self.receipt['application']['source_sha256'])
+        self.assertEqual(proof['changed_bytes'], 3)
+        self.assertEqual(proof['bundle_type'], 'APP')
 
     def test_receipt_approval_cannot_cover_changed_runtime(self):
         self.artifact.write_bytes(elf() + b'hsqs' + bytes(40))

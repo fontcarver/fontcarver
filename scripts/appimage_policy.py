@@ -34,6 +34,37 @@ def _sha256(path: Path) -> str:
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
+def _application_conversion(binary: Path, conversion: object) -> dict:
+    """Verify the only permitted deb-to-AppImage ELF change and its provenance."""
+    content = binary.read_bytes()
+    marker_prefix = b'__TAURI_BUNDLE_TYPE_VAR_'
+    if content.count(marker_prefix) != 1:
+        raise ValueError('AppImage application must have exactly one Tauri bundle-type marker')
+    offset = content.index(marker_prefix) + len(marker_prefix)
+    if content[offset:offset + 3] != b'APP':
+        raise ValueError('AppImage application must have the APP bundle-type marker')
+    if not isinstance(conversion, dict):
+        raise ValueError('AppImage application conversion receipt is missing or malformed')
+    claimed_offset = conversion.get('marker_offset')
+    if (not isinstance(claimed_offset, int) or isinstance(claimed_offset, bool)
+            or claimed_offset != offset or conversion.get('before') != 'DEB'
+            or conversion.get('after') != 'APP'):
+        raise ValueError('AppImage application conversion receipt disagrees with its marker')
+    digest = hashlib.sha256(content).hexdigest()
+    if conversion.get('appimage_sha256') != digest:
+        raise ValueError('AppImage application conversion output hash mismatch')
+    original = hashlib.sha256()
+    view = memoryview(content)
+    original.update(view[:offset])
+    original.update(b'DEB')
+    original.update(view[offset + 3:])
+    source_digest = original.hexdigest()
+    if conversion.get('source_sha256') != source_digest:
+        raise ValueError('AppImage application reverse-conversion source hash mismatch')
+    return {'bundle_type': 'APP', 'marker_offset': offset, 'changed_bytes': 3,
+            'source_sha256': source_digest, 'appimage_sha256': digest}
+
+
 def require_releasable_appimage(payload: Path | None = None,
                                artifact: Path | None = None) -> dict:
     """Accept only the reviewed host-library recipe, bound to this actual image.
@@ -84,6 +115,7 @@ def require_releasable_appimage(payload: Path | None = None,
         raise ValueError('AppImage thin-runtime receipt has an unapproved profile/schema')
     if receipt.get('source_commit') != recipe.COMMIT:
         raise ValueError('AppImage runtime receipt source commit is unapproved')
+    application = _application_conversion(root / 'usr/bin/fontcarver-desktop', receipt.get('application'))
     inputs = receipt.get('inputs')
     if not isinstance(inputs, dict) or set(inputs) != set(recipe.APPROVED_INPUTS) | {'runtime.map'}:
         raise ValueError('AppImage runtime input hash inventory is incomplete')
@@ -138,6 +170,7 @@ def require_releasable_appimage(payload: Path | None = None,
     if not all(name in map_text for name in ('libfuse3.so', 'libsquashfuse.so', 'libsquashfuse_ll.so')):
         raise ValueError('AppImage runtime link map does not record host-library linkage')
     return {'profile': recipe.PROFILE, 'runtime_sha256': digest,
+            'application': application,
             'runtime_needed': sorted(needed), 'bundled_shared_libraries': 0,
             'source_and_license_pins': len(recipe.APPROVED_INPUTS),
             'scope': 'Reviewed build recipe and artifact evidence; host libraries are not redistributed.'}

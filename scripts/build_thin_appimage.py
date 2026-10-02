@@ -23,6 +23,7 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE = 'fontcarver-host-libs-v1'
+BUNDLE_PREFIX = b'__TAURI_BUNDLE_TYPE_VAR_'
 COMMIT = '8f39b89e2ac31e1640b3d3f7e9a5108e6ce805fa'
 BASE = f'https://raw.githubusercontent.com/AppImage/type2-runtime/{COMMIT}/'
 SOURCES = {
@@ -193,6 +194,31 @@ def check_thin_payload(root: Path) -> None:
                 raise ValueError(f'extra executable payload is forbidden: {path}')
 
 
+def patch_bundle_type(binary: Path) -> dict:
+    """Change only Tauri's unique DEB marker in the extracted ELF to APP.
+
+    tauri-utils 2.9.3 platform::bundle_type maps APP to AppImage. Tauri's own
+    bundler applies the same fixed-width marker transformation. The input deb
+    remains untouched; the receipt binds both ELF hashes and the three-byte edit.
+    """
+    if binary.is_symlink() or not binary.is_file():
+        raise ValueError('bundle conversion requires a regular application ELF')
+    source = binary.read_bytes()
+    if not source.startswith(b'\x7fELF'):
+        raise ValueError('bundle conversion requires an ELF application')
+    if source.count(BUNDLE_PREFIX) != 1:
+        raise ValueError('application bundle marker is missing, duplicated or conflicting')
+    offset = source.index(BUNDLE_PREFIX) + len(BUNDLE_PREFIX)
+    if source[offset:offset + 3] != b'DEB':
+        raise ValueError('application bundle marker must be DEB before AppImage conversion')
+    with binary.open('r+b') as stream:
+        stream.seek(offset)
+        stream.write(b'APP')
+    return {'source_sha256': hashlib.sha256(source).hexdigest(),
+            'appimage_sha256': digest(binary), 'marker_offset': offset,
+            'before': 'DEB', 'after': 'APP'}
+
+
 def run(command: list[str], *, cwd: Path, env: dict[str, str]) -> str:
     print('+ ' + ' '.join(command), flush=True)
     result = subprocess.run(command, cwd=cwd, env=env, capture_output=True, text=True, timeout=300)
@@ -250,6 +276,7 @@ def build(deb: Path, output: Path, scratch: Path, sysroot: Path, env: dict[str, 
     run(['dpkg-deb', '--extract', str(deb), str(appdir)], cwd=scratch, env=env)
     check_thin_payload(appdir)
     inspect_payload(appdir, 'deb', {'Package': 'font-carver'})
+    application = patch_bundle_type(appdir / 'usr/bin/fontcarver-desktop')
     (appdir / 'AppRun').write_bytes(APP_RUN)
     (appdir / 'AppRun').chmod(0o755)
     desktop = next((appdir / 'usr/share/applications').glob('*.desktop'))
@@ -262,7 +289,7 @@ def build(deb: Path, output: Path, scratch: Path, sysroot: Path, env: dict[str, 
     notices = appdir / 'usr/lib/FontCarver/licenses/thin-appimage'
     runtime, runtime_info = build_runtime(scratch, notices, sysroot, env)
     receipt = {'schema_version': 1, 'profile': PROFILE, 'source_commit': COMMIT,
-               'runtime': runtime_info, 'deb_sha256': digest(deb),
+               'runtime': runtime_info, 'application': application, 'deb_sha256': digest(deb),
                'deb_depends': run(['dpkg-deb', '-f', str(deb), 'Depends'], cwd=scratch, env=env).strip(),
                'apprun_sha256': hashlib.sha256(APP_RUN).hexdigest(),
                'inputs': {p.name: digest(p) for p in notices.iterdir() if p.is_file()},

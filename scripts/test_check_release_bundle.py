@@ -29,7 +29,7 @@ class ReleaseBundleTests(unittest.TestCase):
     def payload(self):
         binary = self.root / 'usr/bin/fontcarver-desktop'
         binary.parent.mkdir(parents=True)
-        binary.write_bytes(b'\x7fELF' + b'\x00' * 64)
+        binary.write_bytes(b'\x7fELF' + b'\x00' * 64 + b'__TAURI_BUNDLE_TYPE_VAR_DEB')
         binary.chmod(0o755)
         resources = self.root / 'usr/lib/fontcarver'
         resources.mkdir(parents=True)
@@ -81,6 +81,20 @@ class ReleaseBundleTests(unittest.TestCase):
         license_file.write_text('Changed license terms')
         with self.assertRaisesRegex(verifier.VerificationError, 'host-library license checksum'):
             verifier.inspect_payload(self.root, 'deb')
+
+    def test_debian_bundle_marker_must_be_unique_and_identify_deb(self):
+        self.payload()
+        binary = self.root / 'usr/bin/fontcarver-desktop'
+        prefix = b'__TAURI_BUNDLE_TYPE_VAR_'
+        for markers in (b'', prefix + b'UNK', prefix + b'APP',
+                        prefix + b'DEB' + prefix + b'DEB', prefix + b'DEB' + prefix + b'APP'):
+            with self.subTest(markers=markers):
+                binary.write_bytes(b'\x7fELF' + b'\x00' * 64 + markers)
+                with self.assertRaisesRegex(verifier.VerificationError, 'Tauri bundle marker'):
+                    verifier.inspect_payload(self.root, 'deb')
+        binary.write_bytes(b'\x7fELF' + b'\x00' * 64 + prefix + b'DEB')
+        report = verifier.inspect_payload(self.root, 'deb')
+        self.assertEqual(report['tauri_bundle_marker'], {'type': 'DEB', 'offset': 68})
 
     def test_missing_and_empty_resources_are_rejected(self):
         resources = self.payload()

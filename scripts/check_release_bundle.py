@@ -251,6 +251,18 @@ def platform_metadata(root: Path, files: list[Path], kind: str, binaries: list[P
     return {'executable_format': 'PE', 'icons': 'embedded in executable / installer'}
 
 
+def debian_bundle_marker(binary: Path) -> dict:
+    """Verify Tauri's fixed-length bundle marker in the actual installed ELF."""
+    prefix = b'__TAURI_BUNDLE_TYPE_VAR_'
+    data = binary.read_bytes()
+    if data.count(prefix) != 1:
+        raise VerificationError('expected exactly one Tauri bundle marker in Debian executable')
+    offset = data.index(prefix)
+    if data[offset + len(prefix):offset + len(prefix) + 3] != b'DEB':
+        raise VerificationError('expected Tauri bundle marker DEB in Debian executable')
+    return {'type': 'DEB', 'offset': offset}
+
+
 def inspect_payload(root: Path, kind: str, metadata: dict | None = None) -> dict:
     paths = sorted(root.rglob('*'))
     for path in paths:
@@ -303,6 +315,7 @@ def inspect_payload(root: Path, kind: str, metadata: dict | None = None) -> dict
     if kind in ('deb', 'appimage'):
         report['host_library_notices'] = host_library_notices(resource_root)
     if kind == 'deb':
+        report['tauri_bundle_marker'] = debian_bundle_marker(valid_binaries[0])
         report['debian_copyright'] = debian_copyright(root, files, (metadata or {}).get('Package'))
     return report
 
