@@ -387,6 +387,64 @@ fn invalid_key(key: &str) -> Error {
     Error::InvalidCommand(format!("invalid metrics key `{key}`"))
 }
 
+/// Rewrite the font-unit numbers inside one metrics formula.
+///
+/// The grammar is the resolver's: `=50` is a constant, `=+25` offsets an automatic
+/// metric, `=H+10` adjusts a reference, `=H@200` measures at a height, `=H/2`
+/// and `=H*2` are ratios, `=|H` mirrors and `==H` is layer-local. Constants,
+/// offsets, additive adjustments and measurement heights are font units and
+/// scale; ratios and glyph names do not. `None` means the formula did not match
+/// the grammar, which the caller reports instead of rewriting blindly.
+pub fn scale_metrics_key(key: &str, factor: f64) -> Option<String> {
+    let trimmed = key.trim();
+    let local = trimmed.strip_prefix('=')?.starts_with('=');
+    let prefix = if local { "==" } else { "=" };
+    let body = trimmed.strip_prefix('=')?;
+    let body = if local {
+        body.strip_prefix('=')?.trim()
+    } else {
+        body.trim()
+    };
+    let number = |value: f64| -> Option<String> {
+        let scaled = value * factor;
+        scaled.is_finite().then(|| format!("{scaled}"))
+    };
+    if body.starts_with(['+', '-']) {
+        let value = body.parse::<f64>().ok()?;
+        let scaled = value * factor;
+        return scaled
+            .is_finite()
+            .then(|| format!("{prefix}{}{}", if scaled < 0.0 { "" } else { "+" }, scaled));
+    }
+    if let Ok(value) = body.parse::<f64>() {
+        return Some(format!("{prefix}{}", number(value)?));
+    }
+    let (head, height) = match body.rsplit_once('@') {
+        Some((head, height)) => (head, Some(number(height.parse::<f64>().ok()?)?)),
+        None => (body, None),
+    };
+    // `split_operation` takes the last operator whose suffix parses as a number.
+    let mut rebuilt = head.to_owned();
+    for (index, character) in head.char_indices().rev() {
+        if index == 0 || !matches!(character, '+' | '-' | '*' | '/') {
+            continue;
+        }
+        let Ok(value) = head[index + character.len_utf8()..].parse::<f64>() else {
+            continue;
+        };
+        rebuilt = match character {
+            // Only additive adjustments are measured in font units.
+            '+' | '-' => format!("{}{character}{}", &head[..index], number(value)?),
+            _ => head.to_owned(),
+        };
+        break;
+    }
+    Some(match height {
+        Some(height) => format!("{prefix}{rebuilt}@{height}"),
+        None => format!("{prefix}{rebuilt}"),
+    })
+}
+
 fn parse_key(key: &str) -> Result<Key, Error> {
     let body = key
         .trim()
@@ -496,4 +554,42 @@ pub(crate) fn validate_editable_keys(
         ));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod metrics_key_tests {
+    use super::scale_metrics_key;
+
+    #[test]
+    fn scales_only_the_font_unit_numbers() {
+        for (key, expected) in [
+            ("=50", "=100"),
+            ("=+25", "=+50"),
+            ("=-25", "=-50"),
+            ("=H", "=H"),
+            ("=|H", "=|H"),
+            ("=H+10", "=H+20"),
+            ("=H-10", "=H-20"),
+            ("=H@200", "=H@400"),
+            ("=H+10@200", "=H+20@400"),
+            ("==H+10", "==H+20"),
+            // Ratios are dimensionless and must not change.
+            ("=H/2", "=H/2"),
+            ("=H*1.5", "=H*1.5"),
+            ("=|H/2@100", "=|H/2@200"),
+        ] {
+            assert_eq!(
+                scale_metrics_key(key, 2.0).as_deref(),
+                Some(expected),
+                "{key}"
+            );
+        }
+    }
+
+    #[test]
+    fn reports_a_formula_it_cannot_rewrite() {
+        assert_eq!(scale_metrics_key("H", 2.0), None);
+        assert_eq!(scale_metrics_key("=H@nonsense", 2.0), None);
+        assert_eq!(scale_metrics_key("=+nonsense", 2.0), None);
+    }
 }
