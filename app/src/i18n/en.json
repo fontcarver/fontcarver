@@ -1628,8 +1628,9 @@
       "fixLabel": "Repair audited outline",
       "clean": "No issues in the enabled checks.",
       "manual": "Manual review",
-      "truncated": "Only the first 100 issues and 100,000 points are inspected. Fix All applies to shown fixable issues.",
-      "pass": "Fix All repairs one kind of structural change per contour and one extreme per segment; press it again for the rest.",
+      "truncated": "Only the first 100 issues and 100,000 points are inspected per pass. Fix All continues through enabled checks.",
+      "pass": "Fix All repeats safe repairs using fresh outlines and groups them into one undo entry.",
+      "limit": "The repairs could not finish safely within the limit. No changes were kept; review the issues individually.",
       "location": "Contour {{contour}}, point {{point}}",
       "marker": "{{test}} at {{x}}, {{y}}",
       "stale": "The outline changed. Review the refreshed audit before fixing it."
@@ -2214,7 +2215,8 @@
     "file": "PNG file",
     "export": "Prepare PNG export",
     "import": "Import PNG into strike",
-    "download": "Download PNG",
+    "download": "Save PNG…",
+    "saved": "PNG saved.",
     "preview": "Exported bitmap sprite sheet",
     "busy": "Processing sprite sheet…",
     "undo": "Import bitmap sprite sheet",
@@ -2223,6 +2225,7 @@
     "exported_one": "PNG ready with {{count}} glyph. The file carries this layout, so importing it back needs no settings.",
     "exported_other": "PNG ready with {{count}} glyphs. The file carries this layout, so importing it back needs no settings.",
     "errors": {
+      "save": "The PNG could not be saved. Choose another location or retry.",
       "mapping": "Enter 1–256 unique glyph names in cell order.",
       "dimensions": "The PNG or grid exceeds the size limits, or its dimensions do not match the chosen cells.",
       "png": "Choose a valid PNG file.",
@@ -2275,6 +2278,10 @@
     "saved": "Saved to document",
     "waterfall": "Waterfall sample",
     "waterfallHint": "Each row uses its actual strike size, without outline scaling or shaping. Missing characters leave a space.",
+    "waterfallVertical": "Vertical writing",
+    "waterfallVerticalHint": "Upright pixels follow each glyph’s vertical origin and advance. Missing strike metrics inherit the default master’s glyph metrics or VORG defaults, scaled to pixels. Vertical substitutions and rotation are not applied.",
+    "waterfallCanvas": "Bitmap proof at {{ppem}} px, {{depth}} bpp",
+    "waterfallClipped": "This proof exceeds the canvas limit and is clipped. Use a shorter sample or show one glyph.",
     "tool": {
       "pencil": "Pencil",
       "erase": "Eraser",
@@ -3292,7 +3299,7 @@
     "rsb": "RSB",
     "both": "Both",
     "keys": "[ / ]",
-    "help": "[ decreases and ] increases the selected side by the configured nudge step. Shift: ×10; {{mod}}: ×100; Shift+{{mod}}: exactly 1 font unit. Both changes each side equally."
+    "help": "[ decreases and ] increases the selected side by the configured nudge step. Shift: ×10; Alt: ×100; Shift+Alt: exactly 1 font unit. Both changes each side equally. {{mod}}+[ and {{mod}}+] navigate between glyphs."
   },
   "proof": {
     "library": {
@@ -3781,6 +3788,7 @@
     "fixedHint": "Tab, Escape, canvas Space/pan and arrow nudging remain editor gestures. Text editing and text-metrics keys keep their context-specific behavior.",
     "fixedPan": "Canvas pan / fill preview",
     "fixedNudge": "Canvas arrow nudging",
+    "fixedSpacing": "Canvas spacing brackets",
     "bindings": "Command and tool shortcuts",
     "search": "Search commands",
     "searchHint": "Command name, ID or shortcut",

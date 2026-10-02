@@ -218,23 +218,95 @@ describe('MetricsDrag', () => {
     expect(gesture.preview).toEqual({ width: 550, lsb: 40, rsb: 10 })
   })
 
+  it.each([
+    { pointer: 680, coarse: false, width: 680, rsb: 140 },
+    { pointer: 360, coarse: false, width: 360, rsb: -180 },
+    { pointer: -40, coarse: false, width: -40, rsb: -580 },
+    { pointer: 612.4, coarse: true, width: 610, rsb: 70 },
+  ])(
+    'keeps the ink fixed while width changes to $width units',
+    async ({ pointer, coarse, width, rsb }) => {
+      const mock = createEditingTransport()
+      setTransport(mock)
+      const layer = makeLayer({
+        width: 600,
+        contours: [
+          makeContour([
+            makePoint(40, 0),
+            makePoint(540, 0),
+            makePoint(540, 700),
+            makePoint(40, 700),
+          ]),
+        ],
+        anchors: [{ name: 'top', x: 290, y: 700 }],
+      })
+      const outline = makeLayerOutline(layer)
+      const gesture = new MetricsDrag({
+        doc: 1,
+        glyph: 'A',
+        layer: layer.id,
+        handle: 'width',
+        origin: 600,
+        start: { width: 600, lsb: 40, rsb: 60 },
+        outline,
+        label: 'Set advance',
+        scheduler: immediateScheduler,
+      })
+      gesture.move(pointer, coarse)
+
+      const preview = withPreview(metrics, gesture.preview)
+      expect(await gesture.finish()).toBe(true)
+      expect(preview).toMatchObject({ width, lsb: 40, rsb })
+      expect(metricLineX(preview, 'rsb')).toBe(540)
+      expect(gesture.geometryPreview.contours).toEqual(outline.contours)
+      expect(gesture.geometryPreview.anchors).toEqual(outline.anchors)
+      expect(applies(mock).map((entry) => entry.command)).toEqual([
+        {
+          SetMetrics: {
+            glyph: 'A',
+            layer: layer.id,
+            width,
+            lsb: null,
+            rsb: null,
+          },
+        },
+      ])
+    },
+  )
+
   it('applies nothing for a gesture that never moved', async () => {
     const { gesture, mock } = drag('width')
     expect(await gesture.finish()).toBe(false)
     expect(applies(mock)).toHaveLength(0)
   })
 
-  it('undoes what it applied when it is cancelled', async () => {
+  it('cancels only its edit token after applying a metrics change', async () => {
     const { gesture, mock } = drag('width')
     gesture.move(120, false)
+    expect(gesture.preview).toEqual({ width: 680, lsb: 40, rsb: 140 })
     await gesture.cancel()
 
     expect(mock.calls.map((entry) => entry.method)).toEqual([
       'doc.edit_begin',
       'doc.edit_apply',
-      'doc.edit_end',
-      'doc.undo',
+      'doc.edit_cancel',
     ])
+    expect(applies(mock)).toEqual([
+      {
+        doc: 1,
+        token: 101,
+        command: {
+          SetMetrics: {
+            glyph: 'A',
+            layer: 'layer-1',
+            width: 680,
+            lsb: null,
+            rsb: null,
+          },
+        },
+      },
+    ])
+    expect(mock.calls[2]?.params).toEqual({ doc: 1, token: 101 })
   })
 })
 
@@ -463,16 +535,30 @@ describe('vertical MetricsDrag', () => {
     expect(gesture.value).toBe(880)
   })
 
-  it('undoes what it applied when it is cancelled', async () => {
+  it('cancels only its edit token after applying a metrics change', async () => {
     const { gesture, mock } = drag('vorigin', { origin: 880, advance: 1000 })
     gesture.move(0, false, 905)
+    expect(gesture.preview.verticalOrigin).toBe(905)
+    expect(gesture.geometryPreview.contours).toEqual(
+      makeLayerOutline(makeLayer()).contours,
+    )
     await gesture.cancel()
     expect(mock.calls.map((entry) => entry.method)).toEqual([
       'doc.edit_begin',
       'doc.edit_apply',
-      'doc.edit_end',
-      'doc.undo',
+      'doc.edit_cancel',
     ])
+    expect(commands(mock)).toEqual([
+      {
+        SetVerticalMetrics: {
+          glyph: 'ideograph',
+          layer: 'layer-1',
+          advance: 1000,
+          origin: 905,
+        },
+      },
+    ])
+    expect(mock.calls[2]?.params).toEqual({ doc: 1, token: 101 })
   })
 })
 

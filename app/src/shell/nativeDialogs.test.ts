@@ -153,10 +153,47 @@ describe('choosePath', () => {
               'sfd',
               'pfa',
               'pfb',
+              'cff',
+              't42',
+              'p42',
+              'type42',
+              'svg',
+              'eps',
+              'afm',
+              'pfm',
+              'ttx',
             ]),
           },
         ],
       }),
     )
   })
+
+  it.each(['cff', 't42', 'p42', 'type42'])(
+    'opens the selected .%s source through the shared document reader',
+    async (extension) => {
+      setTransport(transportOfKind('tauri'))
+      const path = `/fonts/Interchange.${extension}`
+      open.mockResolvedValue(path)
+      const openDocument = vi
+        .spyOn(useSessionStore.getState(), 'open')
+        .mockResolvedValue(null)
+      try {
+        await useSessionStore.getState().openDialog()
+        expect(open).toHaveBeenCalledWith(
+          expect.objectContaining({
+            filters: [
+              {
+                name: 'Fonts and font sources',
+                extensions: expect.arrayContaining([extension]),
+              },
+            ],
+          }),
+        )
+        expect(openDocument).toHaveBeenCalledWith(path)
+      } finally {
+        openDocument.mockRestore()
+      }
+    },
+  )
 })

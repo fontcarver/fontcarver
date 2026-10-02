@@ -119,6 +119,7 @@ describe('JavaScript macro runtime', () => {
     { type: 'call', id: 1, method: 'doc.edit_begin', params: {} },
     { type: 'call', id: 1, method: 'doc.edit_apply', params: {} },
     { type: 'call', id: 1, method: 'doc.edit_end', params: {} },
+    { type: 'call', id: 1, method: 'doc.edit_cancel', params: {} },
     { type: 'call', id: 1, method: 'session.list', params: [] },
     { type: 'output', level: 'trace', text: 'bad' },
     { type: 'output', level: 'log', text: 42 },

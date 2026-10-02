@@ -29,6 +29,15 @@ export const OPEN_FONT_EXTENSIONS = [
   'sfd',
   'pfa',
   'pfb',
+  'cff',
+  't42',
+  'p42',
+  'type42',
+  'svg',
+  'eps',
+  'afm',
+  'pfm',
+  'ttx',
 ] as const
 
 /** What a native file dialog should ask the user for. */

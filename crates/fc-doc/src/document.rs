@@ -51,6 +51,9 @@ struct ActiveEdit {
     token: EditToken,
     label: String,
     has_entry: bool,
+    /// Structurally shared history before the first mutation, including redo.
+    /// Cancellation restores it even if the live edit exceeded the undo budget.
+    history_before: Option<UndoStack>,
     /// A script transaction also absorbs plain [`Document::apply`] commands.
     ///
     /// It carries its own deadline: an abandoned run — a reloaded page, a lost
@@ -293,6 +296,7 @@ impl Document {
             token,
             label: label.into(),
             has_entry: false,
+            history_before: None,
             sticky: None,
         });
         token
@@ -310,10 +314,12 @@ impl Document {
         let label = active.label.clone();
         let coalesce = active.has_entry;
         let generation = self.generation;
+        let history_before = (!coalesce).then(|| self.undo.clone());
         let change = self.apply_command(command, label, coalesce)?;
         if let Some(active) = &mut self.active_edit {
-            if active.token == *token {
-                active.has_entry |= self.generation != generation;
+            if active.token == *token && !active.has_entry && self.generation != generation {
+                active.history_before = history_before;
+                active.has_entry = true;
             }
         }
         Ok(change)
@@ -328,6 +334,51 @@ impl Document {
         {
             self.active_edit = None;
         }
+    }
+
+    /// Cancels only the matching live gesture, restoring its changes atomically.
+    ///
+    /// A stale token never ends or undoes another gesture. The cancelled entry is
+    /// discarded, so redo cannot reintroduce a failed partial repair. Prior
+    /// history, including its redo branch, is restored with the original state.
+    pub fn cancel_edit(&mut self, token: EditToken) -> Result<Option<Change>, Error> {
+        self.check_writable()?;
+        let Some(active) = self
+            .active_edit
+            .as_ref()
+            .filter(|active| active.token == token)
+        else {
+            return Err(Error::InvalidEditToken);
+        };
+        if !active.has_entry {
+            self.active_edit = None;
+            return Ok(None);
+        }
+        let entry = self
+            .undo
+            .entries()
+            .last()
+            .cloned()
+            .ok_or_else(|| Error::Internal("live gesture lost its undo entry".into()))?;
+        let Some(mut active) = self.active_edit.take() else {
+            return Err(Error::InvalidEditToken);
+        };
+        let Some(mut previous) = active.history_before.take() else {
+            self.active_edit = Some(active);
+            return Err(Error::Internal(
+                "live gesture lost its history snapshot".into(),
+            ));
+        };
+        // Install the restored history before emitting the restoration event,
+        // so observers see the correct undo/redo labels in that same event.
+        std::mem::swap(&mut self.undo, &mut previous);
+        if let Err(error) = self.restore_entry(&entry, false) {
+            std::mem::swap(&mut self.undo, &mut previous);
+            active.history_before = Some(previous);
+            self.active_edit = Some(active);
+            return Err(error);
+        }
+        Ok(Some(entry.change))
     }
 
     /// Restores the preceding undo state, if one is available.

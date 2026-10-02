@@ -171,14 +171,20 @@ remembered between sessions:
 | Coincident points    | Stored points sharing one position                  | Deletes adjacent duplicate nodes of one contour |
 | Missing extremes     | A curve reaching further than any of its nodes      | Inserts a node at the extreme                |
 
-Fix repairs one issue; Fix All repairs everything shown. Both refetch the layer
+Fix repairs one issue; Fix All repairs safe issues in the enabled checks. Both refetch the layer
 first and refuse to act on a reading the kernel no longer agrees with, and both
 land as a single undo entry. A coincidence spanning two contours, or between a
 node and a handle, is ordinary drawing rather than a defect, so it is reported
-for review without a fix. Because a structural repair renumbers the points of
-its contour — and inserting a node re-parameterises the segment it splits — Fix
-All applies one kind of structural change per contour and one extreme per
-segment; press it again for the rest.
+for review without a fix. Fix All re-reads the kernel outline between repair passes, so structural edits
+never leave later commands using stale point indexes. Several extrema on one
+segment are split in descending order with adjusted parameters. All passes
+share one undo entry; locked paths and disabled checks remain untouched.
+
+The panel shows up to 100 issues per pass. Fix All is limited to 32 passes and
+100,000 stored points; a repeated outline, exceeded limit or failed repair
+cancels its changes and asks for individual review. Ambiguous coincidences
+remain manual. A newer edit or source change stops the repair without undoing
+an unrelated gesture.
 
 While an outline is being dragged the audit follows the shape on the canvas
 rather than the last saved one, refreshing at least every 250 ms, and Fix stays

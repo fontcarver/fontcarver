@@ -20,6 +20,8 @@ import { useTextMetrics } from './useTextMetrics'
 import { useUiStore } from '../../stores/uiStore'
 import { initialTextState } from './textState'
 import { suspendDocumentEditParticipants } from '../../editor/documentEditParticipants'
+import { DEFAULT_PREFS, usePrefsStore } from '../../stores/prefsStore'
+import type { MetricSide } from './textMetrics'
 
 function deferred() {
   let resolve!: () => void
@@ -43,6 +45,7 @@ function setup(
     firstEnd?: Promise<void>
     read?: Promise<void>
     failRead?: boolean
+    side?: MetricSide
   } = {},
 ) {
   let stored: LayerOutline = makeLayerOutline(
@@ -118,7 +121,9 @@ function setup(
     setExternalPreview: preview,
   } as unknown as EditorController
   vi.spyOn(editors, 'activeEditor').mockReturnValue(editor)
-  const hook = renderHook(() => useTextMetrics(true, 'Set metrics'))
+  const hook = renderHook(() =>
+    useTextMetrics(true, 'Set metrics', options.side),
+  )
   finish = hook.result.current.finish
   return { ...hook, transport, preview, reload, target, stored: () => stored }
 }
@@ -127,11 +132,43 @@ afterEach(() => {
   setTransport(undefined)
   useUiStore.setState({ tabs: [], activeTab: null })
   useEditorStore.setState(initialEditorState())
+  usePrefsStore.setState({ prefs: DEFAULT_PREFS })
   vi.useRealTimers()
   vi.restoreAllMocks()
 })
 
 describe('useTextMetrics ordering', () => {
+  it('applies ×100 and exact-one both-side changes in a single edit session', async () => {
+    usePrefsStore.setState({
+      prefs: { ...DEFAULT_PREFS, nudge: [2.5, 25, 250] },
+    })
+    const hook = setup({ side: 'both' })
+    const chord = {
+      key: ']',
+      altKey: true,
+      shiftKey: false,
+      ctrlKey: false,
+      metaKey: false,
+    }
+    act(() => {
+      expect(hook.result.current.onMetricKey(chord)).toBe(true)
+      expect(
+        hook.result.current.onMetricKey({ ...chord, key: '[', shiftKey: true }),
+      ).toBe(true)
+    })
+    await act(async () => {
+      await hook.result.current.finish()
+    })
+    expect(hook.stored()).toMatchObject({ width: 1098, lsb: 289, rsb: 309 })
+    expect(
+      hook.transport.calls.filter((entry) => entry.method === 'doc.edit_begin'),
+    ).toHaveLength(1)
+    expect(
+      hook.transport.calls.filter((entry) => entry.method === 'doc.edit_end'),
+    ).toHaveLength(1)
+    hook.unmount()
+  })
+
   it('consumes spacing keys without edits while kerning mode locks spacing', async () => {
     const hook = setup()
     useUiStore.setState({
@@ -146,6 +183,19 @@ describe('useTextMetrics ordering', () => {
       activeTab: 'locked',
     })
     act(() => expect(hook.result.current.onMetricKey(key('right'))).toBe(true))
+    act(() => {
+      for (const shiftKey of [false, true]) {
+        expect(
+          hook.result.current.onMetricKey({
+            key: ']',
+            altKey: true,
+            shiftKey,
+            ctrlKey: false,
+            metaKey: false,
+          }),
+        ).toBe(true)
+      }
+    })
     await hook.result.current.finish()
     expect(hook.transport.calls).toEqual([])
   })

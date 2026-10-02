@@ -75,10 +75,13 @@ through them without leaving the spacing keys. See
 ## Spacing shortcuts
 
 See [Keyboard shortcuts](../keyboard-shortcuts.md#spacing-and-kerning) for the
-full table. In short: choose the side (LSB, RSB or both) in the text bar, then
-`[` and `]` change it — Shift ×10. `Mod+[` and `Mod+]` step to the previous and
-next glyph, so larger spacing changes are typed into the Info box or the spacing
-matrix rather than held down.
+full table. Choose the side (LSB, RSB or both) in the text bar. `[` and `]`
+change it by the first nudge distance in Preferences. Hold Shift for ×10 or Alt
+(Option on macOS) for ×100. Hold Alt+Shift for exactly one font unit, regardless
+of the nudge distance. For example, with a 2.5-unit base step, Alt+] adds 250
+units to each selected side; Alt+Shift+[ subtracts one.
+`Mod+[` and `Mod+]` step to the previous and next glyph without changing its
+spacing. The Info box and spacing matrix still accept absolute numeric values.
 
 ## Kerning modes
 

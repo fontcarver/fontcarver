@@ -288,7 +288,13 @@ export class MetricsDrag {
         rsb: this.current,
         width: start.width + (this.current - start.rsb),
       }
-    return { ...start, width: this.current }
+    // Width-only edits leave ink fixed, so the right bearing absorbs the
+    // advance delta, including a finite negative advance accepted by the kernel.
+    return {
+      ...start,
+      width: this.current,
+      rsb: start.rsb + (this.current - start.width),
+    }
   }
 
   /** Geometry the canvas should draw while this metrics edit is live. */

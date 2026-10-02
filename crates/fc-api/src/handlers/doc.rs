@@ -158,6 +158,18 @@ pub(crate) fn edit_end(api: &Api, params: EditEndParams) -> Result<(), ApiError>
         .map_err(ApiError::from)
 }
 
+pub(crate) fn edit_cancel(
+    api: &Api,
+    params: EditEndParams,
+) -> Result<Option<fc_doc::Change>, ApiError> {
+    api.session
+        .with_doc_mut(params.doc, |document| {
+            document.cancel_edit(EditToken(params.token.0))
+        })
+        .map_err(ApiError::from)?
+        .map_err(ApiError::from)
+}
+
 pub(crate) fn undo(api: &Api, params: DocParams) -> Result<Option<fc_doc::Change>, ApiError> {
     api.session
         .with_doc_mut(params.doc, |document| document.undo())

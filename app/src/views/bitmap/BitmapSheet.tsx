@@ -8,6 +8,7 @@ import {
 } from '../../api'
 import { decodeSheetPng, encodeSheetPng } from '../../canvas/bitmapSheetImage'
 import { withSettledDocument } from '../../editor/documentPersistence'
+import { saveArtifact } from '../../shell/saveArtifact'
 import {
   describeSheetLayout,
   exportSheetPixels,
@@ -37,6 +38,7 @@ export function BitmapSheet({
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
   const [download, setDownload] = useState<string>()
+  const [prepared, setPrepared] = useState<Blob>()
   const [description, setDescription] = useState('')
   useEffect(
     () => () => {
@@ -138,6 +140,7 @@ export function BitmapSheet({
         )
           throw new SheetError('changed')
         setDownload(URL.createObjectURL(blob))
+        setPrepared(blob)
         setDescription(describeSheetLayout(layout))
         setStatus(t('bitmapSheet.exported', { count: names.length }))
       }
@@ -150,6 +153,25 @@ export function BitmapSheet({
         )
       })
       .finally(() => setBusy(false))
+  }
+
+  const save = async () => {
+    if (busy || !prepared) return
+    setBusy(true)
+    setError('')
+    try {
+      const saved = await saveArtifact(
+        `bitmap-${strike.ppem}px-${strike.depth}bpp.png`,
+        new Uint8Array(await prepared.arrayBuffer()),
+        'image/png',
+        t('bitmapSheet.title'),
+      )
+      if (saved) setStatus(t('bitmapSheet.saved'))
+    } catch {
+      setError(t('bitmapSheet.errors.save'))
+    } finally {
+      setBusy(false)
+    }
   }
 
   let dimensions = ''
@@ -248,12 +270,9 @@ export function BitmapSheet({
       )}
       {download && (
         <div className={styles.preview}>
-          <a
-            href={download}
-            download={`bitmap-${strike.ppem}px-${strike.depth}bpp.png`}
-          >
+          <button type="button" disabled={busy} onClick={() => void save()}>
             {t('bitmapSheet.download')}
-          </a>
+          </button>
           <img src={download} alt={t('bitmapSheet.preview')} />
         </div>
       )}

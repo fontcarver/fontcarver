@@ -18,6 +18,7 @@ import {
   createMockTransport,
   noChange,
   type MockTransport,
+  type MockHandlers,
 } from '../../../test/mockTransport'
 import { buildScene } from '../glyphScene'
 
@@ -53,6 +54,13 @@ function outlineOf(components: Component[] = [component]) {
   })
 }
 
+function kernel(handlers: MockHandlers) {
+  return createMockTransport({
+    'glyphs.outline': () => outlineOf(),
+    ...handlers,
+  })
+}
+
 function applied(mock: MockTransport): ApplyParams[] {
   return mock.calls
     .filter((call) => call.method === 'doc.apply')
@@ -74,18 +82,20 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.restoreAllMocks()
   setTransport(undefined)
   setCommandErrorReporter(() => undefined)
 })
 
 describe('CJK component transform grid', () => {
   it('stages every field without touching the document, then applies one entry', async () => {
-    const mock = createMockTransport({ 'doc.apply': () => noChange([42]) })
+    const mock = kernel({ 'doc.apply': () => noChange([42]) })
     setTransport(mock)
     const reload = vi.fn()
     const outline = outlineOf()
     render(
       <CjkTransformGrid
+        gid={42}
         target={target}
         scene={scene}
         outline={outline}
@@ -139,9 +149,10 @@ describe('CJK component transform grid', () => {
   })
 
   it('previews the staged transform before it is applied', async () => {
-    setTransport(createMockTransport({ 'doc.apply': () => noChange([42]) }))
+    setTransport(kernel({ 'doc.apply': () => noChange([42]) }))
     render(
       <CjkTransformGrid
+        gid={42}
         target={target}
         scene={scene}
         outline={outlineOf([{ ...component, transform: [1, 0, 0, 1, 0, 0] }])}
@@ -164,10 +175,11 @@ describe('CJK component transform grid', () => {
   })
 
   it('reverts drafts and forgets an edit returned to its stored value', async () => {
-    const mock = createMockTransport({ 'doc.apply': () => noChange([42]) })
+    const mock = kernel({ 'doc.apply': () => noChange([42]) })
     setTransport(mock)
     render(
       <CjkTransformGrid
+        gid={42}
         target={target}
         scene={scene}
         outline={outlineOf()}
@@ -194,7 +206,10 @@ describe('CJK component transform grid', () => {
   })
 
   it('edits duplicate-base components by their independent row indexes', async () => {
-    const mock = createMockTransport({ 'doc.apply': () => noChange([42]) })
+    const mock = kernel({
+      'doc.apply': () => noChange([42]),
+      'glyphs.outline': () => outlineOf([component, second]),
+    })
     setTransport(mock)
     const second: Component = {
       ...component,
@@ -204,6 +219,7 @@ describe('CJK component transform grid', () => {
     }
     render(
       <CjkTransformGrid
+        gid={42}
         target={target}
         scene={scene}
         outline={outlineOf([component, second])}
@@ -236,10 +252,11 @@ describe('CJK component transform grid', () => {
   })
 
   it('rejects invalid numbers without staging anything', async () => {
-    const mock = createMockTransport({ 'doc.apply': () => noChange([42]) })
+    const mock = kernel({ 'doc.apply': () => noChange([42]) })
     setTransport(mock)
     render(
       <CjkTransformGrid
+        gid={42}
         target={target}
         scene={scene}
         outline={outlineOf()}
@@ -257,10 +274,11 @@ describe('CJK component transform grid', () => {
   })
 
   it('refuses a collapsed scale with a reason instead of erasing the ink', async () => {
-    const mock = createMockTransport({ 'doc.apply': () => noChange([42]) })
+    const mock = kernel({ 'doc.apply': () => noChange([42]) })
     setTransport(mock)
     render(
       <CjkTransformGrid
+        gid={42}
         target={target}
         scene={scene}
         outline={outlineOf()}
@@ -284,7 +302,7 @@ describe('CJK component transform grid', () => {
     const error = new Error('component edit rejected')
     const report = vi.fn()
     setCommandErrorReporter(report)
-    const mock = createMockTransport({
+    const mock = kernel({
       'doc.apply': () => {
         throw error
       },
@@ -294,6 +312,7 @@ describe('CJK component transform grid', () => {
     const reload = vi.fn(() =>
       view.rerender(
         <CjkTransformGrid
+          gid={42}
           target={target}
           scene={scene}
           outline={{ ...outline }}
@@ -303,6 +322,7 @@ describe('CJK component transform grid', () => {
     )
     const view = render(
       <CjkTransformGrid
+        gid={42}
         target={target}
         scene={scene}
         outline={outline}
@@ -321,9 +341,10 @@ describe('CJK component transform grid', () => {
   })
 
   it('drops drafts when a reload changed the components', async () => {
-    setTransport(createMockTransport({ 'doc.apply': () => noChange([42]) }))
+    setTransport(kernel({ 'doc.apply': () => noChange([42]) }))
     const view = render(
       <CjkTransformGrid
+        gid={42}
         target={target}
         scene={scene}
         outline={outlineOf()}
@@ -333,6 +354,7 @@ describe('CJK component transform grid', () => {
     await enter(field('X for component 1 (uni6728)'), '420')
     view.rerender(
       <CjkTransformGrid
+        gid={42}
         target={target}
         scene={scene}
         outline={outlineOf([component, { ...component, anchor: null }])}
@@ -348,6 +370,7 @@ describe('CJK component transform grid', () => {
   it('describes an empty component list without editable fields', () => {
     render(
       <CjkTransformGrid
+        gid={42}
         target={target}
         scene={scene}
         outline={outlineOf([])}

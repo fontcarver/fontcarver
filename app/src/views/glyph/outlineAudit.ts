@@ -36,7 +36,7 @@ export const DEFAULT_OUTLINE_AUDIT: OutlineAuditSettings = {
   extrema: true,
 }
 
-/** Every check on, which is what a repair re-derives its issues with. */
+/** A standalone all-checks setting, independent of the mutable defaults. */
 export const ALL_OUTLINE_AUDIT_TESTS: OutlineAuditSettings = {
   ...DEFAULT_OUTLINE_AUDIT,
 }
@@ -75,10 +75,9 @@ export type OutlineAuditFix =
  *
  * A structural repair renumbers stored points or segments, so two of different
  * kinds in the same contour cannot be described by indexes taken before either
- * ran. Fix All therefore applies the highest-priority kind present in each
- * contour and leaves the rest listed for a second press, rather than sending
- * commands whose indexes it cannot vouch for. Contours are independent, so a
- * glyph with issues in several contours is still repaired in one entry.
+ * ran. Each pass therefore applies the highest-priority kind present in each
+ * contour. Fix All re-audits the kernel between passes in one gesture, so the
+ * next pass always uses current indexes. Contours are independent.
  */
 const FIX_PRIORITY: readonly OutlineAuditFix['kind'][] = [
   'dedupe',
@@ -375,7 +374,13 @@ export function outlineAuditFix(
   contours: readonly Contour[],
   issues: readonly OutlineAuditIssue[],
 ): Command | null {
-  const fresh = auditOutline(contours, ALL_OUTLINE_AUDIT_TESTS)
+  const requested = new Set(issues.map((issue) => issue.test))
+  const fresh = auditOutline(contours, {
+    open: requested.has('open'),
+    fractional: requested.has('fractional'),
+    coincident: requested.has('coincident'),
+    extrema: requested.has('extrema'),
+  })
   const current = new Map(fresh.issues.map((issue) => [issue.id, issue]))
   const chosen: OutlineAuditFix[] = []
   const seen = new Set<string>()
@@ -397,19 +402,9 @@ export function outlineAuditFix(
     )
       kindOf.set(contour, fix.kind)
   }
-  // One insertion per segment: `InsertPointOnSegment` splits the segment it
-  // names, so every other parameter *of that segment* is measured against a
-  // curve that no longer exists. A second extreme on the same segment waits for
-  // the next pass, when the audit has re-read the split geometry.
-  const insertedIn = new Set<string>()
-  const applied = chosen.filter((fix) => {
-    if (kindOf.get(fixContour(fix)) !== fix.kind) return false
-    if (fix.kind !== 'insertExtremum') return true
-    const key = `${fix.contour}:${fix.segment}`
-    if (insertedIn.has(key)) return false
-    insertedIn.add(key)
-    return true
-  })
+  const applied = chosen.filter(
+    (fix) => kindOf.get(fixContour(fix)) === fix.kind,
+  )
   // A total order: kind first, then descending segment so an insertion never
   // renumbers a segment a later command in the same batch still names.
   applied.sort(
@@ -424,6 +419,16 @@ export function outlineAuditFix(
   const duplicates = applied.flatMap((fix) =>
     fix.kind === 'dedupe' ? fix.points : [],
   )
+  // Descending splits leave the original segment index naming its left piece.
+  // Each following t is relative to that piece, whose endpoint was the prior t.
+  const upperParameter = new Map<string, number>()
+  const structural = applied.flatMap((fix) => {
+    if (fix.kind !== 'insertExtremum') return commandsFor(target, fix)
+    const key = `${fix.contour}:${fix.segment}`
+    const upper = upperParameter.get(key) ?? 1
+    upperParameter.set(key, fix.t)
+    return commandsFor(target, { ...fix, t: fix.t / upper })
+  })
   const commands = [
     ...(duplicates.length > 0
       ? [
@@ -437,7 +442,7 @@ export function outlineAuditFix(
           } satisfies Command,
         ]
       : []),
-    ...applied.flatMap((fix) => commandsFor(target, fix)),
+    ...structural,
   ]
   if (commands.length === 0) return null
   return commands.length === 1 ? (commands[0] as Command) : { Batch: commands }

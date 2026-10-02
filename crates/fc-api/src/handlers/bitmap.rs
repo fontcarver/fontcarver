@@ -414,9 +414,47 @@ pub(crate) fn preview(
                             let Some(name) = name.filter(|n| strike.glyphs.contains_key(*n)) else {
                                 return Ok(None);
                             };
-                            let glyph = strike
+                            let mut glyph = strike
                                 .flattened(name)
                                 .map_err(|e| ApiError::invalid_params(e.to_string()))?;
+                            // Match glyph-cell vertical inheritance, but keep an
+                            // explicit strike metric ahead of outline/VORG data.
+                            // Resolving this cloned preview never edits the font.
+                            let master = doc.font.default_master();
+                            let layer = doc
+                                .font
+                                .glyph(name)
+                                .and_then(|g| g.master_layer(&master.id));
+                            let scale =
+                                f64::from(strike.ppem) / f64::from(doc.font.info.units_per_em);
+                            let pixel_metric = |value: f64| {
+                                let value = value.round();
+                                if !value.is_finite()
+                                    || !(f64::from(i16::MIN)..=f64::from(i16::MAX)).contains(&value)
+                                {
+                                    return Err(ApiError::invalid_params(
+                                        "vertical preview metric exceeds pixel range",
+                                    ));
+                                }
+                                Ok(value as i16)
+                            };
+                            if glyph.vertical_advance.is_none() {
+                                let advance = layer
+                                    .and_then(|l| l.vertical_width)
+                                    .or(master.metrics.default_vertical_advance)
+                                    .unwrap_or(f64::from(doc.font.info.units_per_em));
+                                glyph.vertical_advance = Some(pixel_metric(advance * scale)?);
+                            }
+                            if glyph.vertical_origin.is_none() {
+                                let origin = layer
+                                    .and_then(|l| l.vertical_origin)
+                                    .or(master.metrics.default_vertical_origin)
+                                    .unwrap_or(master.metrics.ascender);
+                                glyph.vertical_origin = Some((
+                                    pixel_metric(f64::from(glyph.advance) / 2.0)?,
+                                    pixel_metric(origin * scale)?,
+                                ));
+                            }
                             bytes += glyph.bitmap.rows.len();
                             if bytes > 16 * 1024 * 1024 {
                                 return Err(ApiError::invalid_params(

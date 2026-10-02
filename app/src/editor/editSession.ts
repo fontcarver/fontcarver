@@ -263,32 +263,20 @@ export class EditSession {
     })
   }
 
-  /**
-   * Abandons the gesture: the queued state is dropped, the session is closed
-   * and, when something was already applied, the resulting undo entry is
-   * undone. The kernel has no "roll back a live edit" call — closing and
-   * undoing is the documented way to cancel, and because the whole gesture is
-   * a single coalesced entry one `doc.undo` removes all of it.
-   */
+  /** Abandons only this live gesture; stale tokens never undo another edit. */
   async cancel(): Promise<void> {
+    if (this.closed) return this.chain
+    this.closed = true
     this.queued = null
     if (this.frame !== null) {
       this.scheduler.cancel(this.frame)
       this.frame = null
     }
-    if (!this.closed) {
-      this.closed = true
-      this.step(async () => {
-        const token = await this.token
-        await call('doc.edit_end', { doc: this.doc, token })
-      })
-    }
-    // Whether an undo entry exists is decided *after* the calls already on the
-    // wire have answered: Escape normally arrives while an apply is in flight,
-    // and reading the flag now would conclude that nothing had been applied.
+    // Serialized after every in-flight apply; the kernel checks the token and
+    // restores its one entry within the same document lock.
     return this.step(async () => {
-      if (!this.applied) return
-      await call('doc.undo', { doc: this.doc })
+      const token = await this.token
+      await call('doc.edit_cancel', { doc: this.doc, token })
     })
   }
 }

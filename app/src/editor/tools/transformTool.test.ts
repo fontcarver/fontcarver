@@ -224,23 +224,32 @@ describe('ScaleTool', () => {
   it('abandons the gesture on Escape', async () => {
     const transport = install()
     const context = selectionContext()
+    const original = structuredClone(context.contours)
     const tool = new ScaleTool()
     const at = (x: number, y: number) => toolPointer(context, { x, y })
+    tool.pointerDown(at(0, 0), context)
+    tool.pointerUp()
     tool.pointerDown(at(100, 100), context)
-    tool.pointerMove(at(200, 200), context)
+    const preview = tool.pointerMove(at(200, 200), context).preview
+    expect(preview?.contours[0]?.points[1]).toMatchObject({ x: 400, y: 0 })
+    expect(preview?.contours[0]?.points[2]).toMatchObject({ x: 400, y: 400 })
     const outcome = tool.keyDown({
       key: 'Escape',
       modifiers: NO_MODIFIERS,
       repeat: false,
     })
     expect(outcome.preview).toBeNull()
+    expect(outcome.editing).toBe(false)
     await outcome.closing
     await settle()
     expect(transport.calls.map((entry) => entry.method)).toEqual([
       'doc.edit_begin',
       'doc.edit_apply',
-      'doc.edit_end',
-      'doc.undo',
+      'doc.edit_cancel',
     ])
+    expect(transport.calls[2]?.params).toEqual({ doc: 1, token: 101 })
+    expect(affines(transport)).toEqual([[2, 0, 0, 2, 0, 0]])
+    expect(context.contours).toEqual(original)
+    expect(tool.overlay(context).hud).toBeNull()
   })
 })

@@ -174,6 +174,15 @@ test('300-point drag repaints synchronously within eight milliseconds', async ({
 
           let previousX = first.x
           let previousY = first.y
+          let previousStarted = performance.now()
+          const timings: {
+            sample: number
+            started: number
+            elapsed: number
+            renderer: number
+            paints: number
+            frameGap: number
+          }[] = []
           const move = async (sample: number): Promise<number> => {
             await new Promise<void>((resolve) =>
               nextAnimationFrame(() => resolve()),
@@ -186,6 +195,20 @@ test('300-point drag repaints synchronously within eight milliseconds', async ({
             const elapsed = performance.now() - started
             if (paintStats.count <= paintsBefore)
               throw new Error(`sample ${sample} did not repaint synchronously`)
+            if (setup.diagnostics) {
+              const paints = paintStats.count - paintsBefore
+              timings.push({
+                sample,
+                started,
+                elapsed,
+                renderer: paintStats.samples
+                  .slice(-paints)
+                  .reduce((sum, time) => sum + time, 0),
+                paints,
+                frameGap: started - previousStarted,
+              })
+            }
+            previousStarted = started
             const current = editor.frame().contours?.[0]?.points[0]
             if (!current) throw new Error('drag lost its preview')
             if (current.x === previousX && current.y === previousY)
@@ -209,9 +232,14 @@ test('300-point drag repaints synchronously within eight milliseconds', async ({
             4 + (setup.warm + setup.measured) * 0.03,
             2 + (setup.warm + setup.measured) * 0.01,
           )
-          return { pointerDown, samples, paint, paintCount, final }
+          return { pointerDown, samples, paint, paintCount, final, timings }
         },
-        { warm: WARM_SAMPLES, measured: MEASURED_SAMPLES, first },
+        {
+          warm: WARM_SAMPLES,
+          measured: MEASURED_SAMPLES,
+          first,
+          diagnostics: process.env.FC_PERF_TIMINGS === '1',
+        },
       ),
     ])
     expect(closed.ok(), 'the gesture closed successfully').toBe(true)
@@ -244,6 +272,10 @@ test('300-point drag repaints synchronously within eight milliseconds', async ({
     console.log(
       `pointer-to-paint 300 points/${MEASURED_SAMPLES} frame-paced samples: median=${median.toFixed(3)}ms p95=${p95.toFixed(3)}ms max=${max.toFixed(3)}ms over8=${overBudget} pointerDown=${measurement.pointerDown.toFixed(3)}ms rendererP95=${percentile(paint, 95).toFixed(3)}ms rendererMax=${rendererMax.toFixed(3)}ms`,
     )
+    if (measurement.timings.length)
+      console.log(
+        `pointer timing samples: ${JSON.stringify(measurement.timings)}`,
+      )
     expect(measurement.pointerDown).toBeLessThanOrEqual(8)
     expect(p95).toBeLessThanOrEqual(8)
     expect(max).toBeLessThanOrEqual(8)

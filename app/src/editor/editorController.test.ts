@@ -157,7 +157,7 @@ function makeController(supplied?: MockTransport): {
       'doc.edit_begin': () => 5,
       'doc.edit_apply': () => change(),
       'doc.edit_end': () => null,
-      'doc.undo': () => null,
+      'doc.edit_cancel': () => change(),
     })
   setTransport(transport)
   installed = transport
@@ -743,7 +743,7 @@ describe('EditorController error handling', () => {
         if (method === 'doc.apply') throw new Error('kernel says no')
         return change()
       },
-      'doc.undo': () => null,
+      'doc.edit_cancel': () => change(),
     })
     setTransport(mock)
     installed = mock
@@ -1330,7 +1330,7 @@ describe('EditorController against the kernel token rules', () => {
     }
   })
 
-  it('finishes Escape undo before a new command can apply', async () => {
+  it('finishes Escape cancellation before a new command can apply', async () => {
     const { controller, transport, recorded, release } = heldMetrics()
     const stop = registerEditor(controller)
     try {
@@ -1363,10 +1363,11 @@ describe('EditorController against the kernel token rules', () => {
       expect(transport.calls.map((entry) => entry.method)).toEqual([
         'doc.edit_begin',
         'doc.edit_apply',
-        'doc.edit_end',
-        'doc.undo',
+        'doc.edit_cancel',
         'doc.apply',
       ])
+      expect(transport.calls[2]?.params).toEqual({ doc: 1, token: 101 })
+      expect(controller.frame().metrics).toBeNull()
       expect(recorded.errors).toEqual([])
     } finally {
       stop()
@@ -1416,8 +1417,7 @@ describe('EditorController against the kernel token rules', () => {
       expect(transport.calls.map((entry) => entry.method)).toEqual([
         'doc.edit_begin',
         'doc.edit_apply',
-        'doc.edit_end',
-        'doc.undo',
+        'doc.edit_cancel',
         'doc.apply',
       ])
       expect(recorded.errors).toEqual([])
@@ -1432,8 +1432,8 @@ describe('EditorController against the kernel token rules', () => {
         'doc.edit_begin': () => 5,
         'doc.edit_apply': () => change(),
         'doc.edit_end': () => null,
-        'doc.undo': () => {
-          throw new Error('undo failed')
+        'doc.edit_cancel': () => {
+          throw new Error('cancel failed')
         },
       }),
     )
@@ -1444,7 +1444,7 @@ describe('EditorController against the kernel token rules', () => {
     controller.dispose()
     await settle()
 
-    expect(recorded.errors.map(String)).toEqual(['Error: undo failed'])
+    expect(recorded.errors.map(String)).toEqual(['Error: cancel failed'])
   })
 
   it('cancels live metrics before editing a replacement source', async () => {
@@ -1476,8 +1476,7 @@ describe('EditorController against the kernel token rules', () => {
     expect(transport.calls.map((entry) => entry.method)).toEqual([
       'doc.edit_begin',
       'doc.edit_apply',
-      'doc.edit_end',
-      'doc.undo',
+      'doc.edit_cancel',
       'doc.edit_begin',
       'doc.edit_apply',
       'doc.edit_end',
@@ -1538,8 +1537,7 @@ describe('EditorController against the kernel token rules', () => {
       expect(transport.calls.map((entry) => entry.method)).toEqual([
         'doc.edit_begin',
         'doc.edit_apply',
-        'doc.edit_end',
-        'doc.undo',
+        'doc.edit_cancel',
         'doc.apply',
       ])
     } finally {
@@ -1631,12 +1629,14 @@ describe('EditorController against the kernel token rules', () => {
     expect(transport.calls.map((entry) => entry.method)).toEqual([
       'doc.edit_begin',
       'doc.edit_apply',
-      'doc.edit_end',
-      'doc.undo',
+      'doc.edit_cancel',
       'doc.edit_begin',
       'doc.edit_apply',
       'doc.edit_end',
     ])
+    expect(transport.calls[2]?.params).toEqual({ doc: 1, token: 101 })
+    expect(transport.calls[4]?.params).toMatchObject({ doc: 1, token: 102 })
+    expect(transport.calls[5]?.params).toEqual({ doc: 1, token: 102 })
     expect(
       transport.calls
         .filter((entry) => entry.method === 'doc.edit_apply')
@@ -1646,6 +1646,49 @@ describe('EditorController against the kernel token rules', () => {
               .command.SetMetrics.lsb,
         ),
     ).toEqual([10, 20])
+    expect(recorded.errors).toEqual([])
+  })
+
+  it('restores a width drag after Escape without shifting the ink edge', async () => {
+    const { controller, transport, recorded } = makeController(
+      createEditingTransport(),
+    )
+    controller.viewportForTest.setSize(800, 400, 1)
+    const original = structuredClone(source().outline)
+    controller.pointerDown(at(600, 200))
+    controller.pointerMove(at(680, 200))
+    await settleFrame()
+
+    const preview = controller.frame()
+    expect(preview.metrics).toMatchObject({ width: 680, lsb: 0, rsb: 480 })
+    expect(preview.metrics!.width - preview.metrics!.rsb).toBe(200)
+    expect(preview.contours).toEqual(original.contours)
+    expect(preview.anchors).toEqual(original.anchors)
+
+    controller.escape()
+    await controller.settle()
+    expect(controller.frame().metrics).toBeNull()
+    expect(controller.frame().contours).toBeNull()
+    expect(source().outline).toEqual(original)
+    expect(recorded.previews.at(-1)).toBeNull()
+    expect(recorded.reloads).toBeGreaterThan(0)
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_cancel',
+    ])
+    expect(transport.calls[2]?.params).toEqual({ doc: 1, token: 101 })
+
+    // The next gesture starts at the restored 600-unit advance, not 680.
+    controller.pointerDown(at(600, 200))
+    controller.pointerMove(at(620, 200))
+    expect(controller.frame().metrics).toMatchObject({
+      width: 620,
+      lsb: 0,
+      rsb: 420,
+    })
+    controller.pointerUp(at(620, 200))
+    await controller.settle()
     expect(recorded.errors).toEqual([])
   })
 

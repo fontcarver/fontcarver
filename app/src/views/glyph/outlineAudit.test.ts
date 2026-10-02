@@ -245,7 +245,7 @@ describe('two extremes on one segment', () => {
     ]),
   ]
 
-  it('reports both but repairs only one per pass', () => {
+  it('repairs both with parameters relative to the remaining left segment', () => {
     const extrema = auditOutline(doubled).issues.filter(
       (issue) => issue.test === 'extrema',
     )
@@ -258,22 +258,20 @@ describe('two extremes on one segment', () => {
       ),
     ).toEqual([0.2113, 0.7887])
 
-    // `InsertPointOnSegment` splits the segment it names, so the second
-    // parameter would be measured against a curve that no longer exists.
     const command = outlineAuditFix(target, doubled, extrema)
-    expect(command).toMatchObject({
-      InsertPointOnSegment: {
-        glyph: 'a',
-        layer: 'layer-1',
-        contour: 0,
-        segment: 0,
-      },
-    })
-    const inserted =
-      command && 'InsertPointOnSegment' in command
-        ? command.InsertPointOnSegment.t
-        : 0
-    expect(inserted).toBeCloseTo(0.2113, 4)
+    const batch = command && 'Batch' in command ? command.Batch : []
+    expect(batch).toHaveLength(2)
+    const parameters = batch.map((entry) =>
+      'InsertPointOnSegment' in entry ? entry.InsertPointOnSegment.t : 0,
+    )
+    const originalParameters = extrema.map((issue) =>
+      issue.fix?.kind === 'insertExtremum' ? issue.fix.t : 0,
+    )
+    expect(parameters[0]).toBe(originalParameters[1])
+    expect(parameters[1]).toBeCloseTo(
+      originalParameters[0]! / originalParameters[1]!,
+      12,
+    )
   })
 
   it('still repairs one extreme per segment across several segments', () => {
@@ -304,4 +302,25 @@ describe('two extremes on one segment', () => {
     )
     expect(segments).toEqual([1, 0])
   })
+})
+
+it('revalidates enabled extrema when disabled fractional markers would fill the report', () => {
+  const contours = [
+    makeContour(Array.from({ length: 110 }, (_, i) => makePoint(i + 0.2, 0))),
+    makeContour([
+      makePoint(0, 0),
+      makePoint(300, 400, 'OffCurve'),
+      makePoint(-300, 400, 'OffCurve'),
+      makePoint(0, 800, 'Curve'),
+    ]),
+  ]
+  const issues = auditOutline(contours, {
+    open: false,
+    fractional: false,
+    coincident: false,
+    extrema: true,
+  }).issues
+  expect(issues).toHaveLength(2)
+  const command = outlineAuditFix(target, contours, issues)
+  expect(command && 'Batch' in command && command.Batch).toHaveLength(2)
 })

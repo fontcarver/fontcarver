@@ -10,7 +10,11 @@ export interface MacroContext {
 /** Macros cannot recursively launch scripts or leave gesture transactions open. */
 export type MacroMethod = Exclude<
   keyof ApiMethods,
-  `automation.${string}` | 'doc.edit_begin' | 'doc.edit_apply' | 'doc.edit_end'
+  | `automation.${string}`
+  | 'doc.edit_begin'
+  | 'doc.edit_apply'
+  | 'doc.edit_end'
+  | 'doc.edit_cancel'
 >
 
 /** Generated API contract shared by JavaScript macro facades and the bridge. */
@@ -83,7 +87,12 @@ export function isMacroMethod(value: unknown): value is MacroMethod {
     value.length <= 128 &&
     /^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/.test(value) &&
     !value.startsWith('automation.') &&
-    !['doc.edit_begin', 'doc.edit_apply', 'doc.edit_end'].includes(value)
+    ![
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+      'doc.edit_cancel',
+    ].includes(value)
   )
 }
 

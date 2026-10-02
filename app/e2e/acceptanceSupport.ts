@@ -1,10 +1,9 @@
-import { execFileSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
-import { basename, resolve } from 'node:path'
+import { basename } from 'node:path'
 
 import { expect, type Locator, type Page } from '@playwright/test'
 
-import { api, REPO_ROOT } from './support'
+import { api } from './support'
+import { runCli } from './cliSupport'
 
 export interface DocSummary {
   doc: number
@@ -38,30 +37,6 @@ export interface PointLocation {
   point: number
   x: number
   y: number
-}
-
-const RELEASE_CLI = resolve(REPO_ROOT, 'target', 'release', 'fontcarver')
-
-/**
- * Runs the `fontcarver` CLI over an emitted font and returns its output.
- *
- * The release binary is used when the checkout has one, because these specs
- * read whole fonts back; the suite only promises a built `fc-devserver`, so a
- * checkout without it falls back to Cargo rather than failing with `ENOENT`.
- */
-function runCli(args: readonly string[]): string {
-  const options = {
-    cwd: REPO_ROOT,
-    encoding: 'utf8',
-    maxBuffer: 32 * 1024 * 1024,
-  } as const
-  return existsSync(RELEASE_CLI)
-    ? execFileSync(RELEASE_CLI, args, options)
-    : execFileSync(
-        'cargo',
-        ['run', '-q', '-p', 'fc-cli', '--bin', 'fontcarver', '--', ...args],
-        options,
-      )
 }
 
 export function releaseInspect(path: string): {

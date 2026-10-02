@@ -1,25 +1,36 @@
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { call } from '../../../api'
 import { Button } from '../../../components/Button'
 import { NumberField } from '../../../components/NumberField'
+import { activeEditor } from '../../../editor/activeEditor'
+import {
+  afterDocumentEdits,
+  documentEditRevision,
+} from '../../../editor/editSession'
+import { useDocumentStore } from '../../../stores/documentStore'
+import { commit } from '../../../editor/pointCommands'
+import { reportError } from '../../../shell/commands'
 import {
   spacingLockedForDocument,
   useSpacingLocked,
 } from '../../text/kerningModes'
-import { commitField } from '../commitField'
 
 import type { PanelContext } from './panelContext'
 import styles from './panels.module.css'
 
 type VerticalMetricsPanelProps = Pick<
   PanelContext,
-  'target' | 'glyph' | 'scene' | 'outline' | 'reload'
+  'target' | 'gid' | 'glyph' | 'scene' | 'outline' | 'reload'
 >
+
+type Overrides = { advance: number | null; origin: number | null }
 
 /** Vertical spacing measured from the resolved ink bounds in font coordinates. */
 export function VerticalMetricsPanel({
   target,
+  gid,
   glyph,
   scene,
   outline,
@@ -35,65 +46,87 @@ export function VerticalMetricsPanel({
   const top = bounds ? origin - bounds[3] : 0
   const bottom = bounds ? advance - origin + bounds[1] : 0
 
-  /**
-   * The override pair this panel last sent, until the model reports it back.
-   *
-   * `SetVerticalMetrics` writes both fields, so each field sends the stored
-   * value of the other one. A second edit made before the first command's
-   * reload has landed would otherwise read the *old* record and clear what the
-   * first edit just wrote, which is how typing an advance and then a TSB used
-   * to lose the advance.
-   */
-  const sent = useRef<{
-    key: string
-    advance: number | null
-    origin: number | null
-  } | null>(null)
-  const key = `${target.doc}:${glyph.name}:${target.layer}`
-
-  /**
-   * The overrides the next command starts from. Called from the fields, never
-   * during render: the pending pair is dropped as soon as the model reports it
-   * back, or as soon as another glyph or layer is shown.
-   */
-  const basis = (): { advance: number | null; origin: number | null } => {
-    const stored = {
-      advance: layer?.vertical_width ?? null,
-      origin: layer?.vertical_origin ?? null,
+  const key = JSON.stringify([target.doc, glyph.name, target.layer, gid])
+  const queue = useRef(Promise.resolve())
+  const current = useRef({ key, generation: 0, mounted: true })
+  useLayoutEffect(() => {
+    if (current.current.key !== key) current.current.generation += 1
+    current.current.key = key
+  }, [key])
+  useLayoutEffect(() => {
+    const lifetime = current.current
+    lifetime.mounted = true
+    return () => {
+      lifetime.mounted = false
+      lifetime.generation += 1
     }
-    const pending = sent.current
-    if (!pending || pending.key !== key) return stored
-    if (
-      pending.advance === stored.advance &&
-      pending.origin === stored.origin
-    ) {
-      sent.current = null
-      return stored
-    }
-    return { advance: pending.advance, origin: pending.origin }
-  }
+  }, [])
 
-  const write = (nextAdvance: number | null, nextOrigin: number | null) => {
+  const write = (
+    patch: (
+      previous: Overrides,
+    ) => Overrides | null | Promise<Overrides | null>,
+  ) => {
     if (spacingLockedForDocument(target.doc)) return
-    sent.current = { key, advance: nextAdvance, origin: nextOrigin }
-    commitField(
-      target,
-      {
-        SetVerticalMetrics: {
-          glyph: glyph.name,
-          layer: target.layer,
-          advance: nextAdvance,
-          origin: nextOrigin,
-        },
-      },
-      t('variation.verticalMetrics'),
-      () => {
+    const generation = current.current.generation
+    const editor = activeEditor()
+    const isCurrent = () =>
+      current.current.mounted &&
+      current.current.generation === generation &&
+      activeEditor() === editor
+    // Construct each pair only after the preceding edit succeeds or fails.
+    // A rejected advance must never become the basis of a queued origin edit.
+    queue.current = queue.current
+      .then(async () => {
+        if (!isCurrent()) return
+        await editor?.settle()
+        if (!isCurrent() || spacingLockedForDocument(target.doc)) return
+        await afterDocumentEdits(target.doc, async () => {
+          if (!isCurrent()) return
+          const revision = documentEditRevision(target.doc)
+          const generation =
+            useDocumentStore.getState().byDoc[target.doc]?.generation
+          const detail = await call('glyphs.detail', { doc: target.doc, gid })
+          const stored = detail.glyph.layers.find(
+            (entry) => entry.id === target.layer,
+          )
+          if (!stored || !isCurrent()) return
+          const next = await patch({
+            advance: stored.vertical_width ?? null,
+            origin: stored.vertical_origin ?? null,
+          })
+          if (
+            !next ||
+            (next.advance === (stored.vertical_width ?? null) &&
+              next.origin === (stored.vertical_origin ?? null)) ||
+            !isCurrent() ||
+            spacingLockedForDocument(target.doc) ||
+            documentEditRevision(target.doc) !== revision ||
+            useDocumentStore.getState().byDoc[target.doc]?.generation !==
+              generation
+          )
+            return
+          await commit(
+            target,
+            {
+              SetVerticalMetrics: {
+                glyph: glyph.name,
+                layer: target.layer,
+                ...next,
+              },
+            },
+            t('variation.verticalMetrics'),
+          )
+        })
+      })
+      .catch(reportError)
+      .finally(() => {
+        if (!isCurrent()) return
         // A rejected edit leaves the metric unchanged. Still reconcile the
         // numeric draft, which otherwise only follows a changed model value.
         setRevision((value) => value + 1)
         reload()
-      },
-    )
+      })
   }
 
   return (
@@ -104,7 +137,9 @@ export function VerticalMetricsPanel({
         disabled={locked || !layer}
         invalidHint={t('infoBox.invalid')}
         revision={revision}
-        onCommit={(value) => write(value, basis().origin)}
+        onCommit={(value) =>
+          write((previous) => ({ ...previous, advance: value }))
+        }
       />
       <NumberField
         label={t('glyphView.metric.verticalOrigin')}
@@ -112,7 +147,9 @@ export function VerticalMetricsPanel({
         disabled={locked || !layer}
         invalidHint={t('infoBox.invalid')}
         revision={revision}
-        onCommit={(value) => write(basis().advance, value)}
+        onCommit={(value) =>
+          write((previous) => ({ ...previous, origin: value }))
+        }
       />
       <NumberField
         label={t('glyphView.metric.tsb')}
@@ -121,7 +158,17 @@ export function VerticalMetricsPanel({
         invalidHint={t('infoBox.invalid')}
         revision={revision}
         onCommit={(value) => {
-          if (bounds) write(basis().advance, bounds[3] + value)
+          if (bounds)
+            write(async (previous) => {
+              const fresh = await call('glyphs.outline', {
+                doc: target.doc,
+                gid,
+                layer: target.layer,
+              })
+              return fresh.bbox
+                ? { ...previous, origin: fresh.bbox[3] + value }
+                : null
+            })
         }}
       />
       <NumberField
@@ -131,7 +178,30 @@ export function VerticalMetricsPanel({
         invalidHint={t('infoBox.invalid')}
         revision={revision}
         onCommit={(value) => {
-          if (bounds) write(origin - bounds[1] + value, basis().origin)
+          if (bounds)
+            write(async (previous) => {
+              const fresh = await call('glyphs.outline', {
+                doc: target.doc,
+                gid,
+                layer: target.layer,
+              })
+              if (!fresh.bbox) return null
+              let effectiveOrigin = previous.origin
+              if (effectiveOrigin === null) {
+                const info = await call('doc.font_info', { doc: target.doc })
+                const master =
+                  info.masters.find((entry) => entry.id === fresh.master) ??
+                  info.masters[0]
+                effectiveOrigin =
+                  master?.metrics.default_vertical_origin ??
+                  master?.metrics.ascender ??
+                  scene.metrics.ascender
+              }
+              return {
+                ...previous,
+                advance: effectiveOrigin - fresh.bbox[1] + value,
+              }
+            })
         }}
       />
       <p className={styles.hint}>
@@ -147,7 +217,7 @@ export function VerticalMetricsPanel({
           !layer ||
           (layer.vertical_width == null && layer.vertical_origin == null)
         }
-        onClick={() => write(null, null)}
+        onClick={() => write(() => ({ advance: null, origin: null }))}
       >
         {t('variation.useMasterMetrics')}
       </Button>

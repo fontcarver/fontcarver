@@ -20,6 +20,7 @@ import sharedStyles from './panels.module.css'
 /** Build editable CJK references from document radicals and Unicode IDS input. */
 export function CjkConstructionPanel({
   target,
+  gid,
   scene,
   outline,
   master,
@@ -206,6 +207,7 @@ export function CjkConstructionPanel({
       )}
       <CjkTransformGrid
         target={target}
+        gid={gid}
         scene={scene}
         outline={outline}
         reload={reload}

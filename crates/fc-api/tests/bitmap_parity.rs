@@ -44,6 +44,87 @@ fn generation(api: &Api, doc: fc_doc::DocId) -> serde_json::Value {
     api.call("bitmap.state", json!({"doc":doc})).unwrap()["generation"].clone()
 }
 #[test]
+fn waterfall_resolves_vertical_metrics_without_changing_stored_bitmaps() {
+    let (session, doc, api) = fixture();
+    session
+        .with_doc_mut(doc, |d| {
+            let master = &mut d.font.masters[0];
+            master.metrics.default_vertical_advance = Some(1100.0);
+            master.metrics.default_vertical_origin = Some(900.0);
+            master.metrics.ascender = 720.0;
+            let master_id = master.id.clone();
+            let layer = d
+                .font
+                .glyph_mut("A")
+                .unwrap()
+                .master_layer_mut(&master_id)
+                .unwrap();
+            layer.vertical_width = Some(1250.0);
+            layer.vertical_origin = Some(850.0);
+        })
+        .unwrap();
+    let preview = || {
+        api.call(
+            "bitmap.preview",
+            json!({"doc":doc,"text":"","glyphs":["A"]}),
+        )
+        .unwrap()[0]["glyphs"][0]
+            .clone()
+    };
+    // Explicit strike metrics take precedence over the outline layer and VORG.
+    assert_eq!(preview()["vertical_origin"], json!([1, 2]));
+    assert_eq!(preview()["vertical_advance"], 4);
+    session
+        .with_doc_mut(doc, |d| {
+            let glyph = d.font.bitmap_strikes[0].glyphs.get_mut("A").unwrap();
+            glyph.vertical_origin = None;
+            glyph.vertical_advance = None;
+        })
+        .unwrap();
+    assert_eq!(preview()["vertical_origin"], json!([2, 9]));
+    assert_eq!(preview()["vertical_advance"], 13);
+    session
+        .with_doc_mut(doc, |d| {
+            let master = d.font.default_master().id.clone();
+            let layer = d
+                .font
+                .glyph_mut("A")
+                .unwrap()
+                .master_layer_mut(&master)
+                .unwrap();
+            layer.vertical_width = None;
+            layer.vertical_origin = None;
+        })
+        .unwrap();
+    assert_eq!(preview()["vertical_origin"], json!([2, 9]));
+    assert_eq!(preview()["vertical_advance"], 11);
+    session
+        .with_doc_mut(doc, |d| {
+            d.font.masters[0].metrics.default_vertical_advance = None;
+            d.font.masters[0].metrics.default_vertical_origin = None;
+        })
+        .unwrap();
+    assert_eq!(preview()["vertical_origin"], json!([2, 7]));
+    assert_eq!(preview()["vertical_advance"], 10);
+    session
+        .with_doc_mut(doc, |d| {
+            d.font.bitmap_strikes[0]
+                .glyphs
+                .get_mut("A")
+                .unwrap()
+                .vertical_advance = Some(0);
+        })
+        .unwrap();
+    assert_eq!(preview()["vertical_advance"], 0);
+    session
+        .with_doc(doc, |d| {
+            assert_eq!(d.font.bitmap_strikes[0].glyphs["A"].vertical_origin, None);
+            assert_eq!(d.generation, 0);
+            assert_eq!(d.undo_len(), 0);
+        })
+        .unwrap();
+}
+#[test]
 fn cross_strike_rescale_preserves_y_up_origins_metrics_and_undo() {
     let (session, doc, api) = fixture();
     let params = json!({"doc":doc,"expected_generation":generation(&api,doc),"source_ppem":10,"source_depth":1,"target_ppem":20,"target_depth":8,"glyphs":["A"],"scale":true});

@@ -34,21 +34,21 @@ export interface MetricShortcutOptions {
 
 /**
  * Maps Mod+Left/Right to legacy sidebearing changes. Optional selected-side
- * brackets use the configured step, ×10 with Shift.
+ * brackets use the configured step, ×10 with Shift, ×100 with Alt, and exactly
+ * one font unit with Alt+Shift.
  *
  * `Mod+[` and `Mod+]` are the shell's previous/next glyph commands, so a
- * modified bracket is not a spacing step: pressing it used to move the glyph
+ * Ctrl/Meta bracket is not a spacing step: pressing it used to move the glyph
  * being left by 100 units as the tab switched. macOS can distinguish
  * Meta-as-Mod plus Ctrl for the 100-unit arrow step. On Linux, Ctrl is Mod
- * itself, so Ctrl+arrow deliberately remains the one-unit step. Alt
- * combinations are reserved for future kerning commands.
+ * itself, so Ctrl+arrow deliberately remains the one-unit step. Alt arrows
+ * remain reserved for kerning commands.
  */
 export function metricShortcut(
   event: MetricShortcutEvent,
   isMac: boolean,
   options?: MetricShortcutOptions,
 ): MetricShortcut | null {
-  if (event.altKey) return null
   const mod = isMac ? event.metaKey : event.ctrlKey
   if (options) {
     const direction =
@@ -59,16 +59,21 @@ export function metricShortcut(
             event.key === '}'
           ? 1
           : 0
-    // A bracket with the platform modifier belongs to glyph navigation.
-    if (direction && !mod) {
+    // Never claim navigation or Ctrl+Alt (AltGr) bracket combinations.
+    if (direction && !event.ctrlKey && !event.metaKey) {
       const configured = options.step ?? 1
       const base =
         Number.isFinite(configured) && configured > 0 ? configured : 1
-      const step = base * (event.shiftKey ? 10 : 1)
+      const step = event.altKey
+        ? event.shiftKey
+          ? 1
+          : base * 100
+        : base * (event.shiftKey ? 10 : 1)
       return { side: options.side, delta: direction * step }
     }
     if (direction) return null
   }
+  if (event.altKey) return null
   const side =
     event.key === 'ArrowLeft'
       ? 'lsb'

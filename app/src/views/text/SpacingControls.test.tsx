@@ -27,7 +27,10 @@ describe('SpacingControls', () => {
     render(<SpacingControls side="both" onSideChange={vi.fn()} />)
 
     const select = screen.getByRole('combobox', { name: 'Spacing side' })
-    expect(select).toHaveAccessibleDescription(/\[.*\].*Shift.*10.*100.*1/u)
+    expect(select).toHaveAccessibleDescription(
+      /Shift: ×10; Alt: ×100; Shift\+Alt: exactly 1 font unit/u,
+    )
+    expect(select).toHaveAccessibleDescription(/navigate between glyphs/u)
     expect(screen.getByText('[ / ]')).toBeInTheDocument()
     expect(select).toHaveValue('both')
   })

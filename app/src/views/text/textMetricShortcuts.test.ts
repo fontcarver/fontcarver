@@ -106,6 +106,54 @@ describe('metricShortcut', () => {
     ).toEqual({ side: 'rsb', delta: -30 })
   })
 
+  it.each([false, true])(
+    'uses Alt for ×100 and Alt+Shift for exactly one on macOS=%s',
+    (isMac) => {
+      for (const side of ['lsb', 'rsb', 'both'] as const) {
+        for (const [key, direction] of [
+          ['[', -1],
+          [']', 1],
+        ] as const) {
+          const options = { side, step: 2.5 }
+          expect(
+            metricShortcut(event({ key, altKey: true }), isMac, options),
+          ).toEqual({ side, delta: direction * 250 })
+          expect(
+            metricShortcut(
+              event({ key, altKey: true, shiftKey: true }),
+              isMac,
+              options,
+            ),
+          ).toEqual({ side, delta: direction })
+        }
+      }
+    },
+  )
+
+  it('recognizes physical Alt brackets without claiming Control or Meta chords', () => {
+    const options = { side: 'both' as const, step: 3 }
+    expect(
+      metricShortcut(
+        event({ key: '“', code: 'BracketLeft', altKey: true }),
+        true,
+        options,
+      ),
+    ).toEqual({ side: 'both', delta: -300 })
+    for (const isMac of [false, true]) {
+      for (const modifier of [{ ctrlKey: true }, { metaKey: true }]) {
+        for (const altKey of [false, true]) {
+          expect(
+            metricShortcut(
+              event({ key: ']', altKey, ...modifier }),
+              isMac,
+              options,
+            ),
+          ).toBeNull()
+        }
+      }
+    }
+  })
+
   it.each([undefined, 0, -2, Number.NaN, Infinity])(
     'falls back to one for an unavailable or invalid step %s',
     (step) => {
@@ -115,7 +163,7 @@ describe('metricShortcut', () => {
     },
   )
 
-  it('preserves legacy arrows and reserves Alt bracket combinations', () => {
+  it('preserves legacy arrows and reserves Mod+Alt bracket combinations', () => {
     const options = { side: 'both' as const, step: 4 }
     expect(metricShortcut(event({ key: '[' }), false)).toBeNull()
     expect(metricShortcut(event({ ctrlKey: true }), false, options)).toEqual({

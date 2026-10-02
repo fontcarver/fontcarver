@@ -231,6 +231,7 @@ export function MetricsPanel({
 
       <VerticalMetricsPanel
         target={target}
+        gid={gid}
         glyph={glyph}
         scene={scene}
         outline={outline}

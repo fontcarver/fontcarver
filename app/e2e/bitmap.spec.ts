@@ -426,14 +426,14 @@ test('properties are renamed and a sprite sheet round trips through its own layo
   await page
     .getByRole('button', { name: 'Prepare PNG export', exact: true })
     .click()
-  const link = page.getByRole('link', { name: 'Download PNG' })
-  await expect(link).toBeVisible()
+  const save = page.getByRole('button', { name: 'Save PNG…' })
+  await expect(save).toBeVisible()
   await expect(page.getByLabel('Sheet layout')).toHaveValue(
     /cells 8x8\ncolumns 2\nglyphs 2\nA uni4E2D/,
   )
   const download = await Promise.all([
     page.waitForEvent('download'),
-    link.click(),
+    save.click(),
   ]).then(([event]) => event)
   const sheet = join(directory, 'sheet.png')
   await download.saveAs(sheet)
@@ -546,6 +546,90 @@ test('cross-strike copies, batch tracing and the single-glyph waterfall', async 
     .filter({ has: page.getByLabel('Waterfall sample') })
   await expect(waterfall.getByText('4px · 8bpp', { exact: true })).toBeVisible()
   await expect(waterfall.getByText('8px · 1bpp', { exact: true })).toBeVisible()
+})
+
+test('positions upright bitmap proof pixels using vertical origins and advances', async ({
+  page,
+}) => {
+  const { doc } = await setup(page)
+  const state = await api<BitmapState>(page, 'bitmap.state', { doc: doc.doc })
+  const glyph = (vertical_origin: [number, number]) => ({
+    bitmap: {
+      width: 3,
+      height: 4,
+      depth: 1,
+      origin_x: -1,
+      origin_y: -2,
+      rows: [224, 224, 224, 224],
+    },
+    advance: 8,
+    vertical_advance: 12,
+    vertical_origin,
+    refs: [],
+  })
+  await api(page, 'bitmap.apply', {
+    doc: doc.doc,
+    expected_generation: state.generation,
+    label: 'Prepare vertical bitmap proof',
+    command: {
+      SetStrike: {
+        strike: {
+          ppem: 10,
+          depth: 1,
+          ascent: 8,
+          descent: 2,
+          properties: {},
+          glyphs: { A: glyph([2, 7]), uni4E2D: glyph([4, 9]) },
+        },
+      },
+    },
+  })
+  await page.getByLabel('Waterfall sample').fill('A中')
+  const proof = page.getByRole('img', { name: 'Bitmap proof at 10 px, 1 bpp' })
+  await expect(proof).toBeVisible()
+  await page
+    .getByRole('checkbox', { name: 'Vertical writing', exact: true })
+    .check()
+  const pixels = () =>
+    proof.evaluate((element) => {
+      const canvas = element as unknown as {
+        width: number
+        height: number
+        getContext: (kind: '2d') => {
+          getImageData: (
+            x: number,
+            y: number,
+            width: number,
+            height: number,
+          ) => { data: ArrayLike<number> }
+        } | null
+      }
+      const data = canvas
+        .getContext('2d')
+        ?.getImageData(0, 0, canvas.width, canvas.height).data
+      if (!data) throw new Error('bitmap proof canvas has no pixels')
+      const ink = []
+      for (let y = 0; y < canvas.height; y++)
+        for (let x = 0; x < canvas.width; x++) {
+          const index = (y * canvas.width + x) * 4
+          if (
+            data[index]! < 100 &&
+            data[index + 1]! < 100 &&
+            data[index + 2]! < 100
+          )
+            ink.push([x, y])
+        }
+      return { width: canvas.width, height: canvas.height, ink }
+    })
+  const expectedInk = [
+    [2, 15],
+    [0, 29],
+  ].flatMap(([left, top]) =>
+    Array.from({ length: 4 }, (_, y) =>
+      Array.from({ length: 3 }, (_, x) => [left! + x, top! + y]),
+    ).flat(),
+  )
+  await expect.poll(pixels).toEqual({ width: 10, height: 44, ink: expectedInk })
 })
 
 test('every pixel tool has a working single-key shortcut', async ({ page }) => {

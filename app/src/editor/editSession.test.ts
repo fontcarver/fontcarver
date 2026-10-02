@@ -149,3 +149,67 @@ describe('document edit handover', () => {
     ])
   })
 })
+
+describe('token-scoped cancellation', () => {
+  it('never undoes a newer gesture when an older session is cancelled', async () => {
+    const transport = createEditingTransport()
+    setTransport(transport)
+    const old = new EditSession(91, 'Old', { scheduler: immediateScheduler })
+    old.queue(move)
+    await old.flush()
+    const current = new EditSession(91, 'New', {
+      scheduler: immediateScheduler,
+    })
+    current.queue(move)
+    await current.flush()
+    await old.cancel()
+    expect(old.failed).toBe(true)
+    current.queue(move)
+    await current.flush()
+    expect(current.failed).toBe(false)
+    await current.end()
+    expect(transport.calls.some((entry) => entry.method === 'doc.undo')).toBe(
+      false,
+    )
+  })
+
+  it('cannot cancel an already committed gesture', async () => {
+    const transport = createEditingTransport()
+    setTransport(transport)
+    const session = new EditSession(92, 'Finished', {
+      scheduler: immediateScheduler,
+    })
+    session.queue(move)
+    await session.end()
+    const before = transport.calls.length
+    await session.cancel()
+    expect(transport.calls).toHaveLength(before)
+  })
+
+  it('waits for an in-flight apply before atomically cancelling it', async () => {
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const transport = createEditingTransport({
+      hold: { on: 'doc.edit_apply', until: gate },
+    })
+    setTransport(transport)
+    const session = new EditSession(93, 'Pending', {
+      scheduler: immediateScheduler,
+    })
+    session.queue(move)
+    await session.ready()
+    const cancelled = session.cancel()
+    expect(
+      transport.calls.some((entry) => entry.method === 'doc.edit_cancel'),
+    ).toBe(false)
+    release()
+    await cancelled
+    expect(transport.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_cancel',
+    ])
+  })
+})

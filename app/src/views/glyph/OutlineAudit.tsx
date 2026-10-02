@@ -26,6 +26,7 @@ import {
   type OutlineAuditIssue,
 } from './outlineAudit'
 import { useOutlineAuditStore } from './outlineAuditStore'
+import { OutlineAuditRepairError, repairAllOutline } from './outlineAuditRepair'
 import styles from './outlineAudit.module.css'
 
 /** The canvas calls this after pan, zoom or resize without a React rerender. */
@@ -161,7 +162,7 @@ export function OutlineAudit({
         null,
       ),
     )
-  const fix = async (issues: readonly OutlineAuditIssue[]) => {
+  const fix = async (issues: readonly OutlineAuditIssue[], all = false) => {
     if (busy || editing || source.glyphLocked) return
     const captured = source
     setBusy(true)
@@ -170,6 +171,31 @@ export function OutlineAudit({
       await activeEditor()?.prepareTransition()
       if (current.current !== captured || useEditorStore.getState().editing)
         return
+      if (all) {
+        await repairAllOutline({
+          target: {
+            doc: source.doc,
+            glyph: source.glyph,
+            layer: source.outline.layer,
+          },
+          gid: source.gid,
+          original: source.outline.contours,
+          settings,
+          lockedPaths,
+          label: t('editor.audit.fixLabel'),
+          isCurrent: () => {
+            const live = current.current
+            return (
+              live.doc === captured.doc &&
+              live.gid === captured.gid &&
+              live.outline.layer === captured.outline.layer &&
+              !live.glyphLocked &&
+              !useEditorStore.getState().editing
+            )
+          },
+        })
+        return
+      }
       const fresh = await call('glyphs.outline', {
         doc: source.doc,
         gid: source.gid,
@@ -191,7 +217,13 @@ export function OutlineAudit({
       if (command)
         await applyCommand(source.doc, command, t('editor.audit.fixLabel'))
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
+      setError(
+        cause instanceof OutlineAuditRepairError
+          ? t(`editor.audit.${cause.reason}`)
+          : cause instanceof Error
+            ? cause.message
+            : String(cause),
+      )
     } finally {
       setBusy(false)
       onReload()
@@ -258,7 +290,7 @@ export function OutlineAudit({
           type="button"
           disabled={busy || editing || !hasFixes}
           onClick={() => {
-            void fix(report.issues)
+            void fix(report.issues, true)
           }}
         >
           {t('editor.audit.fixAll')}

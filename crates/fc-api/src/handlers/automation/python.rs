@@ -350,7 +350,7 @@ fn dispatch_rpc(
         || method.starts_with("process.")
         || matches!(
             method,
-            "prefs.set" | "doc.edit_begin" | "doc.edit_apply" | "doc.edit_end"
+            "prefs.set" | "doc.edit_begin" | "doc.edit_apply" | "doc.edit_end" | "doc.edit_cancel"
         )
         || (method.starts_with("session.")
             && !matches!(

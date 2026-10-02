@@ -105,6 +105,17 @@ a glyph with no Unicode value — `.notdef`, a stylistic alternate, the reusable
 `pixel` glyph — can be compared the same way. The waterfall does not shape OpenType layout
 and never scales one strike to stand in for a missing one.
 
+**Vertical writing** places upright pixels top to bottom using each bitmap’s
+vertical origin and vertical advance. Explicit strike metrics take precedence;
+missing values inherit the corresponding glyph layer in the document’s default
+master, then the master’s vertical defaults (`VORG` origin or ascender, and a
+one-em advance when no advance is defined), rounded to the strike’s pixel grid.
+The horizontal origin is half the bitmap’s advance when no explicit origin is
+stored. Zero advances are retained and negative bearings remain visible. This
+mode does not apply OpenType vertical substitutions or rotate punctuation.
+Overlong proofs are bounded to 16,384 pixels per side and four million pixels;
+a visible warning asks for a shorter sample when that limit clips the proof.
+
 ## Pixels and outlines
 
 **Replace outline with pixel trace** turns the strike's pixels into contours in
@@ -161,6 +172,11 @@ columns, and **Prepare PNG export** produces the file. The exported PNG carries
 its own layout in a text chunk, so importing it back restores the cells, the
 columns and the glyph order without retyping them; the same layout is shown as
 copyable text beside the download.
+
+**Save PNG…** opens the native save dialog in the desktop app and downloads the
+file in the browser. Cancelling the dialog or a failed write keeps the prepared
+preview and layout available for another attempt. The saved bytes include the
+same embedded layout used by the PNG import.
 
 Each image sits at the bottom left of its cell. An import keeps every existing
 image's bounds, origin and advances and replaces only the pixels, so resize a

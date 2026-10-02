@@ -79,5 +79,13 @@ export function reservedKeymapTargets(): KeymapTarget[] {
         scope: 'glyph',
       })),
     ),
+    ...['[', ']'].flatMap((key) =>
+      ['', 'Shift+', 'Alt+', 'Alt+Shift+'].map((modifier) => ({
+        id: `gesture.spacing.${modifier}${key}`,
+        title: 'shortcuts.fixedSpacing',
+        shortcut: `${modifier}${key}`,
+        scope: 'glyph',
+      })),
+    ),
   ]
 }

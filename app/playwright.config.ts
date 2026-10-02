@@ -6,7 +6,8 @@ import { defineConfig } from '@playwright/test'
 /**
  * The end-to-end suite is self-contained: it starts the kernel development
  * server and Vite itself, so `pnpm e2e` needs nothing but
- * `cargo build -p fc-devserver` and `pnpm install`.
+ * `cargo build -p fc-devserver -p fc-cli` and `pnpm install`. The suite runs
+ * prebuilt executables only; `FC_E2E_CLI` can pin a specific CLI binary.
  *
  * Both ports are configurable so a second checkout (or a parallel agent) can
  * run the suite without fighting over the defaults. The UI is served the kernel

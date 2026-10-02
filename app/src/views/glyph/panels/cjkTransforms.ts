@@ -58,7 +58,7 @@ export function componentsSignature(
     target.doc,
     target.glyph,
     target.layer,
-    components.map(({ component }) => [component.base, component.transform]),
+    components.map(({ component }) => component),
   ])
 }
 

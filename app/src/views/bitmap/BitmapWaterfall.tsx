@@ -3,33 +3,25 @@ import { useTranslation } from 'react-i18next'
 import { call, type BitmapPreviewLine, type DocId } from '../../api'
 import { renderBitmap } from '../../canvas/bitmapRenderer'
 import { reportError, useUiStore } from '../../stores/uiStore'
+import { layoutBitmapWaterfall } from './bitmapWaterfallLayout'
 import styles from './BitmapView.module.css'
-function Line({ line }: { line: BitmapPreviewLine }) {
+function Line({
+  line,
+  vertical,
+}: {
+  line: BitmapPreviewLine
+  vertical: boolean
+}) {
   const ref = useRef<HTMLCanvasElement>(null)
   const theme = useUiStore((state) => state.theme)
+  const { t } = useTranslation()
+  const layout = layoutBitmapWaterfall(line, vertical)
   useEffect(() => {
     const canvas = ref.current
     if (!canvas) return
-    const extents = line.glyphs.map((g) =>
-      g ? g.bitmap.height + g.bitmap.origin_y : 0,
-    )
-    const top = Math.max(line.ascent, ...extents),
-      bottom = Math.max(
-        line.descent,
-        ...line.glyphs.map((g) => (g ? -g.bitmap.origin_y : 0)),
-      )
-    canvas.width = Math.min(
-      16384,
-      Math.max(
-        1,
-        line.glyphs.reduce(
-          (x, g) => x + Math.max(0, g?.advance ?? line.ppem),
-          0,
-        ) +
-          line.ppem * 2,
-      ),
-    )
-    canvas.height = Math.max(1, Math.min(4096, top + bottom))
+    const { width, height, placements } = layoutBitmapWaterfall(line, vertical)
+    canvas.width = width
+    canvas.height = height
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     const css = getComputedStyle(canvas),
@@ -37,40 +29,38 @@ function Line({ line }: { line: BitmapPreviewLine }) {
       ink = css.getPropertyValue('--bm-ink').trim() || '#101217'
     ctx.fillStyle = paper
     ctx.fillRect(0, 0, canvas.width, canvas.height)
-    let x = line.ppem
-    for (const g of line.glyphs) {
-      if (g) {
-        const image = document.createElement('canvas')
-        renderBitmap(
-          image,
-          g.bitmap,
-          1,
-          {
-            paper,
-            ink,
-            grid: paper,
-            accent: paper,
-          },
-          undefined,
-          false,
-        )
-        ctx.drawImage(
-          image,
-          x + g.bitmap.origin_x,
-          top - g.bitmap.height - g.bitmap.origin_y,
-        )
-        x += g.advance
-      } else {
-        x += line.ppem
-      }
+    for (const { glyph: g, x, y } of placements) {
+      const image = document.createElement('canvas')
+      renderBitmap(
+        image,
+        g.bitmap,
+        1,
+        {
+          paper,
+          ink,
+          grid: paper,
+          accent: paper,
+        },
+        undefined,
+        false,
+      )
+      ctx.drawImage(image, x, y)
     }
-  }, [line, theme])
+  }, [line, vertical, theme])
   return (
     <div className={styles.waterfallLine}>
       <span>
         {line.ppem}px · {line.depth}bpp
       </span>
-      <canvas ref={ref} />
+      <canvas
+        ref={ref}
+        role="img"
+        aria-label={t('bitmap.waterfallCanvas', {
+          ppem: line.ppem,
+          depth: line.depth,
+        })}
+      />
+      {layout.clipped && <p role="status">{t('bitmap.waterfallClipped')}</p>}
     </div>
   )
 }
@@ -94,6 +84,7 @@ export function BitmapWaterfall({
   const { t } = useTranslation(),
     [text, setText] = useState('FontCarver 字体点阵 0123456789'),
     [single, setSingle] = useState(false),
+    [vertical, setVertical] = useState(false),
     [lines, setLines] = useState<BitmapPreviewLine[]>([])
   const named = single && Boolean(glyph)
   const sample = named ? '' : text
@@ -133,6 +124,14 @@ export function BitmapWaterfall({
       <label className={styles.inline}>
         <input
           type="checkbox"
+          checked={vertical}
+          onChange={(event) => setVertical(event.target.checked)}
+        />
+        {t('bitmap.waterfallVertical')}
+      </label>
+      <label className={styles.inline}>
+        <input
+          type="checkbox"
           checked={single}
           disabled={!glyph}
           onChange={(event) => setSingle(event.target.checked)}
@@ -142,8 +141,15 @@ export function BitmapWaterfall({
           : t('bitmap.waterfallGlyphEmpty')}
       </label>
       <p className={styles.hint}>{t('bitmap.waterfallHint')}</p>
+      {vertical && (
+        <p className={styles.hint}>{t('bitmap.waterfallVerticalHint')}</p>
+      )}
       {lines.map((line) => (
-        <Line key={`${line.ppem}:${line.depth}`} line={line} />
+        <Line
+          key={`${line.ppem}:${line.depth}`}
+          line={line}
+          vertical={vertical}
+        />
       ))}
     </section>
   )

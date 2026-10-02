@@ -198,11 +198,10 @@ describe('GlyphView', () => {
       'doc.font_info': () => makeFontInfoView(),
       'doc.edit_begin': () => 5,
       'doc.edit_apply': () => noChange([42]),
-      'doc.edit_end': async () => {
+      'doc.edit_cancel': async () => {
         await until
-        return null
+        return noChange([42])
       },
-      'doc.undo': () => noChange([42]),
       'doc.apply': () => noChange([42]),
     })
     setTransport(transport)
@@ -243,6 +242,11 @@ describe('GlyphView', () => {
         'doc.edit_apply',
       ),
     )
+    expect(activeEditor()?.frame().metrics).toMatchObject({
+      width: 610,
+      lsb: 50,
+      rsb: 40,
+    })
     fireEvent.keyDown(canvas, { key: 'Escape' })
     commitField(
       { doc: 1, glyph: 'aacute', layer: layer.id },
@@ -260,14 +264,20 @@ describe('GlyphView', () => {
     )
     await waitFor(() =>
       expect(transport.calls.map((entry) => entry.method)).toContain(
-        'doc.edit_end',
+        'doc.edit_cancel',
       ),
     )
     expect(
       transport.calls
         .map((entry) => entry.method)
         .filter((method) => method.startsWith('doc.edit_')),
-    ).toEqual(['doc.edit_begin', 'doc.edit_apply', 'doc.edit_end'])
+    ).toEqual(['doc.edit_begin', 'doc.edit_apply', 'doc.edit_cancel'])
+    expect(
+      transport.calls.find((entry) => entry.method === 'doc.edit_cancel')
+        ?.params,
+    ).toEqual({ doc: 1, token: 5 })
+    expect(activeEditor()?.frame().metrics).toBeNull()
+    expect(activeEditor()?.frame().contours).toBeNull()
     expect(transport.calls.some((entry) => entry.method === 'doc.apply')).toBe(
       false,
     )
@@ -286,10 +296,12 @@ describe('GlyphView', () => {
       ).toEqual([
         'doc.edit_begin',
         'doc.edit_apply',
-        'doc.edit_end',
-        'doc.undo',
+        'doc.edit_cancel',
         'doc.apply',
       ]),
+    )
+    expect(useEditorStore.getState().activeGlyph?.outline?.contours).toEqual(
+      layer.contours,
     )
   })
 

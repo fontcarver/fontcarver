@@ -96,7 +96,10 @@ export function noChange(glyphs: number[] = []): Change {
 /** Extra behaviour for the editing transport. */
 export interface EditingTransportOptions {
   /** Held open until resolved; lets a test observe an in-flight call. */
-  hold?: { on: 'doc.edit_apply' | 'doc.edit_end'; until: Promise<void> }
+  hold?: {
+    on: 'doc.edit_apply' | 'doc.edit_end' | 'doc.edit_cancel'
+    until: Promise<void>
+  }
   /** Makes `doc.edit_begin` reject, to exercise the failure paths. */
   failBegin?: () => Error
 }
@@ -120,7 +123,9 @@ export function createEditingTransport(
   const invalidToken = () =>
     new ApiCallError('invalid_params', 'InvalidEditToken')
 
-  const hold = async (on: 'doc.edit_apply' | 'doc.edit_end') => {
+  const hold = async (
+    on: 'doc.edit_apply' | 'doc.edit_end' | 'doc.edit_cancel',
+  ) => {
     if (options.hold?.on === on) await options.hold.until
   }
 
@@ -142,6 +147,12 @@ export function createEditingTransport(
       // Ending a stale token is a silent no-op in the kernel.
       if (params.token === active) active = null
       return null
+    },
+    'doc.edit_cancel': async (params) => {
+      await hold('doc.edit_cancel')
+      if (params.token !== active) throw invalidToken()
+      active = null
+      return noChange([42])
     },
     // A single-shot command finalises the active edit too.
     'doc.apply': () => {

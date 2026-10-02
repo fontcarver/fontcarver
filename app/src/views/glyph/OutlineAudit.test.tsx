@@ -112,10 +112,29 @@ describe('outline audit controls', () => {
     expect(screen.getByText('No issues in the enabled checks.')).toBeVisible()
   })
 
-  it('applies all displayed fixes as one command after refreshing the outline', async () => {
+  it('applies all displayed fixes in one gesture after refreshing each pass', async () => {
+    let repaired = false
     const transport = createMockTransport({
-      'glyphs.outline': () => outline,
-      'doc.apply': () => noChange([42]),
+      'glyphs.outline': () =>
+        repaired
+          ? {
+              ...outline,
+              contours: outline.contours.map((contour) => ({
+                ...contour,
+                points: contour.points.map((point) => ({
+                  ...point,
+                  x: Math.round(point.x),
+                  y: Math.round(point.y),
+                })),
+              })),
+            }
+          : outline,
+      'doc.edit_begin': () => 7,
+      'doc.edit_apply': () => {
+        repaired = true
+        return noChange([42])
+      },
+      'doc.edit_end': () => null,
     })
     setTransport(transport)
     const { user, onReload } = await show()
@@ -123,9 +142,12 @@ describe('outline audit controls', () => {
     await waitFor(() => expect(onReload).toHaveBeenCalledOnce())
     expect(transport.calls.map((entry) => entry.method)).toEqual([
       'glyphs.outline',
-      'doc.apply',
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'glyphs.outline',
+      'doc.edit_end',
     ])
-    const applied = transport.calls[1]?.params as ApplyParams
+    const applied = transport.calls[2]?.params as ApplyParams
     expect('Batch' in applied.command && applied.command.Batch).toHaveLength(2)
   })
 
@@ -151,9 +173,11 @@ describe('outline audit controls', () => {
     setTransport(
       createMockTransport({
         'glyphs.outline': () => outline,
-        'doc.apply': () => {
+        'doc.edit_begin': () => 7,
+        'doc.edit_apply': () => {
           throw new Error('Refused audit repair')
         },
+        'doc.edit_cancel': () => noChange(),
       }),
     )
     const { user, onReload } = await show()

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -6,6 +6,7 @@ import { setTransport, type ApplyParams, type Layer } from '../../../api'
 import { setCommandErrorReporter } from '../../../shell/commands'
 import {
   makeGlyph,
+  makeFontInfoView,
   makeGlyphDetail,
   makeLayer,
   makeLayerOutline,
@@ -15,6 +16,7 @@ import {
 import {
   createMockTransport,
   noChange,
+  type MockHandlers,
   type MockTransport,
 } from '../../../test/mockTransport'
 import { buildScene } from '../glyphScene'
@@ -26,44 +28,63 @@ function show(
     layer?: Partial<Layer>
     bbox?: [number, number, number, number] | null
     reject?: boolean
+    apply?: MockHandlers['doc.apply']
+    readOutline?: MockHandlers['glyphs.outline']
   } = {},
 ) {
   const layer = makeLayer(options.layer)
   const glyph = makeGlyph({ layers: [layer] })
+  const stored = new Map([[1, glyph]])
+  const master = makeMaster({
+    metrics: makeMasterMetrics({
+      default_vertical_advance: 1100,
+      default_vertical_origin: 880,
+    }),
+  })
   const scene = buildScene({
     detail: makeGlyphDetail(glyph),
     cell: null,
-    master: makeMaster({
-      metrics: makeMasterMetrics({
-        default_vertical_advance: 1100,
-        default_vertical_origin: 880,
-      }),
-    }),
+    master,
     masterId: 'm1',
     unitsPerEm: 1000,
   })
   const reload = vi.fn()
   const errors = vi.fn()
   const mock = createMockTransport({
-    'doc.apply': () => {
+    'glyphs.detail': ({ doc }) => makeGlyphDetail(stored.get(doc) ?? glyph),
+    'glyphs.outline': options.readOutline ?? (() => outline),
+    'doc.font_info': () => makeFontInfoView({ masters: [master] }),
+    'doc.apply': async (params) => {
       if (options.reject) throw new Error('Vertical advance is out of range')
-      return noChange([42])
+      const change = await (options.apply?.(params) ?? noChange([42]))
+      if ('SetVerticalMetrics' in params.command) {
+        const { advance, origin } = params.command.SetVerticalMetrics
+        stored.set(params.doc, {
+          ...glyph,
+          layers: [
+            { ...layer, vertical_width: advance, vertical_origin: origin },
+          ],
+        })
+      }
+      return change
     },
   })
   setTransport(mock)
   setCommandErrorReporter(errors)
-  render(
+  const outline = makeLayerOutline(layer, {
+    bbox: options.bbox === undefined ? [40, -100, 560, 700] : options.bbox,
+  })
+  const view = render(
     <VerticalMetricsPanel
+      gid={42}
       target={{ doc: 1, glyph: glyph.name, layer: layer.id }}
       glyph={glyph}
       scene={scene}
-      outline={makeLayerOutline(layer, {
-        bbox: options.bbox === undefined ? [40, -100, 560, 700] : options.bbox,
-      })}
+      outline={outline}
       reload={reload}
     />,
   )
-  return { mock, reload, errors, layer, glyph }
+  return { mock, reload, errors, layer, glyph, scene, outline, view, stored }
 }
 
 function edits(mock: MockTransport): ApplyParams[] {
@@ -170,6 +191,108 @@ describe('vertical metrics inspector', () => {
     })
   })
 
+  it('computes BSB from the latest origin before its model reload arrives', async () => {
+    const { mock } = show()
+    await enter('vert. origin', '910')
+    await enter('BSB', '250')
+    await waitFor(() => expect(edits(mock)).toHaveLength(2))
+    expect(edits(mock)[1]?.command).toMatchObject({
+      SetVerticalMetrics: { advance: 1260, origin: 910 },
+    })
+  })
+
+  it('does not reuse a rejected advance in a later origin edit', async () => {
+    const { mock, errors } = show({
+      apply: ({ command }) => {
+        if (
+          'SetVerticalMetrics' in command &&
+          command.SetVerticalMetrics.advance === 70000
+        )
+          throw new Error('Vertical advance is out of range')
+        return noChange([42])
+      },
+    })
+    await enter('vert. advance', '70000')
+    await waitFor(() => expect(errors).toHaveBeenCalledOnce())
+    await enter('vert. origin', '910')
+    await waitFor(() => expect(edits(mock)).toHaveLength(2))
+    expect(edits(mock)[1]?.command).toMatchObject({
+      SetVerticalMetrics: { advance: null, origin: 910 },
+    })
+    expect(errors).toHaveBeenCalledOnce()
+  })
+
+  it('keeps a successful advance when a rejected edit precedes a queued BSB edit', async () => {
+    let rejectAdvance: (failure: Error) => void = () => undefined
+    const pending = new Promise<never>((_, reject) => {
+      rejectAdvance = reject
+    })
+    const { mock, errors } = show({
+      apply: ({ command }) => {
+        if (
+          'SetVerticalMetrics' in command &&
+          command.SetVerticalMetrics.advance === 70000
+        )
+          return pending
+        return noChange([42])
+      },
+    })
+    await enter('vert. advance', '1200')
+    await enter('vert. advance', '70000')
+    await waitFor(() => expect(edits(mock)).toHaveLength(2))
+    await enter('TSB', '210')
+    await enter('BSB', '250')
+    expect(edits(mock)).toHaveLength(2)
+    await act(async () => {
+      rejectAdvance(new Error('Invalid advance'))
+    })
+    await waitFor(() => expect(edits(mock)).toHaveLength(4))
+    expect(edits(mock)[2]?.command).toMatchObject({
+      SetVerticalMetrics: { advance: 1200, origin: 910 },
+    })
+    expect(edits(mock)[3]?.command).toMatchObject({
+      SetVerticalMetrics: { advance: 1260, origin: 910 },
+    })
+    expect(errors).toHaveBeenCalledOnce()
+  })
+
+  it('drops queued edits when the target changes before their preceding command finishes', async () => {
+    let release: () => void = () => undefined
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const { mock, view, glyph, layer, scene, outline, reload } = show({
+      apply: async () => {
+        await pending
+        return noChange([42])
+      },
+    })
+    await enter('vert. advance', '1200')
+    await waitFor(() => expect(edits(mock)).toHaveLength(1))
+    await enter('vert. origin', '910')
+    view.rerender(
+      <VerticalMetricsPanel
+        gid={42}
+        target={{ doc: 2, glyph: glyph.name, layer: layer.id }}
+        glyph={glyph}
+        scene={scene}
+        outline={outline}
+        reload={reload}
+      />,
+    )
+    await act(async () => {
+      release()
+    })
+    expect(edits(mock)).toHaveLength(1)
+    expect(reload).not.toHaveBeenCalled()
+    await enter('vert. origin', '930')
+    await waitFor(() => expect(edits(mock)).toHaveLength(2))
+    expect(edits(mock)[1]).toMatchObject({
+      doc: 2,
+      command: { SetVerticalMetrics: { advance: null, origin: 930 } },
+    })
+  })
+
   it('disables sidebearing edits for empty ink while retaining advance and origin editing', () => {
     show({ bbox: null })
     expect(screen.getByRole('textbox', { name: 'TSB' })).toBeDisabled()
@@ -179,11 +302,79 @@ describe('vertical metrics inspector', () => {
     expect(screen.getByText('Sidebearings require an outline.')).toBeVisible()
   })
 
+  it('uses inherited origin after clearing an explicit override before reload', async () => {
+    const { mock } = show({ layer: { vertical_origin: 900 } })
+    await userEvent
+      .setup()
+      .click(
+        screen.getByRole('button', { name: 'Use master vertical metrics' }),
+      )
+    await enter('BSB', '250')
+    await waitFor(() => expect(edits(mock)).toHaveLength(2))
+    expect(edits(mock)[1]?.command).toMatchObject({
+      SetVerticalMetrics: { advance: 1230, origin: null },
+    })
+  })
+
+  it('forgets acknowledged overrides before an external undo', async () => {
+    const { mock, view, glyph, layer, scene, outline, reload, stored } = show()
+    await enter('vert. origin', '910')
+    await waitFor(() => expect(reload).toHaveBeenCalledOnce())
+    const props = {
+      target: { doc: 1, glyph: glyph.name, layer: layer.id },
+      gid: 42,
+      scene,
+      outline,
+      reload,
+    }
+    view.rerender(
+      <VerticalMetricsPanel
+        {...props}
+        glyph={{ ...glyph, layers: [{ ...layer, vertical_origin: 910 }] }}
+      />,
+    )
+    view.rerender(<VerticalMetricsPanel {...props} glyph={glyph} />)
+    stored.set(1, glyph)
+    await enter('BSB', '250')
+    await waitFor(() => expect(edits(mock)).toHaveLength(2))
+    expect(edits(mock)[1]?.command).toMatchObject({
+      SetVerticalMetrics: { advance: 1230, origin: null },
+    })
+  })
+
+  it('uses current kernel ink bounds for a sidebearing after other edits settle', async () => {
+    const { mock } = show({
+      readOutline: () =>
+        makeLayerOutline(makeLayer(), { bbox: [40, -120, 560, 710] }),
+    })
+    await enter('TSB', '210')
+    await enter('BSB', '250')
+    await waitFor(() => expect(edits(mock)).toHaveLength(2))
+    expect(edits(mock)[0]?.command).toMatchObject({
+      SetVerticalMetrics: { origin: 920 },
+    })
+    expect(edits(mock)[1]?.command).toMatchObject({
+      SetVerticalMetrics: { advance: 1290, origin: 920 },
+    })
+  })
+
   it('rejects invalid numeric input without applying a command', async () => {
     const { mock } = show()
     await enter('TSB', 'oops')
     expect(edits(mock)).toHaveLength(0)
     expect(screen.getByRole('textbox', { name: 'TSB' })).toHaveValue('180')
+  })
+
+  it('uses an external undo that arrives before the previous model reload', async () => {
+    const { mock, reload, stored, glyph } = show()
+    await enter('vert. origin', '910')
+    await waitFor(() => expect(reload).toHaveBeenCalledOnce())
+    stored.set(1, glyph)
+    await enter('BSB', '250')
+    await waitFor(() => expect(edits(mock)).toHaveLength(2))
+    expect(edits(mock)[1]?.command).toMatchObject({
+      SetVerticalMetrics: { advance: 1230, origin: null },
+    })
   })
 
   it('reconciles a rejected value even when the model remains unchanged', async () => {

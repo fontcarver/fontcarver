@@ -4,6 +4,7 @@ import { setTransport, type Command, type EditApplyParams } from '../../api'
 import { makeContour, makePoint } from '../../test/fontFixtures'
 import {
   createMockTransport,
+  noChange,
   type MockTransport,
 } from '../../test/mockTransport'
 import { immediateScheduler } from '../editSession'
@@ -54,7 +55,7 @@ function transport(): MockTransport {
       guides: false,
     }),
     'doc.edit_end': () => null,
-    'doc.undo': () => null,
+    'doc.edit_cancel': () => noChange([42]),
   })
   setTransport(mock)
   return mock
@@ -735,32 +736,45 @@ describe('DragGesture', () => {
     ).toBe(0)
   })
 
-  it('ends the gesture and undoes it when Escape cancels a drag', async () => {
+  it('cancels the originating edit token when Escape cancels a drag', async () => {
     const mock = transport()
     const drag = beginDrag(context(), nodeHit, { x: 200, y: 0 }, NO_MODIFIERS)
     await drag?.ready()
     drag?.move({ x: 260, y: 0 }, NO_MODIFIERS)
     await drag?.flush()
+    expect(drag?.preview.contours[0]?.points[1]).toMatchObject({ x: 260, y: 0 })
     await drag?.cancel()
 
     expect(mock.calls.map((entry) => entry.method)).toEqual([
       'doc.edit_begin',
       'doc.edit_apply',
-      'doc.edit_end',
-      'doc.undo',
+      'doc.edit_cancel',
     ])
+    expect(mock.calls[1]?.params).toMatchObject({
+      doc: 1,
+      token: 7,
+      command: { MovePoints: { delta: [60, 0] } },
+    })
+    expect(mock.calls[2]?.params).toEqual({ doc: 1, token: 7 })
+    // Cancelling the kernel gesture must not mutate its source baseline.
+    expect(contour.points[1]).toMatchObject({ x: 200, y: 0 })
   })
 
-  it('undoes a cancelled gesture whose apply was still in flight', async () => {
+  it('waits for an in-flight apply before cancelling its token', async () => {
     // Escape normally arrives while an apply is on the wire, because applies
     // are queued every animation frame for as long as the pointer moves.
     let release = () => undefined as void
     const inFlight = new Promise<void>((resolve) => {
       release = () => resolve()
     })
+    let started = () => undefined as void
+    const applying = new Promise<void>((resolve) => {
+      started = () => resolve()
+    })
     const mock = createMockTransport({
       'doc.edit_begin': () => 7,
       'doc.edit_apply': async () => {
+        started()
         await inFlight
         return {
           glyphs: [42],
@@ -778,23 +792,29 @@ describe('DragGesture', () => {
         }
       },
       'doc.edit_end': () => null,
-      'doc.undo': () => null,
+      'doc.edit_cancel': () => noChange([42]),
     })
     setTransport(mock)
 
     const drag = beginDrag(context(), nodeHit, { x: 200, y: 0 }, NO_MODIFIERS)
     await drag?.ready()
     drag?.move({ x: 260, y: 0 }, NO_MODIFIERS)
+    await applying
     const cancelled = drag?.cancel()
+    // The token cannot be cancelled while the earlier apply is unresolved.
+    expect(mock.calls.map((entry) => entry.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+    ])
     release()
     await cancelled
 
     expect(mock.calls.map((entry) => entry.method)).toEqual([
       'doc.edit_begin',
       'doc.edit_apply',
-      'doc.edit_end',
-      'doc.undo',
+      'doc.edit_cancel',
     ])
+    expect(mock.calls[2]?.params).toEqual({ doc: 1, token: 7 })
   })
 
   it('reports a failing apply instead of leaving an unhandled rejection', async () => {
@@ -823,14 +843,16 @@ describe('DragGesture', () => {
     expect(String(errors[0])).toContain('stale edit token')
   })
 
-  it('does not undo a cancelled gesture that never applied anything', async () => {
+  it('cancels only its empty token when the gesture never applied anything', async () => {
     const mock = transport()
     const drag = beginDrag(context(), nodeHit, { x: 200, y: 0 }, NO_MODIFIERS)
     await drag?.ready()
     await drag?.cancel()
     expect(mock.calls.map((entry) => entry.method)).toEqual([
       'doc.edit_begin',
-      'doc.edit_end',
+      'doc.edit_cancel',
     ])
+    expect(mock.calls[1]?.params).toEqual({ doc: 1, token: 7 })
+    expect(drag?.preview.contours[0]?.points[1]).toMatchObject({ x: 200, y: 0 })
   })
 })

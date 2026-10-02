@@ -90,4 +90,21 @@ describe('the multi-strike waterfall', () => {
       }),
     ).toBeDisabled()
   })
+
+  it('switches existing strike pixels to a vertical canvas without another kernel request', async () => {
+    const { preview } = mount()
+    const canvas = await screen.findByRole('img', {
+      name: 'Bitmap proof at 8 px, 1 bpp',
+    })
+    expect(canvas).toHaveAttribute('width', '18')
+    expect(canvas).toHaveAttribute('height', '2')
+    const calls = preview.mock.calls.length
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Vertical writing' }))
+    expect(canvas).toHaveAttribute('width', '8')
+    expect(canvas).toHaveAttribute('height', '24')
+    expect(preview).toHaveBeenCalledTimes(calls)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Vertical writing' }))
+    expect(canvas).toHaveAttribute('width', '18')
+    expect(canvas).toHaveAttribute('height', '2')
+  })
 })

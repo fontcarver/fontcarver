@@ -78,22 +78,26 @@ remappable; the two Update Metrics commands are ordinary commands and can be
 rebound above. `Mod` is Command on macOS and Control elsewhere. The base step is
 the first **nudge** distance in Preferences.
 
-| Keys                      | Action                                              |
-| ------------------------- | --------------------------------------------------- |
-| `[` / `]`                 | Selected side −/+ one base step                     |
-| `Shift+[` / `Shift+]`     | …×10                                                |
-| `Mod+←` / `Mod+→`         | LSB − / RSB + one unit (`Shift` ×10)                |
-| `Mod+Alt+←` / `Mod+Alt+→` | Kern the selected boundary ∓1 (`Shift` ×10)         |
-| `Alt+,` / `Alt+.`         | Kern, ignoring the second glyph's group             |
-| `Ctrl+,` / `Ctrl+.`       | Kern, ignoring the first glyph's group (macOS)      |
-| `,` / `.`                 | Kern at the current scope, spacing-locked mode only |
-| `Mod+Alt+M`               | Update Metrics for the current master               |
-| `Mod+Alt+Shift+M`         | Update Metrics in all masters                       |
+| Keys                          | Action                                              |
+| ----------------------------- | --------------------------------------------------- |
+| `[` / `]`                     | Selected side −/+ one base step                     |
+| `Shift+[` / `Shift+]`         | …×10                                                |
+| `Alt+[` / `Alt+]`             | …×100                                               |
+| `Alt+Shift+[` / `Alt+Shift+]` | Selected side −/+ exactly one font unit             |
+| `Mod+←` / `Mod+→`             | LSB − / RSB + one unit (`Shift` ×10)                |
+| `Mod+Alt+←` / `Mod+Alt+→`     | Kern the selected boundary ∓1 (`Shift` ×10)         |
+| `Alt+,` / `Alt+.`             | Kern, ignoring the second glyph's group             |
+| `Ctrl+,` / `Ctrl+.`           | Kern, ignoring the first glyph's group (macOS)      |
+| `,` / `.`                     | Kern at the current scope, spacing-locked mode only |
+| `Mod+Alt+M`                   | Update Metrics for the current master               |
+| `Mod+Alt+Shift+M`             | Update Metrics in all masters                       |
 
 Which side `[` and `]` change — LSB, RSB or both — is chosen in the text bar.
-`Mod+[` and `Mod+]` step to the previous and next glyph instead of spacing, so
-the bracket keys offer the base step and ×10 only; type an exact value in the
-Info box or the spacing matrix for anything larger.
+`Alt` is the Option key on macOS. `Alt+Shift` ignores the configured base step
+and changes each selected side by exactly one font unit. `Mod+[` and `Mod+]`
+step to the previous and next glyph without changing spacing. These fixed
+bracket gestures participate in the keyboard shortcut editor’s conflict checks.
+Use the Info box or the spacing matrix to type an absolute value.
 Both-side steps change each side by the same amount and are a single undo entry.
 Consecutive steps within 500 ms coalesce into one undo entry.
 

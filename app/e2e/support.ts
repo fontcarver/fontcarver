@@ -1,8 +1,8 @@
-import { execFileSync } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import type { APIRequestContext, Page } from '@playwright/test'
+import { runCli } from './cliSupport'
 
 /** Repository root, resolved from this file so the specs need no cwd. */
 export const REPO_ROOT = resolve(
@@ -68,21 +68,6 @@ export async function api<T>(
 export function inspect(path: string): {
   summary: { glyph_count: number; family_name: string; units_per_em: number }
 } {
-  const stdout = execFileSync(
-    'cargo',
-    [
-      'run',
-      '-q',
-      '-p',
-      'fc-cli',
-      '--bin',
-      'fontcarver',
-      '--',
-      'inspect',
-      '--json',
-      path,
-    ],
-    { cwd: REPO_ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 },
-  )
+  const stdout = runCli(['inspect', '--json', path])
   return JSON.parse(stdout) as ReturnType<typeof inspect>
 }

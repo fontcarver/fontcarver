@@ -1,6 +1,4 @@
-import { execFileSync } from 'node:child_process'
-import { writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { readFileSync, writeFileSync } from 'node:fs'
 
 import { expect, type Page } from '@playwright/test'
 import { test } from './sessionFixtures'
@@ -11,7 +9,8 @@ import {
   openPathThroughDialog,
   type DocSummary,
 } from './acceptanceSupport'
-import { api, fixture, REPO_ROOT } from './support'
+import { api, fixture } from './support'
+import { runCli } from './cliSupport'
 
 interface HintState {
   generation: number
@@ -34,13 +33,8 @@ interface HintState {
  */
 function flexProject(): string {
   const path = test.info().outputPath('flex-demo.fcf')
-  const binary = resolve(REPO_ROOT, 'target', 'debug', 'fontcarver')
-  execFileSync(binary, ['convert', fixture('SourceSans3Min.otf'), path], {
-    cwd: REPO_ROOT,
-  })
-  const document = JSON.parse(
-    execFileSync('cat', [path], { encoding: 'utf8' }),
-  ) as {
+  runCli(['convert', fixture('SourceSans3Min.otf'), path])
+  const document = JSON.parse(readFileSync(path, 'utf8')) as {
     font: { glyphs: Record<string, { layers: Record<string, unknown>[] }> }
   }
   const point = (x: number, y: number, kind: string) => ({ x, y, kind })
