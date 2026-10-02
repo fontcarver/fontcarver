@@ -4,13 +4,38 @@ The single entry point for "where is the project". Update this file at every
 pause and every milestone commit. It links to the detailed records; it does
 not repeat them.
 
-Last updated: 2026-10-01. Branch: `p5-color-authoring` (committed locally; no
+Last updated: 2026-10-02. Branch: `p5-color-authoring` (waves 1 and 2 committed locally; no
 push, no `main` merge). Completion waves 1 and 2 of the
 [P5 completion plan](superpowers/plans/2026-09-30-p5-completion.md) are
-finished, verified, recorded and committed. What remains of P5 is wave 3:
+finished, verified, recorded and committed. Wave 3 is now in progress:
 the two Partial rows, the release rebuild and its licensing, native macOS and
 Windows execution, and the final row-by-row gate — all recorded in
 [TODO](TODO.md).
+
+The first follow-up on 2026-10-02 moves metrics-key scaling and its existing
+tests into `fc-doc`, beside the parser, without changing behavior
+([acceptance](p5f-metrics-key-move-acceptance.md), commit `c1bd334`);
+the subsequent end-to-end follow-up isolates each test in its own kernel
+process and fixes save/conversion/history timing assumptions
+([record](p5f-e2e-isolation-acceptance.md), commit `86770ab`). The previously
+reproduced browser-download failure is being rechecked; a complete current-tree
+suite has not yet passed.
+
+The next follow-up on 2026-10-02 unifies English wording and completes the
+Chinese delta with the user-assigned **GPT-6.1 Sol sub-agent**. The translator
+reviewed all 43 changed English values; both catalogues now contain **3,935
+matching keys**, after removing one unused CID key (commit `a4be04a`;
+[translation review](p5f-wording-translation-pass.md),
+[acceptance](p5f-wording-translation-acceptance.md)).
+
+On 2026-10-02 the user authorized parallel completion of the remaining work,
+then explicitly deferred online publication and confirmed that signing
+credentials are not configured. Eight tasks cover browser/CJK verification,
+the real external hinter, AppImage licensing, Linux packaging/install,
+native-platform CI, spacing shortcuts and independent review of all 112 rows.
+Local unsigned builds and installation verification remain in scope. Native
+execution and signing must retain their actual evidence status; preparing a
+workflow does not count as running it.
 
 The [feature audit](p5-feature-audit.md), the P5 exit gate, now reads
 **110 Complete, 2 Partial, 0 Pending verification** of 112 rows, from
@@ -60,7 +85,9 @@ in a targeted rerun) and `p2b-imported.spec.ts:75`; the second failed
 they are shared-document and virtualisation timing failures of that one
 configuration, recorded in [TODO](TODO.md), not product defects demonstrated
 twice. The three dedicated configurations pass in full: `e2e/p2a.config.ts`
-11/11, `e2e/p2b.config.ts` 17/17, `e2e/p2cd.config.ts` 8/8.
+11/11, `e2e/p2b.config.ts` 17/17, `e2e/p2cd.config.ts` 8/8. These are the
+historical wave 2 results; the 2026-10-02 follow-up and its current limits are
+recorded in the [isolation acceptance](p5f-e2e-isolation-acceptance.md).
 
 Two regressions were found and fixed while integrating, both where a wave 2
 change met another task's test: the File menu's disabled rows carry their reason
