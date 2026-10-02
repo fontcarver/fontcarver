@@ -4,11 +4,45 @@ FontCarver's help lives inside the application and works without a network
 connection. It has two layers: a **quick help** bubble that appears where you are
 working, and a **help article** that explains the surrounding workflow.
 
-With no font open, the welcome screen's **Explore FontCarver** section offers
-**Getting started**, **Command Palette…** and **Keyboard Shortcuts**. Use them
-to read the basic editing workflow, search for an action or inspect its binding.
-The displayed shortcuts follow your current keymap, including custom bindings
-and keys you have removed. Nothing opens until you choose an entry.
+## Start from the welcome screen
+
+With no font open, look below **Recent Files** for **Explore FontCarver**.
+The three entries are available before you open or create a font.
+
+![English welcome screen: Explore FontCarver below Recent Files contains Getting started, Command Palette and Keyboard Shortcuts, from top to bottom.](../acceptance/p5ux/start-discovery/welcome-light-1366.png)
+
+Choose an entry according to what you need:
+
+| Position | English label      | Chinese label | What it opens                                           |
+| -------- | ------------------ | ------------- | ------------------------------------------------------- |
+| Top      | Getting started    | 入门          | The help article explaining the basic editing workflow. |
+| Middle   | Command Palette…   | 命令面板…     | Search for an action by name.                           |
+| Bottom   | Keyboard Shortcuts | 键盘快捷键    | The current bindings and their editing controls.        |
+
+The entries keep the same order in the
+[Chinese interface with dark appearance](../acceptance/p5ux/start-discovery/welcome-dark-zh-1366.png).
+Use **Tab** and **Shift+Tab** to move between buttons, then **Enter** to open
+the focused entry. **Open Font…**, **New Font…** and recent files remain above
+these help options.
+
+To find shortcut settings through search:
+
+1. Choose **Command Palette…**. The search field receives focus immediately.
+2. Type `keyboard` in the English interface, or `键盘` in Chinese.
+3. Select **Keyboard Shortcuts** with the arrow keys if needed, then press
+   **Enter** to open its settings. Press **Escape** to close settings and return
+   to the welcome-screen button.
+
+![Chinese command palette with 键盘 entered in the focused search field and the 键盘快捷键 result selected.](../acceptance/p5ux/start-discovery/discovery-command-search.png)
+
+The screenshot shows the Chinese search example. You can also open the same
+settings directly from the bottom welcome entry. See the
+[shortcut guide](../keyboard-shortcuts.md) for binding and customization details.
+
+Shortcut hints beside **Command Palette…** follow your current keymap,
+including custom bindings and keys you have removed. The screenshots show Linux
+bindings; use the hints displayed on your platform. Nothing opens until you
+choose an entry.
 
 ## Quick help
 

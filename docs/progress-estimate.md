@@ -9,6 +9,9 @@ The dated calculations below are historical snapshots.
 
 The completed local batch covers closing work, the added editor UX review and
 the user's one additional small welcome-discovery task.
+The subsequent [illustrated welcome guide](user/context-help.md#start-from-the-welcome-screen)
+reuses verified screenshots; this documentation addition leaves the effort
+estimate and feature-audit counts unchanged.
 The [future experience and feature backlog](TODO.md#future-experience-and-feature-backlog)
 is explicitly optional later scope; listing it does not increase completed effort.
 Publication and macOS/Windows

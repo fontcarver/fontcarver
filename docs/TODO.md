@@ -23,6 +23,9 @@ are complete. Publication and macOS/Windows validation remain outside this batch
       independent review.
 - [x] Update final records and clean owned test environments; retain local
       commits, reports and final candidates.
+- [x] Add an [illustrated welcome guide](user/context-help.md#start-from-the-welcome-screen)
+      using accepted screenshots, the three entry labels in both languages and
+      a command-search example (the user's separate documentation task).
 
 The result of this batch belongs in [integrated acceptance](p5f-w3-integration-acceptance.md).
 The [112-row gate](p5-feature-audit.md) retains **110 Complete / 2 Partial**;

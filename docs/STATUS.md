@@ -14,6 +14,13 @@ links to getting-started help, command search and shortcut settings, with live
 key bindings and independently reviewed Chinese wording. See the
 [experience record](p5ux-experience-acceptance.md) and
 [welcome walkthrough](p5ux-start-discovery-browser-acceptance.md).
+The later documentation task adds an
+[illustrated welcome guide](user/context-help.md#start-from-the-welcome-screen),
+reusing those accepted captures with entry labels and a keyboard-search example.
+Documentation verification passed: visual inspection of the reused captures,
+105 local links/anchors, image alternative text, Prettier, whitespace and resource
+checks. Application/tooling inputs are unchanged; no application tests were rerun
+for this documentation task.
 
 Final application/tooling source **`f6f6cf9`** passes **2,914 frontend tests /
 348 files**, type checking, lint, formatting and production build. The final
