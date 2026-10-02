@@ -19,6 +19,11 @@ use read_fonts::{FontRef, TableProvider};
 
 use crate::Error;
 
+mod composite;
+
+#[cfg(all(test, unix))]
+mod real_tests;
+
 const MAX_FONT_BYTES: u64 = 256 * 1024 * 1024;
 const MAX_LOG_BYTES: u64 = 4 * 1024 * 1024;
 const MAX_MESSAGES: usize = 64;
@@ -402,11 +407,20 @@ fn run(
     result
         .loca(None)
         .map_err(|e| Error::External(e.to_string()))?;
-    if result
+    let output_glyph_count = result
         .maxp()
         .map_err(|e| Error::External(e.to_string()))?
-        .num_glyphs()
-        != glyph_count
+        .num_glyphs();
+    // Composite hinting may append one internal .ttfautohint glyph. It keeps
+    // existing glyph IDs intact and is never mapped by cmap; see the upstream
+    // manual's "The .ttfautohint Glyph" section. Subglyph adjustment and dehinting
+    // do not use this helper. Reject every other glyph-count change.
+    let composite_helper = options.composites
+        && !options.adjust_subglyphs
+        && !options.dehint
+        && glyph_count.checked_add(1) == Some(output_glyph_count);
+    if output_glyph_count != glyph_count
+        && !(composite_helper && composite::valid_helper(&result, glyph_count)?)
     {
         return Err(Error::External("output glyph count changed".into()));
     }
@@ -493,6 +507,41 @@ mod tests {
         let result = invoke("exec sleep 60", Duration::from_millis(30));
         assert!(result.unwrap_err().to_string().contains("timed out"));
         assert!(start.elapsed() < Duration::from_secs(5));
+    }
+
+    #[test]
+    fn composite_mode_rejects_changed_counts_without_a_valid_helper() {
+        let directory = tempfile::tempdir().unwrap();
+        let tool = hinter(
+            directory.path(),
+            "for arg do output=\"$arg\"; done; cp \"$(dirname \"$0\")/forged.ttf\" \"$output\"",
+        );
+        let source = include_bytes!("../../../fixtures/fonts/DejaVuSans.ttf");
+        let face = FontRef::new(source).unwrap();
+        let count = face.maxp().unwrap().num_glyphs();
+        let offset = face
+            .table_directory()
+            .table_records()
+            .iter()
+            .find(|table| table.tag() == read_fonts::types::Tag::new(b"maxp"))
+            .unwrap()
+            .offset() as usize
+            + 4;
+        for forged_count in [count - 1, count + 1, count + 2] {
+            let mut forged = source.to_vec();
+            forged[offset..offset + 2].copy_from_slice(&forged_count.to_be_bytes());
+            fs::write(directory.path().join("forged.ttf"), forged).unwrap();
+            let result = run(
+                &tool,
+                source,
+                &AutohintOptions {
+                    composites: true,
+                    ..AutohintOptions::default()
+                },
+                Duration::from_secs(5),
+            );
+            assert!(matches!(result, Err(Error::External(_))), "{forged_count}");
+        }
     }
 
     #[test]
@@ -651,30 +700,5 @@ mod tests {
         ] {
             options.validate().unwrap();
         }
-    }
-
-    #[test]
-    fn the_real_installed_hinter_produces_glyph_programs_or_the_test_skips() {
-        let Some(available) = availability() else {
-            eprintln!("skipping: ttfautohint is not installed on PATH");
-            return;
-        };
-        let outcome = autohint(
-            include_bytes!("../../../fixtures/fonts/DejaVuSans.ttf"),
-            &AutohintOptions {
-                hinting_range_min: Some(8),
-                hinting_range_max: Some(50),
-                ..AutohintOptions::default()
-            },
-        )
-        .expect("the installed hinter must succeed on the committed fixture");
-        assert_eq!(outcome.version, available.version);
-        let hinted = FontRef::new(&outcome.bytes).unwrap();
-        assert!(hinted
-            .table_data(read_fonts::types::Tag::new(b"prep"))
-            .is_some());
-        assert!(hinted
-            .table_data(read_fonts::types::Tag::new(b"fpgm"))
-            .is_some());
     }
 }
