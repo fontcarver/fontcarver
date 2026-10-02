@@ -51,6 +51,10 @@ export function CommandPaletteDialog() {
 
   useEffect(() => {
     const dialog = dialogRef.current
+    // StrictMode replays cleanup/setup without repeating React's autoFocus.
+    // Re-establish the search focus after cleanup has restored the opener.
+    if (dialog && !dialog.contains(document.activeElement))
+      dialog.querySelector<HTMLInputElement>('input[role="combobox"]')?.focus()
     return () => {
       const focused = document.activeElement
       const focusLeftThePalette =
