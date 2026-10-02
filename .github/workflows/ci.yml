@@ -27,6 +27,18 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Prepare test scratch
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          scratch = Path('.scratch/ci/tmp').resolve()
+          scratch.mkdir(parents=True, exist_ok=True)
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as output:
+              for name in ('TMPDIR', 'TMP', 'TEMP'):
+                  output.write(f'{name}={scratch}\n')
+          PY
+
       - name: Install Tauri system dependencies
         run: |
           sudo apt-get update
@@ -34,7 +46,8 @@ jobs:
             libwebkit2gtk-4.1-dev \
             libgtk-3-dev \
             libayatana-appindicator3-dev \
-            librsvg2-dev
+            librsvg2-dev \
+            ttfautohint
 
       - name: Install Rust 1.94
         uses: dtolnay/rust-toolchain@1.94.0
@@ -88,6 +101,10 @@ jobs:
       - name: Check Rust artifact budget
         run: python3 scripts/check_artifacts.py --min-free-gib 5
 
+      # This executable is a system test prerequisite, never linked or bundled.
+      - name: Verify the real external hinter
+        run: cargo test --locked -p fc-hint the_real_ -- --ignored
+
       - name: Install frontend dependencies
         working-directory: app
         run: pnpm install --frozen-lockfile
@@ -112,10 +129,10 @@ jobs:
         run: pnpm build
 
       # The end-to-end suite starts `fc-devserver` and Vite itself, so the only
-      # thing CI has to provide is the built binary and a browser. The CJK spec
+      # thing CI has to provide is the kernel, CLI fixture converter and browser. The CJK spec
       # skips: its corpus is a multi-megabyte font kept outside the repository.
-      - name: Build the kernel development server
-        run: cargo build --locked -p fc-devserver
+      - name: Build the kernel development server and fixture converter
+        run: cargo build --locked -p fc-devserver -p fc-cli
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
@@ -128,8 +145,8 @@ jobs:
         working-directory: app
         run: pnpm exec playwright install --with-deps chromium
 
-      # The suite runs one worker: its specs share one kernel document, so two
-      # workers fight over it. That costs about fifteen minutes locally.
+      # Each test owns its kernel and configuration. One worker keeps the
+      # shared Vite proxy port exclusive while those kernels are replaced.
       - name: Run end-to-end tests
         working-directory: app
         timeout-minutes: 30

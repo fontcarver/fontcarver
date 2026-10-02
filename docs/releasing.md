@@ -20,7 +20,9 @@ the build helper, verification and resource checks. Install dependencies with
 Build each package on its native operating system. Linux needs the WebKitGTK
 4.1/GTK 3 development packages, a C/C++ build toolchain, `pkg-config`, OpenSSL
 development files and Tauri's package tools. The repository CI declares the
-package list used for its Linux runner. macOS needs Xcode or Xcode Command Line
+package list used for its Ubuntu 24.04 Linux runner. The thin AppImage runtime
+uses the pinned SquashFUSE 0.5.0 ABI available on that baseline; Ubuntu 22.04
+is not accepted by this build recipe. macOS needs Xcode or Xcode Command Line
 Tools. Windows needs Microsoft C++ Build Tools with **Desktop development with
 C++**, an MSVC Rust target, WebView2 and the Windows VBScript feature used by WiX
 MSI generation. See [Tauri's platform prerequisites](https://v2.tauri.app/start/prerequisites/)
@@ -59,12 +61,12 @@ After installing the platform prerequisites and pnpm dependencies, run:
 python3 scripts/build_release.py
 ```
 
-The helper selects `deb,appimage` on Linux, `dmg` on macOS and `msi` on Windows.
+The helper selects `deb` on Linux, `dmg` on macOS and `msi` on Windows.
 Use `python` in place of `python3` if that is the name of your Python 3.11+
-interpreter on Windows. To build only one of the native Linux formats:
+interpreter on Windows. To include the maintained thin AppImage on Linux:
 
 ```sh
-python3 scripts/build_release.py --bundles deb
+python3 scripts/build_release.py --bundles deb,appimage
 ```
 
 The helper checks resource budgets and version consistency, fetches the locked
@@ -72,7 +74,13 @@ Cargo sources, prepares dependency license notices, generates the Rust-owned
 TypeScript API and invokes
 `pnpm --dir app exec tauri build` with native bundle targets and the locked Cargo
 dependency graph. Tauri runs the frontend production build before compiling the
-desktop executable. The helper sets the application/frontend paths itself; no
+desktop executable. AppImage requests build a deb first, then run
+`scripts/build_thin_appimage.py`; Tauri's default linuxdeploy AppImage recipe is
+not used. The thin runtime additionally needs a C compiler, binutils,
+`squashfs-tools`, `libsquashfuse-dev` and `libfuse3-dev`. An isolated extracted
+prerequisite tree can be supplied with `--appimage-sysroot PATH`; its libraries
+are build inputs and must not be copied into the image. The helper sets the
+application/frontend paths itself; no
 Unix-style environment assignment is required on Windows.
 
 Build output is under `target/release/bundle`, or
@@ -80,9 +88,9 @@ Build output is under `target/release/bundle`, or
 already configured. An installed cross target or an arbitrary `--bundles` value
 does not make the helper cross-compile another operating system's package.
 
-An alternate `CARGO_TARGET_DIR` keeps a release build from disturbing a shared
-development cache, which is worth doing when other work is using the workspace
-`target` directory. The helper passes that directory to every resource check
+Reuse the workspace `target` directory. An alternate `CARGO_TARGET_DIR` is
+supported for explicitly planned builds, but duplicates development and release
+caches and must fit the same combined resource budget. The helper passes that directory to every resource check
 automatically, so no extra flag is needed inside the helper; a check you run
 yourself alongside it needs `--build-dir "$CARGO_TARGET_DIR"`. Expect the
 separate directory to cost extra time and space: the TypeScript API generator
@@ -116,7 +124,12 @@ host fail verification.
 
 `release-manifest.json` is written into the bundle directory with each package's
 relative path, byte size, SHA-256 digest and payload checks, plus the host
-platform and generation time. A failed inspection records `ok: false` and the
+platform and generation time. A completed build also records the source revision
+and a SHA-256 fingerprint of its non-ignored application/tooling inputs, and
+rejects changes to those inputs during preparation or compilation. It rejects
+unchanged or duplicate installer candidates left in the reused bundle directory;
+move old candidates aside deliberately rather than treating them as new output.
+A failed inspection records `ok: false` and the
 error; preserve that report as failure evidence. The default output location can
 be changed with `--output PATH`.
 
@@ -149,35 +162,52 @@ limitations. Inspect actual native payloads and complete their redistribution
 notices before distribution; a passing source-package audit is not complete
 artifact license clearance.
 
-### The AppImage payload is a separate licensing obligation
+### AppImage recipe and payload gate
 
-The Debian package declares `libwebkit2gtk-4.1-0` and `libgtk-3-0` and links
-the rest of its libraries from the system, so its redistribution scope is
-FontCarver's own code plus the compiled Cargo/npm graph. The AppImage does not:
-linuxdeploy copies the GTK, WebKitGTK, GStreamer, TLS, printing and
-input-method stack into the image.
+The maintained recipe builds a thin image from the just-built deb. Its runtime
+is compiled from pinned permissively licensed sources and dynamically loads
+FUSE 3 and SquashFUSE from the host. GTK, WebKitGTK and their shared-library
+stack also remain host dependencies. The image carries a build receipt and
+runtime notices. Package verification checks that receipt against the actual
+runtime and extracted payload; an unreviewed runtime or bundled shared object
+fails the AppImage policy gate.
 
-The first real Linux build was inventoried on an Ubuntu 24.04 host: the AppImage
-carried **177 bundled shared objects from 126 Debian packages, 73 of which name
-a copyleft license in their own Debian copyright file**, while the image itself
-shipped copyright documents for only 10 of those packages (the ones
-linuxdeploy's GTK plugin happens to copy). The generated dependency catalog
-covers none of them, because it inventories Cargo and npm source packages only.
-The inventory and its method are recorded in
-[the packaging acceptance evidence](acceptance/p5f-release/appimage-bundled-licenses.txt).
-
-A copyleft name in a Debian copyright file does not by itself prove the linked
-object is copyleft — those documents cover whole source packages, including
-parts that are not built into the shipped library. It does mean the AppImage
-cannot be published until each bundled package has a per-file ruling, its notice
-text travels inside the image, and the LGPL relinking and source-offer
-obligations for the GTK/WebKitGTK/GStreamer core are satisfied. Until then,
-prefer the deb for distribution and treat the AppImage as a reviewable build
-artifact.
+The historical Tauri/linuxdeploy image used a different recipe: 177 bundled
+shared objects from 126 Debian packages, including 73 packages whose copyright
+files mention copyleft, with only 10 package copyright documents shipped. Its
+AppImage runtime also statically linked LGPL libfuse. That image remains an
+unapproved evaluation artifact. Adding notices alone does not make that recipe
+meet the repository's shipped-dependency policy. Historical evidence is in
+[the payload inventory](acceptance/p5f-release/appimage-bundled-licenses.txt).
+For diagnostic inventory of an already extracted image, use
+`scripts/appimage_inventory.py`; diagnostic output is not release clearance.
 
 Retain the final package report outside regenerable Cargo output before cleaning
 a release cache. For a distribution candidate, retain the exact installers and
 their manifest together with the source revision and native acceptance results.
+
+## Rootless Linux package-manager verification
+
+On a Linux host with unprivileged user namespaces, overlayfs and bubblewrap,
+verify a candidate without installing it into the personal system:
+
+```sh
+python3 scripts/check_deb_install.py \
+  target/release/bundle/deb/FontCarver_0.1.0_amd64.deb --version 0.1.0 \
+  --output .scratch/p5f-w3-packaging/deb-install.json
+```
+
+The helper makes the host root read-only, mounts task-owned writable overlays,
+uses private APT configuration with downloads and networking disabled, and runs
+real APT install, same-version reinstall and removal. It checks package state,
+installed resources, the binary's exact version and expected no-display refusal,
+and retention of private document/preferences/recovery markers. Its namespace
+and overlays are removed even on failure. It never sends native desktop input.
+
+This reuses the host's installed dependency set. It does not prove clean-OS
+dependency resolution, a cross-version upgrade, graphical workflows or signing.
+A one-ID user namespace may produce an APT log-group ownership warning without
+affecting the package operations; nonzero package-manager exits fail the check.
 
 ## Native CI artifacts
 
@@ -187,7 +217,7 @@ is:
 
 | Runner              | Architecture | Artifacts                                   |
 | ------------------- | ------------ | ------------------------------------------- |
-| Ubuntu 22.04        | x86_64       | deb and AppImage                            |
+| Ubuntu 24.04        | x86_64       | deb and AppImage                            |
 | macOS 14            | arm64        | dmg                                         |
 | Windows Server 2022 | x86_64       | English and Simplified Chinese msi variants |
 

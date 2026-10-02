@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import check_release_bundle as verifier
+from check_release_licenses import HOST_LICENSE_HASHES
 
 
 class ReleaseBundleTests(unittest.TestCase):
@@ -37,6 +38,10 @@ class ReleaseBundleTests(unittest.TestCase):
         notice = resources / 'licenses' / 'dependency.txt'
         notice.parent.mkdir()
         notice.write_text('Permission to redistribute.\n')
+        for name in ('scripts/release_licenses/native/HOST-LIBRARIES.txt', *HOST_LICENSE_HASHES):
+            target = resources / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(verifier.ROOT / name, target)
         self.dependencies = resources / 'DEPENDENCIES.json'
         self.dependencies.write_text(json.dumps({
             'schema_version': 1,
@@ -64,6 +69,18 @@ class ReleaseBundleTests(unittest.TestCase):
         self.assertTrue(report['executable']['valid_header'])
         self.assertEqual(report['notices']['packages'], 1)
         self.assertEqual(len(report['resources']), len(verifier.RESOURCES))
+
+    def test_linux_host_library_notice_and_original_license_texts_are_required(self):
+        resources = self.payload()
+        notice = resources / 'scripts/release_licenses/native/HOST-LIBRARIES.txt'
+        notice.unlink()
+        with self.assertRaisesRegex(verifier.VerificationError, 'host-library notice'):
+            verifier.inspect_payload(self.root, 'deb')
+        notice.write_text('Host library notice')
+        license_file = resources / next(iter(HOST_LICENSE_HASHES))
+        license_file.write_text('Changed license terms')
+        with self.assertRaisesRegex(verifier.VerificationError, 'host-library license checksum'):
+            verifier.inspect_payload(self.root, 'deb')
 
     def test_missing_and_empty_resources_are_rejected(self):
         resources = self.payload()

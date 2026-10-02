@@ -22,7 +22,16 @@ ROOT = Path(__file__).resolve().parents[1]
 PROJECT_NOTICES = (
     "LICENSE-MIT", "LICENSE-APACHE", "THIRD_PARTY.md",
     "crates/fc-glyphdata/data/UNICODE-LICENSE.txt",
+    "scripts/release_licenses/native/HOST-LIBRARIES.txt",
+    "scripts/release_licenses/native/HOST-LGPL-2.txt",
+    "scripts/release_licenses/native/HOST-LGPL-2.1.txt",
 )
+HOST_LICENSE_HASHES = {
+    "scripts/release_licenses/native/HOST-LGPL-2.txt":
+        "b7993225104d90ddd8024fd838faf300bea5e83d91203eab98e29512acebd69c",
+    "scripts/release_licenses/native/HOST-LGPL-2.1.txt":
+        "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551",
+}
 ALLOWED = {
     "MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "ISC",
     "Zlib", "BSL-1.0", "Unicode-3.0", "Unicode-DFS-2016", "CC0-1.0",
@@ -294,6 +303,9 @@ def write_bundle(root: Path, output: Path, dependencies: list[Dependency]) -> li
         "packages; an inventory entry does not imply its code ships on this platform.\n"
         "Native libraries and bundler runtimes added to installers/AppImages are\n"
         "outside this source-package inventory and require artifact-level review.\n"
+        "Linux host-library use and replacement are described in\n"
+        "scripts/release_licenses/native/HOST-LIBRARIES.txt, with LGPL texts.\n"
+        "Those notices describe separately installed libraries, not bundled code.\n"
         "For unmodified MPL dependencies, obtain corresponding source from each\n"
         "entry's exact-version source archive URL. Permissive alternatives are\n"
         "selected when offered alongside GPL/LGPL; see THIRD_PARTY.md.\n", encoding="utf-8",
@@ -310,6 +322,9 @@ def main() -> int:
         for name in PROJECT_NOTICES:
             if not (ROOT / name).is_file() or not (ROOT / name).stat().st_size:
                 raise ValueError(f"missing project notice: {name}")
+        for name, expected in HOST_LICENSE_HASHES.items():
+            if hashlib.sha256((ROOT / name).read_bytes()).hexdigest() != expected:
+                raise ValueError(f"host-library license text differs from upstream: {name}")
         app = json.loads((ROOT / "app/package.json").read_text(encoding="utf-8"))
         if app.get("license") != "MIT OR Apache-2.0":
             raise ValueError("app/package.json must declare MIT OR Apache-2.0")

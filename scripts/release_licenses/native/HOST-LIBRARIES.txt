@@ -1,0 +1,29 @@
+FontCarver Linux host-library notice
+
+FontCarver's Linux desktop uses separately installed system libraries, including
+GTK, GLib/GObject/GIO, libsoup and WebKitGTK. These contain LGPL-covered code;
+the libraries and their use are covered by their respective library licenses.
+Copies of the LGPL version 2 and 2.1 texts accompany this notice. Additional
+copyright notices and terms for the exact host versions remain available in the
+operating system packages, for example /usr/share/doc/PACKAGE/copyright on
+Debian/Ubuntu. The input deb's Depends field identifies runtime prerequisites.
+
+The maintained deb and thin AppImage use the system's shared-library mechanism;
+they do not copy these libraries into the application payload. Users may supply
+interface-compatible replacements through their operating system's dynamic
+loader. FontCarver's MIT OR Apache-2.0 terms do not impose additional restrictions
+on modifying these libraries or reverse engineering for debugging modifications.
+The thin AppImage additionally describes its host FUSE/squashfuse usage in
+licenses/thin-appimage/README.txt. Libraries and source packages supplied by the
+operating system remain the responsibility of that distribution's packages;
+this notice is not a claim that their code is distributed under FontCarver's
+own license or that an arbitrary library-bundling AppImage is approved.
+
+License-text provenance (unmodified):
+
+HOST-LGPL-2.txt
+  https://raw.githubusercontent.com/GNOME/gtk/3.24.41/COPYING
+  SHA-256 b7993225104d90ddd8024fd838faf300bea5e83d91203eab98e29512acebd69c
+HOST-LGPL-2.1.txt
+  https://raw.githubusercontent.com/libfuse/libfuse/3f65bb699cd2f0afe2b9519c39d29922229f2168/LGPL2.txt
+  SHA-256 dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551

@@ -21,6 +21,9 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 
+from appimage_policy import require_releasable_appimage
+from check_release_licenses import HOST_LICENSE_HASHES
+
 ROOT = Path(__file__).resolve().parents[1]
 RESOURCES = ('LICENSE-MIT', 'LICENSE-APACHE', 'THIRD_PARTY.md',
              'DEPENDENCIES.json', 'INSTALL.md')
@@ -152,6 +155,23 @@ def check_notices(manifest: Path) -> dict:
     return {'packages': len(packages), 'license_files': count, 'checksums_verified': True}
 
 
+def host_library_notices(resource_root: Path) -> list[dict]:
+    """Require Linux host-library terms independently of bundled source-package notices."""
+    notice = resource_root / 'scripts/release_licenses/native/HOST-LIBRARIES.txt'
+    if not inside_file(notice, resource_root):
+        raise VerificationError('missing Linux host-library notice')
+    rows = [{'path': str(notice.relative_to(resource_root)), 'sha256': sha256(notice)}]
+    for name, expected in HOST_LICENSE_HASHES.items():
+        path = resource_root / name
+        if not inside_file(path, resource_root):
+            raise VerificationError(f'missing Linux host-library license text: {name}')
+        digest = sha256(path)
+        if digest != expected:
+            raise VerificationError(f'host-library license checksum mismatch: {name}')
+        rows.append({'path': name, 'sha256': digest})
+    return rows
+
+
 def debian_copyright(root: Path, files: list[Path], package: str | None) -> dict:
     """Require the copyright document Debian policy 12.5 makes mandatory.
 
@@ -280,6 +300,8 @@ def inspect_payload(root: Path, kind: str, metadata: dict | None = None) -> dict
               'resources': resources, 'notices': check_notices(resource_root / 'DEPENDENCIES.json'),
               'platform_metadata': platform_metadata(root, files, kind, valid_binaries),
               'fontforge_paths_absent': True, 'file_count': len(files)}
+    if kind in ('deb', 'appimage'):
+        report['host_library_notices'] = host_library_notices(resource_root)
     if kind == 'deb':
         report['debian_copyright'] = debian_copyright(root, files, (metadata or {}).get('Package'))
     return report
@@ -295,6 +317,8 @@ def verify(bundle: Path, expected: list[str]) -> list[dict]:
             with tempfile.TemporaryDirectory(prefix=f'{kind}-', dir=scratch) as directory:
                 with extracted(artifact, kind, Path(directory)) as (root, metadata):
                     payload = inspect_payload(root, kind, metadata)
+                    if kind == "appimage":
+                        payload["appimage_policy"] = require_releasable_appimage(root, artifact)
                 rows.append({'path': str(artifact.relative_to(bundle)), 'type': kind,
                              'bytes': artifact.stat().st_size, 'sha256': sha256(artifact),
                              'metadata': metadata, 'payload': payload})

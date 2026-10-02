@@ -21,8 +21,9 @@ it does not establish the identity of an unsigned publisher.
 
 Linux compatibility depends on the build machine's system libraries. AppImage
 does not guarantee compatibility with older glibc versions. The release build
-matrix and package report identify the build baseline; other distributions need
-their own verification. See [Tauri's AppImage limitations](https://v2.tauri.app/distribute/appimage/#limitations).
+matrix currently uses Ubuntu 24.04 for Linux, including the SquashFUSE 0.5.0
+runtime ABI required by the thin AppImage. Other distributions need their own
+verification; Ubuntu 22.04 is not the baseline for these candidates. See [Tauri's AppImage limitations](https://v2.tauri.app/distribute/appimage/#limitations).
 
 The desktop program is `fontcarver-desktop`. The separate `fontcarver` command-line
 tool is built from `crates/fc-cli`; it is not installed by these desktop packages.
@@ -55,9 +56,9 @@ library the executable needs, and it installs:
 | `/usr/lib/FontCarver/licenses`   | both project licenses and dependency attribution |
 | `/usr/lib/FontCarver/INSTALL.md` | a copy of this page                              |
 
-From the next build onwards the package also installs the Debian copyright
-document at `/usr/share/doc/font-carver/copyright`. The first 0.1.0 package
-predates it and carries its licenses only under `/usr/lib/FontCarver/licenses`.
+Current packages also install the Debian copyright document at
+`/usr/share/doc/font-carver/copyright`. Historical evaluation packages that
+predate this file do not pass the current package verifier.
 
 On Ubuntu 24.04 and other releases that completed the 64-bit time transition,
 `libgtk-3-0` is satisfied by `libgtk-3-0t64`, which provides that name.
@@ -74,17 +75,24 @@ reports a missing FUSE dependency, follow your distribution's AppImage/FUSE
 instructions. Remove the AppImage file to uninstall this copy. A launcher added
 manually to your desktop or application menu must be removed separately.
 
-The AppImage carries its own copy of the GTK, WebKitGTK and related libraries,
-which is why the 0.1.0 x86_64 image is about 96 MB against the deb's 23 MB. Those
-bundled libraries keep the licenses of the distributions they came from, and
-their notices are not yet complete inside the image, so the AppImage is an
-evaluation artifact rather than a redistributable one. Prefer the deb where your
-system can use it.
+The maintained AppImage recipe is a thin image: GTK, WebKitGTK, FUSE 3 and
+SquashFUSE are loaded from the host instead of copied into the image. In addition
+to the deb's GTK/WebKit dependencies, it requires the host runtime libraries
+provided by `libfuse3-3` and `libsquashfuse0`. FUSE mounting may also need your
+distribution's `fuse3` package. When mounting is unavailable,
+`APPIMAGE_EXTRACT_AND_RUN=1 ./FontCarver_VERSION_ARCH.AppImage` uses extraction
+instead; the same shared runtime libraries are still required.
 
-FontCarver needs a graphical session. Started without a reachable display it
-stops while initialising its window toolkit rather than printing a diagnostic,
-and it currently has no `--version` or `--help` output, so a terminal launch is
-not a way to check an installation without a desktop.
+Historical AppImages built with Tauri's default linuxdeploy recipe included an
+unaudited GTK/WebKit stack and a statically linked LGPL runtime. They are not
+approved for distribution. Use a current artifact accompanied by a passing
+manifest that includes the thin AppImage policy check; a matching filename alone
+does not establish which recipe built it.
+
+The desktop binary supports `fontcarver-desktop --version` and `--help` without
+opening a window. Starting the application itself needs a graphical session;
+without one it exits with a readable diagnostic. These terminal checks verify
+the native loader and argument handling, not the graphical editing workflow.
 
 ## macOS
 

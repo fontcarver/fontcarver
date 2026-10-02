@@ -33,6 +33,13 @@ caveats are preserved in their original documents.
 
 This inventory does not inspect native libraries or bundler runtimes added to
 actual installers or AppImages, such as GTK/WebKit libraries collected by
-linuxdeploy. No such artifacts were built in this task. Complete distribution
+linuxdeploy. Complete distribution
 license review requires inspecting those artifacts and their additional notices;
 a passing Cargo/npm source-package audit does not establish that clearance.
+
+`native/HOST-LIBRARIES.txt` describes the Linux application's use of separately
+installed system libraries and interface-compatible replacement. The adjacent
+LGPL 2 and 2.1 texts are unmodified upstream documents, with source URLs and
+hashes in that notice and checked by the generator. Including these documents
+does not approve bundling LGPL code. The native artifact inventory and audited
+thin-runtime gate are in `appimage_inventory.py` and `appimage_policy.py`.

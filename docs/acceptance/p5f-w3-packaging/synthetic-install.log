@@ -1,0 +1,219 @@
++ dpkg-deb -f /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-packaging/synthetic.deb Package
+font-carver
++ dpkg-deb -f /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-packaging/synthetic.deb Version
+0.1.0
++ unshare --user --map-root-user --mount --pid --mount-proc --fork --kill-child /home/chen/.pyenv/versions/3.12.13/bin/python3 /home/chen/githubprojects/fontpixel/fontcarver/scripts/check_deb_install.py --inside mount --scratch /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-packaging/install-aid8ji0t --version 0.1.0 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-packaging/synthetic.deb
++ mount -t overlay overlay -o lowerdir=/usr,upperdir=/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-packaging/install-aid8ji0t/usr/upper,workdir=/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-packaging/install-aid8ji0t/usr/work /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-packaging/install-aid8ji0t/usr/merged
++ mount -t overlay overlay -o lowerdir=/etc,upperdir=/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-packaging/install-aid8ji0t/etc/upper,workdir=/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-packaging/install-aid8ji0t/etc/work /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-packaging/install-aid8ji0t/etc/merged
++ mount -t overlay overlay -o lowerdir=/var,upperdir=/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-packaging/install-aid8ji0t/var/upper,workdir=/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-packaging/install-aid8ji0t/var/work /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-packaging/install-aid8ji0t/var/merged
++ bwrap --die-with-parent --unshare-net --unshare-ipc --unshare-uts --hostname fontcarver-install-check --ro-bind / / --bind /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-packaging/install-aid8ji0t/usr/merged /usr --bind /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-packaging/install-aid8ji0t/etc/merged /etc --bind /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-packaging/install-aid8ji0t/var/merged /var --tmpfs /tmp --tmpfs /run --tmpfs /home/chen/githubprojects/fontpixel/fontcarver/.scratch --proc /proc --dev /dev --ro-bind /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-packaging/synthetic.deb /tmp/fontcarver.deb --setenv HOME /tmp/home --setenv TMPDIR /tmp --setenv FC_CONFIG_DIR /tmp/home/.config/fontcarver --unsetenv DISPLAY --unsetenv WAYLAND_DISPLAY --unsetenv DBUS_SESSION_BUS_ADDRESS --unsetenv XDG_RUNTIME_DIR /home/chen/.pyenv/versions/3.12.13/bin/python3 /home/chen/githubprojects/fontpixel/fontcarver/scripts/check_deb_install.py --inside install --version 0.1.0 /tmp/fontcarver.deb
++ dpkg-deb -f /tmp/fontcarver.deb Architecture
+amd64
++ apt-get -y --no-download --no-install-recommends -o APT::Sandbox::User=root -o DPkg::Lock::Timeout=30 -o Dir::Etc::sourcelist=/tmp/apt-sources.list -o Dir::Etc::sourceparts=/tmp/apt-sources.d -o Dir::Cache::archives=/tmp/apt-archives -o DPkg::Options::=--force-unsafe-io install /tmp/fontcarver.deb
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following packages were automatically installed and are no longer required:
+  grilo-plugins-0.3-base libgom-1.0-0t64 libgrilo-0.3-0 libmediaart-2.0-0
+  libtotem0 linux-headers-6.17.0-29-generic linux-hwe-6.17-headers-6.17.0-29
+  linux-hwe-6.17-tools-6.17.0-29 linux-image-6.17.0-29-generic
+  linux-modules-6.17.0-29-generic linux-modules-extra-6.17.0-29-generic
+  linux-tools-6.17.0-29-generic totem-common
+Use 'apt autoremove' to remove them.
+The following NEW packages will be installed:
+  font-carver
+0 upgraded, 1 newly installed, 0 to remove and 0 not upgraded.
+After this operation, 0 B of additional disk space will be used.
+Selecting previously unselected package font-carver.
+(Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 266149 files and directories currently installed.)
+Preparing to unpack .../font-carver_0.1.0_amd64.deb ...
+Unpacking font-carver (0.1.0) ...
+Setting up font-carver (0.1.0) ...
+Processing triggers for hicolor-icon-theme (0.17-2) ...
+Processing triggers for gnome-menus (3.36.0-1.1ubuntu3) ...
+Processing triggers for desktop-file-utils (0.27-2build1) ...
+W: chown to root:adm of file /var/log/apt/term.log failed - OpenLog (22: Invalid argument)
++ dpkg-query -W -f=${Status}
+${Version}
+ font-carver
+install ok installed
+0.1.0
++ /home/chen/.pyenv/versions/3.12.13/bin/python3 /home/chen/githubprojects/fontpixel/fontcarver/scripts/smoke_release_native.py --executable /usr/bin/fontcarver-desktop --version 0.1.0 --launch headless --report /tmp/smoke.json
+PASS: native loader and expected no-display refusal; /tmp/smoke.json
+{
+  "platform": "Linux",
+  "executable": "/usr/bin/fontcarver-desktop",
+  "launch_mode": "headless",
+  "ok": true,
+  "signing_verified": false,
+  "interactive_parity_verified": false,
+  "version": {
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 0.002,
+    "output": "fontcarver-desktop 0.1.0\n"
+  },
+  "startup": {
+    "exit_code": 1,
+    "timed_out": false,
+    "seconds": 0.002,
+    "output": "fontcarver-desktop: no graphical session is available\n"
+  },
+  "scope": "native loader and expected no-display refusal"
+}
+
++ apt-get -y --no-download --no-install-recommends -o APT::Sandbox::User=root -o DPkg::Lock::Timeout=30 -o Dir::Etc::sourcelist=/tmp/apt-sources.list -o Dir::Etc::sourceparts=/tmp/apt-sources.d -o Dir::Cache::archives=/tmp/apt-archives -o DPkg::Options::=--force-unsafe-io --reinstall install /tmp/fontcarver.deb
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following packages were automatically installed and are no longer required:
+  grilo-plugins-0.3-base libgom-1.0-0t64 libgrilo-0.3-0 libmediaart-2.0-0
+  libtotem0 linux-headers-6.17.0-29-generic linux-hwe-6.17-headers-6.17.0-29
+  linux-hwe-6.17-tools-6.17.0-29 linux-image-6.17.0-29-generic
+  linux-modules-6.17.0-29-generic linux-modules-extra-6.17.0-29-generic
+  linux-tools-6.17.0-29-generic totem-common
+Use 'apt autoremove' to remove them.
+0 upgraded, 0 newly installed, 1 reinstalled, 0 to remove and 0 not upgraded.
+After this operation, 0 B of additional disk space will be used.
+(Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 266160 files and directories currently installed.)
+Preparing to unpack .../font-carver_0.1.0_amd64.deb ...
+Unpacking font-carver (0.1.0) over (0.1.0) ...
+Setting up font-carver (0.1.0) ...
+Processing triggers for hicolor-icon-theme (0.17-2) ...
+Processing triggers for gnome-menus (3.36.0-1.1ubuntu3) ...
+Processing triggers for desktop-file-utils (0.27-2build1) ...
+W: chown to root:adm of file /var/log/apt/term.log failed - OpenLog (22: Invalid argument)
++ dpkg-query -W -f=${Status}
+${Version}
+ font-carver
+install ok installed
+0.1.0
++ /home/chen/.pyenv/versions/3.12.13/bin/python3 /home/chen/githubprojects/fontpixel/fontcarver/scripts/smoke_release_native.py --executable /usr/bin/fontcarver-desktop --version 0.1.0 --launch headless --report /tmp/smoke.json
+PASS: native loader and expected no-display refusal; /tmp/smoke.json
+{
+  "platform": "Linux",
+  "executable": "/usr/bin/fontcarver-desktop",
+  "launch_mode": "headless",
+  "ok": true,
+  "signing_verified": false,
+  "interactive_parity_verified": false,
+  "version": {
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 0.002,
+    "output": "fontcarver-desktop 0.1.0\n"
+  },
+  "startup": {
+    "exit_code": 1,
+    "timed_out": false,
+    "seconds": 0.002,
+    "output": "fontcarver-desktop: no graphical session is available\n"
+  },
+  "scope": "native loader and expected no-display refusal"
+}
+
++ apt-get -y --no-download --no-install-recommends -o APT::Sandbox::User=root -o DPkg::Lock::Timeout=30 -o Dir::Etc::sourcelist=/tmp/apt-sources.list -o Dir::Etc::sourceparts=/tmp/apt-sources.d -o Dir::Cache::archives=/tmp/apt-archives -o DPkg::Options::=--force-unsafe-io remove font-carver
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following packages were automatically installed and are no longer required:
+  grilo-plugins-0.3-base libgom-1.0-0t64 libgrilo-0.3-0 libmediaart-2.0-0
+  libtotem0 linux-headers-6.17.0-29-generic linux-hwe-6.17-headers-6.17.0-29
+  linux-hwe-6.17-tools-6.17.0-29 linux-image-6.17.0-29-generic
+  linux-modules-6.17.0-29-generic linux-modules-extra-6.17.0-29-generic
+  linux-tools-6.17.0-29-generic totem-common
+Use 'apt autoremove' to remove them.
+The following packages will be REMOVED:
+  font-carver
+0 upgraded, 0 newly installed, 1 to remove and 0 not upgraded.
+After this operation, 0 B of additional disk space will be used.
+(Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 266159 files and directories currently installed.)
+Removing font-carver (0.1.0) ...
+Processing triggers for hicolor-icon-theme (0.17-2) ...
+Processing triggers for gnome-menus (3.36.0-1.1ubuntu3) ...
+Processing triggers for desktop-file-utils (0.27-2build1) ...
+W: chown to root:adm of file /var/log/apt/term.log failed - OpenLog (22: Invalid argument)
+PASS: APT install, same-version reinstall, removal, and user-data retention
+{
+  "schema_version": 1,
+  "ok": true,
+  "artifact": "/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-packaging/synthetic.deb",
+  "version": "0.1.0",
+  "host_platform": "linux",
+  "isolation": "private user/mount/PID namespaces; overlayfs; read-only host; no network",
+  "checks": [
+    "apt install",
+    "same-version reinstall",
+    "installed binary smoke",
+    "apt remove",
+    "private document/preferences/recovery retention"
+  ],
+  "limits": [
+    "Runtime dependencies come from the existing host; no clean-OS dependency resolution.",
+    "No graphical workflow, cross-version upgrade, signing, or publication."
+  ],
+  "sha256": "fff7047a31a97502bbff820e1a10e9bfb363342bd67862fb031a7c5962d2f481"
+}

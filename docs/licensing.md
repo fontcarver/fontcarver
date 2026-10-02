@@ -17,13 +17,13 @@ Two different things are easy to confuse:
 
 - **Learning from a program.** Reading source code, running a program, observing
   what it does with a given input, and writing down how a file format is laid out
-  produces *facts and ideas*. Copyright does not cover facts, ideas, algorithms or
+  produces _facts and ideas_. Copyright does not cover facts, ideas, algorithms or
   file formats — only the particular expression of them. A new implementation
   written from that understanding is an original work, licensed however its
   authors choose.
 - **Copying code from a program.** Taking a function, a table, or a distinctive
-  block of expression and translating or transcribing it produces a *derivative
-  work*, and it carries that code's license with it.
+  block of expression and translating or transcribing it produces a _derivative
+  work_, and it carries that code's license with it.
 
 FontCarver does the first and, in the narrow case described in §3, a strictly
 bounded amount of the second.
@@ -38,7 +38,7 @@ it, and does not ship it.
 
 ## 2. What FontForge's license actually says
 
-FontForge as a *whole distribution* is offered under the GPLv3-or-later, because
+FontForge as a _whole distribution_ is offered under the GPLv3-or-later, because
 the whole necessarily includes its most restrictive parts. But `fontforge/LICENSE`
 is explicit that this is not the license of most of the code:
 
@@ -89,6 +89,7 @@ all.**
    the license found in that file's header. `THIRD_PARTY.md` also carries the
    verbatim BSD text and copyright notice, which is what discharges the license's
    retention conditions.
+
 3. **Re-implement, don't copy, from GPL-only files.** Where a behaviour worth
    having lives in a GPL-only FontForge file, it is re-implemented from the format
    specification, from published documentation, or from observed input/output
@@ -104,10 +105,10 @@ all.**
    `fc_fixtures::external("fontforge-tests")`, which returns `None` when the
    checkout is absent so those tests skip cleanly.
 
-"Reference, not translation" means exactly this: FontForge tells us *what* a
+"Reference, not translation" means exactly this: FontForge tells us _what_ a
 mature font editor must handle — which formats, which edge cases, which
 operations, which invariants — and `docs/research/*.md` records that knowledge in
-our own words. It does not tell us *how* to write our code.
+our own words. It does not tell us _how_ to write our code.
 
 ## 4. Trademark and naming
 
@@ -146,7 +147,7 @@ take; it is allowed as long as at least one branch is on the allowed list.
 Practical rules:
 
 - Adding a dependency requires a one-line justification in the commit or PR
-  message (see `CONVENTIONS.md`) *and* a check of its license.
+  message (see `CONVENTIONS.md`) _and_ a check of its license.
 - Re-run the surveys in `THIRD_PARTY.md` when the dependency graph changes
   materially:
   `cargo metadata --format-version 1` for Rust, `pnpm --dir app licenses list` for
@@ -154,9 +155,48 @@ Practical rules:
 - A package with no license field at all is treated as forbidden until its
   licensing is established.
 
+### 5.1 Native Linux payloads and AppImage runtimes
+
+The source-package survey does not approve code copied by a native bundler.
+Inspect the complete delivered payload, including launchers, plugins, data and
+the executable runtime prepended to an AppImage's SquashFS filesystem. Missing
+license data is **unknown**, never evidence of a permissive license. Debian
+copyright files describe source packages; a copyleft label may apply to unshipped
+tests or tools, so it is a review lead rather than a license ruling for a binary.
+
+The current Debian delivery keeps GTK/WebKit and their dependencies on the
+recipient's system, as already described in `THIRD_PARTY.md` §3.4. Do not copy
+those libraries into another format on the assumption that dynamically linking
+them makes their redistribution obligations disappear. LGPL 2.1 §§4 and 6
+address library source, notices and replacement/relinking conditions; adding a
+generic source URL or license text alone is not a complete compliance mechanism.
+See the [license distributed by libfuse](https://github.com/libfuse/libfuse/blob/master/LGPL2.txt).
+
+Release notice generation retains `native/HOST-LIBRARIES.txt` and unmodified,
+hash-checked LGPL 2 and 2.1 texts from `scripts/release_licenses/`. The use notice
+names the Linux host components and explains interface-compatible replacement.
+These are license documents, not added copyleft code or a dependency exception.
+
+The retained AppImage's runtime identifies
+[`AppImage/type2-runtime` commit `8f39b89`](https://github.com/AppImage/type2-runtime/blob/8f39b89/LICENSE).
+That version's license explicitly lists statically linked LGPL libfuse. A thin
+GTK/WebKit payload using that **prebuilt static runtime** therefore still fails
+the repository's shipped-code policy. Supplying source and relinking materials
+would address different questions; it would not change the forbidden-license
+policy. Do not grant an implicit exception or change FontCarver's license.
+
+`scripts/appimage_inventory.py` records all extracted paths and hashes, the
+separate runtime hash, and current-host Debian ownership candidates. It does not
+execute the inspected image or convert those candidates into build provenance.
+Its successful exit means the diagnostic evidence was generated, not that the
+image is approved. `scripts/appimage_policy.py` separately controls release
+eligibility. A replacement AppImage route needs a reviewed runtime build and
+payload with no bundled forbidden code; ordinary Debian delivery remains the
+available strategy while that evidence is incomplete.
+
 ## 6. Test fixtures
 
-Font fixtures are *data*, not code, and live in `fixtures/`. They are aggregated
+Font fixtures are _data_, not code, and live in `fixtures/`. They are aggregated
 with FontCarver, not derived from it, so their licenses do not affect
 FontCarver's own license — but they are still redistributed by this repository
 and so must be licensed for redistribution, and their terms must be recorded.

@@ -12,9 +12,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/release.yml"
-      - "scripts/*release*"
-      - "scripts/release_licenses/**"
-      - "scripts/check_artifacts.py"
+      - "scripts/**"
       - "src-tauri/**"
       - "crates/**"
       - "Cargo.toml"
@@ -63,7 +61,7 @@ jobs:
           import os
 
           rows = [
-              {"os": "ubuntu-22.04", "label": "linux-x86_64", "bundles": "deb,appimage"},
+              {"os": "ubuntu-24.04", "label": "linux-x86_64", "bundles": "deb,appimage"},
               {"os": "macos-14", "label": "macos-arm64", "bundles": "dmg"},
               {"os": "windows-2022", "label": "windows-x86_64", "bundles": "msi"},
           ]
@@ -112,8 +110,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
-            libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2 \
-            desktop-file-utils
+            libayatana-appindicator3-dev librsvg2-dev patchelf \
+            desktop-file-utils gcc binutils pkg-config squashfs-tools \
+            libsquashfuse-dev libfuse3-dev
+          # The thin AppImage recipe uses the reviewed squashfuse 0.5.0 headers
+          # available in Ubuntu 24.04; fail before the Rust build if they drift.
+          test "$(pkg-config --modversion squashfuse)" = "0.5.0"
 
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@1.94.0
@@ -144,8 +146,36 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Prepare test scratch
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          scratch = Path('.scratch/p5-release-ci/tmp').resolve()
+          scratch.mkdir(parents=True, exist_ok=True)
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as output:
+              for name in ('TMPDIR', 'TMP', 'TEMP'):
+                  output.write(f'{name}={scratch}\n')
+          PY
+
       - name: Test release checks
+        if: runner.os != 'Linux'
         run: python -m unittest discover -s scripts -p "test_*release*.py"
+
+      # AppImage inventory and isolated apt-install helpers are Linux-specific.
+      - name: Test all packaging helpers on Linux
+        if: runner.os == 'Linux'
+        run: python -m unittest discover -s scripts -p "test_*.py"
+
+      # These tests run on the native host but use a simulated DOM. They verify
+      # platform modifier abstraction; they do not send desktop input.
+      - name: Test platform shortcuts and window routing
+        run: >-
+          pnpm --dir app exec vitest run --maxWorkers=1 --minWorkers=1
+          src/shell/shortcuts.test.ts src/shell/keymap.test.ts
+          src/shell/keymapIntegration.test.ts src/shell/keymapPresets.test.ts
+          src/editor/modifiers.test.ts src/transport/windows.test.ts
 
       - name: Build and inspect native installers
         run: python scripts/build_release.py --bundles ${{ matrix.bundles }} --min-free-gib 5
@@ -161,24 +191,23 @@ jobs:
           test "${#installers[@]}" -eq 1
           installer="${installers[0]}"
           package="$(dpkg-deb -f "$installer" Package)"
+          cleanup() {
+            result=$?
+            trap - EXIT
+            sudo apt-get remove -y "$package" || result=1
+            test ! -e /usr/bin/fontcarver-desktop || result=1
+            exit "$result"
+          }
+          trap cleanup EXIT
           sudo apt-get install -y "./$installer"
           test -x /usr/bin/fontcarver-desktop
           test -s /usr/share/doc/"$package"/copyright
-          # The installed executable has to load against the libraries APT just
-          # resolved. There is no display, so it is pointed at an unreachable GTK
-          # backend and only has to reach that check and exit.
-          launch=0
-          output="$(timeout --signal=KILL 120 env -u WAYLAND_DISPLAY \
-            GDK_BACKEND=x11 DISPLAY=:99 /usr/bin/fontcarver-desktop 2>&1)" || launch=$?
-          head -5 <<<"$output"
-          test "$launch" -ne 137
-          test "$launch" -ne 0
+          python scripts/smoke_release_native.py --executable /usr/bin/fontcarver-desktop \
+            --launch headless --report .scratch/p5-release-ci/deb-smoke.json
           while IFS= read -r desktop; do
             desktop-file-validate "$desktop"
           done < <(dpkg-query --listfiles "$package" | sed -n '/\.desktop$/p')
           dpkg-query --show "$package"
-          sudo apt-get remove -y "$package"
-          test ! -e /usr/bin/fontcarver-desktop
 
       # Package inspection proves the payload exists; this proves it loads. The
       # runner has no display, so the AppImage is pointed at a GTK backend it
@@ -193,12 +222,8 @@ jobs:
           while IFS= read -r found; do images+=("$found"); done \
             < <(find target/release/bundle/appimage -maxdepth 1 -name '*.AppImage')
           test "${#images[@]}" -eq 1
-          status=0
-          output="$(timeout --signal=KILL 120 env -u WAYLAND_DISPLAY \
-            GDK_BACKEND=x11 DISPLAY=:99 "${images[0]}" 2>&1)" || status=$?
-          head -5 <<<"$output"
-          test "$status" -ne 137 || { echo "AppImage did not exit without a display"; exit 1; }
-          test "$status" -ne 0 || { echo "AppImage reported success with no display"; exit 1; }
+          python scripts/smoke_release_native.py --executable "${images[0]}" \
+            --launch headless --report .scratch/p5-release-ci/appimage-smoke.json
 
       # macOS runners still ship bash 3.2 for `shell: bash`, so this step keeps
       # to POSIX-era builtins: no `mapfile`, no associative arrays.
@@ -214,7 +239,7 @@ jobs:
           while IFS= read -r found; do images+=("$found"); done \
             < <(find target/release/bundle/dmg -maxdepth 1 -name '*.dmg')
           test "${#images[@]}" -eq 1
-          hdiutil attach -readonly -nobrowse -mountpoint "$mount" "${images[0]}"
+          attached=0
           detach() {
             for attempt in 1 2 3; do
               hdiutil detach "$mount" && return 0
@@ -222,7 +247,18 @@ jobs:
             done
             hdiutil detach -force "$mount"
           }
-          trap 'detach || true' EXIT
+          cleanup() {
+            result=$?
+            trap - EXIT
+            if test "$attached" -eq 1; then
+              detach || result=1
+            fi
+            rm -rf "$applications" "$mount"
+            exit "$result"
+          }
+          trap cleanup EXIT
+          hdiutil attach -readonly -nobrowse -mountpoint "$mount" "${images[0]}"
+          attached=1
           bundles=()
           while IFS= read -r found; do bundles+=("$found"); done \
             < <(find "$mount" -maxdepth 1 -name '*.app')
@@ -234,12 +270,13 @@ jobs:
             "$applications/$name/Contents/Info.plist")"
           test -x "$applications/$name/Contents/MacOS/$executable"
           detach
-          trap - EXIT
-          rm -rf "$PWD/.scratch/p5-release-ci"
+          attached=0
+          python scripts/smoke_release_native.py \
+            --executable "$applications/$name/Contents/MacOS/$executable" \
+            --launch gui --report .scratch/p5-release-ci/macos-smoke.json
 
-      # No Windows package has ever been built, so this step is written to be
-      # diagnosable on its first run: it names what it expected and lists what
-      # the installer actually left behind.
+      # Each locale gets an actual install, bounded process startup and uninstall.
+      # This is process evidence only; it does not claim rendered UI readiness.
       - name: Install and remove Windows MSI packages
         if: runner.os == 'Windows' && contains(matrix.bundles, 'msi')
         shell: pwsh
@@ -247,34 +284,27 @@ jobs:
           New-Item -ItemType Directory -Force .scratch/p5-release-ci | Out-Null
           $installers = @(Get-ChildItem -Path target/release/bundle/msi -Filter *.msi -File -ErrorAction SilentlyContinue)
           if ($installers.Count -lt 1) { throw "no MSI installer was produced" }
-          # The installed executable's name has never been observed, since no
-          # Windows package has been built. Rather than assert a guess, find the
-          # single executable the installer placed and report what it is, the way
-          # the macOS step reads CFBundleExecutable instead of assuming a name.
           $installed = Join-Path $env:ProgramFiles "FontCarver"
           foreach ($msi in $installers) {
             $log = Join-Path $PWD ".scratch/p5-release-ci/$($msi.BaseName).log"
             $removeLog = Join-Path $PWD ".scratch/p5-release-ci/$($msi.BaseName)-remove.log"
             $install = Start-Process msiexec.exe -Wait -PassThru -ArgumentList "/i `"$($msi.FullName)`" /qn /norestart /l*v `"$log`""
             if ($install.ExitCode -notin @(0, 3010)) { throw "MSI install failed: $($install.ExitCode); see $log" }
-            if (-not (Test-Path -LiteralPath $installed)) {
-              throw "install directory missing after a successful install: $installed; see $log"
+            try {
+              if (-not (Test-Path -LiteralPath $installed)) {
+                throw "install directory missing after a successful install: $installed; see $log"
+              }
+              $executables = @(Get-ChildItem -LiteralPath $installed -Recurse -File -Filter fontcarver-desktop.exe -ErrorAction SilentlyContinue)
+              if ($executables.Count -ne 1) {
+                throw "expected one fontcarver-desktop.exe under $installed, found $($executables.Count)"
+              }
+              $report = ".scratch/p5-release-ci/$($msi.BaseName)-smoke.json"
+              python scripts/smoke_release_native.py --executable $executables[0].FullName --launch gui --report $report
+              if ($LASTEXITCODE -ne 0) { throw "native startup check failed; see $report" }
+            } finally {
+              $uninstall = Start-Process msiexec.exe -Wait -PassThru -ArgumentList "/x `"$($msi.FullName)`" /qn /norestart /l*v `"$removeLog`""
+              if ($uninstall.ExitCode -notin @(0, 3010)) { throw "MSI uninstall failed: $($uninstall.ExitCode); see $removeLog" }
             }
-            $executables = @(Get-ChildItem -LiteralPath $installed -Recurse -File -Filter *.exe -ErrorAction SilentlyContinue)
-            if ($executables.Count -lt 1) {
-              $present = (Get-ChildItem -LiteralPath $installed -Recurse -File -ErrorAction SilentlyContinue |
-                ForEach-Object FullName) -join "; "
-              throw "no executable under $installed. Present instead: $present"
-            }
-            Write-Host "installed executables: $(($executables | ForEach-Object Name) -join ', ')"
-            # check_release_bundle.py expects this name inside the MSI payload, so
-            # a mismatch here is the signal to correct that expectation.
-            if (-not ($executables | Where-Object Name -eq 'fontcarver-desktop.exe')) {
-              throw ("expected fontcarver-desktop.exe, which check_release_bundle.py also requires; " +
-                     "found $(($executables | ForEach-Object Name) -join ', ') instead")
-            }
-            $uninstall = Start-Process msiexec.exe -Wait -PassThru -ArgumentList "/x `"$($msi.FullName)`" /qn /norestart /l*v `"$removeLog`""
-            if ($uninstall.ExitCode -notin @(0, 3010)) { throw "MSI uninstall failed: $($uninstall.ExitCode); see $removeLog" }
             $left = @(Get-ChildItem -LiteralPath $installed -Recurse -File -Filter *.exe -ErrorAction SilentlyContinue)
             if ($left.Count -gt 0) {
               throw "uninstall left $(($left | ForEach-Object FullName) -join '; ') behind"
@@ -291,6 +321,7 @@ jobs:
             target/release/bundle/**/*.dmg
             target/release/bundle/**/*.msi
             target/release/bundle/release-manifest.json
+            .scratch/p5-release-ci/*-smoke.json
           if-no-files-found: error
           retention-days: 14
 
@@ -301,6 +332,7 @@ jobs:
           name: FontCarver-${{ matrix.label }}-failure-${{ github.sha }}
           path: |
             .scratch/p5-release-ci/*.log
+            .scratch/p5-release-ci/*-smoke.json
             target/release/bundle/release-manifest.json
           if-no-files-found: ignore
           retention-days: 7

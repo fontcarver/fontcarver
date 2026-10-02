@@ -8,6 +8,7 @@ system prerequisites. Use the same Cargo target directory as development.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -19,12 +20,14 @@ import sys
 import tempfile
 import tomllib
 
+from check_release_bundle import VerificationError, discover
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def native_bundles(system: str) -> list[str]:
     """Return only the installer formats maintained for a native platform."""
-    bundles = {"Linux": ["deb", "appimage"], "Darwin": ["dmg"], "Windows": ["msi"]}
+    bundles = {"Linux": ["deb"], "Darwin": ["dmg"], "Windows": ["msi"]}
     if system not in bundles:
         raise ValueError(f"unsupported release build platform: {system}")
     return bundles[system]
@@ -56,9 +59,52 @@ def run(command: list[str], env: dict[str, str]) -> None:
     subprocess.run(command, cwd=ROOT, env=env, check=True)
 
 
+def artifact_snapshot(bundle: Path, bundles: list[str]) -> dict[str, tuple[int, int, int]]:
+    """Remember existing candidates so a successful build cannot accept stale files."""
+    return {str(path): (path.stat().st_mtime_ns, path.stat().st_ctime_ns, path.stat().st_size)
+            for path in bundle.rglob("*") if path.is_file()
+            and path.suffix.lower().lstrip(".") in bundles}
+
+
+def validate_built_artifacts(bundle: Path, bundles: list[str], before: dict,
+                             msi_languages: int = 2) -> None:
+    """Require exactly the configured fresh artifacts, retaining old files on failure."""
+    artifacts = discover(bundle, bundles)
+    for kind in bundles:
+        selected = [path for artifact_kind, path in artifacts if artifact_kind == kind]
+        expected = msi_languages if kind == "msi" else 1
+        if len(selected) != expected:
+            raise ValueError(f"expected {expected} fresh {kind} candidate(s), found {len(selected)}; "
+                             "move stale candidates out of the bundle directory before rebuilding")
+    after = artifact_snapshot(bundle, bundles)
+    stale = [path for path, value in after.items() if before.get(path) == value]
+    if stale:
+        raise ValueError("build left unchanged installer candidates: " + ", ".join(stale))
+
+
+def source_state() -> dict:
+    """Fingerprint all non-ignored inputs to the application and release tooling."""
+    roots = ["Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "pnpm-workspace.yaml",
+             "pnpm-lock.yaml", "package.json", ".npmrc", ".cargo",
+             "crates", "src-tauri", "app", "scripts", "docs/install.md",
+             "THIRD_PARTY.md", "LICENSE-MIT", "LICENSE-APACHE"]
+    output = subprocess.check_output(["git", "ls-files", "-z", "--cached", "--others",
+                                      "--exclude-standard", "--", *roots], cwd=ROOT)
+    digest = hashlib.sha256()
+    names = sorted(set(output.decode().split("\0")) - {""})
+    for name in names:
+        path = ROOT / name
+        digest.update(name.encode() + b"\0")
+        digest.update(hashlib.sha256(path.read_bytes()).digest() if path.is_file() else b"deleted")
+    revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    return {"revision": revision, "input_sha256": digest.hexdigest(), "input_files": len(names)}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bundles", help="comma-separated native formats; defaults to this platform")
+    parser.add_argument("--appimage-sysroot", type=Path,
+                        help="optional extracted native build prerequisites for the thin AppImage runtime")
     parser.add_argument("--min-free-gib", type=float, default=20.0,
                         help="workspace free-space floor; ephemeral CI may use 5")
     args = parser.parse_args()
@@ -83,8 +129,9 @@ def main() -> int:
         validate_target_environment(env, [directory / name for directory in config_dirs
                                           for name in ("config", "config.toml")])
         native = native_bundles(platform.system())
-        bundles = args.bundles.split(",") if args.bundles else native
-        if not bundles or any(bundle not in native for bundle in bundles):
+        bundles = [part.strip().lower() for part in args.bundles.split(",")] if args.bundles else native
+        allowed = native + (["appimage"] if platform.system() == "Linux" else [])
+        if not bundles or any(bundle not in allowed for bundle in bundles):
             raise ValueError(f"native bundle formats on this platform are: {', '.join(native)}")
         manifest = tomllib.loads((ROOT / "Cargo.toml").read_text(encoding="utf-8"))
         frontend = json.loads((ROOT / "app/package.json").read_text(encoding="utf-8"))
@@ -94,6 +141,7 @@ def main() -> int:
         pnpm = shutil.which("pnpm")
         if pnpm is None:
             raise ValueError("pnpm is not installed; use the version pinned in package.json")
+        source = source_state()
         # The license inventory covers all locked Cargo targets, so a clean
         # native runner needs the other platforms' package manifests as well.
         run(["cargo", "fetch", "--locked"], env)
@@ -108,15 +156,51 @@ def main() -> int:
         }}}
         override_path = scratch / "tauri.release.json"
         override_path.write_text(json.dumps(override, indent=2) + "\n", encoding="utf-8")
+        bundle_dir = target / "release/bundle"
+        built_formats = list(dict.fromkeys(bundles + (["deb"] if "appimage" in bundles else [])))
+        before = artifact_snapshot(bundle_dir, built_formats)
+        tauri_bundles = [bundle for bundle in bundles if bundle != "appimage"]
+        if "appimage" in bundles and "deb" not in tauri_bundles:
+            tauri_bundles.append("deb")
         run([pnpm, "--dir", "app", "exec", "tauri", "build", "--ci",
-             "--config", str(override_path), "--bundles", ",".join(bundles), "--", "--locked"], env)
+             "--config", str(override_path), "--bundles", ",".join(tauri_bundles), "--", "--locked"], env)
+        languages = config["bundle"].get("windows", {}).get("wix", {}).get("language", ["en-US"])
+        language_count = len(languages) if isinstance(languages, (dict, list)) else 1
+        validate_built_artifacts(bundle_dir, tauri_bundles, before, language_count)
+        bundle_env = dict(env)
+        if "appimage" in bundles:
+            debs = discover(bundle_dir, ["deb"])
+            if len(debs) != 1:
+                raise ValueError("thin AppImage requires exactly one newly built deb")
+            deb = debs[0][1]
+            output = bundle_dir / "appimage" / (deb.stem + ".AppImage")
+            thin_command = [sys.executable, "scripts/build_thin_appimage.py", "--deb", str(deb),
+                            "--output", str(output)]
+            if args.appimage_sysroot:
+                sysroot = args.appimage_sysroot.resolve()
+                thin_command += ["--sysroot", str(sysroot)]
+                bundle_env["PATH"] = str(sysroot / "usr/bin") + os.pathsep + env.get("PATH", "")
+                libraries = str(sysroot / "usr/lib/x86_64-linux-gnu")
+                if env.get("LD_LIBRARY_PATH"):
+                    libraries += os.pathsep + env["LD_LIBRARY_PATH"]
+                bundle_env["LD_LIBRARY_PATH"] = libraries
+            run(thin_command, bundle_env)
+        if source_state() != source:
+            raise ValueError("release inputs changed during the build; rebuild from a stable tree")
+        validate_built_artifacts(bundle_dir, bundles, before, language_count)
         run(budget, env)
         bundle_dir = target / "release/bundle"
         run([sys.executable, "scripts/check_release_bundle.py", "--bundle-dir", str(bundle_dir),
-             "--expected", ",".join(bundles)], env)
+             "--expected", ",".join(bundles)], bundle_env)
+        report_path = bundle_dir / "release-manifest.json"
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        report["source"] = source
+        report["signing_verified"] = False
+        report["publication_performed"] = False
+        report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
         print(f"Verified FontCarver {version} native installers: {bundle_dir}")
         result = 0
-    except (ValueError, OSError, subprocess.CalledProcessError) as error:
+    except (ValueError, VerificationError, OSError, subprocess.CalledProcessError) as error:
         print(f"Release build failed: {error}", file=sys.stderr)
     finally:
         # Scratch belongs to this entry point; retained installers/evidence live

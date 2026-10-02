@@ -390,6 +390,27 @@ its consequences are in
 [the release instructions](docs/releasing.md#the-appimage-payload-is-a-separate-licensing-obligation)
 and [the packaging acceptance evidence](docs/acceptance/p5f-release/appimage-bundled-licenses.txt).
 
+The 2026-10-02 diagnostic rerun now records every payload path and the separate
+runtime in [the hashed inventory](docs/acceptance/p5f-release/appimage-inventory-2026-10-02.json).
+The same image has 177 shared objects; current-host matching yields 129 candidate
+packages, 75 with copyleft labels, 30 with no machine-readable license labels,
+and ten shipped copyright documents. Candidate counts are not confirmed build
+provenance or per-binary license decisions. Missing labels are unknown. The
+prepended runtime identifies `AppImage/type2-runtime` `8f39b89`, whose upstream
+license explicitly lists statically linked LGPL libfuse; auditing only the
+extracted filesystem would miss it. See [native-payload policy](docs/licensing.md#51-native-linux-payloads-and-appimage-runtimes)
+and [acceptance](docs/p5f-w3-appimage-acceptance.md).
+
+The replacement thin-AppImage recipe builds the MIT/public-domain runtime from
+the pinned `8f39b89e2ac31e1640b3d3f7e9a5108e6ce805fa` source and uses an unmodified
+BSD-2-Clause squashfuse 0.5.0 header. It ships original and patched runtime
+source, linker scripts, upstream copyright/license documents, a linker map and
+the build receipt under `licenses/thin-appimage/`. FUSE 3, squashfuse, GTK and
+WebKit remain host shared-library prerequisites; they are not copied into this
+image. This changes the delivery recipe, not the forbidden-license policy.
+The [builder acceptance](docs/p5f-w3-thin-appimage-acceptance.md) and artifact
+gate distinguish this host-dependent candidate from the blocked older image.
+
 ### P3 bitmap implementation — 2026-09-22
 
 The bitmap readers/writers, pixel tools and boundary tracer are original

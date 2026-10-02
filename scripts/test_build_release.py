@@ -3,8 +3,12 @@
 import unittest
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
-from build_release import native_bundles, validate_target_environment, validate_versions
+import build_release
+
+from build_release import (artifact_snapshot, native_bundles, validate_built_artifacts,
+                           validate_target_environment, validate_versions)
 
 
 class ReleaseValidationTests(unittest.TestCase):
@@ -25,8 +29,50 @@ class ReleaseValidationTests(unittest.TestCase):
         finally:
             scratch.rmdir()
 
+    def test_unchanged_and_duplicate_artifacts_cannot_pass_as_a_new_build(self):
+        scratch = Path(__file__).resolve().parents[1] / ".scratch/p5f-w3-packaging"
+        scratch.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=scratch) as temporary:
+            root = Path(temporary)
+            current = root / "FontCarver_0.1.0_amd64.deb"
+            current.write_bytes(b"old candidate")
+            before = artifact_snapshot(root, ["deb"])
+            with self.assertRaisesRegex(ValueError, "unchanged"):
+                validate_built_artifacts(root, ["deb"], before)
+            current.write_bytes(b"new candidate with rebuilt bytes")
+            validate_built_artifacts(root, ["deb"], before)
+            stale = root / "FontCarver_0.0.1_amd64.deb"
+            stale.write_bytes(b"stale")
+            with self.assertRaisesRegex(ValueError, "found 2"):
+                validate_built_artifacts(root, ["deb"], before)
+            self.assertTrue(stale.exists(), "validation must not delete a user's old artifact")
+
+    def test_source_fingerprint_includes_root_dependency_and_tooling_inputs(self):
+        scratch = Path(__file__).resolve().parents[1] / ".scratch/p5f-w3-packaging"
+        scratch.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=scratch) as temporary:
+            root = Path(temporary)
+            (root / "package.json").write_text('{"packageManager":"pnpm@10"}')
+            lock = root / "pnpm-lock.yaml"
+            lock.write_text("original lockfile")
+
+            def git(arguments, **kwargs):
+                if "ls-files" in arguments:
+                    self.assertIn("package.json", arguments)
+                    self.assertIn("pnpm-lock.yaml", arguments)
+                    return b"package.json\0pnpm-lock.yaml\0"
+                return "fixed-revision\n"
+
+            with patch.object(build_release, "ROOT", root), patch.object(
+                    build_release.subprocess, "check_output", side_effect=git):
+                before = build_release.source_state()
+                lock.write_text("changed dependency graph")
+                after = build_release.source_state()
+                self.assertNotEqual(before["input_sha256"], after["input_sha256"])
+                self.assertEqual(after["input_files"], 2)
+
     def test_native_targets_are_explicit(self):
-        self.assertEqual(native_bundles("Linux"), ["deb", "appimage"])
+        self.assertEqual(native_bundles("Linux"), ["deb"])
         self.assertEqual(native_bundles("Darwin"), ["dmg"])
         self.assertEqual(native_bundles("Windows"), ["msi"])
         with self.assertRaises(ValueError):
