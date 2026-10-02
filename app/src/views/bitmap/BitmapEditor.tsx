@@ -272,6 +272,9 @@ export function BitmapEditor({
         onSelect={setSelection}
         onEdit={(next) => session.edit(next)}
         onCommit={commit}
+        onGestureStart={(accept) => session.beginGesture(accept)}
+        onGestureCancel={() => session.cancelGesture()}
+        onGestureEnd={() => session.endGesture()}
       />
       <div className={styles.toolbar}>
         {(

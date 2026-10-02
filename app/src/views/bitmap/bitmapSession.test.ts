@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { setTransport, type BitmapGlyph } from '../../api'
 import { createMockTransport, noChange } from '../../test/mockTransport'
 import {
@@ -15,6 +15,123 @@ const empty: BitmapGlyph = {
 }
 afterEach(() => setTransport(undefined))
 describe('bitmap document handover', () => {
+  it.each(['cancel', 'finish'])(
+    'defers clean-selection reload until %s, retaining coherent pixels and generation',
+    async (action) => {
+      let value = empty,
+        generation = 1
+      const transport = createMockTransport({
+        'bitmap.glyph': () => ({ generation, value, resolved: value }),
+      })
+      setTransport(transport)
+      const session = new BitmapSession(
+        { doc: 212, glyph: 'A', ppem: 16, depth: 1 },
+        empty,
+      )
+      await session.load()
+      session.beginGesture()
+      value = { ...empty, advance: 99 }
+      generation = 2
+      await session.load()
+      expect(transport.calls).toHaveLength(1)
+      expect(session.snapshot().busy).toBe(false)
+      expect(session.snapshot().generation).toBe(1)
+      if (action === 'cancel') session.cancelGesture()
+      else session.endGesture()
+      await vi.waitFor(() => expect(session.snapshot().busy).toBe(false))
+      expect(session.snapshot().value?.advance).toBe(99)
+      expect(session.snapshot().generation).toBe(2)
+      expect(session.snapshot().dirty).toBe(false)
+    },
+  )
+  it('cancelling a gesture restores the clean draft without creating a later write', async () => {
+    const transport = createMockTransport({
+      'bitmap.glyph': () => ({ generation: 1, value: empty, resolved: empty }),
+      'bitmap.apply': () => noChange(),
+    })
+    setTransport(transport)
+    const session = new BitmapSession(
+      { doc: 209, glyph: 'A', ppem: 16, depth: 1 },
+      empty,
+    )
+    const dispose = session.connect()
+    await session.load()
+    session.beginGesture()
+    const edited = structuredClone(empty)
+    put(edited.bitmap, 1, 1, 1)
+    session.edit(edited)
+    session.cancelGesture()
+    expect(session.snapshot().value).toEqual(empty)
+    expect(session.snapshot().resolved).toEqual(empty)
+    expect(hasPendingDocumentDraft(209)).toBe(false)
+    await flushDocumentEditParticipants(209)
+    expect(
+      transport.calls.filter((call) => call.method === 'bitmap.apply'),
+    ).toHaveLength(0)
+    dispose()
+  })
+  it('cancelling a new stroke preserves a previous failed-write draft and error', async () => {
+    setTransport(
+      createMockTransport({
+        'bitmap.glyph': () => ({
+          generation: 1,
+          value: empty,
+          resolved: empty,
+        }),
+        'bitmap.apply': () => {
+          throw new Error('write rejected')
+        },
+      }),
+    )
+    const session = new BitmapSession(
+      { doc: 210, glyph: 'A', ppem: 16, depth: 1 },
+      empty,
+    )
+    await session.load()
+    const previous = { ...empty, advance: 11 }
+    session.edit(previous)
+    await expect(session.flush()).rejects.toThrow('write rejected')
+    const error = session.snapshot().error
+    session.beginGesture()
+    session.edit({ ...previous, advance: 12 })
+    session.cancelGesture()
+    expect(session.snapshot().value).toEqual(previous)
+    expect(session.snapshot().dirty).toBe(true)
+    expect(session.snapshot().error).toBe(error)
+  })
+  it('cancellation after a save barrier cannot undo an accepted bitmap draft', async () => {
+    let value = empty
+    let release!: () => void
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    setTransport(
+      createMockTransport({
+        'bitmap.glyph': () => ({ generation: 1, value, resolved: value }),
+        'bitmap.apply': async ({ command }) => {
+          if ('SetGlyph' in command) value = command.SetGlyph.value!
+          await pending
+          return noChange()
+        },
+      }),
+    )
+    const session = new BitmapSession(
+      { doc: 211, glyph: 'A', ppem: 16, depth: 1 },
+      empty,
+    )
+    await session.load()
+    session.beginGesture()
+    const edited = { ...empty, advance: 12 }
+    session.edit(edited)
+    const saving = session.flush()
+    session.cancelGesture()
+    expect(session.snapshot().value).toEqual(edited)
+    release()
+    await saving
+    session.cancelGesture()
+    expect(session.snapshot().value).toEqual(edited)
+    expect(session.snapshot().dirty).toBe(false)
+  })
   it('keeps editable references separate from composed display pixels', async () => {
     let source = {
       ...structuredClone(empty),

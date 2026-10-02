@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { BitmapGlyph } from '../../api'
 import { renderBitmap } from '../../canvas/bitmapRenderer'
@@ -34,17 +34,22 @@ interface Props {
   outlinePath?: string
   resolved?: BitmapGlyph | null
   onPickInk?: (ink: number) => void
-  onSelect: (selection: PixelSelection) => void
+  onSelect: (selection: PixelSelection | undefined) => void
   onEdit: (value: BitmapGlyph) => void
   onCommit: () => void
+  onGestureStart?: (accept: () => void) => void
+  onGestureCancel?: () => void
+  onGestureEnd?: () => void
 }
 interface Gesture {
+  pointerId: number
   start: PixelPoint
   last: PixelPoint
   source: BitmapGlyph
   current: BitmapGlyph
   tool: PixelTool
   ink: number
+  selection?: PixelSelection
   moving?: PixelSelection
   /** Alt-drag leaves the original pixels in place and stamps a copy. */
   stamping?: boolean
@@ -67,11 +72,16 @@ export function BitmapCanvas({
   onSelect,
   onEdit,
   onCommit,
+  onGestureStart,
+  onGestureCancel,
+  onGestureEnd,
 }: Props) {
   const { t } = useTranslation()
   const ref = useRef<HTMLCanvasElement>(null)
   const area = useRef<HTMLDivElement>(null)
   const gesture = useRef<Gesture | null>(null)
+  const [spaceHeld, setSpaceHeld] = useState(false)
+  const [panning, setPanning] = useState(false)
   const [activeFrame, setActiveFrame] = useState<BitmapFrame | null>(null)
   const overlays = useBitmapToolStore((state) => state.overlays)
   const setOverlay = useBitmapToolStore((state) => state.setOverlay)
@@ -148,17 +158,46 @@ export function BitmapCanvas({
       value.bitmap.origin_y + value.bitmap.height - 1 - position[1],
     ])
   }
-  const finish = () => {
-    const active = gesture.current
-    gesture.current = null
-    setActiveFrame(null)
-    if (
-      active &&
-      active.tool !== 'hand' &&
-      (active.tool !== 'select' || active.moving)
-    )
-      onCommit()
-  }
+  const finish = useCallback(
+    (mode: 'finish' | 'cancel' | 'accept' = 'finish') => {
+      const active = gesture.current
+      if (!active) return
+      gesture.current = null
+      setActiveFrame(null)
+      setPanning(false)
+      const canvas = ref.current
+      if (canvas?.hasPointerCapture?.(active.pointerId))
+        canvas.releasePointerCapture(active.pointerId)
+      if (active.pan) return
+      if (mode === 'cancel') {
+        setDelta(null)
+        onSelect(active.selection)
+        if (onGestureCancel) onGestureCancel()
+        else if (active.tool !== 'select' || active.moving)
+          onEdit(active.source)
+        return
+      }
+      onGestureEnd?.()
+      if (mode === 'finish' && (active.tool !== 'select' || active.moving))
+        onCommit()
+    },
+    [onCommit, onEdit, onSelect, onGestureCancel, onGestureEnd],
+  )
+  useEffect(() => {
+    const releaseSpace = (event: KeyboardEvent) => {
+      if (event.code === 'Space' || event.key === ' ') setSpaceHeld(false)
+    }
+    const blur = () => {
+      setSpaceHeld(false)
+      finish('cancel')
+    }
+    window.addEventListener('keyup', releaseSpace)
+    window.addEventListener('blur', blur)
+    return () => {
+      window.removeEventListener('keyup', releaseSpace)
+      window.removeEventListener('blur', blur)
+    }
+  }, [finish])
   return (
     <>
       <BitmapCanvasControls
@@ -175,11 +214,28 @@ export function BitmapCanvas({
         <canvas
           ref={ref}
           className={styles.canvas}
-          data-tool={tool}
+          data-tool={panning || (spaceHeld && !activeFrame) ? 'hand' : tool}
           aria-label={t('bitmap.canvas')}
           tabIndex={0}
           onKeyDown={(event) => {
-            if (tool !== 'hand' || !area.current) return
+            if (event.key === 'Escape' && gesture.current) {
+              event.preventDefault()
+              event.stopPropagation()
+              finish('cancel')
+              return
+            }
+            if (
+              (event.code === 'Space' || event.key === ' ') &&
+              !event.ctrlKey &&
+              !event.metaKey &&
+              !event.altKey
+            ) {
+              event.preventDefault()
+              event.stopPropagation()
+              setSpaceHeld(true)
+              return
+            }
+            if ((tool !== 'hand' && !spaceHeld) || !area.current) return
             const moves: Record<string, PixelPoint> = {
               ArrowLeft: [-40, 0],
               ArrowRight: [40, 0],
@@ -193,10 +249,16 @@ export function BitmapCanvas({
             area.current.scrollLeft += move[0]
             area.current.scrollTop += move[1]
           }}
+          onBlur={() => {
+            setSpaceHeld(false)
+            finish('cancel')
+          }}
           onPointerDown={(event) => {
+            const panning = event.button === 1 || spaceHeld || tool === 'hand'
             if (
-              event.button !== 0 ||
-              (disabled && tool !== 'hand' && tool !== 'eyedropper')
+              gesture.current ||
+              (event.button !== 0 && event.button !== 1) ||
+              (disabled && !panning && tool !== 'eyedropper')
             )
               return
             event.preventDefault()
@@ -204,15 +266,17 @@ export function BitmapCanvas({
             const start = point(event)
             showPointer(start)
             setDelta(null)
-            if (tool === 'hand' && area.current) {
+            if (panning && area.current) {
+              setPanning(true)
               event.currentTarget.setPointerCapture(event.pointerId)
               setActiveFrame(frame)
               gesture.current = {
+                pointerId: event.pointerId,
                 start,
                 last: start,
                 source: value,
                 current: value,
-                tool,
+                tool: 'hand',
                 ink,
                 pan: {
                   x: event.clientX,
@@ -247,6 +311,7 @@ export function BitmapCanvas({
               return
             event.currentTarget.setPointerCapture(event.pointerId)
             setActiveFrame(frame)
+            onGestureStart?.(() => finish('accept'))
             const gestureInk =
               tool === 'pencil' ? pencilInk(value.bitmap, start, ink) : ink
             const next = paint(value, tool, start, start, gestureInk)
@@ -260,12 +325,14 @@ export function BitmapCanvas({
                 ? selection
                 : undefined
             gesture.current = {
+              pointerId: event.pointerId,
               start,
               last: start,
               source: value,
               current: next,
               tool,
               ink: gestureInk,
+              selection,
               moving,
               stamping: Boolean(moving) && event.altKey,
             }
@@ -277,7 +344,7 @@ export function BitmapCanvas({
             const active = gesture.current
             const raw = point(event)
             showPointer(raw)
-            if (!active) return
+            if (!active || active.pointerId !== event.pointerId) return
             if (active.pan && area.current) {
               area.current.scrollLeft =
                 active.pan.left + active.pan.x - event.clientX
@@ -323,9 +390,15 @@ export function BitmapCanvas({
           onPointerLeave={() => {
             if (!gesture.current) setPointer(null)
           }}
-          onPointerUp={finish}
-          onPointerCancel={finish}
-          onLostPointerCapture={finish}
+          onPointerUp={(event) => {
+            if (gesture.current?.pointerId === event.pointerId) finish()
+          }}
+          onPointerCancel={(event) => {
+            if (gesture.current?.pointerId === event.pointerId) finish('cancel')
+          }}
+          onLostPointerCapture={(event) => {
+            if (gesture.current?.pointerId === event.pointerId) finish('cancel')
+          }}
         />
       </div>
     </>

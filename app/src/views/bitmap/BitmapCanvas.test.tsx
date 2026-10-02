@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BitmapCanvas } from './BitmapCanvas'
 import { useBitmapToolStore, readOverlays } from './bitmapToolStore'
 import {
@@ -9,7 +9,9 @@ import {
   type PixelSelection,
   type PixelTool,
 } from './pixels'
-import type { BitmapGlyph } from '../../api'
+import { setTransport, type BitmapGlyph } from '../../api'
+import { createMockTransport, noChange } from '../../test/mockTransport'
+import { BitmapSession } from './bitmapSession'
 
 vi.mock('../../canvas/bitmapRenderer', () => ({ renderBitmap: vi.fn() }))
 const glyph = (): BitmapGlyph => ({
@@ -18,9 +20,17 @@ const glyph = (): BitmapGlyph => ({
   vertical_advance: null,
   refs: [],
 })
-function mount(tool: PixelTool, value = glyph(), selection?: PixelSelection) {
-  const onEdit = vi.fn(),
-    onCommit = vi.fn(),
+function mount(
+  tool: PixelTool,
+  value = glyph(),
+  selection?: PixelSelection,
+  disabled = false,
+  session?: BitmapSession,
+) {
+  const onEdit = vi.fn((next: BitmapGlyph) => session?.edit(next)),
+    onCommit = vi.fn(() => {
+      void session?.flush()
+    }),
     onPickInk = vi.fn(),
     onSelect = vi.fn()
   render(
@@ -29,12 +39,17 @@ function mount(tool: PixelTool, value = glyph(), selection?: PixelSelection) {
       zoom={10}
       tool={tool}
       ink={1}
-      disabled={false}
+      disabled={disabled}
       selection={selection}
       onSelect={onSelect}
       onEdit={onEdit}
       onCommit={onCommit}
       onPickInk={onPickInk}
+      onGestureStart={
+        session ? (accept) => session.beginGesture(accept) : undefined
+      }
+      onGestureCancel={session ? () => session.cancelGesture() : undefined}
+      onGestureEnd={session ? () => session.endGesture() : undefined}
       upm={1000}
       ppem={20}
     />,
@@ -62,7 +77,52 @@ beforeEach(() => {
   localStorage.clear()
   useBitmapToolStore.setState({ overlays: readOverlays() })
 })
+afterEach(() => setTransport(undefined))
 describe('bitmap canvas gestures', () => {
+  it('a save barrier seals the held gesture so later motion and Escape cannot leave cancelled pixels dirty', async () => {
+    let value = glyph()
+    put(value.bitmap, 0, 0, 1)
+    const transport = createMockTransport({
+      'bitmap.glyph': () => ({ generation: 1, value, resolved: value }),
+      'bitmap.apply': ({ command }) => {
+        if ('SetGlyph' in command) value = command.SetGlyph.value!
+        return noChange()
+      },
+    })
+    setTransport(transport)
+    const session = new BitmapSession(
+      { doc: 213, glyph: 'A', ppem: 16, depth: 1 },
+      value,
+    )
+    await session.load()
+    const selection = { x: 0, y: 0, width: 1, height: 1 }
+    const { canvas, onEdit, onCommit, onSelect } = mount(
+      'select',
+      value,
+      selection,
+      false,
+      session,
+    )
+    fireEvent.pointerDown(canvas, { button: 0, clientX: 15, clientY: 15 })
+    fireEvent.pointerMove(canvas, { clientX: 35, clientY: 15 })
+    await act(async () => {
+      await session.flush()
+    })
+    const accepted = session.snapshot().value
+    expect(onSelect).toHaveBeenLastCalledWith({ ...selection, x: 2 })
+    const calls = onEdit.mock.calls.length
+    fireEvent.pointerMove(canvas, { clientX: 25, clientY: 25 })
+    fireEvent.keyDown(canvas, { key: 'Escape' })
+    fireEvent.pointerUp(canvas)
+    expect(onEdit).toHaveBeenCalledTimes(calls)
+    expect(onCommit).not.toHaveBeenCalled()
+    expect(session.snapshot().dirty).toBe(false)
+    expect(session.snapshot().value).toEqual(accepted)
+    await session.flush()
+    expect(
+      transport.calls.filter((call) => call.method === 'bitmap.apply'),
+    ).toHaveLength(1)
+  })
   it('keeps the pencil erase choice for the whole drag and commits once', () => {
     const value = glyph()
     put(value.bitmap, 0, 0, 1)
@@ -98,6 +158,109 @@ describe('bitmap canvas gestures', () => {
     expect(onEdit).not.toHaveBeenCalled()
     expect(onCommit).not.toHaveBeenCalled()
     expect(screen.getByText('50 font units/pixel')).toBeInTheDocument()
+  })
+  it.each(['pointerCancel', 'lostPointerCapture', 'blur'] as const)(
+    'cancels a stroke on %s without committing or continuing it',
+    (event) => {
+      const value = glyph()
+      const { canvas, onEdit, onCommit } = mount('pencil', value)
+      fireEvent.pointerDown(canvas, { button: 0, clientX: 15, clientY: 15 })
+      fireEvent.pointerMove(canvas, { clientX: 35, clientY: 15 })
+      fireEvent[event](canvas)
+      expect(onEdit).toHaveBeenLastCalledWith(value)
+      const calls = onEdit.mock.calls.length
+      fireEvent.pointerMove(canvas, { clientX: 25, clientY: 15 })
+      fireEvent.pointerUp(canvas)
+      expect(onEdit).toHaveBeenCalledTimes(calls)
+      expect(onCommit).not.toHaveBeenCalled()
+    },
+  )
+  it('Escape restores pixels and the selection before the drag, without changing prior edits', () => {
+    const value = glyph(),
+      selection = { x: 0, y: 0, width: 1, height: 1 }
+    put(value.bitmap, 0, 0, 1)
+    const { canvas, onEdit, onCommit, onSelect } = mount(
+      'select',
+      value,
+      selection,
+    )
+    fireEvent.pointerDown(canvas, { button: 0, clientX: 15, clientY: 15 })
+    fireEvent.pointerMove(canvas, { clientX: 35, clientY: 15 })
+    fireEvent.keyDown(canvas, { key: 'Escape' })
+    expect(onEdit).toHaveBeenLastCalledWith(value)
+    expect(onSelect).toHaveBeenLastCalledWith(selection)
+    fireEvent.pointerUp(canvas)
+    expect(onCommit).not.toHaveBeenCalled()
+  })
+  it('normal pointer up commits once and the following lost capture cannot roll it back', () => {
+    const { canvas, onEdit, onCommit } = mount('pencil')
+    fireEvent.pointerDown(canvas, { button: 0, clientX: 15, clientY: 15 })
+    fireEvent.pointerUp(canvas)
+    const calls = onEdit.mock.calls.length
+    fireEvent.lostPointerCapture(canvas)
+    expect(onCommit).toHaveBeenCalledOnce()
+    expect(onEdit).toHaveBeenCalledTimes(calls)
+  })
+  it('Escape restores the absence of a marquee before a new selection', () => {
+    const { canvas, onEdit, onCommit, onSelect } = mount('select')
+    fireEvent.pointerDown(canvas, { button: 0, clientX: 15, clientY: 15 })
+    fireEvent.pointerMove(canvas, { clientX: 35, clientY: 25 })
+    fireEvent.keyDown(canvas, { key: 'Escape' })
+    expect(onSelect).toHaveBeenLastCalledWith(undefined)
+    expect(onEdit).not.toHaveBeenCalled()
+    expect(onCommit).not.toHaveBeenCalled()
+  })
+  it('window blur cancels the active stroke and releases temporary Space navigation', () => {
+    const value = glyph()
+    const { canvas, onEdit, onCommit } = mount('pencil', value)
+    fireEvent.pointerDown(canvas, { button: 0, clientX: 15, clientY: 15 })
+    fireEvent.keyDown(canvas, { key: ' ', code: 'Space' })
+    fireEvent.blur(window)
+    expect(onEdit).toHaveBeenLastCalledWith(value)
+    fireEvent.pointerUp(canvas)
+    expect(onCommit).not.toHaveBeenCalled()
+    expect(canvas).toHaveAttribute('data-tool', 'pencil')
+    fireEvent.pointerDown(canvas, { button: 0, clientX: 15, clientY: 15 })
+    fireEvent.pointerUp(canvas)
+    expect(onCommit).toHaveBeenCalledOnce()
+  })
+  it.each([false, true])(
+    'middle drag pans without drawing (editing disabled: %s)',
+    (disabled) => {
+      const { canvas, onEdit, onCommit } = mount(
+        'pencil',
+        glyph(),
+        undefined,
+        disabled,
+      )
+      const area = canvas.parentElement!
+      area.scrollLeft = 40
+      area.scrollTop = 30
+      fireEvent.pointerDown(canvas, { button: 1, clientX: 15, clientY: 15 })
+      fireEvent.pointerMove(canvas, { button: 1, clientX: 25, clientY: 20 })
+      fireEvent.pointerUp(canvas, { button: 1 })
+      expect([area.scrollLeft, area.scrollTop]).toEqual([30, 25])
+      expect(onEdit).not.toHaveBeenCalled()
+      expect(onCommit).not.toHaveBeenCalled()
+    },
+  )
+  it('Space temporarily pans and releasing it restores the chosen tool', () => {
+    const { canvas, onEdit, onCommit } = mount('pencil')
+    const area = canvas.parentElement!
+    area.scrollLeft = 40
+    area.scrollTop = 30
+    fireEvent.keyDown(canvas, { key: ' ', code: 'Space' })
+    fireEvent.pointerDown(canvas, { button: 0, clientX: 15, clientY: 15 })
+    fireEvent.pointerMove(canvas, { clientX: 25, clientY: 20 })
+    fireEvent.pointerUp(canvas)
+    expect([area.scrollLeft, area.scrollTop]).toEqual([30, 25])
+    expect(onEdit).not.toHaveBeenCalled()
+    expect(onCommit).not.toHaveBeenCalled()
+    fireEvent.keyUp(window, { key: ' ', code: 'Space' })
+    fireEvent.pointerDown(canvas, { button: 0, clientX: 15, clientY: 15 })
+    fireEvent.pointerUp(canvas)
+    expect(onEdit).toHaveBeenCalledOnce()
+    expect(onCommit).toHaveBeenCalledOnce()
   })
 })
 

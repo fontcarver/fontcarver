@@ -28,6 +28,9 @@ export class BitmapSession {
   private listeners = new Set<() => void>()
   private request = 0
   private pending: Promise<void> | undefined
+  private gestureSource: BitmapDraft | undefined
+  private acceptGesture: (() => void) | undefined
+  private refreshAfterGesture = false
   constructor(
     readonly target: BitmapGlyphParams,
     readonly empty: BitmapGlyph,
@@ -51,6 +54,10 @@ export class BitmapSession {
     for (const listener of this.listeners) listener()
   }
   async load(): Promise<void> {
+    if (this.gestureSource) {
+      this.refreshAfterGesture = true
+      return
+    }
     if (
       this.state.dirty ||
       this.pending ||
@@ -80,8 +87,42 @@ export class BitmapSession {
     noteDocumentEdit(this.target.doc)
     this.update({ value, resolved: null, dirty: true, error: null })
   }
+  /** Preserve earlier edits and errors separately from one cancellable drag. */
+  beginGesture(accept?: () => void): void {
+    if (!this.state.busy && !this.state.suspended) {
+      this.gestureSource = this.state
+      this.acceptGesture = accept
+    }
+  }
+  /** A completed drag keeps its draft and may now be flushed as one edit. */
+  endGesture(): void {
+    this.gestureSource = undefined
+    this.acceptGesture = undefined
+    if (this.refreshAfterGesture) {
+      this.refreshAfterGesture = false
+      // load records failures in the draft; deferred refresh has no caller.
+      void this.load().catch(() => undefined)
+    }
+  }
+  /** Restore the pre-drag draft without writing or undoing any earlier edit. */
+  cancelGesture(): void {
+    const source = this.gestureSource
+    if (!source || this.pending) return
+    ++this.request
+    this.update({
+      value: source.value,
+      resolved: source.resolved,
+      dirty: source.dirty,
+      error: source.error,
+    })
+    this.endGesture()
+  }
   flush(): Promise<void> {
     if (this.pending) return this.pending
+    // A save/navigation barrier accepts the current draft, ending cancellation.
+    const accept = this.acceptGesture
+    this.endGesture()
+    accept?.()
     if (!this.state.dirty || !this.state.value) return Promise.resolve()
     const value = this.state.value
     this.update({ busy: true })
