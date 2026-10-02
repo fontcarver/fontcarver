@@ -26,6 +26,9 @@ are complete. Publication and macOS/Windows validation remain outside this batch
 - [x] Add an [illustrated welcome guide](user/context-help.md#start-from-the-welcome-screen)
       using accepted screenshots, the three entry labels in both languages and
       a command-search example (the user's separate documentation task).
+- [x] Check welcome and command palette at actual 200% browser zoom in both
+      languages/themes; fix long palette descriptions hiding command names and
+      add four reflow regressions ([acceptance](p5ux-zoom-acceptance.md)).
 
 The result of this batch belongs in [integrated acceptance](p5f-w3-integration-acceptance.md).
 The [112-row gate](p5-feature-audit.md) retains **110 Complete / 2 Partial**;
@@ -55,6 +58,10 @@ alive for 15 seconds in an isolated virtual display without input automation;
 this verifies graphical-process startup, not interactive desktop workflows.
 
 ## Remaining delivery gates
+
+The verified `f6f6cf9` Linux candidates remain the previous integrated package
+checkpoint. The subsequent palette reflow fix is accepted in source; future
+installer builds must include it and repeat package verification.
 
 | Item                    | Remaining work                                                                                                                                                                                                                   |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -98,9 +105,10 @@ Requested for the backlog on 2026-10-02. These are optional future work, not
 requirements added to the current local verification and installer batch.
 Choose and scope each item separately before implementation; the current
 bounded acceptances below remain unchanged.
-The user subsequently authorized and completed the single welcome-screen
-discovery increment above. The broader first-use research and other items remain
-future work; no further item has been selected for implementation.
+The user subsequently authorized and completed the welcome-screen discovery,
+illustrated guide and bounded 200% welcome/palette check above. The broader
+first-use research and other items remain future work. Stop after the current
+task as requested; no further item has been selected for implementation.
 
 ### Experience polish
 
@@ -110,6 +118,10 @@ future work; no further item has been selected for implementation.
 - [ ] Validate trackpad scrolling, zoom and gesture interactions on real hardware.
 - [ ] Check high-DPI displays, display scaling and larger UI text for readable
       labels, reachable controls, visible focus and unclipped dialogs.
+- [ ] Adapt the global application menu to zoom-reduced widths: at 200% in a
+      1366×768 window, the English Help title extends beyond the right edge.
+      Keep all menu titles and their popups reachable; the welcome/palette check
+      above does not close this separate shell issue.
 - [ ] Exercise long editing sessions with large fonts; measure responsiveness,
       memory growth, save/recovery behavior and workspace comfort.
 - [ ] Collect trial feedback from practicing type designers using real projects;

@@ -12,6 +12,9 @@ the user's one additional small welcome-discovery task.
 The subsequent [illustrated welcome guide](user/context-help.md#start-from-the-welcome-screen)
 reuses verified screenshots; this documentation addition leaves the effort
 estimate and feature-audit counts unchanged.
+The later [200% welcome/palette check](p5ux-zoom-acceptance.md) fixes a bounded
+layout defect; its four browser regressions and the remaining global-menu
+overflow are recorded separately. The estimate remains unchanged.
 The [future experience and feature backlog](TODO.md#future-experience-and-feature-backlog)
 is explicitly optional later scope; listing it does not increase completed effort.
 Publication and macOS/Windows

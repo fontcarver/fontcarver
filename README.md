@@ -42,13 +42,16 @@ The font logic is built on the permissively licensed Rust font ecosystem:
 ## Status
 
 P0–P4 are accepted within their documented scopes. P5's professional-finish
-checklist has **110 Complete / 2 Partial** rows. The latest local verification
+checklist has **110 Complete / 2 Partial** rows. The integrated local milestone
 passes 2,093 Rust tests, 2,914 frontend tests and all 105 default browser tests,
 including the external 65,535-glyph CJK font and actual download workflows.
 Real external `ttfautohint` execution and an independent English/Chinese review
 are also complete. The latest browser walkthrough improved compact layouts,
 editing gestures, shortcuts and focus; the welcome page now links directly to
 getting-started help, command search and shortcut settings.
+The later [200% zoom check](docs/p5ux-zoom-acceptance.md) fixes long command-palette
+text and adds four targeted browser regressions; the complete 105-case run above
+belongs to the earlier milestone.
 
 Actual Linux deb and thin AppImage candidates from `f6f6cf9` have been rebuilt and verified,
 including isolated APT install/reinstall/removal and AppImage startup.

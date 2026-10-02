@@ -1,0 +1,206 @@
+[
+  {
+    "cssZoom": "1",
+    "dialog": [
+      61.5,
+      46.078125,
+      560,
+      320.125
+    ],
+    "dpr": 2,
+    "failures": [],
+    "listWidth": 553,
+    "rows": 163,
+    "scrollWidth": 553,
+    "theme": "light",
+    "viewport": [
+      683,
+      384
+    ],
+    "visualScale": 1,
+    "language": "zh-CN",
+    "welcomeTraversal": [
+      {
+        "bottom": 88.2421875,
+        "text": "新建字体…",
+        "top": 58.2421875
+      },
+      {
+        "bottom": 260.9296875,
+        "text": "入门",
+        "top": 227.53125
+      },
+      {
+        "bottom": 294.328125,
+        "text": "命令面板…Ctrl+Shift+PCtrl+K",
+        "top": 260.9296875
+      },
+      {
+        "bottom": 327.7265625,
+        "text": "键盘快捷键",
+        "top": 294.328125
+      }
+    ],
+    "lastResult": {
+      "bottom": 332.40625,
+      "listBottom": 332.2578125,
+      "listTop": 132.578125,
+      "top": 285.6171875
+    },
+    "tabCycle": true,
+    "enterEscape": true
+  },
+  {
+    "cssZoom": "1",
+    "dialog": [
+      61.5,
+      46.078125,
+      560,
+      320.125
+    ],
+    "dpr": 2,
+    "failures": [],
+    "listWidth": 553,
+    "rows": 163,
+    "scrollWidth": 553,
+    "theme": "dark",
+    "viewport": [
+      683,
+      384
+    ],
+    "visualScale": 1,
+    "language": "zh-CN",
+    "welcomeTraversal": [
+      {
+        "bottom": 88.2421875,
+        "text": "新建字体…",
+        "top": 58.2421875
+      },
+      {
+        "bottom": 260.9296875,
+        "text": "入门",
+        "top": 227.53125
+      },
+      {
+        "bottom": 294.328125,
+        "text": "命令面板…Ctrl+Shift+PCtrl+K",
+        "top": 260.9296875
+      },
+      {
+        "bottom": 327.7265625,
+        "text": "键盘快捷键",
+        "top": 294.328125
+      }
+    ],
+    "lastResult": {
+      "bottom": 332.40625,
+      "listBottom": 332.2578125,
+      "listTop": 132.578125,
+      "top": 285.6171875
+    },
+    "tabCycle": true,
+    "enterEscape": true
+  },
+  {
+    "cssZoom": "1",
+    "dialog": [
+      61.5,
+      46.078125,
+      560,
+      320.125
+    ],
+    "dpr": 2,
+    "failures": [],
+    "listWidth": 553,
+    "rows": 163,
+    "scrollWidth": 553,
+    "theme": "dark",
+    "viewport": [
+      683,
+      384
+    ],
+    "visualScale": 1,
+    "language": "en",
+    "welcomeTraversal": [
+      {
+        "bottom": 88.2421875,
+        "text": "New Font…",
+        "top": 58.2421875
+      },
+      {
+        "bottom": 260.9296875,
+        "text": "Getting started",
+        "top": 227.53125
+      },
+      {
+        "bottom": 294.328125,
+        "text": "Command Palette…Ctrl+Shift+PCtrl+K",
+        "top": 260.9296875
+      },
+      {
+        "bottom": 327.7265625,
+        "text": "Keyboard Shortcuts",
+        "top": 294.328125
+      }
+    ],
+    "lastResult": {
+      "bottom": 332.2421875,
+      "listBottom": 332.2578125,
+      "listTop": 132.578125,
+      "top": 285.453125
+    },
+    "tabCycle": true,
+    "enterEscape": true
+  },
+  {
+    "cssZoom": "1",
+    "dialog": [
+      61.5,
+      46.078125,
+      560,
+      320.125
+    ],
+    "dpr": 2,
+    "failures": [],
+    "listWidth": 553,
+    "rows": 163,
+    "scrollWidth": 553,
+    "theme": "light",
+    "viewport": [
+      683,
+      384
+    ],
+    "visualScale": 1,
+    "language": "en",
+    "welcomeTraversal": [
+      {
+        "bottom": 88.2421875,
+        "text": "New Font…",
+        "top": 58.2421875
+      },
+      {
+        "bottom": 260.9296875,
+        "text": "Getting started",
+        "top": 227.53125
+      },
+      {
+        "bottom": 294.328125,
+        "text": "Command Palette…Ctrl+Shift+PCtrl+K",
+        "top": 260.9296875
+      },
+      {
+        "bottom": 327.7265625,
+        "text": "Keyboard Shortcuts",
+        "top": 294.328125
+      }
+    ],
+    "lastResult": {
+      "bottom": 332.2421875,
+      "listBottom": 332.2578125,
+      "listTop": 132.578125,
+      "top": 285.453125
+    },
+    "tabCycle": true,
+    "enterEscape": true
+  }
+]

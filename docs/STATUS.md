@@ -22,7 +22,17 @@ Documentation verification passed: visual inspection of the reused captures,
 checks. Application/tooling inputs are unchanged; no application tests were rerun
 for this documentation task.
 
-Final application/tooling source **`f6f6cf9`** passes **2,914 frontend tests /
+The latest bounded follow-up verifies welcome and command palette at actual
+200% browser zoom in English/Chinese and light/dark, repairs clipped command
+names and adds four passing reflow cases. See [zoom acceptance](p5ux-zoom-acceptance.md).
+The final frontend rerun passes 2,914 tests / 348 files, type/lint/format and build.
+Its private browser/servers and 37.8 MB of temporary data are cleaned; resource
+check passes at 5.33 GiB build, 0.00 GiB temporary and 616.31 GiB free.
+The separate global-menu overflow found there is recorded in TODO. Existing
+Linux candidates below predate this CSS repair and remain the earlier package
+checkpoint. The user requested stopping after this task.
+
+The prior integrated application/tooling source **`f6f6cf9`** passes **2,914 frontend tests /
 348 files**, type checking, lint, formatting and production build. The final
 [browser regression](p5ux-browser-acceptance.md) passes **105/105**, with zero
 failures, skips or retries and the real external CJK font enabled. Its maximum
@@ -78,7 +88,7 @@ Final cleanup stopped owned browser/server/probe processes and removed their
 scratch directories, including old candidate copies. Retained final packages
 remain under `target/release/bundle/`. The resource gate passes: **5.33 GiB build /
 12,262 files, 0.00 GiB temporary / 1 file, 616.36 GiB free**. Subsequent records
-commits change documentation only; the final package manifest identifies the
+commits for that milestone changed documentation only; the package manifest identifies the
 application/tooling source above.
 The [independent final records review](p5ux-final-records-review.md) accepted
 the current status, backlog, audit counts and source/artifact evidence.
