@@ -17,6 +17,7 @@ import {
 import { createMockTransport, noChange } from '../../../test/mockTransport'
 import { ApiCallError } from '../../../transport'
 import { buildScene } from '../glyphScene'
+import { useUiStore } from '../../../stores/uiStore'
 import { GlyphDatabasePanel } from './GlyphDatabasePanel'
 import type { PanelContext } from './panelContext'
 
@@ -62,10 +63,49 @@ function database(overrides: Partial<GlyphDataState> = {}): GlyphDataState {
 }
 
 beforeEach(() => {
+  useUiStore.setState({
+    sections: { 'glyph-database': true, 'glyph-database-custom': true },
+  })
   useDocumentStore.setState(initialDocumentState())
   useDocumentStore.getState().ensure(1)
 })
-afterEach(() => setTransport(undefined))
+afterEach(() => {
+  setTransport(undefined)
+  useUiStore.setState({ sections: {} })
+})
+
+it('keeps advanced data closed initially and remembers each disclosure without losing a draft', async () => {
+  useUiStore.setState({ sections: {} })
+  setTransport(createMockTransport({ 'glyphdata.state': () => database() }))
+  const props = context()
+  const { rerender } = render(<GlyphDatabasePanel {...props} />)
+  const databaseToggle = screen.getByText('Glyph database')
+  expect(databaseToggle.closest('details')).not.toHaveAttribute('open')
+  await userEvent.click(databaseToggle)
+  await waitFor(() =>
+    expect(useUiStore.getState().sections['glyph-database']).toBe(true),
+  )
+  const customToggle = screen.getByText('Custom glyph data')
+  expect(customToggle.closest('details')).not.toHaveAttribute('open')
+  await userEvent.click(customToggle)
+  const editor = await screen.findByRole('textbox', {
+    name: 'Custom glyph data JSON',
+  })
+  await waitFor(() => expect(editor).toBeEnabled())
+  fireEvent.change(editor, {
+    target: { value: '{"version":1,"glyphs":{"A":{}}}' },
+  })
+  await userEvent.click(databaseToggle)
+  await waitFor(() =>
+    expect(useUiStore.getState().sections['glyph-database']).toBe(false),
+  )
+  expect(useUiStore.getState().sections['glyph-database-custom']).toBe(true)
+  rerender(<GlyphDatabasePanel {...props} reload={vi.fn()} />)
+  await userEvent.click(databaseToggle)
+  expect(
+    await screen.findByRole('textbox', { name: 'Custom glyph data JSON' }),
+  ).toHaveValue('{"version":1,"glyphs":{"A":{}}}')
+})
 
 it('shows effective defaults and updates only the current glyph', async () => {
   const transport = createMockTransport({

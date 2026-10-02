@@ -4,6 +4,7 @@ import { call, type GlyphDataState } from '../../../api'
 import { Button } from '../../../components/Button'
 import { errorNotice } from '../../../i18n/errors'
 import { useDocumentStore } from '../../../stores/documentStore'
+import { useUiStore } from '../../../stores/uiStore'
 import styles from './GlyphDatabasePanel.module.css'
 import type { PanelContext } from './panelContext'
 
@@ -31,6 +32,13 @@ export function GlyphDatabasePanel({ target, gid, reload }: PanelContext) {
   const { t } = useTranslation()
   const doc = target.doc
   const id = useId()
+  const databaseOpen = useUiStore(
+    (state) => state.sections['glyph-database'] ?? false,
+  )
+  const customDataOpen = useUiStore(
+    (state) => state.sections['glyph-database-custom'] ?? false,
+  )
+  const setSection = useUiStore((state) => state.setSection)
   const generation = useDocumentStore(
     (state) => state.byDoc[doc]?.generation ?? 0,
   )
@@ -156,7 +164,14 @@ export function GlyphDatabasePanel({ target, gid, reload }: PanelContext) {
   }
 
   return (
-    <details className={styles.section} open>
+    <details
+      className={styles.section}
+      open={databaseOpen}
+      onToggle={(event) => {
+        if (event.target === event.currentTarget)
+          setSection('glyph-database', event.currentTarget.open)
+      }}
+    >
       <summary className={styles.title}>{t('glyphDatabase.title')}</summary>
       {notice && (
         <div role="alert" className={styles.error}>
@@ -199,7 +214,14 @@ export function GlyphDatabasePanel({ target, gid, reload }: PanelContext) {
           </Button>
         </>
       )}
-      <details className={styles.overlay} open>
+      <details
+        className={styles.overlay}
+        open={customDataOpen}
+        onToggle={(event) => {
+          if (event.target === event.currentTarget)
+            setSection('glyph-database-custom', event.currentTarget.open)
+        }}
+      >
         <summary>{t('glyphDatabase.overlayTitle')}</summary>
         <p id={`${id}-description`} className={styles.description}>
           {t('glyphDatabase.overlayDescription')}

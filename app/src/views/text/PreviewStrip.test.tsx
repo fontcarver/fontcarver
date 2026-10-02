@@ -70,6 +70,10 @@ function Harness({
   )
 }
 
+function openSettings() {
+  fireEvent.click(screen.getByRole('button', { name: 'Preview settings' }))
+}
+
 function recordContexts() {
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => {
     const recording = createRecordingContext()
@@ -152,6 +156,7 @@ describe('PreviewStrip', () => {
     recordContexts()
     const onChange = vi.fn()
     render(<Harness onChange={onChange} />)
+    openSettings()
     fireEvent.click(
       screen.getByRole('button', { name: 'Flip preview horizontally' }),
     )
@@ -175,6 +180,7 @@ describe('PreviewStrip', () => {
   it('applies custom sizes and preserves rendered sizes after an invalid draft', () => {
     recordContexts()
     render(<Harness />)
+    openSettings()
     fireEvent.change(
       screen.getByRole('textbox', { name: 'Waterfall sizes (px)' }),
       {
@@ -206,6 +212,7 @@ describe('PreviewStrip', () => {
 
   it('says which rule an entry broke instead of restating the grammar', () => {
     render(<Harness />)
+    openSettings()
     const field = screen.getByRole('textbox', {
       name: 'Waterfall sizes (px)',
     })
@@ -233,6 +240,7 @@ describe('PreviewStrip', () => {
   it('draws the first eight sizes of a long range and says that it cut it', () => {
     const onChange = vi.fn()
     render(<Harness onChange={onChange} />)
+    openSettings()
     const field = screen.getByRole('textbox', {
       name: 'Waterfall sizes (px)',
     })
@@ -254,6 +262,7 @@ describe('PreviewStrip', () => {
   it('expands a range with a step into labelled waterfall rows', () => {
     const onChange = vi.fn()
     render(<Harness onChange={onChange} />)
+    openSettings()
     const field = screen.getByRole('textbox', {
       name: 'Waterfall sizes (px)',
     })
@@ -298,6 +307,7 @@ describe('PreviewStrip', () => {
   it('asks the owner to switch content rather than keeping its own mode', () => {
     const onSettingsChange = vi.fn()
     render(<PreviewStrip {...props({ onSettingsChange })} />)
+    openSettings()
     fireEvent.change(
       screen.getByRole('combobox', { name: 'Preview content' }),
       { target: { value: 'single' } },
@@ -320,6 +330,7 @@ describe('PreviewStrip', () => {
         })}
       />,
     )
+    openSettings()
     const picker = screen.getByRole('combobox', { name: /instance/i })
     expect(
       [...picker.querySelectorAll('optgroup')].map((group) =>
@@ -338,6 +349,7 @@ describe('PreviewStrip', () => {
         })}
       />,
     )
+    openSettings()
     expect(
       screen.queryByRole('combobox', { name: /instance/i }),
     ).not.toBeInTheDocument()
@@ -384,16 +396,16 @@ describe('PreviewStrip', () => {
     const onHeightChange = vi.fn()
     render(<PreviewStrip {...props({ onDetach, onHeightChange })} />)
     const divider = screen.getByRole('separator', { name: 'Resize preview' })
-    expect(divider).toHaveAttribute('aria-valuenow', '160')
+    expect(divider).toHaveAttribute('aria-valuenow', '96')
     fireEvent.pointerDown(divider, { pointerId: 1, clientY: 400, button: 0 })
     fireEvent.pointerMove(divider, { pointerId: 1, clientY: 360 })
     fireEvent.pointerUp(divider, { pointerId: 1 })
-    expect(onHeightChange).toHaveBeenLastCalledWith(200)
-    expect(divider).toHaveAttribute('aria-valuenow', '200')
+    expect(onHeightChange).toHaveBeenLastCalledWith(136)
+    expect(divider).toHaveAttribute('aria-valuenow', '136')
     fireEvent.keyDown(divider, { key: 'Home' })
-    expect(onHeightChange).toHaveBeenLastCalledWith(120)
+    expect(onHeightChange).toHaveBeenLastCalledWith(96)
     fireEvent.keyDown(divider, { key: 'ArrowDown' })
-    expect(divider).toHaveAttribute('aria-valuenow', '120')
+    expect(divider).toHaveAttribute('aria-valuenow', '96')
     fireEvent.keyDown(divider, { key: 'End' })
     expect(onHeightChange).toHaveBeenLastCalledWith(600)
     fireEvent.click(screen.getByRole('button', { name: 'Detach preview' }))

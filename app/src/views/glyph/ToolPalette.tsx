@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { selectActiveTool, useEditorStore } from '../../stores/editorStore'
@@ -30,13 +30,44 @@ export function ToolPalette() {
   const setTool = useEditorStore((state) => state.setTool)
   const overrides = useKeymapStore((state) => state.overrides)
   const hint = t('shortcuts.toolHint')
+  const strip = useRef<HTMLDivElement>(null)
+  const [focus, setFocus] = useState({ active, tool: active })
+  const tabStop = focus.active === active ? focus.tool : active
+  useEffect(() => {
+    strip.current
+      ?.querySelector<HTMLButtonElement>(`[data-tool="${active}"]`)
+      ?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+  }, [active])
 
   return (
     <div
+      ref={strip}
       className={styles.strip}
       role="toolbar"
       aria-orientation="vertical"
       aria-label={t('tool.palette')}
+      onKeyDown={(event) => {
+        if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return
+        const buttons = [
+          ...event.currentTarget.querySelectorAll<HTMLButtonElement>('button'),
+        ]
+        const index = buttons.findIndex(
+          (button) => button === document.activeElement,
+        )
+        if (index < 0) return
+        event.preventDefault()
+        event.stopPropagation()
+        const next =
+          event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? buttons.length - 1
+              : (index +
+                  (event.key === 'ArrowDown' ? 1 : -1) +
+                  buttons.length) %
+                buttons.length
+        buttons[next]?.focus({ preventScroll: true })
+      }}
     >
       {TOOLS.map((tool, index) => {
         const Icon = tool.icon
@@ -56,10 +87,19 @@ export function ToolPalette() {
               className={classes.join(' ')}
               aria-label={label}
               aria-pressed={isActive}
+              data-tool={tool.id}
+              tabIndex={tabStop === tool.id ? 0 : -1}
               aria-description={hint}
               data-help-topic="glyph"
               title={`${binding ? `${label} (${formatShortcut(binding)})` : label}\n${hint}`}
               onClick={() => setTool(tool.id)}
+              onFocus={(event) => {
+                setFocus({ active, tool: tool.id })
+                event.currentTarget.scrollIntoView?.({
+                  block: 'nearest',
+                  inline: 'nearest',
+                })
+              }}
             >
               <Icon size={18} strokeWidth={1.5} aria-hidden="true" />
             </button>

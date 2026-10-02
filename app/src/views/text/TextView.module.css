@@ -4,9 +4,10 @@
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-  /* On a short window the text and spacing chrome is taller than the pane;
-     scroll the view instead of pushing the canvas off-screen. */
+  /* Secondary controls have their own bounded scroll area. Keep this fallback
+     for very short windows, so the canvas floor and preview remain reachable. */
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .srOnly {
   position: absolute;

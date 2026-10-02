@@ -86,6 +86,7 @@ it('shows the waterfall, flip and blur the docked strip stored on the tab', asyn
   expect(
     screen.getByRole('button', { name: 'Flip preview horizontally' }),
   ).toHaveAttribute('aria-pressed', 'true')
+  fireEvent.click(screen.getByRole('button', { name: 'Preview settings' }))
   expect(screen.getByRole('spinbutton', { name: 'Blur (px)' })).toHaveValue(2)
   expect(screen.getByRole('img', { name: '10 px preview' })).toBeVisible()
   expect(screen.getByRole('img', { name: '20 px preview' })).toBeVisible()
@@ -98,6 +99,7 @@ it('writes its own changes back to the tab, so the docked strip follows', async 
   await waitFor(() =>
     expect(document.querySelector('[data-preview-theme]')).not.toBeNull(),
   )
+  fireEvent.click(screen.getByRole('button', { name: 'Preview settings' }))
   fireEvent.change(
     screen.getByRole('textbox', { name: 'Waterfall sizes (px)' }),
     { target: { value: '16-48/16' } },

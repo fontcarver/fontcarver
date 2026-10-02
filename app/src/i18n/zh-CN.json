@@ -266,8 +266,8 @@
     "view": {
       "toggleSidebar": "切换侧边栏",
       "toggleInspector": "切换检查器",
-      "zoomIn": "放大单元格",
-      "zoomOut": "缩小单元格",
+      "zoomIn": "放大",
+      "zoomOut": "缩小",
       "theme": {
         "light": "浅色主题",
         "dark": "深色主题",
@@ -2272,7 +2272,7 @@
     "copy": "复制像素",
     "cut": "剪切像素",
     "paste": "粘贴像素",
-    "editHint": "拖动绘制，强调色线表示基线。调整画布尺寸保留基线坐标；变换和粘贴会裁切超出画布的像素。",
+    "editHint": "拖动绘制。按住空格键拖动，或按住鼠标中键拖动，可平移画布。Escape 可取消当前手势。强调色线表示基线。调整画布尺寸保留基线坐标；变换和粘贴会裁切超出画布的像素。",
     "saving": "正在保存…",
     "unsaved": "有本地修改",
     "saved": "已写入文档",
@@ -3239,6 +3239,7 @@
     "blocked": "无法打开窗口。"
   },
   "proofPreview": {
+    "settings": "预览设置",
     "flipHorizontal": "水平翻转预览",
     "flipVertical": "垂直翻转预览",
     "blur": "模糊（px）",

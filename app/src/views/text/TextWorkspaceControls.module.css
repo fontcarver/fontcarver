@@ -1,0 +1,38 @@
+.secondaryControls {
+  flex: none;
+  min-height: 0;
+  max-height: min(32vh, 240px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  background: var(--color-surface-raised);
+}
+
+.kerning {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sectionToggle {
+  display: flex;
+  width: 100%;
+  min-height: 28px;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-size-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sectionToggle:hover {
+  background: var(--color-hover);
+}
+
+.sectionToggle:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}

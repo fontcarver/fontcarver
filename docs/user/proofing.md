@@ -12,12 +12,17 @@ at once. `Mod+3` (**View → Text preview strip**) shows and hides it, and the
 divider at its top resizes it with the pointer or, once focused, with
 `Home`, `End`, `↑` and `↓`.
 
+The default strip is 96 px high, leaving more room for the canvas. Open
+**Preview settings** in its header to change the instance, content, blur or
+waterfall sizes. While settings are open the strip uses at least 160 px; closing
+them restores your chosen height. Previously saved strip heights are preserved.
+
 | Control            | What it does                                                                                    |
 | ------------------ | ----------------------------------------------------------------------------------------------- |
 | Preview instance   | Renders a design-space master or a named instance (see below).                                  |
-| Preview content    | The whole run, or the active glyph alone at every step.                                         |
+| Preview content    | The whole run, or the active glyph alone at every size.                                         |
 | Blur (px)          | 0 to 4 pixels of blur, for judging weight and rhythm the way distance or a screen softens them. |
-| Waterfall sizes    | The steps the strip draws; see **Waterfall steps**.                                             |
+| Waterfall sizes    | The sizes the strip draws; see **Waterfall sizes**.                                             |
 | Flip horizontally  | Mirrors the preview, which exposes imbalance the eye has stopped noticing.                      |
 | Flip vertically    | Mirrors it top to bottom, for the same reason.                                                  |
 | Light/dark preview | Inverts the preview's ink and background independently of the application theme.                |
@@ -27,21 +32,21 @@ Every one of these settings belongs to the tab, not to the strip: the detached
 window shows exactly what the docked strip shows, and a saved workspace reopens
 with the same waterfall, flip, blur and content choice.
 
-### Waterfall steps
+### Waterfall sizes
 
 The **Waterfall sizes** field takes either form:
 
 - a list, `12, 24, 48`, of up to eight sizes; or
-- a range with a step, `8-72/8`, which expands to `8, 16, 24, …`. `8..72` and
-  `8 to 72` are the same thing, and a range without `/step` picks the smallest
-  whole step that still fits eight rows.
+- a range with an increment, `8-72/8`, which expands to `8, 16, 24, …`. `8..72`
+  and `8 to 72` are the same thing, and a range without `/increment` picks the
+  smallest whole increment that still fits eight rows.
 
 Sizes run from 6 to 256 pixels per em. The field always shows the list that is
 actually being drawn, so an accepted range is replaced by the sizes it produced.
 
-A waterfall draws at most eight steps. A **range** longer than that is cut to its
+A waterfall draws at most eight sizes. A **range** longer than that is cut to its
 first eight and says so, because a range describes an intention that is still
-useful when it does not fit — `8-72/8` asks for nine steps and draws `8` to `64`.
+useful when it does not fit — `8-72/8` asks for nine sizes and draws `8` to `64`.
 A **list** is an explicit choice, so a ninth entry is refused rather than
 dropped. Any refused entry names the rule it broke — an unreadable number, a size
 out of range, a repeated size, a reversed range — and leaves the drawn waterfall

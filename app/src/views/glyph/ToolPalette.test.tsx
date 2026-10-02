@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { initialEditorState, useEditorStore } from '../../stores/editorStore'
 import { useKeymapStore } from '../../stores/keymapStore'
@@ -14,6 +14,8 @@ beforeEach(() => {
   useEditorStore.setState(initialEditorState())
   useKeymapStore.setState({ overrides: {} })
 })
+
+afterEach(() => vi.restoreAllMocks())
 
 describe('ToolPalette', () => {
   it('renders every tool with its name and shortcut', () => {
@@ -78,5 +80,69 @@ describe('ToolPalette', () => {
       'true',
     )
     expect(useEditorStore.getState().tool).toBe('select')
+  })
+
+  it('reaches every tool with arrow keys and leaves the toolbar with Tab', async () => {
+    const user = userEvent.setup()
+    render(
+      <>
+        <button>Before tools</button>
+        <ToolPalette />
+        <button>After tools</button>
+      </>,
+    )
+    await user.tab()
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'Select' })).toHaveFocus()
+    for (const tool of TOOLS.slice(1)) {
+      await user.keyboard('{ArrowDown}')
+      expect(
+        screen.getByRole('button', { name: i18n.t(tool.labelKey) }),
+      ).toHaveFocus()
+    }
+    expect(useEditorStore.getState().tool).toBe('select')
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'After tools' })).toHaveFocus()
+    await user.tab({ shift: true })
+    expect(
+      screen.getByRole('button', { name: i18n.t(TOOLS.at(-1)!.labelKey) }),
+    ).toHaveFocus()
+    await user.keyboard('{Home}')
+    expect(screen.getByRole('button', { name: 'Select' })).toHaveFocus()
+    await user.tab({ shift: true })
+    expect(screen.getByRole('button', { name: 'Before tools' })).toHaveFocus()
+  })
+
+  it('keeps a focused or keyboard-selected lower tool in view without stealing canvas focus', async () => {
+    const scroll = vi.fn()
+    const original = HTMLElement.prototype.scrollIntoView
+    HTMLElement.prototype.scrollIntoView = scroll
+    try {
+      const user = userEvent.setup()
+      render(
+        <>
+          <button>Canvas focus</button>
+          <ToolPalette />
+        </>,
+      )
+      const canvas = screen.getByRole('button', { name: 'Canvas focus' })
+      canvas.focus()
+      act(() => useEditorStore.getState().setTool('hand'))
+      expect(canvas).toHaveFocus()
+      expect(scroll).toHaveBeenLastCalledWith({
+        block: 'nearest',
+        inline: 'nearest',
+      })
+      await user.tab()
+      expect(screen.getByRole('button', { name: 'Hand' })).toHaveFocus()
+      await user.keyboard('{End}')
+      expect(
+        screen.getByRole('button', { name: i18n.t(TOOLS.at(-1)!.labelKey) }),
+      ).toHaveFocus()
+      await user.keyboard('{Enter}')
+      expect(useEditorStore.getState().tool).toBe(TOOLS.at(-1)!.id)
+    } finally {
+      HTMLElement.prototype.scrollIntoView = original
+    }
   })
 })

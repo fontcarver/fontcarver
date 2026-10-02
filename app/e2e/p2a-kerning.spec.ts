@@ -38,6 +38,9 @@ async function seedGroups(page: Page, doc: DocSummary) {
 }
 
 async function choosePair(page: Page) {
+  const disclosure = page.getByRole('button', { name: 'Kerning', exact: true })
+  if ((await disclosure.getAttribute('aria-expanded')) === 'false')
+    await disclosure.click()
   const panel = page.getByTestId('text-kerning-panel')
   await expect(panel).toBeVisible()
   await page.getByTestId('text-kerning-first').fill('A')
@@ -126,6 +129,7 @@ test('creates, assigns, renames and explicitly removes an in-use shared group', 
   source,
 }) => {
   await openGlyphFromGrid(page, 'A')
+  await page.getByRole('button', { name: 'Kerning', exact: true }).click()
   const first = page.getByRole('group', { name: 'First side', exact: true })
   await first.getByRole('button', { name: 'Manage First side groups' }).click()
   await first

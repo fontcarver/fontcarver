@@ -149,6 +149,124 @@ test('failed pixel writes retain the draft and block tab navigation until retry'
     page.getByRole('tab', { name: FONT_TAB }).last(),
   ).toHaveAttribute('aria-selected', 'true')
 })
+test('cancels interrupted bitmap strokes without writing them on the next save', async ({
+  page,
+}) => {
+  const { directory, doc } = await setup(page)
+  const canvas = page.getByLabel('Bitmap pixel canvas')
+  const original = await image(page, doc.doc)
+  let writes = 0
+  page.on('request', (request) => {
+    if (request.url().endsWith('/api/bitmap.apply')) writes++
+  })
+  for (const cancellation of ['Escape', 'pointercancel', 'blur'] as const) {
+    const bounds = await canvas.boundingBox()
+    if (!bounds) throw new Error('bitmap canvas has no bounds')
+    await canvas.focus()
+    await page.mouse.move(
+      bounds.x + bounds.width * 0.15,
+      bounds.y + bounds.height * 0.15,
+    )
+    await page.mouse.down()
+    await page.mouse.move(
+      bounds.x + bounds.width * 0.35,
+      bounds.y + bounds.height * 0.15,
+    )
+    if (cancellation === 'Escape') await page.keyboard.press('Escape')
+    else if (cancellation === 'pointercancel')
+      await canvas.dispatchEvent('pointercancel', {
+        pointerId: 1,
+        pointerType: 'mouse',
+      })
+    else await canvas.blur()
+    await page.mouse.up()
+    expect((await image(page, doc.doc)).value).toEqual(original.value)
+    expect(writes).toBe(0)
+  }
+  const saved = join(directory, 'Cancelled-strokes.fcf')
+  await menuItem(page, 'File', /^Save As/)
+  const dialog = page.getByRole('dialog', { name: 'Save As' })
+  await dialog.getByRole('textbox', { name: 'Document path' }).fill(saved)
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(dialog).toBeHidden()
+  expect(writes).toBe(0)
+  const reopened = await openPathThroughDialog(page, saved)
+  expect((await image(page, reopened.doc)).value).toEqual(original.value)
+})
+
+test('pans a large bitmap with middle drag and held Space without changing pixels', async ({
+  page,
+}) => {
+  const { doc } = await setup(page)
+  const original = await image(page, doc.doc)
+  const large = {
+    ...original.value!,
+    bitmap: {
+      ...original.value!.bitmap,
+      width: 64,
+      height: 64,
+      rows: Array<number>(512).fill(0),
+    },
+    advance: 64,
+  }
+  await api(page, 'bitmap.apply', {
+    doc: doc.doc,
+    expected_generation: original.generation,
+    label: 'Prepare scrollable bitmap',
+    command: { SetGlyph: { ppem: 8, depth: 1, glyph: 'A', value: large } },
+  })
+  const canvas = page.getByLabel('Bitmap pixel canvas')
+  await page
+    .getByRole('combobox', { name: 'Zoom', exact: true })
+    .selectOption('32')
+  await expect
+    .poll(async () => (await canvas.boundingBox())?.width ?? 0)
+    .toBeGreaterThan(2000)
+  const scroll = () =>
+    canvas.evaluate((element) => {
+      const area = (
+        element as unknown as {
+          parentElement: { scrollLeft: number; scrollTop: number }
+        }
+      ).parentElement
+      return [area.scrollLeft, area.scrollTop]
+    })
+  for (const method of ['middle', 'space'] as const) {
+    const start = await canvas.evaluate((element) => {
+      const area = (
+        element as unknown as {
+          parentElement: {
+            scrollLeft: number
+            scrollTop: number
+            getBoundingClientRect: () => {
+              left: number
+              top: number
+              width: number
+              height: number
+            }
+          }
+        }
+      ).parentElement
+      area.scrollLeft = 100
+      area.scrollTop = 100
+      const bounds = area.getBoundingClientRect()
+      return {
+        x: bounds.left + Math.min(250, bounds.width / 2),
+        y: bounds.top + Math.min(200, bounds.height / 2),
+      }
+    })
+    await canvas.focus()
+    await page.mouse.move(start.x, start.y)
+    if (method === 'space') await page.keyboard.down('Space')
+    await page.mouse.down({ button: method === 'middle' ? 'middle' : 'left' })
+    await page.mouse.move(start.x - 60, start.y - 50)
+    await page.mouse.up({ button: method === 'middle' ? 'middle' : 'left' })
+    if (method === 'space') await page.keyboard.up('Space')
+    await expect.poll(scroll).toEqual([160, 150])
+    await expect(canvas).toHaveAttribute('data-tool', 'pencil')
+    expect((await image(page, doc.doc)).value).toEqual(large)
+  }
+})
 test('trace, regenerate, strike properties, tools and strike removal are undoable', async ({
   page,
 }) => {

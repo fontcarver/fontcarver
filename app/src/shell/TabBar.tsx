@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { PanelLeft, PanelRight } from 'lucide-react'
 
 import { IconButton } from '../components/IconButton'
 import { documentLabel, useSessionStore } from '../stores/sessionStore'
@@ -166,14 +167,14 @@ export function TabBar() {
           aria-pressed={panels.sidebar}
           onClick={() => togglePanel('sidebar')}
         >
-          ▤
+          <PanelLeft size={16} strokeWidth={1.5} aria-hidden="true" />
         </IconButton>
         <IconButton
           label={t('a11y.toggleInspector')}
           aria-pressed={panels.inspector}
           onClick={() => togglePanel('inspector')}
         >
-          ▥
+          <PanelRight size={16} strokeWidth={1.5} aria-hidden="true" />
         </IconButton>
       </div>
     </div>

@@ -266,8 +266,8 @@
     "view": {
       "toggleSidebar": "Toggle Sidebar",
       "toggleInspector": "Toggle Inspector",
-      "zoomIn": "Larger Cells",
-      "zoomOut": "Smaller Cells",
+      "zoomIn": "Zoom In",
+      "zoomOut": "Zoom Out",
       "theme": {
         "light": "Light Theme",
         "dark": "Dark Theme",
@@ -2272,7 +2272,7 @@
     "copy": "Copy pixels",
     "cut": "Cut pixels",
     "paste": "Paste pixels",
-    "editHint": "Drag to draw. The accent line marks the baseline. Resizing preserves baseline coordinates; transforms and paste are clipped to the canvas.",
+    "editHint": "Drag to draw. Hold Space or drag with the middle mouse button to pan. Escape cancels the current gesture. The accent line marks the baseline. Resizing preserves baseline coordinates; transforms and paste are clipped to the canvas.",
     "saving": "Saving…",
     "unsaved": "Local changes",
     "saved": "Saved to document",
@@ -3239,6 +3239,7 @@
     "blocked": "The window could not be opened."
   },
   "proofPreview": {
+    "settings": "Preview settings",
     "flipHorizontal": "Flip preview horizontally",
     "flipVertical": "Flip preview vertically",
     "blur": "Blur (px)",

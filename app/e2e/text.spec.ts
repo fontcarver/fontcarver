@@ -328,6 +328,7 @@ test('configures the waterfall as a list and as a range with a step', async ({
   await openTextTab(page, 'Hamburg')
   const strip = page.locator('[data-preview-theme]')
   await expect(strip).toHaveAttribute('data-preview-sizes', '12, 24, 48')
+  await strip.getByRole('button', { name: 'Preview settings' }).click()
   const sizes = strip.getByRole('textbox', { name: 'Waterfall sizes (px)' })
   await sizes.fill('8-32/8')
   await strip.getByRole('button', { name: 'Apply sizes' }).click()
@@ -610,6 +611,7 @@ test('previews a named instance and a second master from the strip', async ({
     })
 
     const strip = page.locator('[data-preview-theme]').first()
+    await strip.getByRole('button', { name: 'Preview settings' }).click()
     const picker = strip.getByRole('combobox', { name: 'Preview instance' })
     expect(
       await picker.locator('optgroup').evaluateAll((nodes) =>
