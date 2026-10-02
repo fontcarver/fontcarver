@@ -221,9 +221,17 @@ export async function movePointWithPointer(
     .poll(async () => {
       moved = (await outline(page, doc, gid)).contours[location.contour]
         ?.points[location.point]
-      return moved ? [moved.x, moved.y] : null
+      // Browser pointer coordinates are subpixel values after the workspace's
+      // fit transform. Compare intended font-space motion within 0.01 units;
+      // exact integer equality incorrectly rejects tiny transport roundoff.
+      return moved
+        ? Math.max(
+            Math.abs(moved.x - (location.x + delta.x)),
+            Math.abs(moved.y - (location.y + delta.y)),
+          )
+        : Infinity
     })
-    .toEqual([location.x + delta.x, location.y + delta.y])
+    .toBeLessThanOrEqual(0.01)
   return { ...location, x: moved?.x ?? 0, y: moved?.y ?? 0 }
 }
 
