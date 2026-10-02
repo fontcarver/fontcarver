@@ -25,16 +25,26 @@ for this documentation task.
 The earlier bounded follow-up verifies welcome and command palette at actual
 200% browser zoom in English/Chinese and light/dark, repairs clipped command
 names and adds four passing reflow cases. See [zoom acceptance](p5ux-zoom-acceptance.md).
-The latest [menu repair](p5ux-menu-zoom-acceptance.md) closes the separate English
+The subsequent [menu repair](p5ux-menu-zoom-acceptance.md) closes the separate English
 Help overflow found there. All menu titles and popups fit at 200%, including
 live resizing to a narrower window; English/Chinese × light/dark pass actual
 browser checks. Four new menu regressions and the four welcome/palette cases
 pass together, with zero retries. The full frontend rerun passes 2,914 tests /
 348 files, type/lint/format and build. Its private browser/servers and 28.9 MB
 of temporary data are cleaned; resource check passes at 5.33 GiB build,
-0.00 GiB temporary and 616.21 GiB free. Existing Linux candidates below predate
-both reflow repairs and remain the earlier package checkpoint. Work stops here
-as requested.
+0.00 GiB temporary and 616.21 GiB free.
+
+The latest [settings check](p5ux-settings-zoom-acceptance.md) fixes overflowing
+nudge fields in Preferences by letting them wrap. Actual 200% checks pass in
+English/Chinese × light/dark, including all three preferences categories,
+shortcut-list scrolling, conflict feedback, footer controls, Tab/Escape and
+focus return. Four new browser regressions pass at equivalent 200%, narrower
+and ordinary CSS widths, with zero retries. The latest full frontend run passes
+2,914 tests / 348 files, type/lint/format and build. Its browser/servers and
+39.0 MB of task data are cleaned; resource check passes at 5.33 GiB build,
+0.00 GiB temporary and 611.91 GiB free. Existing Linux candidates below
+predate these layout repairs and remain the earlier package checkpoint.
+Work stops after this task as requested.
 
 The prior integrated application/tooling source **`f6f6cf9`** passes **2,914 frontend tests /
 348 files**, type checking, lint, formatting and production build. The final

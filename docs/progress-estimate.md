@@ -13,9 +13,13 @@ The subsequent [illustrated welcome guide](user/context-help.md#start-from-the-w
 reuses verified screenshots; this documentation addition leaves the effort
 estimate and feature-audit counts unchanged.
 The later [200% welcome/palette check](p5ux-zoom-acceptance.md) and
-[menu repair](p5ux-menu-zoom-acceptance.md) fix bounded layout defects. The latest
+[menu repair](p5ux-menu-zoom-acceptance.md) fix bounded layout defects. That
 run passes their eight browser regressions and all 2,914 frontend tests; actual
 200% menu checks pass in both languages/themes. The estimate remains unchanged.
+The subsequent [settings check](p5ux-settings-zoom-acceptance.md) fixes overflowing
+nudge fields and adds four passing browser cases for Preferences and Keyboard
+Shortcuts. Both dialogs pass actual 200% checks in English/Chinese and light/dark;
+this bounded repair leaves the estimate and audit counts unchanged.
 The [future experience and feature backlog](TODO.md#future-experience-and-feature-backlog)
 is explicitly optional later scope; listing it does not increase completed effort.
 Publication and macOS/Windows

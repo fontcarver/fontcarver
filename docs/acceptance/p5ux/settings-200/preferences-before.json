@@ -1,0 +1,145 @@
+{
+  "success": true,
+  "data": {
+    "lifecycle": {
+      "effectiveLaunch": {
+        "browserLaunched": true,
+        "engine": "chrome",
+        "launchHash": 5471661664041160127
+      },
+      "launched": false,
+      "relaunchedBrowser": false,
+      "restartedBackground": false,
+      "restoreStatus": "not_configured",
+      "reused": true,
+      "saveStatus": "not_attempted"
+    },
+    "origin": "http://127.0.0.1:1483/",
+    "result": {
+      "dpr": 2,
+      "inputs": [
+        {
+          "client": 94,
+          "cls": "_number_1szwh_42",
+          "left": 347,
+          "right": 443,
+          "scroll": 94,
+          "tag": "INPUT",
+          "text": "Node size (px)"
+        },
+        {
+          "client": 94,
+          "cls": "_number_1szwh_42",
+          "left": 347,
+          "right": 443,
+          "scroll": 94,
+          "tag": "INPUT",
+          "text": "Handle size (px)"
+        },
+        {
+          "client": 94,
+          "cls": "_number_1szwh_42",
+          "left": 347,
+          "right": 443,
+          "scroll": 94,
+          "tag": "INPUT",
+          "text": "Arrow"
+        },
+        {
+          "client": 94,
+          "cls": "_number_1szwh_42",
+          "left": 451,
+          "right": 547,
+          "scroll": 94,
+          "tag": "INPUT",
+          "text": "Shift"
+        },
+        {
+          "client": 94,
+          "cls": "_number_1szwh_42",
+          "left": 555,
+          "right": 651,
+          "scroll": 94,
+          "tag": "INPUT",
+          "text": "Command"
+        },
+        {
+          "client": 94,
+          "cls": "_number_1szwh_42",
+          "left": 347,
+          "right": 443,
+          "scroll": 94,
+          "tag": "INPUT",
+          "text": "Grid size"
+        },
+        {
+          "client": 94,
+          "cls": "_number_1szwh_42",
+          "left": 347,
+          "right": 443,
+          "scroll": 94,
+          "tag": "INPUT",
+          "text": "Grid subdivisions"
+        }
+      ],
+      "overflow": [
+        {
+          "client": 486,
+          "cls": "_dialogBody_1br7x_40 _dialogScroll_1br7x_168",
+          "left": 13,
+          "right": 499,
+          "scroll": 638,
+          "tag": "DIV",
+          "text": "GeneralEditorSnappingNode size (px)Handle size (px)Nudge stepsArrowShiftCommandFont units "
+        },
+        {
+          "client": 438,
+          "cls": "_prefsLayout_1szwh_346",
+          "left": 37,
+          "right": 475,
+          "scroll": 614,
+          "tag": "DIV",
+          "text": "GeneralEditorSnappingNode size (px)Handle size (px)Nudge stepsArrowShiftCommandFont units "
+        },
+        {
+          "client": 272,
+          "cls": "_form_1szwh_7",
+          "left": 203,
+          "right": 475,
+          "scroll": 448,
+          "tag": "DIV",
+          "text": "Node size (px)Handle size (px)Nudge stepsArrowShiftCommandFont units an arrow key moves th"
+        },
+        {
+          "client": 272,
+          "cls": "_row_1szwh_13 _rowTop_1szwh_21",
+          "left": 203,
+          "right": 475,
+          "scroll": 448,
+          "tag": "DIV",
+          "text": "Nudge stepsArrowShiftCommandFont units an arrow key moves the selection, plain, with Shift"
+        },
+        {
+          "client": 128,
+          "cls": "_rowStack_1szwh_34",
+          "left": 347,
+          "right": 475,
+          "scroll": 304,
+          "tag": "DIV",
+          "text": "ArrowShiftCommandFont units an arrow key moves the selection, plain, with Shift and with t"
+        },
+        {
+          "client": 128,
+          "cls": "_nudgeRow_1szwh_382",
+          "left": 347,
+          "right": 475,
+          "scroll": 304,
+          "tag": "DIV",
+          "text": "ArrowShiftCommand"
+        }
+      ],
+      "viewport": [512, 384]
+    }
+  },
+  "error": null
+}

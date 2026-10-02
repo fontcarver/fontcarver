@@ -53,6 +53,9 @@ The later [200% zoom check](docs/p5ux-zoom-acceptance.md) fixes long command-pal
 text, and the [menu repair](docs/p5ux-menu-zoom-acceptance.md) keeps Help and its
 popup inside the window. Their eight targeted browser regressions pass together;
 the complete 105-case run above belongs to the earlier milestone.
+The subsequent [settings check](docs/p5ux-settings-zoom-acceptance.md) fixes
+overflowing nudge fields and adds four passing browser regressions for Preferences
+and Keyboard Shortcuts at zoom-reduced widths.
 
 Actual Linux deb and thin AppImage candidates from `f6f6cf9` have been rebuilt and verified,
 including isolated APT install/reinstall/removal and AppImage startup.

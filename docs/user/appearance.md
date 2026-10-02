@@ -57,6 +57,14 @@ voice with the interface.
 Font-unit numbers are formatted the same way in both languages, because a
 coordinate typed in one language has to be readable in the other.
 
+## Settings in a zoomed or short window
+
+Preferences and Keyboard Shortcuts keep their bottom buttons visible while
+their contents scroll. In **Preferences → Editor**, the three nudge fields wrap
+when space is tight. Scroll inside the form, or use Tab to bring the next
+control into view. The shortcut list also scrolls independently; search by
+command name, ID or binding to reach an action directly.
+
 ## Keyboard and screen readers
 
 - Every interactive control is reachable with Tab, and the tool strip, menus, the

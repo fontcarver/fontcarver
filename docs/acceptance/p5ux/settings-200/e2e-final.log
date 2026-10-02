@@ -1,0 +1,27 @@
+[WebServer] (node:3872100) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `pnpm --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:3872179) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 4 tests using 1 worker
+
+(node:3872202) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 e2e/settings-reflow.spec.ts:66:5 › keeps preferences and shortcut settings usable at 200% reflow: en/light (5.9s)
+[WebServer] 8:57:37 PM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+[WebServer] 8:57:40 PM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  2 e2e/settings-reflow.spec.ts:66:5 › keeps preferences and shortcut settings usable at 200% reflow: en/dark (3.5s)
+[WebServer] 8:57:44 PM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  3 e2e/settings-reflow.spec.ts:66:5 › keeps preferences and shortcut settings usable at 200% reflow: zh-CN/light (3.9s)
+[WebServer] 8:57:48 PM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  4 e2e/settings-reflow.spec.ts:66:5 › keeps preferences and shortcut settings usable at 200% reflow: zh-CN/dark (3.7s)
+
+  4 passed (18.7s)

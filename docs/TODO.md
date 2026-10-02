@@ -33,6 +33,11 @@ are complete. Publication and macOS/Windows validation remain outside this batch
       inside the window, allow wrapping at narrower widths and preserve mouse/
       keyboard access. Four new menu cases plus the four welcome/palette cases
       pass ([acceptance](p5ux-menu-zoom-acceptance.md)).
+- [x] Check Preferences and Keyboard Shortcuts at actual 200% zoom in both
+      languages/themes. Wrap overflowing nudge fields; verify all preferences
+      categories, list scrolling, conflict messages, footer controls and keyboard
+      focus. Four new browser regressions pass
+      ([acceptance](p5ux-settings-zoom-acceptance.md)).
 
 The result of this batch belongs in [integrated acceptance](p5f-w3-integration-acceptance.md).
 The [112-row gate](p5-feature-audit.md) retains **110 Complete / 2 Partial**;
@@ -64,7 +69,7 @@ this verifies graphical-process startup, not interactive desktop workflows.
 ## Remaining delivery gates
 
 The verified `f6f6cf9` Linux candidates remain the previous integrated package
-checkpoint. The subsequent palette and menu reflow fixes are accepted in source;
+checkpoint. The subsequent palette, menu and preferences reflow fixes are accepted in source;
 future installer builds must include them and repeat package verification.
 
 | Item                    | Remaining work                                                                                                                                                                                                                   |
@@ -110,7 +115,8 @@ requirements added to the current local verification and installer batch.
 Choose and scope each item separately before implementation; the current
 bounded acceptances below remain unchanged.
 The user subsequently authorized and completed the welcome-screen discovery,
-illustrated guide, bounded 200% welcome/palette check and menu repair above. The broader
+illustrated guide, bounded 200% welcome/palette check, menu repair and
+preferences/shortcut-settings check above. The broader
 first-use research and other items remain future work. Stop after the current
 task as requested; no further item has been selected for implementation.
 
