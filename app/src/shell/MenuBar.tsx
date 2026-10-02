@@ -21,7 +21,8 @@ export function MenuBar() {
   const { t } = useTranslation()
   useCommandRegistry()
   const [open, setOpen] = useState<MenuId | null>(null)
-  const focusFirstItemRef = useRef(false)
+  const pendingItemFocus = useRef<'first' | 'last' | null>(null)
+  const returnFocusRef = useRef<HTMLElement | null>(null)
   const barRef = useRef<HTMLDivElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
 
@@ -30,6 +31,30 @@ export function MenuBar() {
       ?.querySelector<HTMLButtonElement>(`[data-menu="${menu}"]`)
       ?.focus()
   }, [])
+
+  const focusItem = useCallback((edge: 'first' | 'last') => {
+    const items = popupRef.current?.querySelectorAll<HTMLButtonElement>(
+      '[role="menuitem"]:not(:disabled)',
+    )
+    ;(edge === 'first' ? items?.[0] : items?.[items.length - 1])?.focus()
+  }, [])
+
+  const rememberFocus = (element: EventTarget | null) => {
+    if (
+      element instanceof HTMLElement &&
+      element !== document.body &&
+      !barRef.current?.contains(element)
+    )
+      returnFocusRef.current = element
+  }
+
+  const enterMenu = (menu: MenuId, edge: 'first' | 'last') => {
+    if (open === menu) focusItem(edge)
+    else {
+      pendingItemFocus.current = edge
+      setOpen(menu)
+    }
+  }
 
   const moveMenu = useCallback(
     (current: MenuId, delta: number, keepOpen: boolean) => {
@@ -53,12 +78,10 @@ export function MenuBar() {
   }, [open])
 
   useEffect(() => {
-    if (open === null || !focusFirstItemRef.current) return
-    focusFirstItemRef.current = false
-    popupRef.current
-      ?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')
-      ?.focus()
-  }, [open])
+    if (open === null || pendingItemFocus.current === null) return
+    focusItem(pendingItemFocus.current)
+    pendingItemFocus.current = null
+  }, [open, focusItem])
 
   const onItemKeyDown = (event: React.KeyboardEvent, menu: MenuId) => {
     const items = [
@@ -80,8 +103,13 @@ export function MenuBar() {
       focusTitle(menu)
     } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault()
-      focusFirstItemRef.current = true
+      pendingItemFocus.current = 'first'
       moveMenu(menu, event.key === 'ArrowRight' ? 1 : -1, true)
+    } else if (event.key === 'Tab') {
+      // Continue native focus traversal from this menu's title, with its
+      // popup removed, instead of walking every action as a separate stop.
+      setOpen(null)
+      focusTitle(menu)
     }
   }
 
@@ -89,10 +117,14 @@ export function MenuBar() {
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault()
       moveMenu(menu, event.key === 'ArrowRight' ? 1 : -1, open !== null)
-    } else if (event.key === 'ArrowDown') {
+    } else if (
+      event.key === 'ArrowDown' ||
+      event.key === 'ArrowUp' ||
+      event.key === 'Enter' ||
+      event.key === ' '
+    ) {
       event.preventDefault()
-      focusFirstItemRef.current = true
-      setOpen(menu)
+      enterMenu(menu, event.key === 'ArrowUp' ? 'last' : 'first')
     } else if (event.key === 'Escape') {
       setOpen(null)
     }
@@ -126,6 +158,11 @@ export function MenuBar() {
           command={command}
           onRun={() => {
             setOpen(null)
+            // Restore before running: a command that opens a dialog or moves
+            // to another view can then choose its own focus destination.
+            if (returnFocusRef.current?.isConnected)
+              returnFocusRef.current.focus()
+            else focusTitle(menu)
             runCommand(command.id)
           }}
           onKeyDown={(event) => onItemKeyDown(event, menu)}
@@ -136,7 +173,19 @@ export function MenuBar() {
   }
 
   return (
-    <div ref={barRef} className={styles.menubar}>
+    <div
+      ref={barRef}
+      className={styles.menubar}
+      onPointerDownCapture={() => rememberFocus(document.activeElement)}
+      onFocusCapture={(event) => rememberFocus(event.relatedTarget)}
+      onBlurCapture={(event) => {
+        if (
+          !(event.relatedTarget instanceof Node) ||
+          !barRef.current?.contains(event.relatedTarget)
+        )
+          setOpen(null)
+      }}
+    >
       <span className={styles.wordmark}>{t('app.name')}</span>
       <div
         role="menubar"

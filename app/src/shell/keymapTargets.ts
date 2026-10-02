@@ -46,7 +46,13 @@ function scopeOf(command: Command): string {
 export function keymapTargets(): KeymapTarget[] {
   return [
     ...listCommands()
-      .filter((command) => !FIXED_SHORTCUT_IDS.has(command.id))
+      // Tools have palette commands, but their binding belongs to the tap/hold
+      // handler. Use the tool table below as their single editable row.
+      .filter(
+        (command) =>
+          !FIXED_SHORTCUT_IDS.has(command.id) &&
+          !command.id.startsWith('tool.'),
+      )
       .map((command) => ({
         id: command.id,
         title: command.title,

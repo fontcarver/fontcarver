@@ -5,6 +5,12 @@ binding. Edit a field using notation such as `Mod+Shift+P`; `Mod` means Command
 on macOS and Control on Windows/Linux. Clear a field to disable that binding,
 or choose **Restore** beside it to recover the shipped default.
 
+Use `Control` for the physical Control key on every platform, for example
+`Control+Shift+U`. The older spellings `Ctrl` and `Cmd` remain aliases of `Mod`
+for compatibility with saved keymaps. On macOS, physical Control is displayed
+as `⌃`, and `Mod` as `⌘`. `Control+Tab` and `Control+Shift+Tab` cycle app tabs;
+Command+Tab remains the operating system's app switcher.
+
 Changes are drafts until **Apply**. **Cancel** discards the draft.
 
 A conflict — the same chord in the same context — is reported in two places: in

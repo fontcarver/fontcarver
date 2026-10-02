@@ -126,8 +126,15 @@ it('dispatches the same actions on all three platforms modulo Cmd/Ctrl', () => {
       shiftKey: parsed.shift,
       altKey: parsed.alt,
     }
-    const mac = new KeyboardEvent('keydown', { ...init, metaKey: parsed.mod })
-    const pc = new KeyboardEvent('keydown', { ...init, ctrlKey: parsed.mod })
+    const mac = new KeyboardEvent('keydown', {
+      ...init,
+      metaKey: parsed.mod,
+      ctrlKey: Boolean(parsed.control),
+    })
+    const pc = new KeyboardEvent('keydown', {
+      ...init,
+      ctrlKey: parsed.mod || Boolean(parsed.control),
+    })
     // A binding with no Mod is identical on both sides, and the resolved
     // command must be the same action either way.
     expect(commandForEvent(mac, true), command.id).toBe(

@@ -3,6 +3,8 @@
 /** A shortcut broken into modifier flags and a normalised key. */
 export interface ParsedShortcut {
   readonly mod: boolean
+  /** Physical Control, independent of the platform's primary modifier. */
+  readonly control?: boolean
   readonly shift: boolean
   readonly alt: boolean
   readonly key: string
@@ -43,14 +45,19 @@ export function parseShortcut(shortcut: string): ParsedShortcut | null {
 
   if (parts.length === 0 || parts.some((part) => !part)) return null
   let mod = false
+  let control = false
   let shift = false
   let alt = false
   let key: string | undefined
   for (const part of parts) {
     const lower = part.toLowerCase()
     if (lower === 'mod' || lower === 'cmd' || lower === 'ctrl') {
-      if (mod) return null
+      // Ctrl/Cmd remain portable aliases for older saved keymaps.
+      if (mod || control) return null
       mod = true
+    } else if (lower === 'control') {
+      if (control || mod) return null
+      control = true
     } else if (lower === 'shift') {
       if (shift) return null
       shift = true
@@ -68,7 +75,9 @@ export function parseShortcut(shortcut: string): ParsedShortcut | null {
         return null
     }
   }
-  return key === undefined ? null : { mod, shift, alt, key }
+  return key === undefined
+    ? null
+    : { mod, ...(control ? { control: true } : {}), shift, alt, key }
 }
 
 const MAC_SYMBOLS: Record<string, string> = {
@@ -85,6 +94,7 @@ const KEY_LABELS: Record<string, string> = {
   escape: 'Esc',
   enter: '↵',
   space: 'Space',
+  tab: 'Tab',
 }
 
 /** Renders a shortcut for display: `⌘⇧P` on macOS, `Ctrl+Shift+P` elsewhere. */
@@ -100,12 +110,12 @@ export function formatShortcut(
       ? parsed.key.toUpperCase()
       : parsed.key)
   if (mac) {
-    return `${parsed.mod ? MAC_SYMBOLS.mod : ''}${parsed.alt ? MAC_SYMBOLS.alt : ''}${
+    return `${parsed.control ? '⌃' : ''}${parsed.mod ? MAC_SYMBOLS.mod : ''}${parsed.alt ? MAC_SYMBOLS.alt : ''}${
       parsed.shift ? MAC_SYMBOLS.shift : ''
     }${label}`
   }
   const parts: string[] = []
-  if (parsed.mod) parts.push('Ctrl')
+  if (parsed.mod || parsed.control) parts.push('Ctrl')
   if (parsed.alt) parts.push('Alt')
   if (parsed.shift) parts.push('Shift')
   parts.push(label)
@@ -128,9 +138,9 @@ export function matchesShortcut(
   parsed: ParsedShortcut,
   mac: boolean = isMacPlatform(),
 ): boolean {
-  const modPressed = mac ? event.metaKey : event.ctrlKey
-  const otherMod = mac ? event.ctrlKey : event.metaKey
-  if (modPressed !== parsed.mod || otherMod) return false
+  const control = Boolean(parsed.control || (!mac && parsed.mod))
+  const meta = mac && parsed.mod
+  if (event.ctrlKey !== control || event.metaKey !== meta) return false
   if (event.shiftKey !== parsed.shift) return false
   if (event.altKey !== parsed.alt) return false
   return eventKeys(event).includes(parsed.key)

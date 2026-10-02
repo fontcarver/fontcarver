@@ -2,6 +2,7 @@ import { beforeEach, expect, it } from 'vitest'
 import { initialUiState, tabId, useUiStore } from '../stores/uiStore'
 import { getCommand, resetCommands } from './commands'
 import { registerWorkspaceTabCommands } from './workspaceTabCommands'
+import { commandForEvent } from './shortcuts'
 
 beforeEach(() => {
   localStorage.clear()
@@ -25,10 +26,44 @@ it('selects Overview and numbered Edit tabs within the active document', async (
   await getCommand('window.tab.3')?.run()
   expect(useUiStore.getState().activeTab).toBe(info)
   expect(getCommand('window.tab.4')?.when?.()).toBe(false)
-  expect(getCommand('window.cycleNext')?.shortcut).toBe('Ctrl+Tab')
-  expect(getCommand('window.cyclePrevious')?.shortcut).toBe('Ctrl+Shift+Tab')
+  expect(getCommand('window.cycleNext')?.shortcut).toBe('Control+Tab')
+  expect(getCommand('window.cyclePrevious')?.shortcut).toBe('Control+Shift+Tab')
   expect(getCommand('window.tab.2')?.shortcut).toBe('Mod+Alt+2')
 })
+
+it.each([false, true])(
+  'cycles with physical Control while a field is focused on macOS=%s',
+  (mac) => {
+    const ui = useUiStore.getState()
+    ui.openTab({ kind: 'font', doc: 1 })
+    ui.openTab({ kind: 'glyph', doc: 1, gid: 3 })
+    const input = document.createElement('input')
+    document.body.append(input)
+    input.focus()
+    try {
+      for (const shiftKey of [false, true]) {
+        const event = new KeyboardEvent('keydown', {
+          key: 'Tab',
+          ctrlKey: true,
+          shiftKey,
+          bubbles: true,
+        })
+        input.dispatchEvent(event)
+        expect(commandForEvent(event, mac)).toBe(
+          shiftKey ? 'window.cyclePrevious' : 'window.cycleNext',
+        )
+      }
+      expect(
+        commandForEvent(
+          new KeyboardEvent('keydown', { key: 'Tab', metaKey: true }),
+          mac,
+        ),
+      ).toBeUndefined()
+    } finally {
+      input.remove()
+    }
+  },
+)
 
 it('keeps the Overview pinned first however its tabs were opened', () => {
   const ui = useUiStore.getState()

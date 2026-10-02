@@ -83,7 +83,7 @@ export function registerWorkspaceTabCommands(): void {
     ...([1, -1] as const).map((delta): Command => ({
       id: delta > 0 ? 'window.cycleNext' : 'window.cyclePrevious',
       title: delta > 0 ? 'cmd.window.nextTab' : 'cmd.window.previousTab',
-      shortcut: delta > 0 ? 'Ctrl+Tab' : 'Ctrl+Shift+Tab',
+      shortcut: delta > 0 ? 'Control+Tab' : 'Control+Shift+Tab',
       allowInInput: true,
       when: () => useUiStore.getState().tabs.length > 1,
       disabledReason: 'cmd.reason.oneTab',

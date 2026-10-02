@@ -26,6 +26,7 @@ export function canonicalShortcut(value: string): string | null {
   }
   return [
     parsed.mod && 'Mod',
+    parsed.control && 'Control',
     parsed.alt && 'Alt',
     parsed.shift && 'Shift',
     names[key] ?? key.toUpperCase(),

@@ -88,12 +88,17 @@ export function commandForEvent(
     if (
       editable &&
       (!command.allowInInput ||
-        (parsed && !parsed.mod && !parsed.alt && !/^f\d+$/.test(parsed.key)))
+        (parsed &&
+          !parsed.mod &&
+          !parsed.control &&
+          !parsed.alt &&
+          !/^f\d+$/.test(parsed.key)))
     )
       continue
     if (
       parsed &&
       !parsed.mod &&
+      !parsed.control &&
       !parsed.alt &&
       !/^f\d+$/.test(parsed.key) &&
       isInteractiveTarget(event.target)
@@ -105,6 +110,9 @@ export function commandForEvent(
     // dispatcher must not `preventDefault` — the key proceeds to its native
     // action (for example Space activating the focused button).
     if (command.when && !command.when()) continue
+    // A customized tool retains its priority over newly shipped defaults,
+    // but its tap/hold lifecycle belongs to useToolShortcuts, not runCommand.
+    if (command.id.startsWith('tool.')) return undefined
     return command.id
   }
   return undefined

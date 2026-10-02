@@ -1,5 +1,6 @@
 import { useKeymapStore } from '../stores/keymapStore'
 import { canonicalShortcut, type KeymapOverrides } from './keymapDocument'
+import { isMacPlatform } from './shortcutSyntax'
 
 export type { KeymapOverrides } from './keymapDocument'
 
@@ -32,11 +33,15 @@ export interface KeymapConflict {
 export function keymapConflicts(
   targets: readonly KeymapTarget[],
   overrides: KeymapOverrides,
+  mac: boolean = isMacPlatform(),
 ): KeymapConflict[] {
   const byKey = new Map<string, KeymapTarget[]>()
   for (const target of targets) {
     const binding = shortcutFor(target.id, target.shortcut, overrides)
-    const key = binding && canonicalShortcut(binding)
+    const canonical = binding && canonicalShortcut(binding)
+    // Compare physical overlaps without rewriting the saved binding: Control
+    // and Mod are different on macOS, but are the same key on Windows/Linux.
+    const key = mac ? canonical : canonical?.replace(/^Control\+/, 'Mod+')
     if (!key) continue
     byKey.set(key, [...(byKey.get(key) ?? []), target])
   }

@@ -94,6 +94,10 @@ export function CommandPaletteDialog() {
   }
 
   const onKeyDown = (event: React.KeyboardEvent) => {
+    // Candidate confirmation/navigation belongs to the IME, including the
+    // legacy keyCode used by engines that clear isComposing before Enter.
+    if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229)
+      return
     if (event.key === 'Escape') {
       event.preventDefault()
       close()

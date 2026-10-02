@@ -60,6 +60,24 @@ it('cancels draft changes without replacing the active keymap', async () => {
   expect(useKeymapStore.getState().overrides).toEqual({ 'file.open': 'Mod+K' })
 })
 
+it('keeps an explicit physical Control binding when editing and saving', async () => {
+  const user = userEvent.setup()
+  render(<ShortcutSettingsDialog />)
+  const binding = screen.getByLabelText('Shortcut for Open Font…')
+  await user.clear(binding)
+  await user.type(binding, 'Control+Shift+U')
+  expect(binding).toHaveValue('Control+Shift+U')
+  await user.click(screen.getByRole('button', { name: 'Apply' }))
+  expect(useKeymapStore.getState().overrides['file.open']).toBe(
+    'Control+Shift+U',
+  )
+  expect(
+    JSON.parse(localStorage.getItem('fontcarver.keymap.v1') ?? '{}').bindings[
+      'file.open'
+    ],
+  ).toBe('Control+Shift+U')
+})
+
 it('imports JSON as a reviewed draft and reports invalid imports', async () => {
   const user = userEvent.setup()
   render(<ShortcutSettingsDialog />)
