@@ -406,7 +406,8 @@
     "open": "打开字体…",
     "new": "新建字体…",
     "recent": "最近打开的文件",
-    "noRecent": "暂无最近打开的文件。"
+    "noRecent": "暂无最近打开的文件。",
+    "explore": "探索 FontCarver"
   },
   "dialog": {
     "batchRename": {

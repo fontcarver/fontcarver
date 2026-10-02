@@ -4,14 +4,18 @@
   display: flex;
   min-height: 0;
   flex: 1;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   padding: var(--space-5);
   overflow: auto;
 }
 
 .emptyCard {
+  flex: none;
   width: min(520px, 100%);
+  /* Center only when there is spare height; never hide the top on overflow. */
+  margin-block: auto;
   padding: var(--space-5);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -32,6 +36,7 @@
 
 .emptyActions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
@@ -82,4 +87,44 @@
   padding: var(--space-2) 0;
   color: var(--color-text-faint);
   font-size: var(--text-size-sm);
+}
+
+.discovery {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.discoveryItem {
+  display: flex;
+  width: 100%;
+  min-height: var(--row-height);
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--text-size-sm);
+  text-align: left;
+  cursor: default;
+}
+
+.discoveryItem:hover {
+  background: var(--color-hover);
+}
+
+.bindings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+}
+
+.bindings kbd {
+  font: inherit;
 }

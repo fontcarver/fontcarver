@@ -406,7 +406,8 @@
     "open": "Open Font…",
     "new": "New Font…",
     "recent": "Recent files",
-    "noRecent": "No recent files yet."
+    "noRecent": "No recent files yet.",
+    "explore": "Explore FontCarver"
   },
   "dialog": {
     "batchRename": {
