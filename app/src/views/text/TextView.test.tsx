@@ -207,7 +207,14 @@ describe('TextView integration', () => {
     const original = useUiStore.getState().tabs[0]!
     render(<TextView summary={summary} tab={original} />)
     await screen.findByRole('img', { name: /^Glyph A,/ })
-    const prepare = vi.spyOn(activeEditor()!, 'prepareTransition')
+    // The canvas DOM can commit before its registration/source effects. Wait
+    // for the controller this assertion observes, not only its rendered label.
+    const editor = await waitFor(() => {
+      const current = activeEditor()
+      expect(current?.documentId).toBe(original.doc)
+      return current!
+    })
+    const prepare = vi.spyOn(editor, 'prepareTransition')
     act(() => {
       useUiStore.getState().openTab({ kind: 'glyph', doc: 2, gid: 20 })
     })
