@@ -103,7 +103,7 @@ it('follows the storage the kernel reports instead of reading it once', async ()
   })
 
   expect(
-    await screen.findByText(/Saved in this document's project/),
+    await screen.findByText(/Saved in this document’s project/),
   ).toBeInTheDocument()
   expect(screen.queryByText(/Saved on this computer only/)).toBeNull()
 })

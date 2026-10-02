@@ -2629,7 +2629,6 @@
     "fillIdentity": "补齐 Identity CID",
     "reorder": "按 CID 数值调整字形网格顺序",
     "identityHint": "自动编号仅适用于 Adobe-Identity。已注册字符集必须使用其公布的字符与 CID 映射。CID 元数据用于静态 CFF OTF 导出。",
-    "unmapped": "{{count}} 个字形没有 CID，例如 {{names}}。CID 键控 CFF 导出要求每个导出的字形都有 CID。",
     "unmapped_one": "{{count}} 个字形没有 CID：{{names}}。CID 键控 CFF 导出要求每个导出的字形都有 CID。",
     "unmapped_other": "{{count}} 个字形没有 CID，例如 {{names}}。CID 键控 CFF 导出要求每个导出的字形都有 CID。",
     "invalid": "CID 映射无效。编号须为 0 至 65535 且不能重复，字形名称也不能重复；0 保留给 .notdef。"
@@ -3987,7 +3986,7 @@
         "summary": "标签页、侧边栏、检查器和预览共同构成可保存和恢复的工作区。",
         "first": "文档打开时带有固定的总览标签页；编辑标签页添加在它旁边，并可按位置访问。",
         "second": "面板可以显示、隐藏，或移入独立窗口；标签页也可用同样的方法分离。",
-        "third": "“工作区”会以名称保存当前布局，并在以后恢复，包括已分离的窗口。"
+        "third": "“工作区…”命令会以名称保存当前布局，并在以后恢复，包括已分离的窗口。"
       },
       "automation": {
         "title": "脚本和插件",

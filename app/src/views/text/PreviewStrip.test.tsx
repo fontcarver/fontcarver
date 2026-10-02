@@ -211,12 +211,12 @@ describe('PreviewStrip', () => {
     })
     const apply = screen.getByRole('button', { name: 'Apply sizes' })
     for (const [entry, message] of [
-      ['', 'Enter at least one step'],
+      ['', 'Enter at least one size'],
       ['12px', 'Only numbers are allowed'],
       ['4, 24', 'between 6 and 256'],
       ['24, 24', 'only once'],
-      ['9,10,11,12,13,14,15,16,17', 'at most 8 steps'],
-      ['48-12/4', 'smaller first size'],
+      ['9,10,11,12,13,14,15,16,17', 'at most 8 sizes'],
+      ['48-12/4', 'Start the range with the smaller size'],
     ] as const) {
       fireEvent.change(field, { target: { value: entry } })
       fireEvent.click(apply)
@@ -230,13 +230,13 @@ describe('PreviewStrip', () => {
     expect(field).toHaveAttribute('aria-invalid', 'false')
   })
 
-  it('draws the first eight steps of a long range and says that it cut it', () => {
+  it('draws the first eight sizes of a long range and says that it cut it', () => {
     const onChange = vi.fn()
     render(<Harness onChange={onChange} />)
     const field = screen.getByRole('textbox', {
       name: 'Waterfall sizes (px)',
     })
-    // The hint's own example, which asks for nine steps.
+    // The hint's own example, which asks for nine sizes.
     fireEvent.change(field, { target: { value: '8-72/8' } })
     fireEvent.click(screen.getByRole('button', { name: 'Apply sizes' }))
     expect(onChange).toHaveBeenLastCalledWith({
@@ -244,9 +244,9 @@ describe('PreviewStrip', () => {
     })
     expect(field).toHaveValue('8, 16, 24, 32, 40, 48, 56, 64')
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'longer than the 8 steps a waterfall shows',
+      'longer than the 8 sizes a waterfall shows',
     )
-    // The note is not a rejection: the field is valid and the steps are drawn.
+    // The note is not a rejection: the field is valid and the sizes are drawn.
     expect(field).toHaveAttribute('aria-invalid', 'false')
     expect(screen.getAllByRole('img')).toHaveLength(8)
   })
