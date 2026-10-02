@@ -3,15 +3,17 @@
 Task ID: p5f-w3-packaging
 
 ## Scope and ownership
+
 Own scripts/build_release.py, scripts/check_release_bundle.py and matching test files, docs/install.md, docs/releasing.md, docs/p5f-w3-packaging-acceptance.md. AppImage licenses owned by appimage agent; workflows by native agent.
 
 ## Interfaces and acceptance
+
 Review current packaging tooling, fix real gaps, coordinate license gate with appimage agent. Prepare integrated-tree deb and AppImage candidate builds/inspection, actual apt install/remove verification in isolated disposable container/root (do not modify personal system packages without coordinating), headless binary smoke and manifests. Signing/publication require actual configured credentials and destination, no invented claims. Coordinate parent BEFORE heavy builds, cache cleanup or installs. Reuse target and serialize Cargo. No final release before integrated changes are ready.
 
 ## Shared execution rules
+
 Read AGENTS.md, CONVENTIONS.md, docs/superpowers/plans/tasks/p5f-protocol.md and relevant audit/acceptance docs. The user explicitly authorized all remaining P5 tasks and parallel agents on 2026-10-02; historical “wave 3 not started” statements are superseded. This task is your scope. Shared checkout: no commits, push, stash, reset, clean or unrelated edits. Parent owns STATUS, TODO, feature audit, progress estimate, integration and commits. No recursive subagents needed.
 Run artifact checker at start and finish, scratch only .scratch/<task-id>/ with absolute TMPDIR. All Cargo commands use flock .scratch/p5f/cargo.lock, default profiles and shared target. Tell parent before any heavy build or cleaning cache; parent coordinates broad validation. Never delete another task’s artifacts/processes or shared stores. Append gap analysis to this task file before implementation. Focused tests and exact outputs in own acceptance report, distinguish limitations and missing evidence. Final report under 300 words. Stop owned processes and clean owned scratch after preserving acceptance evidence. New translations require a separate GPT-6.1 Sol agent assigned by parent.
-
 
 ## Gap analysis (2026-10-02)
 
@@ -37,3 +39,16 @@ The probe initially exposed a kernel-created mode-000 overlay work directory;
 that owned probe was repaired and removed immediately, and the resource checker
 passed again. The helper must normalize its work directory during use and always
 clean it after its child namespace exits.
+
+## Final outcome (2026-10-02)
+
+Completed at frozen source `f6f6cf9ce481d11314e25c540b5719fd0951a00f`:
+fresh deb and thin AppImage, strict source/payload/notice/marker verification,
+actual isolated APT install/reinstall/remove and user-data retention, installed
+binary smokes, and independent release/policy/runtime review all passed.
+The corrected AppImage differs from the deb main executable by exactly the
+three bundle-type bytes. Final artifacts and logs are linked from
+`docs/p5f-w3-packaging-acceptance.md`; superseded first-round records are clearly
+archived. Owned scratch, including old binary copies, was removed after review.
+Resource check passed at 5.33 GiB build / 0.08 GiB temporary / 616.29 GiB free.
+No signing, publication or native macOS/Windows execution was performed.

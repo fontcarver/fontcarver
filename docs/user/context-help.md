@@ -4,6 +4,12 @@ FontCarver's help lives inside the application and works without a network
 connection. It has two layers: a **quick help** bubble that appears where you are
 working, and a **help article** that explains the surrounding workflow.
 
+With no font open, the welcome screen's **Explore FontCarver** section offers
+**Getting started**, **Command Palette…** and **Keyboard Shortcuts**. Use them
+to read the basic editing workflow, search for an action or inspect its binding.
+The displayed shortcuts follow your current keymap, including custom bindings
+and keys you have removed. Nothing opens until you choose an entry.
+
 ## Quick help
 
 Rest the pointer on a control for about half a second, or move keyboard focus to

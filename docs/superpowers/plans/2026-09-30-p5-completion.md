@@ -1,6 +1,6 @@
 # P5 completion plan
 
-Status: active from 2026-09-30. Goal: close every Must-have and Should-have
+Status: local scope completed 2026-10-02; native delivery gates remain. Goal: close every Must-have and Should-have
 row of `docs/p5-feature-audit.md` (the P5 exit gate), finish the release block,
 and leave the repository verified, documented and committed on
 `p5-color-authoring`.
@@ -80,11 +80,26 @@ Integrated verification is listed in [STATUS](../../STATUS.md); per-row evidence
 is in `docs/p5f-{g,h,j,k,l,m}-*-acceptance.md` and the wave is summarised in
 [the wave 2 checkpoint](../../p5f-wave2-checkpoint.md).
 
-**Wave 3 is not started.** What it covers — rows 9 and 62, the AppImage copyleft
-payload licensing, a release rebuild from this code, native macOS and Windows
-execution, the English wording items from the translation reports and the final
-row-by-row gate — is recorded in [TODO](../../TODO.md). Nothing in this plan
-authorises beginning it without a new explicit instruction.
+## Wave 3: local closing work complete, 2026-10-02
+
+The user authorized all remaining local tasks and parallel agents, while
+excluding publication and macOS/Windows execution. The independent 112-row
+review, ordinary defect repairs, real hinter/CJK verification, wording and
+separate translation are complete. Integrated Rust, frontend and the complete
+100-test default browser suite passed at the original milestone. The subsequent
+actual UX walkthrough, input/layout repairs and one additional welcome-discovery
+task are complete at `f6f6cf9`: **2,914 frontend tests / 348 files and 105/105
+browser tests pass**, with no browser skips or retries. Final Linux candidates
+were rebuilt from that exact source (2,008 fingerprinted inputs),
+independently inspected and accepted through isolated APT install/reinstall/
+removal, AppImage startup and a separate virtual-display process check. See
+[integrated acceptance](../../p5f-w3-integration-acceptance.md) and
+[TODO](../../TODO.md) for the latest state and evidence.
+
+Rows 9 and 62 remain Partial because native macOS/Windows acceptance is outside
+this batch. Reviewed CI definitions do not count as execution on those platforms.
+The new experience/feature backlog in TODO is optional future work, not an
+uncompleted requirement of this local batch.
 
 ## Per-area cycle
 

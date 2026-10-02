@@ -1,0 +1,135 @@
+FontCarver wave 3 integration command excerpts, 2026-10-02.
+Source implementation: 979bcca / f5051d2 / 6e35f70.
+Full default E2E evidence is in p5f-w3-e2e-acceptance.md.
+Commands and earlier failed/interrupted runs are recorded in p5f-w3-integration-acceptance.md.
+
+== rust-fmt.log ==
+(no output; exit 0)
+
+== rust-clippy-final.log ==
+    Checking fc-doc v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-doc)
+   Compiling fontcarver v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/src-tauri)
+    Checking fc-api v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-api)
+    Checking fc-cli v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-cli)
+    Checking fc-devserver v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-devserver)
+    Finished `dev` profile [unoptimized] target(s) in 16.19s
+
+== rust-test.log ==
+279 completed test targets: [2093, 0, 4] (passed, failed, ignored)
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests fontcarver_lib
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+== rust-release-acceptance.log ==
+   Compiling fc-layout v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-layout)
+   Compiling fc-api v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/crates/fc-api)
+    Finished `release` profile [optimized] target(s) in 2m 31s
+     Running tests/acceptance_workflow.rs (target/release/deps/acceptance_workflow-9acdba940bccdb80)
+
+running 1 test
+test edits_three_dejavu_glyphs_and_preserves_layout_on_export ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.81s
+
+     Running tests/edit_performance.rs (target/release/deps/edit_performance-0e509df7d8ed15f9)
+
+running 1 test
+edit_apply 20k glyphs/300 points/200 samples: median=188.27µs p95=240.314µs max=397.654µs
+test edit_apply_meets_budget_at_twenty_thousand_glyphs ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+
+== app-check.log ==
+
+> fontcarver-app@0.1.0 check /home/chen/githubprojects/fontpixel/fontcarver/app
+> tsc -b
+
+
+== app-lint-final.log ==
+
+> fontcarver-app@0.1.0 lint /home/chen/githubprojects/fontpixel/fontcarver/app
+> eslint .
+
+
+== app-format.log ==
+Checking formatting...
+All matched files use Prettier code style!
+
+== app-tests-final.log ==
+ ✓ src/canvas/bitmapGeometry.test.ts (3 tests) 5ms
+ ✓ src/views/fontinfo/metricInheritance.test.ts (3 tests) 6ms
+ ✓ src/views/font/scrollMemory.test.ts (6 tests) 3ms
+ ✓ src/views/text/kerningModes.test.ts (2 tests) 5ms
+ ✓ src/dialogs/addGlyphs.test.ts (3 tests) 3ms
+ ✓ src/views/fontinfo/designCoordinates.test.ts (5 tests) 4ms
+ ✓ src/views/glyph/panels/ConstructionSources.test.ts (2 tests) 3ms
+ ✓ src/canvas/sourceImage.test.ts (1 test) 3ms
+ ✓ src/editor/fieldValue.test.ts (4 tests) 3ms
+ ✓ src/views/text/proofStepping.test.ts (5 tests) 2ms
+ ✓ src/views/glyph/panels/canvasHandleGuard.test.ts (2 tests) 2ms
+ ✓ src/views/glyph/panels/bracketConditions.test.ts (1 test) 2ms
+
+ Test Files  342 passed (342)
+      Tests  2836 passed (2836)
+   Start at  16:08:17
+   Duration  85.67s (transform 6.63s, setup 35.85s, collect 66.19s, tests 84.40s, environment 92.47s, prepare 18.31s)
+
+
+== app-build.log ==
+
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 3017 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                           0.45 kB │ gzip:   0.29 kB
+dist/assets/macro.worker-CMRvcsoc.js      3.53 kB
+dist/assets/index-lHL2W3Cz.css          147.67 kB │ gzip:  23.61 kB
+dist/assets/index--Vu1ze1i.js             1.25 kB │ gzip:   0.48 kB
+dist/assets/index-C7tWiK8Z.js             2.58 kB │ gzip:   1.18 kB
+dist/assets/index-CP20vilT.js         2,177.48 kB │ gzip: 675.03 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 9.30s
+
+== python-tests-final.log ==
+........................................+ apt-get
+...+ apt-get
+..................................s..native smoke job failed: job unavailable
+..........
+----------------------------------------------------------------------
+Ran 90 tests in 0.845s
+
+OK (skipped=1)
+
+== rust-final.txt ==
+build: 16.56 GiB, 10,933 files
+temporary: 0.05 GiB, 2,393 files
+workspace free: 605.23 GiB
+warnings: build artifacts exceed 10 GiB; plan profile-cache cleanup
+PASS
+
+== Final default E2E ==
+100 passed (5.2m); 0 failures / skips / retries; external Source Han Sans included.
+Original 8 ms limit unchanged; maximum 6.2 ms.
+Earlier complete run: 99 passed / 1 failed (10.8 ms pointer sample); focused diagnostic repeat: 3 passed.
+
+== Before native installer build ==
+flock .scratch/p5f/cargo.lock cargo clean --profile dev
+Removed 6392 files, 14.7GiB total
+python3 scripts/check_artifacts.py
+build: 2.54 GiB, 4,627 files
+temporary: 0.04 GiB, 1,466 files
+workspace free: 619.25 GiB
+PASS

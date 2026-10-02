@@ -3,15 +3,17 @@
 Task ID: p5f-w3-audit-b
 
 ## Scope and ownership
+
 Read-only code and existing audit documents; own only docs/p5f-w3-audit-b.md and this task file.
 
 ## Interfaces and acceptance
+
 Independently verify each of rows 57–112 against integrated source and cited evidence; cross-check Complete/Partial claims, actual workflow reachability, bounded limits vs ordinary missing functionality. Produce per-row table with evidence links and concrete defects, especially packaging/import/export/persistence/hinting. Do not simply repeat existing status. No full builds/tests, targeted read-only analysis and tiny scripts allowed; request necessary focused verification from parent. Root runs final integration gate.
 
 ## Shared execution rules
+
 Read AGENTS.md, CONVENTIONS.md, docs/superpowers/plans/tasks/p5f-protocol.md and relevant audit/acceptance docs. The user explicitly authorized all remaining P5 tasks and parallel agents on 2026-10-02; historical “wave 3 not started” statements are superseded. This task is your scope. Shared checkout: no commits, push, stash, reset, clean or unrelated edits. Parent owns STATUS, TODO, feature audit, progress estimate, integration and commits. No recursive subagents needed.
 Run artifact checker at start and finish, scratch only .scratch/<task-id>/ with absolute TMPDIR. All Cargo commands use flock .scratch/p5f/cargo.lock, default profiles and shared target. Tell parent before any heavy build or cleaning cache; parent coordinates broad validation. Never delete another task’s artifacts/processes or shared stores. Append gap analysis to this task file before implementation. Focused tests and exact outputs in own acceptance report, distinguish limitations and missing evidence. Final report under 300 words. Stop owned processes and clean owned scratch after preserving acceptance evidence. New translations require a separate GPT-6.1 Sol agent assigned by parent.
-
 
 ## Gap analysis
 
@@ -25,3 +27,14 @@ The existing PNG/HTML/PDF browser-download failures affect current verification
 of rows 71 and 109. Broad checks and any corrective implementation belong to the
 parent or owning implementation agents. Publication and signing are explicitly
 deferred by the user's latest answers.
+
+## Parent-authorized focused regression extension
+
+After completing the read-only row report, root authorized adding one focused
+regression to `app/src/views/glyph/panels/CjkTransformGrid.test.tsx` to verify
+finding 3. No product-source changes are authorized for this audit agent. The
+fix owner is `w3_cjk_editing`; hand off test ownership after the failing run.
+
+Focused result: 9 passed, 1 failed, reproducing the stale component overwrite.
+The test file is handed to `w3_cjk_editing`; audit agent retains only its report
+and task file. No product code was changed by this agent.

@@ -29,7 +29,7 @@ retain the original glyph count. Original glyph names, cmap and metrics match.
    composite exception accepted any output whose `maxp.numGlyphs` increased by
    one. A reviewer-controlled executable copied its input, incremented only that
    count, and returned success. `fontcarver build … --autohint --no-preserve
-   --hint-composites` exited successfully and wrote a corrupt font:
+--hint-composites` exited successfully and wrote a corrupt font:
    `maxp=145`, `loca entries=145` (146 required). FontTools reported
    `corrupt 'loca' table, or wrong numGlyphs in 'maxp': 144 145`.
    **Closed after correction.** The rebuilt CLI rejects that malformed output
@@ -99,6 +99,7 @@ cycle refusal, path locks, stale snapshots and document handover ordering. The
 barrier is published before the first API read; later gesture intent invalidates
 the current repair before the waiting gesture acquires a token. Cancellation
 failure is reported as a kernel error and never followed by a global undo.
+
 ## Final real-kernel Fix All evidence
 
 The implementation agent's `app/e2e/outline-audit.spec.ts` passed **1/1 in 5.6 s**
@@ -157,3 +158,10 @@ The integrator was notified and owns cleanup of its active build outputs. This
 supersedes the earlier passing resource snapshot; project completion must record
 a passing resource check after that cleanup. No other task's cache was removed
 by the reviewer.
+
+The integrator subsequently stopped its build, cleaned the dev profile and
+reran the full workspace successfully. A second planned cleanup before native
+packaging left **2.54 GiB build / 0.04 GiB temporary / 619.25 GiB free, PASS**.
+The final resource closure is recorded in
+[integrated acceptance](p5f-w3-integration-acceptance.md); the interrupted run
+above remains an interrupted run.

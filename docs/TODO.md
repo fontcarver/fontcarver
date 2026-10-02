@@ -1,141 +1,147 @@
 # Remaining work
 
-Branch: `p5-color-authoring`. Waves 1 and 2 of the [P5 completion
-plan](superpowers/plans/2026-09-30-p5-completion.md) are integrated and committed
-locally; nothing is pushed and no merge to `main` has happened. Native/global
-desktop input automation remains prohibited.
+Updated: 2026-10-02. Branch: `p5-color-authoring`; local work only, no push,
+`main` merge, signing or publication.
 
-The [feature audit](p5-feature-audit.md) is the completion gate. After wave 2 it
-reads **110 Complete, 2 Partial, 0 Pending verification** of 112 rows (after
-wave 1: 75 / 5 / 32; before wave 1: 3 / 3 / 106). This file records what those
-numbers leave open. The user authorized wave 3 and parallel agents on
-2026-10-02. Online publication is deferred by the user; signing credentials are
-not configured. Complete verifiable builds and installation first.
+**All authorized local closing work and the one additional small welcome task
+are complete. Publication and macOS/Windows validation remain outside this batch.**
 
-## Wave 3: what is left of P5
+## Latest completed follow-up
 
-Work is active under `docs/superpowers/plans/tasks/p5f-w3-*.md`. The earlier
-metrics-key move, isolated E2E sessions and wording/translation follow-ups are
-committed as `c1bd334`, `86770ab` and `a4be04a`, respectively. The tasks below
-retain their pre-wave evidence status until their new acceptance checks pass.
+- [x] Complete [actual editor experience](p5ux-experience-acceptance.md): laptop
+      canvas/tool accessibility, progressive disclosure, safe outline/bitmap gesture
+      cancellation and coherent keyboard/menu behavior.
+- [x] Verify repaired workflows: **2,914 frontend tests / 348 files**, all
+      check/lint/format/build gates, and **105/105 browser tests** with no retries
+      or skips ([browser acceptance](p5ux-browser-acceptance.md)).
+- [x] Complete the one additional small task explicitly requested by the user:
+      [welcome-screen discovery](p5ux-start-discovery-browser-acceptance.md),
+      linking existing getting-started help, command search and shortcut settings;
+      fix command-search focus under StrictMode and verify both languages.
+- [x] Rebuild final deb/thin AppImage from **`f6f6cf9`**, including the corrected
+      bundle-type marker; repeat actual candidate inspection/install/startup and
+      independent review.
+- [x] Update final records and clean owned test environments; retain local
+      commits, reports and final candidates.
 
-| Item                            | What remains                                                                                                                                                                            |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Rows 9 and 62                   | The two Partial rows below: native macOS and Windows execution, and the AppImage payload licensing.                                                                                     |
-| AppImage copyleft payload       | 73 copyleft-licensed shared objects with notices for 10; LGPL relinking and source-offer duties unmet. Until it is cleared the deb is the only package safe to hand out.                |
-| Release rebuild and publication | The only real packages were built from the pre-wave code, so the deb and AppImage must be rebuilt from the integrated tree, re-inspected, `apt install`-verified, signed and published. |
-| English wording                 | Completed 2026-10-02: unified wording and independent GPT-6.1 Sol Chinese delta review; acceptance below.                                                                              |
-| Final row-by-row gate           | One pass over all 112 rows against the integrated tree, with the full command set in the plan's exit criteria, before P5 is declared finished.                                          |
-| Review follow-ups               | The documented limits below; none of them blocks a row. The metrics-key code move was completed on 2026-10-02.                                                                        |
+The result of this batch belongs in [integrated acceptance](p5f-w3-integration-acceptance.md).
+The [112-row gate](p5-feature-audit.md) retains **110 Complete / 2 Partial**;
+Complete means the bounded behavior described by the linked acceptance evidence.
 
-Rows 84, 88 and 104 keep their earlier acceptance records.
+## Local installer verification
 
-## Partial rows and the exact missing piece
+The actual integrated **`f6f6cf9`** candidates were rebuilt and passed the strict
+[package verifier](p5f-w3-packaging-acceptance.md). The deb passed real isolated
+APT install, same-version reinstall and removal, including installed-binary
+checks, desktop-cache triggers and retention of user documents/preferences/
+recovery files. The host package installation was unchanged.
 
-| Row | Requirement                                 | Missing                                                                                                                                                                                                                                                            |
-| --- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 9   | Cross-platform parity (macOS/Windows/Linux) | No macOS or Windows binary of this code exists. The keymap abstraction and the whole shell are exercised on Linux only; native execution evidence is still needed.                                                                                                 |
-| 62  | Release packaging and installation          | The AppImage bundles 73 copyleft-licensed packages with notices for 10; LGPL relinking and source-offer duties are unmet, so only the deb is safe to hand out. The deb's install is verified by extraction, not `apt install`. No macOS or Windows package exists. |
+The [thin AppImage](p5f-w3-thin-appimage-acceptance.md) passed real FUSE and
+extract-and-run startup checks. Its manifest records zero bundled shared
+libraries, all nine runtime/source/license pins and matching host-library
+notices. The old default Tauri AppImage is rejected by the gate. This thin image
+requires compatible host GTK/WebKit/FUSE/SquashFS libraries; it is not a
+self-contained universal Linux bundle.
 
-## English wording and Chinese delta — completed 2026-10-02
+See the [source-and-artifact manifest](acceptance/p5f-w3-packaging/release-manifest.json)
+and [actual APT result](acceptance/p5f-w3-packaging/deb-install.json). The manifest
+binds both final artifact hashes to **2,008 inputs**. The superseded first round
+is [archived separately](acceptance/p5f-w3-packaging/round-1-6e35f70/README.md).
+Independent final installer review passed. The actual AppImage also stayed
+alive for 15 seconds in an isolated virtual display without input automation;
+this verifies graphical-process startup, not interactive desktop workflows.
 
-The wording follow-up from the two wave-2 translation reports is complete:
+## Remaining delivery gates
 
-- Waterfall entries consistently refer to sizes; range spacing is an increment.
-- Bitmap help names the actual Nearest pixel / Area average options.
-- Workspace help names the actual Workspaces… / 工作区… command.
-- English prose uses curly apostrophes consistently.
-- The unused bare `cid.unmapped` key was removed from both catalogues; counted
-  plural forms remain and resolve correctly in both languages.
+| Item                    | Remaining work                                                                                                                                                                                                                   |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Row 9: native parity    | Build and execute this code on real macOS and Windows; verify platform input behavior without prohibited global desktop automation. Linux headless browser and simulated modifier tests are not native parity evidence.          |
+| Row 62: installation    | Linux candidate installation is accepted within the limits above; actual macOS DMG and Windows MSI installation/launch/removal remain. Native CI definitions and helpers are reviewed, but have not been run on those platforms. |
+| CI access               | The authenticated GitHub account could not resolve either the configured `fontcarver/fontcarver` or the user-supplied `fontvarver/fontcarver` spelling. No replacement repository was created and no workflow was dispatched.    |
+| Signing and publication | Deferred by the user. Developer ID/notarization and Windows code-signing credentials are not configured. No release, upload, website download link or signing claim is performed in this local batch.                            |
 
-As requested, an independent **GPT-6.1 Sol sub-agent** reviewed all 43 changed
-English values against Chinese. One Chinese value needed revision; the other
-42 were already accurate. Both catalogues now have **3,935 matching keys**.
-See the [translation review](p5f-wording-translation-pass.md) and
-[integrated acceptance](p5f-wording-translation-acceptance.md). This closes only
-this wording task; the remaining P5 work below is unchanged.
+## Repair and verification work completed in this batch
 
-## Follow-ups from the wave 1 and 2 reviews
+- The earlier metrics-key move, E2E session isolation and wording review were
+  committed locally as `c1bd334`, `86770ab` and `a4be04a`.
+- [Real ttfautohint](p5f-w3-hinter-acceptance.md): genuine 1.8.4 execution,
+  composite-helper correction and malformed-output rejection; independent
+  fontTools, FreeType and HarfBuzz checks. The tool remains an optional external
+  program, not an installed or bundled dependency.
+- [Spacing](p5f-w3-spacing-acceptance.md): Alt brackets restore ×100 and exact
+  one-unit steps while preserving glyph navigation, keymap conflicts and locks.
+- [Bitmap workflows](p5f-w3-bitmap-fixes-acceptance.md): native PNG saving and
+  actual vertical bitmap metrics/pixels, with explicit unshaped-proof limits.
+- [CJK editing](p5f-w3-cjk-editing-acceptance.md): fresh metric reads and guarded
+  component submission prevent delayed edits overwriting current data.
+- [Fix All](p5f-w3-fix-all-acceptance.md): multiple safe repairs in one gesture,
+  token-scoped cancellation and preservation of previous undo/redo history.
+  [Caller regressions](p5f-w3-cancel-callers-acceptance.md) also correct width/RSB
+  drag previews and Escape behavior.
+- [Open dialog](p5f-w3-open-filter-acceptance.md): nine already-supported format
+  extensions are selectable. Type 42 and bare CFF were already implemented;
+  the former TODO claiming they were unbuilt was stale.
+- [Independent translation](p5f-w3-translation-acceptance.md): GPT-6.1 Sol
+  reviewed all 12 new/changed values at the 3,943-key checkpoint. The later UX
+  and [welcome delta](p5ux-start-discovery-translation-acceptance.md) were also
+  separately reviewed; English and Chinese now have **3,945 matching keys**.
+- All 112 rows were independently traced against current code and evidence:
+  [rows 1–56](p5f-w3-audit-a.md), [rows 57–112](p5f-w3-audit-b.md).
+  New ordinary defects found by that review were repaired and separately reviewed.
 
-- Completed 2026-10-02: `scale_metrics_key` and its existing unit tests now live
-  beside `parse_key` in `crates/fc-doc/src/metrics.rs`; the API calls the shared
-  helper without changing scaling behavior. This closes task `f`'s code-motion
-  follow-up ([acceptance](p5f-metrics-key-move-acceptance.md)).
-- Documented limits that are not defects, but are the next increments if a row is
-  reopened: Fix All needs a second press when one contour holds two structural
-  defects of different kinds; the anchor cascade is bounded to four rounds;
-  sorting in the glyph grid is ascending-only; `include` statements in imported
-  FEA are preserved verbatim; colour strike export takes the whole font and a
-  font holding both EBDT and CBDT is served from the colour tables; pixel-font
-  detection stays conservative; autotrace reads one brightness threshold, so
-  photographs and shaded scans are out of scope, and its tolerance is a target
-  rather than a guarantee; optical spacing is a sampled approximation; virtual
-  masters are axis-only positions; authored TrueType glyph programs still need a
-  static export, and CFF2 carries no stem, mask or flex operators; there is no
-  bundled ideographic-description database, so an IDS is typed or assembled;
-  vertical writing mode is an Edit View canvas mode, not vertical text layout;
-  the help article is modal and its contrast audit covers the seventeen surfaces
-  the fixture could reach.
-- `ttfautohint` itself is absent from this machine, so every claim about an
-  installed external hinter rests on the fake-executable tests and a skipped
-  real-binary test. Running it once on a machine that has it would close that.
-- Headless Chrome in this checkout needs the shell sandbox disabled, so
-  Playwright and agent-browser runs are environment-dependent; record that
-  precisely rather than as a product failure.
+## Future experience and feature backlog
 
-## Product boundaries that outlive the audit rows
+Requested for the backlog on 2026-10-02. These are optional future work, not
+requirements added to the current local verification and installer batch.
+Choose and scope each item separately before implementation; the current
+bounded acceptances below remain unchanged.
+The user subsequently authorized and completed the single welcome-screen
+discovery increment above. The broader first-use research and other items remain
+future work; no further item has been selected for implementation.
 
-| Area           | Remaining scope                                                                                                                                                                       |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cross-platform | macOS and Windows are reviewed in CI definitions only; no native run, installer test or platform input verification exists for any phase.                                             |
-| Release        | AppImage payload licensing, `apt install` verification, signing, publication and the website's first download links.                                                                  |
-| Colour         | Static palette-zero previews and proofs only; axis-dependent paints and colour proof sheets remain unsupported. The proofing rows (73–76, 95, 109, 111) are accepted around that gap. |
-| Formats/export | Supported static interchange subsets and raw-table TTX, not general semantic TTX XML; Type 42 and bare CFF remain design-required and unbuilt.                                        |
-| Automation     | Built-in plugin index only; Python needs a local interpreter; an already dispatched synchronous kernel call is not interruptible.                                                     |
-| Geometry       | Accepted within the limits above: optical spacing is sampled, autotrace is threshold-based, attachment placement is affine and smart-component handles commit on release.             |
+### Experience polish
 
-Before a future build, run `python3 scripts/check_artifacts.py`. Shared build
-dependencies are subject to the 20 GiB ceiling and 10 GiB warning in
-`CONVENTIONS.md`; clean the development profile before a build that would exceed
-it. Never delete shared stores, source files, fonts, Git data or another task's
-files.
+- [ ] Improve first-use guidance and discovery of tools and shortcuts; observe
+      whether new users can open a font, edit a glyph, undo, save and export without
+      assistance, then address the specific obstacles found.
+- [ ] Validate trackpad scrolling, zoom and gesture interactions on real hardware.
+- [ ] Check high-DPI displays, display scaling and larger UI text for readable
+      labels, reachable controls, visible focus and unclipped dialogs.
+- [ ] Exercise long editing sessions with large fonts; measure responsiveness,
+      memory growth, save/recovery behavior and workspace comfort.
+- [ ] Collect trial feedback from practicing type designers using real projects;
+      record recurring problems and prioritize improvements by observed impact.
 
-## End-to-end suite constraints
+### Longer-term feature expansion
 
-- Each test owns a **fresh kernel process and preference directory**. Default
-  workflows get a private DejaVu copy; source workflows start empty. Teardown
-  closes browser contexts and stops the kernel, including unfinished imports.
-  `autosave_seconds: 0` is written before startup. The suite still uses **one
-  worker** because Vite proxies one kernel port; use separate `FC_API_PORT` and
-  `FC_UI_PORT` values for independent runs. Existing servers are never reused.
-- The Edit tab needs about **950 px of height** for the text bar, the spacing and
-  kerning chrome, the 260 px canvas floor and the preview strip, so the default
-  Playwright viewport is 1440x1000 like the P2 configurations. A narrower window
-  is usable but has not been given acceptance evidence; the Edit tab's view now
-  scrolls vertically rather than pushing the canvas off screen.
-- The **first** `text.shape` of a session compiles the shaper font and takes
-  about four seconds. A spec that types into the Text tab must wait on
-  `data-text-shaping`, which is what the intermittent `text.spec.ts:122` failure
-  recorded after wave 1 turned out to be — a cold compile, not dropped input
-  ([acceptance](p5f-h-proofing-acceptance.md)).
-- Type 1 export no longer reports `type1-hinting-loss` for a source without
-  TrueType instructions, because supported PostScript stems and private values
-  are now written; it reports `type1-unicode-loss` instead.
+- [ ] Extend variable color-font authoring and export beyond the accepted paint
+      and variation boundaries, with explicit round-trip/rendering acceptance cases.
+- [ ] Add color-aware proofing across supported color formats and instances.
+- [ ] Expand semantic TTX editing beyond the currently supported tables, with
+      loss/preservation behavior documented for each additional table.
+- [ ] Extend geometry workflows beyond the documented sampled, threshold and
+      affine approximations; define correctness and performance cases first.
+- [ ] Deepen font-family workflows, including broader master/instance management
+      beyond the current axis-only virtual-master boundary.
+- [ ] Broaden plugin workflows and the available catalogue, with compatibility,
+      discovery and lifecycle behavior specified for each increment.
 
-## Open regressions and intermittents
+## Accepted boundaries and test conditions
 
-- Completed 2026-10-02: tests now own separate kernel processes, profiles and
-  documents, including cleanup of unfinished imports. Save/conversion/history
-  checks wait for the corresponding responses, and grid clicks tolerate
-  virtualisation. See the [isolation acceptance](p5f-e2e-isolation-acceptance.md)
-  for the original failures, regression and repeated verification.
-- The current bundled headless Chromium cancels PNG, HTML and PDF downloads.
-  A blank-page Blob download reproduces `canceled` without FontCarver. These
-  three browser-download cases remain an environment verification gap; the
-  complete default suite has **not** been established green. The external CJK
-  corpus test also remains skipped on this machine.
-- `Mod+]` used to apply a 100-unit sidebearing step to the glyph the Edit tab
-  was leaving, because the spacing brackets and the previous/next glyph commands
-  shared the binding. That was fixed in wave 1, but the ×100 and exact-one-unit
-  spacing steps still have no keyboard binding; give them a non-conflicting one
-  or leave the numeric fields as the way to make a large step.
+The existing bounded feature acceptances remain in force. Notable later product
+work includes variable color paints/color proofs, general semantic TTX,
+ascending-only inventory sorting, axis-only virtual masters and broader plugin
+catalogues. Python scripting needs a local interpreter, and an already dispatched
+synchronous kernel call cannot be interrupted. Geometry retains its documented
+sampled/threshold/affine approximations; CFF2 has no stem/mask/flex operators and
+TrueType authored glyph programs require a static export. CID identity mappings,
+manual IDS input, color-strike precedence and whole-font bitmap color export keep
+their documented boundaries. None is silently promoted by passing regression tests.
+
+E2E tests each own a kernel process/profile and font sidecars. They use one worker
+per API/UI port pair, a prebuilt CLI (no implicit Cargo compilation), a 1440×1000
+viewport and disabled browser sandbox in this environment. The external Source
+Han Sans font remains outside the repository. Current full-suite outcomes,
+including any timing outlier, are recorded in the integrated and latest
+[E2E acceptance](p5ux-browser-acceptance.md); the earlier 100-test milestone has
+its own [historical report](p5f-w3-e2e-acceptance.md).

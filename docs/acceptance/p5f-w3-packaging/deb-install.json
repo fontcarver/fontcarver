@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "ok": true,
+  "artifact": "/home/chen/githubprojects/fontpixel/fontcarver/target/release/bundle/deb/FontCarver_0.1.0_amd64.deb",
+  "version": "0.1.0",
+  "host_platform": "linux",
+  "isolation": "private user/mount/PID namespaces; overlayfs; read-only host; no network",
+  "checks": [
+    "apt install",
+    "same-version reinstall",
+    "installed binary smoke",
+    "apt remove",
+    "private document/preferences/recovery retention"
+  ],
+  "limits": [
+    "Runtime dependencies come from the existing host; no clean-OS dependency resolution.",
+    "No graphical workflow, cross-version upgrade, signing, or publication."
+  ],
+  "sha256": "e01096f3abd387e5758dc177cfe5a85e4ec5030613d1f3f1c890aac789e429de"
+}

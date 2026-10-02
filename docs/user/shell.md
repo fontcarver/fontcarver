@@ -40,8 +40,8 @@ order the strip shows them, and reach every kind of editing tab — Glyph, Font
 Info, Features and Bitmap alike. Each tab button also publishes its binding to
 assistive technology, so a screen reader announces how to reach it.
 
-`Mod` is Command on macOS and Control on Windows and Linux. There is one keymap
-for all three platforms; only that one key differs. **Help → Keyboard
+`Mod` is Command on macOS and Control on Windows and Linux. The tab-cycling
+`Ctrl+Tab` bindings use the physical Control key on macOS too. **Help → Keyboard
 shortcuts** lists the current bindings and lets you change them.
 
 ## Tearing views off into their own windows

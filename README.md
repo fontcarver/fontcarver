@@ -41,30 +41,23 @@ The font logic is built on the permissively licensed Rust font ecosystem:
 
 ## Status
 
-Early development. P1 outline editing and headless acceptance are complete,
-and the user has tried and accepted the P1 desktop version. P2a horizontal
-kerning authoring is complete for eligible source fonts: shared groups,
-per-master pair rules, text gap editing, undo/redo, and matching preview/export
-with headless acceptance. See
-[`docs/p2a-acceptance.md`](docs/p2a-acceptance.md) for verified behavior and scope.
-P2b editable OpenType layout is complete: persisted FEA drafts, located compiler
-diagnostics, automatic features, imported lookup inspection, validated static
-layout conversion and native restore, with proven kerning/anchor transfers.
-Conversion remains conservative; unsupported or unproven layouts keep their
-original tables. See [P2b acceptance](docs/p2b-acceptance.md) and the executable
-[coverage matrix](crates/fc-layout/tests/LAYOUT_CAPABILITIES.md).
-P2c/P2d are complete within the documented static scope: native OTF/CFF export,
-Glyphs 2/3 import and Glyphs 3 export, SFD and Type 1 interoperability, and
-Find problems through the UI and CLI. See [P2c/P2d acceptance](docs/p2cd-acceptance.md)
-for format boundaries, independent reviews and final browser verification.
-P3 bitmap fonts are implemented: editable strikes, pixel tools, BDF/PCF/PSF/FNT/FON,
-OTB and embedded EBDT/CBDT/sbix, outline rasterization, pixel tracing and waterfall
-preview. See [P3 acceptance](docs/p3-acceptance.md) for supported format variants,
-CJK round trips, browser verification and the existing layout-test baseline failure.
-There is no release yet; native workflow verification is partial and release packaging is untested. See
-[`docs/p1-acceptance.md`](docs/p1-acceptance.md) for measured results and current
-limitations, including hinting removal after outline edits. The capability list
-above describes the product target, not completed support for every format.
+P0–P4 are accepted within their documented scopes. P5's professional-finish
+checklist has **110 Complete / 2 Partial** rows. The latest local verification
+passes 2,093 Rust tests, 2,914 frontend tests and all 105 default browser tests,
+including the external 65,535-glyph CJK font and actual download workflows.
+Real external `ttfautohint` execution and an independent English/Chinese review
+are also complete. The latest browser walkthrough improved compact layouts,
+editing gestures, shortcuts and focus; the welcome page now links directly to
+getting-started help, command search and shortcut settings.
+
+Actual Linux deb and thin AppImage candidates from `f6f6cf9` have been rebuilt and verified,
+including isolated APT install/reinstall/removal and AppImage startup.
+Native macOS/Windows execution, signing and publication remain pending; there
+is no public release. A Complete checklist row includes the limits stated in
+its acceptance report, rather than claiming exhaustive format or workflow
+support. See [current status](docs/STATUS.md),
+[integrated acceptance](docs/p5f-w3-integration-acceptance.md),
+[remaining work](docs/TODO.md) and the [feature audit](docs/p5-feature-audit.md).
 
 ## Layout
 

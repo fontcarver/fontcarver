@@ -17,6 +17,12 @@ The user authorized all remaining tasks and as many agents as useful. Later
 steering explicitly defers online publication and confirms signing credentials
 are not configured. Perform verifiable builds/install checks; do not publish,
 invent signing credentials or mark unavailable native execution complete.
+The latest 2026-10-02 steering revokes that temporary stop request: complete
+all remaining local closing tasks, including integrated Linux installer build,
+inspection, installation/removal and smoke checks, then update TODO/status/
+progress. Publication and macOS/Windows execution remain outside the active batch.
+Synthetic installer and minimal runtime probes do not substitute for real
+FontCarver candidate acceptance.
 No native/global desktop input automation is permitted. Both supplied remote
 spellings (`fontcarver/fontcarver` and `fontvarver/fontcarver`) are currently
 unresolvable for the authenticated GitHub account; do not create a replacement.
@@ -38,3 +44,15 @@ Record exact pass/fail/skip counts and platform limitations in
 `docs/p5f-w3-integration-acceptance.md`. Each row receives an independently
 reviewed status. Stop owned processes and clean scratch after preserving
 necessary evidence. Commit completed work locally without publishing.
+
+## Completion, 2026-10-02
+
+The current local closing checklist is accepted. Integrated Rust/frontend/default
+browser gates pass; actual `6e35f70` Linux deb and thin AppImage candidates pass
+inspection, independent review, isolated APT install/reinstall/removal and
+startup checks. A separate isolated virtual display verifies bounded GUI process
+survival without input automation. All 112 rows were independently reviewed;
+9 and 62 retain their native macOS/Windows gaps. See
+[integrated acceptance](../../../p5f-w3-integration-acceptance.md) and
+[TODO](../../../TODO.md). Final status/estimate/user documentation is synchronized;
+resource closure and local commit state are recorded with the acceptance.

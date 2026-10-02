@@ -1,0 +1,21 @@
+{
+  "platform": "Linux",
+  "executable": "/usr/bin/fontcarver-desktop",
+  "launch_mode": "headless",
+  "ok": true,
+  "signing_verified": false,
+  "interactive_parity_verified": false,
+  "version": {
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 0.032,
+    "output": "fontcarver-desktop 0.1.0\n"
+  },
+  "startup": {
+    "exit_code": 1,
+    "timed_out": false,
+    "seconds": 0.032,
+    "output": "fontcarver-desktop: no graphical session is available (Failed to initialize gtk backend!: BoolError { message: \"Failed to initialize GTK\", filename: \"/home/chen/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk-0.18.2/src/rt.rs\", function: \"gtk::rt::init\", line: 141 }).\nfontcarver-desktop is a desktop application and needs an X11 or Wayland session. Use the `fontcarver` command-line interface for headless work.\n"
+  },
+  "scope": "native loader and expected no-display refusal"
+}

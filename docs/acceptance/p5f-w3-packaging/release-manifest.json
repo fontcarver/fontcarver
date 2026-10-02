@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "platform": "linux",
+  "expected": [
+    "deb",
+    "appimage"
+  ],
+  "generated_at": "2026-10-02T16:05:17.004032+00:00",
+  "ok": true,
+  "artifacts": [
+    {
+      "path": "deb/FontCarver_0.1.0_amd64.deb",
+      "type": "deb",
+      "bytes": 24235798,
+      "sha256": "e01096f3abd387e5758dc177cfe5a85e4ec5030613d1f3f1c890aac789e429de",
+      "metadata": {
+        "Package": "font-carver",
+        "Version": "0.1.0",
+        "Architecture": "amd64"
+      },
+      "payload": {
+        "executable": {
+          "paths": [
+            "usr/bin/fontcarver-desktop"
+          ],
+          "valid_header": true
+        },
+        "resources": [
+          {
+            "path": "usr/lib/FontCarver/licenses/dependencies/LICENSE-MIT",
+            "sha256": "aa8f16d9ed7055b547dd381163393be157a9d3e0b185b504085b9bec390c1689"
+          },
+          {
+            "path": "usr/lib/FontCarver/licenses/dependencies/LICENSE-APACHE",
+            "sha256": "1a33f1c154ae25490c2f32ba396a0bfe6dbf02f88103cb6ba68b175bceffb009"
+          },
+          {
+            "path": "usr/lib/FontCarver/licenses/dependencies/THIRD_PARTY.md",
+            "sha256": "ec569a923cfa4788476d7d7cc5e5758fe1e1651ad2c388d1cc2f4ca26e3e5edc"
+          },
+          {
+            "path": "usr/lib/FontCarver/licenses/dependencies/DEPENDENCIES.json",
+            "sha256": "8b64cc6badcae08c811623313f813891ee98766d23003095ebd14c9b8ad43c4d"
+          },
+          {
+            "path": "usr/lib/FontCarver/INSTALL.md",
+            "sha256": "ef4d055a03b14bc06d7627b436899c2120cd7a900d76dbaee25c602014160db5"
+          }
+        ],
+        "notices": {
+          "packages": 630,
+          "license_files": 1126,
+          "checksums_verified": true
+        },
+        "platform_metadata": {
+          "desktop": "usr/share/applications/FontCarver.desktop",
+          "icons": [
+            "usr/share/icons/hicolor/128x128/apps/fontcarver-desktop.png",
+            "usr/share/icons/hicolor/256x256@2/apps/fontcarver-desktop.png",
+            "usr/share/icons/hicolor/32x32/apps/fontcarver-desktop.png"
+          ]
+        },
+        "fontforge_paths_absent": true,
+        "file_count": 1145,
+        "host_library_notices": [
+          {
+            "path": "scripts/release_licenses/native/HOST-LIBRARIES.txt",
+            "sha256": "6c41d27595f345b866341a72c6db2e8fa317f32f59a84502f91ed9e8feb89b24"
+          },
+          {
+            "path": "scripts/release_licenses/native/HOST-LGPL-2.txt",
+            "sha256": "b7993225104d90ddd8024fd838faf300bea5e83d91203eab98e29512acebd69c"
+          },
+          {
+            "path": "scripts/release_licenses/native/HOST-LGPL-2.1.txt",
+            "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551"
+          }
+        ],
+        "tauri_bundle_marker": {
+          "type": "DEB",
+          "offset": 4743247
+        },
+        "debian_copyright": {
+          "path": "usr/share/doc/font-carver/copyright",
+          "sha256": "e1b50db8552e900bd308ec42b3f51f2a99fbcf1c3102b7327601e098b8f17eb0"
+        }
+      }
+    },
+    {
+      "path": "appimage/FontCarver_0.1.0_amd64.AppImage",
+      "type": "appimage",
+      "bytes": 23683640,
+      "sha256": "3a9029b1aa83d39d78365b18202b39aa5a035f640083dfb4e53151c205793536",
+      "metadata": {
+        "extraction": "--appimage-extract"
+      },
+      "payload": {
+        "executable": {
+          "paths": [
+            "usr/bin/fontcarver-desktop"
+          ],
+          "valid_header": true
+        },
+        "resources": [
+          {
+            "path": "usr/lib/FontCarver/licenses/dependencies/LICENSE-MIT",
+            "sha256": "aa8f16d9ed7055b547dd381163393be157a9d3e0b185b504085b9bec390c1689"
+          },
+          {
+            "path": "usr/lib/FontCarver/licenses/dependencies/LICENSE-APACHE",
+            "sha256": "1a33f1c154ae25490c2f32ba396a0bfe6dbf02f88103cb6ba68b175bceffb009"
+          },
+          {
+            "path": "usr/lib/FontCarver/licenses/dependencies/THIRD_PARTY.md",
+            "sha256": "ec569a923cfa4788476d7d7cc5e5758fe1e1651ad2c388d1cc2f4ca26e3e5edc"
+          },
+          {
+            "path": "usr/lib/FontCarver/licenses/dependencies/DEPENDENCIES.json",
+            "sha256": "8b64cc6badcae08c811623313f813891ee98766d23003095ebd14c9b8ad43c4d"
+          },
+          {
+            "path": "usr/lib/FontCarver/INSTALL.md",
+            "sha256": "ef4d055a03b14bc06d7627b436899c2120cd7a900d76dbaee25c602014160db5"
+          }
+        ],
+        "notices": {
+          "packages": 630,
+          "license_files": 1126,
+          "checksums_verified": true
+        },
+        "platform_metadata": {
+          "desktop": "FontCarver.desktop",
+          "icons": [
+            "fontcarver-desktop.png",
+            "usr/share/icons/hicolor/128x128/apps/fontcarver-desktop.png",
+            "usr/share/icons/hicolor/256x256@2/apps/fontcarver-desktop.png",
+            "usr/share/icons/hicolor/32x32/apps/fontcarver-desktop.png"
+          ]
+        },
+        "fontforge_paths_absent": true,
+        "file_count": 1160,
+        "host_library_notices": [
+          {
+            "path": "scripts/release_licenses/native/HOST-LIBRARIES.txt",
+            "sha256": "6c41d27595f345b866341a72c6db2e8fa317f32f59a84502f91ed9e8feb89b24"
+          },
+          {
+            "path": "scripts/release_licenses/native/HOST-LGPL-2.txt",
+            "sha256": "b7993225104d90ddd8024fd838faf300bea5e83d91203eab98e29512acebd69c"
+          },
+          {
+            "path": "scripts/release_licenses/native/HOST-LGPL-2.1.txt",
+            "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551"
+          }
+        ],
+        "appimage_policy": {
+          "profile": "fontcarver-host-libs-v1",
+          "runtime_sha256": "7c017539a65934c5ffbe66a805c630323608794748d2a82cd5d88ef321c18f91",
+          "application": {
+            "bundle_type": "APP",
+            "marker_offset": 4743271,
+            "changed_bytes": 3,
+            "source_sha256": "9715a2ad24ecaa9975cea03a56cf68ffe2de95931a569884b900000980fa976e",
+            "appimage_sha256": "c8fe34032a54e4e609ae0e641f0c149becc67dbef66c2086d1059187066f9432"
+          },
+          "runtime_needed": [
+            "libc.so.6",
+            "libfuse3.so.3",
+            "libsquashfuse.so.0",
+            "libsquashfuse_ll.so.0"
+          ],
+          "bundled_shared_libraries": 0,
+          "source_and_license_pins": 9,
+          "scope": "Reviewed build recipe and artifact evidence; host libraries are not redistributed."
+        }
+      }
+    }
+  ],
+  "source": {
+    "revision": "f6f6cf9ce481d11314e25c540b5719fd0951a00f",
+    "input_sha256": "2fe41daf9aa27d48230fb3ac970ab119867c49245f2dcdff47017c60c93a6624",
+    "input_files": 2008
+  },
+  "signing_verified": false,
+  "publication_performed": false
+}

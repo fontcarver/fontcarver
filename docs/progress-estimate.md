@@ -1,16 +1,63 @@
 # Whole-project effort estimate
 
 Original estimate: 2026-09-28. Product baseline: `410cc97`
-(`p5-color-authoring`). Evidence reconciliation: **2026-09-30**, at historical
-checkout `91db6fa`. Latest revision: **2026-10-01, after completion wave 2** —
-see the reassessment section below, which supersedes both the 60% and the 70%
-central estimates.
-This document remains a planning estimate, not a feature-acceptance record.
+(`p5-color-authoring`). Latest reassessment: **2026-10-02**, current repair
+integration and Linux installer acceptance. The central whole-product estimate
+is **about 79%, with a weighted planning band of 72–86%**. This is an effort estimate for the broader professional
+product, not the fraction of checklist rows, and not a release-readiness score.
+The dated calculations below are historical snapshots.
 
-The user's later instruction freezes the active batch: complete the work already
-underway, then stop and rest. The remaining acceptance checklist records future
-work without starting new tasks. Final active-batch acceptance is recorded
-separately by the integration owner.
+The completed local batch covers closing work, the added editor UX review and
+the user's one additional small welcome-discovery task.
+The [future experience and feature backlog](TODO.md#future-experience-and-feature-backlog)
+is explicitly optional later scope; listing it does not increase completed effort.
+Publication and macOS/Windows
+execution remain outside it. See [TODO](TODO.md) and
+[current acceptance](p5f-w3-integration-acceptance.md).
+
+## Reassessment on 2026-10-02
+
+The [112-row feature audit](p5-feature-audit.md) has been independently reviewed
+against current code and evidence ([1–56](p5f-w3-audit-a.md),
+[57–112](p5f-w3-audit-b.md)). It retains **110 Complete / 2 Partial** within the
+stated feature boundaries. Newly found ordinary defects in spacing, vertical
+metrics, component submission, bitmap saving/proofing, native-open filters and
+Fix All/cancellation were repaired and independently reviewed. Real ttfautohint
+and the external large CJK font now have direct execution evidence. The original
+integrated regression gate passed, including all 100 then-default browser tests.
+The final UX/welcome source `f6f6cf9` passes **2,914 frontend tests / 348 files**
+and **105/105 browser tests**, with zero skips or retries. Its source-matched
+Linux packages have passed actual installation/startup and independent review.
+
+Actual FontCarver deb and thin AppImage candidates were rebuilt from integrated
+source **`f6f6cf9`** (2,008 source inputs). The first `6e35f70` round is archived
+as superseded after the thin image bundle-marker correction and subsequent UX
+changes. Final package inspection and independent review verify source/hash
+provenance, dependency notices and the thin runtime's host-library policy. Real
+isolated APT installation, same-version reinstallation, removal and user-data
+retention pass. These results supersede the earlier synthetic/minimal probes;
+[the package acceptance](p5f-w3-packaging-acceptance.md) records the actual
+artifacts. They do not establish clean-OS dependency resolution, cross-version
+upgrades, native macOS/Windows behavior, signing or publication.
+
+Only the release/documentation/final-audit bucket changes. Its six-point weight
+is retained and its completion band moves from **18–32% to 45–65%** for actual
+Linux delivery acceptance, the independent row review and the integrated gate.
+The other eleven area bands remain unchanged: most repairs restore behavior
+already credited, and tests or commits are not additional product features.
+
+| Calculation             | Previous |                              Current |
+| ----------------------- | -------: | -----------------------------------: |
+| Weighted lower endpoint |   70.67% | `70.67 + 6 × (0.45 − 0.18) = 72.29%` |
+| Weighted upper endpoint |   83.78% | `83.78 + 6 × (0.65 − 0.32) = 85.76%` |
+| Midpoint                |    77.2% |                                79.0% |
+
+The 72–86% band is an engineering estimate, not a statistical interval or a
+release-readiness score. The authorized current-version local closing work is complete;
+the broader product retains the explicit geometry, color, format, family and
+automation boundaries recorded in its acceptance reports and TODO. The
+110/112 checklist count must not be presented as 98% completion of that broader
+product.
 
 ## Reconciliation on 2026-09-30
 
@@ -153,21 +200,15 @@ for closing the documented limits each acceptance document states. Those, with
 the AppImage payload licensing, are what the remaining band covers; they are
 also why the upper endpoint stays below 85%.
 
-## Conclusion
+## Current interpretation
 
-After completion wave 2 the central estimate is **about 77% of the work toward
-the approved complete product**, with a practical planning range of **70–85%**
-(weighted band 70.7–83.8%). The 2026-09-28 baseline of about 60% and the
-post-wave-1 estimate of about 70% are both superseded by the 2026-10-01
-reassessment above, which moves only the bands of areas holding newly accepted
-audit rows. The engineering judgment is that the row-by-row checklist is now
-almost entirely accepted while the work that remains — native platforms,
-release packaging and licensing, and a final gate — is the part no test suite on
-this machine can close; the evidence does not support a claim that the product
-is shippable, or a delivery date.
-
-This replaces the previous absence of a whole-project estimate. It does not
-change any accepted scope or close any pending audit row.
+The latest accepted milestone is the 2026-10-02 local integration and Linux
+installer verification. Its broader-product estimate is **about 79%**, with a
+weighted band rounded to **72–86%**. Earlier 60%, 70% and 77% estimates above
+remain historical snapshots. The remaining delivery gates are native
+macOS/Windows execution, signing and publication; accepted feature boundaries
+also reserve later product work. No public-release or delivery-date claim follows
+from this estimate.
 
 ## Scope and method
 

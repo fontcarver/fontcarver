@@ -1,10 +1,15 @@
 # P5 professional finish
 
-Status: active batch integrated and stopped on 2026-09-30 at the user’s request.
-See [batch checkpoint](../../p5-resume-integration.md). MATH, COLR v0/CPAL
-and the static SVG/COLRv1 authoring subsets have acceptance records. The P5 scope was
-authorized immediately after P4; the remaining work is not complete. Current
-progress and next actions: [STATUS](../../STATUS.md).
+Status: current local closing work completed on 2026-10-02. The later user instruction
+revoked the earlier stop request; publication and macOS/Windows execution remain
+excluded. P5 has 110 Complete / 2 Partial checklist rows, within their linked
+acceptance boundaries. Current progress and next actions:
+[STATUS](../../STATUS.md), [completion plan](2026-09-30-p5-completion.md) and
+[integrated acceptance](../../p5f-w3-integration-acceptance.md).
+The latest local milestone includes the UX/input repairs and the one additional
+welcome-discovery task: source `f6f6cf9`, 2,914 frontend tests, 105 browser tests
+and rebuilt/verified Linux candidates. Broader UX and feature requests are
+recorded as future work in [TODO](../../TODO.md).
 P4 checkpoint: `a3b2f8f`; its supported boundaries and evidence are recorded in
 `docs/p4-acceptance.md`.
 
@@ -18,7 +23,11 @@ and Simplified Chinese UI, and final formatting. No FontForge execution or copie
 implementation is used. Native/global desktop input automation remains prohibited
 by the earlier user instruction; headless browser testing and builds are allowed.
 
-## Work sequence
+## Original work sequence
+
+The checkboxes below are the initial planning snapshot. Current completion is
+tracked by the [112-row audit](../../p5-feature-audit.md); this historical list
+does not override its later accepted implementations and explicit limits.
 
 - [ ] Hinting: bounded TT assembler/disassembler, editable programs/CVT/maxima,
       source-index validation, hinted preview, PS stems/zones/masks, CFF/Type 1 output,
@@ -58,7 +67,7 @@ by the earlier user instruction; headless browser testing and builds are allowed
 - [ ] Final row-by-row acceptance, independent font decoding/rendering, realistic
       corpora, failure/undo/save/reopen tests, formatting and regression checks.
 
-## Initial audit
+## Initial audit (historical, before implementation)
 
 P4 implements variable/CJK paths. `fc-hint` is still absent; export currently emits
 explicit warnings for autohint and remove-overlap requests. PS/TT data structures

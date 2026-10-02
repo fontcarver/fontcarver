@@ -1,13 +1,99 @@
 # Wave 3 independent release tooling review
 
-2026-10-02. **Tooling review accepted after fixes.** No implementation blocker
-remains in the reviewed native smoke/workflows, rootless Debian verifier,
-AppImage inventory/gate or thin builder. This verdict is not acceptance of an
-integrated installer that has not yet been built or installed. Final candidate
-inspection/install/smoke evidence must be attached after the integration build.
-The final Linux candidate review is now reopened following renewed user
-authorization; the evidence below remains tooling/runtime evidence until that
-review is recorded.
+2026-10-02. **Final Linux candidates and release tooling accepted within the
+scope below.** The independently inspected deb and thin AppImage were rebuilt
+from frozen source `f6f6cf9`, including the corrected AppImage format marker.
+Their actual payloads, source fingerprint, notices and runtime evidence pass;
+the real isolated APT install/reinstall/remove evidence also passes. No reviewed
+implementation blocker remains. Native macOS/Windows execution, visible GUI
+interaction, signing and publication are not established by this verdict.
+
+## Final actual candidate review
+
+The build [manifest](acceptance/p5f-w3-packaging/release-manifest.json) and
+[log](acceptance/p5f-w3-packaging/build.log) identify revision
+`f6f6cf9ce481d11314e25c540b5719fd0951a00f`, 2,008 input files and input SHA-256
+`2fe41daf9aa27d48230fb3ac970ab119867c49245f2dcdff47017c60c93a6624`.
+These exactly match this reviewer's checkpoint before the build and independent
+checks before and after the final extraction review. The evidence copy of the
+manifest also equals the one beside the actual artifacts.
+
+| Actual candidate                  |      Bytes | SHA-256                                                            |
+| --------------------------------- | ---------: | ------------------------------------------------------------------ |
+| `FontCarver_0.1.0_amd64.deb`      | 24,235,798 | `e01096f3abd387e5758dc177cfe5a85e4ec5030613d1f3f1c890aac789e429de` |
+| `FontCarver_0.1.0_amd64.AppImage` | 23,683,640 | `3a9029b1aa83d39d78365b18202b39aa5a035f640083dfb4e53151c205793536` |
+
+Both actual files were independently hashed and extracted into reviewer-owned
+temporary directories. Fresh `inspect_payload` and
+`require_releasable_appimage` results exactly matched the preserved manifest.
+The deb has 1,145 files and the AppImage 1,160; each contains notices for 630
+packages in 1,126 notice files. All seven project notices, including the
+host-library notice and checksum-pinned LGPL texts, match current source bytes.
+The bundled `INSTALL.md` also matches its source. The AppImage has one payload
+ELF and no bundled shared libraries. All nine approved source/license/notice
+pins, both regenerated patches, the runtime hash, dynamic dependencies, link
+map and receipt were verified against the actual extracted image.
+
+Every deb file except the application ELF has the identical hash in the image:
+1,144 unchanged files. The actual application ELF changes only three bytes at
+offset 4,743,271, from its unique `DEB` marker to its unique `APP` marker.
+Reversing those bytes exactly reconstructs the deb ELF. Its SHA-256 is
+`9715a2ad24ecaa9975cea03a56cf68ffe2de95931a569884b900000980fa976e`;
+the image ELF is
+`c8fe34032a54e4e609ae0e641f0c149becc67dbef66c2086d1059187066f9432`.
+The raw release executable also matches the deb executable after Tauri's
+expected `UNK` to `DEB` marker conversion. The receipt binds the image to the
+actual deb hash above.
+
+The [actual APT record](acceptance/p5f-w3-packaging/deb-install.json) and
+[full execution log](acceptance/p5f-w3-packaging/deb-install.log) were reviewed
+independently. They show installation, same-version reinstallation, package
+triggers, removal and private document/preferences/recovery retention in the
+isolated namespace, using this exact final deb hash. Both installed executable
+smokes report version `0.1.0` with exit 0 and the deliberate no-display
+diagnostic with exit 1, without timeout. The host executable remains absent.
+The namespace's nonfatal `root:adm` log ownership warnings did not prevent APT
+completion. This is a review of actual owner-run installation evidence, not a
+claim that this reviewer repeated the installation or that a clean OS resolved
+the dependencies.
+
+The reviewer separately ran `smoke_release_native.py --launch headless` against
+the actual final AppImage using the thin owner's isolated host-library sysroot.
+Version `0.1.0` exited 0 in 0.573 s; the expected GTK no-display diagnostic exited
+1 in 0.465 s, with neither probe timing out. The owner's preserved
+[runtime probes](acceptance/p5f-w3-thin-appimage/candidate-probes.json),
+[build receipt](acceptance/p5f-w3-thin-appimage/BUILD.json) and
+[link map](acceptance/p5f-w3-thin-appimage/runtime.map) agree with the new artifact,
+application and deb hashes. They additionally establish normal FUSE launch,
+extract-and-run launch and complete extraction. The unchanged runtime is
+49,720 bytes with SHA-256
+`7c017539a65934c5ffbe66a805c630323608794748d2a82cd5d88ef321c18f91`.
+The [isolated Xvfb record](acceptance/p5f-w3-thin-appimage/gui-probes.json) binds
+the new artifact hash and source revision to 15.065 s of native process survival
+before controlled SIGTERM. It contains no desktop input and does not establish
+visible frontend readiness or interactive behavior.
+
+## Superseded first candidate and format-marker correction
+
+The first integrated candidates from `6e35f70` passed independent extraction,
+payload/notice checks and runtime smoke. Their manifest source fingerprint
+matched the reviewer's pre-build checkpoint. Real APT install/reinstall/remove
+and user-data retention evidence was also reviewed.
+
+A final executable provenance comparison found one actual metadata defect: the
+thin image inherited Debian's `__TAURI_BUNDLE_TYPE_VAR_DEB` marker. Tauri's pinned
+`tauri-utils 2.9.3` maps that marker to `Deb`; the AppImage marker is `APP`.
+The application currently has no bundle-type API caller, and resource resolution
+does not depend on this marker, so the successful startup evidence remains true.
+The parent nevertheless required fixing this local packaging defect before
+acceptance. The fix is independently accepted: the builder changes exactly three
+bytes in the extracted application, preserves the input deb, and records both
+ELF hashes and the offset. The gate requires one `APP` marker and verifies the
+reverse conversion; Debian inspection independently requires one `DEB` marker.
+`test_build_thin_appimage`, `test_appimage_inventory` and
+`test_check_release_bundle` passed **57 tests in 0.226 s** in this review round.
+The first candidate is superseded. The final build and actual checks above
+establish the corrected format metadata after the additional authorized UI work.
 
 ## Scope and evidence boundary
 
@@ -39,8 +125,9 @@ native macOS/Windows execution.
    inputs and start before license/API generation. A second review caught the
    initially omitted root pnpm lockfile and late snapshot; both are corrected.
    Build/bundle/install suites pass 33 tests. Rootless installation isolation and
-   cleanup have no blocking review finding. Actual integrated candidate and
-   install evidence remain pending. A subsequent helper fix was also reviewed:
+   cleanup had no blocking review finding; actual candidate and installation
+   evidence was still pending at that historical checkpoint. A subsequent
+   helper fix was also reviewed:
    validated archive parents provide writable nested icon paths, `/proc` reflects
    the private PID namespace, and tempfile output plus owned process-group
    cleanup prevent retained stdout/orphan hangs.
@@ -107,16 +194,21 @@ native macOS/Windows execution.
 - Final workflow YAML parse and all five explicit Bash syntax checks passed;
   the Ubuntu 24.04 matrix and exact squashfuse prerequisite assertion were
   independently checked.
-- Final artifact check and `git diff --check`: passed. Build 15.88 GiB / 19,640
+- Earlier tooling-only artifact check and `git diff --check`: passed. Build 15.88 GiB / 19,640
   files, temporary 0.02 GiB / 2,107 files, workspace free 606.04 GiB; only the
-  documented 10 GiB build warning remains. Reviewer-owned processes are stopped
-  and `.scratch/p5f-w3-review-release` is removed.
+  documented 10 GiB build warning remained at that checkpoint. Reviewer-owned
+  processes and scratch were cleaned before the actual candidate review reopened.
+- Final candidate review cleanup: all reviewer probes exited and were reaped;
+  `.scratch/p5f-w3-review-release` was removed. `python3 scripts/check_artifacts.py`
+  passed with 5.33 GiB / 12,262 build files, 0.08 GiB / 1,264 temporary files and
+  616.29 GiB free. `git diff --check` passed. The thin and packaging owners were
+  notified that their retained review resources were no longer needed.
 
 ## Remaining evidence boundaries
 
-- The integrated application deb and thin AppImage still need their final
-  actual inspection, install/removal and smoke evidence. A runtime-only probe
-  and unit fixtures cannot establish these results.
+- Final integrated Linux artifact inspection, isolated APT install/removal and
+  bounded native smoke evidence are complete as recorded above. Clean-OS
+  dependency resolution and cross-version upgrades were not exercised.
 - macOS/Windows package execution and Windows Job Object integration remain
   unverified on this Linux host; workflow definitions do not close audit rows
   9/62. GUI process survival itself is weaker than visible frontend readiness or

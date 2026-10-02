@@ -3,12 +3,15 @@
 Task ID: p5f-w3-native
 
 ## Scope and ownership
+
 Own .github/workflows/ci.yml and .github/workflows/release.yml, new focused native smoke helper scripts/tests as needed, docs/p5f-w3-native-acceptance.md. Release/build/check_bundle scripts and install/releasing docs owned by packaging agent.
 
 ## Interfaces and acceptance
+
 Inspect workflows thoroughly for execution defects, add meaningful platform-native checks to cover row 9/62 (build, install, launch, platform shortcut abstraction where automation allowed). No native/global desktop input automation. Determine available real macOS/Windows runner execution and signing capabilities; current gh account tomchen works but origin fontcarver/fontcarver unresolved, parent asking destination. Do not create/push repo, dispatch CI or publish until parent coordinates target. Prepare safe signing via existing CI secrets if provided, otherwise explicitly distinguish unsigned acceptance from signed release. Report precise external blockers while completing local script tests and workflow verification.
 
 ## Shared execution rules
+
 Read AGENTS.md, CONVENTIONS.md, docs/superpowers/plans/tasks/p5f-protocol.md and relevant audit/acceptance docs. The user explicitly authorized all remaining P5 tasks and parallel agents on 2026-10-02; historical “wave 3 not started” statements are superseded. This task is your scope. Shared checkout: no commits, push, stash, reset, clean or unrelated edits. Parent owns STATUS, TODO, feature audit, progress estimate, integration and commits. No recursive subagents needed.
 Run artifact checker at start and finish, scratch only .scratch/<task-id>/ with absolute TMPDIR. All Cargo commands use flock .scratch/p5f/cargo.lock, default profiles and shared target. Tell parent before any heavy build or cleaning cache; parent coordinates broad validation. Never delete another task’s artifacts/processes or shared stores. Append gap analysis to this task file before implementation. Focused tests and exact outputs in own acceptance report, distinguish limitations and missing evidence. Final report under 300 words. Stop owned processes and clean owned scratch after preserving acceptance evidence. New translations require a separate GPT-6.1 Sol agent assigned by parent.
 
@@ -29,3 +32,11 @@ Run artifact checker at start and finish, scratch only .scratch/<task-id>/ with 
   account. The local host is Linux; Wine is not native Windows evidence.
   No push, dispatch, repository creation or publication is performed. The user
   confirmed signing credentials are not configured and requested no publication.
+
+## Local completion, 2026-10-02
+
+Workflow and smoke-helper corrections are integrated in `6e35f70`, with local
+script, platform-keymap and workflow validation in
+[acceptance](../../../p5f-w3-native-acceptance.md). Actual macOS/Windows execution,
+signing and publication remain outside the current user-authorized local batch.
+Rows 9 and 62 remain Partial; local helper tests do not establish native parity.

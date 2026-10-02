@@ -1,0 +1,28 @@
+{
+  "libfuse3-dev": {
+    "sha256": "cfa8460d23b5143d14bb336b3008784df72a5e9fc32057ec1dc85beadca9aecb",
+    "filename": "libfuse3-dev_3.14.0-5build1_amd64.deb"
+  },
+  "libsquashfuse0": {
+    "sha256": "19594e096e5772165df1ecb4382f63c1b267cf14703c15ee02011b503d0715b3",
+    "filename": "libsquashfuse0_0.5.0-2build1_amd64.deb"
+  },
+  "libsquashfuse-dev": {
+    "sha256": "7ba23670f18cfea18955ba98d03d630045da82f8a5f9506e68b0411441df8124",
+    "filename": "libsquashfuse-dev_0.5.0-2build1_amd64.deb"
+  },
+  "squashfs-tools": {
+    "sha256": "87fae263846bab255d4a51ad9fc623685497ad830db60758dde39589c9fdadcb",
+    "filename": "squashfs-tools_1%3a4.6.1-1build1_amd64.deb"
+  },
+  "xvfb": {
+    "sha256": "712429d9342c7d6cef63afb33ccfcd2bd477a69371b5c9941a9c6dde31a4cd3c",
+    "filename": "xvfb_2%3a21.1.12-1ubuntu1.8_amd64.deb",
+    "version": "2:21.1.12-1ubuntu1.8"
+  },
+  "xserver-common": {
+    "sha256": "5720e7995c3b546927046f63bb4a344773b27850379c4b2694edf279025ad772",
+    "filename": "xserver-common_2%3a21.1.12-1ubuntu1.8_all.deb",
+    "version": "2:21.1.12-1ubuntu1.8"
+  }
+}

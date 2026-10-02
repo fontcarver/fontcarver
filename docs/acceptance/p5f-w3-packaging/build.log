@@ -1,0 +1,123 @@
++ /home/chen/.pyenv/versions/3.12.13/bin/python3 scripts/check_artifacts.py --min-free-gib 20.0
+build: 5.33 GiB, 12,257 files
+temporary: 0.06 GiB, 784 files
+workspace free: 616.33 GiB
+PASS
++ cargo fetch --locked
++ /home/chen/.pyenv/versions/3.12.13/bin/python3 scripts/check_release_licenses.py --output-dir /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5-release/build-o6wbais2/licenses
+PASS: source-package policy verified for 601 Cargo and 277 npm versions; notice documents checked for 601 Cargo and 29 production npm versions
+Notice bundle: /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5-release/build-o6wbais2/licenses
++ cargo run --locked -p fc-api --bin gen_ts
+    Finished `dev` profile [unoptimized] target(s) in 0.22s
+     Running `target/debug/gen_ts`
++ /home/chen/.pyenv/versions/3.12.13/bin/python3 scripts/check_artifacts.py --min-free-gib 20.0
+build: 5.33 GiB, 12,257 files
+temporary: 0.07 GiB, 1,921 files
+workspace free: 616.32 GiB
+PASS
++ /home/chen/.local/share/pnpm/bin/pnpm --dir app exec tauri build --ci --config /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5-release/build-o6wbais2/tauri.release.json --bundles deb -- --locked
+        Info `tauri-build` dependency has workspace inheritance enabled. The features array won't be automatically rewritten. Expected features: []
+        Info `tauri` dependency has workspace inheritance enabled. The features array won't be automatically rewritten. Expected features: []
+        Info Looking up installed tauri packages to check mismatched versions...
+     Running beforeBuildCommand `pnpm --dir ../app build`
+
+> fontcarver-app@0.1.0 build /home/chen/githubprojects/fontpixel/fontcarver/app
+> tsc -b && vite build
+
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 3020 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                           0.45 kB │ gzip:   0.28 kB
+dist/assets/macro.worker-CMRvcsoc.js      3.53 kB
+dist/assets/index-CESV8EHE.css          149.32 kB │ gzip:  23.86 kB
+dist/assets/index-BaVvZx_s.js             1.25 kB │ gzip:   0.48 kB
+dist/assets/index-DlsMmQIV.js             2.58 kB │ gzip:   1.18 kB
+dist/assets/index-Cepg_8WJ.js         2,187.68 kB │ gzip: 678.07 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 4.39s
+   Compiling fontcarver v0.1.0 (/home/chen/githubprojects/fontpixel/fontcarver/src-tauri)
+    Finished `release` profile [optimized] target(s) in 1m 12s
+       Built application at: /home/chen/githubprojects/fontpixel/fontcarver/target/release/fontcarver-desktop
+        Info Patching /home/chen/githubprojects/fontpixel/fontcarver/target/release/fontcarver-desktop with bundle type information: deb
+    Bundling FontCarver_0.1.0_amd64.deb (/home/chen/githubprojects/fontpixel/fontcarver/target/release/bundle/deb/FontCarver_0.1.0_amd64.deb)
+    Finished 1 bundle at:
+        /home/chen/githubprojects/fontpixel/fontcarver/target/release/bundle/deb/FontCarver_0.1.0_amd64.deb
+
++ /home/chen/.pyenv/versions/3.12.13/bin/python3 scripts/build_thin_appimage.py --deb /home/chen/githubprojects/fontpixel/fontcarver/target/release/bundle/deb/FontCarver_0.1.0_amd64.deb --output /home/chen/githubprojects/fontpixel/fontcarver/target/release/bundle/appimage/FontCarver_0.1.0_amd64.AppImage --sysroot /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/root
++ dpkg-deb --extract /home/chen/githubprojects/fontpixel/fontcarver/target/release/bundle/deb/FontCarver_0.1.0_amd64.deb /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-nnbtyjfr/AppDir
++ pkg-config --modversion squashfuse
++ gcc -std=gnu99 -Os -D_FILE_OFFSET_BITS=64 -DGIT_COMMIT="8f39b89e2ac31e1640b3d3f7e9a5108e6ce805fa-host-libs" -ffunction-sections -fdata-sections -Wl,--gc-sections -Wall -Werror -fPIE -pie -Wl,-z,relro,-z,now -T /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-nnbtyjfr/AppDir/usr/lib/FontCarver/licenses/thin-appimage/sections.ld -I /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-nnbtyjfr/include -I /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/root/usr/include/squashfuse -I /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/root/usr/include -I /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/root/usr/include/fuse3 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-nnbtyjfr/AppDir/usr/lib/FontCarver/licenses/thin-appimage/runtime.c -L /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/root/usr/lib/x86_64-linux-gnu -Wl,-Bdynamic -l:libsquashfuse.so.0 -l:libsquashfuse_ll.so.0 -l:libfuse3.so.3 -Wl,-Map,/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-nnbtyjfr/AppDir/usr/lib/FontCarver/licenses/thin-appimage/runtime.map -o /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-nnbtyjfr/runtime
++ strip --strip-unneeded /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-nnbtyjfr/runtime
++ readelf -d /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-nnbtyjfr/runtime
++ gcc --version
++ dpkg-deb -f /home/chen/githubprojects/fontpixel/fontcarver/target/release/bundle/deb/FontCarver_0.1.0_amd64.deb Depends
++ mksquashfs -version
++ mksquashfs /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-nnbtyjfr/AppDir /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-nnbtyjfr/payload.squashfs -noappend -comp gzip -all-root -no-xattrs -processors 2 -mkfs-time 0 -all-time 0
+{
+  "artifact": "/home/chen/githubprojects/fontpixel/fontcarver/target/release/bundle/appimage/FontCarver_0.1.0_amd64.AppImage",
+  "sha256": "3a9029b1aa83d39d78365b18202b39aa5a035f640083dfb4e53151c205793536",
+  "runtime": {
+    "bytes": 49720,
+    "sha256": "7c017539a65934c5ffbe66a805c630323608794748d2a82cd5d88ef321c18f91",
+    "needed": [
+      "libc.so.6",
+      "libfuse3.so.3",
+      "libsquashfuse.so.0",
+      "libsquashfuse_ll.so.0"
+    ],
+    "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "command": [
+      "gcc",
+      "-std=gnu99",
+      "-Os",
+      "-D_FILE_OFFSET_BITS=64",
+      "-DGIT_COMMIT=\"8f39b89e2ac31e1640b3d3f7e9a5108e6ce805fa-host-libs\"",
+      "-ffunction-sections",
+      "-fdata-sections",
+      "-Wl,--gc-sections",
+      "-Wall",
+      "-Werror",
+      "-fPIE",
+      "-pie",
+      "-Wl,-z,relro,-z,now",
+      "-T",
+      "/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-nnbtyjfr/AppDir/usr/lib/FontCarver/licenses/thin-appimage/sections.ld",
+      "-I",
+      "/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-nnbtyjfr/include",
+      "-I",
+      "/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/root/usr/include/squashfuse",
+      "-I",
+      "/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/root/usr/include",
+      "-I",
+      "/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/root/usr/include/fuse3",
+      "/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-nnbtyjfr/AppDir/usr/lib/FontCarver/licenses/thin-appimage/runtime.c",
+      "-L",
+      "/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/root/usr/lib/x86_64-linux-gnu",
+      "-Wl,-Bdynamic",
+      "-l:libsquashfuse.so.0",
+      "-l:libsquashfuse_ll.so.0",
+      "-l:libfuse3.so.3",
+      "-Wl,-Map,/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-nnbtyjfr/AppDir/usr/lib/FontCarver/licenses/thin-appimage/runtime.map",
+      "-o",
+      "/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-nnbtyjfr/runtime"
+    ]
+  }
+}
++ /home/chen/.pyenv/versions/3.12.13/bin/python3 scripts/check_artifacts.py --min-free-gib 20.0
+build: 5.33 GiB, 12,262 files
+temporary: 0.08 GiB, 2,043 files
+workspace free: 616.30 GiB
+PASS
++ /home/chen/.pyenv/versions/3.12.13/bin/python3 scripts/check_release_bundle.py --bundle-dir /home/chen/githubprojects/fontpixel/fontcarver/target/release/bundle --expected deb,appimage
+PASS: /home/chen/githubprojects/fontpixel/fontcarver/target/release/bundle/release-manifest.json
+build: 5.33 GiB, 12,262 files
+temporary: 0.07 GiB, 832 files
+workspace free: 616.31 GiB
+PASS
+Verified FontCarver 0.1.0 native installers: /home/chen/githubprojects/fontpixel/fontcarver/target/release/bundle

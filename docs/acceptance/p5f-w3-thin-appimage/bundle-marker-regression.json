@@ -1,0 +1,13 @@
+{
+  "original_deb_sha256": "66542dd9a317ccc2f9bd23f30bd91077198073ae7258ea0732243d6f5e83011e",
+  "deb_unchanged": true,
+  "only_three_bytes_changed": true,
+  "mode_unchanged": true,
+  "application": {
+    "source_sha256": "d96b55bc3691aab3201899e6914f82e8fe942210d30321fca0009e2dfe7df370",
+    "appimage_sha256": "9c79ce4f5a70337182faa1b0790d969ce770980f945f7bb0c93b5b0e4b1b487a",
+    "marker_offset": 4740623,
+    "before": "DEB",
+    "after": "APP"
+  }
+}
