@@ -13,7 +13,11 @@
     "tauri": "pnpm --dir app tauri",
     "check": "pnpm --dir app check",
     "lint": "pnpm --dir app lint",
+    "knip": "knip",
     "test": "pnpm --dir app test",
     "build": "pnpm --dir app build"
+  },
+  "devDependencies": {
+    "knip": "^6.39.0"
   }
 }
