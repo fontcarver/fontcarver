@@ -90,6 +90,29 @@ class InventoryTests(unittest.TestCase):
             self.assertEqual(candidate['match'], 'name-and-architecture-only')
             self.assertFalse(candidate['content_identical'])
 
+    def test_package_notices_carry_source_package_and_version(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            rows = [{'path': 'usr/lib/libgtk-3.so.0', 'type': 'file', 'elf_machine': 62,
+                     'host_candidates': [{'package': 'libgtk-3-0t64', 'path': '/usr/lib/libgtk-3.so.0'}]}]
+            packages = {'libgtk-3-0t64': {'version': '3.24.49-1',
+                                          'source_package': 'gtk+3.0',
+                                          'source_version': '3.24.49-1'}}
+            entries = inventory.package_notices(root, rows, packages)
+            self.assertEqual(len(entries), 1)
+            self.assertEqual(entries[0]['package'], 'libgtk-3-0t64')
+            self.assertEqual(entries[0]['version'], '3.24.49-1')
+            self.assertEqual(entries[0]['source_package'], 'gtk+3.0')
+            self.assertEqual(entries[0]['source_version'], '3.24.49-1')
+
+    def test_package_notices_tolerate_an_unknown_package(self):
+        with tempfile.TemporaryDirectory() as directory:
+            rows = [{'path': 'usr/lib/libmystery.so.1', 'type': 'file', 'elf_machine': 62,
+                     'host_candidates': [{'package': 'ghost', 'path': '/usr/lib/libmystery.so.1'}]}]
+            entries = inventory.package_notices(Path(directory), rows, {})
+            self.assertEqual(entries[0]['version'], '')
+            self.assertEqual(entries[0]['source_package'], '')
+
 
 class ThinPolicyTests(unittest.TestCase):
     def setUp(self):

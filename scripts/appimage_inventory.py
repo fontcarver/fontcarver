@@ -134,7 +134,7 @@ def annotate_host_candidates(rows: list[dict], owners: dict, packages: dict,
         row['host_candidates'] = matches
 
 
-def package_notices(root: Path, rows: list[dict]) -> list[dict]:
+def package_notices(root: Path, rows: list[dict], packages: dict) -> list[dict]:
     """Record current-host copyright hashes and notices actually in the image."""
     result = []
     names = sorted({candidate['package'] for row in rows
@@ -142,7 +142,11 @@ def package_notices(root: Path, rows: list[dict]) -> list[dict]:
     for name in names:
         base = name.split(':', 1)[0]
         copyright_path = Path('/usr/share/doc') / base / 'copyright'
-        entry = {'package': name, 'host_copyright_path': str(copyright_path)}
+        source = packages.get(name, {})
+        entry = {'package': name, 'host_copyright_path': str(copyright_path),
+                 'version': source.get('version', ''),
+                 'source_package': source.get('source_package', ''),
+                 'source_version': source.get('source_version', '')}
         if copyright_path.is_file():
             entry['host_copyright_sha256'] = sha256(copyright_path)
             entry.update(license_summary(copyright_path.read_text(encoding='utf-8', errors='replace')))
@@ -162,7 +166,7 @@ def inventory(artifact: Path, payload: Path, offset: int) -> dict:
     rows = payload_files(payload)
     owners, packages = host_inventory({Path(row['path']).name for row in rows if 'elf_machine' in row})
     annotate_host_candidates(rows, owners, packages)
-    notices = package_notices(payload, rows)
+    notices = package_notices(payload, rows, packages)
     libraries = [row for row in rows if 'elf_machine' in row and '.so' in Path(row['path']).name]
     library_packages = {candidate['package'] for row in libraries for candidate in row['host_candidates']}
     return {
