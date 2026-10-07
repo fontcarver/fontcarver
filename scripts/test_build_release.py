@@ -72,11 +72,15 @@ class ReleaseValidationTests(unittest.TestCase):
                 self.assertEqual(after["input_files"], 2)
 
     def test_native_targets_are_explicit(self):
-        self.assertEqual(native_bundles("Linux"), ["deb"])
+        self.assertEqual(native_bundles("Linux"), ["deb", "appimage"])
         self.assertEqual(native_bundles("Darwin"), ["dmg"])
         self.assertEqual(native_bundles("Windows"), ["msi"])
         with self.assertRaises(ValueError):
             native_bundles("FreeBSD")
+
+    def test_thin_appimage_builder_is_gone(self):
+        root = Path(build_release.__file__).resolve().parent
+        self.assertFalse((root / "build_thin_appimage.py").exists())
 
     def test_different_versions_cannot_ship(self):
         with self.assertRaisesRegex(ValueError, "version mismatch"):

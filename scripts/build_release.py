@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def native_bundles(system: str) -> list[str]:
     """Return only the installer formats maintained for a native platform."""
-    bundles = {"Linux": ["deb"], "Darwin": ["dmg"], "Windows": ["msi"]}
+    bundles = {"Linux": ["deb", "appimage"], "Darwin": ["dmg"], "Windows": ["msi"]}
     if system not in bundles:
         raise ValueError(f"unsupported release build platform: {system}")
     return bundles[system]
@@ -103,8 +103,6 @@ def source_state() -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bundles", help="comma-separated native formats; defaults to this platform")
-    parser.add_argument("--appimage-sysroot", type=Path,
-                        help="optional extracted native build prerequisites for the thin AppImage runtime")
     parser.add_argument("--min-free-gib", type=float, default=20.0,
                         help="workspace free-space floor; ephemeral CI may use 5")
     args = parser.parse_args()
@@ -130,7 +128,7 @@ def main() -> int:
                                           for name in ("config", "config.toml")])
         native = native_bundles(platform.system())
         bundles = [part.strip().lower() for part in args.bundles.split(",")] if args.bundles else native
-        allowed = native + (["appimage"] if platform.system() == "Linux" else [])
+        allowed = native
         if not bundles or any(bundle not in allowed for bundle in bundles):
             raise ValueError(f"native bundle formats on this platform are: {', '.join(native)}")
         manifest = tomllib.loads((ROOT / "Cargo.toml").read_text(encoding="utf-8"))
@@ -157,34 +155,12 @@ def main() -> int:
         override_path = scratch / "tauri.release.json"
         override_path.write_text(json.dumps(override, indent=2) + "\n", encoding="utf-8")
         bundle_dir = target / "release/bundle"
-        built_formats = list(dict.fromkeys(bundles + (["deb"] if "appimage" in bundles else [])))
-        before = artifact_snapshot(bundle_dir, built_formats)
-        tauri_bundles = [bundle for bundle in bundles if bundle != "appimage"]
-        if "appimage" in bundles and "deb" not in tauri_bundles:
-            tauri_bundles.append("deb")
+        before = artifact_snapshot(bundle_dir, bundles)
         run([pnpm, "--dir", "app", "exec", "tauri", "build", "--ci",
-             "--config", str(override_path), "--bundles", ",".join(tauri_bundles), "--", "--locked"], env)
+             "--config", str(override_path), "--bundles", ",".join(bundles), "--", "--locked"], env)
         languages = config["bundle"].get("windows", {}).get("wix", {}).get("language", ["en-US"])
         language_count = len(languages) if isinstance(languages, (dict, list)) else 1
-        validate_built_artifacts(bundle_dir, tauri_bundles, before, language_count)
         bundle_env = dict(env)
-        if "appimage" in bundles:
-            debs = discover(bundle_dir, ["deb"])
-            if len(debs) != 1:
-                raise ValueError("thin AppImage requires exactly one newly built deb")
-            deb = debs[0][1]
-            output = bundle_dir / "appimage" / (deb.stem + ".AppImage")
-            thin_command = [sys.executable, "scripts/build_thin_appimage.py", "--deb", str(deb),
-                            "--output", str(output)]
-            if args.appimage_sysroot:
-                sysroot = args.appimage_sysroot.resolve()
-                thin_command += ["--sysroot", str(sysroot)]
-                bundle_env["PATH"] = str(sysroot / "usr/bin") + os.pathsep + env.get("PATH", "")
-                libraries = str(sysroot / "usr/lib/x86_64-linux-gnu")
-                if env.get("LD_LIBRARY_PATH"):
-                    libraries += os.pathsep + env["LD_LIBRARY_PATH"]
-                bundle_env["LD_LIBRARY_PATH"] = libraries
-            run(thin_command, bundle_env)
         if source_state() != source:
             raise ValueError("release inputs changed during the build; rebuild from a stable tree")
         validate_built_artifacts(bundle_dir, bundles, before, language_count)
