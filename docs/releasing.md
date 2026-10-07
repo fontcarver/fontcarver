@@ -170,7 +170,9 @@ LGPL-2.1 §6 obligation to accompany the image with notices and source reference
 `licenses/appimage/BUNDLED-LIBRARIES.txt` with one row per bundled shared object
 (path, owning package and version, license as labelled, source reference for that
 exact package version) plus unmodified LGPL 2 and LGPL 2.1 texts.
-`scripts/appimage_policy.py` then gates the release and blocks it when a bundled
+`scripts/appimage_policy.py` then gates the release — it runs from
+`scripts/check_release_bundle.py`, which `build_release.py` invokes, rather than as
+a command of its own — and blocks the release when a bundled
 library is GPL, AGPL or SSPL, when a library's license cannot be identified, when
 a library has no owning package, or when the notice does not account for every
 shared object found. A GPL label passes only through a ruling recorded in

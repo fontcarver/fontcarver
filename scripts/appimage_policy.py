@@ -17,13 +17,50 @@ from appimage_licenses import verdict_for_package
 NOTICE_DIR = 'usr/lib/FontCarver/licenses/appimage'
 NOTICE_NAME = 'BUNDLED-LIBRARIES.txt'
 REQUIRED_TEXTS = ('HOST-LGPL-2.txt', 'HOST-LGPL-2.1.txt')
+# FontCarver's own binary is covered by the repository's license, so it is the one
+# ELF in the payload that is not a bundled third-party file.
+APPLICATION_ELF = 'usr/bin/fontcarver-desktop'
+
+
+def gated_rows(rows: list[dict]) -> list[dict]:
+    """Select the payload entries this gate must classify.
+
+    Every bundled ELF counts, not only files named `*.so`: a bundler also copies
+    helper executables such as WebKitWebProcess, and a GPL one of those carries the
+    same obligation as a GPL library.
+    """
+    return [row for row in rows
+            if 'elf_machine' in row and row['path'] != APPLICATION_ELF]
+
+
+def choose_candidate(candidates: list[dict], notices: dict) -> dict | None:
+    """Pick the candidate whose license decides this file, fail-closed.
+
+    `host_inventory` orders candidates alphabetically by package name, so taking
+    the first would let a permissive package shadow a copyleft one that owns the
+    same basename. Any candidate that would not pass decides the outcome; among
+    candidates that would pass, an exact-content match is the better evidence.
+    """
+    pool = [notices[c['package']] for c in candidates if c.get('package') in notices]
+    if not pool:
+        return None
+    blocked = sorted((entry for entry in pool
+                      if not verdict_for_package(entry['package'],
+                                                 entry.get('labels', []))['permitted']),
+                     key=lambda entry: entry['package'])
+    if blocked:
+        return blocked[0]
+    identical = {c['package'] for c in candidates if c.get('content_identical')}
+    for entry in pool:
+        if entry['package'] in identical:
+            return entry
+    return pool[0]
 
 
 def resolve_libraries(payload: Path) -> list[dict]:
-    """List every bundled shared object with its host package and license labels."""
+    """List every bundled ELF file with its host package and license labels."""
     rows = inv.payload_files(payload)
-    libraries = [row for row in rows
-                 if 'elf_machine' in row and '.so' in Path(row['path']).name]
+    libraries = gated_rows(rows)
     if not libraries:
         return []
     owners, packages = inv.host_inventory({Path(row['path']).name for row in libraries})
@@ -32,8 +69,7 @@ def resolve_libraries(payload: Path) -> list[dict]:
                for entry in inv.package_notices(payload, rows, packages)}
     resolved = []
     for row in libraries:
-        candidates = row.get('host_candidates', [])
-        entry = notices.get(candidates[0]['package']) if candidates else None
+        entry = choose_candidate(row.get('host_candidates', []), notices)
         resolved.append({
             'path': row['path'],
             'package': entry['package'] if entry else '',
@@ -69,8 +105,12 @@ def require_releasable_appimage(payload: Path | None = None,
     notice = root / NOTICE_DIR / NOTICE_NAME
     if not notice.is_file():
         raise ValueError(f'AppImage release is blocked: missing {NOTICE_DIR}/{NOTICE_NAME}')
-    text = notice.read_text(encoding='utf-8', errors='replace')
-    missing = sorted(item['path'] for item in libraries if item['path'] not in text)
+    # Whole-line comparison, not a substring test: a payload carrying both
+    # libfoo.so.1 and libfoo.so.1.2 would otherwise pass the shorter path as
+    # documented purely because it is a prefix of the longer one.
+    documented = {line.strip() for line in
+                  notice.read_text(encoding='utf-8', errors='replace').splitlines()}
+    missing = sorted(item['path'] for item in libraries if item['path'] not in documented)
     if missing:
         raise ValueError('AppImage notice does not account for: ' + '; '.join(missing))
     for name in REQUIRED_TEXTS:

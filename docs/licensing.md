@@ -142,8 +142,9 @@ into FontCarver and do not change its license:
 - **LGPL is permitted** in such a payload, provided the artifact carries the
   materials LGPL-2.1 §6 asks for: the LGPL license text, a notice naming each
   library and its version, and that library's source or a written offer for it.
-  `scripts/appimage_inventory.py --notice-dir` generates them and
-  `scripts/appimage_policy.py` refuses a release without them.
+  `scripts/appimage_inventory.py --notice-dir` generates them, and
+  `scripts/appimage_policy.py` refuses a release without them when
+  `scripts/check_release_bundle.py` inspects the built image.
 - **GPL, AGPL and SSPL are not permitted.** GPL has no linking exception, so a
   GPL shared library loaded into the application process is a real distribution
   problem rather than a notice obligation.

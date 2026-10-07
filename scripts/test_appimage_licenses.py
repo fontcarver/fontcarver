@@ -41,6 +41,53 @@ class ClassifyTests(unittest.TestCase):
     def test_no_labels_is_unidentified_not_pass(self):
         self.assertEqual(licenses.classify_labels([])['verdict'], 'unidentified')
 
+    def test_gpl_spelled_without_a_separator_is_still_gpl(self):
+        # Debian `License:` is free text; GPLv2 and GPL2 both occur in real files.
+        for label in ('GPLv2', 'GPLv3', 'GPL2', 'gpl2', 'GPL',
+                      'GNU General Public License v3'):
+            with self.subTest(label=label):
+                result = licenses.classify_labels([label])
+                self.assertEqual(result['verdict'], 'ruling-required')
+                self.assertIn(licenses.KIND_GPL, result['kinds'])
+
+    def test_agpl_and_sspl_spelled_without_a_separator_stay_forbidden(self):
+        for label in ('AGPL3', 'AGPLv3', 'AGPL', 'SSPL', 'SSPLv1',
+                      'GNU Affero General Public License'):
+            with self.subTest(label=label):
+                self.assertEqual(licenses.classify_labels([label])['verdict'], 'forbidden')
+
+    def test_lgpl_without_a_hyphen_keeps_its_notice_obligation(self):
+        for label in ('LGPLv2.1', 'LGPL', 'GNU Lesser General Public License'):
+            with self.subTest(label=label):
+                result = licenses.classify_labels([label])
+                self.assertEqual(result['verdict'], 'pass')
+                self.assertTrue(result['requires_lgpl_notice'])
+
+    def test_conjunctive_gpl_term_is_not_swallowed_by_a_leading_lgpl(self):
+        # Debian uses `and` for "different parts under each license", so a GPL
+        # term binds however the maintainer ordered the words.
+        for label in ('LGPL-2.1+ and GPL-3+', 'GPL-3+ and LGPL-2.1+',
+                      'Apache-2.0 and GPL-2'):
+            with self.subTest(label=label):
+                self.assertEqual(licenses.classify_labels([label])['verdict'],
+                                 'ruling-required')
+
+    def test_conjunctive_lgpl_term_still_requires_a_notice(self):
+        for label in ('MIT and LGPL-2.1+', 'Apache-2.0 and LGPL-2.1+'):
+            with self.subTest(label=label):
+                result = licenses.classify_labels([label])
+                self.assertEqual(result['verdict'], 'pass')
+                self.assertTrue(result['requires_lgpl_notice'])
+
+    def test_disjunctive_label_may_take_its_permissive_branch(self):
+        # Same rule as docs/licensing.md section 5 for dual-licensed packages.
+        self.assertEqual(licenses.classify_labels(
+            ['LGPL-2.1 or GPL-2 at your option'])['verdict'], 'pass')
+        self.assertEqual(licenses.classify_labels(['GPL-2+ or Artistic'])['verdict'], 'pass')
+
+    def test_a_name_merely_containing_gpl_is_not_a_gpl_label(self):
+        self.assertEqual(licenses.classify_label('libgpl-ish'), licenses.KIND_OTHER)
+
 
 class PackageVerdictTests(unittest.TestCase):
     def test_gpl_package_passes_only_with_a_ruling(self):

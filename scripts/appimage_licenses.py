@@ -14,10 +14,25 @@ KIND_GPL = 'gpl'
 KIND_FORBIDDEN = 'forbidden'
 KIND_OTHER = 'other'
 
-# Order matters: LGPL is matched before GPL because 'GPL' is its substring.
-_LGPL = re.compile(r'^\s*lgpl\b', re.I)
-_FORBIDDEN = re.compile(r'\b(?:agpl|sspl)\b', re.I)
-_GPL = re.compile(r'\bgpl\b|\bgpl-\d', re.I)
+# A Debian `License:` line is free text. "GPLv2", "GPL2" and the spelled-out name
+# all occur, so these deliberately do not require a word boundary after the
+# acronym: `\bgpl\b` would classify "GPLv2" as permissive. Order matters, because
+# every GPL acronym is a substring of its Affero and Lesser siblings.
+_FORBIDDEN = re.compile(r'\b(?:agpl|sspl|affero\s+general\s+public)', re.I)
+_LGPL = re.compile(r'\blgpl|\blesser\s+general\s+public', re.I)
+_GPL = re.compile(r'\bgpl|\bgeneral\s+public\s+license', re.I)
+
+# Debian writes `and` when different parts of a package fall under each license,
+# and `or` when the recipient may choose one. A conjunctive label therefore binds
+# by its most restrictive term; a purely disjunctive one may take its most
+# permissive branch, which is the same rule docs/licensing.md section 5 applies to
+# dual-licensed packages.
+_TERMS = re.compile(r'\s+(?:and|or)\s+', re.I)
+_CONJUNCTIVE = re.compile(r'\s+and\s+', re.I)
+_DISJUNCTIVE = re.compile(r'\s+or\s+', re.I)
+
+# Most restrictive first; _rank is the index, so a smaller rank wins a conflict.
+_ORDER = (KIND_FORBIDDEN, KIND_GPL, KIND_LGPL, KIND_OTHER)
 
 # Recorded rulings for GPL-labelled packages whose shipped files are not GPL.
 # Each entry needs a reason and a reviewer; a new package version needs a new
@@ -25,15 +40,29 @@ _GPL = re.compile(r'\bgpl\b|\bgpl-\d', re.I)
 RULINGS: dict[str, str] = {}
 
 
-def classify_label(label: str) -> str:
-    """Classify one Debian `License:` label."""
-    if _LGPL.match(label):
-        return KIND_LGPL
-    if _FORBIDDEN.search(label):
+def _classify_term(term: str) -> str:
+    """Classify one license name, ignoring any trailing exception wording."""
+    if _FORBIDDEN.search(term):
         return KIND_FORBIDDEN
-    if _GPL.search(label):
+    if _LGPL.search(term):
+        return KIND_LGPL
+    if _GPL.search(term):
         return KIND_GPL
     return KIND_OTHER
+
+
+def _rank(kind: str) -> int:
+    return _ORDER.index(kind)
+
+
+def classify_label(label: str) -> str:
+    """Classify one Debian `License:` label, which may combine several names."""
+    kinds = {_classify_term(term) for term in _TERMS.split(label) if term.strip()}
+    if not kinds:
+        return KIND_OTHER
+    if _DISJUNCTIVE.search(label) and not _CONJUNCTIVE.search(label):
+        return max(kinds, key=_rank)
+    return min(kinds, key=_rank)
 
 
 def classify_labels(labels: list[str]) -> dict:
