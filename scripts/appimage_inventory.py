@@ -193,17 +193,42 @@ def inventory(artifact: Path, payload: Path, offset: int) -> dict:
     }
 
 
+def write_notices(payload: Path, repo_root: Path) -> list[str]:
+    """Write the bundled-library notice and LGPL texts into the payload."""
+    import appimage_policy as policy
+    from appimage_licenses import render_bundled_libraries
+    libraries = policy.resolve_libraries(payload)
+    target = payload / policy.NOTICE_DIR
+    target.mkdir(parents=True, exist_ok=True)
+    written = []
+    notice = target / policy.NOTICE_NAME
+    notice.write_text(render_bundled_libraries(libraries), encoding='utf-8')
+    written.append(notice.relative_to(payload).as_posix())
+    for name in policy.REQUIRED_TEXTS:
+        source = repo_root / 'scripts/release_licenses/native' / name
+        destination = target / name
+        destination.write_text(source.read_text(encoding='utf-8'), encoding='utf-8')
+        written.append(destination.relative_to(payload).as_posix())
+    return written
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--payload', required=True, type=Path)
     parser.add_argument('--appimage', required=True, type=Path)
     parser.add_argument('--runtime-bytes', required=True, type=int)
     parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--notice-dir', action='store_true',
+                        help='write LGPL notices into the payload instead of only reporting')
     args = parser.parse_args()
     try:
         report = inventory(args.appimage.resolve(strict=True), args.payload.resolve(strict=True), args.runtime_bytes)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+        if args.notice_dir:
+            for name in write_notices(args.payload.resolve(strict=True),
+                                      Path(__file__).resolve().parents[1]):
+                print(f'wrote {name}')
         print('Diagnostic inventory complete: ' + json.dumps(report['summary'], sort_keys=True))
         print('AppImage release eligible: false; inventory is evidence, not approval.')
         return 0

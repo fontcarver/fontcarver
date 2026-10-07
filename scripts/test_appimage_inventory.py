@@ -103,6 +103,27 @@ class InventoryTests(unittest.TestCase):
             entries = inventory.package_notices(Path(directory), rows, {})
             self.assertEqual(entries[0]['version'], '')
             self.assertEqual(entries[0]['source_package'], '')
+    def test_write_notices_emits_notice_and_both_lgpl_texts(self):
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'squashfs-root'
+            (root / 'usr/lib').mkdir(parents=True)
+            repo = Path(directory) / 'repo'
+            texts = repo / 'scripts/release_licenses/native'
+            texts.mkdir(parents=True)
+            (texts / 'HOST-LGPL-2.txt').write_text('lgpl2')
+            (texts / 'HOST-LGPL-2.1.txt').write_text('lgpl21')
+            with mock.patch('appimage_policy.resolve_libraries', return_value=[
+                    {'path': 'usr/lib/libgtk-3.so.0', 'package': 'libgtk-3-0t64',
+                     'version': '3.24.49-1', 'source_package': 'gtk+3.0',
+                     'source_version': '3.24.49-1', 'labels': ['LGPL-2.1']}]):
+                written = inventory.write_notices(root, repo)
+            notice = root / 'usr/lib/FontCarver/licenses/appimage/BUNDLED-LIBRARIES.txt'
+            self.assertTrue(notice.is_file())
+            self.assertIn('usr/lib/libgtk-3.so.0', notice.read_text())
+            self.assertEqual((root / 'usr/lib/FontCarver/licenses/appimage/HOST-LGPL-2.txt'
+                              ).read_text(), 'lgpl2')
+            self.assertEqual(len(written), 3)
 
 
 if __name__ == '__main__':
