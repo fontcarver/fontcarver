@@ -21,8 +21,8 @@ it does not establish the identity of an unsigned publisher.
 
 Linux compatibility depends on the build machine's system libraries. AppImage
 does not guarantee compatibility with older glibc versions. The release build
-matrix currently uses Ubuntu 24.04 for Linux, including the SquashFUSE 0.5.0
-runtime ABI required by the thin AppImage. Other distributions need their own
+matrix currently uses Ubuntu 24.04 for Linux, so that is also the compatibility
+floor. Other distributions need their own
 verification; Ubuntu 22.04 is not the baseline for these candidates. See [Tauri's AppImage limitations](https://v2.tauri.app/distribute/appimage/#limitations).
 
 The desktop program is `fontcarver-desktop`. The separate `fontcarver` command-line
@@ -75,19 +75,22 @@ reports a missing FUSE dependency, follow your distribution's AppImage/FUSE
 instructions. Remove the AppImage file to uninstall this copy. A launcher added
 manually to your desktop or application menu must be removed separately.
 
-The maintained AppImage recipe is a thin image: GTK, WebKitGTK, FUSE 3 and
-SquashFUSE are loaded from the host instead of copied into the image. In addition
-to the deb's GTK/WebKit dependencies, it requires the host runtime libraries
-provided by `libfuse3-3` and `libsquashfuse0`. FUSE mounting may also need your
-distribution's `fuse3` package. When mounting is unavailable,
-`APPIMAGE_EXTRACT_AND_RUN=1 ./FontCarver_VERSION_ARCH.AppImage` uses extraction
-instead; the same shared runtime libraries are still required.
+The AppImage is built by Tauri's own bundler, which copies the GTK/WebKit library
+stack into the image. Launching it needs working FUSE, normally your
+distribution's `fuse3` package, which provides the setuid `fusermount3` helper
+that unprivileged mounting requires. When mounting is unavailable,
+`APPIMAGE_EXTRACT_AND_RUN=1 ./FontCarver_VERSION_ARCH.AppImage` extracts and runs
+instead.
 
-Historical AppImages built with Tauri's default linuxdeploy recipe included an
-unaudited GTK/WebKit stack and a statically linked LGPL runtime. They are not
-approved for distribution. Use a current artifact accompanied by a passing
-manifest that includes the thin AppImage policy check; a matching filename alone
-does not establish which recipe built it.
+The bundled libraries stay under their own licenses; including them does not change
+FontCarver's `MIT OR Apache-2.0` terms. Each one is listed, with a source
+reference, in `licenses/appimage/BUNDLED-LIBRARIES.txt` inside the image, next to
+the LGPL 2 and LGPL 2.1 texts. You can replace an LGPL library by extracting the
+image, substituting an interface-compatible build and repacking.
+
+Use a current artifact accompanied by a passing manifest that includes the
+AppImage policy check; a matching filename alone does not establish how it was
+built.
 
 The desktop binary supports `fontcarver-desktop --version` and `--help` without
 opening a window. Starting the application itself needs a graphical session;

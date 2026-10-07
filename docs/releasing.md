@@ -20,9 +20,9 @@ the build helper, verification and resource checks. Install dependencies with
 Build each package on its native operating system. Linux needs the WebKitGTK
 4.1/GTK 3 development packages, a C/C++ build toolchain, `pkg-config`, OpenSSL
 development files and Tauri's package tools. The repository CI declares the
-package list used for its Ubuntu 24.04 Linux runner. The thin AppImage runtime
-uses the pinned SquashFUSE 0.5.0 ABI available on that baseline; Ubuntu 22.04
-is not accepted by this build recipe. macOS needs Xcode or Xcode Command Line
+package list used for its Ubuntu 24.04 Linux runner. The AppImage inherits the build
+host's glibc and library versions, so the build baseline is also the compatibility
+floor; Ubuntu 22.04 is not accepted by this build recipe. macOS needs Xcode or Xcode Command Line
 Tools. Windows needs Microsoft C++ Build Tools with **Desktop development with
 C++**, an MSVC Rust target, WebView2 and the Windows VBScript feature used by WiX
 MSI generation. See [Tauri's platform prerequisites](https://v2.tauri.app/start/prerequisites/)
@@ -61,12 +61,12 @@ After installing the platform prerequisites and pnpm dependencies, run:
 python3 scripts/build_release.py
 ```
 
-The helper selects `deb` on Linux, `dmg` on macOS and `msi` on Windows.
-Use `python` in place of `python3` if that is the name of your Python 3.11+
-interpreter on Windows. To include the maintained thin AppImage on Linux:
+The helper selects `deb` and `appimage` on Linux, `dmg` on macOS and `msi` on
+Windows. Use `python` in place of `python3` if that is the name of your Python
+3.11+ interpreter on Windows. To build a single format:
 
 ```sh
-python3 scripts/build_release.py --bundles deb,appimage
+python3 scripts/build_release.py --bundles deb
 ```
 
 The helper checks resource budgets and version consistency, fetches the locked
@@ -74,12 +74,8 @@ Cargo sources, prepares dependency license notices, generates the Rust-owned
 TypeScript API and invokes
 `pnpm --dir app exec tauri build` with native bundle targets and the locked Cargo
 dependency graph. Tauri runs the frontend production build before compiling the
-desktop executable. AppImage requests build a deb first, then run
-`scripts/build_thin_appimage.py`; Tauri's default linuxdeploy AppImage recipe is
-not used. The thin runtime additionally needs a C compiler, binutils,
-`squashfs-tools`, `libsquashfuse-dev` and `libfuse3-dev`. An isolated extracted
-prerequisite tree can be supplied with `--appimage-sysroot PATH`; its libraries
-are build inputs and must not be copied into the image. The helper sets the
+desktop executable. The AppImage is Tauri's own bundler output; the former thin recipe and its C
+toolchain prerequisites are gone. The helper sets the
 application/frontend paths itself; no
 Unix-style environment assignment is required on Windows.
 
@@ -162,22 +158,34 @@ limitations. Inspect actual native payloads and complete their redistribution
 notices before distribution; a passing source-package audit is not complete
 artifact license clearance.
 
-### AppImage recipe and payload gate
+### AppImage bundled libraries and the payload gate
 
-The maintained recipe builds a thin image from the just-built deb. Its runtime
-is compiled from pinned permissively licensed sources and dynamically loads
-FUSE 3 and SquashFUSE from the host. GTK, WebKitGTK and their shared-library
-stack also remain host dependencies. The image carries a build receipt and
-runtime notices. Package verification checks that receipt against the actual
-runtime and extracted payload; an unreviewed runtime or bundled shared object
-fails the AppImage policy gate.
+Tauri's bundler copies system libraries into the image. That does **not** change
+FontCarver's `MIT OR Apache-2.0` license — GTK, GLib and WebKitGTK are LGPL-2.1,
+which permits linking from differently licensed programs, and the application is
+aggregated with the runtime rather than linked to it. What it does create is an
+LGPL-2.1 §6 obligation to accompany the image with notices and source references.
 
-The historical Tauri/linuxdeploy image used a different recipe: 177 bundled
-shared objects from 126 Debian packages, including 73 packages whose copyright
-files mention copyleft, with only 10 package copyright documents shipped. Its
-AppImage runtime also statically linked LGPL libfuse. That image remains an
-unapproved evaluation artifact. Adding notices alone does not make that recipe
-meet the repository's shipped-dependency policy. Historical evidence is in
+`scripts/appimage_inventory.py --notice-dir` writes those into the payload:
+`licenses/appimage/BUNDLED-LIBRARIES.txt` with one row per bundled shared object
+(path, owning package and version, license as labelled, source reference for that
+exact package version) plus unmodified LGPL 2 and LGPL 2.1 texts.
+`scripts/appimage_policy.py` then gates the release and blocks it when a bundled
+library is GPL, AGPL or SSPL, when a library's license cannot be identified, when
+a library has no owning package, or when the notice does not account for every
+shared object found. A GPL label passes only through a ruling recorded in
+`appimage_licenses.RULINGS` with its reason, because Debian labels describe source
+packages and often cover utilities that were never shipped.
+
+The first real image measured 177 bundled shared objects from 126 Debian packages,
+73 of them naming a copyleft license, with copyright documents shipped for 10. The
+gate now closes that gap per library rather than refusing the format. Packages with
+no machine-readable license label must be identified or dropped; they block the
+release instead of being recorded as unknown. Never enable
+`bundleMediaFramework` without re-running the scan — it bundles GStreamer, the one
+case Tauri's own documentation warns about.
+
+Historical evidence is in
 [the payload inventory](acceptance/p5f-release/appimage-bundled-licenses.txt).
 For diagnostic inventory of an already extracted image, use
 `scripts/appimage_inventory.py`; diagnostic output is not release clearance.

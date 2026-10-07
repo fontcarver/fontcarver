@@ -134,6 +134,31 @@ data only — SIL OFL 1.1 and the Bitstream Vera license.
 source-available license, in any version, as a direct or transitive dependency of
 a shipped artifact.
 
+That rule governs **application dependencies** — the Cargo and npm graphs that are
+linked into FontCarver itself. Libraries that a native bundler *copies* into an
+artifact are a separate layer with a separate rule, because they are not linked
+into FontCarver and do not change its license:
+
+- **LGPL is permitted** in such a payload, provided the artifact carries the
+  materials LGPL-2.1 §6 asks for: the LGPL license text, a notice naming each
+  library and its version, and that library's source or a written offer for it.
+  `scripts/appimage_inventory.py --notice-dir` generates them and
+  `scripts/appimage_policy.py` refuses a release without them.
+- **GPL, AGPL and SSPL are not permitted.** GPL has no linking exception, so a
+  GPL shared library loaded into the application process is a real distribution
+  problem rather than a notice obligation.
+- **An unidentified license is not permitted** until it is identified. Missing
+  license metadata is unknown, never evidence of permissiveness.
+- A **GPL label requires a recorded ruling**, not an automatic refusal. Debian
+  copyright files describe source packages, so a GPL label often covers utilities
+  that were never shipped — libfuse is the standard example, with `Files: *` under
+  GPL-2 while the shipped `lib/*` is LGPL-2.1. Such a package passes only via an
+  entry in `appimage_licenses.RULINGS` naming the package and the reason.
+- Never enable `bundleMediaFramework` in `tauri.conf.json` without re-running that
+  scan. It bundles GStreamer, whose `ugly` plugin set is the one case Tauri's own
+  documentation warns about, and it is the main route by which genuinely GPL code
+  would enter a payload. Its absence from the config is what keeps it disabled.
+
 **Case by case:** MPL-2.0 is file-level copyleft and does not reach across file
 boundaries, so it can be carried inside an MIT/Apache-2.0 distribution — but only
 with an explicit ruling recorded in `THIRD_PARTY.md` naming the crate, the reason
@@ -155,7 +180,7 @@ Practical rules:
 - A package with no license field at all is treated as forbidden until its
   licensing is established.
 
-### 5.1 Native Linux payloads and AppImage runtimes
+### 5.1 Native Linux payloads and the AppImage
 
 The source-package survey does not approve code copied by a native bundler.
 Inspect the complete delivered payload, including launchers, plugins, data and
@@ -164,35 +189,42 @@ license data is **unknown**, never evidence of a permissive license. Debian
 copyright files describe source packages; a copyleft label may apply to unshipped
 tests or tools, so it is a review lead rather than a license ruling for a binary.
 
-The current Debian delivery keeps GTK/WebKit and their dependencies on the
-recipient's system, as already described in `THIRD_PARTY.md` §3.4. Do not copy
-those libraries into another format on the assumption that dynamically linking
-them makes their redistribution obligations disappear. LGPL 2.1 §§4 and 6
-address library source, notices and replacement/relinking conditions; adding a
-generic source URL or license text alone is not a complete compliance mechanism.
-See the [license distributed by libfuse](https://github.com/libfuse/libfuse/blob/master/LGPL2.txt).
+**Bundling these libraries does not change FontCarver's license.** GTK, GLib,
+WebKitGTK and GStreamer core are LGPL-2.1, and the LGPL exists precisely to permit
+linking from differently licensed programs. The application also sits inside the
+payload while the runtime only mounts it and `exec`s the binary, which is
+aggregation rather than linking. `fusermount3` is GPL-2 but is invoked as a
+separate process, across a process boundary rather than a linking one. An earlier
+revision of this section read as though copyleft in a payload were a legal bar on
+shipping. It is not, and that was the wrong reason to state.
 
-Release notice generation retains `native/HOST-LIBRARIES.txt` and unmodified,
-hash-checked LGPL 2 and 2.1 texts from `scripts/release_licenses/`. The use notice
-names the Linux host components and explains interface-compatible replacement.
-These are license documents, not added copyleft code or a dependency exception.
+The real obligation is **notice plus source availability**: redistributing a copy
+of an LGPL library triggers LGPL-2.1 §6, which asks for the license text, a notice
+naming the library, the user's ability to replace it — satisfied mechanically by
+dynamic linking — and the library's source or a written offer for it. A credit line
+alone does not discharge the third item. §5 states the resulting rule; this section
+states why it is shaped that way.
 
-The retained AppImage's runtime identifies
-[`AppImage/type2-runtime` commit `8f39b89`](https://github.com/AppImage/type2-runtime/blob/8f39b89/LICENSE).
-That version's license explicitly lists statically linked LGPL libfuse. A thin
-GTK/WebKit payload using that **prebuilt static runtime** therefore still fails
-the repository's shipped-code policy. Supplying source and relinking materials
-would address different questions; it would not change the forbidden-license
-policy. Do not grant an implicit exception or change FontCarver's license.
+What the blanket ban actually bought was cheap auditing, and what it cost was a
+measured compliance debt going unaddressed. `THIRD_PARTY.md` §3.4 records it: the
+first real build carried 177 shared objects from 126 Debian packages with copyright
+documents for ten of them. The gate in `scripts/appimage_policy.py` now closes that
+gap per library instead of refusing the format wholesale, and an unidentifiable
+license blocks the release rather than being recorded as unknown.
+
+The Debian delivery keeps GTK/WebKit and their dependencies on the recipient's
+system. **Do not copy those libraries into the deb** on the assumption that
+dynamic linking makes redistribution obligations disappear; the deb's contract is
+its `Depends` field. Release notice generation retains `native/HOST-LIBRARIES.txt`
+and unmodified, hash-checked LGPL 2 and 2.1 texts from `scripts/release_licenses/`.
+Those same texts are the AppImage's §6 documents, copied into the image by
+`appimage_inventory.py --notice-dir`.
 
 `scripts/appimage_inventory.py` records all extracted paths and hashes, the
 separate runtime hash, and current-host Debian ownership candidates. It does not
 execute the inspected image or convert those candidates into build provenance.
-Its successful exit means the diagnostic evidence was generated, not that the
-image is approved. `scripts/appimage_policy.py` separately controls release
-eligibility. A replacement AppImage route needs a reviewed runtime build and
-payload with no bundled forbidden code; ordinary Debian delivery remains the
-available strategy while that evidence is incomplete.
+Its successful exit means the evidence was generated, not that the image is
+approved; `scripts/appimage_policy.py` separately controls release eligibility.
 
 ## 6. Test fixtures
 
