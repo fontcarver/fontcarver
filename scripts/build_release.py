@@ -25,6 +25,44 @@ from check_release_bundle import SUFFIXES, VerificationError, discover
 ROOT = Path(__file__).resolve().parents[1]
 
 
+PORTABLE_NOTE = """FontCarver portable build
+
+This folder runs without installing. While PORTABLE.txt sits beside
+fontcarver-desktop.exe, FontCarver keeps its settings, autosave and browser
+storage in the "data" folder here instead of in your user profile. Delete the
+folder to remove everything.
+
+Requires the Microsoft Edge WebView2 Runtime, which Windows 11 includes.
+"""
+
+
+def build_portable_zip(executable: Path, licenses: Path, version: str, output_dir: Path) -> Path:
+    """Zip a Windows build under one versioned folder, laid out like the installer.
+
+    The layout mirrors what the NSIS installer writes, because the payload
+    inspector locates notices by that layout: the generated licenses directory
+    already holds the project licenses beside DEPENDENCIES.json, and INSTALL.md
+    sits at the root above it.
+    """
+    import zipfile
+    folder = f"FontCarver-{version}"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for stale in output_dir.glob("*-portable.zip"):
+        stale.unlink()
+    archive = output_dir / f"FontCarver_{version}_x64-portable.zip"
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+        zip_file.write(executable, f"{folder}/fontcarver-desktop.exe")
+        zip_file.writestr(f"{folder}/PORTABLE.txt", PORTABLE_NOTE)
+        zip_file.write(ROOT / "docs/install.md", f"{folder}/INSTALL.md")
+        for name in ("LICENSE-MIT", "LICENSE-APACHE", "THIRD_PARTY.md"):
+            zip_file.write(ROOT / name, f"{folder}/licenses/{name}")
+        for path in sorted(licenses.rglob("*")):
+            if path.is_file():
+                zip_file.write(path, f"{folder}/licenses/dependencies/"
+                               f"{path.relative_to(licenses).as_posix()}")
+    return archive
+
+
 def native_bundles(system: str) -> list[str]:
     """Return only the installer formats maintained for a native platform."""
     bundles = {"Linux": ["deb", "rpm", "appimage"], "Darwin": ["dmg"], "Windows": ["nsis"]}
@@ -161,10 +199,17 @@ def main() -> int:
         if source_state() != source:
             raise ValueError("release inputs changed during the build; rebuild from a stable tree")
         validate_built_artifacts(bundle_dir, bundles, before)
+        # No Tauri target produces a portable build; it reuses the executable the
+        # nsis build just compiled and is inspected alongside it.
+        inspected = list(bundles)
+        if "nsis" in bundles:
+            build_portable_zip(target / "release/fontcarver-desktop.exe", scratch / "licenses",
+                               version, bundle_dir / "portable")
+            inspected.append("portable")
         run(budget, env)
         bundle_dir = target / "release/bundle"
         run([sys.executable, "scripts/check_release_bundle.py", "--bundle-dir", str(bundle_dir),
-             "--expected", ",".join(bundles)], bundle_env)
+             "--expected", ",".join(inspected)], bundle_env)
         report_path = bundle_dir / "release-manifest.json"
         report = json.loads(report_path.read_text(encoding="utf-8"))
         report["source"] = source

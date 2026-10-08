@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import zipfile
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
@@ -29,12 +30,12 @@ ROOT = Path(__file__).resolve().parents[1]
 RESOURCES = ('LICENSE-MIT', 'LICENSE-APACHE', 'THIRD_PARTY.md',
              'DEPENDENCIES.json', 'INSTALL.md')
 HOSTS = {'deb': 'linux', 'rpm': 'linux', 'appimage': 'linux', 'dmg': 'darwin',
-         'nsis': 'win32'}
+         'nsis': 'win32', 'portable': 'win32'}
 # An artifact's extension is not always its bundle name, and a bare '.exe' would
 # also match a WebView2 bootstrapper, an uninstaller or a staged application binary
 # sitting under the bundle tree. These are filename suffixes, not path suffixes.
 SUFFIXES = {'deb': '.deb', 'rpm': '.rpm', 'appimage': '.appimage', 'dmg': '.dmg',
-            'nsis': '-setup.exe'}
+            'nsis': '-setup.exe', 'portable': '-portable.zip'}
 
 
 class VerificationError(Exception):
@@ -138,6 +139,18 @@ def extracted(artifact: Path, kind: str, scratch: Path):
         finally:
             if attached:
                 run(['hdiutil', 'detach', str(payload)])
+    elif kind == 'portable':
+        with zipfile.ZipFile(artifact) as archive:
+            names = archive.namelist()
+            roots = {name.split('/', 1)[0] for name in names if name}
+            if len(roots) != 1:
+                raise VerificationError('portable zip must hold exactly one top-level folder')
+            base = payload.resolve()
+            for name in names:
+                if not (payload / name).resolve().is_relative_to(base):
+                    raise VerificationError(f'portable zip member escapes its folder: {name}')
+            archive.extractall(payload)
+        yield payload / roots.pop(), {'extraction': 'zipfile'}
     else:
         extract_nsis(artifact, payload)
         yield payload, {'extraction': '7z extraction'}
@@ -308,7 +321,8 @@ def inspect_payload(root: Path, kind: str, metadata: dict | None = None) -> dict
         if forbidden_path(path, root):
             raise VerificationError(f'FontForge binary or sources in payload: {path.relative_to(root)}')
     files = [path for path in paths if path.is_file() or path.is_symlink()]
-    executable_name = 'fontcarver-desktop.exe' if kind == 'nsis' else 'fontcarver-desktop'
+    executable_name = ('fontcarver-desktop.exe' if kind in ('nsis', 'portable')
+                       else 'fontcarver-desktop')
     binaries = [path for path in files if path.name == executable_name and inside_file(path, root)]
     if kind in ('deb', 'rpm', 'appimage'):
         binaries = [path for path in binaries if path == root / 'usr/bin/fontcarver-desktop']
@@ -317,7 +331,7 @@ def inspect_payload(root: Path, kind: str, metadata: dict | None = None) -> dict
                     and path.parent.parent.name == 'Contents'
                     and path.parent.parent.parent.suffix == '.app']
     signatures = {'deb': (b'\x7fELF',), 'rpm': (b'\x7fELF',), 'appimage': (b'\x7fELF',),
-                  'nsis': (b'MZ',),
+                  'nsis': (b'MZ',), 'portable': (b'MZ',),
                   'dmg': (b'\xcf\xfa\xed\xfe', b'\xce\xfa\xed\xfe', b'\xfe\xed\xfa\xcf',
                           b'\xfe\xed\xfa\xce', b'\xca\xfe\xba\xbe', b'\xbe\xba\xfe\xca')}
     valid_binaries = []
@@ -325,10 +339,14 @@ def inspect_payload(root: Path, kind: str, metadata: dict | None = None) -> dict
         with path.open('rb') as stream:
             header = stream.read(4)
         if any(header.startswith(signature) for signature in signatures[kind]) and (
-                kind == 'nsis' or os.access(path, os.X_OK)):
+                kind in ('nsis', 'portable') or os.access(path, os.X_OK)):
             valid_binaries.append(path)
     if not valid_binaries:
         raise VerificationError(f'missing valid application executable: {executable_name}')
+    if kind == 'portable' and not inside_file(valid_binaries[0].parent / 'PORTABLE.txt', root):
+        # Without the marker the build runs as an installed one and writes into the
+        # user's profile, which is the opposite of what this artifact promises.
+        raise VerificationError('portable build lacks PORTABLE.txt beside the executable')
     resource_roots = [path.parent for path in files if path.name == 'DEPENDENCIES.json']
     resource_root = None
     instructions = None
@@ -389,7 +407,7 @@ def verify(bundle: Path, expected: list[str]) -> list[dict]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--bundle-dir', type=Path, default=ROOT / 'target/release/bundle')
-    parser.add_argument('--expected', required=True, help='comma-separated deb,rpm,appimage,dmg,nsis')
+    parser.add_argument('--expected', required=True, help='comma-separated deb,rpm,appimage,dmg,nsis,portable')
     parser.add_argument('--output', type=Path, help='default: BUNDLE_DIR/release-manifest.json')
     args = parser.parse_args()
     expected = list(dict.fromkeys(part.strip().lower() for part in args.expected.split(',')))

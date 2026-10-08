@@ -378,5 +378,28 @@ class ReleaseBundleTests(unittest.TestCase):
                         pass
 
 
+    def test_portable_zip_is_a_windows_artifact_matched_by_name(self):
+        self.assertEqual(verifier.HOSTS['portable'], 'win32')
+        self.assertEqual(verifier.SUFFIXES['portable'], '-portable.zip')
+        bundle = self.root / 'bundle'
+        (bundle / 'portable').mkdir(parents=True)
+        archive = bundle / 'portable/FontCarver_0.1.0_x64-portable.zip'
+        archive.write_bytes(b'PK')
+        self.assertEqual(verifier.discover(bundle, ['portable']), [('portable', archive)])
+
+    def test_portable_zip_member_escaping_its_folder_is_rejected(self):
+        import zipfile
+        archive = self.root / 'FontCarver_0.1.0_x64-portable.zip'
+        with zipfile.ZipFile(archive, 'w') as zip_file:
+            zip_file.writestr('FontCarver-0.1.0/fontcarver-desktop.exe', b'MZ')
+            zip_file.writestr('FontCarver-0.1.0/../../escaped.txt', b'x')
+        scratch = self.root / 'scratch'
+        scratch.mkdir()
+        with patch.object(verifier, 'sys') as fake_sys:
+            fake_sys.platform = 'win32'
+            with self.assertRaisesRegex(verifier.VerificationError, 'escapes'):
+                with verifier.extracted(archive, 'portable', scratch):
+                    pass
+
 if __name__ == '__main__':
     unittest.main()

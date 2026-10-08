@@ -122,5 +122,54 @@ class ReleaseValidationTests(unittest.TestCase):
                          ["English", "SimpChinese"])
 
 
+    def _portable_inputs(self, work):
+        """A built executable plus the licenses directory the release helper generates."""
+        import json
+        import check_release_bundle as verifier
+        exe = work / "fontcarver-desktop.exe"
+        exe.write_bytes(b"MZ" + b"\0" * 64)
+        licenses = work / "licenses"
+        licenses.mkdir()
+        for name in ("LICENSE-MIT", "LICENSE-APACHE", "THIRD_PARTY.md"):
+            (licenses / name).write_text(name)
+        notice = licenses / "licenses" / "dependency.txt"
+        notice.parent.mkdir()
+        notice.write_text("Permission to redistribute.\n")
+        (licenses / "DEPENDENCIES.json").write_text(json.dumps({"schema_version": 1, "packages": [
+            {"ecosystem": "cargo", "name": "example", "version": "1.0", "license": "MIT",
+             "notices": [{"path": "licenses/dependency.txt", "sha256": verifier.sha256(notice)}]}]}))
+        return exe, licenses
+
+    def test_portable_zip_layout_passes_the_payload_inspector(self):
+        # A round trip, because the inspector finds licenses by sibling layout and a
+        # zip that merely contains the right files in the wrong folders is rejected.
+        import zipfile
+        import check_release_bundle as verifier
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            exe, licenses = self._portable_inputs(work)
+            archive = build_release.build_portable_zip(exe, licenses, "0.1.0", work / "out")
+            self.assertEqual(archive.name, "FontCarver_0.1.0_x64-portable.zip")
+            with zipfile.ZipFile(archive) as zip_file:
+                self.assertEqual({name.split("/", 1)[0] for name in zip_file.namelist()},
+                                 {"FontCarver-0.1.0"})
+                zip_file.extractall(work / "x")
+            report = verifier.inspect_payload(work / "x/FontCarver-0.1.0", "portable")
+            self.assertEqual(report["executable"]["paths"], ["fontcarver-desktop.exe"])
+
+    def test_portable_payload_without_its_marker_is_rejected(self):
+        import zipfile
+        import check_release_bundle as verifier
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            exe, licenses = self._portable_inputs(work)
+            archive = build_release.build_portable_zip(exe, licenses, "0.1.0", work / "out")
+            with zipfile.ZipFile(archive) as zip_file:
+                zip_file.extractall(work / "x")
+            (work / "x/FontCarver-0.1.0/PORTABLE.txt").unlink()
+            with self.assertRaisesRegex(verifier.VerificationError, "PORTABLE.txt"):
+                verifier.inspect_payload(work / "x/FontCarver-0.1.0", "portable")
+
+
 if __name__ == "__main__":
     unittest.main()
