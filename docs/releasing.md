@@ -61,7 +61,7 @@ After installing the platform prerequisites and pnpm dependencies, run:
 python3 scripts/build_release.py
 ```
 
-The helper selects `deb`, `rpm` and `appimage` on Linux, `dmg` on macOS and
+The helper selects `deb` and `rpm` on Linux, `dmg` on macOS and
 `nsis` on Windows; a Windows build also writes a portable zip from the same
 executable. Windows ships one installer carrying both languages, where WiX
 needed one artifact per language. Use `python` in place of `python3` if that is the name of your Python
@@ -202,11 +202,17 @@ their manifest together with the source revision and native acceptance results.
 
 ## Rootless Linux package-manager verification
 
-**The Windows portable zip is unverified on Windows.** Its layout passes the
-payload inspector, and on Linux the same executable, run beside `PORTABLE.txt`,
-writes its WebView state into the adjacent `data` folder. No Windows host was
-available, so WebView2's handling of that directory, the missing-runtime message
-and a real extract-and-run have not been observed.
+**AppImage is not built by default.** Its payload gate blocks every image until
+the bundled-library notices are written at build time, and one blocked artifact
+fails the whole Linux run, so building it by default would stop deb and rpm from
+shipping as well. `--bundles appimage` still builds it for work on that gate; see
+[the license census](appimage-bundled-license-census.md) for what remains.
+
+**The Windows portable zip is checked by CI, except for one case.** The Windows
+job extracts it, starts it from the extracted folder before the NSIS step runs,
+and fails unless WebView state appears beside the executable and nothing appears
+under `%LOCALAPPDATA%\com.fontcarver.desktop`. The message for a missing WebView2
+Runtime is not exercised, because the runner has WebView2 installed.
 
 **The rpm has no install verification yet.** `check_deb_install.py` is built around
 dpkg and apt, and no rpm equivalent exists, so an rpm candidate currently has build
@@ -243,7 +249,7 @@ is:
 
 | Runner              | Architecture | Artifacts                                   |
 | ------------------- | ------------ | ------------------------------------------- |
-| Ubuntu 24.04        | x86_64       | deb, rpm and AppImage                       |
+| Ubuntu 24.04        | x86_64       | deb and rpm                                 |
 | macOS 14            | arm64        | dmg                                         |
 | Windows Server 2022 | x86_64       | one NSIS installer, English and Chinese     |
 

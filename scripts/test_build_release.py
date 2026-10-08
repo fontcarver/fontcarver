@@ -72,7 +72,10 @@ class ReleaseValidationTests(unittest.TestCase):
                 self.assertEqual(after["input_files"], 2)
 
     def test_native_targets_are_explicit(self):
-        self.assertEqual(native_bundles("Linux"), ["deb", "rpm", "appimage"])
+        # AppImage is postponed: its payload gate blocks every image until notices
+        # are written at build time, and a blocked artifact fails the whole Linux
+        # job, so building it by default would stop deb and rpm shipping too.
+        self.assertEqual(native_bundles("Linux"), ["deb", "rpm"])
         self.assertEqual(native_bundles("Darwin"), ["dmg"])
         self.assertEqual(native_bundles("Windows"), ["nsis"])
         with self.assertRaises(ValueError):
@@ -169,6 +172,12 @@ class ReleaseValidationTests(unittest.TestCase):
             (work / "x/FontCarver-0.1.0/PORTABLE.txt").unlink()
             with self.assertRaisesRegex(verifier.VerificationError, "PORTABLE.txt"):
                 verifier.inspect_payload(work / "x/FontCarver-0.1.0", "portable")
+
+
+    def test_appimage_stays_buildable_on_request(self):
+        self.assertEqual(build_release.allowed_bundles("Linux"), ["deb", "rpm", "appimage"])
+        self.assertEqual(build_release.allowed_bundles("Windows"), ["nsis"])
+        self.assertEqual(build_release.allowed_bundles("Darwin"), ["dmg"])
 
 
 if __name__ == "__main__":

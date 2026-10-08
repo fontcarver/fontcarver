@@ -16,7 +16,6 @@ it does not establish the identity of an unsigned publisher.
 | ------------------- | ----------- | ---------------------------------------------------- |
 | Debian/Ubuntu Linux | `.deb`      | Installed and removed by the system package manager  |
 | Fedora/openSUSE     | `.rpm`      | Installed and removed by the system package manager  |
-| Linux               | `.AppImage` | Executable file that you keep in a directory you own |
 | macOS               | `.dmg`      | Disk image containing `FontCarver.app`               |
 | Windows             | `.exe`      | NSIS installer, English and Simplified Chinese       |
 | Windows             | `.zip`      | Portable: extract and run, nothing installed         |
@@ -65,7 +64,9 @@ predate this file do not pass the current package verifier.
 On Ubuntu 24.04 and other releases that completed the 64-bit time transition,
 `libgtk-3-0` is satisfied by `libgtk-3-0t64`, which provides that name.
 
-For an AppImage, put it in a directory you own and make that one file executable:
+AppImage builds are not published at the moment; the steps below apply once they
+return. For an AppImage, put it in a directory you own and make that one file
+executable:
 
 ```sh
 chmod u+x ./FontCarver_VERSION_ARCH.AppImage
