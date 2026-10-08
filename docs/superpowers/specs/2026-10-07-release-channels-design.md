@@ -262,11 +262,16 @@ host without it.
   intermediate AppDir if it survives, (b) add an extract/inject/repack post-step using
   appimagetool from Tauri's cache. The deb is unaffected.
 
-- **The 30 unlabelled packages** (§3.3) now block a release instead of being
-  recorded as unknown. Resolving them is unscoped work that lands in Plan A, and
-  it may be the bulk of it. If some cannot be resolved from Debian metadata, the
-  options are to identify them by hand or to drop them from the image, and that
-  choice needs the actual list in front of us.
+- **~~The 30 unlabelled packages~~ — measured 2026-10-08; it is 90, not 30.**
+  See [the census](../../appimage-bundled-license-census.md). Running the gate's
+  classifier over the recorded real-build inventory gives 40 pass, 57
+  ruling-required, 30 unidentified and **3 forbidden**. The three forbidden ones
+  (`libwmf-0.2-7`, `libwmf-0.2-7-gtk`, `libwmflite-0.2-7`, AGPL-3) are genuinely in
+  the payload as a gdk-pixbuf WMF loader and cannot be ruled around, so the
+  `appimage` target needs payload surgery as well as notices. Only 3 of the 30
+  unidentified resolve from current host metadata, and 7 of their copyright files
+  changed within six days of the capture, so the determination set drifts with the
+  build host and the census has to be re-run per release.
 - **`deb-src` URL stability** for the exact bundled package versions is not
   verified; if it proves unreliable, the written offer in §5.1 carries more of the
   load, which creates a three-year obligation someone must own.
