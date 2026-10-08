@@ -318,6 +318,33 @@ class ReleaseBundleTests(unittest.TestCase):
         self.assertIn('host_library_notices', report)
         self.assertIn('desktop', report['platform_metadata'])
 
+    def test_nsis_replaces_msi_as_the_windows_target(self):
+        self.assertEqual(verifier.HOSTS['nsis'], 'win32')
+        self.assertNotIn('msi', verifier.HOSTS)
+
+    def test_nsis_artifacts_are_discovered_by_their_exe_suffix(self):
+        self.assertEqual(verifier.SUFFIXES['nsis'], '.exe')
+        self.assertEqual(verifier.SUFFIXES['rpm'], '.rpm')
+        bundle = self.root / 'bundle'
+        (bundle / 'nsis').mkdir(parents=True)
+        installer = bundle / 'nsis/FontCarver_0.1.0_x64-setup.exe'
+        installer.write_bytes(b'MZ')
+        self.assertEqual(verifier.discover(bundle, ['nsis']), [('nsis', installer)])
+
+    def test_nsis_extraction_rejects_an_empty_payload(self):
+        # 7z exits 0 on archives it only partly understands; an empty payload must
+        # not reach the inspector as a misleading "missing executable".
+        artifact = self.root / 'FontCarver_0.1.0_x64-setup.exe'
+        artifact.write_bytes(b'MZ')
+        scratch = self.root / 'scratch'
+        scratch.mkdir()
+        with patch.object(verifier, 'sys') as fake_sys:
+            fake_sys.platform = 'win32'
+            with patch.object(verifier, 'run', return_value=b''):
+                with self.assertRaisesRegex(verifier.VerificationError, 'extracted no files'):
+                    with verifier.extracted(artifact, 'nsis', scratch):
+                        pass
+
 
 if __name__ == '__main__':
     unittest.main()

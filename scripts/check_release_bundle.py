@@ -29,7 +29,11 @@ ROOT = Path(__file__).resolve().parents[1]
 RESOURCES = ('LICENSE-MIT', 'LICENSE-APACHE', 'THIRD_PARTY.md',
              'DEPENDENCIES.json', 'INSTALL.md')
 HOSTS = {'deb': 'linux', 'rpm': 'linux', 'appimage': 'linux', 'dmg': 'darwin',
-         'msi': 'win32'}
+         'nsis': 'win32'}
+# An artifact's extension is not always its bundle name: Tauri's nsis output is
+# `<name>_<version>_<arch>-setup.exe`.
+SUFFIXES = {'deb': '.deb', 'rpm': '.rpm', 'appimage': '.appimage', 'dmg': '.dmg',
+            'nsis': '.exe'}
 
 
 class VerificationError(Exception):
@@ -58,7 +62,7 @@ def discover(bundle: Path, expected: list[str]) -> list[tuple[str, Path]]:
         if kind not in HOSTS:
             raise VerificationError(f'unsupported artifact type: {kind}')
         matches = sorted(path for path in bundle.rglob('*')
-                         if path.is_file() and path.suffix.lower() == f'.{kind}')
+                         if path.is_file() and path.suffix.lower() == SUFFIXES[kind])
         if not matches:
             raise VerificationError(f'missing expected {kind} installer in {bundle}')
         for path in matches:
@@ -116,9 +120,10 @@ def extracted(artifact: Path, kind: str, scratch: Path):
             if attached:
                 run(['hdiutil', 'detach', str(payload)])
     else:
-        run(['msiexec.exe', '/a', str(artifact), '/qn', f'TARGETDIR={payload}',
-             '/L*V', str(scratch / 'msi-extract.log')])
-        yield payload, {'extraction': 'msiexec administrative extraction'}
+        run(['7z', 'x', f'-o{payload}', '-y', str(artifact)])
+        if not any(payload.rglob('*')):
+            raise VerificationError('nsis installer extracted no files')
+        yield payload, {'extraction': '7z extraction'}
 
 
 def inside_file(path: Path, root: Path) -> bool:
@@ -286,7 +291,7 @@ def inspect_payload(root: Path, kind: str, metadata: dict | None = None) -> dict
         if forbidden_path(path, root):
             raise VerificationError(f'FontForge binary or sources in payload: {path.relative_to(root)}')
     files = [path for path in paths if path.is_file() or path.is_symlink()]
-    executable_name = 'fontcarver-desktop.exe' if kind == 'msi' else 'fontcarver-desktop'
+    executable_name = 'fontcarver-desktop.exe' if kind == 'nsis' else 'fontcarver-desktop'
     binaries = [path for path in files if path.name == executable_name and inside_file(path, root)]
     if kind in ('deb', 'rpm', 'appimage'):
         binaries = [path for path in binaries if path == root / 'usr/bin/fontcarver-desktop']
@@ -295,7 +300,7 @@ def inspect_payload(root: Path, kind: str, metadata: dict | None = None) -> dict
                     and path.parent.parent.name == 'Contents'
                     and path.parent.parent.parent.suffix == '.app']
     signatures = {'deb': (b'\x7fELF',), 'rpm': (b'\x7fELF',), 'appimage': (b'\x7fELF',),
-                  'msi': (b'MZ',),
+                  'nsis': (b'MZ',),
                   'dmg': (b'\xcf\xfa\xed\xfe', b'\xce\xfa\xed\xfe', b'\xfe\xed\xfa\xcf',
                           b'\xfe\xed\xfa\xce', b'\xca\xfe\xba\xbe', b'\xbe\xba\xfe\xca')}
     valid_binaries = []
@@ -303,7 +308,7 @@ def inspect_payload(root: Path, kind: str, metadata: dict | None = None) -> dict
         with path.open('rb') as stream:
             header = stream.read(4)
         if any(header.startswith(signature) for signature in signatures[kind]) and (
-                kind == 'msi' or os.access(path, os.X_OK)):
+                kind == 'nsis' or os.access(path, os.X_OK)):
             valid_binaries.append(path)
     if not valid_binaries:
         raise VerificationError(f'missing valid application executable: {executable_name}')
@@ -364,7 +369,7 @@ def verify(bundle: Path, expected: list[str]) -> list[dict]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--bundle-dir', type=Path, default=ROOT / 'target/release/bundle')
-    parser.add_argument('--expected', required=True, help='comma-separated deb,appimage,dmg,msi')
+    parser.add_argument('--expected', required=True, help='comma-separated deb,rpm,appimage,dmg,nsis')
     parser.add_argument('--output', type=Path, help='default: BUNDLE_DIR/release-manifest.json')
     args = parser.parse_args()
     expected = list(dict.fromkeys(part.strip().lower() for part in args.expected.split(',')))
