@@ -1,7 +1,7 @@
 # Building and verifying native packages
 
-FontCarver packages the Tauri desktop application as Linux deb/AppImage, macOS
-dmg and Windows msi artifacts. The native package workflow builds reviewable
+FontCarver packages the Tauri desktop application as Linux deb/rpm/AppImage,
+macOS dmg and a Windows NSIS installer. The native package workflow builds reviewable
 artifacts; it does not create a GitHub Release, publish downloads, sign Windows
 packages, or notarize macOS applications. A green workflow records package
 inspection and scripted installation/removal checks; interactive native editing
@@ -24,8 +24,8 @@ package list used for its Ubuntu 24.04 Linux runner. The AppImage inherits the b
 host's glibc and library versions, so the build baseline is also the compatibility
 floor; Ubuntu 22.04 is not accepted by this build recipe. macOS needs Xcode or Xcode Command Line
 Tools. Windows needs Microsoft C++ Build Tools with **Desktop development with
-C++**, an MSVC Rust target, WebView2 and the Windows VBScript feature used by WiX
-MSI generation. See [Tauri's platform prerequisites](https://v2.tauri.app/start/prerequisites/)
+C++**, an MSVC Rust target and WebView2. NSIS replaced WiX, so the Windows
+VBScript feature WiX needed is no longer required. See [Tauri's platform prerequisites](https://v2.tauri.app/start/prerequisites/)
 for installation details.
 
 The first package build may download Tauri's platform bundling tools. Build on
@@ -61,8 +61,9 @@ After installing the platform prerequisites and pnpm dependencies, run:
 python3 scripts/build_release.py
 ```
 
-The helper selects `deb` and `appimage` on Linux, `dmg` on macOS and `msi` on
-Windows. Use `python` in place of `python3` if that is the name of your Python
+The helper selects `deb`, `rpm` and `appimage` on Linux, `dmg` on macOS and
+`nsis` on Windows. Windows ships one installer carrying both languages, where WiX
+needed one artifact per language. Use `python` in place of `python3` if that is the name of your Python
 3.11+ interpreter on Windows. To build a single format:
 
 ```sh
@@ -109,11 +110,13 @@ The build helper invokes the package verifier. To inspect existing Linux outputs
 again without rebuilding:
 
 ```sh
-python3 scripts/check_release_bundle.py --bundle-dir target/release/bundle --expected deb,appimage
+python3 scripts/check_release_bundle.py --bundle-dir target/release/bundle --expected deb,rpm,appimage
 ```
 
-Use `--expected dmg` on macOS or `--expected msi` on Windows. Inspection uses
-native tools: `dpkg-deb` extraction, AppImage's extraction mode, a read-only DMG
+Use `--expected dmg` on macOS or `--expected nsis` on Windows. Inspection uses
+native tools: `dpkg-deb` extraction, `rpm -qp` with `rpm2cpio | cpio` (so a Linux
+verifier needs `rpm` installed), `7z` for the NSIS installer, AppImage's
+extraction mode, a read-only DMG
 mount or Windows Installer administrative extraction. It does not launch
 FontCarver. Missing expected artifacts, missing platform tools or a mismatched
 host fail verification.
@@ -198,6 +201,12 @@ their manifest together with the source revision and native acceptance results.
 
 ## Rootless Linux package-manager verification
 
+**The rpm has no install verification yet.** `check_deb_install.py` is built around
+dpkg and apt, and no rpm equivalent exists, so an rpm candidate currently has build
+and payload-inspection evidence but not the install/startup evidence that
+`docs/STATUS.md` treats as the release standard. Do not describe an rpm as release
+verified until that helper exists. The deb procedure below does not transfer.
+
 On a Linux host with unprivileged user namespaces, overlayfs and bubblewrap,
 verify a candidate without installing it into the personal system:
 
@@ -227,9 +236,9 @@ is:
 
 | Runner              | Architecture | Artifacts                                   |
 | ------------------- | ------------ | ------------------------------------------- |
-| Ubuntu 24.04        | x86_64       | deb and AppImage                            |
+| Ubuntu 24.04        | x86_64       | deb, rpm and AppImage                       |
 | macOS 14            | arm64        | dmg                                         |
-| Windows Server 2022 | x86_64       | English and Simplified Chinese msi variants |
+| Windows Server 2022 | x86_64       | one NSIS installer, English and Chinese     |
 
 A manual dispatch takes an optional `bundles` input: any comma-separated subset
 of `deb`, `appimage`, `dmg` and `msi`, case-insensitive, empty for every

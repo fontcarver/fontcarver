@@ -20,27 +20,27 @@ import sys
 import tempfile
 import tomllib
 
-from check_release_bundle import VerificationError, discover
+from check_release_bundle import SUFFIXES, VerificationError, discover
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def native_bundles(system: str) -> list[str]:
     """Return only the installer formats maintained for a native platform."""
-    bundles = {"Linux": ["deb", "appimage"], "Darwin": ["dmg"], "Windows": ["msi"]}
+    bundles = {"Linux": ["deb", "rpm", "appimage"], "Darwin": ["dmg"], "Windows": ["nsis"]}
     if system not in bundles:
         raise ValueError(f"unsupported release build platform: {system}")
     return bundles[system]
 
 
 def validate_versions(cargo: str, frontend: str, tauri: str) -> str:
-    """Reject mismatched package versions and versions Windows MSI cannot encode."""
+    """Reject mismatched package versions and versions a native installer cannot encode."""
     if len({cargo, frontend, tauri}) != 1:
         raise ValueError(f"version mismatch: Cargo={cargo}, frontend={frontend}, Tauri={tauri}")
     if not re.fullmatch(r"\d+\.\d+\.\d+", cargo):
-        raise ValueError("release version must be a numeric major.minor.patch accepted by MSI")
+        raise ValueError("release version must be a numeric major.minor.patch accepted by native installers")
     if any(int(value) > limit for value, limit in zip(cargo.split("."), [255, 255, 65535])):
-        raise ValueError("release version exceeds Windows MSI version limits")
+        raise ValueError("release version exceeds native installer version limits")
     return cargo
 
 
@@ -61,18 +61,18 @@ def run(command: list[str], env: dict[str, str]) -> None:
 
 def artifact_snapshot(bundle: Path, bundles: list[str]) -> dict[str, tuple[int, int, int]]:
     """Remember existing candidates so a successful build cannot accept stale files."""
+    wanted = {SUFFIXES[kind] for kind in bundles}
     return {str(path): (path.stat().st_mtime_ns, path.stat().st_ctime_ns, path.stat().st_size)
             for path in bundle.rglob("*") if path.is_file()
-            and path.suffix.lower().lstrip(".") in bundles}
+            and path.suffix.lower() in wanted}
 
 
-def validate_built_artifacts(bundle: Path, bundles: list[str], before: dict,
-                             msi_languages: int = 2) -> None:
+def validate_built_artifacts(bundle: Path, bundles: list[str], before: dict) -> None:
     """Require exactly the configured fresh artifacts, retaining old files on failure."""
     artifacts = discover(bundle, bundles)
     for kind in bundles:
         selected = [path for artifact_kind, path in artifacts if artifact_kind == kind]
-        expected = msi_languages if kind == "msi" else 1
+        expected = 1
         if len(selected) != expected:
             raise ValueError(f"expected {expected} fresh {kind} candidate(s), found {len(selected)}; "
                              "move stale candidates out of the bundle directory before rebuilding")
@@ -158,12 +158,10 @@ def main() -> int:
         before = artifact_snapshot(bundle_dir, bundles)
         run([pnpm, "--dir", "app", "exec", "tauri", "build", "--ci",
              "--config", str(override_path), "--bundles", ",".join(bundles), "--", "--locked"], env)
-        languages = config["bundle"].get("windows", {}).get("wix", {}).get("language", ["en-US"])
-        language_count = len(languages) if isinstance(languages, (dict, list)) else 1
         bundle_env = dict(env)
         if source_state() != source:
             raise ValueError("release inputs changed during the build; rebuild from a stable tree")
-        validate_built_artifacts(bundle_dir, bundles, before, language_count)
+        validate_built_artifacts(bundle_dir, bundles, before)
         run(budget, env)
         bundle_dir = target / "release/bundle"
         run([sys.executable, "scripts/check_release_bundle.py", "--bundle-dir", str(bundle_dir),

@@ -72,9 +72,9 @@ class ReleaseValidationTests(unittest.TestCase):
                 self.assertEqual(after["input_files"], 2)
 
     def test_native_targets_are_explicit(self):
-        self.assertEqual(native_bundles("Linux"), ["deb", "appimage"])
+        self.assertEqual(native_bundles("Linux"), ["deb", "rpm", "appimage"])
         self.assertEqual(native_bundles("Darwin"), ["dmg"])
-        self.assertEqual(native_bundles("Windows"), ["msi"])
+        self.assertEqual(native_bundles("Windows"), ["nsis"])
         with self.assertRaises(ValueError):
             native_bundles("FreeBSD")
 
@@ -92,6 +92,34 @@ class ReleaseValidationTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     validate_versions(invalid, invalid, invalid)
         self.assertEqual(validate_versions("0.1.0", "0.1.0", "0.1.0"), "0.1.0")
+
+
+    def test_one_artifact_is_expected_per_format(self):
+        import inspect
+        # msi_languages defaulted to 2; a build is correct with one artifact per
+        # format now, so the parameter must be gone, not merely unused.
+        self.assertNotIn("msi_languages",
+                         inspect.signature(validate_built_artifacts).parameters)
+        with tempfile.TemporaryDirectory() as directory:
+            bundle = Path(directory)
+            for kind in ("nsis", "rpm"):
+                (bundle / kind).mkdir()
+            (bundle / "nsis/FontCarver_0.1.0_x64-setup.exe").write_bytes(b"MZ")
+            (bundle / "rpm/FontCarver-0.1.0-1.x86_64.rpm").write_bytes(b"\xed\xab\xee\xdb")
+            validate_built_artifacts(bundle, ["nsis", "rpm"], {})
+            (bundle / "nsis/FontCarver_0.1.0_x86-setup.exe").write_bytes(b"MZ")
+            with self.assertRaisesRegex(ValueError, "nsis"):
+                validate_built_artifacts(bundle, ["nsis", "rpm"], {})
+
+    def test_bundle_configuration_declares_rpm_and_nsis(self):
+        import json
+        config = json.loads((Path(build_release.__file__).resolve().parents[1]
+                             / "src-tauri/tauri.conf.json").read_text())
+        self.assertIn("rpm", config["bundle"]["linux"])
+        self.assertIn("nsis", config["bundle"]["windows"])
+        self.assertNotIn("wix", config["bundle"]["windows"])
+        self.assertEqual(config["bundle"]["windows"]["nsis"]["languages"],
+                         ["English", "SimpChinese"])
 
 
 if __name__ == "__main__":

@@ -48,6 +48,11 @@
         "files": {
           "/usr/share/doc/font-carver/copyright": "packaging/linux/copyright"
         }
+      },
+      "rpm": {
+        "files": {
+          "/usr/share/doc/font-carver/copyright": "packaging/linux/copyright"
+        }
       }
     },
     "macOS": {
@@ -59,9 +64,12 @@
         "type": "downloadBootstrapper",
         "silent": true
       },
-      "wix": {
-        "upgradeCode": "636edb04-8fac-57a7-b086-0903042a7eab",
-        "language": ["en-US", "zh-CN"]
+      "nsis": {
+        "languages": [
+          "English",
+          "SimpChinese"
+        ],
+        "displayLanguageSelector": true
       }
     },
     "icon": [

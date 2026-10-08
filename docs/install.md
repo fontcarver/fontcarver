@@ -15,9 +15,10 @@ it does not establish the identity of an unsigned publisher.
 | System              | Package     | Installation                                         |
 | ------------------- | ----------- | ---------------------------------------------------- |
 | Debian/Ubuntu Linux | `.deb`      | Installed and removed by the system package manager  |
+| Fedora/openSUSE     | `.rpm`      | Installed and removed by the system package manager  |
 | Linux               | `.AppImage` | Executable file that you keep in a directory you own |
 | macOS               | `.dmg`      | Disk image containing `FontCarver.app`               |
-| Windows             | `.msi`      | Windows Installer package                            |
+| Windows             | `.exe`      | NSIS installer, English and Simplified Chinese       |
 
 Linux compatibility depends on the build machine's system libraries. AppImage
 does not guarantee compatibility with older glibc versions. The release build
@@ -114,13 +115,14 @@ CI artifact as an accepted public release.
 
 ## Windows
 
-Run the `.msi` for your Windows architecture and follow the installer. Launch
+Run the `-setup.exe` installer and follow it; it offers English and Simplified
+Chinese. Launch
 FontCarver from its Start menu entry. Microsoft Edge WebView2 is required; the
 installer’s configured bootstrapper may need network access if the runtime is
 missing. See [Tauri's Windows runtime installation options](https://v2.tauri.app/distribute/windows-installer/#webview2-installation-options).
 
-Separate English (`en-US`) and Simplified Chinese (`zh-CN`) MSI variants are
-built. The installer rejects an older version installed over a newer one.
+One installer carries both languages. It rejects an older version installed over
+a newer one.
 
 To uninstall, quit FontCarver and use **Settings → Apps → Installed apps →
 FontCarver → Uninstall**. Authenticode signing and native Windows installation
