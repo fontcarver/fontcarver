@@ -322,6 +322,7 @@ jobs:
             target/release/bundle/**/*.dmg
             target/release/bundle/**/*.rpm
             target/release/bundle/**/*-setup.exe
+            target/release/bundle/**/*-portable.zip
             target/release/bundle/release-manifest.json
             .scratch/p5-release-ci/*-smoke.json
           if-no-files-found: error

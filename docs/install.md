@@ -19,6 +19,7 @@ it does not establish the identity of an unsigned publisher.
 | Linux               | `.AppImage` | Executable file that you keep in a directory you own |
 | macOS               | `.dmg`      | Disk image containing `FontCarver.app`               |
 | Windows             | `.exe`      | NSIS installer, English and Simplified Chinese       |
+| Windows             | `.zip`      | Portable: extract and run, nothing installed         |
 
 Linux compatibility depends on the build machine's system libraries. AppImage
 does not guarantee compatibility with older glibc versions. The release build
@@ -123,6 +124,19 @@ missing. See [Tauri's Windows runtime installation options](https://v2.tauri.app
 
 One installer carries both languages. It rejects an older version installed over
 a newer one.
+
+### Portable
+
+Extract `FontCarver_VERSION_x64-portable.zip` anywhere you can write, such as a
+USB stick or a folder in your user directory, and run `fontcarver-desktop.exe`
+from the extracted `FontCarver-VERSION` folder. Nothing is installed and nothing
+is written to your user profile: while `PORTABLE.txt` sits beside the executable,
+settings, autosave and the interface's stored state all go to a `data` folder next
+to it. Delete the folder to remove FontCarver completely.
+
+The portable build needs the Microsoft Edge WebView2 Runtime, which Windows 11
+includes. On Windows 10 without it, FontCarver shows a message naming the runtime
+and where to download it, instead of opening a blank window.
 
 To uninstall, quit FontCarver and use **Settings → Apps → Installed apps →
 FontCarver → Uninstall**. Authenticode signing and native Windows installation

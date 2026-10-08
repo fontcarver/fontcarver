@@ -62,7 +62,8 @@ python3 scripts/build_release.py
 ```
 
 The helper selects `deb`, `rpm` and `appimage` on Linux, `dmg` on macOS and
-`nsis` on Windows. Windows ships one installer carrying both languages, where WiX
+`nsis` on Windows; a Windows build also writes a portable zip from the same
+executable. Windows ships one installer carrying both languages, where WiX
 needed one artifact per language. Use `python` in place of `python3` if that is the name of your Python
 3.11+ interpreter on Windows. To build a single format:
 
@@ -200,6 +201,12 @@ a release cache. For a distribution candidate, retain the exact installers and
 their manifest together with the source revision and native acceptance results.
 
 ## Rootless Linux package-manager verification
+
+**The Windows portable zip is unverified on Windows.** Its layout passes the
+payload inspector, and on Linux the same executable, run beside `PORTABLE.txt`,
+writes its WebView state into the adjacent `data` folder. No Windows host was
+available, so WebView2's handling of that directory, the missing-runtime message
+and a real extract-and-run have not been observed.
 
 **The rpm has no install verification yet.** `check_deb_install.py` is built around
 dpkg and apt, and no rpm equivalent exists, so an rpm candidate currently has build
