@@ -1680,6 +1680,7 @@ version = "0.1.0"
 dependencies = [
  "fc-api",
  "fc-doc",
+ "rfd",
  "serde_json",
  "tauri",
  "tauri-build",

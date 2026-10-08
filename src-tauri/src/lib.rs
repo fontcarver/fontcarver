@@ -124,6 +124,21 @@ fn launch() -> Result<(), Error> {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
     let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
 
+    // The portable zip has no installer to bootstrap WebView2. Release builds use
+    // the Windows GUI subsystem, so stderr is invisible to someone who
+    // double-clicked the executable; a native dialog is the only feedback.
+    #[cfg(windows)]
+    if let Err(error) = tauri::webview_version() {
+        let message = portable::webview_missing_message(&error.to_string());
+        tracing::error!("{message}");
+        let _ = rfd::MessageDialog::new()
+            .set_level(rfd::MessageLevel::Error)
+            .set_title("FontCarver")
+            .set_description(message.as_str())
+            .show();
+        return Err(Error::Startup(message));
+    }
+
     // Resolve the executable first: a shortcut or link must find the portable
     // marker beside the real file.
     let portable = std::env::current_exe()

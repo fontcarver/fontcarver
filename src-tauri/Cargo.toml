@@ -34,5 +34,12 @@ tokio = { workspace = true, features = ["sync"] }
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
+# Native message box for a missing WebView2 runtime, shown before any webview
+# exists. Already in the graph via tauri-plugin-dialog; default features stay
+# off because they would enable async-std, a crate the graph does not otherwise
+# contain.
+[target.'cfg(windows)'.dependencies]
+rfd = { version = "0.16.0", default-features = false }
+
 [dev-dependencies]
 tempfile = { workspace = true }

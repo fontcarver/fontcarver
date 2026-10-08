@@ -24,6 +24,20 @@ pub(crate) fn webview_dir(root: &Path) -> PathBuf {
     root.join("webview")
 }
 
+/// The text shown when the system WebView runtime cannot be found.
+///
+/// The portable zip has no installer to bootstrap WebView2, so on a Windows host
+/// without it this is the only feedback the user gets.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub(crate) fn webview_missing_message(detail: &str) -> String {
+    format!(
+        "FontCarver needs the Microsoft Edge WebView2 Runtime, which was not found.\n\n\
+         Windows 11 includes it. On Windows 10, install it from \
+         https://developer.microsoft.com/microsoft-edge/webview2/ and start FontCarver again.\n\n\
+         Detail: {detail}"
+    )
+}
+
 /// This run's portable data root, managed so every window can reach it.
 pub(crate) struct Root(pub(crate) Option<PathBuf>);
 
@@ -102,6 +116,14 @@ mod tests {
             webview_directory(&Root(Some(root.clone()))),
             Some(root.join("webview"))
         );
+    }
+
+    #[test]
+    fn a_missing_webview_runtime_is_explained_in_plain_words() {
+        let message = webview_missing_message("class not registered");
+        assert!(message.contains("WebView2"));
+        assert!(message.contains("https://developer.microsoft.com/microsoft-edge/webview2/"));
+        assert!(message.contains("class not registered"));
     }
 
     #[test]
