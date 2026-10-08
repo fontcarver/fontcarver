@@ -11,6 +11,7 @@ use tracing_subscriber::EnvFilter;
 pub mod cli;
 mod commands;
 pub mod error;
+mod portable;
 mod windows;
 
 pub use error::Error;
