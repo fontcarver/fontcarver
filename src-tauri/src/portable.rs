@@ -16,6 +16,20 @@ pub(crate) fn root(executable: &Path) -> Option<PathBuf> {
     dir.join(MARKER).is_file().then(|| dir.join("data"))
 }
 
+/// The data root for this executable, resolving links first when possible.
+///
+/// `dunce` rather than `std::fs::canonicalize`, because on Windows the standard
+/// call returns `\\?\` verbatim paths that are then handed to WebView2 as its user
+/// data folder; Tauri strips that prefix the same way elsewhere. If resolution
+/// fails at all — some RAM disks, virtual drives and network mounts — fall back to
+/// the path as given rather than silently treating the run as installed.
+pub(crate) fn resolve(executable: &Path) -> Option<PathBuf> {
+    match dunce::canonicalize(executable) {
+        Ok(real) => root(&real).or_else(|| root(executable)),
+        Err(_) => root(executable),
+    }
+}
+
 pub(crate) fn config_dir(root: &Path) -> PathBuf {
     root.join("config")
 }
@@ -124,6 +138,26 @@ mod tests {
         assert!(message.contains("WebView2"));
         assert!(message.contains("https://developer.microsoft.com/microsoft-edge/webview2/"));
         assert!(message.contains("class not registered"));
+    }
+
+    #[test]
+    fn an_unresolvable_executable_path_still_finds_the_marker_beside_it() {
+        // canonicalize fails on some RAM disks, virtual drives and network mounts;
+        // that must not silently turn a portable run into an installed one.
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join(MARKER), b"portable").unwrap();
+        let missing = dir.path().join("not-resolvable.exe");
+        assert!(missing.canonicalize().is_err());
+        assert_eq!(resolve(&missing), Some(dir.path().join("data")));
+    }
+
+    #[test]
+    fn resolve_finds_the_marker_beside_the_real_file_when_it_can() {
+        let dir = tempfile::tempdir().unwrap();
+        let exe = dir.path().join("fontcarver-desktop.exe");
+        std::fs::write(&exe, b"MZ").unwrap();
+        std::fs::write(dir.path().join(MARKER), b"portable").unwrap();
+        assert_eq!(resolve(&exe), Some(dir.path().canonicalize().unwrap().join("data")));
     }
 
     #[test]

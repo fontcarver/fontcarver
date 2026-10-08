@@ -143,8 +143,7 @@ fn launch() -> Result<(), Error> {
     // marker beside the real file.
     let portable = std::env::current_exe()
         .ok()
-        .and_then(|exe| exe.canonicalize().ok())
-        .and_then(|exe| portable::root(&exe));
+        .and_then(|exe| portable::resolve(&exe));
     let api = Arc::new(Api::new(Arc::new(Session::new())));
     // Before autosave starts, since autosave lives under the config directory.
     if let Some(root) = &portable {

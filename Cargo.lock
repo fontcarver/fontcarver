@@ -1678,6 +1678,7 @@ dependencies = [
 name = "fontcarver"
 version = "0.1.0"
 dependencies = [
+ "dunce",
  "fc-api",
  "fc-doc",
  "rfd",

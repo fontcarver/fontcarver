@@ -25,6 +25,9 @@ tauri-build.workspace = true
 [dependencies]
 fc-api = { path = "../crates/fc-api" }
 fc-doc = { path = "../crates/fc-doc" }
+# Resolves the portable data folder without Windows verbatim (\\?\) prefixes before
+# it reaches WebView2. Already in the graph through Tauri.
+dunce = "1.0.5"
 serde_json.workspace = true
 tauri.workspace = true
 tauri-plugin-dialog.workspace = true

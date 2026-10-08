@@ -134,6 +134,10 @@ is written to your user profile: while `PORTABLE.txt` sits beside the executable
 settings, autosave and the interface's stored state all go to a `data` folder next
 to it. Delete the folder to remove FontCarver completely.
 
+Extract the whole zip first. Opening the zip in File Explorer and double-clicking
+the executable inside it runs a temporary copy without `PORTABLE.txt` beside it,
+so that run behaves like an installed one and writes to your user profile.
+
 The portable build needs the Microsoft Edge WebView2 Runtime, which Windows 11
 includes. On Windows 10 without it, FontCarver shows a message naming the runtime
 and where to download it, instead of opening a blank window.
