@@ -241,7 +241,7 @@ is:
 | Windows Server 2022 | x86_64       | one NSIS installer, English and Chinese     |
 
 A manual dispatch takes an optional `bundles` input: any comma-separated subset
-of `deb`, `appimage`, `dmg` and `msi`, case-insensitive, empty for every
+of `deb`, `rpm`, `appimage`, `dmg` and `nsis`, case-insensitive, empty for every
 platform's native formats. A short `plan` job resolves that input into the
 matrix, so an unrecognised format name fails in seconds instead of after a
 90-minute build, and a runner whose formats were all excluded never starts.

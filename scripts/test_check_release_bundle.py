@@ -294,17 +294,20 @@ class ReleaseBundleTests(unittest.TestCase):
         artifact.write_bytes(b'\xed\xab\xee\xdb')
         scratch = self.root / 'scratch'
         scratch.mkdir()
-        with patch.object(verifier, 'run', return_value=b'FontCarver\n'):
-            with self.assertRaisesRegex(verifier.VerificationError, 'NAME, VERSION'):
-                with verifier.extracted(artifact, 'rpm', scratch):
-                    pass
+        with patch.object(verifier.shutil, 'which', return_value='/usr/bin/tool'):
+            with patch.object(verifier, 'run', return_value=b'FontCarver\n'):
+                with self.assertRaisesRegex(verifier.VerificationError, 'NAME, VERSION'):
+                    with verifier.extracted(artifact, 'rpm', scratch):
+                        pass
 
-    def test_rpm_without_rpm2cpio_fails_with_a_named_tool(self):
+    def test_rpm_tool_guard_runs_before_the_rpm_query(self):
+        # On a host with no rpm at all the message must name the prerequisites, not
+        # surface a FileNotFoundError from the query.
         artifact = self.root / 'FontCarver-0.1.0-1.x86_64.rpm'
         artifact.write_bytes(b'\xed\xab\xee\xdb')
         scratch = self.root / 'scratch'
         scratch.mkdir()
-        with patch.object(verifier, 'run', return_value=b'FontCarver\n0.1.0\nx86_64\n'):
+        with patch.object(verifier, 'run', side_effect=AssertionError('queried too early')):
             with patch.object(verifier.shutil, 'which', return_value=None):
                 with self.assertRaisesRegex(verifier.VerificationError, 'rpm2cpio'):
                     with verifier.extracted(artifact, 'rpm', scratch):
@@ -322,14 +325,41 @@ class ReleaseBundleTests(unittest.TestCase):
         self.assertEqual(verifier.HOSTS['nsis'], 'win32')
         self.assertNotIn('msi', verifier.HOSTS)
 
-    def test_nsis_artifacts_are_discovered_by_their_exe_suffix(self):
-        self.assertEqual(verifier.SUFFIXES['nsis'], '.exe')
+    def test_nsis_artifacts_are_discovered_by_their_installer_name(self):
+        self.assertEqual(verifier.SUFFIXES['nsis'], '-setup.exe')
         self.assertEqual(verifier.SUFFIXES['rpm'], '.rpm')
         bundle = self.root / 'bundle'
         (bundle / 'nsis').mkdir(parents=True)
         installer = bundle / 'nsis/FontCarver_0.1.0_x64-setup.exe'
         installer.write_bytes(b'MZ')
+        # A stray executable under the bundle tree must not be taken for the
+        # installer: discover would otherwise report two candidates and fail a
+        # correct build.
+        (bundle / 'MicrosoftEdgeWebview2Setup.exe').write_bytes(b'MZ')
+        (bundle / 'uninstall.exe').write_bytes(b'MZ')
         self.assertEqual(verifier.discover(bundle, ['nsis']), [('nsis', installer)])
+
+    def test_nsis_extraction_tolerates_a_7z_warning_but_not_a_failure(self):
+        from types import SimpleNamespace
+        payload = self.root / 'payload'
+        payload.mkdir()
+
+        def warn(*args, **kwargs):
+            (payload / 'fontcarver-desktop.exe').write_bytes(b'MZ')
+            return SimpleNamespace(returncode=1, stderr=b'WARNING: cannot open file')
+
+        with patch.object(verifier.subprocess, 'run', side_effect=warn):
+            verifier.extract_nsis(self.root / 'x-setup.exe', payload)
+        with patch.object(verifier.subprocess, 'run',
+                          return_value=SimpleNamespace(returncode=2, stderr=b'fatal')):
+            with self.assertRaisesRegex(verifier.VerificationError, 'nsis installer'):
+                verifier.extract_nsis(self.root / 'x-setup.exe', payload)
+
+    def test_rpm_copyright_is_verified_like_the_deb_one(self):
+        self.payload()
+        report = verifier.inspect_payload(self.root, 'rpm', {'Package': 'fontcarver'})
+        self.assertIn('debian_copyright', report)
+        self.assertNotIn('tauri_bundle_marker', report)
 
     def test_nsis_extraction_rejects_an_empty_payload(self):
         # 7z exits 0 on archives it only partly understands; an empty payload must
@@ -338,9 +368,11 @@ class ReleaseBundleTests(unittest.TestCase):
         artifact.write_bytes(b'MZ')
         scratch = self.root / 'scratch'
         scratch.mkdir()
+        from types import SimpleNamespace
         with patch.object(verifier, 'sys') as fake_sys:
             fake_sys.platform = 'win32'
-            with patch.object(verifier, 'run', return_value=b''):
+            with patch.object(verifier.subprocess, 'run',
+                              return_value=SimpleNamespace(returncode=0, stderr=b'')):
                 with self.assertRaisesRegex(verifier.VerificationError, 'extracted no files'):
                     with verifier.extracted(artifact, 'nsis', scratch):
                         pass

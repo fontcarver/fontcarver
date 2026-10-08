@@ -69,7 +69,8 @@
           "English",
           "SimpChinese"
         ],
-        "displayLanguageSelector": true
+        "displayLanguageSelector": true,
+        "installMode": "perMachine"
       }
     },
     "icon": [

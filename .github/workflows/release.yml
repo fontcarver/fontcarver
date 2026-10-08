@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       bundles:
-        description: "Installer formats to build: any comma-separated subset of deb, appimage, dmg, msi. Empty builds every platform's native formats."
+        description: "Installer formats to build: any comma-separated subset of deb, rpm, appimage, dmg, nsis. Empty builds every platform's native formats."
         required: false
         default: ""
   pull_request:
@@ -61,9 +61,9 @@ jobs:
           import os
 
           rows = [
-              {"os": "ubuntu-24.04", "label": "linux-x86_64", "bundles": "deb,appimage"},
+              {"os": "ubuntu-24.04", "label": "linux-x86_64", "bundles": "deb,rpm,appimage"},
               {"os": "macos-14", "label": "macos-arm64", "bundles": "dmg"},
-              {"os": "windows-2022", "label": "windows-x86_64", "bundles": "msi"},
+              {"os": "windows-2022", "label": "windows-x86_64", "bundles": "nsis"},
           ]
           requested = [name.strip().lower()
                        for name in os.environ.get("REQUESTED", "").split(",") if name.strip()]
@@ -271,40 +271,45 @@ jobs:
             --executable "$applications/$name/Contents/MacOS/$executable" \
             --launch gui --report .scratch/p5-release-ci/macos-smoke.json
 
-      # Each locale gets an actual install, bounded process startup and uninstall.
-      # This is process evidence only; it does not claim rendered UI readiness.
-      - name: Install and remove Windows MSI packages
-        if: runner.os == 'Windows' && contains(matrix.bundles, 'msi')
+      # One installer carries both locales now, so this is a single install,
+      # bounded process startup and uninstall. Process evidence only; it does not
+      # claim rendered UI readiness. NSIS takes /S for silent operation and writes
+      # its own uninstall.exe into the install directory.
+      - name: Install and remove the Windows NSIS package
+        if: runner.os == 'Windows' && contains(matrix.bundles, 'nsis')
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force .scratch/p5-release-ci | Out-Null
-          $installers = @(Get-ChildItem -Path target/release/bundle/msi -Filter *.msi -File -ErrorAction SilentlyContinue)
-          if ($installers.Count -lt 1) { throw "no MSI installer was produced" }
+          $installers = @(Get-ChildItem -Path target/release/bundle/nsis -Filter *-setup.exe -File -ErrorAction SilentlyContinue)
+          if ($installers.Count -ne 1) { throw "expected one NSIS installer, found $($installers.Count)" }
+          $setup = $installers[0]
+          # bundle.windows.nsis.installMode is perMachine, so this is the install root.
           $installed = Join-Path $env:ProgramFiles "FontCarver"
-          foreach ($msi in $installers) {
-            $log = Join-Path $PWD ".scratch/p5-release-ci/$($msi.BaseName).log"
-            $removeLog = Join-Path $PWD ".scratch/p5-release-ci/$($msi.BaseName)-remove.log"
-            $install = Start-Process msiexec.exe -Wait -PassThru -ArgumentList "/i `"$($msi.FullName)`" /qn /norestart /l*v `"$log`""
-            if ($install.ExitCode -notin @(0, 3010)) { throw "MSI install failed: $($install.ExitCode); see $log" }
-            try {
-              if (-not (Test-Path -LiteralPath $installed)) {
-                throw "install directory missing after a successful install: $installed; see $log"
-              }
-              $executables = @(Get-ChildItem -LiteralPath $installed -Recurse -File -Filter fontcarver-desktop.exe -ErrorAction SilentlyContinue)
-              if ($executables.Count -ne 1) {
-                throw "expected one fontcarver-desktop.exe under $installed, found $($executables.Count)"
-              }
-              $report = ".scratch/p5-release-ci/$($msi.BaseName)-smoke.json"
-              python scripts/smoke_release_native.py --executable $executables[0].FullName --launch gui --report $report
-              if ($LASTEXITCODE -ne 0) { throw "native startup check failed; see $report" }
-            } finally {
-              $uninstall = Start-Process msiexec.exe -Wait -PassThru -ArgumentList "/x `"$($msi.FullName)`" /qn /norestart /l*v `"$removeLog`""
-              if ($uninstall.ExitCode -notin @(0, 3010)) { throw "MSI uninstall failed: $($uninstall.ExitCode); see $removeLog" }
+          $install = Start-Process -FilePath $setup.FullName -Wait -PassThru -ArgumentList "/S"
+          if ($install.ExitCode -ne 0) { throw "NSIS install failed: $($install.ExitCode)" }
+          try {
+            if (-not (Test-Path -LiteralPath $installed)) {
+              throw "install directory missing after a successful install: $installed"
             }
-            $left = @(Get-ChildItem -LiteralPath $installed -Recurse -File -Filter *.exe -ErrorAction SilentlyContinue)
-            if ($left.Count -gt 0) {
-              throw "uninstall left $(($left | ForEach-Object FullName) -join '; ') behind"
+            $executables = @(Get-ChildItem -LiteralPath $installed -Recurse -File -Filter fontcarver-desktop.exe -ErrorAction SilentlyContinue)
+            if ($executables.Count -ne 1) {
+              throw "expected one fontcarver-desktop.exe under $installed, found $($executables.Count)"
             }
+            $report = ".scratch/p5-release-ci/$($setup.BaseName)-smoke.json"
+            python scripts/smoke_release_native.py --executable $executables[0].FullName --launch gui --report $report
+            if ($LASTEXITCODE -ne 0) { throw "native startup check failed; see $report" }
+          } finally {
+            $uninstaller = Join-Path $installed "uninstall.exe"
+            if (Test-Path -LiteralPath $uninstaller) {
+              $remove = Start-Process -FilePath $uninstaller -Wait -PassThru -ArgumentList "/S"
+              if ($remove.ExitCode -ne 0) { throw "NSIS uninstall failed: $($remove.ExitCode)" }
+            } else {
+              throw "installer wrote no uninstall.exe into $installed"
+            }
+          }
+          $left = @(Get-ChildItem -LiteralPath $installed -Recurse -File -Filter *.exe -ErrorAction SilentlyContinue)
+          if ($left.Count -gt 0) {
+            throw "uninstall left $(($left | ForEach-Object FullName) -join '; ') behind"
           }
 
       - name: Upload installers and inspection evidence
@@ -315,7 +320,8 @@ jobs:
             target/release/bundle/**/*.deb
             target/release/bundle/**/*.AppImage
             target/release/bundle/**/*.dmg
-            target/release/bundle/**/*.msi
+            target/release/bundle/**/*.rpm
+            target/release/bundle/**/*-setup.exe
             target/release/bundle/release-manifest.json
             .scratch/p5-release-ci/*-smoke.json
           if-no-files-found: error

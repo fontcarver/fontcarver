@@ -30,10 +30,11 @@ RESOURCES = ('LICENSE-MIT', 'LICENSE-APACHE', 'THIRD_PARTY.md',
              'DEPENDENCIES.json', 'INSTALL.md')
 HOSTS = {'deb': 'linux', 'rpm': 'linux', 'appimage': 'linux', 'dmg': 'darwin',
          'nsis': 'win32'}
-# An artifact's extension is not always its bundle name: Tauri's nsis output is
-# `<name>_<version>_<arch>-setup.exe`.
+# An artifact's extension is not always its bundle name, and a bare '.exe' would
+# also match a WebView2 bootstrapper, an uninstaller or a staged application binary
+# sitting under the bundle tree. These are filename suffixes, not path suffixes.
 SUFFIXES = {'deb': '.deb', 'rpm': '.rpm', 'appimage': '.appimage', 'dmg': '.dmg',
-            'nsis': '.exe'}
+            'nsis': '-setup.exe'}
 
 
 class VerificationError(Exception):
@@ -62,7 +63,7 @@ def discover(bundle: Path, expected: list[str]) -> list[tuple[str, Path]]:
         if kind not in HOSTS:
             raise VerificationError(f'unsupported artifact type: {kind}')
         matches = sorted(path for path in bundle.rglob('*')
-                         if path.is_file() and path.suffix.lower() == SUFFIXES[kind])
+                         if path.is_file() and path.name.lower().endswith(SUFFIXES[kind]))
         if not matches:
             raise VerificationError(f'missing expected {kind} installer in {bundle}')
         for path in matches:
@@ -70,6 +71,22 @@ def discover(bundle: Path, expected: list[str]) -> list[tuple[str, Path]]:
                 raise VerificationError(f'installer is empty or a symlink: {path}')
             artifacts.append((kind, path))
     return artifacts
+
+
+def extract_nsis(artifact: Path, payload: Path) -> None:
+    """Unpack an NSIS installer, tolerating 7-Zip's non-fatal warning status.
+
+    7-Zip exits 1 for warnings, which is routine for an NSIS installer's plugin
+    directories and unsupported header entries. An empty payload is the real signal
+    that nothing usable came out.
+    """
+    result = subprocess.run(['7z', 'x', f'-o{payload}', '-y', str(artifact)],
+                            capture_output=True)
+    if result.returncode > 1:
+        raise VerificationError(
+            f'nsis installer extraction failed: {result.stderr.decode()[-500:]}')
+    if not any(payload.rglob('*')):
+        raise VerificationError('nsis installer extracted no files')
 
 
 @contextmanager
@@ -89,13 +106,15 @@ def extracted(artifact: Path, kind: str, scratch: Path):
         run(['dpkg-deb', '--extract', str(artifact), str(payload)])
         yield payload, metadata
     elif kind == 'rpm':
+        # Checked before the query so a host without the tools gets this message
+        # rather than a FileNotFoundError from inside `rpm`.
+        if any(shutil.which(tool) is None for tool in ('rpm', 'rpm2cpio', 'cpio')):
+            raise VerificationError('rpm verification needs rpm, rpm2cpio and cpio on PATH')
         fields = run(['rpm', '-qp', '--queryformat', '%{NAME}\\n%{VERSION}\\n%{ARCH}\\n',
                       str(artifact)]).decode().splitlines()
         if len(fields) < 3 or not all(field.strip() for field in fields[:3]):
             raise VerificationError('rpm lacks NAME, VERSION, or ARCH metadata')
         metadata = dict(zip(('Package', 'Version', 'Architecture'), fields[:3]))
-        if shutil.which('rpm2cpio') is None or shutil.which('cpio') is None:
-            raise VerificationError('rpm verification needs rpm2cpio and cpio on PATH')
         archive = run(['rpm2cpio', str(artifact)])
         result = subprocess.run(['cpio', '-idm', '--quiet'], input=archive, cwd=payload,
                                 capture_output=True)
@@ -120,9 +139,7 @@ def extracted(artifact: Path, kind: str, scratch: Path):
             if attached:
                 run(['hdiutil', 'detach', str(payload)])
     else:
-        run(['7z', 'x', f'-o{payload}', '-y', str(artifact)])
-        if not any(payload.rglob('*')):
-            raise VerificationError('nsis installer extracted no files')
+        extract_nsis(artifact, payload)
         yield payload, {'extraction': '7z extraction'}
 
 
@@ -339,6 +356,9 @@ def inspect_payload(root: Path, kind: str, metadata: dict | None = None) -> dict
         report['host_library_notices'] = host_library_notices(resource_root)
     if kind == 'deb':
         report['tauri_bundle_marker'] = debian_bundle_marker(valid_binaries[0])
+    if kind in ('deb', 'rpm'):
+        # tauri.conf.json installs the same copyright document for both, so the rpm
+        # must be held to the same check; only the marker is deb-container specific.
         report['debian_copyright'] = debian_copyright(root, files, (metadata or {}).get('Package'))
     return report
 

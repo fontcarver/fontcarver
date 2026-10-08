@@ -86,7 +86,7 @@ class ReleaseValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "version mismatch"):
             validate_versions("0.1.0", "0.2.0", "0.1.0")
 
-    def test_version_must_be_accepted_by_msi(self):
+    def test_version_must_be_encodable_by_native_installers(self):
         for invalid in ["0.1.0-dev", "256.1.0", "1.256.0", "1.0.65536", "1.0"]:
             with self.subTest(version=invalid):
                 with self.assertRaises(ValueError):

@@ -61,10 +61,10 @@ def run(command: list[str], env: dict[str, str]) -> None:
 
 def artifact_snapshot(bundle: Path, bundles: list[str]) -> dict[str, tuple[int, int, int]]:
     """Remember existing candidates so a successful build cannot accept stale files."""
-    wanted = {SUFFIXES[kind] for kind in bundles}
+    wanted = tuple(SUFFIXES[kind] for kind in bundles)
     return {str(path): (path.stat().st_mtime_ns, path.stat().st_ctime_ns, path.stat().st_size)
             for path in bundle.rglob("*") if path.is_file()
-            and path.suffix.lower() in wanted}
+            and path.name.lower().endswith(wanted)}
 
 
 def validate_built_artifacts(bundle: Path, bundles: list[str], before: dict) -> None:
@@ -72,9 +72,8 @@ def validate_built_artifacts(bundle: Path, bundles: list[str], before: dict) -> 
     artifacts = discover(bundle, bundles)
     for kind in bundles:
         selected = [path for artifact_kind, path in artifacts if artifact_kind == kind]
-        expected = 1
-        if len(selected) != expected:
-            raise ValueError(f"expected {expected} fresh {kind} candidate(s), found {len(selected)}; "
+        if len(selected) != 1:
+            raise ValueError(f"expected 1 fresh {kind} candidate, found {len(selected)}; "
                              "move stale candidates out of the bundle directory before rebuilding")
     after = artifact_snapshot(bundle, bundles)
     stale = [path for path, value in after.items() if before.get(path) == value]
