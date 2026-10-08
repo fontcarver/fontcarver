@@ -14,6 +14,7 @@ import os
 import plistlib
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -27,7 +28,8 @@ from check_release_licenses import HOST_LICENSE_HASHES
 ROOT = Path(__file__).resolve().parents[1]
 RESOURCES = ('LICENSE-MIT', 'LICENSE-APACHE', 'THIRD_PARTY.md',
              'DEPENDENCIES.json', 'INSTALL.md')
-HOSTS = {'deb': 'linux', 'appimage': 'linux', 'dmg': 'darwin', 'msi': 'win32'}
+HOSTS = {'deb': 'linux', 'rpm': 'linux', 'appimage': 'linux', 'dmg': 'darwin',
+         'msi': 'win32'}
 
 
 class VerificationError(Exception):
@@ -81,6 +83,21 @@ def extracted(artifact: Path, kind: str, scratch: Path):
         if not all(metadata.get(key) for key in ('Package', 'Version', 'Architecture')):
             raise VerificationError('deb lacks Package, Version, or Architecture metadata')
         run(['dpkg-deb', '--extract', str(artifact), str(payload)])
+        yield payload, metadata
+    elif kind == 'rpm':
+        fields = run(['rpm', '-qp', '--queryformat', '%{NAME}\\n%{VERSION}\\n%{ARCH}\\n',
+                      str(artifact)]).decode().splitlines()
+        if len(fields) < 3 or not all(field.strip() for field in fields[:3]):
+            raise VerificationError('rpm lacks NAME, VERSION, or ARCH metadata')
+        metadata = dict(zip(('Package', 'Version', 'Architecture'), fields[:3]))
+        if shutil.which('rpm2cpio') is None or shutil.which('cpio') is None:
+            raise VerificationError('rpm verification needs rpm2cpio and cpio on PATH')
+        archive = run(['rpm2cpio', str(artifact)])
+        result = subprocess.run(['cpio', '-idm', '--quiet'], input=archive, cwd=payload,
+                                capture_output=True)
+        if result.returncode:
+            raise VerificationError(
+                f'rpm payload extraction failed: {result.stderr.decode()[-500:]}')
         yield payload, metadata
     elif kind == 'appimage':
         if not os.access(artifact, os.X_OK):
@@ -206,7 +223,7 @@ def debian_copyright(root: Path, files: list[Path], package: str | None) -> dict
 
 
 def platform_metadata(root: Path, files: list[Path], kind: str, binaries: list[Path]) -> dict:
-    if kind in ('deb', 'appimage'):
+    if kind in ('deb', 'rpm', 'appimage'):
         if kind == 'appimage' and (not inside_file(root / 'AppRun', root)
                                    or not os.access(root / 'AppRun', os.X_OK)):
             raise VerificationError('AppImage lacks executable AppRun launcher')
@@ -271,13 +288,14 @@ def inspect_payload(root: Path, kind: str, metadata: dict | None = None) -> dict
     files = [path for path in paths if path.is_file() or path.is_symlink()]
     executable_name = 'fontcarver-desktop.exe' if kind == 'msi' else 'fontcarver-desktop'
     binaries = [path for path in files if path.name == executable_name and inside_file(path, root)]
-    if kind in ('deb', 'appimage'):
+    if kind in ('deb', 'rpm', 'appimage'):
         binaries = [path for path in binaries if path == root / 'usr/bin/fontcarver-desktop']
     elif kind == 'dmg':
         binaries = [path for path in binaries if path.parent.name == 'MacOS'
                     and path.parent.parent.name == 'Contents'
                     and path.parent.parent.parent.suffix == '.app']
-    signatures = {'deb': (b'\x7fELF',), 'appimage': (b'\x7fELF',), 'msi': (b'MZ',),
+    signatures = {'deb': (b'\x7fELF',), 'rpm': (b'\x7fELF',), 'appimage': (b'\x7fELF',),
+                  'msi': (b'MZ',),
                   'dmg': (b'\xcf\xfa\xed\xfe', b'\xce\xfa\xed\xfe', b'\xfe\xed\xfa\xcf',
                           b'\xfe\xed\xfa\xce', b'\xca\xfe\xba\xbe', b'\xbe\xba\xfe\xca')}
     valid_binaries = []
@@ -312,7 +330,7 @@ def inspect_payload(root: Path, kind: str, metadata: dict | None = None) -> dict
               'resources': resources, 'notices': check_notices(resource_root / 'DEPENDENCIES.json'),
               'platform_metadata': platform_metadata(root, files, kind, valid_binaries),
               'fontforge_paths_absent': True, 'file_count': len(files)}
-    if kind in ('deb', 'appimage'):
+    if kind in ('deb', 'rpm', 'appimage'):
         report['host_library_notices'] = host_library_notices(resource_root)
     if kind == 'deb':
         report['tauri_bundle_marker'] = debian_bundle_marker(valid_binaries[0])

@@ -289,6 +289,35 @@ class ReleaseBundleTests(unittest.TestCase):
         self.assertEqual(report[0]['metadata']['Package'], 'fontcarver')
         self.assertEqual(report[0]['sha256'], verifier.sha256(artifact))
 
+    def test_rpm_metadata_requires_name_version_and_architecture(self):
+        artifact = self.root / 'FontCarver-0.1.0-1.x86_64.rpm'
+        artifact.write_bytes(b'\xed\xab\xee\xdb')
+        scratch = self.root / 'scratch'
+        scratch.mkdir()
+        with patch.object(verifier, 'run', return_value=b'FontCarver\n'):
+            with self.assertRaisesRegex(verifier.VerificationError, 'NAME, VERSION'):
+                with verifier.extracted(artifact, 'rpm', scratch):
+                    pass
+
+    def test_rpm_without_rpm2cpio_fails_with_a_named_tool(self):
+        artifact = self.root / 'FontCarver-0.1.0-1.x86_64.rpm'
+        artifact.write_bytes(b'\xed\xab\xee\xdb')
+        scratch = self.root / 'scratch'
+        scratch.mkdir()
+        with patch.object(verifier, 'run', return_value=b'FontCarver\n0.1.0\nx86_64\n'):
+            with patch.object(verifier.shutil, 'which', return_value=None):
+                with self.assertRaisesRegex(verifier.VerificationError, 'rpm2cpio'):
+                    with verifier.extracted(artifact, 'rpm', scratch):
+                        pass
+
+    def test_rpm_payload_is_inspected_like_a_deb(self):
+        self.payload()
+        self.assertEqual(verifier.HOSTS['rpm'], 'linux')
+        report = verifier.inspect_payload(self.root, 'rpm')
+        self.assertEqual(report['executable']['paths'], ['usr/bin/fontcarver-desktop'])
+        self.assertIn('host_library_notices', report)
+        self.assertIn('desktop', report['platform_metadata'])
+
 
 if __name__ == '__main__':
     unittest.main()
