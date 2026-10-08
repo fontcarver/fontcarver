@@ -40,12 +40,26 @@ usr/lib/libwmflite-0.2.so.7
 usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/io-wmf.so
 ```
 
-They arrive as a gdk-pixbuf image loader for Windows Metafile, which a font editor
-does not need. **This cannot be ruled around.** `docs/licensing.md` §5 forbids AGPL
-in a native payload, and AGPL is the most far-reaching copyleft in the set. The only
-resolutions are to stop the bundler copying them — which Tauri does not expose, so
-it needs the same extract/repack step the notice injection needs — or to not ship a
-bundled AppImage.
+**This cannot be ruled around** — `docs/licensing.md` §5 forbids AGPL in a native
+payload, AGPL has no linking exception, and we would be redistributing the library
+itself. But the fix is cheap, and an earlier draft of this section got that wrong by
+calling for payload surgery.
+
+They arrive as a gdk-pixbuf image loader for Windows Metafile. The bundler copied
+**all 14** gdk-pixbuf loaders present on the build machine — `io-wmf.so` alongside
+the png, svg, tiff and webp ones — not because FontCarver needs WMF but because the
+loader directory was there. `libwmf-0.2.so.7` and `libwmflite-0.2.so.7` follow only
+because `io-wmf.so` links them; nothing else in the payload does.
+
+So this is **build-environment hygiene, not payload surgery**: removing the
+`libwmf-0.2-7-gtk` package from the build host drops the loader, and the two
+libraries follow it out because nothing is left to pull them in. `apt-get -s remove
+libwmf-0.2-7-gtk` on the capture host removes that package alone and breaks nothing.
+
+That also bounds how much of this census is inherent. The inventory was captured on
+a developer workstation (Ubuntu 24.04.4), whose package set is broader than a
+curated CI runner's. Whether `libwmf-0.2-7-gtk` exists on GitHub's `ubuntu-24.04`
+image is unverified here, so the AGPL row may not appear in a CI build at all.
 
 ## The 57 ruling-required packages include the core of the stack
 
@@ -84,8 +98,13 @@ re-run per release.
 
 ## What this means
 
-The bundled-AppImage route costs roughly 90 license determinations plus a
-payload-surgery step to remove the AGPL loader, and both recur as the build host
+Every row in this census is a function of **what is installed on the build
+machine**, not of what FontCarver needs — the bundler sweeps what it finds. The
+strongest lever is therefore a minimal, declared build environment rather than 90
+individual determinations: a smaller host package set yields a smaller payload and a
+smaller census. The AGPL row is the clearest case, removable with one package.
+
+What remains after that is still substantial, and it recurs as the build host
 drifts. That is a per-release treadmill rather than a one-time cost, and it is the
 empirical version of the judgement the repository's original blanket ban made for
 weaker stated reasons (see `docs/licensing.md` §5.1).
