@@ -24,6 +24,16 @@ pub(crate) fn webview_dir(root: &Path) -> PathBuf {
     root.join("webview")
 }
 
+/// This run's portable data root, managed so every window can reach it.
+pub(crate) struct Root(pub(crate) Option<PathBuf>);
+
+/// The WebView data directory to apply, or `None` to leave Tauri's default.
+///
+/// Every window in a run must agree, or windows stop sharing localStorage.
+pub(crate) fn webview_directory(root: &Root) -> Option<PathBuf> {
+    root.0.as_deref().map(webview_dir)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -66,6 +76,32 @@ mod tests {
         std::os::unix::fs::symlink(&exe, &link).unwrap();
         let resolved = std::fs::canonicalize(&link).unwrap();
         assert_eq!(root(&resolved), Some(real.path().canonicalize().unwrap().join("data")));
+    }
+
+    #[test]
+    fn the_main_window_is_created_in_code_so_its_data_directory_can_be_set() {
+        // Tauri resolves a config-file data_directory under %LOCALAPPDATA% and
+        // rejects absolute paths, so the portable directory can only be applied
+        // to a window built in code. The config must therefore not auto-create it.
+        let config: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        let main = config["app"]["windows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|window| window["label"] == "main")
+            .unwrap();
+        assert_eq!(main["create"], serde_json::Value::Bool(false));
+    }
+
+    #[test]
+    fn webview_directory_is_only_set_in_portable_mode() {
+        assert_eq!(webview_directory(&Root(None)), None);
+        let root = PathBuf::from("/p/data");
+        assert_eq!(
+            webview_directory(&Root(Some(root.clone()))),
+            Some(root.join("webview"))
+        );
     }
 
     #[test]

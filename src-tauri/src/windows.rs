@@ -105,12 +105,18 @@ pub(crate) async fn open_workspace_window(app: AppHandle, target: Value) -> Resu
     } else {
         (1200.0, 900.0)
     };
-    let window = WebviewWindowBuilder::new(&app, target.label, WebviewUrl::App(target.url.into()))
-        .title("FontCarver")
-        .inner_size(width, 850.0)
-        .min_inner_size(min_width, 600.0)
-        .build()
-        .map_err(|error| error.to_string())?;
+    let mut builder =
+        WebviewWindowBuilder::new(&app, target.label, WebviewUrl::App(target.url.into()))
+            .title("FontCarver")
+            .inner_size(width, 850.0)
+            .min_inner_size(min_width, 600.0);
+    // Same directory as the main window, or the two stop sharing localStorage.
+    if let Some(directory) =
+        crate::portable::webview_directory(&app.state::<crate::portable::Root>())
+    {
+        builder = builder.data_directory(directory);
+    }
+    let window = builder.build().map_err(|error| error.to_string())?;
     window.on_window_event(move |event| {
         if matches!(event, tauri::WindowEvent::Destroyed) {
             if let Err(error) = app.emit("fc:window-closed", &target.payload) {

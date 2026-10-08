@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use fc_api::Api;
 use fc_doc::Session;
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 use tokio::sync::broadcast::error::RecvError;
 use tracing_subscriber::EnvFilter;
 
@@ -124,7 +124,19 @@ fn launch() -> Result<(), Error> {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
     let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
 
+    // Resolve the executable first: a shortcut or link must find the portable
+    // marker beside the real file.
+    let portable = std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.canonicalize().ok())
+        .and_then(|exe| portable::root(&exe));
     let api = Arc::new(Api::new(Arc::new(Session::new())));
+    // Before autosave starts, since autosave lives under the config directory.
+    if let Some(root) = &portable {
+        if let Err(error) = api.configure_config_dir(portable::config_dir(root)) {
+            tracing::warn!(%error, "could not use the portable config directory");
+        }
+    }
     if let Err(error) = api.start_autosave() {
         tracing::warn!(%error, "could not start crash-recovery autosave");
     }
@@ -134,6 +146,7 @@ fn launch() -> Result<(), Error> {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .manage(api)
+        .manage(portable::Root(portable))
         .setup(move |app| {
             let app_handle = app.handle().clone();
             drop(std::thread::spawn(move || loop {
@@ -151,6 +164,22 @@ fn launch() -> Result<(), Error> {
                     Err(RecvError::Closed) => break,
                 }
             }));
+            // Built here rather than auto-created from tauri.conf.json, because a
+            // config-file data_directory is resolved under %LOCALAPPDATA% and an
+            // absolute portable path can only be applied in code.
+            let config = app
+                .config()
+                .app
+                .windows
+                .iter()
+                .find(|window| window.label == "main")
+                .cloned()
+                .ok_or("tauri.conf.json defines no main window")?;
+            let mut main = tauri::WebviewWindowBuilder::from_config(app.handle(), &config)?;
+            if let Some(directory) = portable::webview_directory(&app.state::<portable::Root>()) {
+                main = main.data_directory(directory);
+            }
+            main.build()?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
