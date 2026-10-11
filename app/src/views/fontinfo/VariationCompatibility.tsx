@@ -7,7 +7,7 @@ import {
   shapeColour,
   shapeSegments,
   swapOrder,
-} from './variationCompatibility'
+} from './variationCompatibilityModel'
 import styles from './VariationCompatibility.module.css'
 
 /** Largest number of stored points the view draws markers and chords for. */

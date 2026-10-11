@@ -17,7 +17,7 @@ import type {
   PreviewInstanceOption,
   PreviewStatus,
 } from './presentationTypes'
-import { previewInstanceOptions } from './previewSettings'
+import { previewInstanceOptions } from './previewSettingsModel'
 import { useVariableProof } from './useVariableProof'
 
 /** Named instances of one document, refreshed with its generation. */

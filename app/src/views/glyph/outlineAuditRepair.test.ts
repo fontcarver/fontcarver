@@ -14,7 +14,7 @@ import {
 } from '../../test/fontFixtures'
 import { createMockTransport, noChange } from '../../test/mockTransport'
 
-import { DEFAULT_OUTLINE_AUDIT } from './outlineAudit'
+import { DEFAULT_OUTLINE_AUDIT } from './outlineAuditModel'
 import { OutlineAuditRepairError, repairAllOutline } from './outlineAuditRepair'
 
 const original = [

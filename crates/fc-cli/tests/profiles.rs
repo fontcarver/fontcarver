@@ -17,6 +17,9 @@ fn fontcarver() -> Command {
 /// A two-master weight axis with two named instances and real outlines.
 fn source() -> Font {
     let mut font = Font::new_empty("Profile Family", 1000);
+    // Without a stored creation date both exports stamp `head` with the current
+    // second, and two exports straddling a second boundary differ by that alone.
+    font.info.open_type_head_created = Some("2020/01/02 03:04:05".to_owned());
     let regular = font.default_master().id.clone();
     font.masters[0].name = "Regular".into();
     font.masters[0].metrics.ascender = 750.0;

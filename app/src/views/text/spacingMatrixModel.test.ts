@@ -8,7 +8,7 @@ import {
   resolveSpacingView,
   runGlyphNames,
   spacingCellIntent,
-} from './spacingMatrix'
+} from './spacingMatrixModel'
 import type { PositionedGlyph } from './textLayout'
 
 const NO_KEYS: MetricsKeys = {

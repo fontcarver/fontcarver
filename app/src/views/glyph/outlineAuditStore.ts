@@ -15,7 +15,7 @@ import {
   OUTLINE_AUDIT_TESTS,
   type OutlineAuditSettings,
   type OutlineAuditTest,
-} from './outlineAudit'
+} from './outlineAuditModel'
 
 const STORAGE_KEY = 'fontcarver.outlineAudit'
 

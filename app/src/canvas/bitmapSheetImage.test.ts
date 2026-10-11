@@ -10,7 +10,7 @@ import {
   decodeSheetLayout,
   SHEET_LAYOUT_KEYWORD,
   SHEET_MAX_BYTES,
-} from '../views/bitmap/bitmapSheet'
+} from '../views/bitmap/bitmapSheetModel'
 
 afterEach(() => {
   vi.unstubAllGlobals()

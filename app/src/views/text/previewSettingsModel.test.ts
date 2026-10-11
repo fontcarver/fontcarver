@@ -6,7 +6,7 @@ import {
   previewInstanceOptions,
   previewSettingsOf,
   previewSettingsPatch,
-} from './previewSettings'
+} from './previewSettingsModel'
 import { PREVIEW_SIZES } from './previewPaint'
 
 function tab(overrides: Partial<TextTabState> = {}): TextTabState {

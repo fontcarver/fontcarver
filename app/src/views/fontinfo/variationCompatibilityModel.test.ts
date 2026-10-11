@@ -6,7 +6,7 @@ import {
   shapeColour,
   shapeSegments,
   swapOrder,
-} from './variationCompatibility'
+} from './variationCompatibilityModel'
 
 describe('variation SVG point inspection', () => {
   it('preserves contour, point and control-point ordering', () => {

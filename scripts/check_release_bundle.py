@@ -90,6 +90,23 @@ def extract_nsis(artifact: Path, payload: Path) -> None:
         raise VerificationError('nsis installer extracted no files')
 
 
+def rpm_archive(artifact: Path, archive_size: str) -> bytes:
+    """Return an rpm's cpio payload, tolerating rpm 4.18's missing-size status.
+
+    rpm 4.18's rpm2cpio exits 1 whenever the bytes it copied differ from the
+    LONGARCHIVESIZE tag, and Tauri's rpm writer leaves that tag out, so a complete
+    copy still fails there; rpm 6 dropped the comparison. Without the tag that
+    silent status carries no information, and cpio reading the archive through to
+    its trailer is the integrity check. With the tag, a mismatch is a truncation.
+    """
+    result = subprocess.run(['rpm2cpio', str(artifact)], capture_output=True)
+    size_check = result.returncode == 1 and not result.stderr.strip()
+    if result.returncode and not (size_check and archive_size == '(none)'):
+        detail = (result.stderr or b'payload size differs from LONGARCHIVESIZE').decode(errors='replace')
+        raise VerificationError(f'rpm2cpio exited {result.returncode}: {detail[-500:]}')
+    return result.stdout
+
+
 @contextmanager
 def extracted(artifact: Path, kind: str, scratch: Path):
     """Yield (payload root, native metadata); always detach a mounted DMG."""
@@ -111,12 +128,13 @@ def extracted(artifact: Path, kind: str, scratch: Path):
         # rather than a FileNotFoundError from inside `rpm`.
         if any(shutil.which(tool) is None for tool in ('rpm', 'rpm2cpio', 'cpio')):
             raise VerificationError('rpm verification needs rpm, rpm2cpio and cpio on PATH')
-        fields = run(['rpm', '-qp', '--queryformat', '%{NAME}\\n%{VERSION}\\n%{ARCH}\\n',
+        fields = run(['rpm', '-qp', '--queryformat',
+                      '%{NAME}\\n%{VERSION}\\n%{ARCH}\\n%{LONGARCHIVESIZE}\\n',
                       str(artifact)]).decode().splitlines()
         if len(fields) < 3 or not all(field.strip() for field in fields[:3]):
             raise VerificationError('rpm lacks NAME, VERSION, or ARCH metadata')
         metadata = dict(zip(('Package', 'Version', 'Architecture'), fields[:3]))
-        archive = run(['rpm2cpio', str(artifact)])
+        archive = rpm_archive(artifact, fields[3].strip() if len(fields) > 3 else '(none)')
         result = subprocess.run(['cpio', '-idm', '--quiet'], input=archive, cwd=payload,
                                 capture_output=True)
         if result.returncode:
@@ -212,7 +230,7 @@ def host_library_notices(resource_root: Path) -> list[dict]:
     notice = resource_root / 'scripts/release_licenses/native/HOST-LIBRARIES.txt'
     if not inside_file(notice, resource_root):
         raise VerificationError('missing Linux host-library notice')
-    rows = [{'path': str(notice.relative_to(resource_root)), 'sha256': sha256(notice)}]
+    rows = [{'path': notice.relative_to(resource_root).as_posix(), 'sha256': sha256(notice)}]
     for name, expected in HOST_LICENSE_HASHES.items():
         path = resource_root / name
         if not inside_file(path, resource_root):
@@ -237,7 +255,7 @@ def debian_copyright(root: Path, files: list[Path], package: str | None) -> dict
                  if path.name == 'copyright' and path.parent.parent == root / 'usr/share/doc']
     owned = [path for path in documents if package is None or path.parent.name == package]
     if not owned:
-        found = sorted(str(path.relative_to(root)) for path in documents)
+        found = sorted(path.relative_to(root).as_posix() for path in documents)
         raise VerificationError(
             'missing Debian copyright document at '
             f'usr/share/doc/{package or "<package>"}/copyright'
@@ -254,7 +272,7 @@ def debian_copyright(root: Path, files: list[Path], package: str | None) -> dict
     if missing:
         raise VerificationError('Debian copyright document does not name '
                                 f'{" and ".join(missing)} for a MIT OR Apache-2.0 package')
-    return {'path': str(document.relative_to(root)), 'sha256': sha256(document)}
+    return {'path': document.relative_to(root).as_posix(), 'sha256': sha256(document)}
 
 
 def platform_metadata(root: Path, files: list[Path], kind: str, binaries: list[Path]) -> dict:
@@ -281,8 +299,8 @@ def platform_metadata(root: Path, files: list[Path], kind: str, binaries: list[P
                 icons = [path for path in files if path.suffix.lower() in ('.png', '.svg', '.xpm')
                          and path.stem == icon_name and inside_file(path, root)]
                 if icons:
-                    return {'desktop': str(desktop.relative_to(root)),
-                            'icons': [str(path.relative_to(root)) for path in icons]}
+                    return {'desktop': desktop.relative_to(root).as_posix(),
+                            'icons': [path.relative_to(root).as_posix() for path in icons]}
         raise VerificationError('missing valid desktop application entry or matching icon')
     if kind == 'dmg':
         for info in files:
@@ -298,7 +316,7 @@ def platform_metadata(root: Path, files: list[Path], kind: str, binaries: list[P
             icons = list((info.parent / 'Resources').glob('*.icns'))
             if any(inside_file(icon, root) for icon in icons):
                 return {'bundle_identifier': data['CFBundleIdentifier'],
-                        'info_plist': str(info.relative_to(root))}
+                        'info_plist': info.relative_to(root).as_posix()}
         raise VerificationError('missing application Info.plist or bundled icns icon')
     return {'executable_format': 'PE', 'icons': 'embedded in executable / installer'}
 
@@ -363,9 +381,9 @@ def inspect_payload(root: Path, kind: str, metadata: dict | None = None) -> dict
     if resource_root is None or instructions is None:
         raise VerificationError('missing or empty release resources: ' + ', '.join(RESOURCES))
     resource_paths = [resource_root / name for name in RESOURCES[:-1]] + [instructions]
-    resources = [{'path': str(path.relative_to(root)), 'sha256': sha256(path)}
+    resources = [{'path': path.relative_to(root).as_posix(), 'sha256': sha256(path)}
                  for path in resource_paths]
-    report = {'executable': {'paths': [str(path.relative_to(root)) for path in valid_binaries],
+    report = {'executable': {'paths': [path.relative_to(root).as_posix() for path in valid_binaries],
                              'valid_header': True},
               'resources': resources, 'notices': check_notices(resource_root / 'DEPENDENCIES.json'),
               'platform_metadata': platform_metadata(root, files, kind, valid_binaries),
@@ -393,7 +411,7 @@ def verify(bundle: Path, expected: list[str]) -> list[dict]:
                     payload = inspect_payload(root, kind, metadata)
                     if kind == "appimage":
                         payload["appimage_policy"] = require_releasable_appimage(root, artifact)
-                rows.append({'path': str(artifact.relative_to(bundle)), 'type': kind,
+                rows.append({'path': artifact.relative_to(bundle).as_posix(), 'type': kind,
                              'bytes': artifact.stat().st_size, 'sha256': sha256(artifact),
                              'metadata': metadata, 'payload': payload})
     finally:

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { SpacingRow } from '../../api'
 import { metricsKeyError } from '../glyph/panels/metricsKeyCommands'
-import { cellText, type SpacingField } from './spacingMatrix'
+import { cellText, type SpacingField } from './spacingMatrixModel'
 import styles from './SpacingMatrix.module.css'
 
 const FIELDS: readonly SpacingField[] = ['left', 'right', 'width']

@@ -21,7 +21,7 @@ import {
   OutlineAudit,
   type OutlineAuditHandle,
 } from './OutlineAudit'
-import { DEFAULT_OUTLINE_AUDIT } from './outlineAudit'
+import { DEFAULT_OUTLINE_AUDIT } from './outlineAuditModel'
 import { useOutlineAuditStore } from './outlineAuditStore'
 
 const outline = makeLayerOutline(

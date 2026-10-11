@@ -8,7 +8,7 @@ import {
   formatSmartFilter,
   SMART_FILTER_FIELDS,
   smartRuleOperators,
-} from './smartFilterBuilder'
+} from './smartFilterBuilderModel'
 
 describe('smart filter builder expression formatting', () => {
   it('retains nested all, any and none groups and escapes literal values', () => {

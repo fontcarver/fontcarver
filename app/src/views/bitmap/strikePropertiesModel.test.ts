@@ -9,7 +9,7 @@ import {
   propertyText,
   propertyTypeOf,
   renameProperty,
-} from './strikeProperties'
+} from './strikePropertiesModel'
 
 describe('typed strike properties', () => {
   it('declares a type for every standard name and none for a custom one', () => {

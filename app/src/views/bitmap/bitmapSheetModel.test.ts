@@ -6,7 +6,7 @@ import {
   parseSheetNames,
   sheetDimensions,
   pngDimensions,
-} from './bitmapSheet'
+} from './bitmapSheetModel'
 
 const options = { cellWidth: 3, cellHeight: 3, columns: 2 }
 const glyph: BitmapGlyph = {

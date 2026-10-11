@@ -10,7 +10,7 @@
 
 import { create } from 'zustand'
 
-import type { SpacingViewState } from './spacingMatrix'
+import type { SpacingViewState } from './spacingMatrixModel'
 
 interface SpacingViewStore {
   byTab: Record<string, Partial<SpacingViewState>>

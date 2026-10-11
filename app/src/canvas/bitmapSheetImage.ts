@@ -7,7 +7,7 @@ import {
   SheetError,
   type SheetLayout,
   type SheetPixels,
-} from '../views/bitmap/bitmapSheet'
+} from '../views/bitmap/bitmapSheetModel'
 
 /** Table-driven CRC-32, the checksum every PNG chunk carries. */
 const CRC_TABLE = (() => {

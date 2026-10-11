@@ -24,7 +24,7 @@ import {
   OUTLINE_AUDIT_TESTS,
   outlineAuditFix,
   type OutlineAuditIssue,
-} from './outlineAudit'
+} from './outlineAuditModel'
 import { useOutlineAuditStore } from './outlineAuditStore'
 import { OutlineAuditRepairError, repairAllOutline } from './outlineAuditRepair'
 import styles from './outlineAudit.module.css'

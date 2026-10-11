@@ -7,7 +7,7 @@ import {
   defaultSmartRule,
   SMART_FILTER_FIELDS,
   smartRuleOperators,
-} from './smartFilterBuilder'
+} from './smartFilterBuilderModel'
 import styles from './smartFilters.module.css'
 
 export interface SmartFilterBuilderProps {

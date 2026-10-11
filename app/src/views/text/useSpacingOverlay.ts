@@ -8,7 +8,7 @@ import {
   resolveSpacingView,
   runGlyphNames,
   type SpacingViewState,
-} from './spacingMatrix'
+} from './spacingMatrixModel'
 import { useSpacingMatrix } from './useSpacingMatrix'
 import { useSpacingViewChoices, useSpacingViewStore } from './spacingView'
 

@@ -357,6 +357,22 @@ class ReleaseBundleTests(unittest.TestCase):
             with self.assertRaisesRegex(verifier.VerificationError, 'nsis installer'):
                 verifier.extract_nsis(self.root / 'x-setup.exe', payload)
 
+    def test_rpm2cpio_size_check_is_tolerated_only_without_an_archive_size(self):
+        # rpm 4.18's rpm2cpio exits 1 whenever the copied payload differs from
+        # LONGARCHIVESIZE, and Tauri's rpm writer omits that tag. Without the tag the
+        # status says nothing; with it, a short copy is a real truncation.
+        from types import SimpleNamespace
+        artifact = self.root / 'FontCarver-0.1.0-1.x86_64.rpm'
+        size_check = SimpleNamespace(returncode=1, stdout=b'070701', stderr=b'')
+        with patch.object(verifier.subprocess, 'run', return_value=size_check):
+            self.assertEqual(verifier.rpm_archive(artifact, '(none)'), b'070701')
+            with self.assertRaisesRegex(verifier.VerificationError, 'rpm2cpio'):
+                verifier.rpm_archive(artifact, '73625468')
+        failure = SimpleNamespace(returncode=1, stdout=b'', stderr=b'error: not an rpm package')
+        with patch.object(verifier.subprocess, 'run', return_value=failure):
+            with self.assertRaisesRegex(verifier.VerificationError, 'not an rpm package'):
+                verifier.rpm_archive(artifact, '(none)')
+
     def test_rpm_copyright_is_verified_like_the_deb_one(self):
         self.payload()
         report = verifier.inspect_payload(self.root, 'rpm', {'Package': 'fontcarver'})

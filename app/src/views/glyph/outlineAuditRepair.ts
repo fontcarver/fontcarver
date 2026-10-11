@@ -13,7 +13,7 @@ import {
   auditOutline,
   outlineAuditFix,
   type OutlineAuditSettings,
-} from './outlineAudit'
+} from './outlineAuditModel'
 
 export const MAX_AUDIT_REPAIR_PASSES = 32
 const MAX_REPAIR_POINTS = 100_000

@@ -14,7 +14,7 @@ import {
   displayedKey,
   spacingCellIntent,
   type SpacingField,
-} from './spacingMatrix'
+} from './spacingMatrixModel'
 import { SpacingMatrixRow } from './SpacingMatrixRow'
 import type { useSpacingOverlay } from './useSpacingOverlay'
 import styles from './SpacingMatrix.module.css'

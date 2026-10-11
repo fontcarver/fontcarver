@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { makeContour, makePoint } from '../../test/fontFixtures'
 
-import { auditOutline, outlineAuditFix } from './outlineAudit'
+import { auditOutline, outlineAuditFix } from './outlineAuditModel'
 
 const target = { doc: 1, glyph: 'a', layer: 'layer-1' }
 

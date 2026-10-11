@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { DEFAULT_OUTLINE_AUDIT } from './outlineAudit'
+import { DEFAULT_OUTLINE_AUDIT } from './outlineAuditModel'
 import { readStoredAudit, useOutlineAuditStore } from './outlineAuditStore'
 
 const KEY = 'fontcarver.outlineAudit'

@@ -19,7 +19,7 @@ import {
   propertyTypeOf,
   renameProperty,
   type PropertyType,
-} from './strikeProperties'
+} from './strikePropertiesModel'
 import styles from './BitmapView.module.css'
 
 /**

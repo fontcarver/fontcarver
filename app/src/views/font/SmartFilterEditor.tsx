@@ -6,7 +6,7 @@ import { Button } from '../../components/Button'
 import { Dialog } from '../../components/Dialog'
 
 import { SmartFilterBuilder } from './SmartFilterBuilder'
-import { defaultSmartRule, formatSmartFilter } from './smartFilterBuilder'
+import { defaultSmartRule, formatSmartFilter } from './smartFilterBuilderModel'
 import styles from './smartFilters.module.css'
 
 export interface SmartFilterEditorProps {

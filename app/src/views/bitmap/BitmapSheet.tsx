@@ -17,7 +17,7 @@ import {
   sheetDimensions,
   SheetError,
   type SheetLayout,
-} from './bitmapSheet'
+} from './bitmapSheetModel'
 import styles from './BitmapSheet.module.css'
 
 /** Explicit name-to-cell PNG interchange with one undoable import operation. */
