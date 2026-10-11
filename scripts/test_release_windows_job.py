@@ -38,6 +38,17 @@ class WindowsJobTests(unittest.TestCase):
             join_owned_job(kernel)
         kernel.CloseHandle.assert_called_once_with(11)
 
+    def test_the_application_receives_explicit_standard_handles(self):
+        # A windows-subsystem executable inherits no standard handles unless the
+        # launch names them, so `--version` would print into nothing.
+        with patch('release_windows_job.os.name', 'nt'), \
+             patch('release_windows_job.join_owned_job', return_value=object()), \
+             patch('release_windows_job.subprocess.call', return_value=0) as launch:
+            self.assertEqual(main(['application.exe', '--version']), 0)
+        launch.assert_called_once_with(['application.exe', '--version'],
+                                       stdin=subprocess.DEVNULL, stdout=sys.stdout,
+                                       stderr=sys.stderr)
+
     def test_unsafe_job_cannot_launch_the_application(self):
         with patch('release_windows_job.os.name', 'nt'), \
              patch('release_windows_job.join_owned_job', side_effect=OSError('job unavailable')), \

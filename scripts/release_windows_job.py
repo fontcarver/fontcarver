@@ -72,7 +72,10 @@ def main(command: list[str]) -> int:
         # The OS owns this handle's lifetime until wrapper process exit. It is
         # deliberately not passed to CloseHandle while this member is running.
         _job = join_owned_job()
-        return subprocess.call(command)
+        # Naming the handles makes Windows pass them with STARTF_USESTDHANDLES; a
+        # windows-subsystem executable launched without them has no stdout at all.
+        return subprocess.call(command, stdin=subprocess.DEVNULL, stdout=sys.stdout,
+                               stderr=sys.stderr)
     except OSError as error:
         print(f"native smoke job failed: {error}", file=sys.stderr)
         return 1

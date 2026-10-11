@@ -47,9 +47,11 @@ def sha256(path: Path) -> str:
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def run(command: list[str], cwd: Path | None = None) -> bytes:
+def run(command: list[str], cwd: Path | None = None, input: bytes | None = None,
+        env: dict[str, str] | None = None) -> bytes:
     try:
-        result = subprocess.run(command, cwd=cwd, capture_output=True, timeout=300)
+        result = subprocess.run(command, cwd=cwd, input=input, env=env, capture_output=True,
+                                timeout=300)
     except (OSError, subprocess.TimeoutExpired) as error:
         raise VerificationError(f'{command[0]} could not complete: {error}') from error
     if result.returncode:
@@ -149,10 +151,16 @@ def extracted(artifact: Path, kind: str, scratch: Path):
     elif kind == 'dmg':
         attached = False
         try:
+            # bundle.licenseFile gives the dmg a license agreement. Without a
+            # terminal, hdiutil cancels the attach unless the answer comes on stdin;
+            # PAGER=true keeps the license text itself out of the output, but the
+            # prompt still precedes the plist.
             output = run(['hdiutil', 'attach', '-readonly', '-nobrowse', '-plist',
-                          '-mountpoint', str(payload), str(artifact)])
+                          '-mountpoint', str(payload), str(artifact)],
+                         input=b'Y\n', env={**os.environ, 'PAGER': 'true'})
             attached = True
-            details = plistlib.loads(output)
+            start = output.find(b'<?xml')
+            details = plistlib.loads(output[start:] if start >= 0 else output)
             yield payload, {'mount_readonly': True, 'entities': len(details['system-entities'])}
         finally:
             if attached:

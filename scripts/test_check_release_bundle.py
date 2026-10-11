@@ -203,7 +203,7 @@ class ReleaseBundleTests(unittest.TestCase):
     def test_dmg_is_detached_when_payload_validation_fails(self):
         calls = []
 
-        def command(arguments, cwd=None):
+        def command(arguments, cwd=None, **options):
             calls.append(arguments)
             return plistlib.dumps({'system-entities': []})
 
@@ -213,6 +213,24 @@ class ReleaseBundleTests(unittest.TestCase):
                     raise verifier.VerificationError('payload invalid')
         self.assertIn('-readonly', calls[0])
         self.assertEqual(calls[-1][:2], ['hdiutil', 'detach'])
+
+    def test_dmg_license_agreement_is_accepted_without_a_terminal(self):
+        # Tauri turns bundle.licenseFile into a dmg license agreement. Without a
+        # terminal hdiutil cancels the attach unless the answer arrives on stdin,
+        # and its prompt then precedes the plist on stdout.
+        options_seen = []
+
+        def command(arguments, cwd=None, **options):
+            if arguments[1] == 'attach':
+                options_seen.append(options)
+                return b'Agree Y/N? ' + plistlib.dumps({'system-entities': [{}]})
+            return b''
+
+        with patch.object(verifier.sys, 'platform', 'darwin'), patch.object(verifier, 'run', command):
+            with verifier.extracted(self.root / 'test.dmg', 'dmg', self.root) as (_, metadata):
+                self.assertEqual(metadata['entities'], 1)
+        self.assertEqual(options_seen[0]['input'], b'Y\n')
+        self.assertEqual(options_seen[0]['env']['PAGER'], 'true')
 
     def test_failed_extraction_removes_temporary_directory(self):
         (self.root / 'test.deb').write_bytes(b'not a deb')

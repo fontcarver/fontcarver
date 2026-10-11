@@ -258,7 +258,9 @@ jobs:
             exit "$result"
           }
           trap cleanup EXIT
-          hdiutil attach -readonly -nobrowse -mountpoint "$mount" "${images[0]}"
+          # bundle.licenseFile adds a license agreement to the disk image; without
+          # a terminal hdiutil cancels the attach unless stdin answers it.
+          PAGER=true hdiutil attach -readonly -nobrowse -mountpoint "$mount" "${images[0]}" <<<Y
           attached=1
           bundles=()
           while IFS= read -r found; do bundles+=("$found"); done \
