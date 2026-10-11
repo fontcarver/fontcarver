@@ -90,11 +90,17 @@ class ReleaseValidationTests(unittest.TestCase):
             validate_versions("0.1.0", "0.2.0", "0.1.0")
 
     def test_version_must_be_encodable_by_native_installers(self):
-        for invalid in ["0.1.0-dev", "256.1.0", "1.256.0", "1.0.65536", "1.0"]:
+        for invalid in ["256.1.0", "1.256.0", "1.0.65536", "1.0", "0.1.0+5", "0.1.0-",
+                        "0.1.0-alpha..1", "0.1.0-alpha.01", "0.1.0-alpha_1"]:
             with self.subTest(version=invalid):
                 with self.assertRaises(ValueError):
                     validate_versions(invalid, invalid, invalid)
         self.assertEqual(validate_versions("0.1.0", "0.1.0", "0.1.0"), "0.1.0")
+
+    def test_semver_prerelease_versions_can_ship(self):
+        for version in ["0.1.0-alpha.1", "0.1.0-beta.2", "1.0.0-rc.1"]:
+            with self.subTest(version=version):
+                self.assertEqual(validate_versions(version, version, version), version)
 
 
     def test_one_artifact_is_expected_per_format(self):

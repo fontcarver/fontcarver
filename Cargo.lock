@@ -1262,7 +1262,7 @@ checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
 name = "fc-api"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "base64 0.22.1",
  "dirs",
@@ -1292,7 +1292,7 @@ dependencies = [
 
 [[package]]
 name = "fc-cli"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "assert_cmd",
  "clap",
@@ -1313,7 +1313,7 @@ dependencies = [
 
 [[package]]
 name = "fc-compile"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "brotli 7.0.0",
  "chrono",
@@ -1344,7 +1344,7 @@ dependencies = [
 
 [[package]]
 name = "fc-devserver"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "axum",
  "clap",
@@ -1366,7 +1366,7 @@ dependencies = [
 
 [[package]]
 name = "fc-doc"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "fc-fixtures",
  "fc-geom",
@@ -1388,7 +1388,7 @@ dependencies = [
 
 [[package]]
 name = "fc-fixtures"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "norad",
  "plist",
@@ -1398,7 +1398,7 @@ dependencies = [
 
 [[package]]
 name = "fc-formats"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "base64 0.22.1",
  "fc-compile",
@@ -1423,7 +1423,7 @@ dependencies = [
 
 [[package]]
 name = "fc-geom"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "fc-fixtures",
  "fc-model",
@@ -1439,7 +1439,7 @@ dependencies = [
 
 [[package]]
 name = "fc-glyphdata"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "icu_properties",
  "serde",
@@ -1448,7 +1448,7 @@ dependencies = [
 
 [[package]]
 name = "fc-hint"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "fc-model",
  "kurbo",
@@ -1459,7 +1459,7 @@ dependencies = [
 
 [[package]]
 name = "fc-layout"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "fc-compile",
  "fc-fixtures",
@@ -1479,7 +1479,7 @@ dependencies = [
 
 [[package]]
 name = "fc-model"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "base64 0.22.1",
  "indexmap 2.14.1",
@@ -1495,7 +1495,7 @@ dependencies = [
 
 [[package]]
 name = "fc-raster"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "fc-geom",
  "fc-model",
@@ -1508,7 +1508,7 @@ dependencies = [
 
 [[package]]
 name = "fc-sfnt"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "criterion",
  "fc-fixtures",
@@ -1676,7 +1676,7 @@ dependencies = [
 
 [[package]]
 name = "fontcarver"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "dunce",
  "fc-api",

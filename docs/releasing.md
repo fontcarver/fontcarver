@@ -225,7 +225,7 @@ verify a candidate without installing it into the personal system:
 
 ```sh
 python3 scripts/check_deb_install.py \
-  target/release/bundle/deb/FontCarver_0.1.0_amd64.deb --version 0.1.0 \
+  target/release/bundle/deb/FontCarver_0.1.0-alpha.1_amd64.deb --version 0.1.0-alpha.1 \
   --output .scratch/p5f-w3-packaging/deb-install.json
 ```
 
@@ -277,8 +277,20 @@ publishing step.
 
 ## Acceptance before distribution
 
-Check that the Cargo workspace, npm packages and Tauri configuration use the
-intended version. Keep the application identifier stable unless a deliberate
+Check that the Cargo workspace, npm packages, Tauri configuration and the
+About text's `APP_VERSION` in `app/src/shell/shellCommands.ts` use the intended
+version. A version is SemVer `major.minor.patch` with an optional pre-release,
+such as `0.1.0-alpha.1`; build metadata (`+...`) is rejected.
+
+Tauri copies the version verbatim into the deb and rpm metadata, where a hyphen
+does not mean pre-release: dpkg and rpm both sort `0.1.0-alpha.1` after `0.1.0`.
+A final `0.1.0` would therefore install over an alpha only as a downgrade (`apt`
+asks to confirm it, `dnf` needs `dnf downgrade`). Make the first final release
+after a pre-release series a higher patch, such as `0.1.1`, or say in its notes
+that Linux users confirm the downgrade. The NSIS installer compares SemVer and is
+not affected.
+
+Keep the application identifier stable unless a deliberate
 identity migration is being made. The desktop executable is
 `fontcarver-desktop`; the separately built `fontcarver` CLI is not a sidecar.
 
@@ -287,7 +299,7 @@ been built and read: the executable installs as `/usr/bin/fontcarver-desktop`,
 and the Debian package name is `font-carver`, which Tauri derives from
 `productName`. The bundle verifier also expects
 `Contents/MacOS/fontcarver-desktop` inside the macOS app bundle and
-`fontcarver-desktop.exe` in the MSI. Those two are assumptions about how the
+`fontcarver-desktop.exe` in the NSIS installer. Those two are assumptions about how the
 bundler names a binary on platforms no build has run on; the first macOS and
 Windows runs either confirm them or fail the verifier, which is the intended
 outcome either way.

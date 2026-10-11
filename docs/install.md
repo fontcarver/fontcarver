@@ -44,7 +44,7 @@ use `sudo apt remove PACKAGE_NAME`, substituting the `Package` value printed by
 the first command. This removes the application package while retaining your
 documents and user configuration.
 
-The 0.1.0 x86_64 build names the file `FontCarver_0.1.0_amd64.deb` and the
+The 0.1.0-alpha.1 x86_64 build names the file `FontCarver_0.1.0-alpha.1_amd64.deb` and the
 package `font-carver`, so its removal command is `sudo apt remove font-carver`.
 It declares `libwebkit2gtk-4.1-0, libgtk-3-0`, which between them pull in every
 library the executable needs, and it installs:

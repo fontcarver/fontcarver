@@ -85,9 +85,13 @@ def validate_versions(cargo: str, frontend: str, tauri: str) -> str:
     """Reject mismatched package versions and versions a native installer cannot encode."""
     if len({cargo, frontend, tauri}) != 1:
         raise ValueError(f"version mismatch: Cargo={cargo}, frontend={frontend}, Tauri={tauri}")
-    if not re.fullmatch(r"\d+\.\d+\.\d+", cargo):
-        raise ValueError("release version must be a numeric major.minor.patch accepted by native installers")
-    if any(int(value) > limit for value, limit in zip(cargo.split("."), [255, 255, 65535])):
+    # NSIS writes major.minor.patch.0 into VIProductVersion and keeps a SemVer
+    # pre-release only in names; build metadata (+...) has no portable encoding.
+    identifier = r"(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)"
+    match = re.fullmatch(rf"(\d+)\.(\d+)\.(\d+)(?:-{identifier}(?:\.{identifier})*)?", cargo)
+    if not match:
+        raise ValueError("release version must be major.minor.patch with an optional SemVer pre-release")
+    if any(int(value) > limit for value, limit in zip(match.groups(), [255, 255, 65535])):
         raise ValueError("release version exceeds native installer version limits")
     return cargo
 
