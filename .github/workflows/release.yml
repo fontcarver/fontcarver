@@ -164,6 +164,11 @@ jobs:
         if: runner.os == 'Linux'
         run: python -m unittest discover -s scripts -p "test_*.py"
 
+      # The frontend imports the Rust-owned API types, which are generated, not
+      # committed; vitest cannot resolve src/api/generated without this step.
+      - name: Generate frontend API bindings
+        run: cargo run --locked -p fc-api --bin gen_ts
+
       # These tests run on the native host but use a simulated DOM. They verify
       # platform modifier abstraction; they do not send desktop input.
       - name: Test platform shortcuts and window routing

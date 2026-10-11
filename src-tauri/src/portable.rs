@@ -103,7 +103,10 @@ mod tests {
         let link = elsewhere.path().join("fontcarver-desktop");
         std::os::unix::fs::symlink(&exe, &link).unwrap();
         let resolved = std::fs::canonicalize(&link).unwrap();
-        assert_eq!(root(&resolved), Some(real.path().canonicalize().unwrap().join("data")));
+        assert_eq!(
+            root(&resolved),
+            Some(real.path().canonicalize().unwrap().join("data"))
+        );
     }
 
     #[test]
@@ -157,7 +160,10 @@ mod tests {
         let exe = dir.path().join("fontcarver-desktop.exe");
         std::fs::write(&exe, b"MZ").unwrap();
         std::fs::write(dir.path().join(MARKER), b"portable").unwrap();
-        assert_eq!(resolve(&exe), Some(dir.path().canonicalize().unwrap().join("data")));
+        assert_eq!(
+            resolve(&exe),
+            Some(dir.path().canonicalize().unwrap().join("data"))
+        );
     }
 
     #[test]

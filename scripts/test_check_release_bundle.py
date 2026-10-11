@@ -294,7 +294,8 @@ class ReleaseBundleTests(unittest.TestCase):
         artifact.write_bytes(b'\xed\xab\xee\xdb')
         scratch = self.root / 'scratch'
         scratch.mkdir()
-        with patch.object(verifier.shutil, 'which', return_value='/usr/bin/tool'):
+        with patch.object(verifier.sys, 'platform', 'linux'), \
+                patch.object(verifier.shutil, 'which', return_value='/usr/bin/tool'):
             with patch.object(verifier, 'run', return_value=b'FontCarver\n'):
                 with self.assertRaisesRegex(verifier.VerificationError, 'NAME, VERSION'):
                     with verifier.extracted(artifact, 'rpm', scratch):
@@ -307,7 +308,8 @@ class ReleaseBundleTests(unittest.TestCase):
         artifact.write_bytes(b'\xed\xab\xee\xdb')
         scratch = self.root / 'scratch'
         scratch.mkdir()
-        with patch.object(verifier, 'run', side_effect=AssertionError('queried too early')):
+        with patch.object(verifier.sys, 'platform', 'linux'), \
+                patch.object(verifier, 'run', side_effect=AssertionError('queried too early')):
             with patch.object(verifier.shutil, 'which', return_value=None):
                 with self.assertRaisesRegex(verifier.VerificationError, 'rpm2cpio'):
                     with verifier.extracted(artifact, 'rpm', scratch):
