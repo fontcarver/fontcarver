@@ -9,12 +9,16 @@
 }
 
 .toolbar {
-  overflow-x: auto;
-  scrollbar-width: none;
+  height: auto;
+  min-height: 28px;
+  flex-wrap: wrap;
+  padding-block: var(--space-1);
 }
 
-.toolbar::-webkit-scrollbar {
-  display: none;
+.toolbar [role='tablist'] {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .toolbarSpacer {

@@ -51,6 +51,8 @@ export function FontMetadataEditor({
 }) {
   const { t } = useTranslation()
   const hintId = useId()
+  const closeId = useId()
+  const [applyCount, setApplyCount] = useState(0)
   const [session] = useState(
     () => new FontMetadataSession(doc, t('fontMetadata.edit')),
   )
@@ -68,8 +70,15 @@ export function FontMetadataEditor({
     }
   }, [doc, session])
   const disabled = state.busy || state.suspended
+  useEffect(() => {
+    // Apply becomes disabled once the draft is saved. Keep keyboard focus in
+    // the dialog instead of dropping it onto the page behind the modal.
+    if (applyCount > 0) document.getElementById(closeId)?.focus()
+  }, [applyCount, closeId])
   const apply = () => {
-    void settleDocumentEdits(doc).catch(reportError)
+    void settleDocumentEdits(doc)
+      .catch(reportError)
+      .finally(() => setApplyCount((count) => count + 1))
   }
   const close = () => {
     if (disabled) return
@@ -101,7 +110,7 @@ export function FontMetadataEditor({
           >
             {t('variation.discard')}
           </Button>
-          <Button disabled={disabled} onClick={close}>
+          <Button id={closeId} disabled={disabled} onClick={close}>
             {t('common.close')}
           </Button>
           <Button

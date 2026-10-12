@@ -65,6 +65,20 @@ it('discards staged values without sending SetFontInfo', async () => {
   ).toBe(false)
 })
 
+it('keeps keyboard focus inside the dialog after applying a draft', async () => {
+  const test = setup()
+  fireEvent.change(await screen.findByLabelText('Family name'), {
+    target: { value: 'Applied Family' },
+  })
+  await userEvent.click(screen.getByRole('button', { name: 'Apply changes' }))
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus(),
+  )
+  expect(test.view.info.family_name).toBe('Applied Family')
+  await userEvent.keyboard('{Escape}')
+  await waitFor(() => expect(test.onClose).toHaveBeenCalledOnce())
+})
+
 it('keeps invalid numeric input on Escape without sending a command', async () => {
   const test = setup()
   const input = await screen.findByLabelText('Units per em')
