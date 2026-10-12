@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, type Page } from '@playwright/test'
@@ -49,9 +49,18 @@ BITMAP
 ENDCHAR
 ENDFONT
 `
+// Every setup directory is removed after its test, pass or fail; the suite
+// otherwise left one fontcarver-p3-e2e-* directory in the system temp per run.
+const directories: string[] = []
+test.afterEach(() => {
+  for (const directory of directories.splice(0))
+    rmSync(directory, { recursive: true, force: true })
+})
+
 async function setup(page: Page) {
   const directory = mkdtempSync(join(tmpdir(), 'fontcarver-p3-e2e-')),
     path = join(directory, 'BitmapTest.bdf')
+  directories.push(directory)
   writeFileSync(path, sample)
   await page.goto('/')
   const doc = await openPathThroughDialog(page, path)
