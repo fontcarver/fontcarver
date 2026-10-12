@@ -200,6 +200,47 @@ describe('bitmap document handover', () => {
     expect(session.snapshot().dirty).toBe(false)
     dispose()
   })
+  it('an edit made during a background refresh supersedes it instead of being dropped', async () => {
+    // A document event reloads the draft right after every write. A click that
+    // lands during that reload must still become an edit, and the reload's
+    // stale result must not overwrite it.
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const applied: unknown[] = []
+    let hold = false
+    setTransport(
+      createMockTransport({
+        'bitmap.glyph': async () => {
+          if (hold) await held
+          return { generation: 1, value: empty, resolved: empty }
+        },
+        'bitmap.apply': (params) => {
+          applied.push(params)
+          return noChange()
+        },
+      }),
+    )
+    const session = new BitmapSession(
+      { doc: 213, glyph: 'A', ppem: 16, depth: 1 },
+      empty,
+    )
+    await session.load()
+    hold = true
+    const refresh = session.load()
+    expect(session.snapshot().busy).toBe(true)
+    session.edit({ ...empty, advance: 99 })
+    expect(session.snapshot().value?.advance).toBe(99)
+    expect(session.snapshot().dirty).toBe(true)
+    expect(session.snapshot().busy).toBe(false)
+    release()
+    await refresh
+    expect(session.snapshot().value?.advance).toBe(99)
+    hold = false
+    await session.flush()
+    expect(applied).toHaveLength(1)
+  })
   it('joins simultaneous flushes and rejects local input while saving', async () => {
     let release!: () => void
     const held = new Promise<void>((resolve) => {

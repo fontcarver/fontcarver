@@ -82,10 +82,20 @@ export class BitmapSession {
     }
   }
   edit(value: BitmapGlyph): void {
-    if (this.state.busy || this.state.suspended) return
+    // A write in flight still refuses input. A refresh does not: the document
+    // event after every write starts one, and a click landing inside it was
+    // silently dropped. Bumping the request supersedes the refresh, whose
+    // result and busy reset are both ignored once the request has moved on.
+    if (this.pending || this.state.suspended) return
     ++this.request
     noteDocumentEdit(this.target.doc)
-    this.update({ value, resolved: null, dirty: true, error: null })
+    this.update({
+      value,
+      resolved: null,
+      dirty: true,
+      error: null,
+      busy: false,
+    })
   }
   /** Preserve earlier edits and errors separately from one cancellable drag. */
   beginGesture(accept?: () => void): void {

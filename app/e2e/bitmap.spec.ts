@@ -382,9 +382,8 @@ test('focused metrics are saved, and ellipse, crop, invert and scaling retain pi
   await page.mouse.down()
   await page.mouse.move(box.x + 104, box.y + 104, { steps: 6 })
   await page.mouse.up()
-  // The editor disables its tools while the ellipse is written and reloaded. A
-  // click that lands in that window is swallowed by the disabled button, which
-  // on a slower runner made Invert a silent no-op; wait for the write to settle.
+  // Tools refuse input while the ellipse write is in flight, so let it persist
+  // before inverting; the refresh that follows the write no longer blocks edits.
   await expect
     .poll(async () => (await image(page, doc.doc)).value?.bitmap.rows)
     .not.toEqual(beforeEllipse)
