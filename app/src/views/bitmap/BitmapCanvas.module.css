@@ -10,8 +10,16 @@
   align-items: center;
   gap: 6px;
 }
+/* The readout changes length with every pointer move. It takes only the room
+   left on its row and never wraps, so its length cannot move the tools below
+   between a press and its release. */
 .pointer {
-  margin-left: auto;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 .area {

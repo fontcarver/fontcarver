@@ -781,3 +781,27 @@ test('every pixel tool has a working single-key shortcut', async ({ page }) => {
   await page.keyboard.press('m')
   await expect(pressed('Pencil')).toHaveAttribute('aria-pressed', 'true')
 })
+
+test('the pointer readout never moves the tools below it', async ({ page }) => {
+  // The readout grows while the pointer is over the canvas. When it wrapped to
+  // a line of its own, every tool below jumped as the pointer left, so a press
+  // and its release could land on different elements and the click was lost.
+  // At this width the long readout overflows its row with the default fonts;
+  // CI's wider fonts already overflowed it at the suite's 1440.
+  await page.setViewportSize({ width: 1300, height: 1000 })
+  await setup(page)
+  const canvas = page.getByLabel('Bitmap pixel canvas'),
+    invert = page.getByRole('button', { name: 'Invert', exact: true }),
+    box = await canvas.boundingBox()
+  if (!box) throw new Error('canvas missing')
+  await page.mouse.move(box.x + 24, box.y + 24)
+  await page.mouse.down()
+  await page.mouse.move(box.x + 104, box.y + 104, { steps: 4 })
+  const whileDragging = (await invert.boundingBox())?.y
+  await page.keyboard.press('Escape')
+  await page.mouse.up()
+  await page.mouse.move(2, 2)
+  await expect
+    .poll(async () => (await invert.boundingBox())?.y)
+    .toBe(whileDragging)
+})
