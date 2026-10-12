@@ -100,8 +100,13 @@ jobs:
         if: always()
         run: |
           python3 - <<'PY'
-          import json, pathlib, shutil
+          import json, pathlib, re, shutil
           out = pathlib.Path('census-evidence')
+
+          def safe(name):
+              # An artifact path may not carry : " < > | * ? and a package name
+              # routinely ends in ":amd64", which failed the whole upload.
+              return re.sub(r'[:"<>|*?\r\n/\\]', '_', name)
           (out / 'copyright').mkdir(parents=True, exist_ok=True)
           inventory = json.loads(pathlib.Path('.scratch/census/inventory.json').read_text())
           for entry in inventory.get('packages', []):
@@ -110,7 +115,7 @@ jobs:
                   continue
               path = pathlib.Path(source)
               if path.is_file():
-                  shutil.copyfile(path, out / 'copyright' / f"{entry['package'].replace('/', '_')}.txt")
+                  shutil.copyfile(path, out / 'copyright' / f"{safe(entry['package'])}.txt")
           for name in ('inventory.json', 'census.json', 'host-packages.tsv'):
               candidate = pathlib.Path('.scratch/census') / name
               if candidate.is_file():
