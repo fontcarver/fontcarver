@@ -18,6 +18,12 @@ describe('editorStore', () => {
       anchors: true,
       guides: true,
       rulers: true,
+      background: true,
+      // The other masters are drawn only on request: on a multiple-master
+      // font they would double the ink on every glyph.
+      otherMasters: false,
+      // Vertical writing mode is off until a CJK font asks for it.
+      verticalMode: false,
     })
   })
 
@@ -59,6 +65,10 @@ describe('editorStore', () => {
       glyph: {} as never,
       scene: {} as never,
       cell: null,
+      outline: null,
+      master: 'm1',
+      masterGuides: [],
+      reload: () => undefined,
     })
     expect(useEditorStore.getState().activeGlyph?.gid).toBe(7)
     useEditorStore.getState().setActiveGlyph(null)

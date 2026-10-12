@@ -10,6 +10,7 @@ import {
   systemTheme,
   tabId,
   useUiStore,
+  UNDO_FLASH_MS,
 } from './uiStore'
 
 interface FakeMediaQuery {
@@ -59,6 +60,19 @@ describe('uiStore theme', () => {
     expect(useUiStore.getState().theme).toBe('dark')
   })
 
+  it('reads legacy preferences and saves changes under the current name', () => {
+    localStorage.setItem('fontcutter.ui', JSON.stringify({ theme: 'dark' }))
+    useUiStore.setState(initialUiState())
+    expect(useUiStore.getState().theme).toBe('dark')
+
+    useUiStore.getState().setTheme('light')
+    useUiStore.setState(initialUiState())
+    expect(useUiStore.getState().theme).toBe('light')
+    expect(JSON.parse(localStorage.getItem('fontcarver.ui')!).theme).toBe(
+      'light',
+    )
+  })
+
   it('resolves the system preference from prefers-color-scheme', () => {
     stubMatchMedia(true)
     expect(systemTheme()).toBe('dark')
@@ -106,6 +120,17 @@ describe('uiStore panels', () => {
 })
 
 describe('uiStore tabs', () => {
+  it('can retain a completed document open without taking focus', () => {
+    const active = useUiStore.getState().openTab({ kind: 'font', doc: 1 })
+    const background = useUiStore
+      .getState()
+      .openTab({ kind: 'font', doc: 2 }, false)
+    expect(useUiStore.getState().activeTab).toBe(active)
+    expect(
+      useUiStore.getState().tabs.some((tab) => tab.id === background),
+    ).toBe(true)
+  })
+
   it('derives stable ids and never duplicates a tab', () => {
     const first = useUiStore.getState().openTab({ kind: 'font', doc: 1 })
     const again = useUiStore.getState().openTab({ kind: 'font', doc: 1 })
@@ -139,6 +164,21 @@ describe('uiStore tabs', () => {
     expect(useUiStore.getState().activeTab).toBe(tabId('font', 2))
   })
 
+  it('drops a closed document’s dismissed recovery banner', () => {
+    const ui = useUiStore.getState()
+    ui.openTab({ kind: 'font', doc: 1 })
+    ui.openTab({ kind: 'font', doc: 2 })
+    ui.dismissRecoveryBanner(1)
+    ui.dismissRecoveryBanner(2)
+    // Dismissing twice must not double-count either.
+    ui.dismissRecoveryBanner(1)
+    expect(useUiStore.getState().dismissedRecoveries).toEqual([1, 2])
+
+    useUiStore.getState().closeTabsForDoc(1)
+
+    expect(useUiStore.getState().dismissedRecoveries).toEqual([2])
+  })
+
   it('derives the active document from the active tab', () => {
     expect(selectActiveDoc(useUiStore.getState())).toBeNull()
 
@@ -162,6 +202,43 @@ describe('uiStore tabs', () => {
     useUiStore.getState().cycleTab(-1)
     expect(useUiStore.getState().activeTab).toBe(b)
   })
+
+  it('updates a shaped text target without changing the tab identity', () => {
+    const id = useUiStore
+      .getState()
+      .openTab({ kind: 'glyph', doc: 1, gid: 7, label: 'A' })
+    useUiStore.getState().updateTab(id, {
+      gid: 9,
+      label: 'Hamburgefonstiv',
+      textState: {
+        text: 'Hamburgefonstiv',
+        activeIndex: 2,
+        mode: 'edit',
+        master: 'regular',
+        size: 120,
+        features: [['kern', true]],
+        direction: 'ltr',
+        previewTheme: 'light',
+        previewCollapsed: false,
+      },
+    })
+
+    const tab = selectActiveTab(useUiStore.getState())
+    expect(tab?.id).toBe(id)
+    expect(tab?.gid).toBe(9)
+    expect(tab?.textState?.activeIndex).toBe(2)
+    expect(useUiStore.getState().tabs).toHaveLength(1)
+  })
+})
+
+describe('text preview preference', () => {
+  it('toggles and persists the View-menu visibility', () => {
+    useUiStore.getState().toggleTextPreview()
+    expect(useUiStore.getState().textPreviewVisible).toBe(false)
+
+    useUiStore.setState(initialUiState())
+    expect(useUiStore.getState().textPreviewVisible).toBe(false)
+  })
 })
 
 describe('uiStore toasts', () => {
@@ -173,5 +250,111 @@ describe('uiStore toasts', () => {
 
     useUiStore.getState().dismissToast(id)
     expect(useUiStore.getState().toasts).toHaveLength(0)
+  })
+})
+
+describe('undo label flash', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('shows the label of the last edit for 1.5 s', () => {
+    useUiStore.getState().flashUndoLabel('Move 3 points')
+    expect(useUiStore.getState().undoFlash).toBe('Move 3 points')
+
+    vi.advanceTimersByTime(UNDO_FLASH_MS - 1)
+    expect(useUiStore.getState().undoFlash).toBe('Move 3 points')
+    vi.advanceTimersByTime(2)
+    expect(useUiStore.getState().undoFlash).toBeNull()
+  })
+
+  it('restarts the window when another edit lands', () => {
+    useUiStore.getState().flashUndoLabel('Move 3 points')
+    vi.advanceTimersByTime(1_000)
+    useUiStore.getState().flashUndoLabel('Nudge 1 point')
+
+    vi.advanceTimersByTime(1_000)
+    expect(useUiStore.getState().undoFlash).toBe('Nudge 1 point')
+    vi.advanceTimersByTime(600)
+    expect(useUiStore.getState().undoFlash).toBeNull()
+  })
+
+  it('ignores an empty label', () => {
+    useUiStore.getState().flashUndoLabel(null)
+    expect(useUiStore.getState().undoFlash).toBeNull()
+  })
+})
+
+describe('detached windows', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    useUiStore.setState(initialUiState())
+  })
+
+  it('records each view once and forgets it when it returns', () => {
+    const ui = useUiStore.getState()
+    ui.addDetached({ kind: 'panel', doc: 1, panel: 'inspector' })
+    ui.addDetached({ kind: 'panel', doc: 1, panel: 'inspector' })
+    ui.addDetached({ kind: 'panel', doc: 1, panel: 'preview' })
+    ui.addDetached({
+      kind: 'tab',
+      doc: 1,
+      tab: 'glyph',
+      gid: 7,
+      tabId: 'glyph:1:7',
+    })
+    expect(useUiStore.getState().detached).toHaveLength(3)
+
+    ui.removeDetached({ kind: 'panel', doc: 1, panel: 'inspector' })
+    expect(useUiStore.getState().detached).toEqual([
+      { kind: 'panel', doc: 1, panel: 'preview' },
+      { kind: 'tab', doc: 1, tab: 'glyph', gid: 7, tabId: 'glyph:1:7' },
+    ])
+  })
+
+  it('drops the windows of a document that closes', () => {
+    const ui = useUiStore.getState()
+    ui.openTab({ kind: 'font', doc: 1 })
+    ui.openTab({ kind: 'font', doc: 2 })
+    ui.addDetached({ kind: 'panel', doc: 1, panel: 'sidebar' })
+    ui.addDetached({ kind: 'panel', doc: 2, panel: 'sidebar' })
+
+    useUiStore.getState().closeTabsForDoc(1)
+    expect(useUiStore.getState().detached).toEqual([
+      { kind: 'panel', doc: 2, panel: 'sidebar' },
+    ])
+  })
+})
+
+describe('pinned Overview ordering', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    useUiStore.setState(initialUiState())
+  })
+
+  it('inserts a document Overview before that document other tabs', () => {
+    const ui = useUiStore.getState()
+    const early = ui.openTab({ kind: 'font', doc: 1 })
+    ui.openTab({ kind: 'glyph', doc: 2, gid: 5 })
+    const late = ui.openTab({ kind: 'font', doc: 2 })
+    ui.openTab({ kind: 'glyph', doc: 1, gid: 6 })
+
+    expect(useUiStore.getState().tabs.map((tab) => tab.id)).toEqual([
+      early,
+      tabId('glyph', 1, 6),
+      late,
+      tabId('glyph', 2, 5),
+    ])
+  })
+
+  it('leaves the active tab alone when the Overview is already open', () => {
+    const ui = useUiStore.getState()
+    const overview = ui.openTab({ kind: 'font', doc: 1 })
+    const glyph = ui.openTab({ kind: 'glyph', doc: 1, gid: 6 })
+    expect(useUiStore.getState().activeTab).toBe(glyph)
+
+    useUiStore.getState().openTab({ kind: 'font', doc: 1 }, false)
+    expect(useUiStore.getState().activeTab).toBe(glyph)
+    expect(useUiStore.getState().tabs).toHaveLength(2)
+    expect(useUiStore.getState().tabs[0]?.id).toBe(overview)
   })
 })

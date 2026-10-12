@@ -1,0 +1,24 @@
+[package]
+name = "fc-model"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+ts = ["dep:ts-rs"]
+
+[dependencies]
+base64.workspace = true
+indexmap.workspace = true
+kurbo.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+roxmltree = "0.21.1"
+smol_str.workspace = true
+thiserror.workspace = true
+ts-rs = { workspace = true, optional = true }
+uuid.workspace = true

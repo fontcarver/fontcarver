@@ -1,0 +1,445 @@
+/*
+ * Layout shared by the five modal dialogs. The overlay, panel, header, body and
+ * footer chrome lives in `shell/dialog.module.css`; everything here is the
+ * content inside one dialog body.
+ */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.row {
+  display: grid;
+  align-items: center;
+  gap: var(--space-3);
+  grid-template-columns: 132px minmax(0, 1fr);
+}
+
+/* Rows whose control is a stack keep their label on the first line. */
+.rowTop {
+  align-items: start;
+}
+
+.rowTop .rowLabel {
+  padding-top: 6px;
+}
+
+.rowLabel {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+}
+
+.rowStack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.text,
+.number {
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+  font-size: var(--text-size);
+}
+
+.number {
+  width: 96px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.text:focus,
+.number:focus,
+.recipe:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-size);
+}
+
+.hint {
+  color: var(--color-text-faint);
+  font-size: var(--text-size-sm);
+}
+
+.error {
+  color: var(--color-danger);
+  font-size: var(--text-size-sm);
+}
+
+.errorMessage {
+  margin: 0;
+}
+
+.errorSummary {
+  cursor: pointer;
+  font-size: var(--text-size-xs);
+}
+
+.errorDetail {
+  margin: var(--space-1) 0 0;
+  max-height: 8rem;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--text-size-xs);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sectionTitle {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+  font-weight: var(--text-weight-strong);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Format tabs of the export dialog. */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.formatWarning {
+  margin: 0;
+  padding: var(--space-2);
+  border-left: 2px solid var(--color-warning);
+  color: var(--color-text);
+  font-size: var(--text-size-sm);
+}
+
+.tab {
+  height: 26px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+  cursor: default;
+}
+
+.tab:hover {
+  color: var(--color-text);
+}
+
+.tabActive {
+  border-bottom-color: var(--color-accent);
+  color: var(--color-text);
+  font-weight: var(--text-weight-medium);
+}
+
+.pathRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.pathRow .text {
+  min-width: 0;
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+}
+
+.checkRow {
+  display: grid;
+  align-items: start;
+  gap: 0 var(--space-2);
+  grid-template-columns: 16px minmax(0, 1fr);
+}
+
+.checkLabel {
+  font-size: var(--text-size);
+}
+
+.checkHint {
+  grid-column: 2;
+  color: var(--color-text-faint);
+  font-size: var(--text-size-sm);
+}
+
+/* Character-set picker and recovery list. */
+.list {
+  display: flex;
+  max-height: 168px;
+  flex-direction: column;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.listRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--text-size-sm);
+  text-align: left;
+  cursor: default;
+}
+
+.listRow:last-child {
+  border-bottom: 0;
+}
+
+.listRow:hover {
+  background: var(--color-hover);
+}
+
+.listCounts {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.badge {
+  padding: 1px var(--space-1);
+  border-radius: 3px;
+  background: var(--color-accent-soft);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+}
+
+.recipe {
+  min-height: 72px;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  resize: vertical;
+}
+
+/* Virtualised preview of the names a recipe would add. */
+.preview {
+  height: 160px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+  overflow-y: auto;
+}
+
+.previewSpacer {
+  position: relative;
+}
+
+.previewRow {
+  position: absolute;
+  right: 0;
+  left: 0;
+  display: flex;
+  height: 20px;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+}
+
+.previewCode {
+  color: var(--color-text-faint);
+}
+
+.previewEmpty {
+  padding: var(--space-2);
+  color: var(--color-text-faint);
+  font-size: var(--text-size-sm);
+}
+
+.counts {
+  display: flex;
+  gap: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Export result. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.chip {
+  height: 20px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-xs);
+  cursor: default;
+}
+
+.chip:hover {
+  background: var(--color-hover);
+}
+
+.warningItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.warningItem:last-child {
+  border-bottom: 0;
+}
+
+.reportRow {
+  display: flex;
+  gap: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.reportPath {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Preferences: category rail on the left, one panel on the right. */
+.prefsLayout {
+  display: grid;
+  min-height: 280px;
+  gap: var(--space-4);
+  grid-template-columns: 150px minmax(0, 1fr);
+}
+
+.prefsRail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-right: 1px solid var(--color-border-subtle);
+  padding-right: var(--space-2);
+}
+
+.prefsCategory {
+  height: 26px;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--text-size);
+  text-align: left;
+  cursor: default;
+}
+
+.prefsCategory:hover {
+  background: var(--color-hover);
+}
+
+.prefsCategoryActive {
+  background: var(--color-accent-soft);
+  font-weight: var(--text-weight-medium);
+}
+
+.nudgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.nudgeField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nudgeLabel {
+  color: var(--color-text-faint);
+  font-size: var(--text-size-xs);
+}
+
+/* Recovery list rows carry two actions, so they are not themselves buttons. */
+.recoveryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.recoveryRow:last-child {
+  border-bottom: 0;
+}
+
+.recoveryText {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recoveryPath {
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recoveryTime {
+  color: var(--color-text-faint);
+  font-size: var(--text-size-xs);
+}
+
+.recoveryActions {
+  display: flex;
+  flex: none;
+  gap: var(--space-2);
+}
+
+/* One snap target: its switch, its name and its own reach in CSS pixels. */
+.snapRow {
+  display: grid;
+  align-items: center;
+  gap: 0 var(--space-2);
+  grid-template-columns: 16px minmax(0, 1fr) 96px;
+}

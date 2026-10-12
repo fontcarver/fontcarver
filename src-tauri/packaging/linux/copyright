@@ -1,0 +1,71 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: FontCarver
+Upstream-Contact: FontCarver contributors <tomchen.org@gmail.com>
+Source: https://github.com/fontcarver/fontcarver
+Comment: Debian policy 12.5 requires this document, and Tauri's deb bundler does
+ not write one, so it is installed through `bundle.linux.deb.files` in
+ src-tauri/tauri.conf.json. Third-party attribution for the Rust and npm
+ dependencies compiled into the executable is installed separately at
+ /usr/lib/FontCarver/licenses/, where THIRD_PARTY.md records the project's
+ attributions and license rulings and DEPENDENCIES.json indexes every retained
+ upstream notice with its SHA-256. This document covers FontCarver's own source
+ only; the shared libraries this package depends on carry their own copyright
+ documents from their own packages.
+
+Files: *
+Copyright: 2026 Tom Chen and the FontCarver contributors
+License: MIT or Apache-2.0
+
+Files: usr/bin/fontcarver-desktop
+Copyright: 2026 Tom Chen and the FontCarver contributors,
+ and the copyright holders of the Rust and npm packages linked into it
+License: MIT or Apache-2.0
+Comment: The executable statically links its Rust dependency graph and embeds
+ the built frontend, so it carries the copyright and licenses of those packages
+ as well as FontCarver's own. They are not restated here: the full inventory
+ ships with the package, under /usr/lib/FontCarver/licenses/. THIRD_PARTY.md
+ there records the project's attributions and exact-version license rulings,
+ DEPENDENCIES.json lists every package with its version, declared license
+ expression, upstream source archive and the SHA-256 of each retained notice,
+ and the notice texts themselves sit beside it under dependencies/. Every one of
+ those licenses is permissive.
+
+License: MIT
+ MIT License
+ .
+ Copyright (c) 2026 Tom Chen and the FontCarver contributors
+ .
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+ .
+ The above copyright notice and this permission notice shall be included in all
+ copies or substantial portions of the Software.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ SOFTWARE.
+
+License: Apache-2.0
+ Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ use this file except in compliance with the License. You may obtain a copy of
+ the License at
+ .
+     http://www.apache.org/licenses/LICENSE-2.0
+ .
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ License for the specific language governing permissions and limitations under
+ the License.
+ .
+ On Debian systems the complete text of the Apache License, Version 2.0 is in
+ /usr/share/common-licenses/Apache-2.0, and a copy is installed with the
+ application at /usr/lib/FontCarver/licenses/LICENSE-APACHE.

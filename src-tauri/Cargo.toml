@@ -1,21 +1,33 @@
 [package]
-name = "fontworkshop"
+name = "fontcarver"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+homepage.workspace = true
+repository.workspace = true
 rust-version.workspace = true
-description = "The thin Tauri shell for FontWorkshop"
+description = "The thin Tauri shell for FontCarver"
+
+# The CLI in `fc-cli` owns the `fontcarver` binary name, so the desktop
+# shell names its own binary explicitly; bundles are still "FontCarver"
+# via `productName` in `tauri.conf.json`.
+[[bin]]
+name = "fontcarver-desktop"
+path = "src/main.rs"
 
 [lib]
-name = "fontworkshop_lib"
+name = "fontcarver_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build.workspace = true
 
 [dependencies]
-fw-api = { path = "../crates/fw-api" }
-fw-doc = { path = "../crates/fw-doc" }
+fc-api = { path = "../crates/fc-api" }
+fc-doc = { path = "../crates/fc-doc" }
+# Resolves the portable data folder without Windows verbatim (\\?\) prefixes before
+# it reaches WebView2. Already in the graph through Tauri.
+dunce = "1.0.5"
 serde_json.workspace = true
 tauri.workspace = true
 tauri-plugin-dialog.workspace = true
@@ -24,3 +36,13 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+# Native message box for a missing WebView2 runtime, shown before any webview
+# exists. Already in the graph via tauri-plugin-dialog; default features stay
+# off because they would enable async-std, a crate the graph does not otherwise
+# contain.
+[target.'cfg(windows)'.dependencies]
+rfd = { version = "0.16.0", default-features = false }
+
+[dev-dependencies]
+tempfile = { workspace = true }

@@ -1,0 +1,98 @@
+.lists,
+.entry,
+.editor,
+.editor label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.row,
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.actions {
+  flex-wrap: wrap;
+}
+
+.filter {
+  display: flex;
+  min-width: 0;
+  min-height: var(--row-height);
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text);
+  text-align: left;
+  font-size: var(--text-size-sm);
+}
+
+.filter:hover {
+  background: var(--color-hover);
+}
+
+.filter[aria-pressed='true'] {
+  background: var(--color-accent-soft);
+  font-weight: var(--text-weight-medium);
+}
+
+.filter:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  flex: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-xs);
+}
+
+.generate {
+  align-self: start;
+  max-width: 100%;
+}
+
+.hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+}
+
+.editor {
+  gap: var(--space-2);
+  padding-block: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-size-sm);
+}
+
+.editor input,
+.editor textarea {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.editor textarea {
+  resize: vertical;
+  font-family: var(--font-mono);
+}

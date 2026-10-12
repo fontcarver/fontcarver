@@ -1,0 +1,79 @@
+//! Errors produced by the document model.
+
+use serde::{Deserialize, Serialize};
+
+use crate::{GlyphName, LayerId, MasterId};
+
+/// An error produced by the document model.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, thiserror::Error)]
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[cfg_attr(feature = "ts", ts(export))]
+pub enum Error {
+    /// A node constraint contains invalid identities, coordinates or cycles.
+    #[error("invalid node links: {0}")]
+    InvalidNodeLinks(String),
+    /// Layer-effect parameters or stored mask outlines are invalid.
+    #[error("invalid layer effects: {0}")]
+    InvalidEffects(String),
+    /// Mathematical typesetting values or references are invalid.
+    #[error("invalid MATH data: {0}")]
+    InvalidMath(String),
+    /// Hint coordinates, program references or private-dictionary values are invalid.
+    #[error("invalid hint data: {0}")]
+    InvalidHints(String),
+    /// Axes, locations or master identities violate the design-space contract.
+    #[error("invalid design space: {0}")]
+    InvalidDesignSpace(String),
+    /// Bitmap storage, metrics, identity or references are invalid.
+    #[error("invalid bitmap: {0}")]
+    InvalidBitmap(String),
+    /// A glyph name is already present in the font.
+    #[error("glyph `{glyph}` already exists")]
+    DuplicateGlyph {
+        /// The duplicate name.
+        glyph: GlyphName,
+    },
+    /// A requested glyph or component base does not exist.
+    #[error("glyph `{glyph}` does not exist")]
+    MissingGlyph {
+        /// The missing name.
+        glyph: GlyphName,
+    },
+    /// A glyph has no layer with a requested identifier.
+    #[error("glyph `{glyph}` has no layer `{layer}`")]
+    MissingLayer {
+        /// The affected glyph.
+        glyph: GlyphName,
+        /// The requested layer identifier.
+        layer: LayerId,
+    },
+    /// A glyph has no layer for a requested master.
+    #[error("glyph `{glyph}` has no layer for master `{master}`")]
+    MissingMasterLayer {
+        /// The affected glyph.
+        glyph: GlyphName,
+        /// The requested master.
+        master: MasterId,
+    },
+    /// Components contain a recursive reference.
+    #[error("component cycle at glyph `{glyph}`")]
+    ComponentCycle {
+        /// A glyph participating in the cycle.
+        glyph: GlyphName,
+    },
+    /// Component nesting exceeds the supported recursion limit.
+    #[error("component nesting exceeds the depth limit at glyph `{glyph}`")]
+    ComponentDepthLimit {
+        /// The glyph at which the limit was reached.
+        glyph: GlyphName,
+    },
+    /// A contour has a malformed point sequence.
+    #[error("malformed contour")]
+    MalformedContour,
+    /// An OpenType tag is not exactly four Latin-1 characters long.
+    #[error("invalid four-byte OpenType tag `{tag}`")]
+    InvalidTag {
+        /// The invalid textual representation.
+        tag: String,
+    },
+}

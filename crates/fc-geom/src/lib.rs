@@ -1,0 +1,60 @@
+//! Geometry operations for FontCarver outlines.
+//!
+//! The crate uses kurbo paths as its working representation. Quadratic model
+//! contours are degree-elevated exactly before cubic-only operations.
+
+#![warn(missing_docs)]
+
+mod boolean;
+mod compatibility;
+mod construction;
+mod corners;
+pub use corners::smart_corner_path;
+mod convert;
+mod edit;
+mod effects;
+mod error;
+mod filled;
+mod harmonize;
+pub use effects::{
+    bake_effects_font, evaluate_layer, flatten_layer, flatten_layer_by_id, flatten_smart_component,
+    layer_bbox, EffectOutcome,
+};
+pub use harmonize::{harmonize_nodes, HarmonizeError};
+mod interpolate;
+mod smart;
+mod stroke;
+mod style;
+mod variable_pen;
+pub use style::{style_effect, StyleOptions, StyleOutcome};
+pub mod variation;
+pub use smart::{resolve_smart_font, resolve_smart_layer};
+
+pub use boolean::{
+    boolean, remove_overlap, remove_overlap_with_fallback, BooleanOp, FallbackKind,
+    RemoveOverlapOutcome,
+};
+pub use compatibility::{
+    canonical_source, compare_shapes, repair_compatibility, segment_status_name, source_shapes,
+    SegmentStatus, ShapeComparison, SourceShape, ANGLE_WARNING_DEGREES,
+};
+pub use convert::{from_bezpaths, to_bezpaths, CurveKind};
+pub use edit::{
+    add_extrema, add_inflections, bbox, canonical_order, canonical_start_points, correct_direction,
+    fit_span, force_extrema, intersections_with_line, nearest_on_path, open_corner,
+    reconnect_nodes, reverse, round_to_grid, segment_to_points, simplify, split_segment, transform,
+    CornerError, PathHit, SimplifyOptions, SpanFit,
+};
+pub use error::Error;
+pub use interpolate::{compatible, interpolate, Incompatibility};
+pub use kurbo::{Cap, Join};
+pub use stroke::{expand_stroke, expand_stroke_with_fallback, Nib, StrokeOptions, StrokeOutcome};
+
+/// A geometric tolerance measured in font units.
+pub type Tolerance = f64;
+
+/// Default tolerance for boolean operations, in font units.
+pub const DEFAULT_BOOLEAN_TOLERANCE: Tolerance = 0.01;
+
+/// Default tolerance for outline simplification, in font units.
+pub const DEFAULT_SIMPLIFY_TOLERANCE: Tolerance = 0.1;

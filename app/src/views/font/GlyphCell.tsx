@@ -1,12 +1,16 @@
-import { memo, useCallback, useEffect, useRef } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import type { DocId, GlyphCell as GlyphCellData } from '../../api'
 import type { EmBox } from '../../canvas/glyphPaint'
 import { pathCache } from '../../canvas/pathCache'
 import type { LabelMode } from '../../stores/documentStore'
+import { useCellGlyphColor } from '../color/useGlyphColor'
 
 import { cellLabel, paintCell, type CellTheme } from './cellRenderer'
 import styles from './fontView.module.css'
+import { GlyphStatusBadges } from './GlyphStatusBadges'
+import { glyphStatuses } from './glyphStatuses'
 
 export interface GlyphCellProps {
   /** Document the cell belongs to; glyph handles are unique per document. */
@@ -27,6 +31,8 @@ export interface GlyphCellProps {
   focused: boolean
   theme: CellTheme
   fontFamily: string
+  /** Whether an empty cell may show its character from a system face. */
+  referenceCharacters: boolean
 }
 
 /**
@@ -49,21 +55,35 @@ function GlyphCellView({
   focused,
   theme,
   fontFamily,
+  referenceCharacters,
 }: GlyphCellProps) {
+  const { t } = useTranslation()
+  const color = useCellGlyphColor(doc, cell)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  /**
+   * Bumped whenever a canvas attaches.
+   *
+   * The paint below has to run *after* the element exists, and a ref alone
+   * gives no such guarantee: a cell whose page was invalidated renders its
+   * placeholder and then a *new* canvas, and the old node's ref cleanup can
+   * arrive after the new one attached — which used to leave the paint with no
+   * canvas and the cell permanently blank. Counting attachments makes the
+   * effect depend on the node without making the node itself state, which
+   * would put a mutable DOM object under the compiler's immutability rule.
+   */
+  const [attached, setAttached] = useState(0)
 
   /**
    * A 65k-glyph scroll churns through thousands of cells, so the backing store
    * is released the moment the canvas detaches rather than left to the
-   * collector. This has to be a ref callback: React nulls a ref *before* it
-   * runs unmount effects, and a cell that was pending on its first render has
-   * no canvas yet when a mount effect would capture one. The callback is
-   * stable, so React attaches it once and the cleanup runs only on detach.
+   * collector.
    */
   const attachCanvas = useCallback((node: HTMLCanvasElement | null) => {
     canvasRef.current = node
+    setAttached((count) => count + 1)
     return () => {
-      canvasRef.current = null
+      // Only clear the handle this cleanup is for.
+      if (canvasRef.current === node) canvasRef.current = null
       if (!node) return
       node.width = 0
       node.height = 0
@@ -90,10 +110,14 @@ function GlyphCellView({
       focused,
       theme,
       path: pathCache.get(doc, cell.gid, cell.generation, cell.path),
+      color,
       fontFamily,
+      referenceCharacters,
     })
   }, [
+    attached,
     cell,
+    color,
     doc,
     dpr,
     em.ascender,
@@ -103,6 +127,7 @@ function GlyphCellView({
     fontFamily,
     index,
     labelMode,
+    referenceCharacters,
     selected,
     size,
     theme,
@@ -125,14 +150,20 @@ function GlyphCellView({
     )
   }
 
+  const statuses = glyphStatuses(cell)
+  const description = [
+    cellLabel(cell, 'name', index),
+    ...statuses.map(({ labelKey }) => t(labelKey)),
+  ].join(', ')
+
   return (
     <div
       role="option"
       aria-selected={selected}
-      aria-label={cellLabel(cell, 'name', index)}
+      aria-label={description}
       aria-posinset={index + 1}
       aria-setsize={total}
-      title={cell.name}
+      title={description}
       data-index={index}
       data-gid={cell.gid}
       data-glyph={cell.name}
@@ -144,6 +175,7 @@ function GlyphCellView({
         className={styles.cellCanvas}
         style={{ width: size, height: size }}
       />
+      <GlyphStatusBadges statuses={statuses} size={size} />
     </div>
   )
 }

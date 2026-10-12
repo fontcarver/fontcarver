@@ -1,0 +1,35 @@
+# T9b integration architecture — 2026-09-07 (Astra)
+
+Read together with task-9b-dispatch.md and task-9b-resume-foundation-dispatch.md. Integration starts only after root identifies the reviewed T8/T7 P1 base. Existing editor-ui.md remains binding; no redesign.
+
+## State and identity
+
+Extend existing glyph/Edit tabs with optional text state (text, activeIndex, mode, master, size, features, direction). Existing tabs migrate lazily from the loaded glyph's first encoded character, otherwise /name; do not overwrite text the user already typed while initial glyph metadata loads. Keep each text tab id stable when active glyph changes. Update tab.gid to the active document glyph handle so the existing inspector/sidebar/commands target it. Existing single-glyph open/reuse behavior remains valid. Avoid tabId(glyph,doc,currentGid) for updating a text tab: use its actual id. Do not let GlyphView's old name-label effect overwrite text tab titles. Title is first 24 Unicode characters. Store per-tab text state in Zustand, not duplicated local document state.
+
+## One controller and glyph-local coordinates
+
+Reuse GlyphView + GlyphCanvas's EditorController and editing source. No second editor implementation. The existing mutable viewport maps the active glyph's local font units; keep model outlines untouched. When active run origin changes from old to next, adjust viewport.offset by ((next.x-old.x)*scale, -(next.y-old.y)*scale), preserving the run's screen placement. For each other glyph, a passive viewport/draw transform derives from the active viewport using its origin minus the active origin. This supports all existing tools, hit tests, rulers, metrics handles and pan/zoom without translating command coordinates. On a run refresh, preserve the current view and reconcile the active index by cluster/name or safely return to text mode if absent.
+
+Extend the existing renderer with optional surrounding glyph data and draw it before active editing chrome; do not clear the frame twice. Nonactive glyphs use flattened layer paths (component-safe), ink, no points/anchors/metrics by default. Cache parsed Path2D and fetch distinct glyph outlines once per relevant generation/master. Frame the run on initial text entry/explicit Fit, not every click or edit. The size field must change the rendered scale, not merely label the requested shape size.
+
+For long/all-encoded CJK runs, keep canvas allocation fixed to the viewport and
+bound outline fetching to visible run/preview entries plus the active glyph.
+Do not eagerly fetch65,535fulloutlines or allocate a run-width canvas. Shape and
+identity resolution may cover the full text, while rendering is culled. Include
+a usable hit target for zero-advance marks (outline bounds or a minimum screen
+width) as well as advance boxes for spaces; combining marks must not become
+unreachable solely because their advance is zero.
+
+Canvas clicks hit run advance boxes (including spaces) with offsets accounted for. In text mode select a glyph and enter edit mode; in edit mode normal active-glyph editing wins, clicking another glyph changes the target after pending edits flush. Never send compiled GIDs to glyph APIs. Keep a single canvas/controller alive across active-glyph loading where possible; source=null while pending and clear old selection immediately so old geometry cannot edit the new glyph. Text mode supports pan/zoom and glyph activation, suppresses outline editing tools/shortcuts, and typing redirects to the text input. Tool T enters text mode/focus. Escape first deselects (or cancels a current gesture); when already deselected, exits edit mode. Modals own the keyboard.
+
+## Metrics keyboard editing
+
+Implement a small metrics coalescer using existing EditSession, with a 500 ms idle timeout and one undo entry. SetMetrics is absolute: accumulate from the initial LSB/RSB values, not stale fetched values. Flush before target/master/mode changes or another command. Use the same active editor gate so a metrics key run cannot invalidate a live outline edit. Mod+Left edits LSB, Mod+Right edits RSB; default increment +1, Shift +10, Ctrl+Mod +100 where distinguishable (macOS Meta+Ctrl). Alt+Mod+arrows remain disabled P2 kerning commands; do not consume them as metrics. Existing platform modifier representation conflates Ctrl/Meta, so explicitly normalize keyboard inputs at this boundary and document the Linux Ctrl-as-Mod ambiguity rather than defaulting every Linux shortcut to 100. Cover positive/decrement UI semantics per available spec and document the chosen mapping.
+
+## Async and previews
+
+Use the foundation request coordinator with context identity guards. Keep same-request previous layout while stale; text/master/direction changes must never silently show a previous context as fresh. Poll stale results because no completion event exists; cancel on context change/unmount and stop on compile-failed, showing a warning once per document generation. Event-triggered reload defers while editing. No new kernel API is required for permitted outline-based preview: shape at 12/24/48 or normalize one font-unit run for all sizes; render model paths with shaped advances, clearly record that outlines are from document geometry per original dispatch ruling 6. Preview uses same text/master/features/direction; independent dark/light strip only. View menu controls strip visibility; no collision with command palette shortcut.
+
+## Integration verification
+
+Tests cover existing single-glyph tabs, stable text tab identity, Unicode/RTL offsets, glyph-local edits after clicking the third glyph, Escape two stages, master switch context, size changes, stale→fresh without another edit, out-of-order async replies and coalesced metrics undo. Full check/lint/prettier/Vitest and e2e --workers=1 on 8794/1427. Browser interaction per agent-browser skill; screenshots required by original dispatch. English keys + placeholders only, separate T13 Sol translation/QA afterward. Report exact deviations and limitations, do not claim unsupported features are implemented.

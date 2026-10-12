@@ -1,0 +1,35 @@
+[package]
+name = "fc-sfnt"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+bench = false
+
+[dependencies]
+fc-model = { path = "../fc-model" }
+flate2.workspace = true
+kurbo.workspace = true
+read-fonts.workspace = true
+roxmltree = "0.21.1"
+sha2.workspace = true
+skrifa.workspace = true
+thiserror.workspace = true
+wuff.workspace = true
+png = "0.17"
+write-fonts.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+fc-fixtures = { path = "../fc-fixtures" }
+tempfile.workspace = true
+read-fonts.workspace = true
+write-fonts.workspace = true
+
+[[bench]]
+name = "open"
+harness = false

@@ -15,6 +15,7 @@ import type {
   GlyphDetail,
   Instance,
   Layer,
+  LayerOutline,
   Master,
   MasterMetrics,
   Point,
@@ -67,6 +68,7 @@ export function makeLayer(overrides: Partial<Layer> = {}): Layer {
 /** A glyph with one master layer. */
 export function makeGlyph(overrides: Partial<Glyph> = {}): Glyph {
   return {
+    smart_axes: [],
     name: 'a',
     unicodes: [0x61],
     variation_selectors: [],
@@ -281,6 +283,42 @@ export function makeFontInfoView(
     masters: [makeMaster()],
     tables: [],
     instances: [],
+    ...overrides,
+  }
+}
+
+/** A `glyphs.outline` response for one layer, with matching metrics. */
+export function makeLayerOutline(
+  layer: Layer,
+  overrides: Partial<LayerOutline> = {},
+): LayerOutline {
+  const xs = layer.contours.flatMap((contour) =>
+    contour.points.map((point) => point.x),
+  )
+  const ys = layer.contours.flatMap((contour) =>
+    contour.points.map((point) => point.y),
+  )
+  const bbox: [number, number, number, number] | null =
+    xs.length === 0
+      ? null
+      : [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]
+  return {
+    layer: layer.id,
+    master: 'm1',
+    contours: layer.contours,
+    components: [],
+    anchors: layer.anchors,
+    guides: layer.guides,
+    width: layer.width,
+    lsb: bbox ? bbox[0] : 0,
+    rsb: bbox ? layer.width - bbox[2] : 0,
+    bbox,
+    resolved_metrics: {
+      lsb: bbox ? bbox[0] : 0,
+      rsb: bbox ? layer.width - bbox[2] : 0,
+      width: layer.width,
+      source: 'Explicit',
+    },
     ...overrides,
   }
 }

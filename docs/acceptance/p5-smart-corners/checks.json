@@ -1,0 +1,66 @@
+{
+  "date": "2026-09-28",
+  "rust": {
+    "interrupted_run": {
+      "passed": 1007,
+      "failed": 0,
+      "ignored": 2,
+      "completed_batches": 134,
+      "status": "interrupted for disk cleanup"
+    },
+    "remaining_sfnt": {
+      "passed": 40,
+      "failed": 0,
+      "test_binaries": 7
+    },
+    "additional_distinct_regressions": [
+      "global corner topology compatibility",
+      "batch styles and source-writer guards with live corners"
+    ],
+    "distinct_passed_across_runs": 1049,
+    "final_corner_geometry_tests": 8,
+    "final_corner_document_tests": 1,
+    "doc_test_crates": 8,
+    "runnable_doc_tests": 0,
+    "workspace_all_targets_clippy": "passed with -D warnings",
+    "formatting": "passed"
+  },
+  "frontend": {
+    "full_suite": {
+      "files": 145,
+      "passed": 1160
+    },
+    "final_affected_suite": {
+      "files": 3,
+      "passed": 19
+    },
+    "distinct_passed_across_runs": 1161,
+    "typescript": "passed",
+    "eslint": "passed",
+    "production_build": "passed; existing large-chunk advisory",
+    "changed_file_formatting": "passed",
+    "matching_translation_leaves": 1841,
+    "independent_translation_review": "pending"
+  },
+  "independent_exports": {
+    "synthetic": 24,
+    "real_font": 8,
+    "containment_samples": 369468
+  },
+  "browser": {
+    "en_light": "passed recorded scope",
+    "zh_dark": "passed recorded scope",
+    "axe_violations_per_scope": 0,
+    "axe_incomplete_per_scope": 1,
+    "native_desktop_automation": "not performed",
+    "axe_incomplete_nodes": {
+      "en_light": [
+        "non-text collapse arrow",
+        "help paragraph background partially obscured"
+      ],
+      "zh_dark": [
+        "non-text collapse arrow"
+      ]
+    }
+  }
+}

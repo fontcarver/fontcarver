@@ -1,0 +1,281 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { setTransport, type EditApplyParams } from '../../api'
+import { afterDocumentEdits } from '../../editor/editSession'
+import { createEditingTransport } from '../../test/mockTransport'
+import {
+  KerningEditRunner,
+  kerningShortcut,
+  kerningShortcutAction,
+} from './kerningEdits'
+
+const target = {
+  doc: 1,
+  master: 'm1',
+  left: { glyph: 'A' },
+  right: { glyph: 'V' },
+}
+const key = {
+  key: 'ArrowLeft',
+  ctrlKey: true,
+  metaKey: false,
+  altKey: true,
+  shiftKey: false,
+}
+function deferred() {
+  let resolve!: () => void
+  const promise = new Promise<void>((done) => {
+    resolve = done
+  })
+  return { promise, resolve }
+}
+
+afterEach(() => {
+  setTransport(undefined)
+  vi.useRealTimers()
+})
+
+describe('kerningShortcut', () => {
+  it('reserves class modifiers only for opt-in punctuation and preserves arrows', () => {
+    const punctuation = { ...key, key: ',', ctrlKey: false, altKey: false }
+    expect(kerningShortcutAction(punctuation, false)).toBeNull()
+    expect(kerningShortcutAction(punctuation, false, true)).toEqual({
+      delta: -1,
+      suppressLeft: false,
+      suppressRight: false,
+    })
+    // Control is the primary modifier off macOS, so it is not a class modifier
+    // there: the gesture is refused rather than fighting the user's Mod binding.
+    const bothClasses = {
+      ...punctuation,
+      key: '>',
+      code: 'Period',
+      shiftKey: true,
+      ctrlKey: true,
+      altKey: true,
+    }
+    expect(kerningShortcutAction(bothClasses, false, true)).toBeNull()
+    expect(kerningShortcutAction(bothClasses, true, true)).toEqual({
+      delta: 10,
+      suppressLeft: true,
+      suppressRight: true,
+    })
+    expect(
+      kerningShortcutAction(
+        { ...punctuation, key: '≤', code: 'Comma', altKey: true },
+        true,
+        true,
+      ),
+    ).toEqual({
+      delta: -1,
+      suppressLeft: false,
+      suppressRight: true,
+    })
+    expect(
+      kerningShortcutAction({ ...punctuation, metaKey: true }, true, true),
+    ).toBeNull()
+    expect(kerningShortcutAction(key, false, true)).toEqual({
+      delta: -1,
+      suppressLeft: false,
+      suppressRight: false,
+    })
+    expect(
+      kerningShortcutAction({ ...key, metaKey: true }, true, true),
+    ).toEqual({
+      delta: -100,
+      suppressLeft: false,
+      suppressRight: false,
+    })
+  })
+
+  it('allows a held class modifier without allowing the bare keys', () => {
+    const comma = {
+      key: ',',
+      code: 'Comma',
+      ctrlKey: false,
+      metaKey: false,
+      altKey: false,
+      shiftKey: false,
+    }
+    // Only locked spacing mode reserves the unmodified characters.
+    expect(kerningShortcutAction(comma, false, true, false)).toBeNull()
+    expect(kerningShortcutAction(comma, false, true, true)).toEqual({
+      delta: -1,
+      suppressLeft: false,
+      suppressRight: false,
+    })
+    // Alt suppresses the second class on every platform, in every mode.
+    for (const isMac of [false, true]) {
+      expect(
+        kerningShortcutAction({ ...comma, altKey: true }, isMac, true, false),
+      ).toEqual({ delta: -1, suppressLeft: false, suppressRight: true })
+      expect(
+        kerningShortcutAction(
+          { ...comma, altKey: true, shiftKey: true },
+          isMac,
+          true,
+          false,
+        ),
+      ).toEqual({ delta: -10, suppressLeft: false, suppressRight: true })
+    }
+    // Control suppresses the first class on macOS only.
+    expect(
+      kerningShortcutAction({ ...comma, ctrlKey: true }, true, true, false),
+    ).toEqual({ delta: -1, suppressLeft: true, suppressRight: false })
+    expect(
+      kerningShortcutAction({ ...comma, ctrlKey: true }, false, true, false),
+    ).toBeNull()
+  })
+
+  it('uses platform Mod+Alt and the documented 1/10/100-unit steps', () => {
+    expect(kerningShortcut(key, false)).toBe(-1)
+    expect(
+      kerningShortcut({ ...key, key: 'ArrowRight', shiftKey: true }, false),
+    ).toBe(10)
+    expect(kerningShortcut({ ...key, metaKey: true }, true)).toBe(-100)
+    expect(
+      kerningShortcut({ ...key, metaKey: true, ctrlKey: false }, true),
+    ).toBe(-1)
+    expect(kerningShortcut({ ...key, altKey: false }, false)).toBeNull()
+    expect(kerningShortcut(key, true)).toBeNull()
+    expect(kerningShortcut({ ...key, key: 'ArrowUp' }, false)).toBeNull()
+  })
+})
+
+describe('KerningEditRunner', () => {
+  it('refreshes the baseline after earlier work and captures queued repeats before closing', async () => {
+    const gate = deferred()
+    const mock = createEditingTransport()
+    setTransport(mock)
+    const refresh = vi.fn(async () => -80)
+    const run = new KerningEditRunner({
+      ...target,
+      label: 'Kerning',
+      after: gate.promise,
+      refreshStart: refresh,
+      onEnd: vi.fn(),
+      onError: vi.fn(),
+    })
+    run.press(-1)
+    run.press(10)
+    const closing = run.end()
+    expect(mock.calls).toHaveLength(0)
+    expect(refresh).not.toHaveBeenCalled()
+    gate.resolve()
+    await closing
+    expect(mock.calls.map((item) => item.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_apply',
+      'doc.edit_end',
+    ])
+    expect((mock.calls[1].params as EditApplyParams).command).toEqual({
+      SetHorizontalKerning: {
+        master: 'm1',
+        left: { glyph: 'A' },
+        right: { glyph: 'V' },
+        value: -71,
+      },
+    })
+  })
+
+  it('ends after 500 ms and registers its closure before later document commands', async () => {
+    vi.useFakeTimers()
+    const gate = deferred()
+    const mock = createEditingTransport({
+      hold: { on: 'doc.edit_end', until: gate.promise },
+    })
+    setTransport(mock)
+    const ended = vi.fn()
+    const run = new KerningEditRunner({
+      ...target,
+      label: 'Kerning',
+      refreshStart: async () => 0,
+      onEnd: ended,
+      onError: vi.fn(),
+    })
+    run.press(-1)
+    await vi.advanceTimersByTimeAsync(499)
+    expect(run.active).toBe(true)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(run.active).toBe(false)
+    const command = vi.fn(async () => undefined)
+    const later = afterDocumentEdits(1, command)
+    expect(command).not.toHaveBeenCalled()
+    gate.resolve()
+    await later
+    expect(ended).toHaveBeenCalledOnce()
+    expect(command).toHaveBeenCalledOnce()
+  })
+
+  it('distinguishes explicit zero from removing the stored record', async () => {
+    const mock = createEditingTransport()
+    setTransport(mock)
+    for (const value of [0, null]) {
+      const run = new KerningEditRunner({
+        ...target,
+        label: 'Kerning',
+        refreshStart: async () => -80,
+        onEnd: vi.fn(),
+        onError: vi.fn(),
+      })
+      run.set(value)
+      await run.end()
+    }
+    const commands = mock.calls
+      .filter((item) => item.method === 'doc.edit_apply')
+      .map((item) => (item.params as EditApplyParams).command)
+    expect(commands).toMatchObject([
+      { SetHorizontalKerning: { value: 0 } },
+      { SetHorizontalKerning: { value: null } },
+    ])
+  })
+
+  it('reports one baseline failure and closes without applying guessed values', async () => {
+    const mock = createEditingTransport()
+    setTransport(mock)
+    const onError = vi.fn()
+    const run = new KerningEditRunner({
+      ...target,
+      label: 'Kerning',
+      refreshStart: async () => {
+        throw new Error('read failed')
+      },
+      onEnd: vi.fn(),
+      onError,
+    })
+    run.press(-1)
+    await run.end()
+    expect(mock.calls.map((item) => item.method)).toEqual([
+      'doc.edit_begin',
+      'doc.edit_end',
+    ])
+    expect(onError).toHaveBeenCalledOnce()
+  })
+})
+
+it('captures vertical direction in the edit target through an asynchronous flush', async () => {
+  const mock = createEditingTransport()
+  setTransport(mock)
+  const run = new KerningEditRunner({
+    ...target,
+    vertical: true,
+    label: 'Vertical kerning',
+    refreshStart: async () => -40,
+    onEnd: vi.fn(),
+    onError: vi.fn(),
+  })
+  run.press(-10)
+  await run.end()
+  expect(
+    (
+      mock.calls.find((call) => call.method === 'doc.edit_apply')!
+        .params as EditApplyParams
+    ).command,
+  ).toEqual({
+    SetVerticalKerning: {
+      master: 'm1',
+      left: { glyph: 'A' },
+      right: { glyph: 'V' },
+      value: -50,
+    },
+  })
+})

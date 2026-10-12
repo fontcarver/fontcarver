@@ -1,0 +1,76 @@
+.editor,
+.label,
+.children {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.editor {
+  gap: var(--space-3);
+}
+
+.control,
+.expression {
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.control:focus-visible,
+.expression:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+.expression {
+  resize: vertical;
+  font-family: var(--font-mono);
+}
+
+.rule,
+.mode,
+.groupActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.rule > .control {
+  flex: 1 1 100px;
+}
+
+.group {
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.group > legend {
+  padding-inline: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+}
+
+.groupActions {
+  margin-bottom: var(--space-2);
+}
+
+.help {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger);
+}

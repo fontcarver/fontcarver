@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "notice": "Curated index of plugins shipped with FontCarver. Every implementation is compiled into the application; installing an entry records a local preference and never downloads, fetches or evaluates external code.",
+  "plugins": [
+    {
+      "id": "fontcarver.bounds",
+      "version": "1.0.0",
+      "kind": "reporter",
+      "nameKey": "plugins.boundsName",
+      "descriptionKey": "plugins.boundsDescription",
+      "author": "FontCarver project",
+      "license": "MIT OR Apache-2.0",
+      "origin": "bundled",
+      "source": "app/src/plugins/reporters.ts",
+      "settings": [
+        {
+          "key": "advance",
+          "labelKey": "plugins.settings.advance",
+          "kind": "toggle",
+          "default": 0,
+          "min": 0,
+          "max": 1,
+          "step": 1
+        }
+      ]
+    },
+    {
+      "id": "fontcarver.metrics",
+      "version": "1.0.0",
+      "kind": "reporter",
+      "nameKey": "plugins.metricsName",
+      "descriptionKey": "plugins.metricsDescription",
+      "author": "FontCarver project",
+      "license": "MIT OR Apache-2.0",
+      "origin": "bundled",
+      "source": "app/src/plugins/reporters.ts",
+      "settings": [
+        {
+          "key": "zones",
+          "labelKey": "plugins.settings.zones",
+          "kind": "toggle",
+          "default": 1,
+          "min": 0,
+          "max": 1,
+          "step": 1
+        }
+      ]
+    },
+    {
+      "id": "fontcarver.translate",
+      "version": "1.0.0",
+      "kind": "filter",
+      "nameKey": "plugins.translateName",
+      "descriptionKey": "plugins.translateDescription",
+      "author": "FontCarver project",
+      "license": "MIT OR Apache-2.0",
+      "origin": "bundled",
+      "source": "app/src/plugins/registry.ts",
+      "settings": [
+        {
+          "key": "dx",
+          "labelKey": "plugins.dx",
+          "kind": "number",
+          "default": 20,
+          "min": -32767,
+          "max": 32767,
+          "step": 1
+        },
+        {
+          "key": "dy",
+          "labelKey": "plugins.dy",
+          "kind": "number",
+          "default": 0,
+          "min": -32767,
+          "max": 32767,
+          "step": 1
+        }
+      ]
+    }
+  ]
+}

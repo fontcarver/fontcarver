@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { Viewport } from '../../canvas/Viewport'
+import { IDENTITY } from '../../editor/affine'
 import { createRecordingContext } from '../../test/recordingContext'
 import {
   makeCell,
@@ -15,6 +16,7 @@ import { drawComponents } from './drawComponents'
 import { drawGuides } from './drawGuides'
 import { DEFAULT_METRIC_LABELS, drawMetrics } from './drawMetrics'
 import { drawRulers, RULER_SIZE, tickStep } from './drawRulers'
+import { drawUnderlays } from './drawUnderlays'
 import { buildScene } from './glyphScene'
 import { FALLBACK_GLYPH_THEME } from './glyphTheme'
 
@@ -247,7 +249,12 @@ describe('drawComponents', () => {
     drawComponents(
       recording.ctx,
       viewportOf(),
-      { path, components: [component], filled: false, showLabels: false },
+      {
+        path,
+        components: [{ component, path: null, transform: IDENTITY }],
+        filled: false,
+        showLabels: false,
+      },
       FALLBACK_GLYPH_THEME,
     )
     expect(recording.calls('stroke')[0]?.args).toEqual([path])
@@ -256,13 +263,65 @@ describe('drawComponents', () => {
     )
   })
 
+  it('draws each component from its own path, offset by the preview', () => {
+    const recording = createRecordingContext()
+    const own = {} as Path2D
+    drawComponents(
+      recording.ctx,
+      viewportOf(),
+      {
+        path: {} as Path2D,
+        components: [
+          { component, path: own, transform: [1, 0, 0, 1, 40, -10] },
+        ],
+        filled: false,
+        showLabels: false,
+      },
+      FALLBACK_GLYPH_THEME,
+    )
+    // The component's own path wins over the whole-layer fallback, and the
+    // preview transform is applied inside the font-space transform.
+    expect(recording.calls('stroke')[0]?.args).toEqual([own])
+    expect(recording.calls('translate').map((entry) => entry.args)).toEqual([
+      [100, 500],
+    ])
+    expect(recording.calls('transform')[0]?.args).toEqual([1, 0, 0, 1, 40, -10])
+  })
+
+  it('draws a previewed rotation as a rotation, not as a slide', () => {
+    const recording = createRecordingContext()
+    const own = {} as Path2D
+    // A quarter turn about the origin: the linear part is not the identity,
+    // which a `dx`/`dy` offset could never express.
+    const quarter: [number, number, number, number, number, number] = [
+      0, 1, -1, 0, 0, 0,
+    ]
+    drawComponents(
+      recording.ctx,
+      viewportOf(),
+      {
+        path: null,
+        components: [{ component, path: own, transform: quarter }],
+        filled: false,
+        showLabels: false,
+      },
+      FALLBACK_GLYPH_THEME,
+    )
+    expect(recording.calls('transform')[0]?.args).toEqual(quarter)
+  })
+
   it('fills in preview mode and labels each component origin', () => {
     const recording = createRecordingContext()
     const path = {} as Path2D
     drawComponents(
       recording.ctx,
       viewportOf(),
-      { path, components: [component], filled: true, showLabels: true },
+      {
+        path,
+        components: [{ component, path: null, transform: IDENTITY }],
+        filled: true,
+        showLabels: true,
+      },
       FALLBACK_GLYPH_THEME,
     )
     expect(recording.calls('fill')[0]?.args).toEqual([path, 'nonzero'])
@@ -300,8 +359,17 @@ describe('drawAnchors', () => {
 
 describe('drawGuides', () => {
   const guide = (angle: number, name: string | null = null) => ({
-    guide: { x: 100, y: 200, angle, name, locked: false, color: null },
+    guide: {
+      x: 100,
+      y: 200,
+      angle,
+      name,
+      locked: false,
+      color: null,
+      anchor: 'Origin' as const,
+    },
     scope: 'layer' as const,
+    index: 0,
   })
 
   it('draws a horizontal guide as a horizontal screen line', () => {
@@ -375,5 +443,66 @@ describe('drawRulers', () => {
     const recording = createRecordingContext()
     drawRulers(recording.ctx, empty, { pointer: null }, FALLBACK_GLYPH_THEME)
     expect(recording.ops).toHaveLength(0)
+  })
+})
+
+describe('drawUnderlays', () => {
+  it('strokes the background layer and dots its points', () => {
+    const recording = createRecordingContext()
+    drawUnderlays(
+      recording.ctx,
+      viewportOf(),
+      {
+        background: new Path2D('M0 0L10 0Z'),
+        backgroundPoints: [
+          { x: 0, y: 0 },
+          { x: 10, y: 0 },
+        ],
+        otherMasters: [],
+      },
+      FALLBACK_GLYPH_THEME,
+    )
+
+    expect(recording.calls('stroke')).toHaveLength(1)
+    // One 3 px dot per stored point of the background layer (§4.1 item 5).
+    expect(recording.calls('arc')).toHaveLength(2)
+    expect(recording.styleAt('stroke', 'strokeStyle')).toBe(
+      FALLBACK_GLYPH_THEME.backgroundLayer,
+    )
+    expect(recording.styleAt('fill', 'fillStyle')).toBe(
+      FALLBACK_GLYPH_THEME.backgroundLayer,
+    )
+  })
+
+  it('strokes one path per other master and no nodes at all', () => {
+    const recording = createRecordingContext()
+    drawUnderlays(
+      recording.ctx,
+      viewportOf(),
+      {
+        background: null,
+        backgroundPoints: [],
+        otherMasters: [new Path2D('M0 0Z'), new Path2D('M1 1Z')],
+      },
+      FALLBACK_GLYPH_THEME,
+    )
+
+    expect(recording.calls('stroke')).toHaveLength(2)
+    expect(recording.calls('arc')).toHaveLength(0)
+    expect(recording.styleAt('stroke', 'strokeStyle')).toBe(
+      FALLBACK_GLYPH_THEME.otherMaster,
+    )
+  })
+
+  it('draws nothing when the overlays are off', () => {
+    const recording = createRecordingContext()
+    drawUnderlays(
+      recording.ctx,
+      viewportOf(),
+      { background: null, backgroundPoints: [], otherMasters: [] },
+      FALLBACK_GLYPH_THEME,
+    )
+
+    expect(recording.calls('stroke')).toHaveLength(0)
   })
 })

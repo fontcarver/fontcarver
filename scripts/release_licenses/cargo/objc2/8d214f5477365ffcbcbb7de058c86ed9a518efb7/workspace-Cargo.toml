@@ -1,0 +1,69 @@
+[workspace]
+members = [
+    "crates/*",
+    "framework-crates/*",
+    "crates/test-assembly/crates/*",
+]
+resolver = "2"
+
+[workspace.package]
+authors = ["Mads Marquart <mads@marquart.dk>"]
+edition = "2021"
+rust-version = "1.71"
+repository = "https://github.com/madsmtm/objc2"
+
+# Framework crate defaults
+
+# Remember to update in header-translator, and manually authored lib.rs.
+version = "0.3.0"
+# Some crates in this repo have a different license, see LICENSE.md.
+license = "Zlib OR Apache-2.0 OR MIT"
+license-file = "LICENSE.md"
+categories = [
+    "api-bindings",
+    "development-tools::ffi",
+    "external-ffi-bindings",
+    "os::macos-apis",
+]
+
+[workspace.lints.rust]
+elided_lifetimes_in_paths = "warn"
+missing_copy_implementations = "warn"
+non_ascii_idents = "deny"
+unreachable_pub = "warn"
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+cargo = { level = "warn", priority = -1 } # Because of `lint_groups_priority`
+ptr_as_ptr = "warn"
+# We can't change the name of `objc2-ad-support`.
+redundant_feature_names = "allow"
+
+[profile.assembly-tests]
+inherits = "release"
+# Enable LTO to allow testing the `unstable-static-sel-inlined` feature
+lto = true
+
+# Release data for framework crates
+[workspace.metadata.release]
+allow-branch = ["master"]
+push-remote = "0origin"
+shared-version = true # Framework crates share a version number
+tag-prefix = "icrate"
+tag-name = "{{prefix}}-{{version}}"
+owners = ["madsmtm", "simlay"]
+rate-limit.existing-packages = 300
+
+# TODO: Check for typos in CI
+[workspace.metadata.typos]
+files.extend-exclude = [
+    # Generated files don't make sense to lint
+    "generated",
+    "*.s",
+    # This tests some weird strings
+    "framework-crates/objc2-foundation/src/tests/string.rs",
+]
+# Comes from the `clang` crate
+default.extend-identifiers.ParmDecl = "ParmDecl"
+# Used in Metal, LOD = level of detail
+default.extend-words.lod = "lod"

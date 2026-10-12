@@ -1,0 +1,137 @@
+2026-10-02 UX integrated frontend verification
+
+
+check
+
+> fontcarver-app@0.1.0 check /home/chen/githubprojects/fontpixel/fontcarver/app
+> tsc -b
+
+
+
+lint
+
+> fontcarver-app@0.1.0 lint /home/chen/githubprojects/fontpixel/fontcarver/app
+> eslint .
+
+
+
+format
+Checking formatting...
+All matched files use Prettier code style!
+
+
+build
+
+> fontcarver-app@0.1.0 build /home/chen/githubprojects/fontpixel/fontcarver/app
+> tsc -b && vite build
+
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 3020 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                           0.45 kB │ gzip:   0.29 kB
+dist/assets/macro.worker-CMRvcsoc.js      3.53 kB
+dist/assets/index-CwjnX_8s.css          148.54 kB │ gzip:  23.76 kB
+dist/assets/index-CMWtBrRJ.js             1.25 kB │ gzip:   0.48 kB
+dist/assets/index-D08ZVu6Y.js             2.58 kB │ gzip:   1.18 kB
+dist/assets/index-BLK2e3jl.js         2,186.27 kB │ gzip: 677.57 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 3.62s
+
+
+python-tests
+...............................................+ apt-get
+...+ apt-get
+...................................s..native smoke job failed: job unavailable
+..........
+----------------------------------------------------------------------
+Ran 98 tests in 0.864s
+
+OK (skipped=1)
+
+
+First full Vitest (failed; not acceptance):
+ FAIL  src/views/glyph/GlyphView.test.tsx > GlyphView > Space-drags the newly focused canvas without toggling fill
+ FAIL  src/views/glyph/GlyphView.test.tsx > GlyphView > cancels a metrics gesture before settling Escape from the canvas
+ FAIL  src/views/glyph/GlyphView.test.tsx > GlyphView > uses the selected layer's master and clears it on toolbar changes
+ Test Files  1 failed | 345 passed (346)
+      Tests  3 failed | 2894 passed (2897)
+   Duration  78.89s (transform 5.79s, setup 33.45s, collect 58.19s, tests 76.79s, environment 86.71s, prepare 16.98s)
+Only GlyphView synthetic events changed: pressed buttons=1, matching pointer IDs, and onTestFinished releases the canceled mock request. Original assertions preserved. Focused 113/113 passed.
+
+Final full Vitest:
+ ✓ src/editor/modifiers.test.ts (3 tests) 2ms
+ ✓ src/views/text/proofStepping.test.ts (5 tests) 2ms
+
+ Test Files  346 passed (346)
+      Tests  2897 passed (2897)
+   Start at  17:23:32
+   Duration  77.84s (transform 5.50s, setup 33.70s, collect 56.59s, tests 73.90s, environment 87.52s, prepare 17.17s)
+
+
+Actual UI TTF export:752720 bytes; independent fontTools parsed6253 glyphs,cmap65=A; exported copy reopened through UI.
+
+Bitmap menu-entry follow-up verification before welcome increment:
+Initial type check ran before task freeze and failed on unsupported Testing Library exact options; corrected before final owner checks.
+Frozen bitmap focus source: focused57/57 and independent28/28 passed. Full check/lint/format passed; full Vitest2905passed/1failed in347files. TextView old-mounted callback test observed activeEditor before registration; explicit readywait preserves assertion and focused7/7 passes. No product change for that synchronization repair. New welcome-discovery task then authorized; final integrated rerun follows its source/translation freeze.
+
+Final source f6f6cf9, including welcome discovery, independent Chinese delta and palette focus repair:
+
+check
+
+> fontcarver-app@0.1.0 check /home/chen/githubprojects/fontpixel/fontcarver/app
+> tsc -b
+
+
+
+lint
+
+> fontcarver-app@0.1.0 lint /home/chen/githubprojects/fontpixel/fontcarver/app
+> eslint .
+
+
+
+format
+Checking formatting...
+All matched files use Prettier code style!
+
+
+build
+
+> fontcarver-app@0.1.0 build /home/chen/githubprojects/fontpixel/fontcarver/app
+> tsc -b && vite build
+
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 3020 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                           0.45 kB │ gzip:   0.28 kB
+dist/assets/macro.worker-CMRvcsoc.js      3.53 kB
+dist/assets/index-CESV8EHE.css          149.32 kB │ gzip:  23.86 kB
+dist/assets/index-BaVvZx_s.js             1.25 kB │ gzip:   0.48 kB
+dist/assets/index-DlsMmQIV.js             2.58 kB │ gzip:   1.18 kB
+dist/assets/index-Cepg_8WJ.js         2,187.68 kB │ gzip: 678.07 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 3.63s
+
+
+Final Vitest full run:
+ ✓ src/editor/modifiers.test.ts (3 tests) 2ms
+ ✓ src/views/glyph/panels/bracketConditions.test.ts (1 test) 2ms
+
+ Test Files  348 passed (348)
+      Tests  2914 passed (2914)
+   Start at  17:59:46
+   Duration  82.50s (transform 5.62s, setup 35.24s, collect 61.84s, tests 78.36s, environment 91.34s, prepare 17.86s)
+
+Resource checkpoint:5.33GiB build/12257files;0.06GiB temporary;616.37GiB free;PASS.

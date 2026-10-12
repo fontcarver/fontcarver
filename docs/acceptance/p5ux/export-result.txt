@@ -1,0 +1,13 @@
+2026-10-02 actual agent-browser Export dialog snapshot excerpt
+
+RESULT
+/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5ux-experience/DejaVu-copy.ttf
+752,720 bytes
+0 edited glyphs
+606 ms
+
+WARNINGS
+Macintosh name records were dropped; fontc emits Windows Unicode records
+
+Independent fontTools parsing: 752720 bytes; 6253 glyphs; cmap65=A.
+Reopened exported copy through Open Font, selected A, rendered its outline.

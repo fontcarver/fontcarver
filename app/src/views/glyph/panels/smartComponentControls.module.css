@@ -1,0 +1,117 @@
+.controls {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  grid-column: 1 / -1;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.controls legend {
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+}
+.axis {
+  display: grid;
+  gap: var(--space-1);
+}
+.slider {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+.handleControl {
+  display: grid;
+  gap: var(--space-2);
+}
+.axisSelectors {
+  display: flex;
+  gap: var(--space-2);
+}
+.axisSelectors label {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: var(--space-1);
+  font-size: var(--text-size-xs);
+}
+.axisSelectors select {
+  min-width: 0;
+  width: 100%;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+.pad {
+  position: relative;
+  height: 110px;
+  margin: var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(
+      90deg,
+      transparent 49.5%,
+      var(--color-border-subtle) 50%,
+      transparent 50.5%
+    ),
+    linear-gradient(
+      transparent 49.5%,
+      var(--color-border-subtle) 50%,
+      transparent 50.5%
+    ),
+    var(--color-sunken);
+  touch-action: none;
+  cursor: crosshair;
+}
+.pad[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+.horizontalLabel,
+.verticalLabel {
+  position: absolute;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+  pointer-events: none;
+}
+.horizontalLabel {
+  bottom: var(--space-1);
+  right: var(--space-1);
+}
+.verticalLabel {
+  top: var(--space-1);
+  left: var(--space-1);
+}
+.handle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  border: 2px solid var(--color-surface);
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
+  cursor: grab;
+}
+.handle:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 3px;
+}
+.hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+}
+.reset {
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-size-xs);
+}

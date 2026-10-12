@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -6,16 +6,24 @@ import { setTransport } from './api'
 import { App } from './App'
 import { resetCommands } from './shell/commands'
 import { initialDocumentState, useDocumentStore } from './stores/documentStore'
+import {
+  DEFAULT_PREFS,
+  initialPrefsState,
+  usePrefsStore,
+} from './stores/prefsStore'
 import { initialSessionState, useSessionStore } from './stores/sessionStore'
 import { forgetFontInfo } from './stores/fontInfoCache'
 import { initialUiState, useUiStore } from './stores/uiStore'
 import { makeFontInfoView } from './test/fontFixtures'
 import { createMockTransport, makeSummary } from './test/mockTransport'
 
-function emptySession() {
+function emptySession(language = DEFAULT_PREFS.language) {
   return createMockTransport({
     'session.list': () => [],
     'session.recent': () => ['/fonts/DejaVuSans.ttf'],
+    'session.recover_list': () => [],
+    'prefs.get': () => ({ ...DEFAULT_PREFS, language }),
+    'prefs.set': ({ prefs }) => prefs,
   })
 }
 
@@ -27,6 +35,7 @@ beforeEach(() => {
   useUiStore.setState(initialUiState())
   useSessionStore.setState(initialSessionState())
   useDocumentStore.setState(initialDocumentState())
+  usePrefsStore.setState(initialPrefsState())
 })
 
 afterEach(() => {
@@ -35,6 +44,18 @@ afterEach(() => {
 })
 
 describe('App shell', () => {
+  it('keeps the document language aligned with loaded and changed preferences', async () => {
+    setTransport(emptySession('zh-CN'))
+    render(<App />)
+
+    await screen.findByRole('menuitem', { name: '文件' })
+    expect(document.documentElement.lang).toBe('zh-CN')
+
+    act(() => useUiStore.getState().setLanguage('en'))
+    await screen.findByRole('menuitem', { name: 'File' })
+    expect(document.documentElement.lang).toBe('en')
+  })
+
   it('renders every specified menu from the command registry', async () => {
     setTransport(emptySession())
     render(<App />)
@@ -59,16 +80,17 @@ describe('App shell', () => {
       ).toBeInTheDocument()
   })
 
-  it('shows a placeholder inside menus that have no commands yet', async () => {
+  it('lists bitmap editing with a disabled reason when no document is open', async () => {
     const user = userEvent.setup()
     setTransport(emptySession())
     render(<App />)
     const menubar = await screen.findByRole('menubar')
 
-    await user.click(within(menubar).getByRole('menuitem', { name: 'Path' }))
+    // Bitmap commands are listed but require an open document.
+    await user.click(within(menubar).getByRole('menuitem', { name: 'Bitmap' }))
 
-    const item = screen.getByRole('menuitem', {
-      name: 'Arrives in a later phase',
+    const item = await screen.findByRole('menuitem', {
+      name: /^Bitmap editor/,
     })
     expect(item).toBeDisabled()
   })
@@ -84,7 +106,9 @@ describe('App shell', () => {
     const menu = screen.getByRole('menu', { name: 'File' })
     const saveAs = within(menu).getByRole('menuitem', { name: /Save As/ })
     expect(saveAs).toBeDisabled()
-    expect(saveAs).toHaveAttribute('title', 'No font is open')
+    // The reason is the row's accessible description and its inline hint; the
+    // native tooltip was dropped when Quick Help took over hovering a menu row.
+    expect(saveAs).toHaveAttribute('aria-description', 'No font is open')
     expect(within(menu).getAllByText('No font is open').length).toBeGreaterThan(
       0,
     )
@@ -120,7 +144,7 @@ describe('App shell', () => {
     render(<App />)
 
     expect(
-      screen.getByRole('heading', { name: 'FontWorkshop' }),
+      screen.getByRole('heading', { name: 'FontCarver' }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Open Font…' }),
@@ -158,7 +182,10 @@ describe('App shell', () => {
     await screen.findByRole('menubar')
 
     await user.keyboard('{Control>}{Shift>}p{/Shift}{/Control}')
-    await user.type(await screen.findByRole('combobox'), 'dark theme')
+    await user.type(
+      await screen.findByRole('combobox', { name: 'Commands' }),
+      'dark theme',
+    )
     await user.keyboard('{Enter}')
 
     await waitFor(() =>
@@ -186,7 +213,7 @@ describe('App shell', () => {
     render(<App />)
 
     expect(
-      await screen.findByRole('tab', { name: 'DejaVuSans.ttf' }),
+      await screen.findByRole('tab', { name: 'Overview · DejaVuSans.ttf' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('listbox', { name: 'Glyphs' })).toBeInTheDocument()
     expect(await screen.findByText('Letter')).toBeInTheDocument()
@@ -216,7 +243,7 @@ describe('App shell', () => {
       }),
     )
     render(<App />)
-    await screen.findByRole('tab', { name: 'DejaVuSans.ttf' })
+    await screen.findByRole('tab', { name: 'Overview · DejaVuSans.ttf' })
     expect(await screen.findByText('Letter')).toBeInTheDocument()
     expect(screen.getAllByLabelText('Cell size')).toHaveLength(2)
 
@@ -226,9 +253,7 @@ describe('App shell', () => {
     expect(screen.queryByText('Letter')).toBeNull()
     expect(screen.queryAllByLabelText('Cell size')).toHaveLength(0)
     expect(
-      screen.getByText(
-        'Font Info is read-only in this release; editing arrives with the next phase.',
-      ),
+      screen.getByRole('button', { name: 'CID mapping' }),
     ).toBeInTheDocument()
     // The Font Info tab itself renders the read-only field list.
     expect(
@@ -254,7 +279,7 @@ describe('App shell', () => {
       }),
     )
     render(<App />)
-    await screen.findByRole('tab', { name: 'DejaVuSans.ttf' })
+    await screen.findByRole('tab', { name: 'Overview · DejaVuSans.ttf' })
 
     expect(screen.getByText('Inspector')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Toggle inspector' }))

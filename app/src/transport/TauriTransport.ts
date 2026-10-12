@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 
-import type { ApiMethods, DocumentEvent } from '../api/generated'
+import type { ApiMethods, Event } from '../api/generated'
 import { ApiCallError, type Transport } from './Transport'
 
 interface ApiErrorPayload {
@@ -36,10 +36,10 @@ export class TauriTransport implements Transport {
     }
   }
 
-  onEvent(cb: (event: DocumentEvent) => void): () => void {
+  onEvent(cb: (event: Event) => void): () => void {
     let active = true
     let unlisten: UnlistenFn | undefined
-    void listen<DocumentEvent>('fw:event', ({ payload }) => cb(payload)).then(
+    void listen<Event>('fc:event', ({ payload }) => cb(payload)).then(
       (stopListening) => {
         if (active) unlisten = stopListening
         else stopListening()

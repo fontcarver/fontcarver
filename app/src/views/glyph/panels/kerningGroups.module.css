@@ -1,0 +1,76 @@
+.side {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+}
+.side legend {
+  padding: 0 var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+}
+.name {
+  overflow-wrap: anywhere;
+  font-size: var(--text-size-sm);
+}
+.manager,
+.detail {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.detail {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border-subtle);
+}
+.group {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+}
+.group:hover,
+.group[aria-pressed='true'] {
+  background: var(--color-accent-soft);
+}
+.members {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-xs);
+  overflow-wrap: anywhere;
+}
+.members li {
+  display: inline;
+}
+.members li + li::before {
+  content: ', ';
+}
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-sm);
+}

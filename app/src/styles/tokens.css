@@ -1,5 +1,5 @@
 /*
- * FontWorkshop design tokens.
+ * FontCarver design tokens.
  *
  * The only place colours, spacing, radii and typography are defined. Component
  * CSS Modules must reference these variables and never hard-code a colour.
@@ -21,6 +21,9 @@
   --text-size-sm: 12px;
   --text-size-xs: 11px;
   --text-size-lg: 15px;
+  /* Dialog body and dialog title, from the design scale. */
+  --text-size-md: 14px;
+  --text-size-xl: 16px;
   --text-weight-medium: 500;
   --text-weight-strong: 600;
   --line-height: 1.45;
@@ -58,7 +61,7 @@
   --color-border-subtle: #e2e2e5;
   --color-text: #17171a;
   --color-text-muted: #5a5a63;
-  --color-text-faint: #6b6b74;
+  --color-text-faint: #64646b;
   --color-text-inverted: #ffffff;
   --color-accent: #3a6ea5;
   --color-accent-hover: #33608f;
@@ -72,25 +75,43 @@
   --color-warning-soft: #f7ecd7;
   --color-focus-ring: #3a6ea5;
   --color-overlay: rgb(28 28 32 / 32%);
+  /* Popover and dialog elevation, design spec §2.3. */
+  --shadow-popover: 0 8px 24px rgb(0 0 0 / 18%);
 
-  /* Glyph editor canvas. Canvas cannot read CSS variables, so these are read
-     once per theme and handed to the drawing modules as plain colours. */
-  --color-glyph-fill: #17171a;
-  --color-glyph-outline: #3f3f47;
-  --color-glyph-metric: #b9b9c0;
-  --color-glyph-metric-strong: #8d8d96;
-  --color-glyph-sidebearing: #9ab0c8;
-  --color-glyph-node-corner: #2f5f9e;
-  --color-glyph-node-smooth: #2c7a4b;
-  --color-glyph-node-implied: #2f7f8f;
-  --color-glyph-node-offcurve: #7b7b85;
-  --color-glyph-handle: #a8a8b2;
-  --color-glyph-start: #2f5f9e;
-  --color-glyph-component: #9a9aa4;
-  --color-glyph-anchor: #a3417c;
-  --color-glyph-guide-local: #3a6ea5;
-  --color-glyph-guide-global: #a33a35;
-  --color-glyph-ruler: #ededf0;
+  /* Glyph editor canvas (design spec §2.1). Canvas cannot read CSS variables,
+     so these are resolved once per theme and handed to the drawing modules as
+     plain colours; no canvas colour is written anywhere but here. */
+  --cv-bg: #ffffff;
+  --cv-ink: #1b1f24;
+  --cv-metric: #b8bec7;
+  --cv-metric-label: #7a828e;
+  --cv-guide-local: #3b6fb6;
+  --cv-guide-global: #c2413b;
+  --cv-node-corner: #3b6fb6;
+  --cv-node-smooth: #2e8b57;
+  --cv-node-implied: #2f7f8f;
+  --cv-handle: #8b939f;
+  --cv-selection: #2b5fa8;
+  --cv-selection-ink: #ffffff;
+  --cv-component: #8b939f;
+  --cv-background-layer: #c9a227;
+  --cv-other-master: #9e7bb5;
+  --cv-anchor: #c2413b;
+  --cv-warning: #c2413b;
+  --cv-zone: #eadfb8;
+  --cv-hud-bg: rgb(27 31 36 / 92%);
+  --cv-hud-ink: #ffffff;
+  --cv-ruler: #f8f9fa;
+  --cv-sidebearing: #9ab0c8;
+
+  /* Bitmap (pixel) canvas. A separate palette from both the interface and the
+     glyph canvas: the strike editor paints ink on paper at one pixel per cell,
+     so its ground must not read as a panel and its ink must not read as label
+     text. Resolved per theme and handed to `renderBitmap` as plain colours. */
+  --bm-paper: #fdfdfb;
+  --bm-ink: #101217;
+  --bm-grid: #c8ccd4;
+  --bm-accent: #2b5fa8;
 }
 
 :root[data-theme='dark'] {
@@ -107,8 +128,8 @@
   --color-text-muted: #b4b4be;
   --color-text-faint: #a0a0aa;
   --color-text-inverted: #17171a;
-  --color-accent: #5f92cc;
-  --color-accent-hover: #6f9fd5;
+  --color-accent: #7fa6dc;
+  --color-accent-hover: #93b6e6;
   --color-accent-text: #0f1620;
   --color-accent-soft: #2b3a4d;
   --color-hover: #303037;
@@ -119,22 +140,35 @@
   --color-warning-soft: #3a2f1c;
   --color-focus-ring: #78a6de;
   --color-overlay: rgb(0 0 0 / 48%);
+  --shadow-popover: 0 8px 24px rgb(0 0 0 / 45%);
 
-  /* Glyph editor canvas (dark). */
-  --color-glyph-fill: #e7e7ea;
-  --color-glyph-outline: #c3c3cc;
-  --color-glyph-metric: #4b4b55;
-  --color-glyph-metric-strong: #74747f;
-  --color-glyph-sidebearing: #566d86;
-  --color-glyph-node-corner: #7aa9e0;
-  --color-glyph-node-smooth: #64c08c;
-  --color-glyph-node-implied: #6fc2d2;
-  --color-glyph-node-offcurve: #9b9ba6;
-  --color-glyph-handle: #6a6a75;
-  --color-glyph-start: #7aa9e0;
-  --color-glyph-component: #7d7d88;
-  --color-glyph-anchor: #d986b8;
-  --color-glyph-guide-local: #5f92cc;
-  --color-glyph-guide-global: #e08a85;
-  --color-glyph-ruler: #232328;
+  /* Glyph editor canvas (dark, design spec §2.1). */
+  --cv-bg: #1a1d21;
+  --cv-ink: #e6e8eb;
+  --cv-metric: #3f4750;
+  --cv-metric-label: #8b94a0;
+  --cv-guide-local: #7fa6dc;
+  --cv-guide-global: #e36d66;
+  --cv-node-corner: #7fa6dc;
+  --cv-node-smooth: #5dbb84;
+  --cv-node-implied: #6fc2d2;
+  --cv-handle: #7c8590;
+  --cv-selection: #9bc0f0;
+  --cv-selection-ink: #10151a;
+  --cv-component: #6e7783;
+  --cv-background-layer: #d4b14a;
+  --cv-other-master: #b394c9;
+  --cv-anchor: #e36d66;
+  --cv-warning: #e36d66;
+  --cv-zone: #3a3520;
+  --cv-hud-bg: rgb(230 232 235 / 94%);
+  --cv-hud-ink: #15181c;
+  --cv-ruler: #23282f;
+  --cv-sidebearing: #566d86;
+
+  /* Bitmap (pixel) canvas (dark). */
+  --bm-paper: #15181d;
+  --bm-ink: #eef0f3;
+  --bm-grid: #353d47;
+  --bm-accent: #9bc0f0;
 }

@@ -1,0 +1,1026 @@
+[
+  {
+    "language": "en",
+    "theme": "light",
+    "zoom200": {
+      "dpr": 2,
+      "help": {
+        "bottom": 27,
+        "height": 27,
+        "right": 606.4609375,
+        "text": "Help",
+        "width": 50.140625,
+        "x": 556.3203125,
+        "y": 0
+      },
+      "popup": {
+        "bottom": 112,
+        "height": 85,
+        "right": 675,
+        "text": "Context HelpF1Keyboard ShortcutsAbout FontCarver",
+        "width": 248,
+        "x": 427,
+        "y": 27
+      },
+      "theme": "light",
+      "titles": [
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 43.1953125,
+          "text": "File",
+          "width": 43.1953125,
+          "x": 0,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 88.6796875,
+          "text": "Edit",
+          "width": 45.484375,
+          "x": 43.1953125,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 145.4296875,
+          "text": "Glyph",
+          "width": 56.75,
+          "x": 88.6796875,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 195.171875,
+          "text": "Path",
+          "width": 49.7421875,
+          "x": 145.4296875,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 250.0390625,
+          "text": "Layer",
+          "width": 54.8671875,
+          "x": 195.171875,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 299.28125,
+          "text": "Font",
+          "width": 49.2421875,
+          "x": 250.0390625,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 371.9921875,
+          "text": "Features",
+          "width": 72.7109375,
+          "x": 299.28125,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 436.5546875,
+          "text": "Bitmap",
+          "width": 64.5625,
+          "x": 371.9921875,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 486.8125,
+          "text": "View",
+          "width": 50.2578125,
+          "x": 436.5546875,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 556.3203125,
+          "text": "Window",
+          "width": 69.5078125,
+          "x": 486.8125,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 606.4609375,
+          "text": "Help",
+          "width": 50.140625,
+          "x": 556.3203125,
+          "y": 0
+        }
+      ],
+      "viewport": [683, 384]
+    },
+    "narrow": {
+      "dpr": 2,
+      "help": {
+        "bottom": 54,
+        "height": 27,
+        "right": 119.6484375,
+        "text": "Help",
+        "width": 50.140625,
+        "x": 69.5078125,
+        "y": 27
+      },
+      "popup": {
+        "bottom": 139,
+        "height": 85,
+        "right": 317.5078125,
+        "text": "Context HelpF1Keyboard ShortcutsAbout FontCarver",
+        "width": 248,
+        "x": 69.5078125,
+        "y": 54
+      },
+      "theme": "light",
+      "titles": [
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 43.1953125,
+          "text": "File",
+          "width": 43.1953125,
+          "x": 0,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 88.6796875,
+          "text": "Edit",
+          "width": 45.484375,
+          "x": 43.1953125,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 145.4296875,
+          "text": "Glyph",
+          "width": 56.75,
+          "x": 88.6796875,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 195.171875,
+          "text": "Path",
+          "width": 49.7421875,
+          "x": 145.4296875,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 250.0390625,
+          "text": "Layer",
+          "width": 54.8671875,
+          "x": 195.171875,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 299.28125,
+          "text": "Font",
+          "width": 49.2421875,
+          "x": 250.0390625,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 371.9921875,
+          "text": "Features",
+          "width": 72.7109375,
+          "x": 299.28125,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 436.5546875,
+          "text": "Bitmap",
+          "width": 64.5625,
+          "x": 371.9921875,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 486.8125,
+          "text": "View",
+          "width": 50.2578125,
+          "x": 436.5546875,
+          "y": 0
+        },
+        {
+          "bottom": 54,
+          "height": 27,
+          "right": 69.5078125,
+          "text": "Window",
+          "width": 69.5078125,
+          "x": 0,
+          "y": 27
+        },
+        {
+          "bottom": 54,
+          "height": 27,
+          "right": 119.6484375,
+          "text": "Help",
+          "width": 50.140625,
+          "x": 69.5078125,
+          "y": 27
+        }
+      ],
+      "viewport": [512, 384]
+    },
+    "mouseAction": true,
+    "keyboardNavigation": true,
+    "returnFocus": true,
+    "resizeWhileOpen": true
+  },
+  {
+    "language": "en",
+    "theme": "dark",
+    "zoom200": {
+      "dpr": 2,
+      "help": {
+        "bottom": 27,
+        "height": 27,
+        "right": 606.4609375,
+        "text": "Help",
+        "width": 50.140625,
+        "x": 556.3203125,
+        "y": 0
+      },
+      "popup": {
+        "bottom": 112,
+        "height": 85,
+        "right": 675,
+        "text": "Context HelpF1Keyboard ShortcutsAbout FontCarver",
+        "width": 248,
+        "x": 427,
+        "y": 27
+      },
+      "theme": "dark",
+      "titles": [
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 43.1953125,
+          "text": "File",
+          "width": 43.1953125,
+          "x": 0,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 88.6796875,
+          "text": "Edit",
+          "width": 45.484375,
+          "x": 43.1953125,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 145.4296875,
+          "text": "Glyph",
+          "width": 56.75,
+          "x": 88.6796875,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 195.171875,
+          "text": "Path",
+          "width": 49.7421875,
+          "x": 145.4296875,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 250.0390625,
+          "text": "Layer",
+          "width": 54.8671875,
+          "x": 195.171875,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 299.28125,
+          "text": "Font",
+          "width": 49.2421875,
+          "x": 250.0390625,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 371.9921875,
+          "text": "Features",
+          "width": 72.7109375,
+          "x": 299.28125,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 436.5546875,
+          "text": "Bitmap",
+          "width": 64.5625,
+          "x": 371.9921875,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 486.8125,
+          "text": "View",
+          "width": 50.2578125,
+          "x": 436.5546875,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 556.3203125,
+          "text": "Window",
+          "width": 69.5078125,
+          "x": 486.8125,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 606.4609375,
+          "text": "Help",
+          "width": 50.140625,
+          "x": 556.3203125,
+          "y": 0
+        }
+      ],
+      "viewport": [683, 384]
+    },
+    "narrow": {
+      "dpr": 2,
+      "help": {
+        "bottom": 54,
+        "height": 27,
+        "right": 119.6484375,
+        "text": "Help",
+        "width": 50.140625,
+        "x": 69.5078125,
+        "y": 27
+      },
+      "popup": {
+        "bottom": 139,
+        "height": 85,
+        "right": 317.5078125,
+        "text": "Context HelpF1Keyboard ShortcutsAbout FontCarver",
+        "width": 248,
+        "x": 69.5078125,
+        "y": 54
+      },
+      "theme": "dark",
+      "titles": [
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 43.1953125,
+          "text": "File",
+          "width": 43.1953125,
+          "x": 0,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 88.6796875,
+          "text": "Edit",
+          "width": 45.484375,
+          "x": 43.1953125,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 145.4296875,
+          "text": "Glyph",
+          "width": 56.75,
+          "x": 88.6796875,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 195.171875,
+          "text": "Path",
+          "width": 49.7421875,
+          "x": 145.4296875,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 250.0390625,
+          "text": "Layer",
+          "width": 54.8671875,
+          "x": 195.171875,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 299.28125,
+          "text": "Font",
+          "width": 49.2421875,
+          "x": 250.0390625,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 371.9921875,
+          "text": "Features",
+          "width": 72.7109375,
+          "x": 299.28125,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 436.5546875,
+          "text": "Bitmap",
+          "width": 64.5625,
+          "x": 371.9921875,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 486.8125,
+          "text": "View",
+          "width": 50.2578125,
+          "x": 436.5546875,
+          "y": 0
+        },
+        {
+          "bottom": 54,
+          "height": 27,
+          "right": 69.5078125,
+          "text": "Window",
+          "width": 69.5078125,
+          "x": 0,
+          "y": 27
+        },
+        {
+          "bottom": 54,
+          "height": 27,
+          "right": 119.6484375,
+          "text": "Help",
+          "width": 50.140625,
+          "x": 69.5078125,
+          "y": 27
+        }
+      ],
+      "viewport": [512, 384]
+    },
+    "mouseAction": true,
+    "keyboardNavigation": true,
+    "returnFocus": true,
+    "resizeWhileOpen": true
+  },
+  {
+    "language": "zh-CN",
+    "theme": "dark",
+    "zoom200": {
+      "dpr": 2,
+      "help": {
+        "bottom": 27,
+        "height": 27,
+        "right": 528,
+        "text": "帮助",
+        "width": 48,
+        "x": 480,
+        "y": 0
+      },
+      "popup": {
+        "bottom": 112,
+        "height": 85,
+        "right": 675,
+        "text": "上下文帮助F1键盘快捷键关于 FontCarver",
+        "width": 248,
+        "x": 427,
+        "y": 27
+      },
+      "theme": "dark",
+      "titles": [
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 48,
+          "text": "文件",
+          "width": 48,
+          "x": 0,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 96,
+          "text": "编辑",
+          "width": 48,
+          "x": 48,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 144,
+          "text": "字形",
+          "width": 48,
+          "x": 96,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 192,
+          "text": "路径",
+          "width": 48,
+          "x": 144,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 240,
+          "text": "图层",
+          "width": 48,
+          "x": 192,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 288,
+          "text": "字体",
+          "width": 48,
+          "x": 240,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 336,
+          "text": "特性",
+          "width": 48,
+          "x": 288,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 384,
+          "text": "点阵",
+          "width": 48,
+          "x": 336,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 432,
+          "text": "视图",
+          "width": 48,
+          "x": 384,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 480,
+          "text": "窗口",
+          "width": 48,
+          "x": 432,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 528,
+          "text": "帮助",
+          "width": 48,
+          "x": 480,
+          "y": 0
+        }
+      ],
+      "viewport": [683, 384]
+    },
+    "narrow": {
+      "dpr": 2,
+      "help": {
+        "bottom": 54,
+        "height": 27,
+        "right": 48,
+        "text": "帮助",
+        "width": 48,
+        "x": 0,
+        "y": 27
+      },
+      "popup": {
+        "bottom": 139,
+        "height": 85,
+        "right": 256,
+        "text": "上下文帮助F1键盘快捷键关于 FontCarver",
+        "width": 248,
+        "x": 8,
+        "y": 54
+      },
+      "theme": "dark",
+      "titles": [
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 48,
+          "text": "文件",
+          "width": 48,
+          "x": 0,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 96,
+          "text": "编辑",
+          "width": 48,
+          "x": 48,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 144,
+          "text": "字形",
+          "width": 48,
+          "x": 96,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 192,
+          "text": "路径",
+          "width": 48,
+          "x": 144,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 240,
+          "text": "图层",
+          "width": 48,
+          "x": 192,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 288,
+          "text": "字体",
+          "width": 48,
+          "x": 240,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 336,
+          "text": "特性",
+          "width": 48,
+          "x": 288,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 384,
+          "text": "点阵",
+          "width": 48,
+          "x": 336,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 432,
+          "text": "视图",
+          "width": 48,
+          "x": 384,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 480,
+          "text": "窗口",
+          "width": 48,
+          "x": 432,
+          "y": 0
+        },
+        {
+          "bottom": 54,
+          "height": 27,
+          "right": 48,
+          "text": "帮助",
+          "width": 48,
+          "x": 0,
+          "y": 27
+        }
+      ],
+      "viewport": [512, 384]
+    },
+    "mouseAction": true,
+    "keyboardNavigation": true,
+    "returnFocus": true,
+    "resizeWhileOpen": true
+  },
+  {
+    "language": "zh-CN",
+    "theme": "light",
+    "zoom200": {
+      "dpr": 2,
+      "help": {
+        "bottom": 27,
+        "height": 27,
+        "right": 528,
+        "text": "帮助",
+        "width": 48,
+        "x": 480,
+        "y": 0
+      },
+      "popup": {
+        "bottom": 112,
+        "height": 85,
+        "right": 675,
+        "text": "上下文帮助F1键盘快捷键关于 FontCarver",
+        "width": 248,
+        "x": 427,
+        "y": 27
+      },
+      "theme": "light",
+      "titles": [
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 48,
+          "text": "文件",
+          "width": 48,
+          "x": 0,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 96,
+          "text": "编辑",
+          "width": 48,
+          "x": 48,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 144,
+          "text": "字形",
+          "width": 48,
+          "x": 96,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 192,
+          "text": "路径",
+          "width": 48,
+          "x": 144,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 240,
+          "text": "图层",
+          "width": 48,
+          "x": 192,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 288,
+          "text": "字体",
+          "width": 48,
+          "x": 240,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 336,
+          "text": "特性",
+          "width": 48,
+          "x": 288,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 384,
+          "text": "点阵",
+          "width": 48,
+          "x": 336,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 432,
+          "text": "视图",
+          "width": 48,
+          "x": 384,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 480,
+          "text": "窗口",
+          "width": 48,
+          "x": 432,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 528,
+          "text": "帮助",
+          "width": 48,
+          "x": 480,
+          "y": 0
+        }
+      ],
+      "viewport": [683, 384]
+    },
+    "narrow": {
+      "dpr": 2,
+      "help": {
+        "bottom": 54,
+        "height": 27,
+        "right": 48,
+        "text": "帮助",
+        "width": 48,
+        "x": 0,
+        "y": 27
+      },
+      "popup": {
+        "bottom": 139,
+        "height": 85,
+        "right": 256,
+        "text": "上下文帮助F1键盘快捷键关于 FontCarver",
+        "width": 248,
+        "x": 8,
+        "y": 54
+      },
+      "theme": "light",
+      "titles": [
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 48,
+          "text": "文件",
+          "width": 48,
+          "x": 0,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 96,
+          "text": "编辑",
+          "width": 48,
+          "x": 48,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 144,
+          "text": "字形",
+          "width": 48,
+          "x": 96,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 192,
+          "text": "路径",
+          "width": 48,
+          "x": 144,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 240,
+          "text": "图层",
+          "width": 48,
+          "x": 192,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 288,
+          "text": "字体",
+          "width": 48,
+          "x": 240,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 336,
+          "text": "特性",
+          "width": 48,
+          "x": 288,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 384,
+          "text": "点阵",
+          "width": 48,
+          "x": 336,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 432,
+          "text": "视图",
+          "width": 48,
+          "x": 384,
+          "y": 0
+        },
+        {
+          "bottom": 27,
+          "height": 27,
+          "right": 480,
+          "text": "窗口",
+          "width": 48,
+          "x": 432,
+          "y": 0
+        },
+        {
+          "bottom": 54,
+          "height": 27,
+          "right": 48,
+          "text": "帮助",
+          "width": 48,
+          "x": 0,
+          "y": 27
+        }
+      ],
+      "viewport": [512, 384]
+    },
+    "mouseAction": true,
+    "keyboardNavigation": true,
+    "returnFocus": true,
+    "resizeWhileOpen": true
+  }
+]

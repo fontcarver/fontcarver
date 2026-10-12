@@ -4,12 +4,14 @@ import type { AxisSummary, Instance, Master } from '../../api'
 
 import styles from './fontInfo.module.css'
 import { rowMatches } from './fontInfoRows'
+import { overridesFamily, overridesStyle } from './scopedInfo'
 import { SectionBody } from './SectionBody'
 
 export interface AxesTableProps {
   axes: readonly AxisSummary[]
   masters: readonly Master[]
   instances: readonly Instance[]
+  familyName: string
   /** Search term applied to axes, locations and instance metadata. */
   query: string
   heading?: string
@@ -22,6 +24,7 @@ export function AxesTable({
   axes,
   masters,
   instances,
+  familyName,
   query,
   heading,
 }: AxesTableProps) {
@@ -36,7 +39,7 @@ export function AxesTable({
         label: [
           instance.name,
           instance.style_name,
-          instance.family_name ?? '',
+          instance.family_name ?? familyName,
           instance.active ? t('common.yes') : t('common.no'),
           instance.is_variable_named_instance
             ? t('common.yes')
@@ -154,8 +157,34 @@ export function AxesTable({
                 {visibleInstances.map((instance, index) => (
                   <tr key={`${instance.name}-${instance.style_name}-${index}`}>
                     <th scope="row">{instance.name}</th>
-                    <td>{instance.style_name}</td>
-                    <td>{instance.family_name ?? '—'}</td>
+                    <td>
+                      {instance.style_name.trim()
+                        ? instance.style_name
+                        : instance.name}
+                      <span className={styles.sourceLabel}>
+                        {t(
+                          overridesStyle(instance.style_name, instance.name)
+                            ? 'scopedInfo.exportOverride'
+                            : 'scopedInfo.instanceStyle',
+                          {
+                            value: instance.style_name.trim()
+                              ? instance.style_name
+                              : instance.name,
+                          },
+                        )}
+                      </span>
+                    </td>
+                    <td>
+                      {instance.family_name ?? familyName}
+                      <span className={styles.sourceLabel}>
+                        {t(
+                          overridesFamily(instance.family_name, familyName)
+                            ? 'scopedInfo.exportOverride'
+                            : 'scopedInfo.inheritedFamily',
+                          { value: instance.family_name ?? familyName },
+                        )}
+                      </span>
+                    </td>
                     {axes.map((axis) => (
                       <td key={axis.tag} className={styles.numeric}>
                         {instance.location[axis.tag] ?? '—'}

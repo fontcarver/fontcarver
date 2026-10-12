@@ -5,22 +5,35 @@ import { onDocumentEvent, type DocSummary } from '../../api'
 import { Toolbar } from '../../components/Toolbar'
 import type { WarningTranslationOptions } from '../../i18n/warnings'
 import { useFontInfo } from '../../stores/fontInfoCache'
+import { invalidateFor } from '../font/invalidation'
 
 import { AxesTable } from './AxesTable'
+import { CidEditor } from './CidEditor'
+import { DesignSpaceEditor } from './DesignSpaceEditor'
+import { FontMetadataEditor } from './FontMetadataEditor'
+import { Button } from '../../components/Button'
 import styles from './fontInfo.module.css'
 import { fontGroups, otherGroups } from './fontInfoRows'
 import { InfoGroups } from './InfoGroups'
 import { MetricsTable } from './MetricsTable'
 import { NamesTable } from './NamesTable'
 import { TablesTable } from './TablesTable'
+import { FontSettingsEditor } from './FontSettingsEditor'
+import { ScopedInfoTable } from './ScopedInfoTable'
+import { MasterHints } from '../hints/MasterHints'
+import { SvgEditor } from '../svg/SvgEditor'
+import { ColorEditor } from '../color/ColorEditor'
+import { MathEditor } from '../math/MathEditor'
 
 /** The sections of the Font Info tab, in order. */
 export const SECTIONS = [
   'font',
+  'scopes',
   'names',
   'masters',
   'axes',
   'tables',
+  'settings',
   'other',
 ] as const
 
@@ -32,7 +45,7 @@ export interface FontInfoPanelProps {
 }
 
 /**
- * The Font Info tab: everything the kernel knows about the font, read-only.
+ * Font metadata inspection, with an atomic editor for axes, masters and instances.
  *
  * A search box filters fields across *every* section at once — the single
  * biggest quality-of-life gap in the incumbent editors, where finding
@@ -42,14 +55,22 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
   const { t } = useTranslation()
   const [section, setSection] = useState<SectionId>('font')
   const [query, setQuery] = useState('')
-  const [reloadToken, setReloadToken] = useState(0)
-  const { info, error, loading } = useFontInfo(summary.doc, reloadToken)
+  const [designSpaceOpen, setDesignSpaceOpen] = useState(false)
+  const [metadataOpen, setMetadataOpen] = useState(false)
+  const [cidOpen, setCidOpen] = useState(false)
+  const [mathOpen, setMathOpen] = useState(false)
+  const [colorOpen, setColorOpen] = useState(false)
+  const [svgOpen, setSvgOpen] = useState(false)
+  const { info, error, loading } = useFontInfo(summary.doc)
 
+  // The panel is the only view mounted while it is the active tab, so it is
+  // the one that has to hand document events to the shared invalidation; the
+  // reload itself comes back through the font-info cache.
   useEffect(
     () =>
       onDocumentEvent((event) => {
-        if (event.doc === summary.doc && event.change.font_info)
-          setReloadToken((value) => value + 1)
+        if (event.doc === summary.doc)
+          invalidateFor(event.change, event.doc, event.generation)
       }),
     [summary.doc],
   )
@@ -91,31 +112,69 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
             empty={t('fontInfo.noMatches')}
           />
         )
+      case 'scopes':
+        return (
+          <ScopedInfoTable
+            heading={heading}
+            doc={summary.doc}
+            info={info.info}
+            masters={info.masters}
+            instances={info.instances}
+            query={query}
+          />
+        )
       case 'names':
         return (
           <NamesTable heading={heading} names={info.info.names} query={query} />
         )
       case 'masters':
         return (
-          <MetricsTable
-            heading={heading}
-            masters={info.masters}
-            query={query}
-          />
+          <>
+            {!searching && (
+              <>
+                <Button onClick={() => setDesignSpaceOpen(true)}>
+                  {t('variation.edit')}
+                </Button>
+                <MasterHints doc={summary.doc} masters={info.masters} />
+              </>
+            )}
+            <MetricsTable
+              heading={heading}
+              masters={info.masters}
+              unitsPerEm={info.info.units_per_em}
+              query={query}
+            />
+          </>
         )
       case 'axes':
         return (
-          <AxesTable
-            heading={heading}
-            axes={summary.axes}
-            masters={info.masters}
-            instances={info.instances}
-            query={query}
-          />
+          <>
+            {!searching && (
+              <Button onClick={() => setDesignSpaceOpen(true)}>
+                {t('variation.edit')}
+              </Button>
+            )}
+            <AxesTable
+              heading={heading}
+              axes={summary.axes}
+              masters={info.masters}
+              instances={info.instances}
+              familyName={info.info.family_name}
+              query={query}
+            />
+          </>
         )
       case 'tables':
         return (
           <TablesTable heading={heading} tables={info.tables} query={query} />
+        )
+      case 'settings':
+        return searching ? null : (
+          <FontSettingsEditor
+            key={summary.doc}
+            doc={summary.doc}
+            unitsPerEm={info.info.units_per_em}
+          />
         )
       case 'other':
         return (
@@ -131,7 +190,39 @@ export function FontInfoPanel({ summary }: FontInfoPanelProps) {
 
   return (
     <div className={styles.view}>
+      {metadataOpen && (
+        <FontMetadataEditor
+          key={summary.doc}
+          doc={summary.doc}
+          onClose={() => setMetadataOpen(false)}
+        />
+      )}
+      {cidOpen && (
+        <CidEditor doc={summary.doc} onClose={() => setCidOpen(false)} />
+      )}
+      {svgOpen && (
+        <SvgEditor doc={summary.doc} onClose={() => setSvgOpen(false)} />
+      )}
+      {colorOpen && (
+        <ColorEditor doc={summary.doc} onClose={() => setColorOpen(false)} />
+      )}
+      {mathOpen && (
+        <MathEditor doc={summary.doc} onClose={() => setMathOpen(false)} />
+      )}
+      {designSpaceOpen && (
+        <DesignSpaceEditor
+          doc={summary.doc}
+          onClose={() => setDesignSpaceOpen(false)}
+        />
+      )}
       <Toolbar label={t('fontInfo.toolbar')} className={styles.toolbar}>
+        <Button onClick={() => setMetadataOpen(true)}>
+          {t('fontMetadata.edit')}
+        </Button>
+        <Button onClick={() => setCidOpen(true)}>{t('cid.title')}</Button>
+        <Button onClick={() => setMathOpen(true)}>{t('math.title')}</Button>
+        <Button onClick={() => setColorOpen(true)}>{t('color.title')}</Button>
+        <Button onClick={() => setSvgOpen(true)}>{t('svg.title')}</Button>
         <span role="tablist" aria-label={t('fontInfo.sections')}>
           {SECTIONS.map((id) => (
             <button

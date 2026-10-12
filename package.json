@@ -1,13 +1,23 @@
 {
-  "name": "fontworkshop-workspace",
+  "name": "fontcarver-workspace",
   "private": true,
+  "license": "MIT OR Apache-2.0",
+  "homepage": "https://fontcarver.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fontcarver/fontcarver.git"
+  },
   "packageManager": "pnpm@10.32.1",
   "scripts": {
     "dev": "./scripts/dev.sh",
     "tauri": "pnpm --dir app tauri",
     "check": "pnpm --dir app check",
     "lint": "pnpm --dir app lint",
+    "knip": "knip",
     "test": "pnpm --dir app test",
     "build": "pnpm --dir app build"
+  },
+  "devDependencies": {
+    "knip": "^6.39.0"
   }
 }

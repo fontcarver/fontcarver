@@ -1,0 +1,269 @@
+{
+  "complete": true,
+  "cases": [
+    {
+      "font": "DejaVuSans.ttf",
+      "format": "Ttf",
+      "glyphs": [
+        "A",
+        "B",
+        "O",
+        "S",
+        "g",
+        "a",
+        "e"
+      ],
+      "verified_samples": 6548,
+      "previews": [
+        {
+          "glyph": "A",
+          "seconds": 0.03,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "B",
+          "seconds": 0.048,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "O",
+          "seconds": 0.042,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "S",
+          "seconds": 0.049,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "g",
+          "seconds": 0.049,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "a",
+          "seconds": 0.048,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "e",
+          "seconds": 0.039,
+          "approximated_layers": []
+        }
+      ]
+    },
+    {
+      "font": "DejaVuSans.ttf",
+      "format": "Otf",
+      "glyphs": [
+        "A",
+        "B",
+        "O",
+        "S",
+        "g",
+        "a",
+        "e"
+      ],
+      "verified_samples": 6548,
+      "previews": [
+        {
+          "glyph": "A",
+          "seconds": 0.03,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "B",
+          "seconds": 0.048,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "O",
+          "seconds": 0.042,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "S",
+          "seconds": 0.049,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "g",
+          "seconds": 0.049,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "a",
+          "seconds": 0.048,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "e",
+          "seconds": 0.039,
+          "approximated_layers": []
+        }
+      ]
+    },
+    {
+      "font": "DejaVuSans.ttf",
+      "format": "Ttf",
+      "glyphs": [
+        "Aacute"
+      ],
+      "verified_samples": 931,
+      "previews": [
+        {
+          "glyph": "Aacute",
+          "seconds": 0.027,
+          "approximated_layers": []
+        }
+      ]
+    },
+    {
+      "font": "DejaVuSans.ttf",
+      "format": "Otf",
+      "glyphs": [
+        "Aacute"
+      ],
+      "verified_samples": 931,
+      "previews": [
+        {
+          "glyph": "Aacute",
+          "seconds": 0.027,
+          "approximated_layers": []
+        }
+      ]
+    },
+    {
+      "font": "NotoSans-Regular.ttf",
+      "format": "Ttf",
+      "glyphs": [
+        "A",
+        "B",
+        "O",
+        "S",
+        "g",
+        "a",
+        "e"
+      ],
+      "verified_samples": 6308,
+      "previews": [
+        {
+          "glyph": "A",
+          "seconds": 0.021,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "B",
+          "seconds": 0.033,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "O",
+          "seconds": 0.026,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "S",
+          "seconds": 0.034,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "g",
+          "seconds": 0.038,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "a",
+          "seconds": 0.034,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "e",
+          "seconds": 0.029,
+          "approximated_layers": []
+        }
+      ]
+    },
+    {
+      "font": "NotoSans-Regular.ttf",
+      "format": "Otf",
+      "glyphs": [
+        "A",
+        "B",
+        "O",
+        "S",
+        "g",
+        "a",
+        "e"
+      ],
+      "verified_samples": 6308,
+      "previews": [
+        {
+          "glyph": "A",
+          "seconds": 0.021,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "B",
+          "seconds": 0.033,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "O",
+          "seconds": 0.026,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "S",
+          "seconds": 0.034,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "g",
+          "seconds": 0.038,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "a",
+          "seconds": 0.034,
+          "approximated_layers": []
+        },
+        {
+          "glyph": "e",
+          "seconds": 0.029,
+          "approximated_layers": []
+        }
+      ]
+    },
+    {
+      "font": "NotoSans-Regular.ttf",
+      "format": "Ttf",
+      "glyphs": [
+        "Aacute"
+      ],
+      "verified_samples": 932,
+      "previews": [
+        {
+          "glyph": "Aacute",
+          "seconds": 0.034,
+          "approximated_layers": []
+        }
+      ]
+    },
+    {
+      "font": "NotoSans-Regular.ttf",
+      "format": "Otf",
+      "glyphs": [
+        "Aacute"
+      ],
+      "verified_samples": 932,
+      "previews": [
+        {
+          "glyph": "Aacute",
+          "seconds": 0.034,
+          "approximated_layers": []
+        }
+      ]
+    }
+  ]
+}

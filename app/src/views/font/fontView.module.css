@@ -8,15 +8,12 @@
   flex-direction: column;
 }
 
-/* The toolbar keeps its controls at full size and scrolls when the content
-   column is too narrow, rather than pushing the inspector off screen. */
+/* Keep search and batch actions reachable when both side panels are open. */
 .toolbarRow {
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.toolbarRow::-webkit-scrollbar {
-  display: none;
+  height: auto;
+  min-height: 28px;
+  flex-wrap: wrap;
+  padding-block: var(--space-1);
 }
 
 .toolbarSpacer {
@@ -215,6 +212,42 @@
 
 .menuItem:disabled {
   color: var(--color-text-faint);
+}
+
+.menuSwatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  border-top: 1px solid var(--color-border-subtle);
+  margin-top: var(--space-1);
+}
+
+.menuSwatch,
+.menuSwatchNone {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+  line-height: 1;
+  cursor: default;
+}
+
+.menuSwatch:hover:not(:disabled),
+.menuSwatchNone:hover:not(:disabled),
+.menuSwatch:focus-visible,
+.menuSwatchNone:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+.menuSwatch:disabled,
+.menuSwatchNone:disabled {
+  opacity: 0.4;
 }
 
 .filterRow {

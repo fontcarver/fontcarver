@@ -1,0 +1,212 @@
+.strip {
+  display: flex;
+  height: 96px;
+  min-width: 0;
+  flex: none;
+  flex-direction: column;
+  border-top: 1px solid var(--color-border);
+  color-scheme: light;
+  background: Canvas;
+  color: CanvasText;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+.light {
+  color-scheme: light;
+}
+
+.collapsed {
+  height: var(--control-height);
+}
+
+.resizeHandle {
+  height: 5px;
+  flex: none;
+  cursor: row-resize;
+  touch-action: none;
+}
+
+.resizeHandle:hover,
+.resizeHandle:focus-visible {
+  background: color-mix(in srgb, currentcolor 35%, transparent);
+  outline: 2px solid currentcolor;
+  outline-offset: -2px;
+}
+
+.header {
+  display: flex;
+  height: var(--control-height);
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  border-bottom: 1px solid color-mix(in srgb, currentcolor 18%, transparent);
+  background: color-mix(in srgb, CanvasText 5%, Canvas);
+}
+
+.title {
+  font-size: var(--text-size-xs);
+  font-weight: var(--text-weight-strong);
+}
+
+.status {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-1);
+  color: inherit;
+  font-size: var(--text-size-xs);
+}
+
+.failed {
+  font-weight: var(--text-weight-medium);
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.iconButton {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+}
+
+.iconButton:hover {
+  background: color-mix(in srgb, currentcolor 10%, transparent);
+}
+
+.iconButton[aria-pressed='true'] {
+  background: color-mix(in srgb, currentcolor 18%, transparent);
+}
+
+.controls {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid color-mix(in srgb, currentcolor 14%, transparent);
+  font-size: var(--text-size-xs);
+}
+
+.settings {
+  flex: none;
+  max-height: 120px;
+  overflow: auto;
+}
+
+.controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.controls input,
+.controls select,
+.controls button {
+  min-height: 24px;
+  border: 1px solid color-mix(in srgb, currentcolor 35%, transparent);
+  border-radius: var(--radius-sm);
+  background: Canvas;
+  color: CanvasText;
+  font: inherit;
+}
+
+.controls input:focus-visible,
+.controls select:focus-visible,
+.controls button:focus-visible {
+  outline: 2px solid currentcolor;
+  outline-offset: 1px;
+}
+
+.blurInput {
+  width: 4.5em;
+}
+
+.sizesInput {
+  width: 13em;
+}
+
+.error {
+  margin: var(--space-1) var(--space-2);
+  color: var(--color-danger);
+  font-size: var(--text-size-xs);
+}
+
+.hint {
+  margin: var(--space-1) var(--space-2);
+  font-size: var(--text-size-xs);
+  opacity: 0.65;
+}
+
+.iconButton:focus-visible {
+  outline: 2px solid currentcolor;
+  outline-offset: 0;
+}
+
+.previews {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  overflow-x: auto;
+}
+
+.region {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid color-mix(in srgb, currentcolor 14%, transparent);
+}
+
+.region:last-child {
+  border-right: 0;
+}
+
+.sizeLabel {
+  position: absolute;
+  z-index: 1;
+  top: var(--space-1);
+  left: var(--space-1);
+  padding: 1px var(--space-1);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, Canvas 84%, transparent);
+  color: color-mix(in srgb, CanvasText 72%, Canvas);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-xs);
+  pointer-events: none;
+}
+
+.scroll {
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.canvas {
+  display: block;
+  max-width: none;
+  color: inherit;
+}

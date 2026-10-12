@@ -29,6 +29,93 @@ describe('HttpTransport.call', () => {
     )
   })
 
+  it('gives shaping and export longer default deadlines', async () => {
+    const timeout = vi
+      .spyOn(AbortSignal, 'timeout')
+      .mockReturnValue(new AbortController().signal)
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ result: null }), { status: 200 }),
+    )
+    const transport = new HttpTransport('http://localhost:8787')
+
+    await transport.call('text.shape', {
+      doc: 1,
+      text: '漢',
+      master: null,
+      features: [],
+      script: null,
+      language: null,
+      direction: null,
+      size: null,
+    })
+    await transport.call('session.export', {
+      doc: 1,
+      path: '/tmp/test.ttf',
+      options: {
+        format: 'Ttf',
+        variable: false,
+        master: null,
+        remove_overlap: false,
+        keep_tt_instructions: false,
+        preserve_untouched_tables: true,
+        production_names: false,
+        autohint: false,
+        table_subset: null,
+      },
+    })
+    await transport.call('session.list', {})
+
+    expect(timeout).toHaveBeenNthCalledWith(1, 120_000)
+    expect(timeout).toHaveBeenNthCalledWith(2, 120_000)
+    expect(timeout).toHaveBeenNthCalledWith(3, 30_000)
+  })
+
+  it('uses an explicit deadline for every method', async () => {
+    const timeout = vi
+      .spyOn(AbortSignal, 'timeout')
+      .mockReturnValue(new AbortController().signal)
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ result: null }), { status: 200 }),
+    )
+    const transport = new HttpTransport('http://localhost:8787', {
+      timeoutMs: 7,
+    })
+
+    await transport.call('text.shape', {
+      doc: 1,
+      text: '漢',
+      master: null,
+      features: [],
+      script: null,
+      language: null,
+      direction: null,
+      size: null,
+    })
+    await transport.call('session.export', {
+      doc: 1,
+      path: '/tmp/test.ttf',
+      options: {
+        format: 'Ttf',
+        variable: false,
+        master: null,
+        remove_overlap: false,
+        keep_tt_instructions: false,
+        preserve_untouched_tables: true,
+        production_names: false,
+        autohint: false,
+        table_subset: null,
+      },
+    })
+    await transport.call('session.list', {})
+
+    expect(timeout).toHaveBeenCalledTimes(3)
+    expect(timeout).toHaveBeenNthCalledWith(1, 7)
+    expect(timeout).toHaveBeenNthCalledWith(2, 7)
+    expect(timeout).toHaveBeenNthCalledWith(3, 7)
+  })
+
   it('turns an invalid_params response into ApiCallError', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
@@ -51,12 +138,18 @@ describe('HttpTransport.call', () => {
     })
   })
 
-  it('propagates network failures', async () => {
-    const failure = new TypeError('network unavailable')
-    vi.spyOn(globalThis, 'fetch').mockRejectedValue(failure)
+  it('reports an unreachable kernel as a transport ApiCallError', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(
+      new TypeError('network unavailable'),
+    )
     const transport = new HttpTransport('http://localhost:8787')
 
-    await expect(transport.call('session.list', {})).rejects.toBe(failure)
+    // Wrapped, not rethrown: the code is what the interface translates, and
+    // "could not reach the kernel" is not a file error.
+    await expect(transport.call('session.list', {})).rejects.toMatchObject({
+      code: 'transport',
+      message: 'network unavailable',
+    })
   })
 
   it('turns a non-JSON HTTP error into an internal ApiCallError', async () => {
@@ -75,7 +168,7 @@ describe('HttpTransport.call', () => {
     expect(error.message).toContain('HTTP 502')
   })
 
-  it('times out a hung request with an io ApiCallError', async () => {
+  it('times out a hung request with a timeout ApiCallError', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => {
       return new Promise((_resolve, reject) => {
         init?.signal?.addEventListener('abort', () =>
@@ -88,7 +181,7 @@ describe('HttpTransport.call', () => {
     })
 
     await expect(transport.call('session.list', {})).rejects.toMatchObject({
-      code: 'io',
+      code: 'timeout',
     })
   })
 })

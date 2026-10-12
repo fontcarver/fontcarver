@@ -2,9 +2,8 @@
 /fontforge/
 
 # Rust
-/target/
 **/target/
-/crates/fw-api/bindings/
+/crates/fc-api/bindings/
 # Node
 node_modules/
 app/node_modules/
@@ -16,7 +15,6 @@ dist-ssr/
 # Tauri
 src-tauri/target/
 src-tauri/gen/
-src-tauri/gen/schemas/
 # Editors / OS
 .DS_Store
 .idea/
@@ -31,3 +29,6 @@ app/playwright-report/
 /.superpowers/
 /.worktrees/
 crates/*/bindings/
+
+# Python tooling
+__pycache__/

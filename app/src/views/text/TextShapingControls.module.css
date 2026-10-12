@@ -1,0 +1,117 @@
+.panel {
+  flex: none;
+  min-width: 0;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-size-sm);
+}
+
+.summary {
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.summary:hover {
+  background: var(--color-hover);
+}
+
+.summary:focus-visible,
+.control:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+.content {
+  display: grid;
+  gap: var(--space-2);
+  max-height: min(40vh, 320px);
+  overflow: auto;
+  padding: var(--space-1) var(--space-2) var(--space-2);
+}
+
+.overrides,
+.features,
+.customFeature {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.override {
+  display: grid;
+  flex: 1 1 180px;
+  gap: var(--space-1);
+  max-width: 320px;
+}
+
+.feature {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.feature > span {
+  font-family: var(--font-mono);
+}
+
+.control {
+  min-width: 0;
+  min-height: var(--control-height);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font: inherit;
+}
+
+button.control:hover {
+  background: var(--color-hover);
+}
+
+.control[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.error {
+  color: var(--color-danger);
+  font-size: var(--text-size-xs);
+}
+
+.hint {
+  margin: var(--space-1) 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+}
+
+.tableScroll {
+  overflow: auto;
+  max-height: 180px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  text-align: start;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  background: var(--color-surface);
+  font-weight: var(--text-weight-medium);
+}
+
+.table th,
+.table td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.table td {
+  font-family: var(--font-mono);
+}

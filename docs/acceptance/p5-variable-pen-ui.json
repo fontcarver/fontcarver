@@ -1,0 +1,70 @@
+{
+  "date": "2026-09-30",
+  "synthetic_source": "Open four-point centerline, 700-unit advance, linked B component",
+  "transport": "Real fresh fc-devserver API8897 through Vite1431",
+  "profile": {
+    "kind": "variable_stroke",
+    "nib": "ellipse",
+    "cap": "round",
+    "join": "miter",
+    "miter_limit": 4.0,
+    "progression": "smooth",
+    "points": [
+      {
+        "position": 0.0,
+        "width": 24.0,
+        "height": 60.0,
+        "angle": -20.0
+      },
+      {
+        "position": 0.45,
+        "width": 120.0,
+        "height": 40.0,
+        "angle": 35.0
+      },
+      {
+        "position": 1.0,
+        "width": 40.0,
+        "height": 80.0,
+        "angle": 80.0
+      }
+    ]
+  },
+  "checks": {
+    "invalid_position_rejected": true,
+    "review_invalidated_after_edit": true,
+    "source_preserved_on_apply": true,
+    "ui_save_preserves_profile": true,
+    "bake_removes_profile_and_produces_closed_contours": true,
+    "one_ui_undo_restores_exact_layer": true,
+    "ui_save_after_undo_preserves_profile": true,
+    "close_then_native_reopen_restores_exact_layer": true,
+    "linked_component_reference_and_transform_preserved": true
+  },
+  "source_points": 4,
+  "baked_points": 883,
+  "a11y": {
+    "light": {
+      "axe_version": "4.12.1",
+      "counts": {
+        "inapplicable": 65,
+        "incomplete": 0,
+        "passes": 23,
+        "violations": 0
+      },
+      "violations": 0,
+      "incomplete": 0
+    },
+    "dark": {
+      "axe_version": "4.12.1",
+      "counts": {
+        "inapplicable": 65,
+        "incomplete": 0,
+        "passes": 23,
+        "violations": 0
+      },
+      "violations": 0,
+      "incomplete": 0
+    }
+  }
+}

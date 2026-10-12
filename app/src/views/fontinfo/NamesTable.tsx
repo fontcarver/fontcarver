@@ -14,6 +14,10 @@ export interface NamesTableProps {
   heading?: string
 }
 
+function platformLabel(platform: NameRecord['platform']): string {
+  return typeof platform === 'string' ? platform : `Other (${platform.Other})`
+}
+
 /**
  * Every imported `name` record, including the non-default languages that the
  * flattened fields above cannot show. This is the table that answers "why does
@@ -25,9 +29,10 @@ export function NamesTable({ names, query, heading }: NamesTableProps) {
   const rows = names.filter((record) => {
     const key = nameIdKey(record.name_id)
     const label = key ? t(key) : ''
+    const platform = platformLabel(record.platform)
     return rowMatches(
       {
-        label: `${record.name_id} ${label} ${record.language} ${record.platform}`,
+        label: `${record.name_id} ${label} ${record.language} ${platform}`,
         value: record.text,
       },
       query,
@@ -56,13 +61,14 @@ export function NamesTable({ names, query, heading }: NamesTableProps) {
           <tbody>
             {rows.map((record, index) => {
               const key = nameIdKey(record.name_id)
+              const platform = platformLabel(record.platform)
               return (
                 <tr
-                  key={`${record.name_id}-${record.platform}-${record.language}-${index}`}
+                  key={`${record.name_id}-${platform}-${record.language}-${index}`}
                 >
                   <td className={styles.numeric}>{record.name_id}</td>
                   <td>{key ? t(key) : '—'}</td>
-                  <td>{record.platform}</td>
+                  <td>{platform}</td>
                   <td>{record.language}</td>
                   <td className={styles.wrap}>{record.text}</td>
                 </tr>

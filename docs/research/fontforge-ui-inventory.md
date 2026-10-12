@@ -2,7 +2,7 @@
 
 # FontForge UI Feature / Command Inventory
 
-Extracted from `/home/chen/githubprojects/pixelfonts/fontworkshop/fontforge/fontforgeexe/`. Shortcut column shows the FontForge default hotkey where one exists (defaults live in `doc/sphinx/ui/misc/HotKeys.rst`; the menu arrays themselves ship `H_("...|No Shortcut")` because bindings are user-rebindable via `gdraw/hotkeys.c` + `~/.config/fontforge/hotkeys`).
+Extracted from `fontforge/fontforgeexe/`, the FontForge reference checkout in this repository. Shortcut column shows the FontForge default hotkey where one exists (defaults live in `doc/sphinx/ui/misc/HotKeys.rst`; the menu arrays themselves ship `H_("...|No Shortcut")` because bindings are user-rebindable via `gdraw/hotkeys.c` + `~/.config/fontforge/hotkeys`).
 
 ---
 

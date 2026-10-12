@@ -1,0 +1,29 @@
+FontCarver 0.1.0 Linux package evidence
+Built on Ubuntu 24.04.4 LTS, x86_64.
+Source revision: 449e7535962be443eaf05a7a1705daa7d7683d2e plus the uncommitted working tree of the P5 completion wave.
+
+== Sizes and digests ==
+    23314810 bytes  FontCarver_0.1.0_amd64.deb
+  sha256  3d349aa079e02e9f490fc111a2a75f04bd1126d9836e9ea94b41973802af2aa3
+    95799800 bytes  FontCarver_0.1.0_amd64.AppImage
+  sha256  13e9560e0c466b0b56264f037538bb36f1c730f6766a4e619a17b78a060cab63
+
+== dpkg-deb --info ==
+ new Debian package, version 2.0.
+ size 23314810 bytes: control archive=20277 bytes.
+     468 bytes,    11 lines      control
+  145862 bytes,  1141 lines      md5sums
+ Package: font-carver
+ Version: 0.1.0
+ Architecture: amd64
+ Installed-Size: 71854
+ Maintainer: FontCarver contributors
+ Section: graphics
+ Priority: optional
+ Homepage: https://fontcarver.com
+ Depends: libwebkit2gtk-4.1-0, libgtk-3-0
+ Description: A desktop font editor for outlines, metrics and OpenType layout
+  Create, edit and export fonts with a Rust font engine and a local desktop interface. Supports native FontCarver documents and common font source and binary formats.
+== control archive members ==
+md5sums
+control

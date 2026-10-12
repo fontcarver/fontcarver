@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "platform": "linux",
+  "expected": [
+    "deb",
+    "appimage"
+  ],
+  "generated_at": "2026-09-30T11:08:39.158369+00:00",
+  "ok": true,
+  "artifacts": [
+    {
+      "path": "deb/FontCarver_0.1.0_amd64.deb",
+      "type": "deb",
+      "bytes": 23314810,
+      "sha256": "3d349aa079e02e9f490fc111a2a75f04bd1126d9836e9ea94b41973802af2aa3",
+      "metadata": {
+        "Package": "font-carver",
+        "Version": "0.1.0",
+        "Architecture": "amd64"
+      },
+      "payload": {
+        "executable": {
+          "paths": [
+            "usr/bin/fontcarver-desktop"
+          ],
+          "valid_header": true
+        },
+        "resources": [
+          {
+            "path": "usr/lib/FontCarver/licenses/dependencies/LICENSE-MIT",
+            "sha256": "aa8f16d9ed7055b547dd381163393be157a9d3e0b185b504085b9bec390c1689"
+          },
+          {
+            "path": "usr/lib/FontCarver/licenses/dependencies/LICENSE-APACHE",
+            "sha256": "1a33f1c154ae25490c2f32ba396a0bfe6dbf02f88103cb6ba68b175bceffb009"
+          },
+          {
+            "path": "usr/lib/FontCarver/licenses/dependencies/THIRD_PARTY.md",
+            "sha256": "b8e3ccf9f95ed761817be4163f4e6a024a5c2b9956c8d06044048fa578ff6a4c"
+          },
+          {
+            "path": "usr/lib/FontCarver/licenses/dependencies/DEPENDENCIES.json",
+            "sha256": "8b64cc6badcae08c811623313f813891ee98766d23003095ebd14c9b8ad43c4d"
+          },
+          {
+            "path": "usr/lib/FontCarver/INSTALL.md",
+            "sha256": "2659d73f0e1411846364206218ce1c6437f8e56febf83c9309cfb5546a838dc0"
+          }
+        ],
+        "notices": {
+          "packages": 630,
+          "license_files": 1126,
+          "checksums_verified": true
+        },
+        "platform_metadata": {
+          "desktop": "usr/share/applications/FontCarver.desktop",
+          "icons": [
+            "usr/share/icons/hicolor/128x128/apps/fontcarver-desktop.png",
+            "usr/share/icons/hicolor/256x256@2/apps/fontcarver-desktop.png",
+            "usr/share/icons/hicolor/32x32/apps/fontcarver-desktop.png"
+          ]
+        },
+        "fontforge_paths_absent": true,
+        "file_count": 1141
+      }
+    },
+    {
+      "path": "appimage/FontCarver_0.1.0_amd64.AppImage",
+      "type": "appimage",
+      "bytes": 95799800,
+      "sha256": "13e9560e0c466b0b56264f037538bb36f1c730f6766a4e619a17b78a060cab63",
+      "metadata": {
+        "extraction": "--appimage-extract"
+      },
+      "payload": {
+        "executable": {
+          "paths": [
+            "usr/bin/fontcarver-desktop"
+          ],
+          "valid_header": true
+        },
+        "resources": [
+          {
+            "path": "usr/lib/FontCarver/licenses/dependencies/LICENSE-MIT",
+            "sha256": "aa8f16d9ed7055b547dd381163393be157a9d3e0b185b504085b9bec390c1689"
+          },
+          {
+            "path": "usr/lib/FontCarver/licenses/dependencies/LICENSE-APACHE",
+            "sha256": "1a33f1c154ae25490c2f32ba396a0bfe6dbf02f88103cb6ba68b175bceffb009"
+          },
+          {
+            "path": "usr/lib/FontCarver/licenses/dependencies/THIRD_PARTY.md",
+            "sha256": "b8e3ccf9f95ed761817be4163f4e6a024a5c2b9956c8d06044048fa578ff6a4c"
+          },
+          {
+            "path": "usr/lib/FontCarver/licenses/dependencies/DEPENDENCIES.json",
+            "sha256": "8b64cc6badcae08c811623313f813891ee98766d23003095ebd14c9b8ad43c4d"
+          },
+          {
+            "path": "usr/lib/FontCarver/INSTALL.md",
+            "sha256": "2659d73f0e1411846364206218ce1c6437f8e56febf83c9309cfb5546a838dc0"
+          }
+        ],
+        "notices": {
+          "packages": 630,
+          "license_files": 1126,
+          "checksums_verified": true
+        },
+        "platform_metadata": {
+          "desktop": "FontCarver.desktop",
+          "icons": [
+            "fontcarver-desktop.png",
+            "usr/share/icons/hicolor/128x128/apps/fontcarver-desktop.png",
+            "usr/share/icons/hicolor/256x256@2/apps/fontcarver-desktop.png",
+            "usr/share/icons/hicolor/32x32/apps/fontcarver-desktop.png"
+          ]
+        },
+        "fontforge_paths_absent": true,
+        "file_count": 1510
+      }
+    }
+  ]
+}

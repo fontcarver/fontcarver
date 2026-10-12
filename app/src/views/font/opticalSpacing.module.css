@@ -1,0 +1,105 @@
+.editor {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.editor p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+}
+
+.form {
+  display: grid;
+  gap: var(--space-3);
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.row,
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.row {
+  justify-content: space-between;
+}
+
+.density {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.density input {
+  width: 96px;
+  min-width: 0;
+  height: var(--control-height);
+  color: var(--color-text);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+}
+
+.review {
+  display: grid;
+  gap: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-3);
+}
+
+.skipped {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-left: var(--space-5);
+  font-size: var(--text-size-sm);
+}
+
+.editor .error {
+  color: var(--color-danger);
+}
+
+.proposals {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.proposalActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-size-sm);
+}
+
+.proposalTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.proposalTable caption {
+  padding-bottom: var(--space-1);
+  color: var(--color-text-muted);
+  text-align: left;
+}
+
+.proposalTable th,
+.proposalTable td {
+  padding: var(--space-1);
+  border-bottom: 1px solid var(--color-border-subtle);
+  text-align: left;
+}
+
+.proposalTable thead th {
+  color: var(--color-text-muted);
+  font-weight: var(--text-weight-medium);
+}

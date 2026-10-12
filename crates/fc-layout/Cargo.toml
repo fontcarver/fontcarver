@@ -1,0 +1,30 @@
+[package]
+name = "fc-layout"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+# harfrust shapes the in-memory font compiled by fc-compile; both take read-fonts types.
+harfrust = "0.13"
+fc-compile = { path = "../fc-compile" }
+fc-model = { path = "../fc-model" }
+# fea-rs already builds for fc-compile; the typed lookup IR parses its CST.
+fea-rs = "1.0"
+
+read-fonts.workspace = true
+serde.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+ts-rs.workspace = true
+
+[dev-dependencies]
+fc-fixtures = { path = "../fc-fixtures" }
+fc-sfnt = { path = "../fc-sfnt" }
+kurbo.workspace = true
+# The lookup-IR test reads the corpus shared with the visual editor's tests.
+serde_json.workspace = true

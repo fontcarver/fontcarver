@@ -51,19 +51,78 @@ function strokesWith(
   return count
 }
 
-/** The `arc` call whose centre matches, if any. */
-function arcAt(
+/**
+ * Whether a start-marker triangle was filled with its tip at (x, y) ± 4 px.
+ * The marker is a 7 px triangle centred on the start point (design spec §4.1),
+ * so its three vertices straddle that point.
+ */
+function startTriangleAt(
   recording: ReturnType<typeof createRecordingContext>,
   x: number,
   y: number,
-): unknown[] | undefined {
-  return recording
-    .calls('arc')
-    .map((op) => op.args)
-    .find((args) => args[0] === x && args[1] === y)
+): boolean {
+  const ops = recording.ops
+  for (let index = 0; index < ops.length; index += 1) {
+    const op = ops[index]
+    if (op?.name !== 'moveTo') continue
+    const vertices = ops
+      .slice(index, index + 4)
+      .filter((entry) => entry.name === 'moveTo' || entry.name === 'lineTo')
+    if (vertices.length < 3) continue
+    const close = ops[index + 3]
+    if (close?.name !== 'closePath') continue
+    const centre = vertices.reduce(
+      (total, vertex) => ({
+        x: total.x + Number(vertex.args[0]) / vertices.length,
+        y: total.y + Number(vertex.args[1]) / vertices.length,
+      }),
+      { x: 0, y: 0 },
+    )
+    if (Math.abs(centre.x - x) < 1 && Math.abs(centre.y - y) < 1) return true
+  }
+  return false
 }
 
 describe('traceContour', () => {
+  it('draws configurable marker diameters independently of viewport zoom', () => {
+    const recording = createRecordingContext()
+    const viewport = viewportOf()
+    viewport.scale = 3
+    drawOutline(
+      recording.ctx,
+      viewport,
+      {
+        contours: [
+          contourOf(
+            [
+              point(0, 0, 'Move'),
+              point(20, 20, 'OffCurve'),
+              point(40, 40, 'QCurve'),
+            ],
+            false,
+          ),
+        ],
+        filled: false,
+        showPoints: true,
+        nodeSize: 8,
+        handleSize: 6,
+      },
+      FALLBACK_GLYPH_THEME,
+    )
+    expect(
+      recording
+        .calls('arc')
+        .some(
+          (call) =>
+            call.args[0] === 60 && call.args[1] === -60 && call.args[2] === 3,
+        ),
+    ).toBe(true)
+    expect(
+      recording
+        .calls('fillRect')
+        .some((call) => call.args[2] === 8 && call.args[3] === 8),
+    ).toBe(true)
+  })
   it('draws a cubic contour with bezierCurveTo', () => {
     const recording = createRecordingContext()
     traceContour(
@@ -218,9 +277,46 @@ describe('drawOutline', () => {
     expect(recording.styleAt('fillRect', 'fillStyle')).toBe(
       FALLBACK_GLYPH_THEME.nodeCorner,
     )
-    const arcs = recording.calls('arc')
-    // One smooth node plus the start-point ring.
-    expect(arcs).toHaveLength(2)
+    // One arc: the smooth node. The start marker is a triangle, not a ring.
+    expect(recording.calls('arc')).toHaveLength(1)
+    expect(startTriangleAt(recording, 0, 0)).toBe(true)
+  })
+
+  it('marks a selected node with the selection fill and an inner ring', () => {
+    const recording = createRecordingContext()
+    drawOutline(
+      recording.ctx,
+      viewportOf(),
+      {
+        contours: [square],
+        filled: false,
+        showPoints: true,
+        selected: new Set(['node:0:1']),
+      },
+      FALLBACK_GLYPH_THEME,
+    )
+
+    const fills = recording.ops.filter((op) => op.name === 'set:fillStyle')
+    expect(
+      fills.some((op) => op.args[0] === FALLBACK_GLYPH_THEME.selection),
+    ).toBe(true)
+    expect(recording.calls('strokeRect')).toHaveLength(1)
+  })
+
+  it('strokes a selected segment 2 px wide', () => {
+    const recording = createRecordingContext()
+    drawOutline(
+      recording.ctx,
+      viewportOf(),
+      {
+        contours: [square],
+        filled: false,
+        showPoints: true,
+        selected: new Set(['segment:0:0']),
+      },
+      FALLBACK_GLYPH_THEME,
+    )
+    expect(strokesWith(recording, FALLBACK_GLYPH_THEME.selection)).toBe(1)
   })
 
   it('draws off-curve points with a handle line to their node', () => {
@@ -302,10 +398,10 @@ describe('resolveContour edge cases', () => {
       FALLBACK_GLYPH_THEME,
     )
 
-    // The ring sits on the on-curve point at (100, 0), i.e. screen (100, 400).
-    expect(arcAt(recording, 100, 400)).toEqual([100, 400, 6, 0, Math.PI * 2])
+    // The marker sits on the on-curve point at (100, 0), screen (100, 400).
+    expect(startTriangleAt(recording, 100, 400)).toBe(true)
     // Nothing is marked at points[0] = (0, 100) → screen (0, 300).
-    expect(arcAt(recording, 0, 300)?.[2]).not.toBe(6)
+    expect(startTriangleAt(recording, 0, 300)).toBe(false)
     expect(strokesWith(recording, FALLBACK_GLYPH_THEME.handle)).toBe(1)
   })
 
@@ -352,7 +448,7 @@ describe('resolveContour edge cases', () => {
     expect(strokesWith(recording, FALLBACK_GLYPH_THEME.nodeImplied)).toBe(4)
     expect(recording.calls('fillRect')).toHaveLength(0)
 
-    // The start ring sits on the first implied point, (0, 50) → (0, 350).
-    expect(arcAt(recording, 0, 350)).toEqual([0, 350, 6, 0, Math.PI * 2])
+    // The start marker sits on the first implied point, (0, 50) → (0, 350).
+    expect(startTriangleAt(recording, 0, 350)).toBe(true)
   })
 })

@@ -1,0 +1,954 @@
+[
+  {
+    "language": "en",
+    "theme": "light",
+    "preferences": [
+      {
+        "windowWidth": 1366,
+        "category": "general",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 22.5,
+          "right": 660.5,
+          "scrollHeight": 304,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 21.5,
+          "right": 661.5,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "General",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 22.5,
+          "right": 660.5,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [683, 384]
+      },
+      {
+        "windowWidth": 1366,
+        "category": "editor",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 22.5,
+          "right": 660.5,
+          "scrollHeight": 363,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 21.5,
+          "right": 661.5,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "Editor",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 22.5,
+          "right": 660.5,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [683, 384]
+      },
+      {
+        "windowWidth": 1366,
+        "category": "snapping",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 22.5,
+          "right": 660.5,
+          "scrollHeight": 527,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 21.5,
+          "right": 661.5,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "Snapping",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 22.5,
+          "right": 660.5,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [683, 384]
+      },
+      {
+        "windowWidth": 1024,
+        "category": "general",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 13,
+          "right": 499,
+          "scrollHeight": 304,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 12,
+          "right": 500,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "General",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 13,
+          "right": 499,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [512, 384]
+      },
+      {
+        "windowWidth": 1024,
+        "category": "editor",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 13,
+          "right": 499,
+          "scrollHeight": 521,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 12,
+          "right": 500,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "Editor",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 13,
+          "right": 499,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [512, 384]
+      },
+      {
+        "windowWidth": 1024,
+        "category": "snapping",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 13,
+          "right": 499,
+          "scrollHeight": 571,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 12,
+          "right": 500,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "Snapping",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 13,
+          "right": 499,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [512, 384]
+      }
+    ],
+    "shortcuts": {
+      "body": {
+        "bottom": 306.9921875,
+        "clientHeight": 213,
+        "left": 22.5,
+        "right": 660.5,
+        "scrollHeight": 425,
+        "scrollTop": 0,
+        "top": 94.2734375
+      },
+      "dialog": {
+        "bottom": 367.9921875,
+        "left": 21.5,
+        "right": 661.5,
+        "top": 46.078125
+      },
+      "dpr": 2,
+      "focus": "FontCarver defaultsGlyphs (supported subset)FontLab (supported subset)RoboFont (supported subset)",
+      "footer": {
+        "bottom": 366.9921875,
+        "left": 22.5,
+        "right": 660.5,
+        "top": 306.9921875
+      },
+      "overflow": [],
+      "viewport": [683, 384]
+    },
+    "conflict": {
+      "body": {
+        "bottom": 306.9921875,
+        "clientHeight": 213,
+        "left": 22.5,
+        "right": 660.5,
+        "scrollHeight": 471,
+        "scrollTop": 186.5,
+        "top": 94.2734375
+      },
+      "dialog": {
+        "bottom": 367.9921875,
+        "left": 21.5,
+        "right": 661.5,
+        "top": 46.078125
+      },
+      "dpr": 2,
+      "focus": "Shortcut for Open Font…",
+      "footer": {
+        "bottom": 366.9921875,
+        "left": 22.5,
+        "right": 660.5,
+        "top": 306.9921875
+      },
+      "overflow": [],
+      "viewport": [683, 384]
+    },
+    "mouseScroll": true,
+    "keyboardTraversal": true,
+    "focusReturn": true,
+    "cancelDiscardsDraft": true
+  },
+  {
+    "language": "en",
+    "theme": "dark",
+    "preferences": [
+      {
+        "windowWidth": 1366,
+        "category": "general",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 22.5,
+          "right": 660.5,
+          "scrollHeight": 304,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 21.5,
+          "right": 661.5,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "General",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 22.5,
+          "right": 660.5,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [683, 384]
+      },
+      {
+        "windowWidth": 1366,
+        "category": "editor",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 22.5,
+          "right": 660.5,
+          "scrollHeight": 363,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 21.5,
+          "right": 661.5,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "Editor",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 22.5,
+          "right": 660.5,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [683, 384]
+      },
+      {
+        "windowWidth": 1366,
+        "category": "snapping",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 22.5,
+          "right": 660.5,
+          "scrollHeight": 527,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 21.5,
+          "right": 661.5,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "Snapping",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 22.5,
+          "right": 660.5,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [683, 384]
+      },
+      {
+        "windowWidth": 1024,
+        "category": "general",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 13,
+          "right": 499,
+          "scrollHeight": 304,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 12,
+          "right": 500,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "General",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 13,
+          "right": 499,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [512, 384]
+      },
+      {
+        "windowWidth": 1024,
+        "category": "editor",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 13,
+          "right": 499,
+          "scrollHeight": 521,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 12,
+          "right": 500,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "Editor",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 13,
+          "right": 499,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [512, 384]
+      },
+      {
+        "windowWidth": 1024,
+        "category": "snapping",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 13,
+          "right": 499,
+          "scrollHeight": 571,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 12,
+          "right": 500,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "Snapping",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 13,
+          "right": 499,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [512, 384]
+      }
+    ],
+    "shortcuts": {
+      "body": {
+        "bottom": 306.9921875,
+        "clientHeight": 213,
+        "left": 22.5,
+        "right": 660.5,
+        "scrollHeight": 425,
+        "scrollTop": 0,
+        "top": 94.2734375
+      },
+      "dialog": {
+        "bottom": 367.9921875,
+        "left": 21.5,
+        "right": 661.5,
+        "top": 46.078125
+      },
+      "dpr": 2,
+      "focus": "FontCarver defaultsGlyphs (supported subset)FontLab (supported subset)RoboFont (supported subset)",
+      "footer": {
+        "bottom": 366.9921875,
+        "left": 22.5,
+        "right": 660.5,
+        "top": 306.9921875
+      },
+      "overflow": [],
+      "viewport": [683, 384]
+    },
+    "conflict": {
+      "body": {
+        "bottom": 306.9921875,
+        "clientHeight": 213,
+        "left": 22.5,
+        "right": 660.5,
+        "scrollHeight": 471,
+        "scrollTop": 186.5,
+        "top": 94.2734375
+      },
+      "dialog": {
+        "bottom": 367.9921875,
+        "left": 21.5,
+        "right": 661.5,
+        "top": 46.078125
+      },
+      "dpr": 2,
+      "focus": "Shortcut for Open Font…",
+      "footer": {
+        "bottom": 366.9921875,
+        "left": 22.5,
+        "right": 660.5,
+        "top": 306.9921875
+      },
+      "overflow": [],
+      "viewport": [683, 384]
+    },
+    "mouseScroll": true,
+    "keyboardTraversal": true,
+    "focusReturn": true,
+    "cancelDiscardsDraft": true
+  },
+  {
+    "language": "zh-CN",
+    "theme": "dark",
+    "preferences": [
+      {
+        "windowWidth": 1366,
+        "category": "general",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 22.5,
+          "right": 660.5,
+          "scrollHeight": 304,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 21.5,
+          "right": 661.5,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "通用",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 22.5,
+          "right": 660.5,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [683, 384]
+      },
+      {
+        "windowWidth": 1366,
+        "category": "editor",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 22.5,
+          "right": 660.5,
+          "scrollHeight": 345,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 21.5,
+          "right": 661.5,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "编辑器",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 22.5,
+          "right": 660.5,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [683, 384]
+      },
+      {
+        "windowWidth": 1366,
+        "category": "snapping",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 22.5,
+          "right": 660.5,
+          "scrollHeight": 510,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 21.5,
+          "right": 661.5,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "吸附",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 22.5,
+          "right": 660.5,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [683, 384]
+      },
+      {
+        "windowWidth": 1024,
+        "category": "general",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 13,
+          "right": 499,
+          "scrollHeight": 304,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 12,
+          "right": 500,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "通用",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 13,
+          "right": 499,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [512, 384]
+      },
+      {
+        "windowWidth": 1024,
+        "category": "editor",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 13,
+          "right": 499,
+          "scrollHeight": 486,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 12,
+          "right": 500,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "编辑器",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 13,
+          "right": 499,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [512, 384]
+      },
+      {
+        "windowWidth": 1024,
+        "category": "snapping",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 13,
+          "right": 499,
+          "scrollHeight": 527,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 12,
+          "right": 500,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "吸附",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 13,
+          "right": 499,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [512, 384]
+      }
+    ],
+    "shortcuts": {
+      "body": {
+        "bottom": 306.9921875,
+        "clientHeight": 213,
+        "left": 22.5,
+        "right": 660.5,
+        "scrollHeight": 425,
+        "scrollTop": 0,
+        "top": 94.2734375
+      },
+      "dialog": {
+        "bottom": 367.9921875,
+        "left": 21.5,
+        "right": 661.5,
+        "top": 46.078125
+      },
+      "dpr": 2,
+      "focus": "FontCarver 默认设置Glyphs（支持的部分）FontLab（支持的部分）RoboFont（支持的部分）",
+      "footer": {
+        "bottom": 366.9921875,
+        "left": 22.5,
+        "right": 660.5,
+        "top": 306.9921875
+      },
+      "overflow": [],
+      "viewport": [683, 384]
+    },
+    "conflict": {
+      "body": {
+        "bottom": 306.9921875,
+        "clientHeight": 213,
+        "left": 22.5,
+        "right": 660.5,
+        "scrollHeight": 471,
+        "scrollTop": 186.5,
+        "top": 94.2734375
+      },
+      "dialog": {
+        "bottom": 367.9921875,
+        "left": 21.5,
+        "right": 661.5,
+        "top": 46.078125
+      },
+      "dpr": 2,
+      "focus": "打开字体…的快捷键",
+      "footer": {
+        "bottom": 366.9921875,
+        "left": 22.5,
+        "right": 660.5,
+        "top": 306.9921875
+      },
+      "overflow": [],
+      "viewport": [683, 384]
+    },
+    "mouseScroll": true,
+    "keyboardTraversal": true,
+    "focusReturn": true,
+    "cancelDiscardsDraft": true
+  },
+  {
+    "language": "zh-CN",
+    "theme": "light",
+    "preferences": [
+      {
+        "windowWidth": 1366,
+        "category": "general",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 22.5,
+          "right": 660.5,
+          "scrollHeight": 304,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 21.5,
+          "right": 661.5,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "通用",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 22.5,
+          "right": 660.5,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [683, 384]
+      },
+      {
+        "windowWidth": 1366,
+        "category": "editor",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 22.5,
+          "right": 660.5,
+          "scrollHeight": 345,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 21.5,
+          "right": 661.5,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "编辑器",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 22.5,
+          "right": 660.5,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [683, 384]
+      },
+      {
+        "windowWidth": 1366,
+        "category": "snapping",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 22.5,
+          "right": 660.5,
+          "scrollHeight": 510,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 21.5,
+          "right": 661.5,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "吸附",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 22.5,
+          "right": 660.5,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [683, 384]
+      },
+      {
+        "windowWidth": 1024,
+        "category": "general",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 13,
+          "right": 499,
+          "scrollHeight": 304,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 12,
+          "right": 500,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "通用",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 13,
+          "right": 499,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [512, 384]
+      },
+      {
+        "windowWidth": 1024,
+        "category": "editor",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 13,
+          "right": 499,
+          "scrollHeight": 486,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 12,
+          "right": 500,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "编辑器",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 13,
+          "right": 499,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [512, 384]
+      },
+      {
+        "windowWidth": 1024,
+        "category": "snapping",
+        "body": {
+          "bottom": 306.9921875,
+          "clientHeight": 213,
+          "left": 13,
+          "right": 499,
+          "scrollHeight": 527,
+          "scrollTop": 0,
+          "top": 94.2734375
+        },
+        "dialog": {
+          "bottom": 367.9921875,
+          "left": 12,
+          "right": 500,
+          "top": 46.078125
+        },
+        "dpr": 2,
+        "focus": "吸附",
+        "footer": {
+          "bottom": 366.9921875,
+          "left": 13,
+          "right": 499,
+          "top": 306.9921875
+        },
+        "overflow": [],
+        "viewport": [512, 384]
+      }
+    ],
+    "shortcuts": {
+      "body": {
+        "bottom": 306.9921875,
+        "clientHeight": 213,
+        "left": 22.5,
+        "right": 660.5,
+        "scrollHeight": 425,
+        "scrollTop": 0,
+        "top": 94.2734375
+      },
+      "dialog": {
+        "bottom": 367.9921875,
+        "left": 21.5,
+        "right": 661.5,
+        "top": 46.078125
+      },
+      "dpr": 2,
+      "focus": "FontCarver 默认设置Glyphs（支持的部分）FontLab（支持的部分）RoboFont（支持的部分）",
+      "footer": {
+        "bottom": 366.9921875,
+        "left": 22.5,
+        "right": 660.5,
+        "top": 306.9921875
+      },
+      "overflow": [],
+      "viewport": [683, 384]
+    },
+    "conflict": {
+      "body": {
+        "bottom": 306.9921875,
+        "clientHeight": 213,
+        "left": 22.5,
+        "right": 660.5,
+        "scrollHeight": 471,
+        "scrollTop": 186.5,
+        "top": 94.2734375
+      },
+      "dialog": {
+        "bottom": 367.9921875,
+        "left": 21.5,
+        "right": 661.5,
+        "top": 46.078125
+      },
+      "dpr": 2,
+      "focus": "打开字体…的快捷键",
+      "footer": {
+        "bottom": 366.9921875,
+        "left": 22.5,
+        "right": 660.5,
+        "top": 306.9921875
+      },
+      "overflow": [],
+      "viewport": [683, 384]
+    },
+    "mouseScroll": true,
+    "keyboardTraversal": true,
+    "focusReturn": true,
+    "cancelDiscardsDraft": true
+  }
+]

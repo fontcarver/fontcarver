@@ -91,6 +91,13 @@ export interface MetricsData {
   labels: MetricLabels
   /** Draw the metric names and values next to each line. */
   showLabels: boolean
+  /**
+   * Vertical writing mode: the vertical origin and advance become the primary
+   * metrics, drawn solid and always labelled, with the vertical advance box
+   * around the glyph. Off, they stay the faint dashed reference lines a
+   * horizontal font shows.
+   */
+  vertical?: boolean
 }
 
 /** Draws the metric lines of one glyph layer. */
@@ -101,6 +108,7 @@ export function drawMetrics(
   theme: GlyphTheme,
 ): void {
   const { metrics, labels } = data
+  const vertical = data.vertical ?? false
   // A metric a font does not define comes back as zero, which would draw a
   // second line on top of the baseline; those are dropped rather than drawn.
   const baseHorizontals: MetricLine[] = [
@@ -154,18 +162,45 @@ export function drawMetrics(
   }
 
   for (const metric of groups.values()) {
-    ctx.strokeStyle = metric.vertical
-      ? theme.sidebearing
-      : metric.strong
-        ? theme.metricStrong
-        : theme.metric
-    ctx.setLineDash(metric.vertical ? [6, 3] : [])
+    // In vertical writing mode the two vertical-metric lines are the ones being
+    // edited, so they are drawn like the baseline rather than as references.
+    const emphasised = metric.vertical && vertical
+    ctx.strokeStyle =
+      metric.vertical && !emphasised
+        ? theme.sidebearing
+        : metric.strong || emphasised
+          ? theme.metricStrong
+          : theme.metric
+    ctx.setLineDash(metric.vertical && !emphasised ? [6, 3] : [])
     line(ctx, 0, metric.screenY, viewport.width, metric.screenY)
     ctx.setLineDash([])
-    if (data.showLabels) {
+    if (data.showLabels || emphasised) {
       ctx.fillStyle = theme.metricLabel
       ctx.fillText(metric.labels.join(' · '), LABEL_INSET, metric.screenY - 2)
     }
+  }
+
+  // The vertical advance box: the em the glyph occupies in a vertical line of
+  // text, between the vertical origin and the advance below it.
+  if (
+    vertical &&
+    metrics.verticalOrigin !== null &&
+    metrics.verticalWidth !== null
+  ) {
+    const top = viewport.toScreen({ x: 0, y: metrics.verticalOrigin })
+    const bottom = viewport.toScreen({
+      x: metrics.width,
+      y: metrics.verticalOrigin - metrics.verticalWidth,
+    })
+    ctx.strokeStyle = theme.sidebearing
+    ctx.setLineDash([2, 4])
+    ctx.strokeRect(
+      crisp(top.x),
+      crisp(top.y),
+      Math.round(bottom.x - top.x),
+      Math.round(bottom.y - top.y),
+    )
+    ctx.setLineDash([])
   }
 
   // The origin and the advance bound the glyph's horizontal space; the

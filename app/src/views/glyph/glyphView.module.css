@@ -1,9 +1,25 @@
 /* The glyph tab: toolbar, canvas stage and the corner readout. */
 
+/*
+ * The editor keeps a floor rather than collapsing.
+ *
+ * The Edit tab stacks the text bar, the spacing and kerning chrome and the
+ * preview strip around this column, and a flex item with `min-height: 0`
+ * happily shrinks to nothing: at 1280x577 the canvas had no height at all and
+ * every click landed in the chrome above it. The floor keeps the glyph
+ * clickable at any window size. The column around it has to scroll once the
+ * chrome no longer fits, which is `app/src/views/text/TextView.module.css`.
+ */
 .view {
   display: flex;
   min-width: 0;
-  min-height: 0;
+  /*
+   * Never shorter than the toolbar, the stage floor and the readout together.
+   * A fixed floor was too small once the toolbar wrapped: the stage kept its
+   * own 240 px floor, overflowed this box and painted the canvas over the
+   * preview strip's resize handle below it, which then took the pointer.
+   */
+  min-height: max-content;
   flex: 1;
   flex-direction: column;
 }
@@ -56,15 +72,27 @@
 
 .stage {
   position: relative;
-  min-height: 0;
+  min-height: 240px;
   flex: 1;
   overflow: hidden;
-  background: var(--color-canvas);
+  background: var(--cv-bg);
 }
 
 .canvasWrapper {
   position: absolute;
-  inset: 0;
+  inset: 0 0 0 36px;
+}
+
+.liveRegion {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .canvas {
@@ -78,52 +106,6 @@
 .canvas:focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: -2px;
-}
-
-.hud {
-  position: absolute;
-  top: var(--space-2);
-  right: var(--space-2);
-  min-width: 140px;
-  padding: var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-raised);
-  font-size: var(--text-size-xs);
-  pointer-events: none;
-}
-
-.hudName {
-  margin-bottom: var(--space-1);
-  overflow: hidden;
-  color: var(--color-text);
-  font-size: var(--text-size-sm);
-  font-weight: var(--text-weight-strong);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.hudList {
-  margin: 0;
-  display: grid;
-  gap: 2px;
-}
-
-.hudRow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.hudRow dt {
-  color: var(--color-text-muted);
-}
-
-.hudRow dd {
-  margin: 0;
-  color: var(--color-text);
-  font-variant-numeric: tabular-nums;
 }
 
 .message {

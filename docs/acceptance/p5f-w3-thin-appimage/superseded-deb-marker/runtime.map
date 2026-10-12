@@ -1,0 +1,781 @@
+
+Merging program properties
+
+
+As-needed library included to satisfy reference by file (symbol)
+
+libsquashfuse.so.0            /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o (sqfs_traverse_next)
+libsquashfuse_ll.so.0         /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o (sqfs_ll_destroy)
+libfuse3.so.3                 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o (fuse_opt_free_args@@FUSE_3.0)
+libc.so.6                     /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o (chmod@@GLIBC_2.2.5)
+
+Discarded input sections
+
+ .rodata.cst4   0x0000000000000000        0x4 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .data          0x0000000000000000        0x4 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .bss           0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .text          0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o
+ .data          0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o
+ .bss           0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o
+ .note.gnu.property
+                0x0000000000000000       0x20 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o
+ .data          0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+ .note.gnu.property
+                0x0000000000000000       0x20 /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+ .text          0x0000000000000000        0x0 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .data          0x0000000000000000        0x0 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .bss           0x0000000000000000        0x0 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .rodata.appimage_print_hex.str1.1
+                0x0000000000000000        0x3 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .text.appimage_print_hex
+                0x0000000000000000       0x6d /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .text.startsWith
+                0x0000000000000000       0x46 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .text.Md5Calculate
+                0x0000000000000000       0x68 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .bss.st        0x0000000000000000       0x90 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .note.gnu.property
+                0x0000000000000000       0x20 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .text          0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o
+ .data          0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o
+ .bss           0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o
+ .note.gnu.property
+                0x0000000000000000       0x20 /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o
+ .text          0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+ .data          0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+ .bss           0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+ .note.gnu.property
+                0x0000000000000000       0x20 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+ .note.GNU-stack
+                0x0000000000000000        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+                [!provide]                        PROVIDE (__executable_start = SEGMENT_START ("text-segment", 0x0))
+                0x0000000000000318                . = (SEGMENT_START ("text-segment", 0x0) + SIZEOF_HEADERS)
+
+.interp         0x0000000000000318       0x1c
+ *(.interp)
+ .interp        0x0000000000000318       0x1c /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+LOAD /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+LOAD /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/root/usr/lib/x86_64-linux-gnu/libsquashfuse.so.0
+LOAD /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/root/usr/lib/x86_64-linux-gnu/libsquashfuse_ll.so.0
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/libfuse3.so.3
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/libgcc.a
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/libgcc_s.so
+START GROUP
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/libgcc_s.so.1
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/libgcc.a
+END GROUP
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/libc.so
+START GROUP
+LOAD /lib/x86_64-linux-gnu/libc.so.6
+LOAD /usr/lib/x86_64-linux-gnu/libc_nonshared.a
+LOAD /lib64/ld-linux-x86-64.so.2
+END GROUP
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/libgcc.a
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/libgcc_s.so
+START GROUP
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/libgcc_s.so.1
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/libgcc.a
+END GROUP
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o
+LOAD /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+
+.appimage       0x0000000000000400        0x3
+                0x0000000000000400        0x1 BYTE 0x41
+                0x0000000000000401        0x1 BYTE 0x49
+                0x0000000000000402        0x1 BYTE 0x2
+
+.note.gnu.property
+                0x0000000000000408       0x30
+ .note.gnu.property
+                0x0000000000000408       0x30 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.note.gnu.build-id
+                0x0000000000000438       0x24
+ *(.note.gnu.build-id)
+ .note.gnu.build-id
+                0x0000000000000438       0x24 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.note.ABI-tag   0x000000000000045c       0x20
+ .note.ABI-tag  0x000000000000045c       0x20 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.hash
+ *(.hash)
+
+.gnu.hash       0x0000000000000480       0x30
+ *(.gnu.hash)
+ .gnu.hash      0x0000000000000480       0x30 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.dynsym         0x00000000000004b0      0xb40
+ *(.dynsym)
+ .dynsym        0x00000000000004b0      0xb40 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.dynstr         0x0000000000000ff0      0x5fe
+ *(.dynstr)
+ .dynstr        0x0000000000000ff0      0x5fe /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.gnu.version    0x00000000000015ee       0xf0
+ *(.gnu.version)
+ .gnu.version   0x00000000000015ee       0xf0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.gnu.version_d  0x00000000000016e0        0x0
+ *(.gnu.version_d)
+ .gnu.version_d
+                0x00000000000016e0        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.gnu.version_r  0x00000000000016e0       0xc0
+ *(.gnu.version_r)
+ .gnu.version_r
+                0x00000000000016e0       0xc0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.rela.dyn       0x00000000000017a0      0x258
+ *(.rela.init)
+ *(.rela.text .rela.text.* .rela.gnu.linkonce.t.*)
+ .rela.text.rm_recursive_callback
+                0x00000000000017a0        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.text.portable_option.part.0
+                0x00000000000017a0        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.text.appimage_get_elf_size
+                0x00000000000017a0        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.text.appimage_get_elf_section_offset_and_length
+                0x00000000000017a0        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.text.print_help
+                0x00000000000017a0        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.text.extract_appimage
+                0x00000000000017a0        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.text.set_portable_home_and_config
+                0x00000000000017a0        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.text.startup.main
+                0x00000000000017a0        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ *(.rela.fini)
+ *(.rela.rodata .rela.rodata.* .rela.gnu.linkonce.r.*)
+ *(.rela.data .rela.data.* .rela.gnu.linkonce.d.*)
+ .rela.data.rel.ro
+                0x00000000000017a0        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.data.rel.local
+                0x00000000000017a0       0x18 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ *(.rela.tdata .rela.tdata.* .rela.gnu.linkonce.td.*)
+ *(.rela.tbss .rela.tbss.* .rela.gnu.linkonce.tb.*)
+ *(.rela.ctors)
+ *(.rela.dtors)
+ *(.rela.got)
+ .rela.got      0x00000000000017b8      0x1e0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ *(.rela.bss .rela.bss.* .rela.gnu.linkonce.b.*)
+ .rela.bss      0x0000000000001998       0x30 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ *(.rela.ldata .rela.ldata.* .rela.gnu.linkonce.l.*)
+ *(.rela.lbss .rela.lbss.* .rela.gnu.linkonce.lb.*)
+ *(.rela.lrodata .rela.lrodata.* .rela.gnu.linkonce.lr.*)
+ *(.rela.ifunc)
+ .rela.ifunc    0x00000000000019c8        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.fini_array
+                0x00000000000019c8       0x18 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .rela.init_array
+                0x00000000000019e0       0x18 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.rela.plt       0x00000000000019f8      0x918
+ *(.rela.plt)
+ .rela.plt      0x00000000000019f8      0x918 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ *(.rela.iplt)
+
+.relr.dyn
+ *(.relr.dyn)
+                0x0000000000003000                . = ALIGN (CONSTANT (MAXPAGESIZE))
+
+.init           0x0000000000003000       0x1b
+ *(SORT_NONE(.init))
+ .init          0x0000000000003000       0x16 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o
+                0x0000000000003000                _init
+ .init          0x0000000000003016        0x5 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+
+.plt            0x0000000000003020      0x620
+ *(.plt)
+ .plt           0x0000000000003020      0x620 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ *(.iplt)
+
+.plt.got        0x0000000000003640       0x10
+ *(.plt.got)
+ .plt.got       0x0000000000003640       0x10 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                0x0000000000003640                __cxa_finalize@@GLIBC_2.2.5
+
+.plt.sec        0x0000000000003650      0x610
+ *(.plt.sec)
+ .plt.sec       0x0000000000003650      0x610 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                0x0000000000003650                __strcat_chk@@GLIBC_2.3.4
+                0x0000000000003660                getenv@@GLIBC_2.2.5
+                0x0000000000003670                sqfs_id_get
+                0x0000000000003680                fuse_opt_parse@@FUSE_3.0
+                0x0000000000003690                sqfs_ll_mount
+                0x00000000000036a0                __snprintf_chk@@GLIBC_2.3.4
+                0x00000000000036b0                free@@GLIBC_2.2.5
+                0x00000000000036c0                sqfs_ll_open
+                0x00000000000036d0                __errno_location@@GLIBC_2.2.5
+                0x00000000000036e0                unlink@@GLIBC_2.2.5
+                0x00000000000036f0                strncpy@@GLIBC_2.2.5
+                0x0000000000003700                remove@@GLIBC_2.2.5
+                0x0000000000003710                strncmp@@GLIBC_2.2.5
+                0x0000000000003720                sqfs_fd_close
+                0x0000000000003730                mkdir@@GLIBC_2.2.5
+                0x0000000000003740                fuse_session_loop@@FUSE_3.0
+                0x0000000000003750                puts@@GLIBC_2.2.5
+                0x0000000000003760                fread@@GLIBC_2.2.5
+                0x0000000000003770                sqfs_traverse_open
+                0x0000000000003780                readlink@@GLIBC_2.2.5
+                0x0000000000003790                sqfs_ll_destroy
+                0x00000000000037a0                setenv@@GLIBC_2.2.5
+                0x00000000000037b0                write@@GLIBC_2.2.5
+                0x00000000000037c0                sqfs_ll_unmount
+                0x00000000000037d0                getpid@@GLIBC_2.2.5
+                0x00000000000037e0                setup_idle_timeout
+                0x00000000000037f0                sqfs_makedev
+                0x0000000000003800                fclose@@GLIBC_2.2.5
+                0x0000000000003810                opendir@@GLIBC_2.2.5
+                0x0000000000003820                rmdir@@GLIBC_2.2.5
+                0x0000000000003830                strlen@@GLIBC_2.2.5
+                0x0000000000003840                __stack_chk_fail@@GLIBC_2.4
+                0x0000000000003850                dup2@@GLIBC_2.2.5
+                0x0000000000003860                stat64@@GLIBC_2.33
+                0x0000000000003870                symlink@@GLIBC_2.2.5
+                0x0000000000003880                strrchr@@GLIBC_2.2.5
+                0x0000000000003890                fputs@@GLIBC_2.2.5
+                0x00000000000038a0                sqfs_traverse_close
+                0x00000000000038b0                fnmatch@@GLIBC_2.2.5
+                0x00000000000038c0                fuse_set_signal_handlers@@FUSE_3.0
+                0x00000000000038d0                getcwd@@GLIBC_2.2.5
+                0x00000000000038e0                close@@GLIBC_2.2.5
+                0x00000000000038f0                __realpath_chk@@GLIBC_2.4
+                0x0000000000003900                pipe@@GLIBC_2.2.5
+                0x0000000000003910                nftw64@@GLIBC_2.3.3
+                0x0000000000003920                closedir@@GLIBC_2.2.5
+                0x0000000000003930                read@@GLIBC_2.2.5
+                0x0000000000003940                calloc@@GLIBC_2.2.5
+                0x0000000000003950                strcmp@@GLIBC_2.2.5
+                0x0000000000003960                sqfs_inode_root
+                0x0000000000003970                sqfs_read_range
+                0x0000000000003980                sqfs_inode_get
+                0x0000000000003990                fopen64@@GLIBC_2.2.5
+                0x00000000000039a0                realpath@@GLIBC_2.3
+                0x00000000000039b0                kill@@GLIBC_2.2.5
+                0x00000000000039c0                __xpg_basename@@GLIBC_2.2.5
+                0x00000000000039d0                fileno@@GLIBC_2.2.5
+                0x00000000000039e0                mmap64@@GLIBC_2.2.5
+                0x00000000000039f0                pause@@GLIBC_2.2.5
+                0x0000000000003a00                malloc@@GLIBC_2.2.5
+                0x0000000000003a10                fflush@@GLIBC_2.2.5
+                0x0000000000003a20                fseek@@GLIBC_2.2.5
+                0x0000000000003a30                fseeko64@@GLIBC_2.2.5
+                0x0000000000003a40                __strcpy_chk@@GLIBC_2.3.4
+                0x0000000000003a50                mkdtemp@@GLIBC_2.2.5
+                0x0000000000003a60                munmap@@GLIBC_2.2.5
+                0x0000000000003a70                __printf_chk@@GLIBC_2.3.4
+                0x0000000000003a80                chmod@@GLIBC_2.2.5
+                0x0000000000003a90                pthread_create@@GLIBC_2.34
+                0x0000000000003aa0                open64@@GLIBC_2.2.5
+                0x0000000000003ab0                fuse_remove_signal_handlers@@FUSE_3.0
+                0x0000000000003ac0                sqfs_ll_daemonize
+                0x0000000000003ad0                readdir64@@GLIBC_2.2.5
+                0x0000000000003ae0                teardown_idle_timeout
+                0x0000000000003af0                waitpid@@GLIBC_2.2.5
+                0x0000000000003b00                access@@GLIBC_2.2.5
+                0x0000000000003b10                sqfs_open_image
+                0x0000000000003b20                perror@@GLIBC_2.2.5
+                0x0000000000003b30                strtok@@GLIBC_2.2.5
+                0x0000000000003b40                sqfs_traverse_next
+                0x0000000000003b50                fuse_parse_cmdline@@FUSE_3.12
+                0x0000000000003b60                futimens@@GLIBC_2.6
+                0x0000000000003b70                execvp@@GLIBC_2.2.5
+                0x0000000000003b80                link@@GLIBC_2.2.5
+                0x0000000000003b90                exit@@GLIBC_2.2.5
+                0x0000000000003ba0                fwrite@@GLIBC_2.2.5
+                0x0000000000003bb0                lseek64@@GLIBC_2.2.5
+                0x0000000000003bc0                __fprintf_chk@@GLIBC_2.3.4
+                0x0000000000003bd0                sqfs_readlink
+                0x0000000000003be0                strdup@@GLIBC_2.2.5
+                0x0000000000003bf0                strerror@@GLIBC_2.2.5
+                0x0000000000003c00                execv@@GLIBC_2.2.5
+                0x0000000000003c10                fork@@GLIBC_2.2.5
+                0x0000000000003c20                fuse_opt_free_args@@FUSE_3.0
+                0x0000000000003c30                sqfs_usage
+                0x0000000000003c40                __ctype_b_loc@@GLIBC_2.3
+                0x0000000000003c50                __sprintf_chk@@GLIBC_2.3.4
+
+.text           0x0000000000003c60     0x32a4
+ *(.text.unlikely .text.*_unlikely .text.unlikely.*)
+ *(.text.exit .text.exit.*)
+ *(.text.startup .text.startup.*)
+ .text.startup.main
+                0x0000000000003c60      0xd3c /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x0000000000003c60                main
+ *(.text.hot .text.hot.*)
+ *(SORT_BY_NAME(.text.sorted.*))
+ *(.text .stub .text.* .gnu.linkonce.t.*)
+ *fill*         0x000000000000499c        0x4 
+ .text          0x00000000000049a0       0x26 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                0x00000000000049a0                _start
+ *fill*         0x00000000000049c6        0xa 
+ .text          0x00000000000049d0       0xb9 /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+ .text.file16_to_cpu
+                0x0000000000004a89        0xe /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .text.TransformFunction
+                0x0000000000004a97      0x847 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .text.fuse_mounted
+                0x00000000000052de       0x55 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x00000000000052de                fuse_mounted
+ .text.rm_recursive_callback
+                0x0000000000005333       0xc9 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x0000000000005333                rm_recursive_callback
+ .text.file64_to_cpu
+                0x00000000000053fc       0x10 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .text.write_pipe_thread
+                0x000000000000540c       0x73 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .text.portable_option.part.0
+                0x000000000000547f      0x133 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .text.appimage_get_elf_size
+                0x00000000000055b2      0x2f7 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x00000000000055b2                appimage_get_elf_size
+ .text.appimage_get_elf_section_offset_and_length
+                0x00000000000058a9      0x187 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x00000000000058a9                appimage_get_elf_section_offset_and_length
+ .text.read_file_offset_length
+                0x0000000000005a30       0x8e /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x0000000000005a30                read_file_offset_length
+ .text.appimage_print_binary
+                0x0000000000005abe       0x2b /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x0000000000005abe                appimage_print_binary
+ .text.find_fusermount
+                0x0000000000005ae9      0x275 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x0000000000005ae9                find_fusermount
+ .text.is_writable_directory
+                0x0000000000005d5e       0x16 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x0000000000005d5e                is_writable_directory
+ .text.private_sqfs_stat
+                0x0000000000005d74       0xff /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x0000000000005d74                private_sqfs_stat
+ .text.getArg   0x0000000000005e73       0x28 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x0000000000005e73                getArg
+ .text.mkdir_p  0x0000000000005e9b       0xdf /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x0000000000005e9b                mkdir_p
+ .text.print_help
+                0x0000000000005f7a       0x21 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x0000000000005f7a                print_help
+ .text.portable_option
+                0x0000000000005f9b       0x87 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x0000000000005f9b                portable_option
+ .text.extract_appimage
+                0x0000000000006022      0x77f /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x0000000000006022                extract_appimage
+ .text.rm_recursive
+                0x00000000000067a1       0x1f /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x00000000000067a1                rm_recursive
+ .text.build_mount_point
+                0x00000000000067c0       0xb8 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x00000000000067c0                build_mount_point
+ .text.fusefs_main
+                0x0000000000006878      0x359 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x0000000000006878                fusefs_main
+ .text.Md5Initialise
+                0x0000000000006bd1       0x26 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x0000000000006bd1                Md5Initialise
+ .text.Md5Update
+                0x0000000000006bf7       0x96 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x0000000000006bf7                Md5Update
+ .text.Md5Finalise
+                0x0000000000006c8d       0xa5 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x0000000000006c8d                Md5Finalise
+ .text.appimage_hexlify
+                0x0000000000006d32       0xa9 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x0000000000006d32                appimage_hexlify
+ .text.set_portable_home_and_config
+                0x0000000000006ddb      0x129 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x0000000000006ddb                set_portable_home_and_config
+ *(.gnu.warning)
+
+.fini           0x0000000000006f04        0xd
+ *(SORT_NONE(.fini))
+ .fini          0x0000000000006f04        0x8 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o
+                0x0000000000006f04                _fini
+ .fini          0x0000000000006f0c        0x5 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+                [!provide]                        PROVIDE (__etext = .)
+                [!provide]                        PROVIDE (_etext = .)
+                [!provide]                        PROVIDE (etext = .)
+                0x0000000000007000                . = ALIGN (CONSTANT (MAXPAGESIZE))
+                0x0000000000007000                . = SEGMENT_START ("rodata-segment", (ALIGN (CONSTANT (MAXPAGESIZE)) + (. & (CONSTANT (MAXPAGESIZE) - 0x1))))
+
+.rodata         0x0000000000007000     0x1210
+ *(.rodata .rodata.* .gnu.linkonce.r.*)
+ .rodata.rm_recursive_callback.str1.1
+                0x0000000000007000     0x11e1 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                                         0x64 (size before relaxing)
+ *fill*         0x00000000000081e1        0x3 
+ .rodata.rm_recursive_callback
+                0x00000000000081e4       0x1c /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .rodata.portable_option.part.0.str1.1
+                0x0000000000008200       0x9f /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .rodata.appimage_get_elf_size.str1.1
+                0x0000000000008200       0xb2 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .rodata.appimage_get_elf_section_offset_and_length.str1.1
+                0x0000000000008200       0x5c /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .rodata.read_file_offset_length.str1.1
+                0x0000000000008200        0x2 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .rodata.find_fusermount.str1.1
+                0x0000000000008200       0x6b /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .rodata.print_help.str1.1
+                0x0000000000008200      0x843 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .rodata.portable_option.str1.1
+                0x0000000000008200       0x15 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .rodata.extract_appimage.str1.1
+                0x0000000000008200      0x1ad /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .rodata.build_mount_point.str1.1
+                0x0000000000008200       0x15 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .rodata.fusefs_main.str1.1
+                0x0000000000008200       0x45 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .rodata.appimage_hexlify.str1.1
+                0x0000000000008200        0x5 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .rodata.set_portable_home_and_config.str1.1
+                0x0000000000008200       0x58 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .rodata.main.str1.1
+                0x0000000000008200      0x4f2 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .rodata.cst16  0x0000000000008200       0x10 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+
+.rodata1
+ *(.rodata1)
+
+.eh_frame_hdr   0x0000000000008210      0x10c
+ *(.eh_frame_hdr)
+ .eh_frame_hdr  0x0000000000008210      0x10c /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                0x0000000000008210                __GNU_EH_FRAME_HDR
+ *(.eh_frame_entry .eh_frame_entry.*)
+
+.eh_frame       0x0000000000008320      0x564
+ *(.eh_frame)
+ .eh_frame      0x0000000000008320       0x30 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                                         0x2c (size before relaxing)
+ *fill*         0x0000000000008350        0x0 
+ .eh_frame      0x0000000000008350       0x28 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                                         0x40 (size before relaxing)
+ .eh_frame      0x0000000000008378       0x18 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                                         0x30 (size before relaxing)
+ .eh_frame      0x0000000000008390       0x18 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                                         0x30 (size before relaxing)
+ .eh_frame      0x00000000000083a8      0x4d8 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                                        0x580 (size before relaxing)
+ .eh_frame      0x0000000000008880        0x4 /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o
+ *(.eh_frame.*)
+
+.sframe         0x0000000000008884        0x0
+ *(.sframe)
+ .sframe        0x0000000000008884        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ .sframe        0x0000000000008884        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ *(.sframe.*)
+
+.gcc_except_table
+ *(.gcc_except_table .gcc_except_table.*)
+
+.gnu_extab
+ *(.gnu_extab*)
+
+.exception_ranges
+ *(.exception_ranges*)
+                0x0000000000009a10                . = DATA_SEGMENT_ALIGN (CONSTANT (MAXPAGESIZE), CONSTANT (COMMONPAGESIZE))
+
+.eh_frame
+ *(.eh_frame)
+ *(.eh_frame.*)
+
+.sframe
+ *(.sframe)
+ *(.sframe.*)
+
+.gnu_extab
+ *(.gnu_extab)
+
+.gcc_except_table
+ *(.gcc_except_table .gcc_except_table.*)
+
+.exception_ranges
+ *(.exception_ranges*)
+
+.tdata          0x0000000000009a10        0x0
+                [!provide]                        PROVIDE (__tdata_start = .)
+ *(.tdata .tdata.* .gnu.linkonce.td.*)
+
+.tbss
+ *(.tbss .tbss.* .gnu.linkonce.tb.*)
+ *(.tcommon)
+
+.preinit_array  0x0000000000009a10        0x0
+                [!provide]                        PROVIDE (__preinit_array_start = .)
+ *(.preinit_array)
+                [!provide]                        PROVIDE (__preinit_array_end = .)
+
+.init_array     0x0000000000009a10        0x8
+                [!provide]                        PROVIDE (__init_array_start = .)
+ *(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*))
+ *(.init_array EXCLUDE_FILE(*crtend?.o *crtend.o *crtbegin?.o *crtbegin.o) .ctors)
+ .init_array    0x0000000000009a10        0x8 /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+                [!provide]                        PROVIDE (__init_array_end = .)
+
+.fini_array     0x0000000000009a18        0x8
+                [!provide]                        PROVIDE (__fini_array_start = .)
+ *(SORT_BY_INIT_PRIORITY(.fini_array.*) SORT_BY_INIT_PRIORITY(.dtors.*))
+ *(.fini_array EXCLUDE_FILE(*crtend?.o *crtend.o *crtbegin?.o *crtbegin.o) .dtors)
+ .fini_array    0x0000000000009a18        0x8 /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+                [!provide]                        PROVIDE (__fini_array_end = .)
+
+.ctors
+ *crtbegin.o(.ctors)
+ *crtbegin?.o(.ctors)
+ *(EXCLUDE_FILE(*crtend?.o *crtend.o) .ctors)
+ *(SORT_BY_NAME(.ctors.*))
+ *(.ctors)
+
+.dtors
+ *crtbegin.o(.dtors)
+ *crtbegin?.o(.dtors)
+ *(EXCLUDE_FILE(*crtend?.o *crtend.o) .dtors)
+ *(SORT_BY_NAME(.dtors.*))
+ *(.dtors)
+
+.jcr
+ *(.jcr)
+
+.data.rel.ro    0x0000000000009a20        0x0
+ *(.data.rel.ro.local* .gnu.linkonce.d.rel.ro.local.*)
+ *(.data.rel.ro .data.rel.ro.* .gnu.linkonce.d.rel.ro.*)
+ .data.rel.ro   0x0000000000009a20        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+
+.dynamic        0x0000000000009a20      0x220
+ *(.dynamic)
+ .dynamic       0x0000000000009a20      0x220 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                0x0000000000009a20                _DYNAMIC
+
+.got            0x0000000000009c40      0x3c0
+ *(.got.plt)
+ .got.plt       0x0000000000009c40      0x320 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                0x0000000000009c40                _GLOBAL_OFFSET_TABLE_
+ *(.igot.plt)
+ *(.got)
+ .got           0x0000000000009f60       0xa0 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+ *(.igot)
+                0x000000000000a000                . = DATA_SEGMENT_RELRO_END (., 0x0)
+
+.data           0x000000000000a000        0x8
+ *(.data .data.* .gnu.linkonce.d.*)
+ .data.rel.local
+                0x000000000000a000        0x8 /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+                0x000000000000a000                __dso_handle
+
+.tm_clone_table
+                0x000000000000a008        0x0
+ .tm_clone_table
+                0x000000000000a008        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+ .tm_clone_table
+                0x000000000000a008        0x0 /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o
+
+.digest_md5     0x000000000000a008       0x10
+ FILL mask 0x00
+                0x000000000000a017                . = (. + 0xf)
+ *fill*         0x000000000000a008        0xf 00
+                0x000000000000a017        0x1 BYTE 0x0
+
+.upd_info       0x000000000000a018      0x400
+ FILL mask 0x00
+                0x000000000000a417                . = (. + 0x3ff)
+ *fill*         0x000000000000a018      0x3ff 00
+                0x000000000000a417        0x1 BYTE 0x0
+
+.sha256_sig     0x000000000000a418      0x400
+ FILL mask 0x00
+                0x000000000000a817                . = (. + 0x3ff)
+ *fill*         0x000000000000a418      0x3ff 00
+                0x000000000000a817        0x1 BYTE 0x0
+
+.sig_key        0x000000000000a818     0x2000
+ FILL mask 0x00
+                0x000000000000c817                . = (. + 0x1fff)
+ *fill*         0x000000000000a818     0x1fff 00
+                0x000000000000c817        0x1 BYTE 0x0
+
+.data1
+ *(.data1)
+                0x000000000000c818                _edata = .
+                [!provide]                        PROVIDE (edata = .)
+                0x000000000000c818                . = ALIGN (ALIGNOF (NEXT_SECTION))
+                0x000000000000c820                __bss_start = .
+
+.bss            0x000000000000c820       0xa8
+ *(.dynbss)
+ .dynbss        0x000000000000c820       0x28 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o
+                0x000000000000c820                stdout@@GLIBC_2.2.5
+                0x000000000000c840                stderr@@GLIBC_2.2.5
+ *(.bss .bss.* .gnu.linkonce.b.*)
+ .bss           0x000000000000c848        0x1 /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+ *fill*         0x000000000000c849        0x7 
+ .bss.keepalive_pipe
+                0x000000000000c850        0x8 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .bss.fuse_pid  0x000000000000c858        0x4 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ *fill*         0x000000000000c85c        0x4 
+ .bss.fs_offset
+                0x000000000000c860        0x8 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ *fill*         0x000000000000c868       0x18 
+ .bss.ehdr      0x000000000000c880       0x40 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .bss.fusermountPath
+                0x000000000000c8c0        0x8 /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+                0x000000000000c8c0                fusermountPath
+ *(COMMON)
+                0x000000000000c8c8                . = ALIGN ((. != 0x0)?0x8:0x1)
+
+.lbss
+ *(.dynlbss)
+ *(.lbss .lbss.* .gnu.linkonce.lb.*)
+ *(LARGE_COMMON)
+                0x000000000000c8c8                . = ALIGN (0x8)
+                0x000000000000c8c8                . = SEGMENT_START ("ldata-segment", .)
+
+.lrodata
+ *(.lrodata .lrodata.* .gnu.linkonce.lr.*)
+
+.ldata          0x000000000000e8c8        0x0
+ *(.ldata .ldata.* .gnu.linkonce.l.*)
+                0x000000000000e8c8                . = ALIGN ((. != 0x0)?0x8:0x1)
+                0x000000000000e8c8                . = ALIGN (0x8)
+                0x000000000000c8c8                _end = .
+                [!provide]                        PROVIDE (end = .)
+                0x000000000000e8c8                . = DATA_SEGMENT_END (.)
+
+.stab
+ *(.stab)
+
+.stabstr
+ *(.stabstr)
+
+.stab.excl
+ *(.stab.excl)
+
+.stab.exclstr
+ *(.stab.exclstr)
+
+.stab.index
+ *(.stab.index)
+
+.stab.indexstr
+ *(.stab.indexstr)
+
+.comment        0x0000000000000000       0x5c
+ *(.comment)
+ .comment       0x0000000000000000       0x5c /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o
+                                         0x2e (size before relaxing)
+ .comment       0x000000000000005c       0x5d /home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/ccur0qUN.o
+ .comment       0x000000000000005c       0x2e /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o
+
+.gnu.build.attributes
+ *(.gnu.build.attributes .gnu.build.attributes.*)
+
+.debug
+ *(.debug)
+
+.line
+ *(.line)
+
+.debug_srcinfo
+ *(.debug_srcinfo)
+
+.debug_sfnames
+ *(.debug_sfnames)
+
+.debug_aranges
+ *(.debug_aranges)
+
+.debug_pubnames
+ *(.debug_pubnames)
+
+.debug_info
+ *(.debug_info .gnu.linkonce.wi.*)
+
+.debug_abbrev
+ *(.debug_abbrev)
+
+.debug_line
+ *(.debug_line .debug_line.* .debug_line_end)
+
+.debug_frame
+ *(.debug_frame)
+
+.debug_str
+ *(.debug_str)
+
+.debug_loc
+ *(.debug_loc)
+
+.debug_macinfo
+ *(.debug_macinfo)
+
+.debug_weaknames
+ *(.debug_weaknames)
+
+.debug_funcnames
+ *(.debug_funcnames)
+
+.debug_typenames
+ *(.debug_typenames)
+
+.debug_varnames
+ *(.debug_varnames)
+
+.debug_pubtypes
+ *(.debug_pubtypes)
+
+.debug_ranges
+ *(.debug_ranges)
+
+.debug_addr
+ *(.debug_addr)
+
+.debug_line_str
+ *(.debug_line_str)
+
+.debug_loclists
+ *(.debug_loclists)
+
+.debug_macro
+ *(.debug_macro)
+
+.debug_names
+ *(.debug_names)
+
+.debug_rnglists
+ *(.debug_rnglists)
+
+.debug_str_offsets
+ *(.debug_str_offsets)
+
+.debug_sup
+ *(.debug_sup)
+
+.gnu.attributes
+ *(.gnu.attributes)
+
+/DISCARD/
+ *(.note.GNU-stack)
+ *(.gnu_debuglink)
+ *(.gnu.lto_*)
+OUTPUT(/home/chen/githubprojects/fontpixel/fontcarver/.scratch/p5f-w3-thin-appimage/build-rrnh1lvq/runtime elf64-x86-64)

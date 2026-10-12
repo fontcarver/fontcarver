@@ -165,6 +165,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+.sourceLabel {
+  display: block;
+  color: var(--color-text-faint);
+  font-size: var(--text-size-xs);
+}
+
 .preserved {
   display: inline-flex;
   padding: 1px var(--space-2);
@@ -188,4 +194,40 @@
   padding: var(--space-3) 0;
   color: var(--color-text-faint);
   font-size: var(--text-size-sm);
+}
+
+/* The Family → Font → Master → Export breadcrumb table. */
+.scopeHint {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+}
+.scopeEntries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-1);
+}
+.scopeEntries li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  align-items: baseline;
+}
+.scopeEntries small {
+  color: var(--color-warning);
+  font-size: var(--text-size-xs);
+}
+.table td[data-effective='true'] {
+  background: var(--color-surface-raised);
+  box-shadow: inset 2px 0 0 var(--color-accent);
+}
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

@@ -1,0 +1,31 @@
+[package]
+name = "fc-formats"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+base64.workspace = true
+flate2.workspace = true
+fc-model = { path = "../fc-model" }
+kurbo.workspace = true
+glyphs-reader = "1.0"
+read-fonts = { workspace = true, features = ["agl"] }
+norad.workspace = true
+plist.workspace = true
+roxmltree = "0.21.1"
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+walkdir.workspace = true
+tempfile.workspace = true
+
+[dev-dependencies]
+harfrust = "0.13"
+fc-compile = { path = "../fc-compile" }
+fc-fixtures = { path = "../fc-fixtures" }
+fc-sfnt = { path = "../fc-sfnt" }

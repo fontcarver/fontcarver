@@ -1,0 +1,11 @@
+# T9 integration report
+
+Implemented and committed through `1ff0101`; headless screenshots in `5db96c7`.
+
+Text tabs now share one glyph controller with glyph-local origin shifts, bounded visible surrounding outlines, fixed-window 12/24/48 px previews, persistent text/master/features/direction/size, stable tab identity, typing/T/two-stage Escape, sidebar stepping, View menu, status counts and stale progress. Async shaping guards context, request ordering and StrictMode lifetimes, defers during gestures, and refreshes stale output without another edit. Root-owned metrics integration supports fresh baselines, repeated keys, empty outlines and shared async handover. Controller extraction leaves 800 lines; new files remain below 450. Final-review correction makes the inner master selector await old-layer Pen commit; its delayed-apply regression verifies both points before master changes (16 focused tests pass).
+
+Validation: TypeScript, ESLint, full Prettier and generated API checks pass. Earlier full Vitest: 102 files / 919 tests; final corrections: 32 focused tests pass. Full isolated headless Playwright: **21 passed, no skips, 38.1 seconds**, workers=1, verified release kernel. This includes actual Source Han (65,535 glyphs), original DejaVu A/B/C edit/export/reopen, scratch A–C pen/width/export/reopen, third-glyph local editing and coalesced metric undo. Canvas timing: median 0.9 ms, p95 1.1 ms, maximum 1.7 ms.
+
+Initial browser run had 17 passes/4 failures; corrected obstructed hardcoded click positions and translated dialog selectors, preserving all persistence assertions. Root subsequent performance rerun exposed asynchronous HTTP apply backlog exceeding the test’s default five-second poll under load; a diagnostic with 40 ms/apply preserved exact final coordinates and undo after successful edit_end at 14.941 seconds. Approved closure-aware test correction `05da00f` passes three repeats (19.1 seconds), retaining exact persistence/undo and all timing bounds.
+
+Four screenshots and honest captions are in `docs/screenshots/p1-text-*`. Preview paths are document outlines with compiled shaping, not hinted raster. Text mode currently shows a generic loading placeholder in inactive glyph panels. Headless sessions stopped. No P2 or native input work.

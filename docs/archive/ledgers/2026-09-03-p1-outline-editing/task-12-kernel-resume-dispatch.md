@@ -1,0 +1,11 @@
+# T12 kernel acceptance preparation — 2026-09-07
+
+Implementer/measurement: Sol. Worktree .worktrees/p1-acceptance-kernel (already created from reviewed T7 P1 head). Read CONVENTIONS.md, task-12-brief.md, task-12-resume-rulings.md in root ledger. Root /home/chen/githubprojects/fontpixel/fontcarver. T8 UI and T9b work continue independently; do not modify their files or claim final whole-P1 acceptance yet.
+
+Bounded scope: establish reproducible API edit_apply performance gate and execute kernel/CLI portions of the two acceptance workflows, using existing tests where they suffice. Add a meaningful integration performance test (prefer fc-api/tests) for a font with 20k glyphs and a 300-point edited glyph. Measure warm edit_apply through the Api boundary in release, median/p95/max, sample count, assert the <=4ms budget with a clearly chosen conservative statistic; verify actual point delta and exact one-entry undo. Do not time a no-op or only an inner helper. Keep performance measurement out of debug runs or use non-timing semantic counterpart; document skips.
+
+Exercise (1) real licensed TTF -> modify three glyphs through API -> export -> re-read/table and shaping checks; (2) empty new font -> add/draw Latin glyphs -> export -> CLI inspect/re-open and verify outline/width. Tests should cover end-to-end state/API behavior not duplicate every existing helper assertion. Reuse existing fc-compile preservation and shaping tests, honoring ruled all-hinting-drop after edits. No proprietary font download or new dependency. Temporary exports stay under own target/tempdirs.
+
+External Source Han path repair and compiled identity metadata are running in another worktree; don't duplicate them. You can run baseline DejaVu export release test now; leave Source Han/final aggregate evidence for their reviewed merge. CLI binary must compile from current worktree; never use a pre-move executable. Skip desktop/browser portion until final T9b UI exists.
+
+Run fmt, scoped clippy/tests, targeted release measurements. Focused conventional commit(s), no P1 merge/push/subagents. Write root ledger task-12-kernel-report.md (absolute root path, not inside worktree ledger), include exact commands/results/timings and what remains pending. No final docs/p1-acceptance.md PASS claim yet; root assembles after UI. Return for Astra review.

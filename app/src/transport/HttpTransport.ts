@@ -1,4 +1,4 @@
-import type { ApiMethods, DocumentEvent } from '../api/generated'
+import type { ApiMethods, Event } from '../api/generated'
 import { ApiCallError, type Transport } from './Transport'
 
 interface ApiErrorPayload {
@@ -17,6 +17,7 @@ interface ResultEnvelope<Result> {
 const INITIAL_RECONNECT_DELAY_MS = 250
 const MAX_RECONNECT_DELAY_MS = 5_000
 const DEFAULT_TIMEOUT_MS = 30_000
+const LONG_RUNNING_TIMEOUT_MS = 120_000
 
 export interface HttpTransportOptions {
   timeoutMs?: number
@@ -25,22 +26,30 @@ export interface HttpTransportOptions {
 export class HttpTransport implements Transport {
   readonly kind = 'http'
   private readonly baseUrl: string
-  private readonly timeoutMs: number
-  private readonly eventListeners = new Set<(event: DocumentEvent) => void>()
+  private readonly timeoutOverrideMs: number | undefined
+  private readonly eventListeners = new Set<(event: Event) => void>()
   private socket: WebSocket | undefined
   private reconnectTimer: ReturnType<typeof setTimeout> | undefined
   private reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS
 
   constructor(baseUrl: string, options: HttpTransportOptions = {}) {
     this.baseUrl = baseUrl.replace(/\/$/, '')
-    this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+    this.timeoutOverrideMs = options.timeoutMs
   }
 
   async call<M extends keyof ApiMethods>(
     method: M,
     params: ApiMethods[M]['params'],
   ): Promise<ApiMethods[M]['result']> {
-    const signal = AbortSignal.timeout(this.timeoutMs)
+    const timeoutMs =
+      this.timeoutOverrideMs ??
+      (method === 'text.shape' ||
+      method === 'session.export' ||
+      method.startsWith('hints.tt_') ||
+      method === 'bitmap.rasterize'
+        ? LONG_RUNNING_TIMEOUT_MS
+        : DEFAULT_TIMEOUT_MS)
+    const signal = AbortSignal.timeout(timeoutMs)
     let response: Response
     try {
       response = await fetch(`${this.baseUrl}/api/${method}`, {
@@ -50,13 +59,18 @@ export class HttpTransport implements Transport {
         signal,
       })
     } catch (error) {
+      // A timeout or network failure does not identify a file problem. The
+      // request may have reached the kernel before the client stopped waiting.
       if (signal.aborted) {
         throw new ApiCallError(
-          'io',
-          `API request timed out after ${this.timeoutMs} ms`,
+          'timeout',
+          `API request timed out after ${timeoutMs} ms`,
         )
       }
-      throw error
+      throw new ApiCallError(
+        'transport',
+        error instanceof Error ? error.message : String(error),
+      )
     }
 
     if (!response.ok) {
@@ -96,7 +110,7 @@ export class HttpTransport implements Transport {
     return envelope.result
   }
 
-  onEvent(cb: (event: DocumentEvent) => void): () => void {
+  onEvent(cb: (event: Event) => void): () => void {
     this.eventListeners.add(cb)
     this.connectEvents()
     let active = true
@@ -123,9 +137,9 @@ export class HttpTransport implements Transport {
     }
     socket.onmessage = ({ data }) => {
       if (typeof data !== 'string') return
-      let event: DocumentEvent
+      let event: Event
       try {
-        event = JSON.parse(data) as DocumentEvent
+        event = JSON.parse(data) as Event
       } catch {
         return
       }

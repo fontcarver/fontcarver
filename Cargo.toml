@@ -1,21 +1,41 @@
 [workspace]
 members = [
-    "crates/fw-api",
-    "crates/fw-cli",
-    "crates/fw-devserver",
-    "crates/fw-doc",
-    "crates/fw-fixtures",
-    "crates/fw-glyphdata",
-    "crates/fw-model",
-    "crates/fw-sfnt",
+    "crates/fc-api",
+    "crates/fc-cli",
+    "crates/fc-compile",
+    "crates/fc-devserver",
+    "crates/fc-doc",
+    "crates/fc-fixtures",
+    "crates/fc-formats",
+    "crates/fc-glyphdata",
+    "crates/fc-geom",
+    "crates/fc-hint",
+    "crates/fc-layout",
+    "crates/fc-model",
+    "crates/fc-raster",
+    "crates/fc-sfnt",
     "src-tauri",
 ]
 resolver = "2"
 
+# The workspace links many integration-test binaries. Full debug information and
+# incremental caches can grow to hundreds of GiB during repeated local builds.
+# Keep normal development/test artifacts small; opt into debugger information
+# with CARGO_PROFILE_DEV_DEBUG=1 or CARGO_PROFILE_TEST_DEBUG=1 when needed.
+[profile.dev]
+debug = 0
+incremental = false
+
+[profile.test]
+debug = 0
+incremental = false
+
 [workspace.package]
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 edition = "2021"
-license = "GPL-3.0-or-later"
+license = "MIT OR Apache-2.0"
+homepage = "https://fontcarver.com"
+repository = "https://github.com/fontcarver/fontcarver"
 rust-version = "1.94"
 
 [workspace.dependencies]
@@ -24,6 +44,8 @@ write-fonts = { version = "0.52", features = ["read"] }
 skrifa = "0.46"
 font-types = "0.12"
 kurbo = { version = "0.13", features = ["serde"] }
+flo_curves = "0.8"
+i_overlay = "8"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 smol_str = { version = "0.3", features = ["serde"] }
@@ -50,6 +72,10 @@ sha2 = "0.10"
 criterion = "0.5"
 assert_cmd = "2"
 predicates = "3"
+norad = { version = "0.18", features = ["kurbo", "rayon"] }
+plist = "1"
+proptest = "1"
+walkdir = "2"
 icu_properties = "=2.1.1"
 tauri = "2"
 tauri-build = "2"

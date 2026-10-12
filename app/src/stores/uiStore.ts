@@ -1,7 +1,13 @@
 import { create } from 'zustand'
 
-import type { DocId, GlyphId } from '../api'
-import { DEFAULT_LANGUAGE, normaliseLanguage, type Language } from '../i18n'
+import type { DocId, GlyphId, MasterId, RecoveryEntry } from '../api'
+import {
+  DEFAULT_LANGUAGE,
+  i18n,
+  normaliseLanguage,
+  type Language,
+} from '../i18n'
+import { errorNotice } from '../i18n/errors'
 
 /** User-selectable colour theme; `system` follows `prefers-color-scheme`. */
 export type ThemePreference = 'light' | 'dark' | 'system'
@@ -10,7 +16,40 @@ export type ThemePreference = 'light' | 'dark' | 'system'
 export type ResolvedTheme = 'light' | 'dark'
 
 /** Kind of workspace tab. */
-export type TabKind = 'font' | 'glyph' | 'fontinfo'
+export type TabKind = 'font' | 'glyph' | 'fontinfo' | 'features' | 'bitmap'
+
+/** Per-tab state for the shaped text editor hosted by a Glyph tab. */
+export interface TextTabState {
+  readonly text: string
+  readonly activeIndex: number | null
+  readonly runCount?: number
+  readonly shaping?: boolean
+  readonly mode: 'text' | 'edit'
+  /** Legacy tabs behave as on; locked protects spacing edits. */
+  readonly kerningMode?: 'off' | 'on' | 'locked'
+  readonly spacingSide?: 'lsb' | 'rsb' | 'both'
+  readonly master: MasterId | null
+  readonly size: number
+  readonly features: Array<[string, boolean]>
+  readonly direction: 'ltr' | 'rtl' | 'ttb'
+  readonly previewTheme: 'light' | 'dark'
+  readonly previewCollapsed: boolean
+  readonly script?: string | null
+  readonly language?: string | null
+  readonly previewHeight?: number
+  /** Preview strip presentation, shared with the detached preview window. */
+  readonly previewFlipHorizontal?: boolean
+  readonly previewFlipVertical?: boolean
+  /** Canvas2D blur radius in CSS pixels, 0 to 4. */
+  readonly previewBlur?: number
+  readonly previewMode?: 'run' | 'single'
+  /** Ascending waterfall steps in pixels per em. */
+  readonly previewSizes?: readonly number[]
+  /** Index of the named instance the preview renders, or null for the master. */
+  readonly previewInstance?: number | null
+  /** Identifier of the selected saved proof string, for ↑/↓ stepping. */
+  readonly proofId?: string | null
+}
 
 /** One workspace tab. Tab ids are derived so re-opening focuses the same tab. */
 export interface Tab {
@@ -18,6 +57,8 @@ export interface Tab {
   readonly kind: TabKind
   readonly doc: DocId
   readonly gid?: GlyphId
+  /** Present once a legacy single-glyph tab has entered the Text workflow. */
+  readonly textState?: TextTabState
   /** Optional display label; falls back to the tab kind and document name. */
   readonly label?: string
 }
@@ -27,10 +68,40 @@ export interface Toast {
   readonly id: string
   readonly kind: 'info' | 'error'
   readonly message: string
+  /** Raw kernel wording, shown behind a "Details" disclosure. */
+  readonly details?: string
 }
 
 /** Which resizable side panel a size or visibility change refers to. */
 export type PanelId = 'sidebar' | 'inspector'
+
+/**
+ * A view this window has moved into a separate OS window.
+ *
+ * The shape mirrors the transport's window target without importing it, so the
+ * store stays free of transport concerns while the workspace snapshot and the
+ * Window menu can both say what is currently detached.
+ */
+export type DetachedView =
+  | {
+      readonly kind: 'panel'
+      readonly doc: DocId
+      readonly panel: PanelId | 'preview'
+    }
+  | {
+      readonly kind: 'tab'
+      readonly doc: DocId
+      readonly tab: TabKind
+      readonly gid?: GlyphId
+      readonly tabId: string
+    }
+
+/** Identity of a detached view, so the same window is never listed twice. */
+export function detachedKey(view: DetachedView): string {
+  return view.kind === 'panel'
+    ? `panel:${view.doc}:${view.panel}`
+    : `tab:${view.doc}:${view.tabId}`
+}
 
 /** A path prompt shown when no native file dialog is available. */
 export interface PathPrompt {
@@ -45,19 +116,67 @@ export interface ClosePrompt {
   readonly doc: DocId
 }
 
+/**
+ * Which modal dialog is open, together with what it needs to render.
+ *
+ * One slot holds at most one dialog: the shell is modal, so opening a second
+ * dialog replaces the first rather than stacking two focus traps.
+ */
+export type DialogState =
+  | { readonly kind: 'compareFonts'; readonly doc: DocId }
+  | {
+      readonly kind: 'pasteSpecial' | 'relinkComponents'
+      readonly doc: DocId
+      readonly glyphs: GlyphId[]
+    }
+  | { readonly kind: 'newFont' }
+  | {
+      readonly kind: 'batchRename'
+      readonly doc: DocId
+      readonly glyphs: GlyphId[]
+    }
+  | {
+      readonly kind: 'addGlyphs'
+      readonly doc: DocId
+      readonly recipe?: string
+    }
+  | { readonly kind: 'export'; readonly doc: DocId }
+  | { readonly kind: 'findProblems'; readonly doc: DocId }
+  | { readonly kind: 'preferences' }
+  | { readonly kind: 'recovery'; readonly entries: readonly RecoveryEntry[] }
+  | { readonly kind: 'simplify' }
+  | { readonly kind: 'expandStroke' }
+  | {
+      readonly kind: 'styleEffects'
+      readonly doc: DocId
+      readonly glyphs: GlyphId[]
+      readonly master: MasterId
+    }
+
 /** Inclusive pixel bounds of the resizable panels. */
 export const PANEL_BOUNDS: Record<PanelId, { min: number; max: number }> = {
   sidebar: { min: 200, max: 400 },
   inspector: { min: 240, max: 420 },
 }
 
-const STORAGE_KEY = 'fontworkshop.ui'
+/** How long the status bar shows the last undo label (design spec §10). */
+export const UNDO_FLASH_MS = 1500
+
+const STORAGE_KEY = 'fontcarver.ui'
 
 interface PersistedUi {
   theme: ThemePreference
   language: Language
   panels: { sidebar: boolean; inspector: boolean }
   sizes: { sidebar: number; inspector: number }
+  /**
+   * Open/closed state of the Edit tab's inspector accordion, keyed by section
+   * id (design spec §7: "each remembers open/closed state"). A section with no
+   * entry uses its own default, so a new panel can ship open without having to
+   * migrate everyone's stored record.
+   */
+  sections: Record<string, boolean>
+  textPreviewVisible: boolean
 }
 
 const DEFAULT_PERSISTED: PersistedUi = {
@@ -65,6 +184,17 @@ const DEFAULT_PERSISTED: PersistedUi = {
   language: DEFAULT_LANGUAGE,
   panels: { sidebar: true, inspector: true },
   sizes: { sidebar: 240, inspector: 300 },
+  sections: {},
+  textPreviewVisible: true,
+}
+
+/** Keeps only the boolean entries of a stored section record. */
+function readSections(value: unknown): Record<string, boolean> {
+  if (typeof value !== 'object' || value === null) return {}
+  const sections: Record<string, boolean> = {}
+  for (const [key, open] of Object.entries(value))
+    if (typeof open === 'boolean') sections[key] = open
+  return sections
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -73,7 +203,9 @@ function clamp(value: number, min: number, max: number): number {
 
 function readPersisted(): PersistedUi {
   try {
-    const raw = globalThis.localStorage?.getItem(STORAGE_KEY)
+    const raw =
+      globalThis.localStorage?.getItem(STORAGE_KEY) ??
+      globalThis.localStorage?.getItem('fontcutter.ui')
     if (!raw) return DEFAULT_PERSISTED
     const parsed = JSON.parse(raw) as Partial<PersistedUi>
     const theme = parsed.theme
@@ -100,6 +232,9 @@ function readPersisted(): PersistedUi {
           PANEL_BOUNDS.inspector.max,
         ),
       },
+      sections: readSections(parsed.sections),
+      textPreviewVisible:
+        parsed.textPreviewVisible ?? DEFAULT_PERSISTED.textPreviewVisible,
     }
   } catch {
     return DEFAULT_PERSISTED
@@ -146,14 +281,39 @@ export interface UiState extends PersistedUi {
   paletteOpen: boolean
   pathPrompt: PathPrompt | null
   closePrompt: ClosePrompt | null
+  dialog: DialogState | null
+  /**
+   * How many modal dialogs are on screen.
+   *
+   * The shared `Dialog` primitive counts itself in and out, so the global
+   * shortcut dispatcher can leave the keyboard to the dialog instead of, say,
+   * closing the document behind it.
+   */
+  modalCount: number
+  /** Documents whose "recovered from…" banner the user has dismissed. */
+  dismissedRecoveries: readonly DocId[]
+  /** Views this window has moved into separate OS windows. */
+  detached: readonly DetachedView[]
   toasts: Toast[]
+  /**
+   * Label of the edit that just happened, shown in the status bar for a moment
+   * (design spec §10) so an action that changed nothing visible still says
+   * what it did.
+   */
+  undoFlash: string | null
   setTheme: (theme: ThemePreference) => void
   setLanguage: (language: Language) => void
   setPanelVisible: (panel: PanelId, visible: boolean) => void
   togglePanel: (panel: PanelId) => void
   setPanelSize: (panel: PanelId, size: number) => void
-  openTab: (tab: Omit<Tab, 'id'>) => string
+  setSection: (id: string, open: boolean) => void
+  toggleSection: (id: string, fallback: boolean) => void
+  openTab: (tab: Omit<Tab, 'id'>, activate?: boolean) => string
   setTabLabel: (id: string, label: string) => void
+  updateTab: (
+    id: string,
+    patch: Partial<Omit<Tab, 'id' | 'kind' | 'doc'>>,
+  ) => void
   setActiveTab: (id: string) => void
   closeTab: (id: string) => void
   closeTabsForDoc: (doc: DocId) => void
@@ -161,8 +321,18 @@ export interface UiState extends PersistedUi {
   setPaletteOpen: (open: boolean) => void
   setPathPrompt: (prompt: PathPrompt | null) => void
   setClosePrompt: (prompt: ClosePrompt | null) => void
+  setDialog: (dialog: DialogState | null) => void
+  openModal: () => void
+  closeModal: () => void
+  dismissRecoveryBanner: (doc: DocId) => void
+  addDetached: (view: DetachedView) => void
+  removeDetached: (view: DetachedView) => void
+  setDetached: (views: readonly DetachedView[]) => void
   pushToast: (toast: Omit<Toast, 'id'>) => string
   dismissToast: (id: string) => void
+  flashUndoLabel: (label: string | null) => void
+  setTextPreviewVisible: (visible: boolean) => void
+  toggleTextPreview: () => void
 }
 
 function persistedOf(state: UiState): PersistedUi {
@@ -171,6 +341,8 @@ function persistedOf(state: UiState): PersistedUi {
     language: state.language,
     panels: state.panels,
     sizes: state.sizes,
+    sections: state.sections,
+    textPreviewVisible: state.textPreviewVisible,
   }
 }
 
@@ -182,8 +354,11 @@ export function initialUiState(): Omit<
   | 'setPanelVisible'
   | 'togglePanel'
   | 'setPanelSize'
+  | 'setSection'
+  | 'toggleSection'
   | 'openTab'
   | 'setTabLabel'
+  | 'updateTab'
   | 'setActiveTab'
   | 'closeTab'
   | 'closeTabsForDoc'
@@ -191,8 +366,18 @@ export function initialUiState(): Omit<
   | 'setPaletteOpen'
   | 'setPathPrompt'
   | 'setClosePrompt'
+  | 'setDialog'
+  | 'openModal'
+  | 'closeModal'
+  | 'dismissRecoveryBanner'
+  | 'addDetached'
+  | 'removeDetached'
+  | 'setDetached'
   | 'pushToast'
   | 'dismissToast'
+  | 'flashUndoLabel'
+  | 'setTextPreviewVisible'
+  | 'toggleTextPreview'
 > {
   return {
     ...readPersisted(),
@@ -201,9 +386,16 @@ export function initialUiState(): Omit<
     paletteOpen: false,
     pathPrompt: null,
     closePrompt: null,
+    dialog: null,
+    modalCount: 0,
+    dismissedRecoveries: [],
+    detached: [],
     toasts: [],
+    undoFlash: null,
   }
 }
+
+let undoFlashTimer: ReturnType<typeof setTimeout> | undefined
 
 export const useUiStore = create<UiState>((set, get) => ({
   ...initialUiState(),
@@ -228,6 +420,15 @@ export const useUiStore = create<UiState>((set, get) => ({
     get().setPanelVisible(panel, !get().panels[panel])
   },
 
+  setSection: (id, open) => {
+    set((state) => ({ sections: { ...state.sections, [id]: open } }))
+    writePersisted(persistedOf(get()))
+  },
+
+  toggleSection: (id, fallback) => {
+    get().setSection(id, !(get().sections[id] ?? fallback))
+  },
+
   setPanelSize: (panel, size) => {
     const { min, max } = PANEL_BOUNDS[panel]
     set((state) => ({
@@ -236,14 +437,39 @@ export const useUiStore = create<UiState>((set, get) => ({
     writePersisted(persistedOf(get()))
   },
 
-  openTab: (tab) => {
-    const id = tabId(tab.kind, tab.doc, tab.gid)
-    set((state) => ({
-      tabs: state.tabs.some((existing) => existing.id === id)
-        ? state.tabs
-        : [...state.tabs, { ...tab, id }],
-      activeTab: id,
-    }))
+  openTab: (tab, activate = true) => {
+    const baseId = tabId(tab.kind, tab.doc, tab.gid)
+    const occupied = get().tabs.find((candidate) => candidate.id === baseId)
+    let id = baseId
+    if (
+      tab.kind === 'glyph' &&
+      occupied?.textState &&
+      occupied.gid !== tab.gid
+    ) {
+      let suffix = 2
+      while (
+        get().tabs.some((candidate) => candidate.id === `${baseId}:${suffix}`)
+      )
+        suffix += 1
+      id = `${baseId}:${suffix}`
+    }
+    set((state) => {
+      if (state.tabs.some((existing) => existing.id === id))
+        return { activeTab: activate ? id : state.activeTab }
+      const entry = { ...tab, id }
+      const tabs = [...state.tabs]
+      // Each document keeps one contiguous run of tabs with its Overview pinned
+      // first, so the numbered shortcuts, Ctrl+Tab and the strip all agree on
+      // what "the second tab of this document" means.
+      const first = tabs.findIndex((existing) => existing.doc === tab.doc)
+      let last = first
+      for (let index = Math.max(first, 0); index < tabs.length; index += 1)
+        if (tabs[index].doc === tab.doc) last = index
+      const at =
+        first < 0 ? tabs.length : tab.kind === 'font' ? first : last + 1
+      tabs.splice(at, 0, entry)
+      return { tabs, activeTab: activate ? id : state.activeTab }
+    })
     return id
   },
 
@@ -258,6 +484,14 @@ export const useUiStore = create<UiState>((set, get) => ({
         ),
       }
     })
+  },
+
+  updateTab: (id, patch) => {
+    set((state) => ({
+      tabs: state.tabs.map((tab) =>
+        tab.id === id ? { ...tab, ...patch, id: tab.id } : tab,
+      ),
+    }))
   },
 
   setActiveTab: (id) => {
@@ -277,12 +511,27 @@ export const useUiStore = create<UiState>((set, get) => ({
 
   closeTabsForDoc: (doc) => {
     set((state) => {
+      // A closed document takes its dismissed-banner marker with it, so the
+      // list cannot grow for the lifetime of the session.
+      const dismissedRecoveries = state.dismissedRecoveries.filter(
+        (entry) => entry !== doc,
+      )
       const tabs = state.tabs.filter((tab) => tab.doc !== doc)
-      if (tabs.length === state.tabs.length) return state
+      // A closed document's detached windows close with it, so its entries
+      // must not keep a later workspace pointing at windows that are gone.
+      const detached = state.detached.filter((view) => view.doc !== doc)
+      if (tabs.length === state.tabs.length)
+        return dismissedRecoveries.length ===
+          state.dismissedRecoveries.length &&
+          detached.length === state.detached.length
+          ? state
+          : { ...state, dismissedRecoveries, detached }
       const activeSurvives = tabs.some((tab) => tab.id === state.activeTab)
       return {
         ...state,
         tabs,
+        dismissedRecoveries,
+        detached,
         activeTab: activeSurvives
           ? state.activeTab
           : (tabs[tabs.length - 1]?.id ?? null),
@@ -306,6 +555,38 @@ export const useUiStore = create<UiState>((set, get) => ({
 
   setClosePrompt: (closePrompt) => set({ closePrompt }),
 
+  setDialog: (dialog) => set({ dialog }),
+
+  openModal: () => set((state) => ({ modalCount: state.modalCount + 1 })),
+
+  closeModal: () =>
+    set((state) => ({ modalCount: Math.max(0, state.modalCount - 1) })),
+
+  addDetached: (view) =>
+    set((state) =>
+      state.detached.some((entry) => detachedKey(entry) === detachedKey(view))
+        ? state
+        : { detached: [...state.detached, view] },
+    ),
+
+  removeDetached: (view) =>
+    set((state) => {
+      const key = detachedKey(view)
+      const detached = state.detached.filter(
+        (entry) => detachedKey(entry) !== key,
+      )
+      return detached.length === state.detached.length ? state : { detached }
+    }),
+
+  setDetached: (views) => set({ detached: [...views] }),
+
+  dismissRecoveryBanner: (doc) =>
+    set((state) =>
+      state.dismissedRecoveries.includes(doc)
+        ? state
+        : { dismissedRecoveries: [...state.dismissedRecoveries, doc] },
+    ),
+
   pushToast: (toast) => {
     const id = `toast-${++toastCounter}`
     set((state) => ({ toasts: [...state.toasts, { ...toast, id }] }))
@@ -316,7 +597,44 @@ export const useUiStore = create<UiState>((set, get) => ({
     set((state) => ({
       toasts: state.toasts.filter((toast) => toast.id !== id),
     })),
+
+  flashUndoLabel: (label) => {
+    if (undoFlashTimer !== undefined) clearTimeout(undoFlashTimer)
+    if (!label) {
+      set({ undoFlash: null })
+      return
+    }
+    set({ undoFlash: label })
+    undoFlashTimer = setTimeout(() => {
+      undoFlashTimer = undefined
+      set({ undoFlash: null })
+    }, UNDO_FLASH_MS)
+  },
+
+  setTextPreviewVisible: (textPreviewVisible) => {
+    set({ textPreviewVisible })
+    writePersisted(persistedOf(get()))
+  },
+
+  toggleTextPreview: () =>
+    get().setTextPreviewVisible(!get().textPreviewVisible),
 }))
+
+/**
+ * Reports a rejected kernel call as an error toast.
+ *
+ * The single place the interface turns a thrown value into a notification, so
+ * every failure gets the same treatment: a translated summary for the error
+ * code and the kernel's own wording under "Details".
+ */
+export function reportError(error: unknown): void {
+  const notice = errorNotice(error, (key, options) => i18n.t(key, options))
+  useUiStore.getState().pushToast({
+    kind: 'error',
+    message: notice.message,
+    ...(notice.details === null ? {} : { details: notice.details }),
+  })
+}
 
 /** Selector: the currently active tab, if any. */
 export function selectActiveTab(state: UiState): Tab | null {

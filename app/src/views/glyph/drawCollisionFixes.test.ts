@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { Viewport } from '../../canvas/Viewport'
+import { IDENTITY } from '../../editor/affine'
 import { makeCell, makeGlyphDetail, makeMaster } from '../../test/fontFixtures'
 import { createRecordingContext } from '../../test/recordingContext'
 
@@ -58,6 +59,43 @@ describe('drawing collision fixes', () => {
     ).toContainEqual([6, 3])
   })
 
+  it('promotes the vertical metrics and boxes the advance in vertical mode', () => {
+    const recording = createRecordingContext()
+    const metrics = {
+      ...scene.metrics,
+      width: 1000,
+      verticalOrigin: 880,
+      verticalWidth: 1000,
+    }
+    // Half scale frames the whole vertical em, so neither line is culled.
+    const viewport = viewportOf()
+    viewport.scale = 0.5
+    viewport.offset = { x: 100, y: 450 }
+    drawMetrics(
+      recording.ctx,
+      viewport,
+      {
+        metrics,
+        labels: DEFAULT_METRIC_LABELS,
+        showLabels: false,
+        vertical: true,
+      },
+      FALLBACK_GLYPH_THEME,
+    )
+
+    // Labelled even with labels off, because these are the lines being edited.
+    const labels = recording.calls('fillText').map((op) => op.args[0])
+    expect(labels).toContain('vert. origin 880')
+    expect(labels).toContain('vert. advance -120')
+    // Solid rather than the dashed reference style of a horizontal font.
+    expect(
+      recording.calls('setLineDash').map((op) => op.args[0]),
+    ).not.toContainEqual([6, 3])
+    // The vertical advance box spans the advance width and the advance height.
+    const box = recording.calls('strokeRect').at(-1)
+    expect(box?.args.slice(2)).toEqual([500, 500])
+  })
+
   it('offsets a component label when its bounds intersect an earlier label', () => {
     const recording = createRecordingContext()
     const component = {
@@ -82,7 +120,14 @@ describe('drawing collision fixes', () => {
       viewportOf(),
       {
         path: null,
-        components: [component, { ...component, base: 'acute' }],
+        components: [
+          { component, path: null, transform: IDENTITY },
+          {
+            component: { ...component, base: 'acute' },
+            path: null,
+            transform: IDENTITY,
+          },
+        ],
         filled: false,
         showLabels: true,
       },

@@ -1,4 +1,8 @@
 import { useTranslation } from 'react-i18next'
+import { IconButton } from '../components/IconButton'
+import { reportError } from '../stores/uiStore'
+import { readWindowTarget } from '../transport/windows'
+import { detachPanel } from './windowActions'
 
 import type { GlyphSort } from '../api'
 import { Field } from '../components/Field'
@@ -14,11 +18,21 @@ import {
 } from '../stores/documentStore'
 import { selectSummary, useSessionStore } from '../stores/sessionStore'
 import { selectActiveTab, useUiStore } from '../stores/uiStore'
-import { GlyphInspector } from '../views/glyph/GlyphInspector'
+import { EditInspector } from '../views/glyph/panels/EditInspector'
+import { HistoryPanel } from './HistoryPanel'
 
 import styles from './panels.module.css'
 
-const SORTS: readonly GlyphSort[] = ['Order', 'Unicode', 'Name', 'Width']
+const SORTS: readonly GlyphSort[] = [
+  'Order',
+  'Unicode',
+  'Name',
+  'Width',
+  'Radical',
+  'Strokes',
+  'Reading',
+  'Cid',
+]
 const LABEL_MODES: readonly LabelMode[] = ['name', 'unicode', 'index']
 
 /**
@@ -38,7 +52,17 @@ export function Inspector() {
   if (!summary || !tab) {
     return (
       <>
-        <div className={styles.panelTitle}>{t('inspector.title')}</div>
+        <div className={styles.panelTitle}>
+          <span>{t('inspector.title')}</span>
+          {readWindowTarget()?.kind !== 'panel' ? (
+            <IconButton
+              label={t('shellWindow.detachInspector')}
+              onClick={() => void detachPanel('inspector').catch(reportError)}
+            >
+              ↗
+            </IconButton>
+          ) : null}
+        </div>
         <p className={styles.hintBlock}>{t('inspector.empty')}</p>
       </>
     )
@@ -49,9 +73,28 @@ export function Inspector() {
 
   return (
     <>
-      <div className={styles.panelTitle}>{t('inspector.title')}</div>
-      <div className={styles.panelStack}>
-        {tab.kind === 'glyph' ? <GlyphInspector /> : null}
+      <div className={styles.panelTitle}>
+        <span>{t('inspector.title')}</span>
+        {readWindowTarget()?.kind !== 'panel' ? (
+          <IconButton
+            label={t('shellWindow.detachInspector')}
+            onClick={() => void detachPanel('inspector').catch(reportError)}
+          >
+            ↗
+          </IconButton>
+        ) : null}
+      </div>
+      <div
+        className={styles.panelStack}
+        role="region"
+        aria-label={t('a11y.inspector')}
+      >
+        {tab.kind === 'glyph' ? (
+          <EditInspector
+            masters={summary.masters}
+            hasAxes={summary.axes.length > 0}
+          />
+        ) : null}
         <Panel title={t('inspector.document')}>
           <Field label={t('inspector.family')} readOnly>
             {summary.family_name}
@@ -78,6 +121,8 @@ export function Inspector() {
             {summary.path ?? '—'}
           </Field>
         </Panel>
+
+        <HistoryPanel doc={doc} />
 
         {tab.kind === 'fontinfo' ? (
           <p className={styles.hintBlock}>{t('inspector.fontInfoNote')}</p>

@@ -1,5 +1,10 @@
 import { useTranslation } from 'react-i18next'
+import { IconButton } from '../components/IconButton'
+import { reportError } from '../stores/uiStore'
+import { readWindowTarget } from '../transport/windows'
+import { detachPanel } from './windowActions'
 
+import { EditSidebar } from '../views/glyph/EditSidebar'
 import { SidebarFilters } from '../views/font/SidebarFilters'
 import { selectActiveTab, useUiStore } from '../stores/uiStore'
 
@@ -7,7 +12,8 @@ import styles from './panels.module.css'
 
 /**
  * Left pane. Its content follows the active tab: the Font tab gets the glyph
- * filter counts, other tab kinds get their own (still forthcoming) context.
+ * filter counts, an Edit tab the layers of its glyph over the Font view's
+ * current glyph list (design spec §3).
  */
 export function Sidebar() {
   const { t } = useTranslation()
@@ -15,10 +21,26 @@ export function Sidebar() {
 
   return (
     <>
-      <div className={styles.panelTitle}>{t('sidebar.title')}</div>
-      <div className={styles.panelStack}>
+      <div className={styles.panelTitle}>
+        <span>
+          {tab?.kind === 'glyph' ? t('sidebar.glyphTitle') : t('sidebar.title')}
+        </span>
+        {tab && readWindowTarget()?.kind !== 'panel' ? (
+          <IconButton
+            label={t('shellWindow.detachSidebar')}
+            onClick={() => void detachPanel('sidebar').catch(reportError)}
+          >
+            ↗
+          </IconButton>
+        ) : null}
+      </div>
+      <div
+        className={styles.panelStack}
+        role="region"
+        aria-label={t('a11y.sidebar')}
+      >
         {tab?.kind === 'glyph' ? (
-          <p className={styles.hintBlock}>{t('sidebar.glyphNote')}</p>
+          <EditSidebar doc={tab.doc} />
         ) : tab?.kind === 'fontinfo' ? (
           <p className={styles.hintBlock}>{t('sidebar.fontInfoNote')}</p>
         ) : tab?.kind === 'font' ? (

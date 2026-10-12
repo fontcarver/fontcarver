@@ -1,0 +1,6 @@
+- Status: Complete; worktree clean, not pushed.
+- Commit: `7c4a99d feat(fw-compile): add fontc static export and preservation`
+- Tests: fmt, strict clippy, debug tests, and release tests all passed—10 integration tests.
+- Timings: DejaVu Sans 509.7 ms; Source Han Sans SC 40.98 s.
+- Concerns: Large fonts use format-12 `cmap` and format-3 `post` to avoid fontc 1.0 capacity overflows. Overlap removal/autohint remain warning-only as scoped.
+- Report: [task-3-report.md](/home/chen/githubprojects/pixelfonts/fontworkshop/.superpowers/sdd/2026-09-03-p1-outline-editing/task-3-report.md)CODEX_DONE exit=0

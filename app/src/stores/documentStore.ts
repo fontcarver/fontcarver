@@ -10,10 +10,13 @@ import {
   type SidebarCounts,
 } from '../api'
 
-import { useUiStore } from './uiStore'
+import { reportError } from './uiStore'
 
 /** What the glyph grid prints under each cell. */
 export type LabelMode = 'name' | 'unicode' | 'index'
+
+/** Presentation used by the font overview. */
+export type GlyphViewMode = 'grid' | 'list'
 
 /** Smallest, largest and default glyph-cell edge length in CSS pixels. */
 export const CELL_SIZE_MIN = 24
@@ -28,7 +31,9 @@ export const CELL_SIZE_STEPS = [
 /** Whether any condition of a filter narrows the glyph list. */
 export function isFiltered(filter: GlyphFilter): boolean {
   return (
-    filter.query !== null ||
+    Boolean(filter.query) ||
+    Boolean(filter.smart_expression?.trim()) ||
+    filter.glyph_names != null ||
     filter.categories.length > 0 ||
     filter.scripts.length > 0 ||
     filter.blocks.length > 0 ||
@@ -37,7 +42,8 @@ export function isFiltered(filter: GlyphFilter): boolean {
     filter.unicode_ranges.length > 0 ||
     filter.unencoded_only ||
     filter.changed_only ||
-    filter.has_components !== null
+    filter.has_components !== null ||
+    filter.cjk != null
   )
 }
 
@@ -45,6 +51,12 @@ export function isFiltered(filter: GlyphFilter): boolean {
 export function emptyFilter(): GlyphFilter {
   return {
     query: null,
+    query_scope: 'All',
+    case_sensitive: false,
+    regex: false,
+    smart_expression: null,
+    glyph_names: null,
+    cjk: null,
     categories: [],
     scripts: [],
     blocks: [],
@@ -74,6 +86,7 @@ export interface DocView {
   master: MasterId | null
   cellSize: number
   labelMode: LabelMode
+  viewMode: GlyphViewMode
 }
 
 /** A fresh view state for a newly opened document. */
@@ -90,6 +103,7 @@ export function newDocView(): DocView {
     master: null,
     cellSize: CELL_SIZE_DEFAULT,
     labelMode: 'name',
+    viewMode: 'grid',
   }
 }
 
@@ -138,6 +152,7 @@ export interface DocumentState {
   noteGeneration: (doc: DocId, generation: number) => void
   stepCellSize: (doc: DocId, direction: 1 | -1) => void
   setLabelMode: (doc: DocId, mode: LabelMode) => void
+  setViewMode: (doc: DocId, mode: GlyphViewMode) => void
   setSelection: (doc: DocId, selection: Iterable<GlyphId>) => void
   toggleSelection: (doc: DocId, gid: GlyphId) => void
   clearSelection: (doc: DocId) => void
@@ -199,10 +214,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => {
       } catch (error) {
         // A document closed mid-request fails by design; stay quiet then.
         if (!get().byDoc[doc]) return
-        useUiStore.getState().pushToast({
-          kind: 'error',
-          message: error instanceof Error ? error.message : String(error),
-        })
+        reportError(error)
       }
     },
 
@@ -249,6 +261,8 @@ export const useDocumentStore = create<DocumentState>((set, get) => {
     },
 
     setLabelMode: (doc, labelMode) => patch(doc, { labelMode }),
+
+    setViewMode: (doc, viewMode) => patch(doc, { viewMode }),
 
     setSelection: (doc, selection) =>
       patch(doc, { selection: new Set(selection) }),

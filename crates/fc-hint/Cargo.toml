@@ -1,0 +1,15 @@
+[package]
+name = "fc-hint"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+fc-model = { path = "../fc-model" }
+kurbo.workspace = true
+read-fonts.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true

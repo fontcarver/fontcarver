@@ -1,0 +1,79 @@
+.panel {
+  flex: none;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-size-sm);
+  background: var(--color-surface-raised);
+}
+.panel summary {
+  cursor: pointer;
+  padding: 5px 12px;
+}
+.panel summary span {
+  margin-left: 8px;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+}
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 12px 10px;
+  max-height: 250px;
+  overflow: auto;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+}
+.row label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+}
+.row input,
+.row select,
+.row button {
+  min-height: 26px;
+  max-width: 240px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  padding: 3px 6px;
+}
+.row input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+.row button {
+  cursor: pointer;
+}
+.row button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.row input:focus-visible,
+.row select:focus-visible,
+.row button:focus-visible,
+.panel summary:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.entrySelect {
+  flex: 1;
+  min-width: 180px;
+}
+.hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+}
+/* The visible Import button is the accessible control; this input is only its
+   file picker, so it is removed from the tree rather than merely offscreen. */
+.fileInput {
+  display: none;
+}

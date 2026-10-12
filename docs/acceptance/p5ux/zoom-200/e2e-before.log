@@ -1,0 +1,59 @@
+[WebServer] (node:3602986) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `pnpm --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:3603000) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node:3603031) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] 6:44:14 PM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✘  1 e2e/welcome-reflow.spec.ts:37:5 › keeps welcome and palette readable at 200% reflow: en/light (2.4s)
+
+
+  1) e2e/welcome-reflow.spec.ts:37:5 › keeps welcome and palette readable at 200% reflow: en/light ─
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 18
+
+    - Array []
+    + Array [
+    +   "result list overflows horizontally",
+    +   "Lasso",
+    +   "Q · Draw around points to select them; Shift adds to the selection and Alt excludes handles.",
+    +   "Eraser",
+    +   "Shift+E · Drag across nodes to erase them in one step; Shift leaves a gap. Escape cancels.",
+    +   "Magnet",
+    +   "M · Drag a layer guide onto nodes to link them to it. Alt projects them onto the guide first.",
+    +   "Measure",
+    +   "L · Drag to measure; press G while dragging to add a guide. Horizontal delta follows the italic angle.",
+    +   "Text",
+    +   "T · Switches the Edit tab into shaped-text mode; Escape goes back to the glyph.",
+    +   "Pixel",
+    +   "X · Opens the strike editor, where a pixel size is always the edited surface.",
+    +   "Align Components to Anchors",
+    +   "Update Metrics in All Masters",
+    +   "Close Tab",
+    + ]
+
+      102 |         return failures
+      103 |       })
+    > 104 |       expect(overflow).toEqual([])
+          |                        ^
+      105 |
+      106 |       // Wrapping changes row heights: keyboard selection must still scroll the
+      107 |       // last/first result into view and keep the search and scope reachable.
+        at /home/chen/githubprojects/fontpixel/fontcarver/app/e2e/welcome-reflow.spec.ts:104:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../.scratch/p5ux-zoom/e2e-before/welcome-reflow-keeps-welco-6243f-able-at-200-reflow-en-light/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../.scratch/p5ux-zoom/e2e-before/welcome-reflow-keeps-welco-6243f-able-at-200-reflow-en-light/error-context.md
+
+  1 failed
+    e2e/welcome-reflow.spec.ts:37:5 › keeps welcome and palette readable at 200% reflow: en/light ──

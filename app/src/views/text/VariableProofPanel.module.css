@@ -1,0 +1,32 @@
+.panel {
+  flex: none;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.toggle {
+  width: 100%;
+  text-align: left;
+  padding: var(--space-1) var(--space-2);
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2);
+}
+.controls label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-size-sm);
+}
+.controls output {
+  min-width: 5ch;
+  font-variant-numeric: tabular-nums;
+}
+.error {
+  color: var(--color-danger);
+  margin: var(--space-2);
+}

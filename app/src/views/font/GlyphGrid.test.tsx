@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { DocumentEvent, GlyphListParams } from '../../api'
@@ -12,9 +18,14 @@ import {
 import { initialSessionState, useSessionStore } from '../../stores/sessionStore'
 import { initialUiState, useUiStore } from '../../stores/uiStore'
 import { glyphPage, stubGridViewport } from '../../test/glyphFixtures'
-import { createMockTransport, makeSummary } from '../../test/mockTransport'
+import {
+  createMockTransport,
+  makeSummary,
+  noChange,
+} from '../../test/mockTransport'
 
 import { FontView } from './FontView'
+import { resetScrollMemory } from './scrollMemory'
 
 const TOTAL = 600
 const SUMMARY = makeSummary({ glyph_count: TOTAL })
@@ -41,6 +52,7 @@ function transport() {
     }),
     'glyphs.list': (params: GlyphListParams) =>
       glyphPage(params.offset, params.limit, TOTAL, names),
+    'doc.apply': () => noChange(),
   })
 }
 
@@ -69,6 +81,7 @@ function cellAt(index: number): HTMLElement {
 
 beforeEach(() => {
   localStorage.clear()
+  resetScrollMemory()
   names = (index) =>
     index < 26 ? String.fromCharCode(65 + index) : `g${index}`
   restoreViewport = stubGridViewport()
@@ -293,7 +306,15 @@ describe('glyph grid invalidation', () => {
         glyphs: [2],
         font_info: false,
         masters: false,
+        layout: false,
+        bitmaps: false,
+        math: false,
+        color: false,
+        feature_source: false,
         glyph_order: false,
+        metrics: false,
+        layers: false,
+        guides: false,
       },
       undo_label: 'Rename',
       redo_label: null,
@@ -304,6 +325,81 @@ describe('glyph grid invalidation', () => {
     expect(
       await screen.findByRole('option', { name: 'C.alt' }, { timeout: 2_000 }),
     ).toBeInTheDocument()
+  })
+
+  it('keeps the scroll position across a full reload', async () => {
+    const { mock, grid } = await mountGrid()
+    await screen.findByRole('option', { name: 'A' })
+
+    // Ten rows down a 72 px pitch, the way a user leaves the top of the list.
+    grid.scrollTop = 720
+    fireEvent.scroll(grid)
+    await waitFor(() => expect(cellAt(160)).toBeInTheDocument())
+
+    names = (index) => `z${index}`
+    mock.emit({
+      doc: DOC,
+      generation: 12,
+      change: {
+        glyphs: [],
+        font_info: false,
+        masters: false,
+        layout: false,
+        bitmaps: false,
+        math: false,
+        color: false,
+        feature_source: false,
+        glyph_order: true,
+        metrics: false,
+        layers: false,
+        guides: false,
+      },
+      undo_label: 'Reorder glyphs',
+      redo_label: null,
+      dirty: true,
+    })
+    // A browser clamps the offset while the reloading list has no height.
+    grid.scrollTop = 0
+    fireEvent.scroll(grid)
+
+    await waitFor(() => expect(grid.scrollTop).toBe(720))
+    expect(await screen.findByRole('option', { name: 'z160' })).toBeVisible()
+  })
+
+  it('refreshes the em box when the kernel reports changed masters', async () => {
+    const { mock } = await mountGrid()
+    await screen.findByRole('option', { name: 'A' })
+    const before = mock.calls.filter(
+      (call) => call.method === 'doc.font_info',
+    ).length
+
+    mock.emit({
+      doc: DOC,
+      generation: 5,
+      change: {
+        glyphs: [],
+        font_info: false,
+        masters: true,
+        layout: false,
+        bitmaps: false,
+        math: false,
+        color: false,
+        feature_source: false,
+        glyph_order: false,
+        metrics: false,
+        layers: false,
+        guides: false,
+      },
+      undo_label: 'Edit metrics',
+      redo_label: null,
+      dirty: true,
+    })
+
+    await waitFor(() =>
+      expect(
+        mock.calls.filter((call) => call.method === 'doc.font_info').length,
+      ).toBeGreaterThan(before),
+    )
   })
 
   it('reloads the whole list when the glyph order changed', async () => {
@@ -318,7 +414,15 @@ describe('glyph grid invalidation', () => {
         glyphs: [],
         font_info: false,
         masters: false,
+        layout: false,
+        bitmaps: false,
+        math: false,
+        color: false,
+        feature_source: false,
         glyph_order: true,
+        metrics: false,
+        layers: false,
+        guides: false,
       },
       undo_label: null,
       redo_label: null,
@@ -328,5 +432,28 @@ describe('glyph grid invalidation', () => {
     expect(
       await screen.findByRole('option', { name: 'z0' }, { timeout: 2_000 }),
     ).toBeInTheDocument()
+  })
+})
+
+describe('glyph grid colour labels', () => {
+  it('offers the twelve labels and None from the context menu', async () => {
+    const { mock } = await mountGrid()
+    fireEvent.pointerDown(cellAt(1), { button: 0 })
+    await waitFor(() => expect(selection()).toEqual([1]))
+    fireEvent.contextMenu(cellAt(1), { clientX: 40, clientY: 40 })
+
+    const group = await screen.findByRole('group', { name: 'Color label' })
+    expect(within(group).getAllByRole('menuitem')).toHaveLength(13)
+    const blue = within(group).getByRole('menuitem', { name: 'Blue' })
+    fireEvent.click(blue)
+
+    await waitFor(() =>
+      expect(mock.calls.some((entry) => entry.method === 'doc.apply')).toBe(
+        true,
+      ),
+    )
+    expect(
+      screen.queryByRole('group', { name: 'Color label' }),
+    ).not.toBeInTheDocument()
   })
 })

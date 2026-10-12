@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { getTransport } from '../api'
 import { selectDocView, useDocumentStore } from '../stores/documentStore'
 import { useEditorStore } from '../stores/editorStore'
+import { formatUnicodes } from '../views/glyph/glyphScene'
 import {
   documentLabel,
   selectSummary,
@@ -21,7 +22,14 @@ export function StatusBar() {
   const view = useDocumentStore(selectDocView(doc))
   const pointer = useEditorStore((state) => state.pointer)
   const zoom = useEditorStore((state) => state.zoom)
+  const activeGlyph = useEditorStore((state) => state.activeGlyph)
+  const undoFlash = useUiStore((state) => state.undoFlash)
+  const selection = useEditorStore((state) => state.selection)
+  const snapping = useEditorStore((state) => state.snapping)
   const onGlyphTab = tab?.kind === 'glyph'
+  const inTextMode = tab?.textState?.mode === 'text'
+  const glyphScene =
+    onGlyphTab && !inTextMode ? (activeGlyph?.scene ?? null) : null
 
   return (
     <div
@@ -49,12 +57,51 @@ export function StatusBar() {
           <span className={summary.dirty ? styles.statusDirty : undefined}>
             {summary.dirty ? t('status.dirty') : t('status.clean')}
           </span>
+          {undoFlash ? (
+            <span className={styles.statusFlash}>{undoFlash}</span>
+          ) : null}
           {summary.warnings.length > 0 ? (
             <span>
               {t('status.warnings', { count: summary.warnings.length })}
             </span>
           ) : null}
           <span className={styles.statusSpacer} />
+          {inTextMode && (
+            <span className={styles.statusNumeric}>
+              {t('textView.textStatus', {
+                count: Array.from(tab?.textState?.text ?? '').length,
+              })}{' '}
+              ·{' '}
+              {t('textView.runCount', { count: tab?.textState?.runCount ?? 0 })}
+            </span>
+          )}
+          {glyphScene ? (
+            <>
+              <span className={styles.statusName}>{glyphScene.name}</span>
+              <span className={styles.statusNumeric}>
+                {formatUnicodes(glyphScene.unicodes)}
+              </span>
+              <span className={styles.statusNumeric}>
+                {t('glyphView.metric.advance')}{' '}
+                {Math.round(glyphScene.metrics.width)}
+              </span>
+              <span className={styles.statusNumeric}>
+                {`${
+                  glyphScene.metrics.lsb === null
+                    ? '—'
+                    : Math.round(glyphScene.metrics.lsb)
+                } / ${
+                  glyphScene.metrics.rsb === null
+                    ? '—'
+                    : Math.round(glyphScene.metrics.rsb)
+                }`}
+              </span>
+              <span className={styles.statusNumeric}>
+                {t('status.selectionPoints', { count: selection.size })}
+              </span>
+              <span>{snapping ? t('status.snapOn') : t('status.snapOff')}</span>
+            </>
+          ) : null}
           {onGlyphTab ? (
             <>
               <span className={styles.statusNumeric}>

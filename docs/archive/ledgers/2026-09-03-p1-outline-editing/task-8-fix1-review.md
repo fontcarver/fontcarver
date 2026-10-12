@@ -1,0 +1,11 @@
+# T8 fix1 scoped review — Astra, 2026-09-07
+
+**CHANGES REQUIRED**, branch `p1-t8`, `112ab38`. No implementation edits or merge.
+
+- **P1 — R2, source handover:** `editorController.ts:490`, `asideGestures.ts:151`, `activeEditor.ts:27`, `commitField.ts:26`. Disposal cancels through the old controller’s private gate; replacement controllers do not inherit it. Hold old `edit_end`, dispose after an applied metrics frame, register a replacement, commit its field, release: **old begin → old apply → NEW doc.apply → old end → old undo**. Cancellation can undo the new command. Glyph/master identity changes unmount the canvas (`useGlyphDetail.ts:146`). Preserve a document-scoped handover through unmount; every replacement begin/apply/undo must await cancellation. Also `setSource` leaves live metrics intact (`asideGestures.ts:86,169`): switching before pointer-up projects the old preview onto the new source. Clear/cancel live ownership on identity changes. The added test covers only an already-released drag.
+- **P2 — R2/R5, Escape integration:** `GlyphCanvas.tsx:469` invokes `endNudge()` before `escape()`. Since endNudge calls settle, the metrics gesture is finished first. Probe reproduces begin/apply/end with **no undo**. Route cancellation before any generic settlement; test the actual canvas key handler.
+- **P2 — R4, resolution generation:** `useResolvedMetrics.ts:50,71,97` excludes generation from cached identity. Resolve `=H`, emit H’s metrics change, delay re-resolution: old result remains ready and Apply enabled. Include generation in actionable-result identity; disable Apply until the current request succeeds.
+
+Fresh targeted Vitest: **10 files / 163 tests pass**. Four additional in-memory probes using real controller/session/hook code and a token-rule transport reproduce the above gaps; these are not live-kernel runs. configs: `/tmp/t8-review-probes.config.mjs`, `/tmp/t8-review-resolution.config.mjs`.
+
+R1/R3/R6, custom origin, select-all, Lucide locks and translated LSB geometry pass scoped inspection/tests. Three dark/narrow screenshots inspected. T7 finishDrag guard and curve_format preserved. Production maximum: 799 lines; existing enlarged controller test: 1713. Full-suite/e2e results remain implementer evidence. Angle marker remains display-only.

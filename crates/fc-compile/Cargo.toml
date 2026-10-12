@@ -1,0 +1,46 @@
+[package]
+name = "fc-compile"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+bench = false
+
+[dependencies]
+# Reuse woofwoof's Brotli version (BSD-3-Clause AND MIT) for raw WOFF2 tables.
+brotli = "7"
+chrono = "0.4"
+flate2.workspace = true
+fontc = { version = "1.0", default-features = false, features = ["rayon"] }
+# Reuse fontc's Apache-2.0 layout writers without rebuilding outline tables.
+fontbe = "1.0"
+fontdrasil = "1.0"
+fontir = "1.0"
+fc-model = { path = "../fc-model" }
+fc-geom = { path = "../fc-geom" }
+fc-hint = { path = "../fc-hint" }
+fc-sfnt = { path = "../fc-sfnt" }
+fea-rs = "1.0"
+harfrust = "0.13"
+kurbo.workspace = true
+read-fonts.workspace = true
+sha2.workspace = true
+skrifa.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+woofwoof = "1"
+write-fonts.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+fc-fixtures = { path = "../fc-fixtures" }
+serde_json.workspace = true
+wuff.workspace = true
+
+[[bench]]
+name = "export"
+harness = false

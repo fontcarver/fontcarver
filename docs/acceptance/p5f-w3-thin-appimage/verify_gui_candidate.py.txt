@@ -1,0 +1,64 @@
+from pathlib import Path
+import json, os, secrets, select, subprocess, sys
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'scripts'))
+from smoke_release_native import probe, stop_owned
+image = Path(sys.argv[1]).resolve(strict=True) if len(sys.argv) > 1 else None
+task = Path(__file__).resolve().parent
+work = task / 'gui-probe'
+work.mkdir()
+os.environ['TMPDIR'] = str(task / 'tmp')
+authority = work / 'Xauthority'
+authority.touch(mode=0o600)
+cookie = secrets.token_hex(16)
+subprocess.run(['xauth', '-f', str(authority), 'add', ':9999', 'MIT-MAGIC-COOKIE-1', cookie], check=True, capture_output=True)
+reader, writer = os.pipe()
+log = (work / 'xvfb.log').open('wb')
+env = dict(os.environ, TMPDIR=str(task / 'tmp'))
+server = subprocess.Popen([str(task / 'root/usr/bin/Xvfb'), '-displayfd', str(writer),
+                           '-screen', '0', '1280x900x24', '-nolisten', 'tcp',
+                           '-noreset', '-auth', str(authority)],
+                          env=env, pass_fds=(writer,), stdout=log, stderr=log, start_new_session=True)
+os.close(writer)
+report = {'ok': False, 'existing_desktop_used': False, 'input_automation': False,
+          'scope': 'isolated virtual-display native process survival only; interactive UI unverified'}
+try:
+    if not select.select([reader], [], [], 15)[0]:
+        raise AssertionError('Xvfb did not report an independent display')
+    display = ':' + os.read(reader, 80).decode().strip()
+    if display in (':0', ':1', ':', ':9999'):
+        raise AssertionError('refusing invalid or existing desktop display ' + display)
+    report['virtual_display'] = display
+    subprocess.run(['xauth', '-f', str(authority), 'add', display, 'MIT-MAGIC-COOKIE-1', cookie], check=True, capture_output=True)
+    private = work / 'private'
+    private.mkdir(mode=0o700)
+    env.update(DISPLAY=display, XAUTHORITY=str(authority), GDK_BACKEND='x11',
+               FC_CONFIG_DIR=str(private / 'config'), XDG_CONFIG_HOME=str(private / 'xdg-config'),
+               XDG_CACHE_HOME=str(private / 'xdg-cache'), XDG_DATA_HOME=str(private / 'xdg-data'),
+               XDG_RUNTIME_DIR=str(private),
+               LD_LIBRARY_PATH=str(task / 'root/usr/lib/x86_64-linux-gnu'))
+    for name in ('WAYLAND_DISPLAY', 'APPIMAGE_EXTRACT_AND_RUN', 'TARGET_APPIMAGE', 'APPDIR'):
+        env.pop(name, None)
+    query = subprocess.run(['xdpyinfo'], env=env, capture_output=True, text=True, timeout=10)
+    report['display_query_exit'] = query.returncode
+    if query.returncode:
+        raise AssertionError('isolated X server query failed: ' + query.stderr)
+    if image:
+        report['artifact'] = str(image)
+        report['gui'] = probe([str(image)], env, seconds=15)
+        if not report['gui']['timed_out']:
+            raise AssertionError('GUI process exited before observation interval')
+    report['ok'] = True
+except Exception as error:
+    report['error'] = str(error)
+finally:
+    os.close(reader)
+    stop_owned(server)
+    log.close()
+    report['server_exit'] = server.returncode
+    report['server_output'] = (work / 'xvfb.log').read_text(errors='replace')[-5000:]
+    path = task / 'gui-candidate-probes.json'
+    path.write_text(json.dumps(report, indent=2) + '\n')
+    print(json.dumps(report, indent=2))
+if not report['ok']:
+    raise SystemExit(1)

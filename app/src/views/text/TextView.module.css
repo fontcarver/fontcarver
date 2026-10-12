@@ -1,0 +1,18 @@
+.view {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  /* Secondary controls have their own bounded scroll area. Keep this fallback
+     for very short windows, so the canvas floor and preview remain reachable. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}

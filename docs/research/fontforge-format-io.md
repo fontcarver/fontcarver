@@ -2,7 +2,7 @@
 
 # FontForge Font-Format I/O — Complete Inventory
 
-Source root: `/home/chen/githubprojects/pixelfonts/fontworkshop/fontforge/`
+Source root: `fontforge/`, the FontForge reference checkout in this repository
 
 The three enums that drive everything live in `fontforge/fontforge/splinefont_enums.h`:
 `enum fontformat` (line 34, 30 members `ff_pfa` … `ff_none`), `enum bitmapformat` (line 71, 11 members `bf_bdf` … `bf_none`), `enum ttf_flags` (line 87), `enum ps_flags` (line 123), `enum ttc_flags` (line 113), `enum openflags` (line 115). Save-side dialog flags are a *separate* bitfield, `enum fm_flags` in `fontforge/fontforge/savefont.h:38-67`, translated by `fmflag2ttfflag()` (`savefont.c:1039-1076`).

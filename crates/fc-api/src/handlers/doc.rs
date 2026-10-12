@@ -1,0 +1,421 @@
+//! Document query and mutation handlers.
+
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+
+use fc_doc::{Command, EditToken};
+use fc_model::{Font, SourceProvenance, Tag};
+use read_fonts::FileRef;
+
+use crate::{
+    handlers::session::summary_for, Api, ApiError, ApplyParams, DocParams, DocSummary,
+    DocumentHistory, EditApplyParams, EditBeginParams, EditEndParams, EditTokenId, FontInfoView,
+    HistoryEntry, HistoryGoParams, HistoryLayer, SidebarCounts, TableInfo,
+};
+
+pub(crate) fn summary(api: &Api, params: DocParams) -> Result<DocSummary, ApiError> {
+    summary_for(api, params.doc)
+}
+
+pub(crate) fn font_info(api: &Api, params: DocParams) -> Result<FontInfoView, ApiError> {
+    api.session
+        .with_doc(params.doc, |document| FontInfoView {
+            info: document.font.info.clone(),
+            masters: document.font.masters.clone(),
+            tables: table_inventory(&document.font),
+            instances: document.font.instances.clone(),
+        })
+        .map_err(ApiError::from)
+}
+
+fn table_inventory(font: &Font) -> Vec<TableInfo> {
+    let source_lengths = font
+        .extra
+        .source
+        .as_ref()
+        .map(source_table_lengths)
+        .unwrap_or_default();
+    let mut tables = font
+        .extra
+        .raw_tables
+        .iter()
+        .map(|(tag, bytes)| {
+            (
+                *tag,
+                TableInfo {
+                    tag: tag.to_string(),
+                    len: u32::try_from(bytes.len()).unwrap_or(u32::MAX),
+                    preserved: true,
+                },
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+    if let Some(source) = &font.extra.source {
+        for tag in &source.table_tags {
+            tables.entry(*tag).or_insert_with(|| TableInfo {
+                tag: tag.to_string(),
+                len: source_lengths.get(tag).copied().unwrap_or_default(),
+                preserved: false,
+            });
+        }
+    }
+    tables.into_values().collect()
+}
+
+fn source_table_lengths(source: &SourceProvenance) -> BTreeMap<Tag, u32> {
+    if source.table_tags.is_empty() {
+        return BTreeMap::new();
+    }
+    let Some(bytes) = source.original_bytes.as_deref() else {
+        return BTreeMap::new();
+    };
+    let Ok(file) = FileRef::new(bytes.as_slice()) else {
+        return BTreeMap::new();
+    };
+    file.fonts()
+        .filter_map(Result::ok)
+        .find(|face| {
+            face.table_directory()
+                .table_records()
+                .iter()
+                .map(|record| Tag(record.tag().to_be_bytes()))
+                .eq(source.table_tags.iter().copied())
+        })
+        .map(|face| {
+            face.table_directory()
+                .table_records()
+                .iter()
+                .map(|record| (Tag(record.tag().to_be_bytes()), record.length()))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+pub(crate) fn sidebar(api: &Api, params: DocParams) -> Result<SidebarCounts, ApiError> {
+    api.session
+        .with_doc(params.doc, |document| {
+            let mut cache = api
+                .sidebar_cache
+                .lock()
+                .map_err(|_| ApiError::internal("API sidebar cache lock is poisoned"))?;
+            if let Some((generation, counts)) = cache.get(&params.doc) {
+                if *generation == document.generation {
+                    return Ok(counts.clone());
+                }
+            }
+            let counts = compute_sidebar(document);
+            cache.insert(params.doc, (document.generation, counts.clone()));
+            Ok(counts)
+        })
+        .map_err(ApiError::from)?
+}
+
+pub(crate) fn apply(api: &Api, params: ApplyParams) -> Result<fc_doc::Change, ApiError> {
+    require_generic_command(&params.command)?;
+    api.session
+        .with_doc_mut(params.doc, |document| {
+            document.apply(params.command, params.label)
+        })
+        .map_err(ApiError::from)?
+        .map_err(ApiError::from)
+}
+
+pub(crate) fn edit_begin(api: &Api, params: EditBeginParams) -> Result<EditTokenId, ApiError> {
+    api.session
+        .with_doc_mut(params.doc, |document| {
+            let token = document.begin_edit(params.label);
+            EditTokenId(token.0)
+        })
+        .map_err(ApiError::from)
+}
+
+pub(crate) fn edit_apply(api: &Api, params: EditApplyParams) -> Result<fc_doc::Change, ApiError> {
+    require_generic_command(&params.command)?;
+    api.session
+        .with_doc_mut(params.doc, |document| {
+            document.apply_in_edit(&EditToken(params.token.0), params.command)
+        })
+        .map_err(ApiError::from)?
+        .map_err(ApiError::from)
+}
+
+fn require_generic_command(command: &Command) -> Result<(), ApiError> {
+    match command {
+        Command::SetFeatureDraft { .. } | Command::DiscardFeatureDraft { .. } => {
+            Err(ApiError::invalid_params(
+                "feature draft commands require the dedicated features API revision and provenance guards",
+            ))
+        }
+        Command::Batch(commands) => commands.iter().try_for_each(require_generic_command),
+        _ => Ok(()),
+    }
+}
+
+pub(crate) fn edit_end(api: &Api, params: EditEndParams) -> Result<(), ApiError> {
+    api.session
+        .with_doc_mut(params.doc, |document| {
+            document.end_edit(EditToken(params.token.0));
+        })
+        .map_err(ApiError::from)
+}
+
+pub(crate) fn edit_cancel(
+    api: &Api,
+    params: EditEndParams,
+) -> Result<Option<fc_doc::Change>, ApiError> {
+    api.session
+        .with_doc_mut(params.doc, |document| {
+            document.cancel_edit(EditToken(params.token.0))
+        })
+        .map_err(ApiError::from)?
+        .map_err(ApiError::from)
+}
+
+pub(crate) fn undo(api: &Api, params: DocParams) -> Result<Option<fc_doc::Change>, ApiError> {
+    api.session
+        .with_doc_mut(params.doc, |document| document.undo())
+        .map_err(ApiError::from)?
+        .map_err(ApiError::from)
+}
+
+pub(crate) fn redo(api: &Api, params: DocParams) -> Result<Option<fc_doc::Change>, ApiError> {
+    api.session
+        .with_doc_mut(params.doc, |document| document.redo())
+        .map_err(ApiError::from)?
+        .map_err(ApiError::from)
+}
+
+/// How many entries the History surface lists at once.
+///
+/// A gesture-per-entry timeline stays short in practice; the cap only keeps a
+/// pathological session from serializing an unbounded list into one response.
+const HISTORY_LIMIT: usize = 500;
+
+pub(crate) fn history(api: &Api, params: DocParams) -> Result<DocumentHistory, ApiError> {
+    api.session
+        .with_doc(params.doc, history_of)
+        .map_err(ApiError::from)
+}
+
+/// Moves the history cursor to an exact position by replaying undo or redo.
+///
+/// The caller states the timeline length it saw. A length that no longer matches
+/// means entries were added or evicted since, so the request is rejected and the
+/// document is left exactly as it was rather than jumping somewhere else.
+pub(crate) fn history_go(api: &Api, params: HistoryGoParams) -> Result<DocumentHistory, ApiError> {
+    let target = params.cursor as usize;
+    let expected = params.expected_len as usize;
+    api.session
+        .with_doc_mut(params.doc, |document| {
+            let stack = document.history();
+            if stack.len() != expected {
+                return Err(ApiError::invalid_params(format!(
+                    "the history has {} entries, not the {expected} this request was built from",
+                    stack.len()
+                )));
+            }
+            if target > expected {
+                return Err(ApiError::invalid_params(format!(
+                    "cursor {target} is beyond the {expected} entries in the history"
+                )));
+            }
+            replay_to(document, target)?;
+            Ok(history_of(document))
+        })
+        .map_err(ApiError::from)?
+}
+
+/// Replays undo or redo until the cursor reaches `target`, or not at all.
+///
+/// A step can be refused — a read-only reference, an open script transaction —
+/// and a half-moved cursor would leave the document in a state the user never
+/// asked for. A failure therefore walks the steps it took back the other way and
+/// reports the original error; if the way back is refused too, the error says
+/// exactly where the cursor stopped, because silently reporting the requested
+/// position would be a lie.
+fn replay_to(document: &mut fc_doc::Document, target: usize) -> Result<(), ApiError> {
+    let start = document.history().cursor();
+    let mut taken = 0usize;
+    let step = |document: &mut fc_doc::Document, forward: bool| -> Result<bool, ApiError> {
+        let moved = if forward {
+            document.redo().map_err(ApiError::from)?
+        } else {
+            document.undo().map_err(ApiError::from)?
+        };
+        Ok(moved.is_some())
+    };
+    let forward = target > start;
+    while document.history().cursor() != target {
+        match step(document, forward) {
+            Ok(true) => taken += 1,
+            // The stack ran out before the target: the length check already
+            // rejected a stale request, so stop rather than spin.
+            Ok(false) => break,
+            Err(error) => {
+                for _ in 0..taken {
+                    if step(document, !forward).is_err() {
+                        return Err(ApiError::internal(format!(
+                            "{error}; the history could not be returned to entry {start} and \
+                             stopped at entry {}",
+                            document.history().cursor()
+                        )));
+                    }
+                }
+                return Err(error);
+            }
+        }
+    }
+    Ok(())
+}
+
+fn history_of(document: &fc_doc::Document) -> DocumentHistory {
+    let stack = document.history();
+    let cursor = stack.cursor();
+    let entries = stack.entries();
+    let skipped = entries.len().saturating_sub(HISTORY_LIMIT);
+    DocumentHistory {
+        entries: entries
+            .iter()
+            .enumerate()
+            .skip(skipped)
+            .map(|(index, entry)| {
+                let scope = entry.scope();
+                HistoryEntry {
+                    index: u32::try_from(index).unwrap_or(u32::MAX),
+                    label: entry.label.clone(),
+                    glyphs: scope.glyphs.iter().map(|name| name.to_string()).collect(),
+                    layers: scope
+                        .layers
+                        .iter()
+                        .map(|layer| match layer {
+                            fc_doc::LayerScope::Named(name) => HistoryLayer {
+                                name: Some(name.clone()),
+                                role: None,
+                            },
+                            fc_doc::LayerScope::Role(role) => HistoryLayer {
+                                name: None,
+                                role: Some(role.as_str().to_owned()),
+                            },
+                        })
+                        .collect(),
+                    strikes: scope
+                        .strikes
+                        .iter()
+                        .map(|(ppem, depth)| format!("{ppem}px/{depth}bpp"))
+                        .collect(),
+                    font_level: scope.font_level,
+                    undone: index >= cursor,
+                }
+            })
+            .collect(),
+        cursor: u32::try_from(cursor).unwrap_or(u32::MAX),
+        len: u32::try_from(entries.len()).unwrap_or(u32::MAX),
+        truncated: skipped > 0,
+    }
+}
+
+fn compute_sidebar(document: &fc_doc::Document) -> SidebarCounts {
+    let mut categories = HashMap::<String, u32>::new();
+    let mut sub_categories = BTreeMap::<(String, String), u32>::new();
+    let mut scripts = HashMap::<String, u32>::new();
+    let mut blocks = HashMap::<String, u32>::new();
+    let mut color_labels = HashMap::<u8, u32>::new();
+    let mut unicodes = BTreeSet::<u32>::new();
+    let mut tags = BTreeSet::<String>::new();
+    let mut unencoded = 0_u32;
+
+    for glyph in document.font.glyphs.values() {
+        // The effective classification, so a glyph carrying an explicit category
+        // or script is counted in the section its cell shows and the section's
+        // filter actually selects it.
+        let (category, sub_category, script) = super::glyphs::glyph_classification(glyph);
+        let block = match glyph.unicodes.first().copied() {
+            Some(unicode) => fc_glyphdata::block_name(unicode).to_owned(),
+            None => {
+                unencoded = unencoded.saturating_add(1);
+                "Unencoded".to_owned()
+            }
+        };
+        *sub_categories
+            .entry((category.clone(), sub_category))
+            .or_default() += 1;
+        increment(&mut categories, category);
+        increment(&mut scripts, script);
+        increment(&mut blocks, block);
+        unicodes.extend(
+            glyph
+                .unicodes
+                .iter()
+                .copied()
+                .filter(|unicode| char::from_u32(*unicode).is_some()),
+        );
+        tags.extend(glyph.tags.iter().cloned());
+        if let Some(label) = glyph.color_label {
+            *color_labels.entry(label).or_default() += 1;
+        }
+    }
+
+    SidebarCounts {
+        categories: ordered_categories(&categories),
+        sub_categories: sub_categories
+            .into_iter()
+            .map(|((category, sub_category), count)| (category, sub_category, count))
+            .collect(),
+        scripts: ordered_named_counts(fc_glyphdata::all_scripts(), &scripts, &["Zzzz"]),
+        blocks: ordered_named_counts(fc_glyphdata::all_block_names(), &blocks, &["Unencoded"]),
+        unencoded,
+        total: u32::try_from(document.font.glyphs.len()).unwrap_or(u32::MAX),
+        color_labels: sorted_counts(color_labels),
+        unicodes: unicodes.into_iter().collect(),
+        tags: tags.into_iter().collect(),
+    }
+}
+
+fn increment(counts: &mut HashMap<String, u32>, key: String) {
+    *counts.entry(key).or_default() += 1;
+}
+
+fn ordered_categories(counts: &HashMap<String, u32>) -> Vec<(String, u32)> {
+    const ORDER: &[&str] = &[
+        "Letter",
+        "Number",
+        "Punctuation",
+        "Symbol",
+        "Separator",
+        "Mark",
+        "Format",
+        "Private",
+        "Other",
+        "Unencoded",
+    ];
+    ordered_named_counts(ORDER, counts, &[])
+}
+
+fn ordered_named_counts(
+    order: &[&str],
+    counts: &HashMap<String, u32>,
+    extras: &[&str],
+) -> Vec<(String, u32)> {
+    let mut result = Vec::new();
+    for name in order.iter().chain(extras) {
+        if result.iter().any(|(existing, _)| existing == name) {
+            continue;
+        }
+        if let Some(count) = counts.get(*name) {
+            result.push(((*name).to_owned(), *count));
+        }
+    }
+    let mut unknown: Vec<_> = counts
+        .iter()
+        .filter(|(name, _)| !result.iter().any(|(existing, _)| existing == *name))
+        .map(|(name, count)| (name.clone(), *count))
+        .collect();
+    unknown.sort_by(|left, right| left.0.cmp(&right.0));
+    result.extend(unknown);
+    result
+}
+
+fn sorted_counts<K: Ord>(counts: HashMap<K, u32>) -> Vec<(K, u32)> {
+    let mut counts: Vec<_> = counts.into_iter().collect();
+    counts.sort_by(|left, right| left.0.cmp(&right.0));
+    counts
+}

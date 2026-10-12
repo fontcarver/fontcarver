@@ -1,0 +1,146 @@
+/**
+ * The contracts between the editor and the view that hosts it.
+ *
+ * They live apart from the controller because both sides depend on them: the
+ * view builds the labels and the callbacks, the controller consumes them, and
+ * neither should have to import the other to say what it needs.
+ */
+
+import type {
+  Anchor,
+  ComponentView,
+  Contour,
+  DocId,
+  GlyphId,
+  LayerOutline,
+} from '../api'
+import type { Point2 } from '../canvas/Viewport'
+import type { SceneMetrics } from '../views/glyph/glyphScene'
+
+import type { Modifiers } from './gestures/drag'
+import type { ScopedGuide } from './hitTest'
+import type { HudLabels } from './hud'
+import type { Selection } from './selection'
+import type { SnapNames } from './snapping'
+import type { LayerCurves } from './pathGeometry'
+import type { ShapeDialogRequest, ToolLabels } from './tools/toolTypes'
+
+/** The geometry a live gesture is showing, before the kernel has answered. */
+export interface EditorPreview {
+  contours: readonly Contour[]
+  anchors: readonly Anchor[]
+  components: readonly ComponentView[]
+}
+
+/** Undo labels and readout words, translated by the view. */
+export interface EditorLabels {
+  movePoints: (count: number) => string
+  moveHandles: (count: number) => string
+  moveHandle: string
+  reshapeSegment: string
+  moveAnchor: string
+  moveComponent: string
+  nudgePoints: (count: number) => string
+  toggleSmooth: string
+  deletePoints: string
+  insertPoint: string
+  convertSegment: string
+  setMetrics: string
+  /** Undo label of a vertical origin or vertical advance drag. */
+  setVerticalMetrics: string
+  addGuide: string
+  /** Why a press on a locked path, component or guide did nothing. */
+  lockedTarget: string
+  /** Why a press anywhere in a locked glyph does nothing. */
+  lockedGlyph: string
+  /** The HUD line a metric drag shows: the handle's name and its value. */
+  metricHud: (
+    handle: 'lsb' | 'rsb' | 'width' | 'vorigin' | 'vadvance',
+    value: number,
+  ) => string
+  /** Names the HUD gives a snap target, already translated. */
+  snap: SnapNames
+  hud: HudLabels
+  /** Undo labels and readouts of the drawing and transform tools. */
+  tools: ToolLabels
+}
+
+/** The glyph and layer being edited. */
+export interface EditorSource {
+  doc: DocId
+  gid: GlyphId
+  glyph: string
+  outline: LayerOutline
+  /** Persistent edit locks and annotations for this source layer. */
+  editorMetadata?: unknown
+  glyphLocked?: boolean
+  guides: readonly ScopedGuide[]
+  metrics: SceneMetrics
+  /**
+   * The layer's own vertical overrides, `null` where it inherits the master's.
+   *
+   * The effective values are in `metrics`; these are what the layer stores, so
+   * a vertical metric drag can leave an inherited field inherited.
+   */
+  verticalOverrides?: { origin: number | null; advance: number | null }
+  master: string | null
+  /** Which curve flavour a tool should draw new contours in. */
+  curves: LayerCurves
+  /** Ghost nodes of this layer's components, for snapping (§4.1 item 14). */
+  componentPoints: readonly Point2[]
+  /** Both boundaries of the active master's alignment zones. */
+  zoneLines?: readonly number[]
+  /** Points on the background layer of the active master. */
+  backgroundPoints?: readonly Point2[]
+}
+
+/** What the controller reports back to React. */
+export interface EditorCallbacks {
+  repaint: () => void
+  onSelectionChange: (selection: Selection) => void
+  onEditingChange: (editing: boolean) => void
+  onZoomChange: (scale: number) => void
+  /** A gesture finished: refetch the outline and reconcile. */
+  onReload: () => void
+  onCursorChange: (cursor: string) => void
+  /** The geometry a live gesture is showing, for the panels that read numbers. */
+  onPreview: (preview: EditorPreview | null) => void
+  /** A shape tool was clicked rather than dragged: open the numeric dialog. */
+  onShapeDialog: (request: ShapeDialogRequest) => void
+
+  /**
+   * A kernel call failed. Editing must not swallow transport errors: the shell
+   * turns these into a toast, the same way a failed command does.
+   */
+  onError: (error: unknown) => void
+
+  /**
+   * A press landed on something the editor will not let the user move.
+   *
+   * A lock that simply does nothing is indistinguishable from a bug, so the
+   * canvas says why — once per press, with the reason already translated.
+   */
+  onRefused: (reason: string) => void
+}
+
+/** A pointer event, normalised to canvas space. */
+export interface PointerInput {
+  x: number
+  y: number
+  button: number
+  modifiers: Modifiers
+}
+
+/** Callbacks used until the view installs its own. */
+export const SILENT_CALLBACKS: EditorCallbacks = {
+  repaint: () => undefined,
+  onSelectionChange: () => undefined,
+  onEditingChange: () => undefined,
+  onZoomChange: () => undefined,
+  onReload: () => undefined,
+  onCursorChange: () => undefined,
+  onPreview: () => undefined,
+  onShapeDialog: () => undefined,
+  onError: () => undefined,
+  onRefused: () => undefined,
+}

@@ -51,6 +51,8 @@ export interface Command {
   readonly shortcut?: string
   /** Whether the shortcut also fires while a text field has focus. */
   readonly allowInInput?: boolean
+  /** Whether the shortcut may run while a modal is open, such as context help. */
+  readonly allowInModal?: boolean
   /** Extra text shown after the title (for example the undo label). */
   readonly detail?: () => string | undefined
   /** Enablement predicate; a command with `when() === false` cannot run. */
@@ -96,6 +98,17 @@ export function setCommandErrorReporter(
   reporter: (error: unknown) => void,
 ): void {
   errorReporter = reporter
+}
+
+/**
+ * Reports an error through the same handler command bodies use.
+ *
+ * Anything the user triggered deserves the same feedback whether it went
+ * through the command registry or straight through an editing gesture, so the
+ * editor reports its transport failures here rather than inventing a channel.
+ */
+export function reportError(error: unknown): void {
+  errorReporter(error)
 }
 
 /** Registers one command. Re-registering the same id replaces the definition. */

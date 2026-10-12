@@ -15,6 +15,7 @@ import {
   cachedFontInfo,
   forgetFontInfo,
   loadFontInfo,
+  onFontInfoInvalidated,
 } from '../../stores/fontInfoCache'
 
 /** Ascender and descender per master of one document. */
@@ -42,6 +43,9 @@ export function forgetFontMetrics(doc: DocId): void {
 /**
  * The em box for one master. Until the metrics arrive — and for fonts that
  * report none — the conventional 80 % / 20 % split of the em is used.
+ *
+ * An edit to master data invalidates the shared font info, which is what makes
+ * every cell repaint against the new vertical metrics.
  */
 export function useFontMetrics(
   doc: DocId | null,
@@ -52,6 +56,14 @@ export function useFontMetrics(
   const [metrics, setMetrics] = useState<MasterMetrics | null>(() =>
     doc === null ? null : metricsOf(doc),
   )
+  const [revision, setRevision] = useState(0)
+
+  useEffect(() => {
+    if (doc === null) return
+    return onFontInfoInvalidated((invalidated) => {
+      if (invalidated === doc) setRevision((value) => value + 1)
+    })
+  }, [doc])
 
   useEffect(() => {
     if (doc === null) return
@@ -66,7 +78,7 @@ export function useFontMetrics(
     return () => {
       cancelled = true
     }
-  }, [doc])
+  }, [doc, revision])
 
   const entry =
     metrics === null

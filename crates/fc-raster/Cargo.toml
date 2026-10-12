@@ -1,0 +1,17 @@
+[package]
+name = "fc-raster"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+fc-geom = { path = "../fc-geom" }
+fc-model = { path = "../fc-model" }
+kurbo.workspace = true
+png = "0.17"
+skrifa.workspace = true
+tiny-skia = { version = "0.11", default-features = false, features = ["std"] }
+thiserror.workspace = true

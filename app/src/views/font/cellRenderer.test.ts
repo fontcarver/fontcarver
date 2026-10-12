@@ -33,6 +33,7 @@ function mockContext() {
     fill: vi.fn(),
     stroke: vi.fn(),
     beginPath: vi.fn(),
+    closePath: vi.fn(),
     moveTo: vi.fn(),
     lineTo: vi.fn(),
     rect: vi.fn(),
@@ -121,12 +122,144 @@ describe('paintCell', () => {
 
     paintCell(
       ctx as unknown as CanvasRenderingContext2D,
-      makeCell({ is_empty: true, path: '' }),
+      makeCell({ is_empty: true, path: '', unicodes: [] }),
       options({ path: null }),
     )
 
     expect(ctx.fill).not.toHaveBeenCalled()
     expect(ctx.setLineDash).toHaveBeenCalledWith([2, 2])
+  })
+
+  it.each([0x4e00, 0x20000])(
+    'shows an empty encoded glyph with a system character: %i',
+    (unicode) => {
+      const ctx = mockContext()
+      const cell = makeCell({ is_empty: true, path: '', unicodes: [unicode] })
+
+      paintCell(
+        ctx as unknown as CanvasRenderingContext2D,
+        cell,
+        options({ path: null }),
+      )
+
+      expect(ctx.fill).not.toHaveBeenCalled()
+      expect(ctx.fillText.mock.calls[0]?.[0]).toBe(
+        String.fromCodePoint(unicode),
+      )
+      expect(ctx.setLineDash).not.toHaveBeenCalledWith([2, 2])
+      expect(cell.path).toBe('')
+      expect(cell.is_empty).toBe(true)
+    },
+  )
+
+  it.each([
+    -1,
+    0xd800,
+    0xdfff,
+    0x110000,
+    1.5,
+    NaN,
+    Infinity,
+    0,
+    0x20,
+    0x200b,
+    0xfe0f,
+  ])(
+    'keeps the empty marker for an invalid or invisible encoded value: %s',
+    (unicode) => {
+      const ctx = mockContext()
+
+      paintCell(
+        ctx as unknown as CanvasRenderingContext2D,
+        makeCell({ is_empty: true, unicodes: [unicode] }),
+        options({ path: null }),
+      )
+
+      expect(ctx.setLineDash).toHaveBeenCalledWith([2, 2])
+      expect(ctx.fillText).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  it('does not substitute a system character when a nonempty glyph path is unavailable', () => {
+    const ctx = mockContext()
+
+    paintCell(
+      ctx as unknown as CanvasRenderingContext2D,
+      makeCell({ unicodes: [0x4e00] }),
+      options({ path: null }),
+    )
+
+    expect(ctx.setLineDash).toHaveBeenCalledWith([2, 2])
+    expect(ctx.fillText).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses the first visible scalar when earlier encoding values cannot be displayed', () => {
+    const ctx = mockContext()
+
+    paintCell(
+      ctx as unknown as CanvasRenderingContext2D,
+      makeCell({ is_empty: true, unicodes: [0xd800, 0x20, 0x4e00] }),
+      options({ path: null }),
+    )
+
+    expect(ctx.fillText.mock.calls[0]?.[0]).toBe('一')
+  })
+
+  it('leaves an empty cell empty when reference characters are off', () => {
+    const ctx = mockContext()
+
+    paintCell(
+      ctx as unknown as CanvasRenderingContext2D,
+      makeCell({ is_empty: true, unicodes: [0x4e00] }),
+      options({ path: null, referenceCharacters: false }),
+    )
+
+    // Only the cell label is drawn; the muted reference character is not.
+    expect(ctx.fillText.mock.calls.map((call) => call[0])).not.toContain(
+      '\u4e00',
+    )
+    expect(ctx.setLineDash).toHaveBeenCalled()
+  })
+
+  it('marks the layer colour separately from the glyph colour label', () => {
+    const ctx = mockContext()
+
+    paintCell(
+      ctx as unknown as CanvasRenderingContext2D,
+      makeCell({ color_label: 0, layer_color_label: 7 }),
+      options(),
+    )
+
+    // A full-width stripe for the glyph label, a corner mark for the layer.
+    const stripe = ctx.fillRect.mock.calls.find(
+      (call) => call[2] === 64 && call[3] === 3,
+    )
+    expect(stripe).toBeDefined()
+    // The corner mark is the one filled path with no argument.
+    expect(
+      ctx.fill.mock.calls.filter((call) => call.length === 0),
+    ).toHaveLength(1)
+    expect(ctx.closePath).toHaveBeenCalledTimes(1)
+
+    const plain = mockContext()
+    paintCell(
+      plain as unknown as CanvasRenderingContext2D,
+      makeCell({ layer_color_label: null }),
+      options(),
+    )
+    expect(plain.closePath).not.toHaveBeenCalled()
+  })
+
+  it('ignores a layer colour index outside the twelve labels', () => {
+    const ctx = mockContext()
+
+    paintCell(
+      ctx as unknown as CanvasRenderingContext2D,
+      makeCell({ layer_color_label: 40 }),
+      options(),
+    )
+
+    expect(ctx.closePath).not.toHaveBeenCalled()
   })
 
   it('paints the selection ring and the selected background', () => {

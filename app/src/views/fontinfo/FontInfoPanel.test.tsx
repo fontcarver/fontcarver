@@ -82,7 +82,15 @@ describe('FontInfoPanel', () => {
         glyphs: [],
         font_info: true,
         masters: false,
+        layout: false,
+        bitmaps: false,
+        math: false,
+        color: false,
+        feature_source: false,
         glyph_order: false,
+        metrics: false,
+        layers: false,
+        guides: false,
       },
       undo_label: 'Edit font info',
       redo_label: null,
@@ -93,6 +101,52 @@ describe('FontInfoPanel', () => {
     expect(
       transport.calls.filter((call) => call.method === 'doc.font_info'),
     ).toHaveLength(2)
+  })
+
+  it('reloads when a document event reports changed master data', async () => {
+    let view = makeFontInfoView({
+      masters: [makeMaster({ id: 'm1', name: 'Light' })],
+    })
+    const transport = createMockTransport({ 'doc.font_info': () => view })
+    setTransport(transport)
+    const user = userEvent.setup()
+    render(<FontInfoPanel summary={makeSummary()} />)
+    await screen.findByText('DejaVu Sans')
+    await user.click(screen.getByRole('tab', { name: 'Masters' }))
+    expect(
+      within(screen.getByRole('table')).getByRole('columnheader', {
+        name: 'Light',
+      }),
+    ).toBeInTheDocument()
+
+    view = makeFontInfoView({
+      masters: [makeMaster({ id: 'm1', name: 'Renamed' })],
+    })
+    transport.emit({
+      doc: 1,
+      generation: 3,
+      change: {
+        glyphs: [],
+        font_info: false,
+        masters: true,
+        layout: false,
+        bitmaps: false,
+        math: false,
+        color: false,
+        feature_source: false,
+        glyph_order: false,
+        metrics: false,
+        layers: false,
+        guides: false,
+      },
+      undo_label: 'Edit metrics',
+      redo_label: null,
+      dirty: true,
+    })
+
+    expect(
+      await screen.findByRole('columnheader', { name: 'Renamed' }),
+    ).toBeInTheDocument()
   })
 
   it('renders every name record, including non-default languages', async () => {
@@ -156,12 +210,14 @@ describe('FontInfoPanel', () => {
       'weight',
     )
 
-    // The Other section is reached without leaving the Font section first.
-    expect(screen.getByText('Weight class')).toBeInTheDocument()
-    expect(screen.getByText('400')).toBeInTheDocument()
+    // The Other section is reached without leaving the Font section first, and
+    // the scope breadcrumb lists the same field with the scope that supplies it.
+    expect(screen.getAllByText('Weight class').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText('400').length).toBeGreaterThanOrEqual(1)
     expect(screen.queryByText('Copyright (c) 2003 Bitstream Inc.')).toBeNull()
-    // Only the section that actually matched is titled and shown.
+    // Only the sections that actually matched are titled and shown.
     expect(screen.getByRole('heading', { name: 'Other' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Scopes' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Names' })).toBeNull()
     expect(screen.queryByText('This font has no name records.')).toBeNull()
   })

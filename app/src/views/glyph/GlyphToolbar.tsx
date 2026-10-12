@@ -4,6 +4,7 @@ import type { DocSummary } from '../../api'
 import { Button } from '../../components/Button'
 import { Select } from '../../components/Select'
 import { Toolbar } from '../../components/Toolbar'
+import { reportError } from '../../shell/commands'
 import { useDocumentStore } from '../../stores/documentStore'
 import { useEditorStore } from '../../stores/editorStore'
 
@@ -28,6 +29,7 @@ export interface GlyphToolbarProps {
   onFit: () => void
   onZoom: (factor: number) => void
   onStep: (direction: 1 | -1) => void
+  onMasterChange: (master: string) => Promise<void>
 }
 
 /** Display controls above the glyph canvas. */
@@ -37,11 +39,11 @@ export function GlyphToolbar({
   onFit,
   onZoom,
   onStep,
+  onMasterChange,
 }: GlyphToolbarProps) {
   const { t } = useTranslation()
   const doc = summary.doc
   const view = useDocumentStore((state) => state.byDoc[doc])
-  const setMaster = useDocumentStore((state) => state.setMaster)
   const overlays = useEditorStore((state) => state.overlays)
   const toggleOverlay = useEditorStore((state) => state.toggleOverlay)
   const zoom = useEditorStore((state) => state.zoom)
@@ -79,7 +81,7 @@ export function GlyphToolbar({
               value: master.id,
               label: master.name,
             }))}
-            onChange={(value) => setMaster(doc, value)}
+            onChange={(value) => void onMasterChange(value).catch(reportError)}
           />
         </span>
       </span>

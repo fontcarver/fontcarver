@@ -1,0 +1,148 @@
+.console,
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tabs,
+.folder,
+.fields,
+.outputHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.folder,
+.outputHeader {
+  justify-content: space-between;
+}
+
+.folder > div {
+  min-width: 0;
+}
+
+.tabs {
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tabs [aria-selected='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.fields .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.field select {
+  min-height: var(--control-height);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+  color: var(--color-text);
+}
+
+.path {
+  display: block;
+  margin-top: var(--space-1);
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+}
+
+.context,
+.hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+}
+
+.source {
+  min-height: 150px;
+  resize: vertical;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  line-height: var(--line-height);
+}
+
+.output {
+  min-height: 90px;
+  max-height: 180px;
+  overflow: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-sunken);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+}
+
+.output pre {
+  margin: 0 0 var(--space-1);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font: inherit;
+}
+
+.error {
+  margin: 0;
+  color: var(--color-danger);
+}
+
+.warnings,
+.warning {
+  margin: 0;
+  color: var(--color-warning);
+}
+
+.outputHeader {
+  font-size: var(--text-size-sm);
+}
+
+.controls {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.controls .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.folderList,
+.warnings {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-4);
+  font-size: var(--text-size-sm);
+}
+
+.folderList {
+  color: var(--color-text-muted);
+  list-style: none;
+  padding-left: 0;
+}
+
+.methods {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-size-sm);
+}
+
+.methods th,
+.methods td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}

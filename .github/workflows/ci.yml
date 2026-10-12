@@ -7,12 +7,38 @@ on:
 permissions:
   contents: read
 
+# A branch push and its pull request are the same commit, so one of the two runs
+# is redundant. The key has to be the branch either way: a pull request's
+# `github.ref` is `refs/pull/N/merge`, which would never collide with the push's
+# `refs/heads/<branch>`, so `head_ref` (set only for pull requests) comes first
+# and a push contributes its bare `ref_name`, the same branch name.
+# A run on the default branch is always allowed to finish.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   verify:
     runs-on: ubuntu-latest
+    # The whole job builds the Rust workspace twice over (clippy, then tests)
+    # and then runs the single-worker end-to-end suite; this bounds a hang well
+    # under GitHub's six-hour default.
+    timeout-minutes: 60
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Prepare test scratch
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          scratch = Path('.scratch/ci/tmp').resolve()
+          scratch.mkdir(parents=True, exist_ok=True)
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as output:
+              for name in ('TMPDIR', 'TMP', 'TEMP'):
+                  output.write(f'{name}={scratch}\n')
+          PY
 
       - name: Install Tauri system dependencies
         run: |
@@ -21,15 +47,31 @@ jobs:
             libwebkit2gtk-4.1-dev \
             libgtk-3-dev \
             libayatana-appindicator3-dev \
-            librsvg2-dev
+            librsvg2-dev \
+            ttfautohint
 
       - name: Install Rust 1.94
         uses: dtolnay/rust-toolchain@1.94.0
         with:
           components: clippy, rustfmt
 
+      # Dependency sources only: the workspace's `target` directory is 4+ GB,
+      # which costs more to upload and restore than it saves against GitHub's
+      # per-repository cache budget.
+      - name: Cache the Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
       - name: Generate frontend API bindings
-        run: cargo run -p fw-api --bin gen_ts
+        run: |
+          python3 scripts/check_artifacts.py --min-free-gib 5
+          cargo run --locked -p fc-api --bin gen_ts
 
       - name: Install pnpm 10
         uses: pnpm/action-setup@v4
@@ -44,11 +86,25 @@ jobs:
       - name: Check Rust formatting
         run: cargo fmt --all --check
 
+      - name: Test artifact-budget checks
+        run: python3 -m unittest discover -s scripts -p test_check_artifacts.py
+
       - name: Lint Rust
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: |
+          python3 scripts/check_artifacts.py --min-free-gib 5
+          cargo clippy --locked --workspace --all-targets -- -D warnings
 
       - name: Test Rust
-        run: cargo test --workspace
+        run: |
+          python3 scripts/check_artifacts.py --min-free-gib 5
+          cargo test --locked --workspace
+
+      - name: Check Rust artifact budget
+        run: python3 scripts/check_artifacts.py --min-free-gib 5
+
+      # This executable is a system test prerequisite, never linked or bundled.
+      - name: Verify the real external hinter
+        run: cargo test --locked -p fc-hint the_real_ -- --ignored
 
       - name: Install frontend dependencies
         working-directory: app
@@ -63,7 +119,7 @@ jobs:
         run: pnpm lint
 
       - name: Check frontend formatting
-        run: pnpm --dir app exec prettier --check src e2e
+        run: pnpm --dir app exec prettier --check .
 
       - name: Test frontend
         working-directory: app
@@ -72,3 +128,44 @@ jobs:
       - name: Build frontend
         working-directory: app
         run: pnpm build
+
+      # The end-to-end suite starts `fc-devserver` and Vite itself, so the only
+      # thing CI has to provide is the kernel, CLI fixture converter and browser. The CJK spec
+      # skips: its corpus is a multi-megabyte font kept outside the repository.
+      - name: Build the kernel development server and fixture converter
+        run: cargo build --locked -p fc-devserver -p fc-cli
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-playwright-
+
+      - name: Install the Playwright browser
+        working-directory: app
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Each test owns its kernel and configuration. One worker keeps the
+      # shared Vite proxy port exclusive while those kernels are replaced.
+      - name: Run end-to-end tests
+        working-directory: app
+        timeout-minutes: 30
+        run: pnpm e2e
+
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            app/playwright-report
+            app/test-results
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # Hosted runners are disposable; use a smaller free-space floor than local
+      # development, with the same build and temporary-artifact capacity limits.
+      - name: Check final artifact budget
+        if: always()
+        run: python3 scripts/check_artifacts.py --min-free-gib 5

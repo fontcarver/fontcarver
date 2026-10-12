@@ -14,6 +14,7 @@ export interface FilterChipsProps {
 interface Chip {
   key: string
   label: string
+  title?: string
   patch: Partial<GlyphFilter>
 }
 
@@ -27,11 +28,45 @@ export function filterChips(
   label: (key: string, options?: Record<string, unknown>) => string,
 ): Chip[] {
   const chips: Chip[] = []
-  if (filter.query)
+  if (filter.query) {
     chips.push({
       key: 'query',
       label: label('fontView.chip.query', { query: filter.query }),
       patch: { query: null },
+    })
+    if (filter.query_scope && filter.query_scope !== 'All')
+      chips.push({
+        key: 'query_scope',
+        label: label(`glyphSearch.scope.${filter.query_scope}`),
+        patch: { query_scope: 'All' },
+      })
+    if (filter.case_sensitive)
+      chips.push({
+        key: 'case_sensitive',
+        label: label('glyphSearch.caseSensitive'),
+        patch: { case_sensitive: false },
+      })
+    if (filter.regex)
+      chips.push({
+        key: 'regex',
+        label: label('glyphSearch.regex'),
+        patch: { regex: false },
+      })
+  }
+  if (filter.smart_expression?.trim())
+    chips.push({
+      key: 'smart_expression',
+      label: label('smartFilters.chip'),
+      title: filter.smart_expression,
+      patch: { smart_expression: null },
+    })
+  if (filter.glyph_names != null)
+    chips.push({
+      key: 'glyph_names',
+      label: label('smartFilters.namesChip', {
+        count: filter.glyph_names.length,
+      }),
+      patch: { glyph_names: null },
     })
   for (const category of filter.categories)
     chips.push({
@@ -69,6 +104,12 @@ export function filterChips(
       label: label('fontView.encodedOnly'),
       patch: { unicode_ranges: [] },
     })
+  if (filter.cjk)
+    chips.push({
+      key: 'cjk',
+      label: label('cjk.filters'),
+      patch: { cjk: null },
+    })
   return chips
 }
 
@@ -88,6 +129,7 @@ export function FilterChips({ doc, filter }: FilterChipsProps) {
           type="button"
           className={styles.chip}
           aria-label={t('fontView.removeFilter', { name: chip.label })}
+          title={chip.title}
           onClick={() => setFilter(doc, chip.patch)}
         >
           {chip.label}

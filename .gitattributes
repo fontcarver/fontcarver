@@ -1,0 +1,3 @@
+# Check out text with LF on every host. The release verifier hashes license
+# texts and fixtures byte for byte, so a Windows CRLF checkout must not differ.
+* text=auto eol=lf

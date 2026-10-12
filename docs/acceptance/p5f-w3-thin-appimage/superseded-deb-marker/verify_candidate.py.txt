@@ -1,0 +1,70 @@
+from pathlib import Path
+import hashlib, json, os, subprocess, sys
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'scripts'))
+from smoke_release_native import probe, check_version, check_headless
+image = Path(sys.argv[1]).resolve(strict=True)
+task = Path(__file__).resolve().parent
+work = task / 'candidate-probes'
+work.mkdir()
+os.environ['TMPDIR'] = str(task / 'tmp')
+env = dict(os.environ)
+for name in ('APPIMAGE_EXTRACT_AND_RUN', 'TARGET_APPIMAGE', 'WAYLAND_DISPLAY', 'APPDIR'):
+    env.pop(name, None)
+private = work / 'private'
+private.mkdir(mode=0o700)
+env.update(LD_LIBRARY_PATH=str(task / 'root/usr/lib/x86_64-linux-gnu'),
+           TMPDIR=str(task / 'tmp'), FC_CONFIG_DIR=str(private / 'config'),
+           XDG_CONFIG_HOME=str(private / 'xdg-config'), XDG_CACHE_HOME=str(private / 'xdg-cache'),
+           XDG_DATA_HOME=str(private / 'xdg-data'), XDG_RUNTIME_DIR=str(private),
+           GDK_BACKEND='x11', DISPLAY=':65535')
+report = {'artifact': str(image), 'bytes': image.stat().st_size,
+          'sha256': hashlib.sha256(image.read_bytes()).hexdigest(), 'probes': {},
+          'native_input_automation': False, 'signing_verified': False}
+try:
+    for name, args in [('runtime_version', ['--appimage-version']),
+                       ('runtime_offset', ['--appimage-offset']),
+                       ('fuse_version', ['--version']),
+                       ('fuse_headless', []),
+                       ('extract_run_version', ['--appimage-extract-and-run', '--version']),
+                       ('extract_run_headless', ['--appimage-extract-and-run'])]:
+        result = probe([str(image), *args], env, seconds=30)
+        report['probes'][name] = result
+        if result['timed_out']:
+            raise AssertionError(name + ' timed out')
+        if name in ('fuse_version', 'extract_run_version'):
+            check_version(result['exit_code'], result['output'], '0.1.0')
+        elif name.endswith('headless'):
+            check_headless(result['exit_code'], result['output'])
+        elif result['exit_code'] != 0:
+            raise AssertionError(name + ' failed')
+    extraction = work / 'extracted'
+    extraction.mkdir()
+    result = subprocess.run([str(image), '--appimage-extract'], cwd=extraction,
+                            env=env, capture_output=True, text=True, timeout=30)
+    report['extraction'] = {'exit_code': result.returncode, 'stderr': result.stderr}
+    if result.returncode:
+        raise AssertionError('image extraction failed')
+    payload = extraction / 'squashfs-root'
+    receipt = json.loads((payload / 'usr/lib/FontCarver/licenses/thin-appimage/BUILD.json').read_text())
+    report['runtime'] = receipt['runtime']
+    report['deb_sha256'] = receipt['deb_sha256']
+    report['source_commit'] = receipt['source_commit']
+    report['inputs'] = receipt['inputs']
+    report['desktop_sha256'] = hashlib.sha256((payload / 'usr/bin/fontcarver-desktop').read_bytes()).hexdigest()
+    if str(receipt['runtime']['bytes']) != report['probes']['runtime_offset']['output'].strip():
+        raise AssertionError('runtime offset disagrees with receipt')
+    mounts = subprocess.run(['findmnt', '-rn', '-o', 'SOURCE,TARGET'], capture_output=True, text=True, check=True).stdout
+    if str(image) in mounts or str(work) in mounts:
+        raise AssertionError('candidate mount remains after process cleanup')
+    report['ok'] = True
+except Exception as error:
+    report['ok'] = False
+    report['error'] = str(error)
+finally:
+    destination = task / 'candidate-probes.json'
+    destination.write_text(json.dumps(report, indent=2) + '\n')
+    print(destination)
+    print(json.dumps({'ok': report['ok'], 'error': report.get('error'), 'probes': report['probes']}, indent=2))
+if not report['ok']:
+    raise SystemExit(1)

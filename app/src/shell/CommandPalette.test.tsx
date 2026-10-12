@@ -1,7 +1,12 @@
-import { render, screen } from '@testing-library/react'
+import { StrictMode } from 'react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import {
+  initialAutomationState,
+  useAutomationStore,
+} from '../automation/automationStore'
 import { initialUiState, useUiStore } from '../stores/uiStore'
 
 import { CommandPalette } from './CommandPalette'
@@ -14,6 +19,7 @@ const gated = vi.fn()
 
 beforeEach(() => {
   localStorage.clear()
+  useAutomationStore.setState({ ...initialAutomationState(), loaded: true })
   resetCommands()
   openFont.mockReset()
   saveAs.mockReset()
@@ -47,6 +53,64 @@ afterEach(() => {
 })
 
 describe('CommandPalette', () => {
+  function StrictPaletteHost() {
+    return (
+      <StrictMode>
+        <button onClick={() => useUiStore.getState().setPaletteOpen(true)}>
+          Open commands
+        </button>
+        <input aria-label="Command destination" />
+        <CommandPalette />
+      </StrictMode>
+    )
+  }
+
+  it.each(['pointer', 'keyboard'])(
+    'keeps search focused after StrictMode replay from a %s opener, then restores on Escape',
+    async (activation) => {
+      useUiStore.setState({ paletteOpen: false })
+      render(<StrictPaletteHost />)
+      const user = userEvent.setup()
+      const trigger = screen.getByRole('button', { name: 'Open commands' })
+      if (activation === 'pointer') await user.click(trigger)
+      else {
+        trigger.focus()
+        await user.keyboard('{Enter}')
+      }
+      const input = screen.getByRole('combobox', { name: 'Commands' })
+      expect(input).toHaveFocus()
+      await user.keyboard('save')
+      expect(input).toHaveValue('save')
+      expect(
+        within(screen.getByRole('listbox')).getAllByRole('option'),
+      ).toHaveLength(1)
+      await user.keyboard('{Escape}')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(trigger).toHaveFocus()
+      expect(useUiStore.getState().modalCount).toBe(0)
+    },
+  )
+
+  it('preserves a command-selected focus destination when closing under StrictMode', async () => {
+    useUiStore.setState({ paletteOpen: false })
+    registerCommand({
+      id: 'file.open',
+      title: 'cmd.file.open',
+      run: () =>
+        screen.getByRole('textbox', { name: 'Command destination' }).focus(),
+    })
+    render(<StrictPaletteHost />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Open commands' }))
+    expect(screen.getByRole('combobox', { name: 'Commands' })).toHaveFocus()
+    await user.keyboard('open{Enter}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: 'Command destination' }),
+    ).toHaveFocus()
+    expect(useUiStore.getState().modalCount).toBe(0)
+  })
+
   it('lists commands with their shortcut hints', () => {
     render(<CommandPalette />)
 
@@ -93,8 +157,10 @@ describe('CommandPalette', () => {
     const user = userEvent.setup()
     render(<CommandPalette />)
 
-    await user.type(screen.getByRole('combobox'), 'save')
-    expect(screen.getAllByRole('option')).toHaveLength(1)
+    await user.type(screen.getByRole('combobox', { name: 'Commands' }), 'save')
+    expect(
+      within(screen.getByRole('listbox')).getAllByRole('option'),
+    ).toHaveLength(1)
 
     await user.keyboard('{Enter}')
 
@@ -135,8 +201,8 @@ describe('CommandPalette', () => {
     const user = userEvent.setup()
     render(<CommandPalette />)
 
-    await user.type(screen.getByRole('combobox'), 'zzzzz')
+    await user.type(screen.getByRole('combobox', { name: 'Commands' }), 'zzzzz')
 
-    expect(screen.getByText('No matching commands')).toBeInTheDocument()
+    expect(screen.getByText('No matching results')).toBeInTheDocument()
   })
 })

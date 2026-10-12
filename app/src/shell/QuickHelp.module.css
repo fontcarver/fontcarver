@@ -1,0 +1,103 @@
+/*
+ * Quick Help bubble: non-modal, pointer-transparent to the work behind it
+ * except for its own two buttons, and always above the panels (z 80) but below
+ * the help article and the dialogs (z 90 and above).
+ */
+
+.bubble {
+  --quick-help-width: 280px;
+
+  position: fixed;
+  z-index: 80;
+  display: flex;
+  width: var(--quick-help-width);
+  max-width: calc(100vw - 2 * var(--space-2));
+  flex-direction: column;
+  padding: var(--space-3);
+  padding-right: var(--space-5);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-popover);
+  color: var(--color-text);
+  font-size: var(--text-size-sm);
+  gap: var(--space-1);
+}
+
+.title {
+  margin: 0;
+  font-weight: var(--text-weight-strong);
+}
+
+.summary {
+  margin: 0;
+  color: var(--color-text);
+  line-height: var(--line-height);
+}
+
+.binding {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-xs);
+}
+
+.reason {
+  margin: 0;
+  color: var(--color-warning);
+  font-size: var(--text-size-xs);
+}
+
+.actions {
+  display: flex;
+  align-items: baseline;
+  margin-top: var(--space-1);
+  gap: var(--space-2);
+}
+
+.more {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.more:hover {
+  color: var(--color-accent-hover);
+}
+
+.hint {
+  flex: 1;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+}
+
+.dismiss {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-size-md);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dismiss:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.more:focus-visible,
+.dismiss:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}

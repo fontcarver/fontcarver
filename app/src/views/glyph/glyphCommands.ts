@@ -9,11 +9,14 @@
  */
 
 import type { DocId, GlyphId } from '../../api'
+import { activeEditor } from '../../editor/activeEditor'
+import { selectionCounts } from '../../editor/selection'
 import { registerCommands, type Command } from '../../shell/commands'
 import { isEditableTarget, isInteractiveTarget } from '../../shell/shortcuts'
 import { useEditorStore } from '../../stores/editorStore'
 import { selectActiveTab, useUiStore } from '../../stores/uiStore'
 
+import { registerToolCommands } from './toolCommands'
 import type { GlyphOverlays } from './renderGlyph'
 
 /** What a mounted glyph view exposes to the command registry. */
@@ -65,6 +68,20 @@ function onGlyphTab(): boolean {
   return selectActiveTab(useUiStore.getState())?.kind === 'glyph'
 }
 
+/** Whether the canvas of a glyph tab currently owns the keyboard. */
+function canvasHasFocus(): boolean {
+  return (
+    onGlyphTab() &&
+    globalThis.document?.activeElement instanceof HTMLCanvasElement
+  )
+}
+
+/** Whether an editor is mounted and something is selected in it. */
+function hasSelection(): boolean {
+  const editor = activeEditor()
+  return onGlyphTab() && editor !== null && editor.currentSelection.size > 0
+}
+
 function canToggleFill(): boolean {
   // The focused element decides ownership of Space: only when the glyph view
   // holds focus on a plain surface (the canvas, or a non-interactive area)
@@ -91,6 +108,7 @@ function overlayCommand(key: keyof GlyphOverlays): Command {
 
 /** Registers every command of the glyph view. Safe to call more than once. */
 export function registerGlyphViewCommands(): void {
+  registerToolCommands()
   registerCommands([
     {
       id: 'view.zoomFit',
@@ -137,11 +155,119 @@ export function registerGlyphViewCommands(): void {
         useEditorStore.getState().toggleOverlay('filled')
       },
     },
+    {
+      // The Font view owns `edit.selectAll` (every glyph in the font); this is
+      // the Edit tab's own "every point of this layer". Sharing the id would
+      // let whichever view registers last replace the other.
+      id: 'edit.selectAllPoints',
+      title: 'cmd.edit.selectAllPoints',
+      menu: 'edit',
+      group: 'selection',
+      shortcut: 'Mod+A',
+      // Gated on the tab kind alone: Mod+A must belong to exactly one of the
+      // two select-all commands at any moment, and "which tab is open" is what
+      // decides that. A tab whose editor is still loading simply does nothing.
+      when: onGlyphTab,
+      disabledReason: 'cmd.reason.noGlyphTab',
+      run: () => activeEditor()?.selectAll(),
+    },
+    {
+      id: 'edit.deselectPoints',
+      title: 'cmd.edit.deselectPoints',
+      menu: 'edit',
+      group: 'selection',
+      when: hasSelection,
+      disabledReason: 'cmd.reason.noPointsSelected',
+      run: () => {
+        activeEditor()?.escape()
+      },
+    },
+    {
+      id: 'edit.deletePoints',
+      title: 'cmd.edit.deletePoints',
+      menu: 'edit',
+      group: 'selection',
+      shortcut: 'Delete',
+      when: hasSelection,
+      disabledReason: 'cmd.reason.noPointsSelected',
+      run: () => activeEditor()?.deleteSelection(false),
+    },
+    {
+      id: 'edit.deletePointsBreak',
+      title: 'cmd.edit.deletePointsBreak',
+      menu: 'edit',
+      group: 'selection',
+      shortcut: 'Shift+Delete',
+      when: hasSelection,
+      disabledReason: 'cmd.reason.noPointsSelected',
+      run: () => activeEditor()?.deleteSelection(true),
+    },
+    {
+      id: 'path.toggleSmooth',
+      title: 'cmd.path.toggleSmooth',
+      menu: 'path',
+      group: 'nodes',
+      shortcut: 'Enter',
+      when: () => {
+        const editor = activeEditor()
+        if (!editor || !canvasHasFocus()) return false
+        // A pen path in progress owns Enter: it finishes the path, and the
+        // shortcut layer must leave the key alone rather than claiming it for
+        // whatever node happens to be selected underneath.
+        if (editor.claimsKey('Enter')) return false
+        return selectionCounts(editor.currentSelection).nodes > 0
+      },
+      disabledReason: 'cmd.reason.noPointsSelected',
+      run: () => activeEditor()?.toggleSmooth(false),
+    },
+    {
+      id: 'path.toggleSmoothKeepOutline',
+      title: 'cmd.path.toggleSmoothKeepOutline',
+      menu: 'path',
+      group: 'nodes',
+      shortcut: 'Alt+Enter',
+      when: () => {
+        const editor = activeEditor()
+        if (!editor || !canvasHasFocus()) return false
+        // A pen path in progress owns Enter: it finishes the path, and the
+        // shortcut layer must leave the key alone rather than claiming it for
+        // whatever node happens to be selected underneath.
+        if (editor.claimsKey('Enter')) return false
+        return selectionCounts(editor.currentSelection).nodes > 0
+      },
+      disabledReason: 'cmd.reason.noPointsSelected',
+      run: () => activeEditor()?.toggleSmooth(true),
+    },
+    {
+      id: 'view.toggleSnapping',
+      title: 'cmd.view.toggleSnapping',
+      menu: 'view',
+      group: 'panels',
+      when: onGlyphTab,
+      disabledReason: 'cmd.reason.noGlyphTab',
+      run: () => {
+        const store = useEditorStore.getState()
+        store.setSnapping(!store.snapping)
+      },
+    },
+    {
+      id: 'view.toggleInfoBox',
+      title: 'cmd.view.toggleInfoBox',
+      menu: 'view',
+      group: 'panels',
+      shortcut: 'Mod+Shift+I',
+      when: onGlyphTab,
+      disabledReason: 'cmd.reason.noGlyphTab',
+      run: () => useEditorStore.getState().toggleInfoBox(),
+    },
     overlayCommand('filled'),
     overlayCommand('points'),
     overlayCommand('metrics'),
     overlayCommand('anchors'),
     overlayCommand('guides'),
     overlayCommand('rulers'),
+    overlayCommand('background'),
+    overlayCommand('otherMasters'),
+    overlayCommand('verticalMode'),
   ])
 }

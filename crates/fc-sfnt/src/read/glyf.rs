@@ -1,0 +1,258 @@
+use fc_model::{Component, Contour, GlyphName, Layer, Point, PointKind, TtIndex};
+use kurbo::Affine;
+use read_fonts::{
+    tables::{
+        glyf::{Anchor, CompositeGlyphFlags, Glyf, Glyph},
+        loca::Loca,
+    },
+    types::GlyphId,
+    FontRef, TableProvider,
+};
+
+use crate::Error;
+
+pub(crate) struct GlyfSource<'a> {
+    glyf: Glyf<'a>,
+    loca: Loca<'a>,
+}
+
+impl<'a> GlyfSource<'a> {
+    pub(crate) fn new(face: &FontRef<'a>) -> Result<Option<Self>, Error> {
+        if face
+            .table_data(read_fonts::types::Tag::new(b"glyf"))
+            .is_none()
+        {
+            return Ok(None);
+        }
+        let head = face.head().map_err(|error| Error::parse("head", error))?;
+        let glyf = face.glyf().map_err(|error| Error::parse("glyf", error))?;
+        let loca = face
+            .loca(head.index_to_loc_format() != 0)
+            .map_err(|error| Error::parse("loca", error))?;
+        Ok(Some(Self { glyf, loca }))
+    }
+
+    /// Normalize the phantom-point origin into the model's pen-origin coordinates.
+    /// Component references compensate for their child's own normalization, so
+    /// assembly geometry is unchanged. Matching-point components align after this.
+    pub(crate) fn normalize_origins(
+        &self,
+        face: &FontRef<'_>,
+        font: &mut fc_model::Font,
+    ) -> Result<(), Error> {
+        let hmtx = face.hmtx().map_err(|e| Error::parse("hmtx", e))?;
+        let offsets = font
+            .glyph_order()
+            .enumerate()
+            .map(|(id, name)| {
+                if font.glyphs[name]
+                    .layers
+                    .iter()
+                    .all(|l| l.contours.is_empty() && l.components.is_empty())
+                {
+                    return Ok((name.clone(), 0.));
+                }
+                let gid = GlyphId::new(id as u32);
+                let glyph = self
+                    .loca
+                    .get_glyf(gid, &self.glyf)
+                    .map_err(|e| Error::parse("glyf", e))?;
+                let x_min = match glyph {
+                    Some(Glyph::Simple(g)) => g.x_min(),
+                    Some(Glyph::Composite(g)) => g.x_min(),
+                    None => return Ok((name.clone(), 0.)),
+                };
+                let lsb = hmtx
+                    .side_bearing(gid)
+                    .ok_or_else(|| Error::parse("hmtx", "missing side bearing"))?;
+                Ok((name.clone(), f64::from(lsb) - f64::from(x_min)))
+            })
+            .collect::<Result<std::collections::HashMap<_, _>, Error>>()?;
+        for (name, glyph) in &mut font.glyphs {
+            let offset = offsets[name];
+            for layer in &mut glyph.layers {
+                for point in layer.contours.iter_mut().flat_map(|c| &mut c.points) {
+                    point.x += offset;
+                }
+                for component in &mut layer.components {
+                    let child = offsets.get(&component.base).copied().unwrap_or(0.);
+                    component.transform = Affine::translate((offset, 0.))
+                        * component.transform
+                        * Affine::translate((-child, 0.));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn apply(
+        &self,
+        gid: u16,
+        names: &[GlyphName],
+        layer: &mut Layer,
+    ) -> Result<(), Error> {
+        let start = self
+            .loca
+            .get_raw(usize::from(gid))
+            .ok_or_else(|| Error::parse("loca", "missing glyph offset"))?;
+        let end = self
+            .loca
+            .get_raw(usize::from(gid) + 1)
+            .ok_or_else(|| Error::parse("loca", "missing glyph end"))?;
+        let raw = self
+            .glyf
+            .offset_data()
+            .as_bytes()
+            .get(start as usize..end as usize)
+            .ok_or_else(|| Error::parse("glyf", "invalid glyph range"))?;
+        let program = crate::tt::stored_program(raw)?;
+        if !program.is_empty() {
+            layer.tt_instructions = Some(program.to_vec());
+        }
+        if raw.len() == 10 && raw[..2] == [0, 0] {
+            return Ok(());
+        }
+        let glyph = self
+            .loca
+            .get_glyf(GlyphId::new(u32::from(gid)), &self.glyf)
+            .map_err(|error| Error::parse("glyf", error))?;
+        match glyph {
+            Some(Glyph::Simple(simple)) => {
+                layer.contours = simple_contours(&simple)?;
+            }
+            Some(Glyph::Composite(composite)) => {
+                let raw_components: Vec<_> = composite.components().collect();
+                let Some(last) = raw_components.last() else {
+                    return Err(Error::Parse {
+                        table: "glyf",
+                        reason: format!("composite glyph {gid} has no readable components"),
+                    });
+                };
+                if last.flags.contains(CompositeGlyphFlags::MORE_COMPONENTS) {
+                    return Err(Error::Parse {
+                        table: "glyf",
+                        reason: format!("component stream for glyph {gid} is truncated"),
+                    });
+                }
+                layer.components = raw_components
+                    .into_iter()
+                    .map(|component| map_component(component, names))
+                    .collect::<Result<_, _>>()?;
+            }
+            None => {}
+        }
+        Ok(())
+    }
+}
+
+fn simple_contours(
+    simple: &read_fonts::tables::glyf::SimpleGlyph<'_>,
+) -> Result<Vec<Contour>, Error> {
+    let points: Vec<_> = simple.points().collect();
+    if points.len() != simple.num_points() {
+        return Err(Error::Parse {
+            table: "glyf",
+            reason: "point stream ended before the declared point count".to_owned(),
+        });
+    }
+    let mut start = 0usize;
+    let mut contours = Vec::with_capacity(simple.end_pts_of_contours().len());
+    for endpoint in simple.end_pts_of_contours() {
+        let end = usize::from(endpoint.get())
+            .checked_add(1)
+            .ok_or_else(|| Error::Parse {
+                table: "glyf",
+                reason: "contour endpoint overflow".to_owned(),
+            })?;
+        let source = points.get(start..end).ok_or_else(|| Error::Parse {
+            table: "glyf",
+            reason: "contour endpoint exceeds the point stream".to_owned(),
+        })?;
+        let len = source.len();
+        let contour_points = source
+            .iter()
+            .enumerate()
+            .map(|(offset, point)| {
+                let previous = source[(offset + len - 1) % len];
+                let next = source[(offset + 1) % len];
+                let kind = if !point.on_curve {
+                    PointKind::OffCurve
+                } else if previous.on_curve && next.on_curve {
+                    PointKind::Line
+                } else {
+                    PointKind::QCurve
+                };
+                Point {
+                    corner_radius: 0.,
+                    x: f64::from(point.x),
+                    y: f64::from(point.y),
+                    kind,
+                    smooth: false,
+                    name: None,
+                    id: None,
+                    super_smooth: false,
+                    tt_index: TtIndex::Index((start + offset) as u16),
+                }
+            })
+            .collect();
+        contours.push(Contour {
+            closed: true,
+            points: contour_points,
+            name: None,
+            id: None,
+        });
+        start = end;
+    }
+    if start != points.len() {
+        return Err(Error::Parse {
+            table: "glyf",
+            reason: "unassigned points remain after the last contour".to_owned(),
+        });
+    }
+    Ok(contours)
+}
+
+fn map_component(
+    component: read_fonts::tables::glyf::Component,
+    names: &[GlyphName],
+) -> Result<Component, Error> {
+    let base = names
+        .get(usize::from(component.glyph.to_u16()))
+        .cloned()
+        .ok_or_else(|| Error::Parse {
+            table: "glyf",
+            reason: format!(
+                "component glyph {} is out of range",
+                component.glyph.to_u16()
+            ),
+        })?;
+    let xx = f64::from(component.transform.xx.to_f32());
+    let yx = f64::from(component.transform.yx.to_f32());
+    let xy = f64::from(component.transform.xy.to_f32());
+    let yy = f64::from(component.transform.yy.to_f32());
+    let (mut dx, mut dy, point_match) = match component.anchor {
+        Anchor::Offset { x, y } => (f64::from(x), f64::from(y), None),
+        Anchor::Point { base, component } => (0.0, 0.0, Some((base, component))),
+    };
+    if component
+        .flags
+        .contains(CompositeGlyphFlags::SCALED_COMPONENT_OFFSET)
+    {
+        (dx, dy) = (xx * dx + xy * dy, yx * dx + yy * dy);
+    }
+    Ok(Component {
+        locked: false,
+        base,
+        transform: Affine::new([xx, yx, xy, yy, dx, dy]),
+        anchor: None,
+        auto_align: false,
+        use_my_metrics: component
+            .flags
+            .contains(CompositeGlyphFlags::USE_MY_METRICS),
+        round_to_grid: component
+            .flags
+            .contains(CompositeGlyphFlags::ROUND_XY_TO_GRID),
+        smart: None,
+        point_match,
+    })
+}

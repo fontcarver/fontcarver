@@ -61,3 +61,15 @@ if (typeof HTMLCanvasElement !== 'undefined') {
     return stubContext()
   } as unknown as HTMLCanvasElement['getContext']
 }
+
+// CodeMirror measures text ranges during animation frames. jsdom has no layout;
+// real range geometry is covered by the browser acceptance workflows.
+if (typeof Range !== 'undefined') {
+  Range.prototype.getClientRects ??= () =>
+    ({
+      length: 0,
+      item: () => null,
+      [Symbol.iterator]: function* () {},
+    }) as DOMRectList
+  Range.prototype.getBoundingClientRect ??= () => new DOMRect()
+}

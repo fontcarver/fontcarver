@@ -1,0 +1,41 @@
+{
+  "success": true,
+  "data": {
+    "lifecycle": {
+      "effectiveLaunch": {
+        "browserLaunched": true,
+        "engine": "chrome",
+        "launchHash": 4509559350375612282
+      },
+      "launched": false,
+      "relaunchedBrowser": false,
+      "restartedBackground": false,
+      "restoreStatus": "not_configured",
+      "reused": true,
+      "saveStatus": "not_attempted"
+    },
+    "origin": "http://127.0.0.1:1473/",
+    "result": {
+      "dpr": 2,
+      "height": 384,
+      "help": {
+        "bottom": 27,
+        "height": 27,
+        "right": 703.6796875,
+        "width": 50.140625,
+        "x": 653.5390625,
+        "y": 0
+      },
+      "popup": {
+        "bottom": 112,
+        "height": 85,
+        "right": 901.5390625,
+        "width": 248,
+        "x": 653.5390625,
+        "y": 27
+      },
+      "width": 683
+    }
+  },
+  "error": null
+}

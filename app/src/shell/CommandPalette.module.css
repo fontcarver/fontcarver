@@ -8,6 +8,7 @@
 }
 
 .paletteInput {
+  flex: none;
   width: 100%;
   height: 40px;
   border: 0;
@@ -19,6 +20,7 @@
 }
 
 .paletteList {
+  min-height: 0;
   max-height: min(52vh, 420px);
   margin: 0;
   padding: var(--space-1);
@@ -30,9 +32,10 @@
   display: flex;
   width: 100%;
   align-items: center;
-  gap: var(--space-4);
-  height: 26px;
-  padding: 0 var(--space-3);
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  min-height: 26px;
+  padding: var(--space-1) var(--space-3);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -76,21 +79,30 @@
 }
 
 .paletteLabel {
-  overflow: hidden;
-  flex: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  flex: 1 1 160px;
+  overflow-wrap: anywhere;
 }
 
 .paletteMenu,
 .paletteReason {
   flex: none;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   color: var(--color-text-faint);
   font-size: var(--text-size-xs);
 }
 
+/* Keep the command readable even when its unavailable reason is a sentence. */
+.paletteReason {
+  flex: 1 1 100%;
+  order: 1;
+}
+
 .hint {
   flex: none;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   color: var(--color-text-faint);
   font-size: var(--text-size-xs);
   font-variant-numeric: tabular-nums;
@@ -103,8 +115,51 @@
 }
 
 .paletteFooter {
+  flex: none;
   padding: var(--space-2) var(--space-4);
   border-top: 1px solid var(--color-border-subtle);
   color: var(--color-text-faint);
   font-size: var(--text-size-xs);
+}
+
+.paletteScope {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+}
+
+.paletteScope select {
+  max-width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.paletteNotices {
+  padding: var(--space-2) var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-sm);
+}
+
+.paletteNotices p {
+  margin: 0;
+}
+
+/* Section heading inside the results list. The group's `aria-label` carries the
+   same word for assistive technology, so this copy is decorative. */
+.paletteSection {
+  margin: var(--space-1) 0 0;
+  padding: 0 var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-size-xs);
+  font-weight: var(--text-weight-strong);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
