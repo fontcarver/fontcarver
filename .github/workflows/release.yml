@@ -210,6 +210,21 @@ jobs:
           done < <(dpkg-query --listfiles "$package" | sed -n '/\.desktop$/p')
           dpkg-query --show "$package"
 
+      # Fedora in a container supplies what the Ubuntu runner cannot: a root
+      # filesystem an rpm may be installed into and then discarded.
+      - name: Install and remove the Linux rpm package
+        if: runner.os == 'Linux' && contains(matrix.bundles, 'rpm')
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifacts=()
+          while IFS= read -r found; do artifacts+=("$found"); done \
+            < <(find target/release/bundle/rpm -maxdepth 1 -name '*.rpm')
+          test "${#artifacts[@]}" -eq 1
+          version="$(python -c "import json,pathlib;print(json.loads(pathlib.Path('src-tauri/tauri.conf.json').read_text())['version'])")"
+          python scripts/check_rpm_install.py --artifact "${artifacts[0]}" \
+            --version "$version" --output .scratch/p5-release-ci/rpm-install.json
+
       # Package inspection proves the payload exists; this proves it loads. The
       # runner has no display, so the AppImage is pointed at a GTK backend it
       # cannot reach: a bundled runtime that is complete gets as far as the
