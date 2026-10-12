@@ -1,0 +1,128 @@
+name: AppImage license census
+
+# Every row in the census is a function of what the build host carries, not of
+# what FontCarver needs: the bundler sweeps the libraries it finds. A hosted
+# runner is a declared, reproducible host, so its census is the one that counts
+# for a published image; a developer workstation's is only a lead.
+#
+# This workflow collects evidence. It never publishes an AppImage, and it does
+# not gate anything: the inspector in check_release_bundle.py does that.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  census:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      CARGO_INCREMENTAL: "0"
+      APPIMAGE_EXTRACT_AND_RUN: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Linux bundle prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libayatana-appindicator3-dev librsvg2-dev patchelf \
+            desktop-file-utils gcc binutils pkg-config squashfs-tools
+
+      - name: Record the build host's package set
+        run: |
+          mkdir -p .scratch/census
+          dpkg-query -W -f '${Package}\t${Version}\n' | sort > .scratch/census/host-packages.tsv
+          wc -l < .scratch/census/host-packages.tsv
+          # The AGPL libwmf loader is the clearest avoidable row; say plainly
+          # whether this host has it at all.
+          dpkg -l 'libwmf*' 2>/dev/null || echo 'no libwmf package on this host'
+
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@1.94.0
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: ${{ runner.os }}-cargo-release-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: ${{ runner.os }}-cargo-release-
+
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The inspector refuses an image whose libraries have no determination,
+      # which is the point of this run; the artifact it refused is still on
+      # disk, and the census below is how that determination gets made.
+      - name: Build an AppImage
+        continue-on-error: true
+        run: python3 scripts/build_release.py --bundles appimage --min-free-gib 5
+
+      - name: Inventory the payload and classify its packages
+        run: |
+          set -eu
+          image=$(find target/release/bundle/appimage -maxdepth 1 -name '*.AppImage' | head -1)
+          test -n "$image"
+          chmod +x "$image"
+          offset=$("$image" --appimage-offset)
+          work=.scratch/census/extract
+          mkdir -p "$work"
+          (cd "$work" && "$GITHUB_WORKSPACE/$image" --appimage-extract >/dev/null)
+          python3 scripts/appimage_inventory.py --payload "$work/squashfs-root" \
+            --appimage "$image" --runtime-bytes "$offset" \
+            --output .scratch/census/inventory.json
+          python3 scripts/appimage_census.py --inventory .scratch/census/inventory.json \
+            --output .scratch/census/census.json || true
+
+      - name: Summarise
+        if: always()
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, pathlib
+          path = pathlib.Path('.scratch/census/census.json')
+          if not path.exists():
+              print('No census was produced; see the build log.')
+              raise SystemExit(0)
+          report = json.loads(path.read_text())
+          print(f"## AppImage census on this runner\n")
+          print(f"`{report['artifact']}` — {len(report['packages'])} owning packages\n")
+          print('| Verdict | Packages |\n| --- | --- |')
+          for kind, count in sorted(report['counts'].items()):
+              print(f'| {kind} | {count} |')
+          print(f"\n**{report['blocking']} need a determination.**\n")
+          rows = [r for r in report['packages'] if r['verdict'] in ('forbidden', 'unidentified')]
+          if rows:
+              print('\n| Package | Verdict | Labels |\n| --- | --- | --- |')
+              for row in rows:
+                  print(f"| {row['package']} | {row['verdict']} | {', '.join(row['labels']) or '—'} |")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: appimage-census
+          path: |
+            .scratch/census/inventory.json
+            .scratch/census/census.json
+            .scratch/census/host-packages.tsv
+            target/release/bundle/release-manifest.json
+          retention-days: 14
