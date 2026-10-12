@@ -377,12 +377,21 @@ test('focused metrics are saved, and ellipse, crop, invert and scaling retain pi
   const canvas = page.getByLabel('Bitmap pixel canvas'),
     box = await canvas.boundingBox()
   if (!box) throw new Error('canvas missing')
+  const beforeEllipse = (await image(page, doc.doc)).value?.bitmap.rows
   await page.mouse.move(box.x + 24, box.y + 24)
   await page.mouse.down()
   await page.mouse.move(box.x + 104, box.y + 104, { steps: 6 })
   await page.mouse.up()
+  // The editor disables its tools while the ellipse is written and reloaded. A
+  // click that lands in that window is swallowed by the disabled button, which
+  // on a slower runner made Invert a silent no-op; wait for the write to settle.
+  await expect
+    .poll(async () => (await image(page, doc.doc)).value?.bitmap.rows)
+    .not.toEqual(beforeEllipse)
+  const invert = page.getByRole('button', { name: 'Invert', exact: true })
+  await expect(invert).toBeEnabled()
   const before = (await image(page, doc.doc)).value?.bitmap.rows
-  await page.getByRole('button', { name: 'Invert', exact: true }).click()
+  await invert.click()
   await expect
     .poll(async () => (await image(page, doc.doc)).value?.bitmap.rows)
     .not.toEqual(before)
