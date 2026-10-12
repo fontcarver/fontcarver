@@ -102,9 +102,43 @@ describe('uiStore theme', () => {
 })
 
 describe('uiStore panels', () => {
+  it('uses one temporary panel in narrow windows and preserves the saved dock', () => {
+    const ui = useUiStore.getState()
+    ui.setPanelVisible('inspector', false)
+    ui.setPanelSize('sidebar', 320)
+    const saved = localStorage.getItem('fontcarver.ui')
+    ui.setCompactPanels(true)
+    expect(useUiStore.getState().compactPanel).toBeNull()
+    ui.togglePanel('sidebar')
+    expect(useUiStore.getState().compactPanel).toBe('sidebar')
+    ui.togglePanel('inspector')
+    expect(useUiStore.getState().compactPanel).toBe('inspector')
+    ui.togglePanel('inspector')
+    expect(useUiStore.getState().compactPanel).toBeNull()
+    ui.togglePanel('sidebar')
+    ui.setCompactPanels(false)
+    expect(useUiStore.getState().compactPanel).toBeNull()
+    expect(useUiStore.getState().panels).toEqual({
+      sidebar: true,
+      inspector: false,
+    })
+    expect(useUiStore.getState().sizes.sidebar).toBe(320)
+    expect(localStorage.getItem('fontcarver.ui')).toBe(saved)
+  })
+
   it('toggles visibility', () => {
     expect(useUiStore.getState().panels.sidebar).toBe(true)
     useUiStore.getState().togglePanel('sidebar')
+    expect(useUiStore.getState().panels.sidebar).toBe(false)
+  })
+
+  it('keeps explicit detaching effective after leaving a narrow window', () => {
+    const ui = useUiStore.getState()
+    ui.setCompactPanels(true)
+    ui.togglePanel('sidebar')
+    ui.setPanelVisible('sidebar', false)
+    expect(useUiStore.getState().compactPanel).toBeNull()
+    ui.setCompactPanels(false)
     expect(useUiStore.getState().panels.sidebar).toBe(false)
   })
 

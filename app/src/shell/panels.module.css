@@ -1,5 +1,12 @@
 /* Shared chrome of the sidebar and inspector panes. */
 
+.compactPanel {
+  display: flex;
+  flex-direction: column;
+  min-height: 160px;
+  height: min(480px, 50vh);
+}
+
 .panelStack {
   display: flex;
   min-height: 0;

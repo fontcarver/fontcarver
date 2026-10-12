@@ -70,6 +70,11 @@
 }
 
 .tabActions {
+  position: sticky;
+  right: 0;
+  flex: none;
+  background: var(--color-app);
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: var(--space-1);
