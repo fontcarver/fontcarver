@@ -93,6 +93,34 @@ jobs:
           python3 scripts/appimage_census.py --inventory .scratch/census/inventory.json \
             --output .scratch/census/census.json || true
 
+      # A determination is made by reading the copyright file, not by trusting a
+      # label, and these files live on the runner. Collect the ones the gate
+      # actually blocked on so the rulings can cite evidence.
+      - name: Collect the copyright evidence the determinations need
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, shutil
+          out = pathlib.Path('census-evidence')
+          (out / 'copyright').mkdir(parents=True, exist_ok=True)
+          inventory = json.loads(pathlib.Path('.scratch/census/inventory.json').read_text())
+          for entry in inventory.get('packages', []):
+              source = entry.get('host_copyright_path')
+              if not source:
+                  continue
+              path = pathlib.Path(source)
+              if path.is_file():
+                  shutil.copyfile(path, out / 'copyright' / f"{entry['package'].replace('/', '_')}.txt")
+          for name in ('inventory.json', 'census.json', 'host-packages.tsv'):
+              candidate = pathlib.Path('.scratch/census') / name
+              if candidate.is_file():
+                  shutil.copyfile(candidate, out / name)
+          manifest = pathlib.Path('target/release/bundle/release-manifest.json')
+          if manifest.is_file():
+              shutil.copyfile(manifest, out / 'release-manifest.json')
+          print('copyright files collected:', len(list((out / 'copyright').iterdir())))
+          PY
+
       - name: Summarise
         if: always()
         run: |
@@ -116,13 +144,12 @@ jobs:
                   print(f"| {row['package']} | {row['verdict']} | {', '.join(row['labels']) or '—'} |")
           PY
 
+      # The evidence is copied out of .scratch first: upload-artifact skips
+      # dot-directories unless told otherwise, which silently dropped the
+      # census from this artifact the first time.
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: appimage-census
-          path: |
-            .scratch/census/inventory.json
-            .scratch/census/census.json
-            .scratch/census/host-packages.tsv
-            target/release/bundle/release-manifest.json
+          path: census-evidence
           retention-days: 14
