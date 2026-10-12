@@ -4,7 +4,7 @@ The single entry point for "where is the project". Update this file at every
 pause and every milestone commit. It links to the detailed records; it does
 not repeat them.
 
-Last updated: 2026-10-02. Branch: `p5-color-authoring`. Waves 1 and 2 and
+Last updated: 2026-10-04. Branch: `p5-color-authoring`. Waves 1 and 2 and
 this repair pass are local work; no push, `main` merge, signing or publication.
 
 **The authorized local closing work and added UI/UX tasks are complete.**
@@ -34,7 +34,7 @@ pass together, with zero retries. The full frontend rerun passes 2,914 tests /
 of temporary data are cleaned; resource check passes at 5.33 GiB build,
 0.00 GiB temporary and 616.21 GiB free.
 
-The latest [settings check](p5ux-settings-zoom-acceptance.md) fixes overflowing
+The subsequent [settings check](p5ux-settings-zoom-acceptance.md) fixes overflowing
 nudge fields in Preferences by letting them wrap. Actual 200% checks pass in
 English/Chinese × light/dark, including all three preferences categories,
 shortcut-list scrolling, conflict feedback, footer controls, Tab/Escape and
@@ -44,7 +44,35 @@ and ordinary CSS widths, with zero retries. The latest full frontend run passes
 39.0 MB of task data are cleaned; resource check passes at 5.33 GiB build,
 0.00 GiB temporary and 611.91 GiB free. Existing Linux candidates below
 predate these layout repairs and remain the earlier package checkpoint.
-Work stops after this task as requested.
+
+The subsequent [workspace zoom check](p5ux-workspace-zoom-acceptance.md) extends actual
+200% coverage to glyph editing, sidebar/Inspector, Font Info, metadata and Export.
+Narrow windows retain the full editor width and open side panels temporarily;
+Font Info navigation wraps, status/node-info overflow stays within its own area,
+and metadata Apply retains keyboard focus. Eight actual browser combinations
+(English/Chinese × light/dark × two window widths) pass, including node dragging,
+undo and TTF export. The final targeted browser regression passes **23/23**, with
+zero failures, retries or skips. Frontend validation passes **2,917 tests /
+348 files**, type/lint/format and build; screenshots and commands are linked in
+the acceptance report.
+No new translation keys or dependencies were added. The 112-row audit and broad
+effort estimate remain unchanged. Owned browser/servers and task scratch were
+removed. The resource gate passes at **5.33 GiB build / 12,262 files,
+0.00 GiB temporary / 2 files, 533.55 GiB free**. Work stops after this selected task.
+
+The latest [complete E2E follow-up](p5ux-latest-e2e-acceptance.md) covers the current
+source, including all 20 added zoom cases: **125/125 pass**, zero failures, skips
+or retries in the final run. Two earlier complete runs each exposed one gesture
+test setup/synchronization gap; both were corrected and each affected case passed
+three focused repetitions before the final run. Application code and performance
+limits were unchanged. The 300-point drag gate records **1.4 ms P95, 2.6 ms maximum,
+4.5 ms pointer-down**, all below 8 ms; the actual 65,535-glyph CJK case passes.
+The report retains all three full-run results, source hashes and performance
+samples. Type checking and changed-test lint/format checks pass. The prior
+2,917-test frontend/build checkpoint remains current; no Rust or installer build
+was needed for this E2E-only change. Resource cleanup is recorded in the report.
+The next local delivery step remains rebuilding/verifying Linux installers with
+the recent UI fixes. This selected E2E task is complete.
 
 The prior integrated application/tooling source **`f6f6cf9`** passes **2,914 frontend tests /
 348 files**, type checking, lint, formatting and production build. The final

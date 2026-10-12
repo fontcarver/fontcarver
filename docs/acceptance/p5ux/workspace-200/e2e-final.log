@@ -1,0 +1,70 @@
+[WebServer] (node:801383) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `pnpm --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:801397) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 23 tests using 1 worker
+
+(node:801421) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 e2e/fontinfo-export-reflow.spec.ts:17:5 › reflows font information and exports a usable font: en/light (9.0s)
+  ✓   2 e2e/fontinfo-export-reflow.spec.ts:17:5 › reflows font information and exports a usable font: en/dark (11.1s)
+[WebServer] 5:39:46 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+[WebServer] 5:40:00 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   3 e2e/fontinfo-export-reflow.spec.ts:17:5 › reflows font information and exports a usable font: zh-CN/light (14.0s)
+[WebServer] 5:40:13 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   4 e2e/fontinfo-export-reflow.spec.ts:17:5 › reflows font information and exports a usable font: zh-CN/dark (12.1s)
+[WebServer] 5:40:18 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   5 e2e/menu-reflow.spec.ts:25:5 › keeps Help and its popup inside the zoomed menu bar: en/light (5.5s)
+[WebServer] 5:40:24 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   6 e2e/menu-reflow.spec.ts:25:5 › keeps Help and its popup inside the zoomed menu bar: en/dark (5.0s)
+[WebServer] 5:40:28 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   7 e2e/menu-reflow.spec.ts:25:5 › keeps Help and its popup inside the zoomed menu bar: zh-CN/light (4.7s)
+[WebServer] 5:40:33 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   8 e2e/menu-reflow.spec.ts:25:5 › keeps Help and its popup inside the zoomed menu bar: zh-CN/dark (4.8s)
+[WebServer] 5:40:39 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   9 e2e/settings-reflow.spec.ts:66:5 › keeps preferences and shortcut settings usable at 200% reflow: en/light (5.0s)
+[WebServer] 5:40:42 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  10 e2e/settings-reflow.spec.ts:66:5 › keeps preferences and shortcut settings usable at 200% reflow: en/dark (3.3s)
+[WebServer] 5:40:48 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  11 e2e/settings-reflow.spec.ts:66:5 › keeps preferences and shortcut settings usable at 200% reflow: zh-CN/light (5.7s)
+  ✓  12 e2e/settings-reflow.spec.ts:66:5 › keeps preferences and shortcut settings usable at 200% reflow: zh-CN/dark (10.6s)
+  ✓  13 e2e/ux-input.spec.ts:36:1 › keeps the laptop canvas usable and reaches every tool with the keyboard (10.2s)
+  ✓  14 e2e/ux-input.spec.ts:99:1 › customizes one tool binding and preserves hold release and menu focus (10.4s)
+[WebServer] 5:41:49 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  15 e2e/ux-input.spec.ts:159:1 › rejects right-button edits and cancels interrupted outline drags without history (27.6s)
+  ✓  16 e2e/welcome-reflow.spec.ts:53:5 › keeps welcome and palette readable at 200% reflow: en/light (23.0s)
+  ✓  17 e2e/welcome-reflow.spec.ts:53:5 › keeps welcome and palette readable at 200% reflow: en/dark (16.2s)
+  ✓  18 e2e/welcome-reflow.spec.ts:53:5 › keeps welcome and palette readable at 200% reflow: zh-CN/light (5.8s)
+  ✓  19 e2e/welcome-reflow.spec.ts:53:5 › keeps welcome and palette readable at 200% reflow: zh-CN/dark (5.8s)
+  ✓  20 e2e/workspace-reflow.spec.ts:18:5 › keeps the workspace and font info reachable at 200%: en/light (31.5s)
+  ✓  21 e2e/workspace-reflow.spec.ts:18:5 › keeps the workspace and font info reachable at 200%: en/dark (33.7s)
+[WebServer] 5:44:00 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  22 e2e/workspace-reflow.spec.ts:18:5 › keeps the workspace and font info reachable at 200%: zh-CN/light (12.8s)
+  ✓  23 e2e/workspace-reflow.spec.ts:18:5 › keeps the workspace and font info reachable at 200%: zh-CN/dark (12.4s)
+
+  23 passed (4.8m)

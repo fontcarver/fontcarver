@@ -1,0 +1,24 @@
+[WebServer] (node:858181) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `pnpm --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:858195) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 3 tests using 1 worker
+
+(node:858286) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 e2e/p2a-kerning.spec.ts:61:1 › authors groups and pair exceptions, coalesces shortcuts, saves and exports matching layout (17.0s)
+(node:858612) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 e2e/p2a-kerning.spec.ts:61:1 › authors groups and pair exceptions, coalesces shortcuts, saves and exports matching layout (9.0s)
+[WebServer] 6:27:28 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+(node:859072) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] 6:27:38 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  3 e2e/p2a-kerning.spec.ts:61:1 › authors groups and pair exceptions, coalesces shortcuts, saves and exports matching layout (8.7s)
+
+  3 passed (37.6s)

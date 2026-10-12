@@ -261,12 +261,79 @@ test.describe('open corner', () => {
       await expect.poll(points).toBe(6)
       await expect(page.getByRole('contentinfo')).toContainText('Open corner')
 
-      // Marquee the mouth: both of its nodes sit within a few pixels of where
-      // the corner was, and the neighbouring nodes are a third of the canvas
-      // away. The drag starts inside the ink, which is not hit-testable.
-      await page.mouse.move(reflex.x + bounds.x - 30, reflex.y + bounds.y - 22)
+      // The kernel can finish before the canvas receives the new outline.
+      // Wait for the displayed nodes, then enclose the actual mouth instead
+      // of assuming the old click position still frames both new nodes.
+      const opened = await api<Outline>(page, 'glyphs.outline', {
+        doc,
+        gid,
+        layer: null,
+      })
+      const selected = opened.contours[0].points[2]
+      for (const [axis, value] of [
+        ['X', selected.x],
+        ['Y', selected.y],
+      ] as const)
+        await expect
+          .poll(async () =>
+            Math.abs(
+              Number(
+                await info
+                  .getByRole('textbox', { name: axis, exact: true })
+                  .inputValue(),
+              ) - value,
+            ),
+          )
+          .toBeLessThanOrEqual(0.051)
+      const mouth = await canvas.evaluate(
+        (element, points) => {
+          const editor = (
+            globalThis as unknown as {
+              __fwEditor: {
+                viewportForTest: {
+                  toScreen: (point: { x: number; y: number }) => {
+                    x: number
+                    y: number
+                  }
+                }
+              }
+            }
+          ).__fwEditor
+          const target = element as unknown as {
+            getBoundingClientRect: () => { x: number; y: number }
+            ownerDocument: {
+              elementFromPoint: (x: number, y: number) => unknown
+            }
+          }
+          const rect = target.getBoundingClientRect()
+          const shown = points.map((point) =>
+            editor.viewportForTest.toScreen(point),
+          )
+          const start = {
+            x: rect.x + Math.min(...shown.map((point) => point.x)) - 18,
+            y: rect.y + Math.min(...shown.map((point) => point.y)) - 18,
+          }
+          const end = {
+            x: rect.x + Math.max(...shown.map((point) => point.x)) + 18,
+            y: rect.y + Math.max(...shown.map((point) => point.y)) + 18,
+          }
+          return {
+            start,
+            end,
+            reachable: [start, end].every(
+              ({ x, y }) =>
+                target.ownerDocument.elementFromPoint(x, y) === element,
+            ),
+          }
+        },
+        opened.contours[0].points.slice(2, 4),
+      )
+      expect(mouth.reachable, 'the mouth marquee stays on the canvas').toBe(
+        true,
+      )
+      await page.mouse.move(mouth.start.x, mouth.start.y)
       await page.mouse.down()
-      await page.mouse.move(reflex.x + bounds.x + 18, reflex.y + bounds.y + 22)
+      await page.mouse.move(mouth.end.x, mouth.end.y, { steps: 4 })
       await page.mouse.up()
       await expect(info).toContainText('2 of')
 

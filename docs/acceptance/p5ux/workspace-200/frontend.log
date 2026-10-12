@@ -1,0 +1,532 @@
+$ pnpm --dir app check
+
+> fontcarver-app@0.1.0 check /home/chen/githubprojects/fontpixel/fontcarver/app
+> tsc -b
+
+
+$ pnpm --dir app lint
+
+> fontcarver-app@0.1.0 lint /home/chen/githubprojects/fontpixel/fontcarver/app
+> eslint .
+
+
+$ pnpm --dir app exec prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+
+$ pnpm --dir app test --maxWorkers=4
+
+> fontcarver-app@0.1.0 test /home/chen/githubprojects/fontpixel/fontcarver/app
+> vitest run --maxWorkers=4
+
+
+ RUN  v3.2.7 /home/chen/githubprojects/fontpixel/fontcarver/app
+
+ ✓ src/views/font/OpticalSpacingDialog.test.tsx (16 tests) 2162ms
+   ✓ windows a large proposal and keeps select-all over every row  1056ms
+ ✓ src/dialogs/AddGlyphsDialog.test.tsx (13 tests) 3055ms
+   ✓ AddGlyphsDialog > previews a recipe through a dry run and lists the names  339ms
+   ✓ AddGlyphsDialog > says why each item was skipped  415ms
+   ✓ AddGlyphsDialog > reports a rejected add by its kernel error code  326ms
+   ✓ AddGlyphsDialog > builds composites by default and can create blank glyphs instead  626ms
+ ✓ src/views/glyph/panels/EditInspector.test.tsx (28 tests) 4566ms
+   ✓ Components panel > adds a component picked from the search popover  395ms
+   ✓ Transform panel > applies an affine about exact custom-origin coordinates  398ms
+ ✓ src/dialogs/ExportDialog.test.tsx (19 tests) 3223ms
+   ✓ ExportDialog > omits static preprocessing on variable exports and restores the static preferences  523ms
+   ✓ ExportDialog > follows the format tab into the file extension and the options  303ms
+ ✓ src/views/font/GlyphGrid.test.tsx (18 tests) 6122ms
+   ✓ glyph grid pointer selection > replaces on click, extends on Shift and toggles on Ctrl  551ms
+   ✓ glyph grid pointer selection > selects a rectangle with a rubber band and clears on an empty click  362ms
+   ✓ glyph grid keyboard navigation > moves with the arrow keys and wraps a row with Down  406ms
+   ✓ glyph grid keyboard navigation > extends the selection when an arrow key is pressed with Shift  369ms
+   ✓ glyph grid opening > opens the focused glyph with Enter  301ms
+   ✓ glyph grid context menu > targets the clicked glyph without collapsing the selection  513ms
+   ✓ glyph grid invalidation > repaints a glyph the kernel reports as changed  523ms
+   ✓ glyph grid invalidation > keeps the scroll position across a full reload  581ms
+   ✓ glyph grid invalidation > reloads the whole list when the glyph order changed  335ms
+   ✓ glyph grid colour labels > offers the twelve labels and None from the context menu  366ms
+ ✓ src/views/text/TextView.test.tsx (7 tests) 2845ms
+   ✓ TextView integration > migrates a legacy tab and retains the controller during a third-glyph local edit  1164ms
+   ✓ TextView integration > says it is still shaping, which a zero run count alone does not  313ms
+   ✓ TextView integration > stores preview waterfall settings on the tab so every surface shares them  563ms
+ ✓ src/views/glyph/panels/ImagePanel.test.tsx (19 tests) 1916ms
+ ✓ src/shell/ShortcutSettingsDialog.test.tsx (10 tests) 2037ms
+   ✓ stages changes and blocks a conflict until resolved  467ms
+   ✓ keeps an explicit physical Control binding when editing and saving  340ms
+ ✓ src/views/color/ColorEditor.test.tsx (9 tests) 1759ms
+   ✓ reorders outline layers and previews alpha and foreground in paint order  318ms
+   ✓ bounds large palette and layer controls while retaining invalid page input  527ms
+ ✓ src/shell/quickHelp.test.tsx (32 tests) 1549ms
+   ✓ quick help on hover > opens the full article from a real click on its button  662ms
+   ✓ quick help on hover > hands focus to its button on Tab and activates it with Enter  639ms
+ ✓ src/views/features/FeatureAutomaticSwitch.test.tsx (3 tests) 1810ms
+   ✓ per-entry automatic switch > shows a generated entry as automatic and freezes only that entry  555ms
+   ✓ per-entry automatic switch > asks before replacing a manual entry with generated source  1079ms
+ ✓ src/views/glyph/panels/CjkRadicalLibrary.test.tsx (5 tests) 1285ms
+   ✓ CJK radical library > refetches on a document event, and collapses a burst into one scan  632ms
+ ✓ src/views/glyph/panels/VariablePenEditor.test.tsx (6 tests) 1602ms
+   ✓ reviews variable pen edits before sending them and invalidates changed parameters  576ms
+   ✓ anchors endpoint positions and adds points into the largest remaining gap  390ms
+ ✓ src/views/math/MathEditor.test.tsx (6 tests) 2131ms
+   ✓ applies constants and a glyph record together and keeps the selection  472ms
+   ✓ keeps invalid text visible on close and allows explicit discard  307ms
+   ✓ blocks invalid handover (suspended: false), then saves the corrected value  386ms
+   ✓ blocks invalid handover (suspended: true), then saves the corrected value  444ms
+ ✓ src/shell/CommandPaletteRoutes.test.tsx (6 tests) 1409ms
+   ✓ finds glyph names outside the active overview filter and opens the glyph tab  386ms
+   ✓ walks the visible rows, not the ranked order behind the sections  357ms
+ ✓ src/views/font/SidebarFilters.test.tsx (7 tests) 1392ms
+ ✓ src/views/features/VisualLookupEditor.test.tsx (6 tests) 1233ms
+   ✓ Visual lookup editor > round-trips FEA edits through the draft and checked apply  472ms
+ ✓ src/App.test.tsx (11 tests) 1382ms
+ ✓ src/dialogs/PreferencesDialog.test.tsx (10 tests) 939ms
+   ✓ PreferencesDialog > persists independent targets, pixel distances, marker sizes and grid subdivisions  507ms
+ ✓ src/dialogs/DialogHost.test.tsx (6 tests) 1411ms
+   ✓ dialog wiring > opens New Font with its shortcut  381ms
+   ✓ dialog wiring > opens Find problems from the Font menu and command palette  436ms
+ ✓ src/views/bitmap/BitmapWaterfall.test.tsx (5 tests) 1002ms
+   ✓ the multi-strike waterfall > switches to the selected glyph alone and disables the sample field  349ms
+ ✓ src/views/features/FeaturesView.test.tsx (6 tests) 1381ms
+   ✓ FeaturesView > persists invalid Unicode source before checking while the active source stays unchanged  330ms
+   ✓ FeaturesView > navigates a diagnostic to its stable source block and UTF-16 range  320ms
+ ✓ src/views/font/GlyphTable.test.tsx (4 tests) 1590ms
+   ✓ glyph table > switches views while preserving selection and renders a bounded range  655ms
+   ✓ glyph table > selects ranges, navigates rows and opens the focused glyph  340ms
+   ✓ glyph table > sorts through the kernel and retains reordered columns across view switches  397ms
+ ✓ src/views/hints/PsHintEditor.test.tsx (10 tests) 1167ms
+ ✓ src/views/glyph/panels/CjkTransformGrid.test.tsx (9 tests) 1126ms
+   ✓ CJK component transform grid > stages every field without touching the document, then applies one entry  471ms
+ ✓ src/views/glyph/panels/GlyphVariationPanel.test.tsx (5 tests) 1022ms
+   ✓ scrubs the current glyph beside the editor without changing the document  336ms
+ ✓ src/views/glyph/panels/VerticalMetricsPanel.test.tsx (16 tests) 1084ms
+ ✓ src/views/glyph/GlyphView.test.tsx (11 tests) 1351ms
+   ✓ GlyphView > requests the glyph once and shows its metrics in the readout  312ms
+ ✓ src/automation/runtime.test.ts (29 tests) 806ms
+ ✓ src/editor/documentEditParticipants.test.ts (16 tests) 852ms
+ ✓ src/views/text/useTextKerning.classes.test.tsx (12 tests) 802ms
+ ✓ src/views/bitmap/BitmapEntryFocus.test.tsx (9 tests) 935ms
+ ✓ src/views/text/PreviewStrip.test.tsx (14 tests) 959ms
+ ✓ src/editor/editorController.test.ts (93 tests) 794ms
+ ✓ src/views/text/KerningTable.test.tsx (12 tests) 1135ms
+ ✓ src/views/text/useTextKerning.test.tsx (9 tests) 749ms
+ ✓ src/views/glyph/ToolPalette.test.tsx (6 tests) 1438ms
+   ✓ ToolPalette > reaches every tool with arrow keys and leaves the toolbar with Tab  974ms
+ ✓ src/views/glyph/useSourceImage.test.tsx (10 tests) 731ms
+ ✓ src/views/text/useProofLibrary.test.tsx (8 tests) 748ms
+ ✓ src/views/font/FontView.test.tsx (5 tests) 1724ms
+   ✓ FontView > shows the match count and requests only the visible page  597ms
+   ✓ FontView > sends the search text to the kernel after the debounce  470ms
+   ✓ FontView > filters by a sidebar category and shows a removable chip  387ms
+ ✓ src/views/crossdocument/CompareFontsDialog.test.tsx (4 tests) 1612ms
+   ✓ shows every difference section and merges with per-conflict resolutions  955ms
+   ✓ opens a reference binary read-only and says so beside the source  337ms
+ ✓ src/views/glyph/panels/CjkTransformGrid.races.test.tsx (9 tests) 1554ms
+   ✓ refuses stale drafts after base replacement while settling  494ms
+ ✓ src/dialogs/ExportMatrixPanel.test.tsx (5 tests) 2049ms
+   ✓ shows every actual result and continues after an individual export fails  954ms
+   ✓ requires a refreshed instance list if the design space changed before export  322ms
+ ✓ src/views/fontinfo/VariationPreview.test.tsx (4 tests) 1297ms
+   ✓ steps the weight axis in whole units so the keyboard reaches 500  632ms
+   ✓ accepts a typed coordinate and clamps it to the axis range  372ms
+ ✓ src/views/fontinfo/FontInfoPanel.test.tsx (11 tests) 2221ms
+   ✓ FontInfoPanel > reloads when a document event reports changed master data  549ms
+   ✓ FontInfoPanel > shows one metrics column per master  359ms
+   ✓ FontInfoPanel > searches across every section at once  346ms
+ ✓ src/plugins/PluginManager.test.tsx (7 tests) 1565ms
+   ✓ requires installation and enabling before exposing filter controls  685ms
+ ✓ src/dialogs/BatchRenameDialog.test.tsx (7 tests) 1648ms
+   ✓ BatchRenameDialog > renames with a regular expression and its capture groups  745ms
+ ✓ src/dialogs/ExportProfiles.test.tsx (5 tests) 1214ms
+   ✓ ExportProfiles > contains Enter within the profile controls and preserves keyboard activation  422ms
+   ✓ ExportProfiles > saves the current settings into the project and applies independent snapshots  306ms
+   ✓ ExportProfiles > reports a duplicate name and an unsafe subfolder without writing  351ms
+ ✓ src/views/features/FeatureCodeEditor.test.tsx (10 tests) 1134ms
+   ✓ FeatureCodeEditor > previews a class with Alt-click or Alt+Enter without editing source  311ms
+ ✓ src/views/glyph/InfoBox.test.tsx (15 tests) 1256ms
+   ✓ InfoBox > commits a signed smart-corner radius to the source node  362ms
+ ✓ src/views/fontinfo/FontSettingsEditor.test.tsx (5 tests) 1465ms
+   ✓ shows the inherited preference until the font overrides it  634ms
+ ✓ src/views/hints/TtHintEditor.test.tsx (6 tests) 1397ms
+   ✓ previews without applying, clears obsolete previews, and saves the captured point identity  681ms
+ ✓ src/views/glyph/panels/LayerEffectsEditor.test.tsx (2 tests) 1337ms
+   ✓ invalidates reviewed drafts after reordering and bakes the captured layer revision  804ms
+   ✓ captures a stored mask and requires a new review after stale apply  530ms
+ ✓ src/views/text/TextShapingControls.test.tsx (6 tests) 1141ms
+   ✓ TextShapingControls > keeps features at shaper defaults until an explicit override is chosen  427ms
+ ✓ src/shell/usePaletteGlyphSearch.test.ts (3 tests) 606ms
+   ✓ hides stale matches immediately and ignores a slower old response  363ms
+ ✓ src/shell/windowLifecycle.test.tsx (16 tests) 610ms
+ ✓ src/views/font/GlyphTableHeader.test.tsx (7 tests) 747ms
+   ✓ GlyphTableHeader > sorts by every column with ascending semantics  425ms
+ ✓ src/views/text/TextView.master.test.tsx (1 test) 2404ms
+   ✓ commits a live pen path to the old layer before the inner toolbar changes master  2403ms
+ ✓ src/dialogs/FindProblemsDialog.test.tsx (8 tests) 1070ms
+   ✓ FindProblemsDialog > shows severity/location and opens a glyph from the keyboard  341ms
+ ✓ src/views/crossdocument/PasteSpecialDialog.test.tsx (4 tests) 1551ms
+   ✓ reviews explicit source ordering, captures both generations and invalidates changed data scope  783ms
+ ✓ src/dialogs/NewFontDialog.test.tsx (6 tests) 1628ms
+   ✓ NewFontDialog > creates the font, its metrics batch and its starter glyphs  946ms
+ ✓ src/views/text/usePreviewInstance.test.tsx (5 tests) 557ms
+ ✓ src/views/glyph/panels/CjkConstructionPanel.test.tsx (5 tests) 1198ms
+   ✓ CJK construction panel > previews and appends one atomic command without replacing existing content  519ms
+   ✓ CJK construction panel > inserts a radical the pinned data named, and a font component  373ms
+ ✓ src/views/font/GlyphListsPanel.test.tsx (5 tests) 1907ms
+   ✓ GlyphListsPanel > shows saved list coverage, exact membership, and previews only missing names  561ms
+   ✓ GlyphListsPanel > creates a named list from selection and supports imported names, rename and delete  874ms
+ ✓ src/shell/shortcutUx.test.tsx (16 tests) 1438ms
+ ✓ src/views/bitmap/BitmapReferences.test.tsx (5 tests) 1202ms
+   ✓ bitmap reference controls > adds translated components without replacing source pixels or metrics  641ms
+ ✓ src/views/font/SmartFiltersPanel.test.tsx (8 tests) 1997ms
+   ✓ loads named filters, applies the expression and clears it  593ms
+   ✓ persists new, edited and deleted filters and updates the applied expression  731ms
+ ✓ src/views/glyph/OutlineAudit.test.tsx (9 tests) 1097ms
+   ✓ outline audit controls > shows hover details and updates marker position after pan without changing the source  344ms
+ ✓ src/views/text/ProofLibraryPanel.test.tsx (6 tests) 1555ms
+   ✓ steps saved strings from the text field and restores their shaping context  872ms
+ ✓ src/views/glyph/panels/SourceLayerEditor.test.tsx (5 tests) 1167ms
+   ✓ initializes supplemental coordinates from the mapped default when the master omits them  587ms
+ ✓ src/views/glyph/panels/MarkCloudPreview.test.tsx (11 tests) 894ms
+ ✓ src/views/glyph/panels/KerningGroupsPanel.test.tsx (11 tests) 1528ms
+   ✓ creates and assigns a canonical group in one atomic command  399ms
+ ✓ src/views/glyph/panels/MetricsPanel.test.tsx (10 tests) 1101ms
+   ✓ metrics synchronization > prevents spacing changes when the active text tab locks metrics  323ms
+ ✓ src/shell/CommandPalette.test.tsx (10 tests) 852ms
+   ✓ CommandPalette > keeps search focused after StrictMode replay from a pointer opener, then restores on Escape  331ms
+ ✓ src/views/glyph/panels/GlyphDatabasePanel.test.tsx (9 tests) 1135ms
+   ✓ keeps advanced data closed initially and remembers each disclosure without losing a draft  349ms
+ ✓ src/views/glyph/panels/ReusableConstructionEditor.test.tsx (3 tests) 866ms
+   ✓ reusable construction editor > requires a preview and writes the captured generation  444ms
+   ✓ reusable construction editor > rejects a source attachment without the required selected carrier nodes  306ms
+ ✓ src/dialogs/NumberField.test.tsx (5 tests) 805ms
+   ✓ NumberField bounds > clamps up to a minimum when there is no maximum  473ms
+ ✓ src/views/style/StyleEffectsDialog.test.tsx (2 tests) 785ms
+   ✓ captures selection, invalidates changed options, and applies only the reviewed generation  568ms
+ ✓ src/views/text/useKerningGhosts.test.tsx (6 tests) 515ms
+ ✓ src/views/fontinfo/ScopedEditors.test.tsx (2 tests) 738ms
+   ✓ shows automatic metric values and enables an override without changing the effective value  526ms
+ ✓ src/views/font/CjkFilters.test.tsx (1 test) 588ms
+   ✓ retains the chosen reading language before entering a query and clears filters  587ms
+ ✓ src/views/features/LayoutConversion.test.tsx (10 tests) 549ms
+ ✓ src/views/glyph/panels/SmartComponentControls.test.tsx (6 tests) 624ms
+ ✓ src/views/bitmap/BitmapCanvas.test.tsx (19 tests) 860ms
+ ✓ src/views/glyph/ShapeDialog.test.tsx (5 tests) 758ms
+   ✓ ShapeDialog > creates the contour a drag of the same box would have made  407ms
+ ✓ src/shell/a11y.test.tsx (20 tests) 689ms
+ ✓ src/views/svg/SvgEditor.test.tsx (4 tests) 629ms
+   ✓ flushes named bindings and source atomically when the editor closes  367ms
+ ✓ src/dialogs/ExportPreflight.test.tsx (10 tests) 764ms
+ ✓ src/views/text/PreviewStrip.layout.test.tsx (3 tests) 561ms
+   ✓ shows the default or saved height undefined and expands settings without saving a new height  353ms
+ ✓ src/dialogs/RecoveryDialog.test.tsx (9 tests) 538ms
+ ✓ src/views/glyph/panels/EditorMetadataPanel.test.tsx (3 tests) 552ms
+ ✓ src/shell/WorkspaceDialogHost.test.tsx (8 tests) 953ms
+   ✓ waits for both edit barriers and remaps glyph names while preserving other documents  456ms
+ ✓ src/shell/builtinCommands.test.ts (18 tests) 437ms
+ ✓ src/views/text/TextWorkspaceControls.test.tsx (4 tests) 861ms
+   ✓ keeps single-glyph kerning controls collapsed with a keyboard-accessible entry point  405ms
+ ✓ src/views/glyph/panels/LayerManagementControls.test.tsx (5 tests) 557ms
+ ✓ src/views/bitmap/StrikeProperties.test.tsx (6 tests) 740ms
+ ✓ src/views/fontinfo/FontMetadataEditor.test.tsx (5 tests) 673ms
+   ✓ labels metadata fields, explains UPM, and applies edits on Close  331ms
+ ✓ src/views/font/SmartFilterEditor.test.tsx (3 tests) 854ms
+   ✓ SmartFilterEditor > round-trips a parsed custom expression through nested visual rules and canonical save  538ms
+ ✓ src/views/glyph/panels/useResolvedMetrics.test.tsx (4 tests) 408ms
+ ✓ src/views/fontinfo/VariationCompatibility.test.tsx (10 tests) 599ms
+ ✓ src/views/bitmap/BitmapSheet.test.tsx (6 tests) 643ms
+ ✓ src/views/text/SpacingMatrix.test.tsx (12 tests) 677ms
+ ✓ src/views/text/TextBar.test.tsx (5 tests) 665ms
+   ✓ TextBar > forwards controlled text, master, feature, direction, and sample actions  365ms
+ ✓ src/views/color/useGlyphColor.test.tsx (3 tests) 345ms
+ ✓ src/views/glyph/useLayerOutline.test.tsx (3 tests) 323ms
+ ✓ src/shell/EmptyState.test.tsx (5 tests) 650ms
+   ✓ opens each existing discovery destination only after activation  319ms
+ ✓ src/views/features/VisualLookupPreview.test.tsx (8 tests) 581ms
+   ✓ VisualLookupPreview > shapes only on request and compares real glyph names and font-unit metrics  308ms
+ ✓ src/components/NumberField.test.tsx (6 tests) 666ms
+ ✓ src/views/features/FeatureClassPreview.test.tsx (6 tests) 490ms
+ ✓ src/shell/contextHelp.test.tsx (17 tests) 770ms
+ ✓ src/editor/documentCloseRaces.test.ts (3 tests) 288ms
+ ✓ src/automation/MacroConsole.test.tsx (2 tests) 914ms
+   ✓ reloads and selects scripts without running them, then displays explicit Python errors  792ms
+ ✓ src/views/glyph/panels/GlyphTagsField.test.tsx (3 tests) 626ms
+   ✓ glyph tags > selects completion using arrow keys and Enter, and permits a new free-text tag  465ms
+ ✓ src/views/features/FeatureSourceEditor.test.tsx (1 test) 541ms
+   ✓ FeatureSourceEditor class preview > opens and closes the preview by keyboard without creating a source edit  538ms
+ ✓ src/shell/HistoryPanel.test.tsx (8 tests) 1055ms
+   ✓ lists each gesture with its scope and marks the current position  317ms
+ ✓ src/views/bitmap/BitmapParity.test.tsx (6 tests) 885ms
+   ✓ bitmap conversion controls > copies the selected glyph with fresh generation and target scale options  393ms
+ ✓ src/views/text/textMetrics.test.ts (9 tests) 281ms
+ ✓ src/views/font/LanguageFilters.test.tsx (3 tests) 1033ms
+   ✓ language repertoire filters > counts distinct scalar assignments and previews only missing characters  716ms
+ ✓ src/views/features/LookupRule.test.tsx (2 tests) 409ms
+   ✓ LookupRule > pages a large class beyond its initial summary with only eight references per request  358ms
+ ✓ src/views/features/LookupInspector.test.tsx (4 tests) 629ms
+   ✓ LookupInspector > shows original rules and glyph outlines without applying any source  347ms
+ ✓ src/views/glyph/EditSidebar.test.tsx (5 tests) 477ms
+ ✓ src/shell/workspaceLifecycle.test.ts (15 tests) 238ms
+ ✓ src/views/glyph/panels/TextRow.test.tsx (3 tests) 365ms
+ ✓ src/views/text/PreviewWindow.test.tsx (2 tests) 480ms
+ ✓ src/shell/DetachedPanel.test.tsx (3 tests) 508ms
+   ✓ publishes the glyph for an Inspector torn off an Edit tab  376ms
+ ✓ src/views/text/SpacingControls.test.tsx (3 tests) 513ms
+   ✓ SpacingControls > offers every side and forwards keyboard-accessible selection  463ms
+ ✓ src/plugins/filterSession.test.ts (20 tests) 199ms
+ ✓ src/dialogs/WorkspaceDialog.test.tsx (4 tests) 447ms
+   ✓ saves, applies and deletes a named document workspace through labelled controls  326ms
+ ✓ src/views/features/FeatureDraftSession.test.ts (12 tests) 193ms
+ ✓ src/shell/CloseDocumentDialog.test.tsx (5 tests) 648ms
+   ✓ CloseDocumentDialog > offers Save, Don’t Save and Cancel for a dirty document  414ms
+ ✓ src/views/font/CjkBatchDialog.test.tsx (1 test) 619ms
+   ✓ applies only the reviewed selection and invalidates the preview when options change  618ms
+ ✓ src/views/font/GlyphSearch.test.tsx (7 tests) 391ms
+ ✓ src/views/fontinfo/VirtualMastersEditor.test.tsx (3 tests) 528ms
+   ✓ adds a named sparse coordinate without copying physical masters  339ms
+ ✓ src/editor/curveFit.test.ts (10 tests) 433ms
+ ✓ src/views/text/TextKerningPanel.test.tsx (6 tests) 391ms
+ ✓ src/views/text/useTextMetrics.test.tsx (8 tests) 212ms
+ ✓ src/components/Dialog.test.tsx (8 tests) 307ms
+ ✓ src/views/font/FilterChips.test.tsx (6 tests) 361ms
+ ✓ src/views/bitmap/BitmapGridPreset.test.tsx (4 tests) 417ms
+   ✓ exact bitmap grid presets > lists every exact grid the kernel reports and emits its metrics  306ms
+ ✓ src/views/glyph/panels/LayerColorField.test.tsx (2 tests) 336ms
+   ✓ edits and clears the selected layer label independently through undoable commands  330ms
+ ✓ src/components/SplitPane.test.tsx (5 tests) 248ms
+ ✓ src/views/glyph/panels/metricsCommands.test.ts (4 tests) 148ms
+ ✓ src/views/glyph/useFontEditorSettings.test.ts (6 tests) 205ms
+ ✓ src/shell/TabBar.test.tsx (4 tests) 383ms
+ ✓ src/views/text/useTextGlyphCells.test.tsx (3 tests) 194ms
+ ✓ src/views/font/GlyphCell.test.tsx (13 tests) 414ms
+ ✓ src/views/text/VariableProofPanel.test.tsx (1 test) 273ms
+ ✓ src/views/crossdocument/ComparisonOutline.test.tsx (2 tests) 247ms
+ ✓ src/views/features/LayoutConversionDetails.test.tsx (1 test) 210ms
+ ✓ src/components/Toast.test.tsx (6 tests) 359ms
+ ✓ src/views/bitmap/bitmapSession.test.ts (8 tests) 137ms
+ ✓ src/views/glyph/panels/ComponentRow.lock.test.tsx (1 test) 260ms
+ ✓ src/views/text/KerningModeControl.test.tsx (1 test) 286ms
+ ✓ src/views/features/FeatureDiagnostics.test.tsx (3 tests) 313ms
+ ✓ src/canvas/svgGlyphImage.test.ts (12 tests) 173ms
+ ✓ src/editor/documentPersistence.test.ts (6 tests) 144ms
+ ✓ src/views/features/LookupGlyph.test.tsx (3 tests) 225ms
+ ✓ src/views/glyph/pathCommands.test.ts (25 tests) 159ms
+ ✓ src/i18n/i18n.test.ts (2 tests) 319ms
+ ✓ src/views/text/useKerningExceptions.test.tsx (4 tests) 126ms
+ ✓ src/stores/sessionStore.test.ts (21 tests) 102ms
+ ✓ src/shell/tabBarriers.test.ts (9 tests) 85ms
+ ✓ src/shell/windowActions.test.ts (6 tests) 79ms
+ ✓ src/stores/sessionTabBarriers.test.ts (5 tests) 68ms
+ ✓ src/views/font/glyphPager.test.ts (17 tests) 89ms
+ ✓ src/stores/prefsStore.test.ts (18 tests) 80ms
+ ✓ src/views/text/proofExport.test.ts (31 tests) 103ms
+ ✓ src/views/text/useTextKerningControls.test.tsx (6 tests) 79ms
+ ✓ src/editor/tools/transformTool.test.ts (10 tests) 70ms
+ ✓ src/views/font/fontCommands.test.ts (7 tests) 89ms
+ ✓ src/styles/cssModules.test.ts (1 test) 122ms
+ ✓ src/shell/shellPlatformParity.test.ts (3 tests) 97ms
+ ✓ src/views/glyph/glyphCommands.test.ts (10 tests) 64ms
+ ✓ src/shell/keymap.test.ts (8 tests) 59ms
+ ✓ src/transport/HttpTransport.test.ts (10 tests) 53ms
+ ✓ src/views/text/textLayout.test.ts (12 tests) 57ms
+ ✓ src/shell/keymapIntegration.test.ts (13 tests) 56ms
+ ✓ src/views/glyph/useToolShortcuts.test.tsx (9 tests) 166ms
+ ✓ src/transport/windows.test.ts (27 tests) 52ms
+ ✓ src/views/glyph/canvasPointerSession.test.ts (9 tests) 28ms
+ ✓ src/shell/shortcuts.test.ts (8 tests) 40ms
+ ✓ src/views/glyph/smoothCommands.test.ts (14 tests) 52ms
+ ✓ src/views/text/useTextShape.test.tsx (3 tests) 41ms
+ ✓ src/views/glyph/panels/cjkConstruction.test.ts (38 tests) 22ms
+ ✓ src/views/glyph/layerCommands.test.ts (9 tests) 31ms
+ ✓ src/views/features/useFeatureCompletions.test.tsx (5 tests) 30ms
+ ✓ src/views/text/useTextRunCells.test.tsx (2 tests) 24ms
+ ✓ src/views/font/useVirtualGrid.test.ts (16 tests) 42ms
+ ✓ src/views/font/useGlyphSelection.test.ts (4 tests) 41ms
+ ✓ src/views/text/useVariableProof.test.ts (2 tests) 22ms
+ ✓ src/plugins/pluginStore.test.ts (26 tests) 22ms
+ ✓ src/views/glyph/metricsHandles.test.ts (28 tests) 14ms
+ ✓ src/views/font/useVirtualGlyphTable.test.ts (2 tests) 27ms
+ ✓ src/editor/tools/drawingTools.test.ts (19 tests) 16ms
+ ✓ src/views/text/textRunGeometry.test.ts (5 tests) 28ms
+ ✓ src/views/features/featureLanguage.test.ts (15 tests) 25ms
+ ✓ src/stores/workspaceProject.test.ts (5 tests) 26ms
+ ✓ src/views/font/cellRenderer.test.ts (29 tests) 29ms
+ ✓ src/views/fontinfo/fontMetadataSession.test.ts (21 tests) 23ms
+ ✓ src/shell/workspaceTabCommands.test.ts (6 tests) 22ms
+ ✓ src/views/text/useTextTyping.test.tsx (1 test) 21ms
+ ✓ src/views/text/shapeCoordinator.test.ts (6 tests) 26ms
+ ✓ src/views/text/kerningTableData.test.ts (6 tests) 24ms
+ ✓ src/views/text/proofInterchange.test.ts (12 tests) 10ms
+ ✓ src/canvas/bitmapSheetImage.test.ts (9 tests) 19ms
+ ✓ src/plugins/drawPluginOverlays.test.ts (22 tests) 25ms
+ ✓ src/styles/tokens.test.ts (11 tests) 21ms
+ ✓ src/views/features/visualLookup.test.ts (44 tests) 30ms
+ ✓ src/views/glyph/smoothShortcut.test.ts (2 tests) 17ms
+ ✓ src/shell/paletteSearch.test.ts (4 tests) 16ms
+ ✓ src/editor/gestures/drag.test.ts (27 tests) 22ms
+ ✓ src/views/text/drawTextGaps.test.ts (13 tests) 14ms
+ ✓ src/stores/uiStore.test.ts (27 tests) 18ms
+ ✓ src/editor/tools/magnet.test.ts (9 tests) 17ms
+ ✓ src/views/glyph/toolCommands.test.ts (5 tests) 15ms
+ ✓ src/editor/gestures/nudge.test.ts (5 tests) 14ms
+ ✓ src/stores/documentStore.test.ts (12 tests) 10ms
+ ✓ src/stores/workspaceStore.test.ts (14 tests) 17ms
+ ✓ src/automation/scriptCheck.test.ts (12 tests) 16ms
+ ✓ src/editor/editSession.test.ts (8 tests) 9ms
+ ✓ src/views/text/proofLibrary.test.ts (7 tests) 18ms
+ ✓ src/views/text/textCanvasBridge.test.ts (4 tests) 17ms
+ ✓ src/editor/harmonize.test.ts (17 tests) 8ms
+ ✓ src/views/glyph/outlineAudit.test.ts (14 tests) 14ms
+ ✓ src/views/bitmap/bitmapCommands.test.ts (4 tests) 13ms
+ ✓ src/views/glyph/pathOps.test.ts (21 tests) 14ms
+ ✓ src/automation/automationStore.test.ts (12 tests) 21ms
+ ✓ src/shell/toolShortcuts.test.ts (5 tests) 12ms
+ ✓ src/views/fontinfo/designSpaceSession.test.ts (4 tests) 15ms
+ ✓ src/views/math/mathModel.test.ts (5 tests) 12ms
+ ✓ src/editor/editorGeometryMetadata.test.ts (4 tests) 8ms
+ ✓ src/shell/tabActions.test.ts (11 tests) 12ms
+ ✓ src/shell/nativeDialogs.test.ts (13 tests) 19ms
+ ✓ src/stores/exportProfileStore.test.ts (9 tests) 21ms
+ ✓ src/i18n/spelling.test.ts (1 test) 14ms
+ ✓ src/stores/sessionProjectPersistence.test.ts (9 tests) 11ms
+ ✓ src/views/font/fontViewPrefs.test.ts (4 tests) 8ms
+ ✓ src/views/glyph/panels/constructionGeometry.test.ts (7 tests) 12ms
+ ✓ src/views/glyph/drawCollisionFixes.test.ts (3 tests) 7ms
+ ✓ src/editor/hitTest.test.ts (14 tests) 18ms
+ ✓ src/views/fontinfo/variationCompatibility.test.ts (16 tests) 14ms
+ ✓ src/i18n/errors.test.ts (5 tests) 7ms
+ ✓ src/views/glyph/outlineAuditRepair.test.ts (6 tests) 16ms
+ ✓ src/views/glyph/glyphScene.test.ts (17 tests) 13ms
+ ✓ src/views/text/kerningEdits.test.ts (8 tests) 21ms
+ ✓ src/views/text/textMetricShortcuts.test.ts (18 tests) 10ms
+ ✓ src/editor/nudgeRun.test.ts (4 tests) 22ms
+ ✓ src/views/font/cellColorRenderer.test.ts (1 test) 6ms
+ ✓ src/views/glyph/panels/cjkResolve.test.ts (7 tests) 8ms
+ ✓ src/views/text/spacingMatrix.test.ts (9 tests) 6ms
+ ✓ src/views/text/drawTextRun.test.ts (2 tests) 7ms
+ ✓ src/editor/tools/pen.test.ts (16 tests) 11ms
+ ✓ src/views/fontinfo/scopedInfo.test.ts (13 tests) 11ms
+ ✓ src/views/glyph/panels/smartComponentCanvas.test.ts (8 tests) 16ms
+ ✓ src/editor/pathGeometry.test.ts (17 tests) 9ms
+ ✓ src/views/glyph/drawLayers.test.ts (22 tests) 15ms
+ ✓ src/views/glyph/panels/markCloudGeometry.test.ts (18 tests) 13ms
+ ✓ src/shell/commandHelp.test.ts (8 tests) 10ms
+ ✓ src/views/bitmap/bitmapSheet.test.ts (14 tests) 11ms
+ ✓ src/views/glyph/panels/cjkTransforms.test.ts (6 tests) 9ms
+ ✓ src/views/color/graphModel.test.ts (2 tests) 6ms
+ ✓ src/views/glyph/beamPointer.test.ts (7 tests) 9ms
+ ✓ src/views/fontinfo/cidSession.test.ts (3 tests) 9ms
+ ✓ src/plugins/registry.test.ts (5 tests) 7ms
+ ✓ src/editor/snapping.test.ts (23 tests) 17ms
+ ✓ src/views/glyph/drawOutline.test.ts (17 tests) 22ms
+ ✓ src/canvas/sourceImagePlacement.test.ts (9 tests) 6ms
+ ✓ src/dialogs/batchRename.test.ts (12 tests) 6ms
+ ✓ src/canvas/pathCache.test.ts (6 tests) 9ms
+ ✓ src/views/glyph/markers.test.ts (14 tests) 10ms
+ ✓ src/dialogs/exportMatrix.test.ts (9 tests) 10ms
+ ✓ src/automation/macroBridge.test.ts (6 tests) 14ms
+ ✓ src/shell/commands.test.ts (4 tests) 7ms
+ ✓ src/views/font/invalidation.test.ts (8 tests) 8ms
+ ✓ src/views/glyph/panels/panelCommands.test.ts (15 tests) 13ms
+ ✓ src/views/glyph/panels/cjkRadicalEntries.test.ts (6 tests) 7ms
+ ✓ src/editor/outlineGeometry.test.ts (6 tests) 5ms
+ ✓ src/editor/tools/annotation.test.ts (8 tests) 10ms
+ ✓ src/editor/tools/registry.test.ts (5 tests) 6ms
+ ✓ src/views/text/previewSettings.test.ts (9 tests) 5ms
+ ✓ src/views/text/previewPaint.test.ts (3 tests) 10ms
+ ✓ src/editor/cutPath.test.ts (8 tests) 9ms
+ ✓ src/views/font/smartFilterBuilder.test.ts (4 tests) 9ms
+ ✓ src/dialogs/newFont.test.ts (4 tests) 6ms
+ ✓ src/canvas/bitmapRenderer.test.ts (4 tests) 15ms
+ ✓ src/views/glyph/panels/constructionCommands.test.ts (4 tests) 7ms
+ ✓ src/views/font/queryErrors.test.ts (2 tests) 5ms
+ ✓ src/views/glyph/panels/metricsKeyCommands.test.ts (9 tests) 6ms
+ ✓ src/views/text/textInput.test.ts (3 tests) 5ms
+ ✓ src/views/font/glyphOrder.test.ts (7 tests) 12ms
+ ✓ src/views/color/colorGlyphCache.test.ts (3 tests) 9ms
+ ✓ src/views/text/prepareProofSheet.test.ts (4 tests) 14ms
+ ✓ src/views/bitmap/pixels.test.ts (6 tests) 12ms
+ ✓ src/views/bitmap/strikeProperties.test.ts (4 tests) 6ms
+ ✓ src/editor/cursors.test.ts (4 tests) 7ms
+ ✓ src/editor/editorMetadata.test.ts (3 tests) 6ms
+ ✓ src/views/features/automaticEntries.test.ts (5 tests) 6ms
+ ✓ src/views/features/featureClassMembers.test.ts (14 tests) 13ms
+ ✓ src/views/fontinfo/fontInfoRows.test.ts (13 tests) 12ms
+ ✓ src/editor/tools/measure.test.ts (5 tests) 8ms
+ ✓ src/views/text/textGaps.test.ts (6 tests) 7ms
+ ✓ src/views/features/featureSources.test.ts (3 tests) 5ms
+ ✓ src/stores/editorStore.test.ts (5 tests) 8ms
+ ✓ src/editor/tools/knifeScope.test.ts (2 tests) 9ms
+ ✓ src/stores/fontInfoCache.test.ts (4 tests) 4ms
+ ✓ src/views/crossdocument/crossDocumentModel.test.ts (3 tests) 4ms
+ ✓ src/views/font/glyphLists.test.ts (3 tests) 3ms
+ ✓ src/views/glyph/layerWorkflows.test.ts (6 tests) 5ms
+ ✓ src/dialogs/exportFormats.test.ts (17 tests) 5ms
+ ✓ src/views/glyph/panels/transformMath.test.ts (14 tests) 6ms
+ ✓ src/stores/progressStore.test.ts (5 tests) 8ms
+ ✓ src/editor/tools/selectionTools.test.ts (5 tests) 6ms
+ ✓ src/canvas/Viewport.test.ts (9 tests) 6ms
+ ✓ src/views/text/ghostRendering.test.ts (1 test) 6ms
+ ✓ src/views/glyph/panels/ConstructionSources.test.ts (2 tests) 3ms
+ ✓ src/canvas/colorGlyph.test.ts (1 test) 4ms
+ ✓ src/dialogs/addGlyphs.test.ts (3 tests) 6ms
+ ✓ src/editor/fieldValue.test.ts (4 tests) 3ms
+ ✓ src/views/font/languageRepertoires.test.ts (4 tests) 6ms
+ ✓ src/shell/keymapPresets.test.ts (3 tests) 8ms
+ ✓ src/views/text/kerningGhosts.test.ts (4 tests) 7ms
+ ✓ src/canvas/bitmapGeometry.test.ts (3 tests) 5ms
+ ✓ src/canvas/sourceImage.test.ts (1 test) 3ms
+ ✓ src/views/text/waterfallSizes.test.ts (9 tests) 11ms
+ ✓ src/views/text/kerningModes.test.ts (2 tests) 6ms
+ ✓ src/views/features/FeatureMasterNavigation.test.ts (3 tests) 4ms
+ ✓ src/views/glyph/outlineAuditStore.test.ts (3 tests) 5ms
+ ✓ src/dialogs/exportOptionState.test.ts (14 tests) 6ms
+ ✓ src/views/text/textClusters.test.ts (7 tests) 6ms
+ ✓ src/views/glyph/drawVariationPreview.test.ts (1 test) 8ms
+ ✓ src/views/font/scrollMemory.test.ts (6 tests) 6ms
+ ✓ src/views/glyph/smoothNodeMarker.test.ts (3 tests) 8ms
+ ✓ src/editor/gestures/marquee.test.ts (6 tests) 4ms
+ ✓ src/views/glyph/pixelHandover.test.ts (4 tests) 7ms
+ ✓ src/views/bitmap/bitmapToolStore.test.ts (4 tests) 4ms
+ ✓ src/views/glyph/guideAnchor.test.ts (4 tests) 5ms
+ ✓ src/views/fontinfo/metricInheritance.test.ts (3 tests) 5ms
+ ✓ src/views/bitmap/bitmapWaterfallLayout.test.ts (4 tests) 4ms
+ ✓ src/shell/fuzzy.test.ts (4 tests) 4ms
+ ✓ src/views/text/kerningImpact.test.ts (2 tests) 3ms
+ ✓ src/views/glyph/componentDraws.test.ts (5 tests) 6ms
+ ✓ src/views/fontinfo/designCoordinates.test.ts (5 tests) 3ms
+ ✓ src/views/text/proofStepping.test.ts (5 tests) 3ms
+ ✓ src/views/glyph/panels/canvasHandleGuard.test.ts (2 tests) 2ms
+ ✓ src/editor/modifiers.test.ts (3 tests) 4ms
+ ✓ src/stores/variationPreviewStore.test.ts (1 test) 2ms
+ ✓ src/views/text/textState.test.ts (2 tests) 2ms
+ ✓ src/views/glyph/panels/bracketConditions.test.ts (1 test) 2ms
+
+ Test Files  348 passed (348)
+      Tests  2917 passed (2917)
+   Start at  05:27:11
+   Duration  165.82s (transform 8.59s, setup 70.29s, collect 134.39s, tests 158.28s, environment 185.99s, prepare 35.48s)
+
+
+$ pnpm --dir app build
+
+> fontcarver-app@0.1.0 build /home/chen/githubprojects/fontpixel/fontcarver/app
+> tsc -b && vite build
+
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 3022 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                           0.45 kB │ gzip:   0.28 kB
+dist/assets/macro.worker-CMRvcsoc.js      3.53 kB
+dist/assets/index-BkOHclhX.css          150.25 kB │ gzip:  24.07 kB
+dist/assets/index-CTJKWp6q.js             1.25 kB │ gzip:   0.48 kB
+dist/assets/index-CuC3bwDO.js             2.58 kB │ gzip:   1.18 kB
+dist/assets/index-D1kdpcNJ.js         2,189.63 kB │ gzip: 678.72 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 25.43s
+

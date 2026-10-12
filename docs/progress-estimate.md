@@ -20,6 +20,18 @@ The subsequent [settings check](p5ux-settings-zoom-acceptance.md) fixes overflow
 nudge fields and adds four passing browser cases for Preferences and Keyboard
 Shortcuts. Both dialogs pass actual 200% checks in English/Chinese and light/dark;
 this bounded repair leaves the estimate and audit counts unchanged.
+The **2026-10-04** [workspace zoom check](p5ux-workspace-zoom-acceptance.md) extends
+actual 200% coverage to the glyph editor, side panels, Font Info, metadata and
+Export in both languages/themes at two window widths. It repairs constrained
+canvas space, clipped navigation/status/node-info content and metadata focus;
+actual editing, undo and TTF export pass. This bounded UI task leaves the broad
+estimate and the **110 Complete / 2 Partial** audit count unchanged.
+The subsequent [complete E2E follow-up](p5ux-latest-e2e-acceptance.md) passes all
+**125 current browser tests**, with zero failures, skips or retries in the final
+run, including the drag-performance gate and real large CJK font. Two gesture
+test setup gaps found in earlier runs were corrected. This verification adds
+current evidence without changing application features, the effort estimate or
+the audit counts; Linux installers still predate the UI fixes.
 The [future experience and feature backlog](TODO.md#future-experience-and-feature-backlog)
 is explicitly optional later scope; listing it does not increase completed effort.
 Publication and macOS/Windows

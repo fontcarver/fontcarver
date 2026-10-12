@@ -34,6 +34,7 @@ import styles from './AppShell.module.css'
 import { registerBuiltinCommands } from './builtinCommands'
 import { CloseDocumentDialog } from './CloseDocumentDialog'
 import { CommandPalette } from './CommandPalette'
+import { CompactPanel, useCompactPanels } from './CompactPanel'
 import { setCommandErrorReporter } from './commands'
 import { EmptyState } from './EmptyState'
 import { Inspector } from './Inspector'
@@ -56,6 +57,8 @@ export function AppShell() {
   const theme = useUiStore((state) => state.theme)
   const language = useUiStore((state) => state.language)
   const panels = useUiStore((state) => state.panels)
+  const compactPanels = useUiStore((state) => state.compactPanels)
+  useCompactPanels()
   const sizes = useUiStore((state) => state.sizes)
   const setPanelSize = useUiStore((state) => state.setPanelSize)
   const activeTab = useUiStore(selectActiveTab)
@@ -108,6 +111,7 @@ export function AppShell() {
       <ProgressLine />
       <div className={styles.workspace}>
         {windowTarget?.kind !== 'panel' &&
+        !compactPanels &&
         summary &&
         activeTab?.kind !== 'bitmap' &&
         panels.sidebar ? (
@@ -139,6 +143,7 @@ export function AppShell() {
           )}
         </main>
         {windowTarget?.kind !== 'panel' &&
+        !compactPanels &&
         summary &&
         activeTab?.kind !== 'bitmap' &&
         panels.inspector ? (
@@ -155,6 +160,12 @@ export function AppShell() {
         ) : null}
       </div>
       <StatusBar />
+      {compactPanels &&
+      windowTarget?.kind !== 'panel' &&
+      summary &&
+      activeTab?.kind !== 'bitmap' ? (
+        <CompactPanel />
+      ) : null}
       <CommandPalette />
       <PathPromptDialog />
       <CloseDocumentDialog />

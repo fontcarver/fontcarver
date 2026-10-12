@@ -214,11 +214,24 @@ and fails unless WebView state appears beside the executable and nothing appears
 under `%LOCALAPPDATA%\com.fontcarver.desktop`. The message for a missing WebView2
 Runtime is not exercised, because the runner has WebView2 installed.
 
-**The rpm has no install verification yet.** `check_deb_install.py` is built around
-dpkg and apt, and no rpm equivalent exists, so an rpm candidate currently has build
-and payload-inspection evidence but not the install/startup evidence that
-`docs/STATUS.md` treats as the release standard. Do not describe an rpm as release
-verified until that helper exists. The deb procedure below does not transfer.
+**The rpm is verified in a container, not on a real rpm host.**
+`check_deb_install.py` is built around dpkg, apt and a bubblewrap overlay, and
+none of that transfers, so `check_rpm_install.py` installs the candidate inside a
+throwaway Fedora container instead:
+
+```sh
+python3 scripts/check_rpm_install.py \
+  --artifact target/release/bundle/rpm/FontCarver-0.1.0-alpha.1-1.x86_64.rpm \
+  --version 0.1.0-alpha.1 --output .scratch/rpm-install.json
+```
+
+It needs podman or docker. The Linux release job runs it after the deb check. It
+proves that dnf resolves the package's declared dependencies, that the payload
+lands where the package says, that `rpm -V` finds no altered file, that the
+installed binary prints its version and refuses a missing display, and that
+removal takes the payload with it. It does not prove a graphical workflow, an
+upgrade between versions, signing or publication, and the container rather than
+a real desktop supplies the dependencies.
 
 On a Linux host with unprivileged user namespaces, overlayfs and bubblewrap,
 verify a candidate without installing it into the personal system:

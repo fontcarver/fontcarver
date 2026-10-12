@@ -1,0 +1,127 @@
+Listing tests:
+  acceptance-performance.spec.ts:35:1 › 300-point drag repaints synchronously within eight milliseconds
+  acceptance-workflows.spec.ts:28:3 › P1 browser acceptance workflows › opens DejaVu, pointer-edits A/B/C, exports and reopens
+  acceptance-workflows.spec.ts:105:3 › P1 browser acceptance workflows › creates A-C, pen-draws and widths them, exports and reopens
+  app.spec.ts:4:1 › shows the workspace shell
+  app.spec.ts:29:3 › shell windows and tabs › pins the Overview and reaches every tab by its ordinal
+  app.spec.ts:72:3 › shell windows and tabs › tears the Inspector into its own window and takes it back
+  app.spec.ts:101:3 › a detached panel of an Edit tab › shows live glyph content and follows the glyph
+  app.spec.ts:149:3 › command palette › searches commands, filters and glyph names in scoped sections
+  app.spec.ts:178:3 › document history › lists one entry per gesture with its scope and moves back through it
+  app.spec.ts:216:3 › preview strip › resizes with its divider and collapses from the keyboard
+  app.spec.ts:254:3 › reopening a saved file › gives each document exactly one pinned Overview
+  app.spec.ts:309:3 › a second document › opens with its own Overview selected, beside the first document
+  bitmap.spec.ts:82:1 › BDF pixels survive drawing, undo, redo, save, export and reopen
+  bitmap.spec.ts:119:1 › failed pixel writes retain the draft and block tab navigation until retry
+  bitmap.spec.ts:152:1 › cancels interrupted bitmap strokes without writing them on the next save
+  bitmap.spec.ts:197:1 › pans a large bitmap with middle drag and held Space without changing pixels
+  bitmap.spec.ts:270:1 › trace, regenerate, strike properties, tools and strike removal are undoable
+  bitmap.spec.ts:347:1 › focused metrics are saved, and ellipse, crop, invert and scaling retain pixels
+  bitmap.spec.ts:402:1 › pixel tools, the marquee copy and the persisted overlays
+  bitmap.spec.ts:473:1 › an exact grid preset sets the strike metrics and a custom size is corrected
+  bitmap.spec.ts:509:1 › properties are renamed and a sprite sheet round trips through its own layout
+  bitmap.spec.ts:574:1 › cross-strike copies, batch tracing and the single-glyph waterfall
+  bitmap.spec.ts:669:1 › positions upright bitmap proof pixels using vertical origins and advances
+  bitmap.spec.ts:753:1 › every pixel tool has a working single-key shortcut
+  cjk.spec.ts:45:3 › CJK font view › opens Source Han Sans and renders cells at the end of the grid
+  cjk.spec.ts:136:3 › vertical metrics, the canvas handles and the radical library › edits TSB and BSB, then drags the origin only in vertical mode
+  cjk.spec.ts:207:3 › vertical metrics, the canvas handles and the radical library › lists the pinned radicals even in a font with no ideographs
+  dialogs.spec.ts:51:3 › dialogs › creates a font with the Basic Latin starter set
+  dialogs.spec.ts:69:3 › dialogs › previews a recipe and adds exactly what it previewed
+  dialogs.spec.ts:105:3 › dialogs › round trips preferences through the kernel
+  dialogs.spec.ts:118:3 › dialogs › shows no recovery dialog on a clean launch
+  draw.spec.ts:44:3 › drawing › pen-draws a closed triangle into a new font
+  draw.spec.ts:155:3 › open corner › opens a reflex corner and reconnects it from the Path menu
+  export.spec.ts:57:3 › export › edits a glyph and exports a TTF the CLI can read back
+  export.spec.ts:139:3 › export profiles › saves a profile into the document and applies it after a reload
+  fontinfo-export-reflow.spec.ts:17:5 › reflows font information and exports a usable font: en/light
+  fontinfo-export-reflow.spec.ts:17:5 › reflows font information and exports a usable font: en/dark
+  fontinfo-export-reflow.spec.ts:17:5 › reflows font information and exports a usable font: zh-CN/light
+  fontinfo-export-reflow.spec.ts:17:5 › reflows font information and exports a usable font: zh-CN/dark
+  fontview.spec.ts:16:3 › font view › renders the glyph grid for the pre-opened font
+  fontview.spec.ts:32:3 › font view › searches by Unicode scalar
+  fontview.spec.ts:48:3 › font view › filters by a sidebar category and reports the count
+  fontview.spec.ts:72:3 › font view › reports the selection in the status bar
+  fontview.spec.ts:90:3 › font view list mode › sorts by every column, chooses columns and keeps the choice
+  fontview.spec.ts:158:3 › font view search and filters › reports an invalid regular expression under the field
+  fontview.spec.ts:197:3 › font view search and filters › badges a Unicode block with its coverage and filters by a badge
+  fontview.spec.ts:221:3 › font view editing workflows › labels a whole selection in one undo step
+  fontview.spec.ts:247:3 › font view editing workflows › generates a composite from the glyph database
+  fontview.spec.ts:290:3 › font view editing workflows › renames a selection with a regular expression
+  glyphview.spec.ts:11:3 › glyph view › opens a glyph tab from the grid and draws its metrics
+  glyphview.spec.ts:38:3 › glyph view › steps to the next glyph in the current order
+  glyphview.spec.ts:63:3 › glyph view › shows the font info sections and searches across them
+  glyphview.spec.ts:93:3 › editor tools, guides and snapping › hands the Pixel tool over to the strike editor
+  glyphview.spec.ts:119:3 › editor tools, guides and snapping › anchors a guide to a sidebearing and stores the rebased offset
+  glyphview.spec.ts:195:3 › editor tools, guides and snapping › gives one snap target its own reach in the preferences
+  hints.spec.ts:92:1 › flex hints and dot sections are edited, applied and refused when invalid
+  hints.spec.ts:171:1 › the export dialog discloses whether the external TrueType hinter is installed
+  menu-reflow.spec.ts:25:5 › keeps Help and its popup inside the zoomed menu bar: en/light
+  menu-reflow.spec.ts:25:5 › keeps Help and its popup inside the zoomed menu bar: en/dark
+  menu-reflow.spec.ts:25:5 › keeps Help and its popup inside the zoomed menu bar: zh-CN/light
+  menu-reflow.spec.ts:25:5 › keeps Help and its popup inside the zoomed menu bar: zh-CN/dark
+  outline-audit.spec.ts:18:1 › Fix All resolves combined defects with one undo and preserves path locks
+  p2a-kerning.spec.ts:61:1 › authors groups and pair exceptions, coalesces shortcuts, saves and exports matching layout
+  p2a-kerning.spec.ts:127:1 › creates, assigns, renames and explicitly removes an in-use shared group
+  p2a-kerning.spec.ts:216:1 › settles a delayed pair edit before master handover and ignores its late selection response
+  p2a-kerning.spec.ts:258:1 › keeps a failed delayed edit out of stored kerning and allows recovery
+  p2a-kerning.spec.ts:283:1 › saves a pending edit and keeps document handover isolated
+  p2a-kerning.spec.ts:345:1 › keeps imported spacing previewable and explains unavailable authoring
+  p2a-kerning.spec.ts:394:1 › edits metrics formulas with inline validation and synchronises every master
+  p2a-kerning.spec.ts:442:1 › measures and edits the run through the spacing matrix, beam and cut-off
+  p2a-kerning.spec.ts:550:1 › marks kerning exceptions and maintains the table across masters
+  p2a-kerning.spec.ts:605:1 › locks every spacing control while kerning with spacing locked
+  p2a-kerning.spec.ts:629:1 › edits vertical kerning and vertical metrics in the vertical direction
+  p2b-barriers.spec.ts:18:1 › persists pending drafts before master and tab handovers
+  p2b-barriers.spec.ts:63:1 › blocks a tab handover on a failed draft write and keeps the text available for retry
+  p2b-barriers.spec.ts:97:1 › finishes composition before Ctrl+S persists the complete invalid draft
+  p2b-imported.spec.ts:85:1 › renders original rules as glyphs, converts source, exports and restores the native original baseline
+  p2b-imported.spec.ts:159:1 › proves a kerning lift before exposing pair controls and preserves zero exceptions through revert undo
+  p2b-imported.spec.ts:259:1 › offers editable source while leaving non-equivalent model kerning source-owned
+  p2b-imported.spec.ts:285:1 › reports an unsupported competing table without changing the imported document
+  p2b-recipes.spec.ts:20:1 › generates every enumerated feature family from the glyph inventory
+  p2b-recipes.spec.ts:123:1 › switches one entry between automatic and manual without touching the others
+  p2b-recipes.spec.ts:206:1 › keeps a hand-written sibling while switching one figure style to automatic
+  p2b-recipes.spec.ts:268:1 › generates glyph classes from metadata and keeps a frozen class editable
+  p2b-recipes.spec.ts:305:1 › compiles feature tokens and target conditionals from the editor
+  p2b-recipes.spec.ts:341:1 › previews class members from the source editor with Alt-click
+  p2b-recipes.spec.ts:372:1 › authors one rule per supported lookup type in the visual editor
+  p2b-source.spec.ts:26:1 › retains invalid Unicode drafts through native save and separates validation from activation
+  p2b-source.spec.ts:125:1 › generates and freezes an opt-in recipe without changing active layout during draft edits
+  p2b-source.spec.ts:172:1 › rejects stale source activation and ignores delayed diagnostics after glyph deletion
+  p2cd-drafts.spec.ts:19:1 › all new export formats reject unapplied feature drafts and problem scans preserve active layout
+  p2cd-formats.spec.ts:32:3 › OTF (CFF) exports through the UI and reopens with Latin outlines, kerning and ligatures
+  p2cd-formats.spec.ts:32:3 › Glyphs exports through the UI and reopens with Latin outlines, kerning and ligatures
+  p2cd-formats.spec.ts:32:3 › SFD exports through the UI and reopens with Latin outlines, kerning and ligatures
+  p2cd-formats.spec.ts:113:3 › Type 1 PFA discloses loss before export and reopens static outlines
+  p2cd-formats.spec.ts:113:3 › Type 1 PFB discloses loss before export and reopens static outlines
+  p2cd-problems.spec.ts:6:1 › Find problems is read-only, navigates to a glyph, and refreshes an invalidated report
+  p2cd-problems.spec.ts:45:1 › a delayed real scan cannot make an old glyph location actionable after deletion
+  panels.spec.ts:60:3 › editor panels › edits metrics, geometry and anchors, then undoes all of it
+  panels.spec.ts:118:3 › editor panels › switches glyph from the sidebar and layer from the layer list
+  panels.spec.ts:154:3 › saved workspaces › saves a named arrangement and restores it on demand
+  session-isolation.spec.ts:7:1 › owns dirty documents and preferences even after its page closes
+  session-isolation.spec.ts:44:1 › starts with a pristine font and preferences after the preceding test
+  settings-reflow.spec.ts:66:5 › keeps preferences and shortcut settings usable at 200% reflow: en/light
+  settings-reflow.spec.ts:66:5 › keeps preferences and shortcut settings usable at 200% reflow: en/dark
+  settings-reflow.spec.ts:66:5 › keeps preferences and shortcut settings usable at 200% reflow: zh-CN/light
+  settings-reflow.spec.ts:66:5 › keeps preferences and shortcut settings usable at 200% reflow: zh-CN/dark
+  spacing-shortcuts.spec.ts:7:1 › steps both sidebearings by ×100 or exactly one without consuming glyph navigation
+  text.spec.ts:130:1 › shapes text and edits the third glyph in local coordinates
+  text.spec.ts:324:1 › configures the waterfall as a list and as a range with a step
+  text.spec.ts:361:1 › adopts the built-in samples and steps them from the field and the canvas
+  text.spec.ts:412:1 › exports a self-contained HTML proof with the compiled font embedded
+  text.spec.ts:480:1 › exports a vector PDF proof and a vertical outline sheet
+  text.spec.ts:534:1 › previews a named instance and a second master from the strip
+  ux-input.spec.ts:36:1 › keeps the laptop canvas usable and reaches every tool with the keyboard
+  ux-input.spec.ts:99:1 › customizes one tool binding and preserves hold release and menu focus
+  ux-input.spec.ts:159:1 › rejects right-button edits and cancels interrupted outline drags without history
+  welcome-reflow.spec.ts:53:5 › keeps welcome and palette readable at 200% reflow: en/light
+  welcome-reflow.spec.ts:53:5 › keeps welcome and palette readable at 200% reflow: en/dark
+  welcome-reflow.spec.ts:53:5 › keeps welcome and palette readable at 200% reflow: zh-CN/light
+  welcome-reflow.spec.ts:53:5 › keeps welcome and palette readable at 200% reflow: zh-CN/dark
+  workspace-reflow.spec.ts:18:5 › keeps the workspace and font info reachable at 200%: en/light
+  workspace-reflow.spec.ts:18:5 › keeps the workspace and font info reachable at 200%: en/dark
+  workspace-reflow.spec.ts:18:5 › keeps the workspace and font info reachable at 200%: zh-CN/light
+  workspace-reflow.spec.ts:18:5 › keeps the workspace and font info reachable at 200%: zh-CN/dark
+Total: 125 tests in 30 files

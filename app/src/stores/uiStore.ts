@@ -276,6 +276,10 @@ let toastCounter = 0
 
 /** Application-shell state: theme, language, panels, tabs and notifications. */
 export interface UiState extends PersistedUi {
+  /** Narrow windows open one temporary panel without changing the saved dock. */
+  compactPanels: boolean
+  compactPanel: PanelId | null
+  setCompactPanels: (compact: boolean) => void
   tabs: Tab[]
   activeTab: string | null
   paletteOpen: boolean
@@ -350,6 +354,7 @@ function persistedOf(state: UiState): PersistedUi {
 export function initialUiState(): Omit<
   UiState,
   | 'setTheme'
+  | 'setCompactPanels'
   | 'setLanguage'
   | 'setPanelVisible'
   | 'togglePanel'
@@ -381,6 +386,8 @@ export function initialUiState(): Omit<
 > {
   return {
     ...readPersisted(),
+    compactPanels: false,
+    compactPanel: null,
     tabs: [],
     activeTab: null,
     paletteOpen: false,
@@ -412,12 +419,27 @@ export const useUiStore = create<UiState>((set, get) => ({
   },
 
   setPanelVisible: (panel, visible) => {
-    set((state) => ({ panels: { ...state.panels, [panel]: visible } }))
+    // Explicit docking/detaching still updates the saved wide-window layout.
+    set((state) => ({
+      panels: { ...state.panels, [panel]: visible },
+      compactPanel:
+        !visible && state.compactPanel === panel ? null : state.compactPanel,
+    }))
     writePersisted(persistedOf(get()))
   },
 
   togglePanel: (panel) => {
-    get().setPanelVisible(panel, !get().panels[panel])
+    const state = get()
+    if (state.compactPanels) {
+      set({ compactPanel: state.compactPanel === panel ? null : panel })
+      return
+    }
+    state.setPanelVisible(panel, !state.panels[panel])
+  },
+
+  setCompactPanels: (compact) => {
+    if (get().compactPanels !== compact)
+      set({ compactPanels: compact, compactPanel: null })
   },
 
   setSection: (id, open) => {

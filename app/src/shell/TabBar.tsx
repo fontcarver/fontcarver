@@ -47,7 +47,16 @@ export function TabBar() {
   const { t } = useTranslation()
   const tabs = useUiStore((state) => state.tabs)
   const activeTab = useUiStore((state) => state.activeTab)
-  const panels = useUiStore((state) => state.panels)
+  const sidebarVisible = useUiStore((state) =>
+    state.compactPanels
+      ? state.compactPanel === 'sidebar'
+      : state.panels.sidebar,
+  )
+  const inspectorVisible = useUiStore((state) =>
+    state.compactPanels
+      ? state.compactPanel === 'inspector'
+      : state.panels.inspector,
+  )
   const togglePanel = useUiStore((state) => state.togglePanel)
   const docs = useSessionStore((state) => state.docs)
   const activeDoc = useUiStore(selectActiveDoc)
@@ -164,14 +173,14 @@ export function TabBar() {
       <div className={styles.tabActions} role="none">
         <IconButton
           label={t('a11y.toggleSidebar')}
-          aria-pressed={panels.sidebar}
+          aria-pressed={sidebarVisible}
           onClick={() => togglePanel('sidebar')}
         >
           <PanelLeft size={16} strokeWidth={1.5} aria-hidden="true" />
         </IconButton>
         <IconButton
           label={t('a11y.toggleInspector')}
-          aria-pressed={panels.inspector}
+          aria-pressed={inspectorVisible}
           onClick={() => togglePanel('inspector')}
         >
           <PanelRight size={16} strokeWidth={1.5} aria-hidden="true" />

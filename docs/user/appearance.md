@@ -65,6 +65,20 @@ when space is tight. Scroll inside the form, or use Tab to bring the next
 control into view. The shortcut list also scrolls independently; search by
 command name, ID or binding to reach an action directly.
 
+The glyph workspace gives narrow windows its full width; open the side panels
+from the buttons at the right of the tab strip when needed. Scroll the editing
+area to reach the canvas and preview; the tool strip has its own scrolling and
+Arrow/Home/End navigation. **Font Info** wraps its action buttons, section tabs
+and search field. Wide data tables keep their own horizontal scrolling.
+The canvas's node information box keeps its title and collapse button visible;
+scroll its fields when the canvas is short, or collapse it to expose more of
+the drawing area.
+
+Font metadata and Export keep their footer buttons visible while their forms
+scroll. After applying metadata, focus moves to **Close**, so Escape and Tab
+continue to work. Export's format choices and destination stay reachable by
+scrolling or Tab, including when the final export report is displayed.
+
 ## Keyboard and screen readers
 
 - Every interactive control is reachable with Tab, and the tool strip, menus, the

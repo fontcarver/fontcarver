@@ -1,0 +1,12 @@
+$ pnpm --dir app check
+
+> fontcarver-app@0.1.0 check /home/chen/githubprojects/fontpixel/fontcarver/app
+> tsc -b
+
+
+$ pnpm --dir app exec eslint e2e/p2aSupport.ts e2e/draw.spec.ts
+
+$ pnpm --dir app exec prettier --check e2e/p2aSupport.ts e2e/draw.spec.ts
+Checking formatting...
+All matched files use Prettier code style!
+

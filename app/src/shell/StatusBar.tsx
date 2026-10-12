@@ -35,6 +35,7 @@ export function StatusBar() {
     <div
       className={styles.statusbar}
       role="contentinfo"
+      tabIndex={0}
       aria-label={t('a11y.statusBar')}
     >
       {summary ? (
