@@ -77,6 +77,18 @@ Overview's display settings and the document History. Each section remembers
 whether it is open, and both docks can be resized by dragging their divider or
 hidden with `Mod+1` (sidebar) and `Mod+2` (Inspector).
 
+In a narrow window, including a laptop window at 200% browser zoom, the docks
+yield their space to the editor. Use the sidebar/Inspector buttons at the right
+of the tab strip, or the same shortcuts, to open one panel at a time. Scroll
+inside it and use **Close** or **Escape** to return to the editor. Tab stays in
+the open panel; closing restores focus to its opener. Widening the window
+restores the saved dock visibility and widths. Explicitly detaching a panel
+still changes its saved docking state.
+
+The status bar scrolls horizontally when its readouts do not fit. It is
+keyboard focusable, so arrow keys can expose the remaining values without
+moving the entire application sideways.
+
 ## The bottom preview strip
 
 An Edit tab shows a preview strip under the canvas.

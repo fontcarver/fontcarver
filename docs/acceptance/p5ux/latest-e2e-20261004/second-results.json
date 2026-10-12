@@ -1,0 +1,4878 @@
+{
+  "config": {
+    "argv": [
+      "/home/chen/.nvm/versions/node/v24.21.0/bin/node",
+      "/home/chen/githubprojects/fontpixel/fontcarver/node_modules/.pnpm/@playwright+test@1.62.1/node_modules/@playwright/test/cli.js",
+      "test",
+      "--retries=0",
+      "--reporter=list,json",
+      "--output=/home/chen/githubprojects/fontpixel/fontcarver/.scratch/latest-full-e2e/final-results"
+    ],
+    "configFile": "/home/chen/githubprojects/fontpixel/fontcarver/app/playwright.config.ts",
+    "rootDir": "/home/chen/githubprojects/fontpixel/fontcarver/app/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 1500000,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "kernelBinary": "/home/chen/githubprojects/fontpixel/fontcarver/target/release/fc-devserver",
+      "kernelPort": "9878",
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/chen/githubprojects/fontpixel/fontcarver/.scratch/latest-full-e2e/final-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "kernelBinary": "/home/chen/githubprojects/fontpixel/fontcarver/target/release/fc-devserver",
+          "kernelPort": "9878",
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/home/chen/githubprojects/fontpixel/fontcarver/app/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.62.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "acceptance-performance.spec.ts",
+      "file": "acceptance-performance.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "300-point drag repaints synchronously within eight milliseconds",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 21983,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "pointer-to-paint 300 points/200 frame-paced samples: median=1.100ms p95=1.300ms max=2.600ms over8=0 pointerDown=3.900ms rendererP95=0.800ms rendererMax=2.200ms\n"
+                    },
+                    {
+                      "text": "pointer timing samples: [{\"sample\":1,\"started\":1506.5,\"elapsed\":1.7999999523162842,\"renderer\":0.8999999761581421,\"paints\":1,\"frameGap\":36.60000002384186},{\"sample\":2,\"started\":1527.5,\"elapsed\":1,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":21},{\"sample\":3,\"started\":1548.1000000238419,\"elapsed\":2.100000023841858,\"renderer\":1,\"paints\":1,\"frameGap\":20.600000023841858},{\"sample\":4,\"started\":1576.2999999523163,\"elapsed\":1.100000023841858,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":28.199999928474426},{\"sample\":5,\"started\":1645.5,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":69.20000004768372},{\"sample\":6,\"started\":1663.3999999761581,\"elapsed\":1.100000023841858,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":17.899999976158142},{\"sample\":7,\"started\":1681.8999999761581,\"elapsed\":1.399999976158142,\"renderer\":0.9000000953674316,\"paints\":1,\"frameGap\":18.5},{\"sample\":8,\"started\":1727.2999999523163,\"elapsed\":1,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":45.39999997615814},{\"sample\":9,\"started\":1763.7000000476837,\"elapsed\":1.6999999284744263,\"renderer\":0.8999999761581421,\"paints\":1,\"frameGap\":36.40000009536743},{\"sample\":10,\"started\":1783.7000000476837,\"elapsed\":1.1999999284744263,\"renderer\":0.7999999523162842,\"paints\":1,\"frameGap\":20},{\"sample\":11,\"started\":1828.7999999523163,\"elapsed\":1,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":45.09999990463257},{\"sample\":12,\"started\":1887.2999999523163,\"elapsed\":0.9000000953674316,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":58.5},{\"sample\":13,\"started\":1902.5,\"elapsed\":1.2999999523162842,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":15.200000047683716},{\"sample\":14,\"started\":1943.7000000476837,\"elapsed\":0.8999999761581421,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":41.200000047683716},{\"sample\":15,\"started\":1999.1000000238419,\"elapsed\":0.8999999761581421,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":55.39999997615814},{\"sample\":16,\"started\":2015.8999999761581,\"elapsed\":1.100000023841858,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":16.799999952316284},{\"sample\":17,\"started\":2105.7999999523163,\"elapsed\":1.100000023841858,\"renderer\":0.7999999523162842,\"paints\":1,\"frameGap\":89.89999997615814},{\"sample\":18,\"started\":2226.2000000476837,\"elapsed\":1.0999999046325684,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":120.40000009536743},{\"sample\":19,\"started\":2242.100000023842,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":15.899999976158142},{\"sample\":20,\"started\":2278.2000000476837,\"elapsed\":1.2999999523162842,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":36.10000002384186},{\"sample\":21,\"started\":2333.899999976158,\"elapsed\":0.8999999761581421,\"renderer\":0.5,\"paints\":1,\"frameGap\":55.699999928474426},{\"sample\":22,\"started\":2349,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":15.100000023841858},{\"sample\":23,\"started\":2386.600000023842,\"elapsed\":1.1999999284744263,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":37.60000002384186},{\"sample\":24,\"started\":2442.7999999523163,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":56.199999928474426},{\"sample\":25,\"started\":2457.399999976158,\"elapsed\":1.3000000715255737,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":14.600000023841858},{\"sample\":26,\"started\":2497.5,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":40.10000002384186},{\"sample\":27,\"started\":2552.5,\"elapsed\":1,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":55},{\"sample\":28,\"started\":2571.100000023842,\"elapsed\":1.100000023841858,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":18.600000023841858},{\"sample\":29,\"started\":2610,\"elapsed\":1.100000023841858,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":38.89999997615814},{\"sample\":30,\"started\":2666.100000023842,\"elapsed\":1.100000023841858,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":56.10000002384186},{\"sample\":31,\"started\":2681.2999999523163,\"elapsed\":1.2000000476837158,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":15.199999928474426},{\"sample\":32,\"started\":2696.2999999523163,\"elapsed\":1.3000000715255737,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":15},{\"sample\":33,\"started\":2755.100000023842,\"elapsed\":1,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":58.800000071525574},{\"sample\":34,\"started\":2789.399999976158,\"elapsed\":0.8000000715255737,\"renderer\":0.5,\"paints\":1,\"frameGap\":34.299999952316284},{\"sample\":35,\"started\":2803.7000000476837,\"elapsed\":1.0999999046325684,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":14.300000071525574},{\"sample\":36,\"started\":2840.2999999523163,\"elapsed\":1,\"renderer\":0.5,\"paints\":1,\"frameGap\":36.59999990463257},{\"sample\":37,\"started\":2877.7999999523163,\"elapsed\":1,\"renderer\":0.5,\"paints\":1,\"frameGap\":37.5},{\"sample\":38,\"started\":2892.899999976158,\"elapsed\":1.100000023841858,\"renderer\":0.7999999523162842,\"paints\":1,\"frameGap\":15.100000023841858},{\"sample\":39,\"started\":2932,\"elapsed\":1.2000000476837158,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":39.10000002384186},{\"sample\":40,\"started\":2987.5,\"elapsed\":2.299999952316284,\"renderer\":2,\"paints\":1,\"frameGap\":55.5},{\"sample\":41,\"started\":3002.600000023842,\"elapsed\":1,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":15.100000023841858},{\"sample\":42,\"started\":3070.399999976158,\"elapsed\":1.100000023841858,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":67.79999995231628},{\"sample\":43,\"started\":3203.899999976158,\"elapsed\":1,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":133.5},{\"sample\":44,\"started\":3221.399999976158,\"elapsed\":1.2000000476837158,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":17.5},{\"sample\":45,\"started\":3239.100000023842,\"elapsed\":1.100000023841858,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":17.700000047683716},{\"sample\":46,\"started\":3277.5,\"elapsed\":1.2999999523162842,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":38.39999997615814},{\"sample\":47,\"started\":3333.399999976158,\"elapsed\":0.8000000715255737,\"renderer\":0.5,\"paints\":1,\"frameGap\":55.89999997615814},{\"sample\":48,\"started\":3347.5,\"elapsed\":1,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":14.100000023841858},{\"sample\":49,\"started\":3386.5,\"elapsed\":1,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":39},{\"sample\":50,\"started\":3441.399999976158,\"elapsed\":0.8999999761581421,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":54.89999997615814},{\"sample\":51,\"started\":3455.2999999523163,\"elapsed\":1.3000000715255737,\"renderer\":0.8000000715255737,\"paints\":1,\"frameGap\":13.899999976158142},{\"sample\":52,\"started\":3493.899999976158,\"elapsed\":1,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":38.60000002384186},{\"sample\":53,\"started\":3549.7000000476837,\"elapsed\":1.0999999046325684,\"renderer\":0.5,\"paints\":1,\"frameGap\":55.800000071525574},{\"sample\":54,\"started\":3565.600000023842,\"elapsed\":0.8999999761581421,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":15.899999976158142},{\"sample\":55,\"started\":3579.7999999523163,\"elapsed\":1,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":14.199999928474426},{\"sample\":56,\"started\":3656.5,\"elapsed\":1.100000023841858,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":76.70000004768372},{\"sample\":57,\"started\":3670.600000023842,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":14.100000023841858},{\"sample\":58,\"started\":3686.2000000476837,\"elapsed\":1.2999999523162842,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":15.600000023841858},{\"sample\":59,\"started\":3724.7999999523163,\"elapsed\":0.9000000953674316,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":38.59999990463257},{\"sample\":60,\"started\":3759.7000000476837,\"elapsed\":1.2999999523162842,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":34.90000009536743},{\"sample\":61,\"started\":3775.5,\"elapsed\":1.100000023841858,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":15.799999952316284},{\"sample\":62,\"started\":3812,\"elapsed\":1.100000023841858,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":36.5},{\"sample\":63,\"started\":3865.2000000476837,\"elapsed\":1.0999999046325684,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":53.200000047683716},{\"sample\":64,\"started\":3881.7000000476837,\"elapsed\":1,\"renderer\":0.8000000715255737,\"paints\":1,\"frameGap\":16.5},{\"sample\":65,\"started\":3918.399999976158,\"elapsed\":1.3000000715255737,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":36.699999928474426},{\"sample\":66,\"started\":3973.100000023842,\"elapsed\":0.7999999523162842,\"renderer\":0.5,\"paints\":1,\"frameGap\":54.700000047683716},{\"sample\":67,\"started\":3986.7000000476837,\"elapsed\":1.1999999284744263,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":13.600000023841858},{\"sample\":68,\"started\":4026.399999976158,\"elapsed\":0.8999999761581421,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":39.699999928474426},{\"sample\":69,\"started\":4156,\"elapsed\":1,\"renderer\":0.5,\"paints\":1,\"frameGap\":129.60000002384186},{\"sample\":70,\"started\":4183,\"elapsed\":1.100000023841858,\"renderer\":0.5,\"paints\":1,\"frameGap\":27},{\"sample\":71,\"started\":4214.700000047684,\"elapsed\":1.1999999284744263,\"renderer\":0.7999999523162842,\"paints\":1,\"frameGap\":31.700000047683716},{\"sample\":72,\"started\":4258.899999976158,\"elapsed\":1.100000023841858,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":44.199999928474426},{\"sample\":73,\"started\":4314.200000047684,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":55.300000071525574},{\"sample\":74,\"started\":4328.600000023842,\"elapsed\":1.1999999284744263,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":14.399999976158142},{\"sample\":75,\"started\":4370.700000047684,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":42.10000002384186},{\"sample\":76,\"started\":4425.600000023842,\"elapsed\":0.8999999761581421,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":54.89999997615814},{\"sample\":77,\"started\":4440.799999952316,\"elapsed\":1.2000000476837158,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":15.199999928474426},{\"sample\":78,\"started\":4478.899999976158,\"elapsed\":1.100000023841858,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":38.10000002384186},{\"sample\":79,\"started\":4534.5,\"elapsed\":1.2000000476837158,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":55.60000002384186},{\"sample\":80,\"started\":4549.899999976158,\"elapsed\":1.100000023841858,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":15.399999976158142},{\"sample\":81,\"started\":4588.200000047684,\"elapsed\":1.0999999046325684,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":38.300000071525574},{\"sample\":82,\"started\":4644.600000023842,\"elapsed\":0.8999999761581421,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":56.39999997615814},{\"sample\":83,\"started\":4659.799999952316,\"elapsed\":1,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":15.199999928474426},{\"sample\":84,\"started\":4697.399999976158,\"elapsed\":1.3000000715255737,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":37.60000002384186},{\"sample\":85,\"started\":4753,\"elapsed\":0.8999999761581421,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":55.60000002384186},{\"sample\":86,\"started\":4767.299999952316,\"elapsed\":1,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":14.299999952316284},{\"sample\":87,\"started\":4805.799999952316,\"elapsed\":1.2000000476837158,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":38.5},{\"sample\":88,\"started\":4858.600000023842,\"elapsed\":0.7999999523162842,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":52.800000071525574},{\"sample\":89,\"started\":4875.600000023842,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":17},{\"sample\":90,\"started\":4913.399999976158,\"elapsed\":1.100000023841858,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":37.799999952316284},{\"sample\":91,\"started\":4968.600000023842,\"elapsed\":1.1999999284744263,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":55.200000047683716},{\"sample\":92,\"started\":4984.700000047684,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":16.100000023841858},{\"sample\":93,\"started\":5021.5,\"elapsed\":0.8999999761581421,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":36.799999952316284},{\"sample\":94,\"started\":5133.200000047684,\"elapsed\":1.0999999046325684,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":111.70000004768372},{\"sample\":95,\"started\":5161.899999976158,\"elapsed\":1,\"renderer\":0.5,\"paints\":1,\"frameGap\":28.699999928474426},{\"sample\":96,\"started\":5237.5,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":75.60000002384186},{\"sample\":97,\"started\":5293.299999952316,\"elapsed\":0.9000000953674316,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":55.799999952316284},{\"sample\":98,\"started\":5307.100000023842,\"elapsed\":1.100000023841858,\"renderer\":0.5,\"paints\":1,\"frameGap\":13.800000071525574},{\"sample\":99,\"started\":5345.899999976158,\"elapsed\":0.8999999761581421,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":38.799999952316284},{\"sample\":100,\"started\":5398,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":52.10000002384186},{\"sample\":101,\"started\":5412,\"elapsed\":1.2999999523162842,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":14},{\"sample\":102,\"started\":5449.700000047684,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":37.700000047683716},{\"sample\":103,\"started\":5502.799999952316,\"elapsed\":1.100000023841858,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":53.09999990463257},{\"sample\":104,\"started\":5519.200000047684,\"elapsed\":1.0999999046325684,\"renderer\":0.7999999523162842,\"paints\":1,\"frameGap\":16.40000009536743},{\"sample\":105,\"started\":5555.399999976158,\"elapsed\":1.2000000476837158,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":36.199999928474426},{\"sample\":106,\"started\":5626.100000023842,\"elapsed\":1.100000023841858,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":70.70000004768372},{\"sample\":107,\"started\":5642.200000047684,\"elapsed\":1.2999999523162842,\"renderer\":0.7999999523162842,\"paints\":1,\"frameGap\":16.100000023841858},{\"sample\":108,\"started\":5685.200000047684,\"elapsed\":1.2999999523162842,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":43},{\"sample\":109,\"started\":5753.399999976158,\"elapsed\":1.100000023841858,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":68.19999992847443},{\"sample\":110,\"started\":5768.899999976158,\"elapsed\":1.399999976158142,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":15.5},{\"sample\":111,\"started\":5815.200000047684,\"elapsed\":1.1999999284744263,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":46.300000071525574},{\"sample\":112,\"started\":5856.799999952316,\"elapsed\":1.3000000715255737,\"renderer\":0.8000000715255737,\"paints\":1,\"frameGap\":41.59999990463257},{\"sample\":113,\"started\":5891.200000047684,\"elapsed\":1.2999999523162842,\"renderer\":0.7999999523162842,\"paints\":1,\"frameGap\":34.40000009536743},{\"sample\":114,\"started\":5907.600000023842,\"elapsed\":1.1999999284744263,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":16.399999976158142},{\"sample\":115,\"started\":5962,\"elapsed\":1.2999999523162842,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":54.39999997615814},{\"sample\":116,\"started\":5998.600000023842,\"elapsed\":1.100000023841858,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":36.60000002384186},{\"sample\":117,\"started\":6012.799999952316,\"elapsed\":1.4000000953674316,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":14.199999928474426},{\"sample\":118,\"started\":6103.5,\"elapsed\":1.100000023841858,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":90.70000004768372},{\"sample\":119,\"started\":6131,\"elapsed\":2.600000023841858,\"renderer\":2.200000047683716,\"paints\":1,\"frameGap\":27.5},{\"sample\":120,\"started\":6217.200000047684,\"elapsed\":1.0999999046325684,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":86.20000004768372},{\"sample\":121,\"started\":6287.899999976158,\"elapsed\":1.100000023841858,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":70.69999992847443},{\"sample\":122,\"started\":6303.100000023842,\"elapsed\":1.2999999523162842,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":15.200000047683716},{\"sample\":123,\"started\":6341.200000047684,\"elapsed\":1.0999999046325684,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":38.10000002384186},{\"sample\":124,\"started\":6396,\"elapsed\":1.2999999523162842,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":54.799999952316284},{\"sample\":125,\"started\":6410.600000023842,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":14.600000023841858},{\"sample\":126,\"started\":6449.700000047684,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":39.10000002384186},{\"sample\":127,\"started\":6503.299999952316,\"elapsed\":1.100000023841858,\"renderer\":0.5,\"paints\":1,\"frameGap\":53.59999990463257},{\"sample\":128,\"started\":6519.899999976158,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":16.600000023841858},{\"sample\":129,\"started\":6556.100000023842,\"elapsed\":1.100000023841858,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":36.200000047683716},{\"sample\":130,\"started\":6611.299999952316,\"elapsed\":1.100000023841858,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":55.199999928474426},{\"sample\":131,\"started\":6625.200000047684,\"elapsed\":1.1999999284744263,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":13.900000095367432},{\"sample\":132,\"started\":6663.899999976158,\"elapsed\":1.100000023841858,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":38.699999928474426},{\"sample\":133,\"started\":6718.700000047684,\"elapsed\":1.0999999046325684,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":54.800000071525574},{\"sample\":134,\"started\":6734.399999976158,\"elapsed\":1.100000023841858,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":15.699999928474426},{\"sample\":135,\"started\":6769.600000023842,\"elapsed\":1.100000023841858,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":35.200000047683716},{\"sample\":136,\"started\":6824,\"elapsed\":1.2000000476837158,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":54.39999997615814},{\"sample\":137,\"started\":6838.799999952316,\"elapsed\":1.100000023841858,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":14.799999952316284},{\"sample\":138,\"started\":6876.200000047684,\"elapsed\":1.2999999523162842,\"renderer\":0.5,\"paints\":1,\"frameGap\":37.40000009536743},{\"sample\":139,\"started\":6930.100000023842,\"elapsed\":1,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":53.89999997615814},{\"sample\":140,\"started\":6944.700000047684,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":14.600000023841858},{\"sample\":141,\"started\":6978.5,\"elapsed\":1.2999999523162842,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":33.799999952316284},{\"sample\":142,\"started\":7032.399999976158,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":53.89999997615814},{\"sample\":143,\"started\":7048.200000047684,\"elapsed\":1.0999999046325684,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":15.800000071525574},{\"sample\":144,\"started\":7063.600000023842,\"elapsed\":1.100000023841858,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":15.399999976158142},{\"sample\":145,\"started\":7185.5,\"elapsed\":1.399999976158142,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":121.89999997615814},{\"sample\":146,\"started\":7250.399999976158,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":64.89999997615814},{\"sample\":147,\"started\":7264.299999952316,\"elapsed\":1,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":13.899999976158142},{\"sample\":148,\"started\":7320.100000023842,\"elapsed\":1.399999976158142,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":55.800000071525574},{\"sample\":149,\"started\":7335.100000023842,\"elapsed\":1.100000023841858,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":15},{\"sample\":150,\"started\":7373.799999952316,\"elapsed\":1,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":38.699999928474426},{\"sample\":151,\"started\":7427.399999976158,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":53.60000002384186},{\"sample\":152,\"started\":7442.5,\"elapsed\":1.100000023841858,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":15.100000023841858},{\"sample\":153,\"started\":7479.799999952316,\"elapsed\":1.2000000476837158,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":37.299999952316284},{\"sample\":154,\"started\":7535.5,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":55.700000047683716},{\"sample\":155,\"started\":7549.100000023842,\"elapsed\":1.100000023841858,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":13.600000023841858},{\"sample\":156,\"started\":7587.399999976158,\"elapsed\":0.8999999761581421,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":38.299999952316284},{\"sample\":157,\"started\":7640.200000047684,\"elapsed\":1.0999999046325684,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":52.800000071525574},{\"sample\":158,\"started\":7656,\"elapsed\":1,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":15.799999952316284},{\"sample\":159,\"started\":7691.5,\"elapsed\":1.2999999523162842,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":35.5},{\"sample\":160,\"started\":7745.399999976158,\"elapsed\":0.8999999761581421,\"renderer\":0.5,\"paints\":1,\"frameGap\":53.89999997615814},{\"sample\":161,\"started\":7758.799999952316,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":13.399999976158142},{\"sample\":162,\"started\":7794.100000023842,\"elapsed\":1.100000023841858,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":35.300000071525574},{\"sample\":163,\"started\":7847.399999976158,\"elapsed\":1,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":53.299999952316284},{\"sample\":164,\"started\":7860.700000047684,\"elapsed\":1.1999999284744263,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":13.300000071525574},{\"sample\":165,\"started\":7897.700000047684,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":37},{\"sample\":166,\"started\":7949.5,\"elapsed\":1.100000023841858,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":51.799999952316284},{\"sample\":167,\"started\":7964.799999952316,\"elapsed\":0.9000000953674316,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":15.299999952316284},{\"sample\":168,\"started\":8001.100000023842,\"elapsed\":0.8999999761581421,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":36.300000071525574},{\"sample\":169,\"started\":8053.100000023842,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":52},{\"sample\":170,\"started\":8067.5,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":14.399999976158142},{\"sample\":171,\"started\":8144.5,\"elapsed\":1,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":77},{\"sample\":172,\"started\":8255.100000023842,\"elapsed\":1.100000023841858,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":110.60000002384186},{\"sample\":173,\"started\":8270.200000047684,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":15.100000023841858},{\"sample\":174,\"started\":8310.700000047684,\"elapsed\":1.0999999046325684,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":40.5},{\"sample\":175,\"started\":8364,\"elapsed\":1,\"renderer\":0.5,\"paints\":1,\"frameGap\":53.299999952316284},{\"sample\":176,\"started\":8378.200000047684,\"elapsed\":1.0999999046325684,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":14.200000047683716},{\"sample\":177,\"started\":8415.799999952316,\"elapsed\":0.9000000953674316,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":37.59999990463257},{\"sample\":178,\"started\":8467.899999976158,\"elapsed\":0.8999999761581421,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":52.10000002384186},{\"sample\":179,\"started\":8482.200000047684,\"elapsed\":1.1999999284744263,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":14.300000071525574},{\"sample\":180,\"started\":8521.100000023842,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":38.89999997615814},{\"sample\":181,\"started\":8574.5,\"elapsed\":0.8999999761581421,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":53.39999997615814},{\"sample\":182,\"started\":8589.700000047684,\"elapsed\":1,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":15.200000047683716},{\"sample\":183,\"started\":8626,\"elapsed\":1.100000023841858,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":36.299999952316284},{\"sample\":184,\"started\":8680.799999952316,\"elapsed\":1,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":54.799999952316284},{\"sample\":185,\"started\":8695.5,\"elapsed\":1.2000000476837158,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":14.700000047683716},{\"sample\":186,\"started\":8773.899999976158,\"elapsed\":1.100000023841858,\"renderer\":0.5,\"paints\":1,\"frameGap\":78.39999997615814},{\"sample\":187,\"started\":8790,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":16.100000023841858},{\"sample\":188,\"started\":8804.5,\"elapsed\":1.2999999523162842,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":14.5},{\"sample\":189,\"started\":8860.899999976158,\"elapsed\":1,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":56.39999997615814},{\"sample\":190,\"started\":8894.100000023842,\"elapsed\":1.1999999284744263,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":33.200000047683716},{\"sample\":191,\"started\":8911.399999976158,\"elapsed\":2.3000000715255737,\"renderer\":1.8000000715255737,\"paints\":1,\"frameGap\":17.299999952316284},{\"sample\":192,\"started\":8946.899999976158,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":35.5},{\"sample\":193,\"started\":8980.799999952316,\"elapsed\":1.2000000476837158,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":33.89999997615814},{\"sample\":194,\"started\":8995.600000023842,\"elapsed\":1.100000023841858,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":14.800000071525574},{\"sample\":195,\"started\":9068.200000047684,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":72.60000002384186},{\"sample\":196,\"started\":9094,\"elapsed\":1.100000023841858,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":25.799999952316284},{\"sample\":197,\"started\":9172.299999952316,\"elapsed\":0.9000000953674316,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":78.29999995231628},{\"sample\":198,\"started\":9270.799999952316,\"elapsed\":1.100000023841858,\"renderer\":0.5,\"paints\":1,\"frameGap\":98.5},{\"sample\":199,\"started\":9285.399999976158,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":14.600000023841858},{\"sample\":200,\"started\":9321.100000023842,\"elapsed\":1.1999999284744263,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":35.700000047683716},{\"sample\":201,\"started\":9378.899999976158,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":57.799999952316284},{\"sample\":202,\"started\":9393.799999952316,\"elapsed\":1.2000000476837158,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":14.899999976158142},{\"sample\":203,\"started\":9433,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":39.200000047683716},{\"sample\":204,\"started\":9484.600000023842,\"elapsed\":1.100000023841858,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":51.60000002384186},{\"sample\":205,\"started\":9498.899999976158,\"elapsed\":1.3000000715255737,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":14.299999952316284},{\"sample\":206,\"started\":9536.700000047684,\"elapsed\":1,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":37.800000071525574},{\"sample\":207,\"started\":9589.700000047684,\"elapsed\":1.1999999284744263,\"renderer\":0.5,\"paints\":1,\"frameGap\":53},{\"sample\":208,\"started\":9605.5,\"elapsed\":1,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":15.799999952316284},{\"sample\":209,\"started\":9642.899999976158,\"elapsed\":1.2000000476837158,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":37.39999997615814},{\"sample\":210,\"started\":9695,\"elapsed\":0.8999999761581421,\"renderer\":0.5,\"paints\":1,\"frameGap\":52.10000002384186},{\"sample\":211,\"started\":9711.100000023842,\"elapsed\":1,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":16.100000023841858},{\"sample\":212,\"started\":9747.200000047684,\"elapsed\":1.1999999284744263,\"renderer\":0.5999999046325684,\"paints\":1,\"frameGap\":36.10000002384186},{\"sample\":213,\"started\":9802.200000047684,\"elapsed\":1,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":55},{\"sample\":214,\"started\":9816.5,\"elapsed\":1.2000000476837158,\"renderer\":0.5,\"paints\":1,\"frameGap\":14.299999952316284},{\"sample\":215,\"started\":9854.899999976158,\"elapsed\":1,\"renderer\":0.6999999284744263,\"paints\":1,\"frameGap\":38.39999997615814},{\"sample\":216,\"started\":9907.799999952316,\"elapsed\":1.3000000715255737,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":52.89999997615814},{\"sample\":217,\"started\":9925.399999976158,\"elapsed\":1.2000000476837158,\"renderer\":0.7999999523162842,\"paints\":1,\"frameGap\":17.600000023841858},{\"sample\":218,\"started\":9961.5,\"elapsed\":1,\"renderer\":0.7000000476837158,\"paints\":1,\"frameGap\":36.10000002384186},{\"sample\":219,\"started\":10015.299999952316,\"elapsed\":1.2000000476837158,\"renderer\":0.6000000238418579,\"paints\":1,\"frameGap\":53.799999952316284},{\"sample\":220,\"started\":10031.100000023842,\"elapsed\":1.100000023841858,\"renderer\":0.8000000715255737,\"paints\":1,\"frameGap\":15.800000071525574}]\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:27:50.334Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "b8716fe406aa3249e12e-148e4b5848e4185f9369",
+          "file": "acceptance-performance.spec.ts",
+          "line": 35,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "acceptance-workflows.spec.ts",
+      "file": "acceptance-workflows.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "P1 browser acceptance workflows",
+          "file": "acceptance-workflows.spec.ts",
+          "line": 27,
+          "column": 15,
+          "specs": [
+            {
+              "title": "opens DejaVu, pointer-edits A/B/C, exports and reopens",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 180000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5710,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:28:12.615Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7829cc5dec5b3b692db1-ba2480a88e6d8a03b985",
+              "file": "acceptance-workflows.spec.ts",
+              "line": 28,
+              "column": 3
+            },
+            {
+              "title": "creates A-C, pen-draws and widths them, exports and reopens",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 180000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 11877,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:28:18.634Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7829cc5dec5b3b692db1-20f6238a95e7d8be88c0",
+              "file": "acceptance-workflows.spec.ts",
+              "line": 105,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "app.spec.ts",
+      "file": "app.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "shows the workspace shell",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2251,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:28:30.867Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c31ff144dc4fee3acd0a-7e9eb85175dafdf19ddb",
+          "file": "app.spec.ts",
+          "line": 4,
+          "column": 1
+        }
+      ],
+      "suites": [
+        {
+          "title": "shell windows and tabs",
+          "file": "app.spec.ts",
+          "line": 28,
+          "column": 6,
+          "specs": [
+            {
+              "title": "pins the Overview and reaches every tab by its ordinal",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5579,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:28:34.622Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c31ff144dc4fee3acd0a-6cf64dccfdd1c6431089",
+              "file": "app.spec.ts",
+              "line": 29,
+              "column": 3
+            },
+            {
+              "title": "tears the Inspector into its own window and takes it back",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 6726,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:28:40.668Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c31ff144dc4fee3acd0a-6d01dc1d3c73f8e88850",
+              "file": "app.spec.ts",
+              "line": 72,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "a detached panel of an Edit tab",
+          "file": "app.spec.ts",
+          "line": 100,
+          "column": 6,
+          "specs": [
+            {
+              "title": "shows live glyph content and follows the glyph",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3608,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:28:47.892Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c31ff144dc4fee3acd0a-56436da7c2c5d1e1f434",
+              "file": "app.spec.ts",
+              "line": 101,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "command palette",
+          "file": "app.spec.ts",
+          "line": 148,
+          "column": 6,
+          "specs": [
+            {
+              "title": "searches commands, filters and glyph names in scoped sections",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1736,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:28:52.073Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c31ff144dc4fee3acd0a-af26f34e5a52d0bb5f9d",
+              "file": "app.spec.ts",
+              "line": 149,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "document history",
+          "file": "app.spec.ts",
+          "line": 177,
+          "column": 6,
+          "specs": [
+            {
+              "title": "lists one entry per gesture with its scope and moves back through it",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2830,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:28:54.156Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c31ff144dc4fee3acd0a-220938d50dbef0e0e778",
+              "file": "app.spec.ts",
+              "line": 178,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "preview strip",
+          "file": "app.spec.ts",
+          "line": 215,
+          "column": 6,
+          "specs": [
+            {
+              "title": "resizes with its divider and collapses from the keyboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2336,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:28:57.378Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c31ff144dc4fee3acd0a-6ee28a1c6f643aafaffd",
+              "file": "app.spec.ts",
+              "line": 216,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "reopening a saved file",
+          "file": "app.spec.ts",
+          "line": 253,
+          "column": 6,
+          "specs": [
+            {
+              "title": "gives each document exactly one pinned Overview",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [
+                    {
+                      "type": "slow",
+                      "location": {
+                        "file": "/home/chen/githubprojects/fontpixel/fontcarver/app/e2e/app.spec.ts",
+                        "line": 256,
+                        "column": 10
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2494,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:28:59.973Z",
+                      "annotations": [
+                        {
+                          "type": "slow",
+                          "location": {
+                            "file": "/home/chen/githubprojects/fontpixel/fontcarver/app/e2e/app.spec.ts",
+                            "line": 256,
+                            "column": 10
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c31ff144dc4fee3acd0a-b6706e36e75235c7f189",
+              "file": "app.spec.ts",
+              "line": 254,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "a second document",
+          "file": "app.spec.ts",
+          "line": 308,
+          "column": 6,
+          "specs": [
+            {
+              "title": "opens with its own Overview selected, beside the first document",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2446,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:29:02.842Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c31ff144dc4fee3acd0a-8f0faaf31c57f6847e80",
+              "file": "app.spec.ts",
+              "line": 309,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "bitmap.spec.ts",
+      "file": "bitmap.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "BDF pixels survive drawing, undo, redo, save, export and reopen",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2827,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:29:05.631Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0880282cfa32bbf393a9-2fcae19690e120674ed6",
+          "file": "bitmap.spec.ts",
+          "line": 82,
+          "column": 1
+        },
+        {
+          "title": "failed pixel writes retain the draft and block tab navigation until retry",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2235,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:29:08.703Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0880282cfa32bbf393a9-75fd1124c9d66766bfdf",
+          "file": "bitmap.spec.ts",
+          "line": 119,
+          "column": 1
+        },
+        {
+          "title": "cancels interrupted bitmap strokes without writing them on the next save",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2570,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:29:11.230Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0880282cfa32bbf393a9-b9dd00d97cd53784e697",
+          "file": "bitmap.spec.ts",
+          "line": 152,
+          "column": 1
+        },
+        {
+          "title": "pans a large bitmap with middle drag and held Space without changing pixels",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2472,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:29:14.071Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0880282cfa32bbf393a9-2a27c3a705b8b3436da5",
+          "file": "bitmap.spec.ts",
+          "line": 197,
+          "column": 1
+        },
+        {
+          "title": "trace, regenerate, strike properties, tools and strike removal are undoable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5044,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:29:16.860Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0880282cfa32bbf393a9-0252022ad59b193f0b82",
+          "file": "bitmap.spec.ts",
+          "line": 270,
+          "column": 1
+        },
+        {
+          "title": "focused metrics are saved, and ellipse, crop, invert and scaling retain pixels",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2698,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:29:22.249Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0880282cfa32bbf393a9-9e77529523dea2719b6d",
+          "file": "bitmap.spec.ts",
+          "line": 347,
+          "column": 1
+        },
+        {
+          "title": "pixel tools, the marquee copy and the persisted overlays",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3110,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:29:25.218Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0880282cfa32bbf393a9-fd1a45e7bcf9cefa9797",
+          "file": "bitmap.spec.ts",
+          "line": 402,
+          "column": 1
+        },
+        {
+          "title": "an exact grid preset sets the strike metrics and a custom size is corrected",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2392,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:29:28.585Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0880282cfa32bbf393a9-26b83d81e0ee6532de4b",
+          "file": "bitmap.spec.ts",
+          "line": 473,
+          "column": 1
+        },
+        {
+          "title": "properties are renamed and a sprite sheet round trips through its own layout",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4266,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:29:31.309Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0880282cfa32bbf393a9-ab116c94ccf284c169d7",
+          "file": "bitmap.spec.ts",
+          "line": 509,
+          "column": 1
+        },
+        {
+          "title": "cross-strike copies, batch tracing and the single-glyph waterfall",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 9113,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:29:36.000Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0880282cfa32bbf393a9-3fc92ed0ac1229a1c0c8",
+          "file": "bitmap.spec.ts",
+          "line": 574,
+          "column": 1
+        },
+        {
+          "title": "positions upright bitmap proof pixels using vertical origins and advances",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 6854,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:29:45.659Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0880282cfa32bbf393a9-61217b8c92adf553ef6d",
+          "file": "bitmap.spec.ts",
+          "line": 669,
+          "column": 1
+        },
+        {
+          "title": "every pixel tool has a working single-key shortcut",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 6752,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:29:53.024Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0880282cfa32bbf393a9-736154c40a13ba4a82a0",
+          "file": "bitmap.spec.ts",
+          "line": 753,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "cjk.spec.ts",
+      "file": "cjk.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "CJK font view",
+          "file": "cjk.spec.ts",
+          "line": 38,
+          "column": 6,
+          "specs": [
+            {
+              "title": "opens Source Han Sans and renders cells at the end of the grid",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 13556,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:30:00.310Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a03ccbc4a7e2734d811d-22879ad8bd3940aee8a6",
+              "file": "cjk.spec.ts",
+              "line": 45,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "vertical metrics, the canvas handles and the radical library",
+          "file": "cjk.spec.ts",
+          "line": 94,
+          "column": 6,
+          "specs": [
+            {
+              "title": "edits TSB and BSB, then drags the origin only in vertical mode",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 6513,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:30:14.741Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a03ccbc4a7e2734d811d-c4c4a799c79c2af55b06",
+              "file": "cjk.spec.ts",
+              "line": 136,
+              "column": 3
+            },
+            {
+              "title": "lists the pinned radicals even in a font with no ideographs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2974,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:30:21.752Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a03ccbc4a7e2734d811d-b109829aa8e397d5a0f3",
+              "file": "cjk.spec.ts",
+              "line": 207,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "dialogs.spec.ts",
+      "file": "dialogs.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "dialogs",
+          "file": "dialogs.spec.ts",
+          "line": 50,
+          "column": 6,
+          "specs": [
+            {
+              "title": "creates a font with the Basic Latin starter set",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1953,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:30:25.108Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c8c8ce29fa4987e6487c-d772d694c2434430eba8",
+              "file": "dialogs.spec.ts",
+              "line": 51,
+              "column": 3
+            },
+            {
+              "title": "previews a recipe and adds exactly what it previewed",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4001,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:30:27.389Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c8c8ce29fa4987e6487c-d15068ae97048b3ae5b8",
+              "file": "dialogs.spec.ts",
+              "line": 69,
+              "column": 3
+            },
+            {
+              "title": "round trips preferences through the kernel",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4066,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:30:31.702Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c8c8ce29fa4987e6487c-87d0ba14a56a2d2ec7a1",
+              "file": "dialogs.spec.ts",
+              "line": 105,
+              "column": 3
+            },
+            {
+              "title": "shows no recovery dialog on a clean launch",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1451,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:30:36.102Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c8c8ce29fa4987e6487c-206062140b772baf33de",
+              "file": "dialogs.spec.ts",
+              "line": 118,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "draw.spec.ts",
+      "file": "draw.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "drawing",
+          "file": "draw.spec.ts",
+          "line": 43,
+          "column": 6,
+          "specs": [
+            {
+              "title": "pen-draws a closed triangle into a new font",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [
+                    {
+                      "type": "slow",
+                      "location": {
+                        "file": "/home/chen/githubprojects/fontpixel/fontcarver/app/e2e/draw.spec.ts",
+                        "line": 47,
+                        "column": 10
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2701,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:30:37.864Z",
+                      "annotations": [
+                        {
+                          "type": "slow",
+                          "location": {
+                            "file": "/home/chen/githubprojects/fontpixel/fontcarver/app/e2e/draw.spec.ts",
+                            "line": 47,
+                            "column": 10
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "14062f682777e7b80fa0-f0fbf305897c50ef12ac",
+              "file": "draw.spec.ts",
+              "line": 44,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "open corner",
+          "file": "draw.spec.ts",
+          "line": 154,
+          "column": 6,
+          "specs": [
+            {
+              "title": "opens a reflex corner and reconnects it from the Path menu",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [
+                    {
+                      "type": "slow",
+                      "location": {
+                        "file": "/home/chen/githubprojects/fontpixel/fontcarver/app/e2e/draw.spec.ts",
+                        "line": 160,
+                        "column": 10
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 8408,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('region', { name: 'Info box' })\nExpected substring: \u001b[32m\"2 of\"\u001b[39m\nReceived string:    \u001b[31m\"Node▾XYTypeCornerCurveOn-curveCorner radiusSource cornerRemove cornerPositive rounds the corner; negative cuts an ink trap; zero removes it. Bake from Layers → Layer effects.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('region', { name: 'Info box' })\u001b[22m\n\u001b[2m    14 × locator resolved to <section data-open=\"true\" class=\"_box_cjn2v_3\" aria-label=\"Info box\">…</section>\u001b[22m\n\u001b[2m       - unexpected value \"Node▾XYTypeCornerCurveOn-curveCorner radiusSource cornerRemove cornerPositive rounds the corner; negative cuts an ink trap; zero removes it. Bake from Layers → Layer effects.\"\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('region', { name: 'Info box' })\nExpected substring: \u001b[32m\"2 of\"\u001b[39m\nReceived string:    \u001b[31m\"Node▾XYTypeCornerCurveOn-curveCorner radiusSource cornerRemove cornerPositive rounds the corner; negative cuts an ink trap; zero removes it. Bake from Layers → Layer effects.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('region', { name: 'Info box' })\u001b[22m\n\u001b[2m    14 × locator resolved to <section data-open=\"true\" class=\"_box_cjn2v_3\" aria-label=\"Info box\">…</section>\u001b[22m\n\u001b[2m       - unexpected value \"Node▾XYTypeCornerCurveOn-curveCorner radiusSource cornerRemove cornerPositive rounds the corner; negative cuts an ink trap; zero removes it. Bake from Layers → Layer effects.\"\u001b[22m\n\n    at /home/chen/githubprojects/fontpixel/fontcarver/app/e2e/draw.spec.ts:271:26",
+                        "location": {
+                          "file": "/home/chen/githubprojects/fontpixel/fontcarver/app/e2e/draw.spec.ts",
+                          "column": 26,
+                          "line": 271
+                        },
+                        "snippet": "  269 |       await page.mouse.move(reflex.x + bounds.x + 18, reflex.y + bounds.y + 22)\n  270 |       await page.mouse.up()\n> 271 |       await expect(info).toContainText('2 of')\n      |                          ^\n  272 |\n  273 |       await menubar.getByRole('menuitem', { name: 'Path', exact: true }).click()\n  274 |       await page.getByRole('menuitem', { name: /^Reconnect Nodes/ }).click()"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/chen/githubprojects/fontpixel/fontcarver/app/e2e/draw.spec.ts",
+                            "column": 26,
+                            "line": 271
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('region', { name: 'Info box' })\nExpected substring: \u001b[32m\"2 of\"\u001b[39m\nReceived string:    \u001b[31m\"Node▾XYTypeCornerCurveOn-curveCorner radiusSource cornerRemove cornerPositive rounds the corner; negative cuts an ink trap; zero removes it. Bake from Layers → Layer effects.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('region', { name: 'Info box' })\u001b[22m\n\u001b[2m    14 × locator resolved to <section data-open=\"true\" class=\"_box_cjn2v_3\" aria-label=\"Info box\">…</section>\u001b[22m\n\u001b[2m       - unexpected value \"Node▾XYTypeCornerCurveOn-curveCorner radiusSource cornerRemove cornerPositive rounds the corner; negative cuts an ink trap; zero removes it. Bake from Layers → Layer effects.\"\u001b[22m\n\n\n  269 |       await page.mouse.move(reflex.x + bounds.x + 18, reflex.y + bounds.y + 22)\n  270 |       await page.mouse.up()\n> 271 |       await expect(info).toContainText('2 of')\n      |                          ^\n  272 |\n  273 |       await menubar.getByRole('menuitem', { name: 'Path', exact: true }).click()\n  274 |       await page.getByRole('menuitem', { name: /^Reconnect Nodes/ }).click()\n    at /home/chen/githubprojects/fontpixel/fontcarver/app/e2e/draw.spec.ts:271:26"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:30:40.845Z",
+                      "annotations": [
+                        {
+                          "type": "slow",
+                          "location": {
+                            "file": "/home/chen/githubprojects/fontpixel/fontcarver/app/e2e/draw.spec.ts",
+                            "line": 160,
+                            "column": 10
+                          }
+                        }
+                      ],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/chen/githubprojects/fontpixel/fontcarver/.scratch/latest-full-e2e/final-results/draw-open-corner-opens-a-r-567d5-nects-it-from-the-Path-menu/test-failed-1.png"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/chen/githubprojects/fontpixel/fontcarver/.scratch/latest-full-e2e/final-results/draw-open-corner-opens-a-r-567d5-nects-it-from-the-Path-menu/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/chen/githubprojects/fontpixel/fontcarver/app/e2e/draw.spec.ts",
+                        "column": 26,
+                        "line": 271
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "14062f682777e7b80fa0-8096fdeb523d1c399fe1",
+              "file": "draw.spec.ts",
+              "line": 155,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "export.spec.ts",
+      "file": "export.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "export",
+          "file": "export.spec.ts",
+          "line": 46,
+          "column": 6,
+          "specs": [
+            {
+              "title": "edits a glyph and exports a TTF the CLI can read back",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 180000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3161,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:30:49.903Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "0667f272bb733ff6f62f-f79a8a26ae31b3a9a093",
+              "file": "export.spec.ts",
+              "line": 57,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "export profiles",
+          "file": "export.spec.ts",
+          "line": 138,
+          "column": 6,
+          "specs": [
+            {
+              "title": "saves a profile into the document and applies it after a reload",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 180000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 6072,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:30:53.531Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "0667f272bb733ff6f62f-fbf9af545a369a0713d2",
+              "file": "export.spec.ts",
+              "line": 139,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "fontinfo-export-reflow.spec.ts",
+      "file": "fontinfo-export-reflow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "reflows font information and exports a usable font: en/light",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 11894,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:31:00.016Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "699daf4a0fcdf903ea14-1ca56d02810e1c66d12d",
+          "file": "fontinfo-export-reflow.spec.ts",
+          "line": 17,
+          "column": 5
+        },
+        {
+          "title": "reflows font information and exports a usable font: en/dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 6270,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:31:12.102Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "699daf4a0fcdf903ea14-372cbc18efe26a7e618e",
+          "file": "fontinfo-export-reflow.spec.ts",
+          "line": 17,
+          "column": 5
+        },
+        {
+          "title": "reflows font information and exports a usable font: zh-CN/light",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 6522,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:31:18.569Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "699daf4a0fcdf903ea14-9337ba0dc9a05967e22e",
+          "file": "fontinfo-export-reflow.spec.ts",
+          "line": 17,
+          "column": 5
+        },
+        {
+          "title": "reflows font information and exports a usable font: zh-CN/dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 6326,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:31:25.297Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "699daf4a0fcdf903ea14-b96ebf691450a5fabd0b",
+          "file": "fontinfo-export-reflow.spec.ts",
+          "line": 17,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "fontview.spec.ts",
+      "file": "fontview.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "font view",
+          "file": "fontview.spec.ts",
+          "line": 15,
+          "column": 6,
+          "specs": [
+            {
+              "title": "renders the glyph grid for the pre-opened font",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1570,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:31:31.829Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "521d1dc6174bce0ef41f-e20d04f1fdddbb8316d9",
+              "file": "fontview.spec.ts",
+              "line": 16,
+              "column": 3
+            },
+            {
+              "title": "searches by Unicode scalar",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1856,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:31:33.720Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "521d1dc6174bce0ef41f-1f81cea9c61b1b2b9fec",
+              "file": "fontview.spec.ts",
+              "line": 32,
+              "column": 3
+            },
+            {
+              "title": "filters by a sidebar category and reports the count",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1910,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:31:35.854Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "521d1dc6174bce0ef41f-8c77413ed8449853a418",
+              "file": "fontview.spec.ts",
+              "line": 48,
+              "column": 3
+            },
+            {
+              "title": "reports the selection in the status bar",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1850,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:31:38.061Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "521d1dc6174bce0ef41f-6832e50e801fb8271d58",
+              "file": "fontview.spec.ts",
+              "line": 72,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "font view list mode",
+          "file": "fontview.spec.ts",
+          "line": 89,
+          "column": 6,
+          "specs": [
+            {
+              "title": "sorts by every column, chooses columns and keeps the choice",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4003,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:31:40.215Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "521d1dc6174bce0ef41f-9ea200edb22b3535bdec",
+              "file": "fontview.spec.ts",
+              "line": 90,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "font view search and filters",
+          "file": "fontview.spec.ts",
+          "line": 157,
+          "column": 6,
+          "specs": [
+            {
+              "title": "reports an invalid regular expression under the field",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2608,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:31:44.683Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "521d1dc6174bce0ef41f-86f9ec6531b79d06df68",
+              "file": "fontview.spec.ts",
+              "line": 158,
+              "column": 3
+            },
+            {
+              "title": "badges a Unicode block with its coverage and filters by a badge",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1653,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:31:47.553Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "521d1dc6174bce0ef41f-a8444d78e49e4e3920ee",
+              "file": "fontview.spec.ts",
+              "line": 197,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "font view editing workflows",
+          "file": "fontview.spec.ts",
+          "line": 220,
+          "column": 6,
+          "specs": [
+            {
+              "title": "labels a whole selection in one undo step",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2520,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:31:49.519Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "521d1dc6174bce0ef41f-3e04aa522b44eb4bf105",
+              "file": "fontview.spec.ts",
+              "line": 221,
+              "column": 3
+            },
+            {
+              "title": "generates a composite from the glyph database",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2898,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:31:52.327Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "521d1dc6174bce0ef41f-0e6cdc843466338ffe19",
+              "file": "fontview.spec.ts",
+              "line": 247,
+              "column": 3
+            },
+            {
+              "title": "renames a selection with a regular expression",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2755,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:31:55.503Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "521d1dc6174bce0ef41f-f604bea849bda9f1c28d",
+              "file": "fontview.spec.ts",
+              "line": 290,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "glyphview.spec.ts",
+      "file": "glyphview.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "glyph view",
+          "file": "glyphview.spec.ts",
+          "line": 10,
+          "column": 6,
+          "specs": [
+            {
+              "title": "opens a glyph tab from the grid and draws its metrics",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1898,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:31:58.540Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "6221ce4d8bd9885bb781-3f2def76fca6491b3f43",
+              "file": "glyphview.spec.ts",
+              "line": 11,
+              "column": 3
+            },
+            {
+              "title": "steps to the next glyph in the current order",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1956,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:32:00.743Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "6221ce4d8bd9885bb781-df07dd100372f9795841",
+              "file": "glyphview.spec.ts",
+              "line": 38,
+              "column": 3
+            },
+            {
+              "title": "shows the font info sections and searches across them",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1562,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:32:03.113Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "6221ce4d8bd9885bb781-c39ceb6b65e0e7c9201f",
+              "file": "glyphview.spec.ts",
+              "line": 63,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "editor tools, guides and snapping",
+          "file": "glyphview.spec.ts",
+          "line": 92,
+          "column": 6,
+          "specs": [
+            {
+              "title": "hands the Pixel tool over to the strike editor",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1970,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:32:04.948Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "6221ce4d8bd9885bb781-b5580912dfb6a184c4cb",
+              "file": "glyphview.spec.ts",
+              "line": 93,
+              "column": 3
+            },
+            {
+              "title": "anchors a guide to a sidebearing and stores the rebased offset",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [
+                    {
+                      "type": "slow",
+                      "location": {
+                        "file": "/home/chen/githubprojects/fontpixel/fontcarver/app/e2e/glyphview.spec.ts",
+                        "line": 122,
+                        "column": 10
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2776,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:32:07.263Z",
+                      "annotations": [
+                        {
+                          "type": "slow",
+                          "location": {
+                            "file": "/home/chen/githubprojects/fontpixel/fontcarver/app/e2e/glyphview.spec.ts",
+                            "line": 122,
+                            "column": 10
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "6221ce4d8bd9885bb781-c7cda96641d37bd64581",
+              "file": "glyphview.spec.ts",
+              "line": 119,
+              "column": 3
+            },
+            {
+              "title": "gives one snap target its own reach in the preferences",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1558,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:32:10.374Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "6221ce4d8bd9885bb781-4156e3c8f00cb31961e5",
+              "file": "glyphview.spec.ts",
+              "line": 195,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "hints.spec.ts",
+      "file": "hints.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "flex hints and dot sections are edited, applied and refused when invalid",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4247,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:32:12.194Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e802c826894a3644d977-a80c31a544ec4b836dbd",
+          "file": "hints.spec.ts",
+          "line": 92,
+          "column": 1
+        },
+        {
+          "title": "the export dialog discloses whether the external TrueType hinter is installed",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4265,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:32:16.806Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e802c826894a3644d977-cf15fd5d66d20a129cfc",
+          "file": "hints.spec.ts",
+          "line": 171,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "menu-reflow.spec.ts",
+      "file": "menu-reflow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "keeps Help and its popup inside the zoomed menu bar: en/light",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4229,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:32:21.521Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1f76fd867e739453818b-f947241e452a080b6b2e",
+          "file": "menu-reflow.spec.ts",
+          "line": 25,
+          "column": 5
+        },
+        {
+          "title": "keeps Help and its popup inside the zoomed menu bar: en/dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3333,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:32:25.915Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1f76fd867e739453818b-fa4bc554513ee1526d10",
+          "file": "menu-reflow.spec.ts",
+          "line": 25,
+          "column": 5
+        },
+        {
+          "title": "keeps Help and its popup inside the zoomed menu bar: zh-CN/light",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3198,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:32:29.401Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1f76fd867e739453818b-8c0b7d20c218379c908a",
+          "file": "menu-reflow.spec.ts",
+          "line": 25,
+          "column": 5
+        },
+        {
+          "title": "keeps Help and its popup inside the zoomed menu bar: zh-CN/dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3120,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:32:32.744Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1f76fd867e739453818b-1ba4a09a008e24528e8e",
+          "file": "menu-reflow.spec.ts",
+          "line": 25,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "outline-audit.spec.ts",
+      "file": "outline-audit.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Fix All resolves combined defects with one undo and preserves path locks",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5076,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:32:36.023Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c147303e6a864be0e941-1c297d32a39053042f2f",
+          "file": "outline-audit.spec.ts",
+          "line": 18,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "p2a-kerning.spec.ts",
+      "file": "p2a-kerning.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "authors groups and pair exceptions, coalesces shortcuts, saves and exports matching layout",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10538,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:32:41.368Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0a34351a820c36e15cec-2572ffcf24749b5d839b",
+          "file": "p2a-kerning.spec.ts",
+          "line": 61,
+          "column": 1
+        },
+        {
+          "title": "creates, assigns, renames and explicitly removes an in-use shared group",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5418,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:32:52.136Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0a34351a820c36e15cec-3c79fdbe8aa39af4f5e5",
+          "file": "p2a-kerning.spec.ts",
+          "line": 127,
+          "column": 1
+        },
+        {
+          "title": "settles a delayed pair edit before master handover and ignores its late selection response",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4249,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:32:57.758Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0a34351a820c36e15cec-2b98e232597531584f37",
+          "file": "p2a-kerning.spec.ts",
+          "line": 216,
+          "column": 1
+        },
+        {
+          "title": "keeps a failed delayed edit out of stored kerning and allows recovery",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4897,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:33:02.211Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0a34351a820c36e15cec-4218a914c587cf920de1",
+          "file": "p2a-kerning.spec.ts",
+          "line": 258,
+          "column": 1
+        },
+        {
+          "title": "saves a pending edit and keeps document handover isolated",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5784,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:33:07.287Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0a34351a820c36e15cec-b2b5c2b2d3f7eb7fb70f",
+          "file": "p2a-kerning.spec.ts",
+          "line": 283,
+          "column": 1
+        },
+        {
+          "title": "keeps imported spacing previewable and explains unavailable authoring",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3674,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:33:13.269Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0a34351a820c36e15cec-f9377026c364efe3133c",
+          "file": "p2a-kerning.spec.ts",
+          "line": 345,
+          "column": 1
+        },
+        {
+          "title": "edits metrics formulas with inline validation and synchronises every master",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4588,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:33:17.158Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0a34351a820c36e15cec-18fc727603811fe0a582",
+          "file": "p2a-kerning.spec.ts",
+          "line": 394,
+          "column": 1
+        },
+        {
+          "title": "measures and edits the run through the spacing matrix, beam and cut-off",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3857,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:33:21.985Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0a34351a820c36e15cec-756fecb41faff7d4d852",
+          "file": "p2a-kerning.spec.ts",
+          "line": 442,
+          "column": 1
+        },
+        {
+          "title": "marks kerning exceptions and maintains the table across masters",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2047,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:33:26.021Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0a34351a820c36e15cec-cf1350500cd3981df907",
+          "file": "p2a-kerning.spec.ts",
+          "line": 550,
+          "column": 1
+        },
+        {
+          "title": "locks every spacing control while kerning with spacing locked",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1815,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:33:28.233Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0a34351a820c36e15cec-333ac4de6b6154be9570",
+          "file": "p2a-kerning.spec.ts",
+          "line": 605,
+          "column": 1
+        },
+        {
+          "title": "edits vertical kerning and vertical metrics in the vertical direction",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2031,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:33:30.206Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0a34351a820c36e15cec-48caca01e7166970fb90",
+          "file": "p2a-kerning.spec.ts",
+          "line": 629,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "p2b-barriers.spec.ts",
+      "file": "p2b-barriers.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "persists pending drafts before master and tab handovers",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1872,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:33:32.401Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "506c324830eba1586fa1-61b9fa94fa0fe4573c1a",
+          "file": "p2b-barriers.spec.ts",
+          "line": 18,
+          "column": 1
+        },
+        {
+          "title": "blocks a tab handover on a failed draft write and keeps the text available for retry",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1739,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:33:34.470Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "506c324830eba1586fa1-f7fb1cecdc721ab7020d",
+          "file": "p2b-barriers.spec.ts",
+          "line": 63,
+          "column": 1
+        },
+        {
+          "title": "finishes composition before Ctrl+S persists the complete invalid draft",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2304,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:33:36.413Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "506c324830eba1586fa1-c93f80f59d58bbbb5720",
+          "file": "p2b-barriers.spec.ts",
+          "line": 97,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "p2b-imported.spec.ts",
+      "file": "p2b-imported.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "renders original rules as glyphs, converts source, exports and restores the native original baseline",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4769,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:33:38.905Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e582420f94334169fc35-48ba2727b6c583b885e4",
+          "file": "p2b-imported.spec.ts",
+          "line": 85,
+          "column": 1
+        },
+        {
+          "title": "proves a kerning lift before exposing pair controls and preserves zero exceptions through revert undo",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4675,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:33:43.831Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e582420f94334169fc35-62d5862e76df7a0efe4a",
+          "file": "p2b-imported.spec.ts",
+          "line": 159,
+          "column": 1
+        },
+        {
+          "title": "offers editable source while leaving non-equivalent model kerning source-owned",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2236,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:33:48.665Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e582420f94334169fc35-420237d06c8f240069ef",
+          "file": "p2b-imported.spec.ts",
+          "line": 259,
+          "column": 1
+        },
+        {
+          "title": "reports an unsupported competing table without changing the imported document",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1702,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:33:51.083Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e582420f94334169fc35-a93f410ffd8cac8cad77",
+          "file": "p2b-imported.spec.ts",
+          "line": 285,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "p2b-recipes.spec.ts",
+      "file": "p2b-recipes.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "generates every enumerated feature family from the glyph inventory",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2094,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:33:52.954Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cfca05818c3f75bff3b2-62ffa9606466626758b4",
+          "file": "p2b-recipes.spec.ts",
+          "line": 20,
+          "column": 1
+        },
+        {
+          "title": "switches one entry between automatic and manual without touching the others",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3243,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:33:55.213Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cfca05818c3f75bff3b2-11862cd58db19ebafd33",
+          "file": "p2b-recipes.spec.ts",
+          "line": 123,
+          "column": 1
+        },
+        {
+          "title": "keeps a hand-written sibling while switching one figure style to automatic",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2424,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:33:58.623Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cfca05818c3f75bff3b2-e572b9a824cb4afe9701",
+          "file": "p2b-recipes.spec.ts",
+          "line": 206,
+          "column": 1
+        },
+        {
+          "title": "generates glyph classes from metadata and keeps a frozen class editable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1815,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:01.213Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cfca05818c3f75bff3b2-dada5991e48b0cb22819",
+          "file": "p2b-recipes.spec.ts",
+          "line": 268,
+          "column": 1
+        },
+        {
+          "title": "compiles feature tokens and target conditionals from the editor",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1727,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:03.190Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cfca05818c3f75bff3b2-f0808ab61046bdddb180",
+          "file": "p2b-recipes.spec.ts",
+          "line": 305,
+          "column": 1
+        },
+        {
+          "title": "previews class members from the source editor with Alt-click",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1810,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:05.106Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cfca05818c3f75bff3b2-5cbaad1ab4030bf688e2",
+          "file": "p2b-recipes.spec.ts",
+          "line": 341,
+          "column": 1
+        },
+        {
+          "title": "authors one rule per supported lookup type in the visual editor",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2274,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:07.081Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cfca05818c3f75bff3b2-79df0bf21eca0c324f6a",
+          "file": "p2b-recipes.spec.ts",
+          "line": 372,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "p2b-source.spec.ts",
+      "file": "p2b-source.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "retains invalid Unicode drafts through native save and separates validation from activation",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4386,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:09.544Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8b8d947828bdbb46a9f-206c7ef3229f8abe4ed8",
+          "file": "p2b-source.spec.ts",
+          "line": 26,
+          "column": 1
+        },
+        {
+          "title": "generates and freezes an opt-in recipe without changing active layout during draft edits",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2577,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:14.120Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8b8d947828bdbb46a9f-5b1b28eee4366a88c78a",
+          "file": "p2b-source.spec.ts",
+          "line": 125,
+          "column": 1
+        },
+        {
+          "title": "rejects stale source activation and ignores delayed diagnostics after glyph deletion",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1899,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:16.864Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8b8d947828bdbb46a9f-1732ac6f89e2bb40e165",
+          "file": "p2b-source.spec.ts",
+          "line": 172,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "p2cd-drafts.spec.ts",
+      "file": "p2cd-drafts.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "all new export formats reject unapplied feature drafts and problem scans preserve active layout",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3861,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:18.934Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8ad6bda33ef3cade753f-f6747f3d6399cf7dd06b",
+          "file": "p2cd-drafts.spec.ts",
+          "line": 19,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "p2cd-formats.spec.ts",
+      "file": "p2cd-formats.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "OTF (CFF) exports through the UI and reopens with Latin outlines, kerning and ligatures",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1882,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:22.973Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "14ae89184f9b1be5dc20-c50e866076c7d9ff94e9",
+          "file": "p2cd-formats.spec.ts",
+          "line": 32,
+          "column": 3
+        },
+        {
+          "title": "Glyphs exports through the UI and reopens with Latin outlines, kerning and ligatures",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1919,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:25.054Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "14ae89184f9b1be5dc20-78064355dca89cc8624c",
+          "file": "p2cd-formats.spec.ts",
+          "line": 32,
+          "column": 3
+        },
+        {
+          "title": "SFD exports through the UI and reopens with Latin outlines, kerning and ligatures",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1838,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:27.154Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "14ae89184f9b1be5dc20-f7f41385142f95fc6ac4",
+          "file": "p2cd-formats.spec.ts",
+          "line": 32,
+          "column": 3
+        },
+        {
+          "title": "Type 1 PFA discloses loss before export and reopens static outlines",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1845,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:29.175Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "14ae89184f9b1be5dc20-41874118002c119c7b82",
+          "file": "p2cd-formats.spec.ts",
+          "line": 113,
+          "column": 3
+        },
+        {
+          "title": "Type 1 PFB discloses loss before export and reopens static outlines",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1789,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:31.217Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "14ae89184f9b1be5dc20-7a31d77ea85732ecfcbf",
+          "file": "p2cd-formats.spec.ts",
+          "line": 113,
+          "column": 3
+        }
+      ]
+    },
+    {
+      "title": "p2cd-problems.spec.ts",
+      "file": "p2cd-problems.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Find problems is read-only, navigates to a glyph, and refreshes an invalidated report",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1911,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:33.183Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d1615d572bff1c587abb-039073073b56fdf0f794",
+          "file": "p2cd-problems.spec.ts",
+          "line": 6,
+          "column": 1
+        },
+        {
+          "title": "a delayed real scan cannot make an old glyph location actionable after deletion",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1656,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:35.289Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d1615d572bff1c587abb-30eda3cf89b38a12e416",
+          "file": "p2cd-problems.spec.ts",
+          "line": 45,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "panels.spec.ts",
+      "file": "panels.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "editor panels",
+          "file": "panels.spec.ts",
+          "line": 59,
+          "column": 6,
+          "specs": [
+            {
+              "title": "edits metrics, geometry and anchors, then undoes all of it",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3549,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:34:37.148Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "0d1486cdd5cd2b73f213-6871d3a4afc82d136635",
+              "file": "panels.spec.ts",
+              "line": 60,
+              "column": 3
+            },
+            {
+              "title": "switches glyph from the sidebar and layer from the layer list",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2586,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:34:40.995Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "0d1486cdd5cd2b73f213-f7bd253cfca75df443c7",
+              "file": "panels.spec.ts",
+              "line": 118,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "saved workspaces",
+          "file": "panels.spec.ts",
+          "line": 153,
+          "column": 6,
+          "specs": [
+            {
+              "title": "saves a named arrangement and restores it on demand",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2350,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-04T04:34:43.995Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "0d1486cdd5cd2b73f213-fed68f865e00dce9c4b2",
+              "file": "panels.spec.ts",
+              "line": 154,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "session-isolation.spec.ts",
+      "file": "session-isolation.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "owns dirty documents and preferences even after its page closes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 673,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:46.588Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0d2023c79b7f94739636-c237ddd53ad32943c753",
+          "file": "session-isolation.spec.ts",
+          "line": 7,
+          "column": 1
+        },
+        {
+          "title": "starts with a pristine font and preferences after the preceding test",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:47.459Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0d2023c79b7f94739636-951be1b4ce2f289fd5df",
+          "file": "session-isolation.spec.ts",
+          "line": 44,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "settings-reflow.spec.ts",
+      "file": "settings-reflow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "keeps preferences and shortcut settings usable at 200% reflow: en/light",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3051,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:47.664Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8cf44ed94cd2cea4c43c-8f4975151c01d7b84c6e",
+          "file": "settings-reflow.spec.ts",
+          "line": 66,
+          "column": 5
+        },
+        {
+          "title": "keeps preferences and shortcut settings usable at 200% reflow: en/dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3042,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:50.861Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8cf44ed94cd2cea4c43c-affd58e7b2277c4b6476",
+          "file": "settings-reflow.spec.ts",
+          "line": 66,
+          "column": 5
+        },
+        {
+          "title": "keeps preferences and shortcut settings usable at 200% reflow: zh-CN/light",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3166,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:54.065Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8cf44ed94cd2cea4c43c-8f722620edc29bb137fc",
+          "file": "settings-reflow.spec.ts",
+          "line": 66,
+          "column": 5
+        },
+        {
+          "title": "keeps preferences and shortcut settings usable at 200% reflow: zh-CN/dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3215,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:34:57.395Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8cf44ed94cd2cea4c43c-128df4f06285d0f63cb5",
+          "file": "settings-reflow.spec.ts",
+          "line": 66,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "spacing-shortcuts.spec.ts",
+      "file": "spacing-shortcuts.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "steps both sidebearings by ×100 or exactly one without consuming glyph navigation",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10494,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:35:00.766Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d352fc13b1c2609cd6b3-36ea8b83716b53e7ac0c",
+          "file": "spacing-shortcuts.spec.ts",
+          "line": 7,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "text.spec.ts",
+      "file": "text.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "shapes text and edits the third glyph in local coordinates",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4208,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:35:11.439Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0092ae0c6e12d43ef867-33a7e44559ad0fc7c480",
+          "file": "text.spec.ts",
+          "line": 130,
+          "column": 1
+        },
+        {
+          "title": "configures the waterfall as a list and as a range with a step",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3554,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:35:15.938Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0092ae0c6e12d43ef867-5e0549996c12f8c90be3",
+          "file": "text.spec.ts",
+          "line": 324,
+          "column": 1
+        },
+        {
+          "title": "adopts the built-in samples and steps them from the field and the canvas",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3014,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:35:19.725Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0092ae0c6e12d43ef867-f3a680646a81af1d0020",
+          "file": "text.spec.ts",
+          "line": 361,
+          "column": 1
+        },
+        {
+          "title": "exports a self-contained HTML proof with the compiled font embedded",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3621,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:35:22.987Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0092ae0c6e12d43ef867-266c5ea784d95a688862",
+          "file": "text.spec.ts",
+          "line": 412,
+          "column": 1
+        },
+        {
+          "title": "exports a vector PDF proof and a vertical outline sheet",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3331,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:35:26.867Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0092ae0c6e12d43ef867-7a56ea10d0f5fca47dde",
+          "file": "text.spec.ts",
+          "line": 480,
+          "column": 1
+        },
+        {
+          "title": "previews a named instance and a second master from the strip",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4241,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:35:30.469Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "0092ae0c6e12d43ef867-5dbe174a4f982c048d46",
+          "file": "text.spec.ts",
+          "line": 534,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "ux-input.spec.ts",
+      "file": "ux-input.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "keeps the laptop canvas usable and reaches every tool with the keyboard",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3131,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:35:34.967Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d87da7993eeb160a527c-4263ac9555cf7de09d80",
+          "file": "ux-input.spec.ts",
+          "line": 36,
+          "column": 1
+        },
+        {
+          "title": "customizes one tool binding and preserves hold release and menu focus",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2992,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:35:38.271Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d87da7993eeb160a527c-851f825a30a25941757a",
+          "file": "ux-input.spec.ts",
+          "line": 99,
+          "column": 1
+        },
+        {
+          "title": "rejects right-button edits and cancels interrupted outline drags without history",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3635,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:35:41.446Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d87da7993eeb160a527c-8d542ab5d450f7aafb88",
+          "file": "ux-input.spec.ts",
+          "line": 159,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "welcome-reflow.spec.ts",
+      "file": "welcome-reflow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "keeps welcome and palette readable at 200% reflow: en/light",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1406,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:35:45.300Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "45ac2e9d9e17afc72046-6889a6bd7922cccd5295",
+          "file": "welcome-reflow.spec.ts",
+          "line": 53,
+          "column": 5
+        },
+        {
+          "title": "keeps welcome and palette readable at 200% reflow: en/dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1516,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:35:46.855Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "45ac2e9d9e17afc72046-94169596fed90d81a75a",
+          "file": "welcome-reflow.spec.ts",
+          "line": 53,
+          "column": 5
+        },
+        {
+          "title": "keeps welcome and palette readable at 200% reflow: zh-CN/light",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1656,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:35:48.517Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "45ac2e9d9e17afc72046-14286f0d90d51654b791",
+          "file": "welcome-reflow.spec.ts",
+          "line": 53,
+          "column": 5
+        },
+        {
+          "title": "keeps welcome and palette readable at 200% reflow: zh-CN/dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1608,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:35:50.314Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "45ac2e9d9e17afc72046-7229b49249c1211657b8",
+          "file": "welcome-reflow.spec.ts",
+          "line": 53,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "workspace-reflow.spec.ts",
+      "file": "workspace-reflow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "keeps the workspace and font info reachable at 200%: en/light",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3545,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:35:52.073Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "7f559e4613bef48acff8-b5543fd2d26b24f43b76",
+          "file": "workspace-reflow.spec.ts",
+          "line": 18,
+          "column": 5
+        },
+        {
+          "title": "keeps the workspace and font info reachable at 200%: en/dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3313,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:35:55.768Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "7f559e4613bef48acff8-61cab5743a089bc902a4",
+          "file": "workspace-reflow.spec.ts",
+          "line": 18,
+          "column": 5
+        },
+        {
+          "title": "keeps the workspace and font info reachable at 200%: zh-CN/light",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3575,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:35:59.251Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "7f559e4613bef48acff8-81ebff82377e77c0c8fe",
+          "file": "workspace-reflow.spec.ts",
+          "line": 18,
+          "column": 5
+        },
+        {
+          "title": "keeps the workspace and font info reachable at 200%: zh-CN/dark",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3371,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-04T04:36:02.993Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "7f559e4613bef48acff8-b6c08350d055d17d1e12",
+          "file": "workspace-reflow.spec.ts",
+          "line": 18,
+          "column": 5
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-04T04:27:49.379Z",
+    "duration": 497227.227,
+    "expected": 124,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

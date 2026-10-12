@@ -1,0 +1,511 @@
+[WebServer] (node:828104) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `pnpm --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:828118) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 125 tests using 1 worker
+
+(node:828141) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+pointer-to-paint 300 points/200 frame-paced samples: median=1.000ms p95=1.300ms max=2.500ms over8=0 pointerDown=3.500ms rendererP95=0.800ms rendererMax=2.100ms
+pointer timing samples: [{"sample":1,"started":1396.3999999761581,"elapsed":1.7000000476837158,"renderer":0.7999999523162842,"paints":1,"frameGap":31.899999976158142},{"sample":2,"started":1414.7000000476837,"elapsed":1,"renderer":0.7000000476837158,"paints":1,"frameGap":18.300000071525574},{"sample":3,"started":1429.5,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":14.799999952316284},{"sample":4,"started":1444.5,"elapsed":1.2000000476837158,"renderer":0.7000000476837158,"paints":1,"frameGap":15},{"sample":5,"started":1513.3999999761581,"elapsed":0.8999999761581421,"renderer":0.5999999046325684,"paints":1,"frameGap":68.89999997615814},{"sample":6,"started":1530.6000000238419,"elapsed":1.100000023841858,"renderer":0.7000000476837158,"paints":1,"frameGap":17.200000047683716},{"sample":7,"started":1547.2000000476837,"elapsed":1.0999999046325684,"renderer":0.6999999284744263,"paints":1,"frameGap":16.600000023841858},{"sample":8,"started":1586.8999999761581,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":39.699999928474426},{"sample":9,"started":1621.2000000476837,"elapsed":1.399999976158142,"renderer":0.7000000476837158,"paints":1,"frameGap":34.300000071525574},{"sample":10,"started":1638.7000000476837,"elapsed":1.0999999046325684,"renderer":0.5999999046325684,"paints":1,"frameGap":17.5},{"sample":11,"started":1675.7999999523163,"elapsed":1,"renderer":0.5999999046325684,"paints":1,"frameGap":37.09999990463257},{"sample":12,"started":1732.2000000476837,"elapsed":0.8999999761581421,"renderer":0.5,"paints":1,"frameGap":56.40000009536743},{"sample":13,"started":1747.7999999523163,"elapsed":0.9000000953674316,"renderer":0.6000000238418579,"paints":1,"frameGap":15.599999904632568},{"sample":14,"started":1784.8999999761581,"elapsed":1,"renderer":0.6999999284744263,"paints":1,"frameGap":37.10000002384186},{"sample":15,"started":1837.3999999761581,"elapsed":0.8000000715255737,"renderer":0.5,"paints":1,"frameGap":52.5},{"sample":16,"started":1849.6000000238419,"elapsed":1,"renderer":0.5,"paints":1,"frameGap":12.200000047683716},{"sample":17,"started":1862.8999999761581,"elapsed":1,"renderer":0.5999999046325684,"paints":1,"frameGap":13.299999952316284},{"sample":18,"started":1914.1000000238419,"elapsed":1.1999999284744263,"renderer":0.5,"paints":1,"frameGap":51.200000047683716},{"sample":19,"started":1946.7999999523163,"elapsed":0.9000000953674316,"renderer":0.6000000238418579,"paints":1,"frameGap":32.699999928474426},{"sample":20,"started":1961.7999999523163,"elapsed":2.700000047683716,"renderer":0.5,"paints":1,"frameGap":15},{"sample":21,"started":1997.7999999523163,"elapsed":0.9000000953674316,"renderer":0.5,"paints":1,"frameGap":36},{"sample":22,"started":2062.399999976158,"elapsed":1,"renderer":0.6999999284744263,"paints":1,"frameGap":64.60000002384186},{"sample":23,"started":2089.399999976158,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":27},{"sample":24,"started":2171.399999976158,"elapsed":0.8999999761581421,"renderer":0.6999999284744263,"paints":1,"frameGap":82},{"sample":25,"started":2241.7999999523163,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":70.39999997615814},{"sample":26,"started":2255.600000023842,"elapsed":0.8999999761581421,"renderer":0.7000000476837158,"paints":1,"frameGap":13.800000071525574},{"sample":27,"started":2292.399999976158,"elapsed":0.8999999761581421,"renderer":0.5999999046325684,"paints":1,"frameGap":36.799999952316284},{"sample":28,"started":2342.7999999523163,"elapsed":1,"renderer":0.5999999046325684,"paints":1,"frameGap":50.39999997615814},{"sample":29,"started":2358.2999999523163,"elapsed":1.4000000953674316,"renderer":0.9000000953674316,"paints":1,"frameGap":15.5},{"sample":30,"started":2432.5,"elapsed":1,"renderer":0.5,"paints":1,"frameGap":74.20000004768372},{"sample":31,"started":2446.399999976158,"elapsed":1.2000000476837158,"renderer":0.8999999761581421,"paints":1,"frameGap":13.899999976158142},{"sample":32,"started":2482.2999999523163,"elapsed":1.100000023841858,"renderer":0.5,"paints":1,"frameGap":35.89999997615814},{"sample":33,"started":2497.100000023842,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":14.800000071525574},{"sample":34,"started":2549.7000000476837,"elapsed":0.8999999761581421,"renderer":0.7000000476837158,"paints":1,"frameGap":52.60000002384186},{"sample":35,"started":2563.899999976158,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":14.199999928474426},{"sample":36,"started":2620.7999999523163,"elapsed":1.5,"renderer":0.8000000715255737,"paints":1,"frameGap":56.89999997615814},{"sample":37,"started":2635.399999976158,"elapsed":1.100000023841858,"renderer":0.7000000476837158,"paints":1,"frameGap":14.600000023841858},{"sample":38,"started":2669.899999976158,"elapsed":0.8999999761581421,"renderer":0.5999999046325684,"paints":1,"frameGap":34.5},{"sample":39,"started":2707.5,"elapsed":1.2000000476837158,"renderer":0.6000000238418579,"paints":1,"frameGap":37.60000002384186},{"sample":40,"started":2740.2999999523163,"elapsed":0.9000000953674316,"renderer":0.6000000238418579,"paints":1,"frameGap":32.799999952316284},{"sample":41,"started":2754.5,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":14.200000047683716},{"sample":42,"started":2789.600000023842,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":35.10000002384186},{"sample":43,"started":2842.100000023842,"elapsed":0.8999999761581421,"renderer":0.5,"paints":1,"frameGap":52.5},{"sample":44,"started":2855.5,"elapsed":1.2000000476837158,"renderer":0.6000000238418579,"paints":1,"frameGap":13.399999976158142},{"sample":45,"started":2895.100000023842,"elapsed":1.100000023841858,"renderer":0.7000000476837158,"paints":1,"frameGap":39.60000002384186},{"sample":46,"started":2946.899999976158,"elapsed":1.100000023841858,"renderer":0.5,"paints":1,"frameGap":51.799999952316284},{"sample":47,"started":2960.600000023842,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":13.700000047683716},{"sample":48,"started":2975,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":14.399999976158142},{"sample":49,"started":3078,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":103},{"sample":50,"started":3105.600000023842,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":27.600000023841858},{"sample":51,"started":3131.7999999523163,"elapsed":1.100000023841858,"renderer":0.5,"paints":1,"frameGap":26.199999928474426},{"sample":52,"started":3209.5,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":77.70000004768372},{"sample":53,"started":3245.7999999523163,"elapsed":1.2000000476837158,"renderer":0.6000000238418579,"paints":1,"frameGap":36.299999952316284},{"sample":54,"started":3261.7000000476837,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":15.900000095367432},{"sample":55,"started":3296.600000023842,"elapsed":1,"renderer":0.7000000476837158,"paints":1,"frameGap":34.89999997615814},{"sample":56,"started":3349.7999999523163,"elapsed":1.2000000476837158,"renderer":0.7000000476837158,"paints":1,"frameGap":53.199999928474426},{"sample":57,"started":3364.5,"elapsed":1,"renderer":0.7000000476837158,"paints":1,"frameGap":14.700000047683716},{"sample":58,"started":3399.7000000476837,"elapsed":1.0999999046325684,"renderer":0.5999999046325684,"paints":1,"frameGap":35.200000047683716},{"sample":59,"started":3451.7999999523163,"elapsed":0.9000000953674316,"renderer":0.6000000238418579,"paints":1,"frameGap":52.09999990463257},{"sample":60,"started":3469.399999976158,"elapsed":1,"renderer":0.6999999284744263,"paints":1,"frameGap":17.600000023841858},{"sample":61,"started":3507.600000023842,"elapsed":2.5,"renderer":2.100000023841858,"paints":1,"frameGap":38.200000047683716},{"sample":62,"started":3571.2999999523163,"elapsed":0.9000000953674316,"renderer":0.5,"paints":1,"frameGap":63.699999928474426},{"sample":63,"started":3584.7000000476837,"elapsed":1.2999999523162842,"renderer":0.7000000476837158,"paints":1,"frameGap":13.400000095367432},{"sample":64,"started":3624.899999976158,"elapsed":1.2000000476837158,"renderer":0.7000000476837158,"paints":1,"frameGap":40.199999928474426},{"sample":65,"started":3691.2999999523163,"elapsed":1.2000000476837158,"renderer":0.6000000238418579,"paints":1,"frameGap":66.39999997615814},{"sample":66,"started":3706.100000023842,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":14.800000071525574},{"sample":67,"started":3739.2000000476837,"elapsed":1.0999999046325684,"renderer":0.5999999046325684,"paints":1,"frameGap":33.10000002384186},{"sample":68,"started":3790.399999976158,"elapsed":1.100000023841858,"renderer":0.7000000476837158,"paints":1,"frameGap":51.199999928474426},{"sample":69,"started":3807.600000023842,"elapsed":1.100000023841858,"renderer":0.7000000476837158,"paints":1,"frameGap":17.200000047683716},{"sample":70,"started":3840.899999976158,"elapsed":1.100000023841858,"renderer":0.5,"paints":1,"frameGap":33.299999952316284},{"sample":71,"started":3894,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":53.10000002384186},{"sample":72,"started":3908.2999999523163,"elapsed":1.600000023841858,"renderer":0.7999999523162842,"paints":1,"frameGap":14.299999952316284},{"sample":73,"started":3977,"elapsed":0.8999999761581421,"renderer":0.5,"paints":1,"frameGap":68.70000004768372},{"sample":74,"started":3989.7000000476837,"elapsed":2.299999952316284,"renderer":1.6999999284744263,"paints":1,"frameGap":12.700000047683716},{"sample":75,"started":4005.600000023842,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":15.899999976158142},{"sample":76,"started":4041.7999999523163,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":36.199999928474426},{"sample":77,"started":4161.100000023842,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":119.30000007152557},{"sample":78,"started":4185.700000047684,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":24.600000023841858},{"sample":79,"started":4240.200000047684,"elapsed":1.0999999046325684,"renderer":0.5999999046325684,"paints":1,"frameGap":54.5},{"sample":80,"started":4291.299999952316,"elapsed":0.9000000953674316,"renderer":0.6000000238418579,"paints":1,"frameGap":51.09999990463257},{"sample":81,"started":4305.600000023842,"elapsed":1.1999999284744263,"renderer":0.5999999046325684,"paints":1,"frameGap":14.300000071525574},{"sample":82,"started":4343.399999976158,"elapsed":1,"renderer":0.5,"paints":1,"frameGap":37.799999952316284},{"sample":83,"started":4396.200000047684,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":52.800000071525574},{"sample":84,"started":4409.5,"elapsed":1.2000000476837158,"renderer":0.6000000238418579,"paints":1,"frameGap":13.299999952316284},{"sample":85,"started":4465,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":55.5},{"sample":86,"started":4497.299999952316,"elapsed":1,"renderer":0.5999999046325684,"paints":1,"frameGap":32.299999952316284},{"sample":87,"started":4510.5,"elapsed":1.2999999523162842,"renderer":0.6999999284744263,"paints":1,"frameGap":13.200000047683716},{"sample":88,"started":4546.299999952316,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":35.799999952316284},{"sample":89,"started":4599.299999952316,"elapsed":0.9000000953674316,"renderer":0.6000000238418579,"paints":1,"frameGap":53},{"sample":90,"started":4613.100000023842,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":13.800000071525574},{"sample":91,"started":4651.5,"elapsed":1.100000023841858,"renderer":0.7000000476837158,"paints":1,"frameGap":38.39999997615814},{"sample":92,"started":4705.200000047684,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":53.700000047683716},{"sample":93,"started":4718.700000047684,"elapsed":1.0999999046325684,"renderer":0.5999999046325684,"paints":1,"frameGap":13.5},{"sample":94,"started":4753.700000047684,"elapsed":1.2999999523162842,"renderer":0.6000000238418579,"paints":1,"frameGap":35},{"sample":95,"started":4808,"elapsed":1,"renderer":0.7000000476837158,"paints":1,"frameGap":54.299999952316284},{"sample":96,"started":4822.700000047684,"elapsed":1.0999999046325684,"renderer":0.6000000238418579,"paints":1,"frameGap":14.700000047683716},{"sample":97,"started":4859.200000047684,"elapsed":1.0999999046325684,"renderer":0.5,"paints":1,"frameGap":36.5},{"sample":98,"started":4911.399999976158,"elapsed":1.2000000476837158,"renderer":0.6000000238418579,"paints":1,"frameGap":52.199999928474426},{"sample":99,"started":4925.5,"elapsed":1.100000023841858,"renderer":0.5,"paints":1,"frameGap":14.100000023841858},{"sample":100,"started":4999.899999976158,"elapsed":1,"renderer":0.5,"paints":1,"frameGap":74.39999997615814},{"sample":101,"started":5012.799999952316,"elapsed":1.2000000476837158,"renderer":0.5,"paints":1,"frameGap":12.899999976158142},{"sample":102,"started":5027.799999952316,"elapsed":1,"renderer":0.5999999046325684,"paints":1,"frameGap":15},{"sample":103,"started":5061.299999952316,"elapsed":1.2000000476837158,"renderer":0.6000000238418579,"paints":1,"frameGap":33.5},{"sample":104,"started":5180.299999952316,"elapsed":1.100000023841858,"renderer":0.6999999284744263,"paints":1,"frameGap":119},{"sample":105,"started":5208.399999976158,"elapsed":1.399999976158142,"renderer":0.6000000238418579,"paints":1,"frameGap":28.100000023841858},{"sample":106,"started":5264.799999952316,"elapsed":0.9000000953674316,"renderer":0.6000000238418579,"paints":1,"frameGap":56.39999997615814},{"sample":107,"started":5317.100000023842,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":52.300000071525574},{"sample":108,"started":5331,"elapsed":1.2000000476837158,"renderer":0.7000000476837158,"paints":1,"frameGap":13.899999976158142},{"sample":109,"started":5368.100000023842,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":37.10000002384186},{"sample":110,"started":5400.200000047684,"elapsed":1.0999999046325684,"renderer":0.5,"paints":1,"frameGap":32.10000002384186},{"sample":111,"started":5433.5,"elapsed":0.7999999523162842,"renderer":0.5,"paints":1,"frameGap":33.299999952316284},{"sample":112,"started":5446.700000047684,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":13.200000047683716},{"sample":113,"started":5501.100000023842,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":54.39999997615814},{"sample":114,"started":5533.399999976158,"elapsed":2,"renderer":1.5999999046325684,"paints":1,"frameGap":32.299999952316284},{"sample":115,"started":5548.899999976158,"elapsed":1.3000000715255737,"renderer":0.8000000715255737,"paints":1,"frameGap":15.5},{"sample":116,"started":5585.899999976158,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":37},{"sample":117,"started":5619.5,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":33.60000002384186},{"sample":118,"started":5633.5,"elapsed":1,"renderer":0.6999999284744263,"paints":1,"frameGap":14},{"sample":119,"started":5667.899999976158,"elapsed":2.200000047683716,"renderer":0.8000000715255737,"paints":1,"frameGap":34.39999997615814},{"sample":120,"started":5717.799999952316,"elapsed":0.9000000953674316,"renderer":0.7000000476837158,"paints":1,"frameGap":49.89999997615814},{"sample":121,"started":5732.399999976158,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":14.600000023841858},{"sample":122,"started":5766.299999952316,"elapsed":1,"renderer":0.5999999046325684,"paints":1,"frameGap":33.89999997615814},{"sample":123,"started":5817.700000047684,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":51.40000009536743},{"sample":124,"started":5831.200000047684,"elapsed":1.1999999284744263,"renderer":0.6000000238418579,"paints":1,"frameGap":13.5},{"sample":125,"started":5866.700000047684,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":35.5},{"sample":126,"started":5915.899999976158,"elapsed":0.8000000715255737,"renderer":0.6000000238418579,"paints":1,"frameGap":49.199999928474426},{"sample":127,"started":5930.100000023842,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":14.200000047683716},{"sample":128,"started":5965.299999952316,"elapsed":0.9000000953674316,"renderer":0.6000000238418579,"paints":1,"frameGap":35.199999928474426},{"sample":129,"started":6016.899999976158,"elapsed":1,"renderer":0.5,"paints":1,"frameGap":51.60000002384186},{"sample":130,"started":6031.200000047684,"elapsed":1,"renderer":0.7000000476837158,"paints":1,"frameGap":14.300000071525574},{"sample":131,"started":6066.299999952316,"elapsed":1.2000000476837158,"renderer":0.6000000238418579,"paints":1,"frameGap":35.09999990463257},{"sample":132,"started":6186.700000047684,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":120.40000009536743},{"sample":133,"started":6211.5,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":24.799999952316284},{"sample":134,"started":6268,"elapsed":1,"renderer":0.7000000476837158,"paints":1,"frameGap":56.5},{"sample":135,"started":6319.700000047684,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":51.700000047683716},{"sample":136,"started":6332.799999952316,"elapsed":1.100000023841858,"renderer":0.6999999284744263,"paints":1,"frameGap":13.099999904632568},{"sample":137,"started":6367.5,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":34.700000047683716},{"sample":138,"started":6417.899999976158,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":50.39999997615814},{"sample":139,"started":6433.100000023842,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":15.200000047683716},{"sample":140,"started":6469.100000023842,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":36},{"sample":141,"started":6520.200000047684,"elapsed":1.0999999046325684,"renderer":0.5,"paints":1,"frameGap":51.10000002384186},{"sample":142,"started":6534,"elapsed":1,"renderer":0.7000000476837158,"paints":1,"frameGap":13.799999952316284},{"sample":143,"started":6570.899999976158,"elapsed":0.8999999761581421,"renderer":0.5999999046325684,"paints":1,"frameGap":36.89999997615814},{"sample":144,"started":6621.399999976158,"elapsed":2.200000047683716,"renderer":1.7999999523162842,"paints":1,"frameGap":50.5},{"sample":145,"started":6635.700000047684,"elapsed":1,"renderer":0.5,"paints":1,"frameGap":14.300000071525574},{"sample":146,"started":6671.600000023842,"elapsed":0.7999999523162842,"renderer":0.6000000238418579,"paints":1,"frameGap":35.89999997615814},{"sample":147,"started":6722.5,"elapsed":0.7999999523162842,"renderer":0.6999999284744263,"paints":1,"frameGap":50.89999997615814},{"sample":148,"started":6735.299999952316,"elapsed":1,"renderer":0.5999999046325684,"paints":1,"frameGap":12.799999952316284},{"sample":149,"started":6771,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":35.700000047683716},{"sample":150,"started":6822.200000047684,"elapsed":1.0999999046325684,"renderer":0.5999999046325684,"paints":1,"frameGap":51.200000047683716},{"sample":151,"started":6836.100000023842,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":13.899999976158142},{"sample":152,"started":6872.299999952316,"elapsed":1,"renderer":0.5999999046325684,"paints":1,"frameGap":36.199999928474426},{"sample":153,"started":6924.700000047684,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":52.40000009536743},{"sample":154,"started":6939.5,"elapsed":0.7999999523162842,"renderer":0.5999999046325684,"paints":1,"frameGap":14.799999952316284},{"sample":155,"started":6974,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":34.5},{"sample":156,"started":7026.200000047684,"elapsed":0.7999999523162842,"renderer":0.5,"paints":1,"frameGap":52.200000047683716},{"sample":157,"started":7039.299999952316,"elapsed":1.2000000476837158,"renderer":0.5,"paints":1,"frameGap":13.099999904632568},{"sample":158,"started":7074.5,"elapsed":1,"renderer":0.7000000476837158,"paints":1,"frameGap":35.200000047683716},{"sample":159,"started":7188.399999976158,"elapsed":1.2000000476837158,"renderer":0.5,"paints":1,"frameGap":113.89999997615814},{"sample":160,"started":7214.799999952316,"elapsed":1,"renderer":0.5,"paints":1,"frameGap":26.399999976158142},{"sample":161,"started":7268.100000023842,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":53.300000071525574},{"sample":162,"started":7318.399999976158,"elapsed":0.8999999761581421,"renderer":0.5999999046325684,"paints":1,"frameGap":50.299999952316284},{"sample":163,"started":7330.799999952316,"elapsed":1,"renderer":0.5,"paints":1,"frameGap":12.399999976158142},{"sample":164,"started":7360.600000023842,"elapsed":1.1999999284744263,"renderer":0.6999999284744263,"paints":1,"frameGap":29.800000071525574},{"sample":165,"started":7408.5,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":47.89999997615814},{"sample":166,"started":7421.100000023842,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":12.600000023841858},{"sample":167,"started":7455.399999976158,"elapsed":0.8000000715255737,"renderer":0.6000000238418579,"paints":1,"frameGap":34.299999952316284},{"sample":168,"started":7505.299999952316,"elapsed":0.8000000715255737,"renderer":0.5,"paints":1,"frameGap":49.89999997615814},{"sample":169,"started":7519.899999976158,"elapsed":0.8000000715255737,"renderer":0.6000000238418579,"paints":1,"frameGap":14.600000023841858},{"sample":170,"started":7553.299999952316,"elapsed":0.8000000715255737,"renderer":0.5,"paints":1,"frameGap":33.39999997615814},{"sample":171,"started":7602.5,"elapsed":0.8999999761581421,"renderer":0.5,"paints":1,"frameGap":49.200000047683716},{"sample":172,"started":7615.600000023842,"elapsed":1.100000023841858,"renderer":0.5,"paints":1,"frameGap":13.100000023841858},{"sample":173,"started":7650.700000047684,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":35.10000002384186},{"sample":174,"started":7700.700000047684,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":50},{"sample":175,"started":7713.899999976158,"elapsed":1,"renderer":0.6999999284744263,"paints":1,"frameGap":13.199999928474426},{"sample":176,"started":7746.5,"elapsed":2.399999976158142,"renderer":1.7999999523162842,"paints":1,"frameGap":32.60000002384186},{"sample":177,"started":7798.600000023842,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":52.10000002384186},{"sample":178,"started":7813.200000047684,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":14.600000023841858},{"sample":179,"started":7849.799999952316,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":36.59999990463257},{"sample":180,"started":7901,"elapsed":0.7999999523162842,"renderer":0.5999999046325684,"paints":1,"frameGap":51.200000047683716},{"sample":181,"started":7914.799999952316,"elapsed":0.9000000953674316,"renderer":0.6000000238418579,"paints":1,"frameGap":13.799999952316284},{"sample":182,"started":7949.100000023842,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":34.300000071525574},{"sample":183,"started":7998.899999976158,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":49.799999952316284},{"sample":184,"started":8013.399999976158,"elapsed":1,"renderer":0.6999999284744263,"paints":1,"frameGap":14.5},{"sample":185,"started":8046.200000047684,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":32.800000071525574},{"sample":186,"started":8122.399999976158,"elapsed":1.100000023841858,"renderer":0.5,"paints":1,"frameGap":76.19999992847443},{"sample":187,"started":8148.200000047684,"elapsed":0.7999999523162842,"renderer":0.6000000238418579,"paints":1,"frameGap":25.800000071525574},{"sample":188,"started":8175,"elapsed":0.8999999761581421,"renderer":0.5999999046325684,"paints":1,"frameGap":26.799999952316284},{"sample":189,"started":8270.399999976158,"elapsed":1,"renderer":0.5,"paints":1,"frameGap":95.39999997615814},{"sample":190,"started":8301.899999976158,"elapsed":0.8000000715255737,"renderer":0.5,"paints":1,"frameGap":31.5},{"sample":191,"started":8317.100000023842,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":15.200000047683716},{"sample":192,"started":8349.5,"elapsed":0.8999999761581421,"renderer":0.5999999046325684,"paints":1,"frameGap":32.39999997615814},{"sample":193,"started":8381.299999952316,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":31.799999952316284},{"sample":194,"started":8394.899999976158,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":13.600000023841858},{"sample":195,"started":8427.700000047684,"elapsed":1.1999999284744263,"renderer":0.6000000238418579,"paints":1,"frameGap":32.800000071525574},{"sample":196,"started":8478,"elapsed":0.8999999761581421,"renderer":0.5,"paints":1,"frameGap":50.299999952316284},{"sample":197,"started":8492.399999976158,"elapsed":1,"renderer":0.6999999284744263,"paints":1,"frameGap":14.399999976158142},{"sample":198,"started":8563.600000023842,"elapsed":1,"renderer":0.5,"paints":1,"frameGap":71.20000004768372},{"sample":199,"started":8576.799999952316,"elapsed":0.9000000953674316,"renderer":0.6000000238418579,"paints":1,"frameGap":13.199999928474426},{"sample":200,"started":8590.299999952316,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":13.5},{"sample":201,"started":8662.799999952316,"elapsed":1.2000000476837158,"renderer":0.6999999284744263,"paints":1,"frameGap":72.5},{"sample":202,"started":8677.200000047684,"elapsed":0.8999999761581421,"renderer":0.5,"paints":1,"frameGap":14.400000095367432},{"sample":203,"started":8692,"elapsed":0.7999999523162842,"renderer":0.5,"paints":1,"frameGap":14.799999952316284},{"sample":204,"started":8742.399999976158,"elapsed":0.8999999761581421,"renderer":0.5999999046325684,"paints":1,"frameGap":50.39999997615814},{"sample":205,"started":8755.700000047684,"elapsed":1.1999999284744263,"renderer":0.5,"paints":1,"frameGap":13.300000071525574},{"sample":206,"started":8770.299999952316,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":14.599999904632568},{"sample":207,"started":8802.700000047684,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":32.40000009536743},{"sample":208,"started":8851.600000023842,"elapsed":0.7999999523162842,"renderer":0.6000000238418579,"paints":1,"frameGap":48.89999997615814},{"sample":209,"started":8864,"elapsed":1.2000000476837158,"renderer":0.6000000238418579,"paints":1,"frameGap":12.399999976158142},{"sample":210,"started":8898.399999976158,"elapsed":0.8999999761581421,"renderer":0.5999999046325684,"paints":1,"frameGap":34.39999997615814},{"sample":211,"started":8948,"elapsed":0.8999999761581421,"renderer":0.5,"paints":1,"frameGap":49.60000002384186},{"sample":212,"started":8960.200000047684,"elapsed":1.2999999523162842,"renderer":0.6999999284744263,"paints":1,"frameGap":12.200000047683716},{"sample":213,"started":9013.5,"elapsed":1,"renderer":0.6000000238418579,"paints":1,"frameGap":53.299999952316284},{"sample":214,"started":9042.899999976158,"elapsed":1,"renderer":0.5,"paints":1,"frameGap":29.399999976158142},{"sample":215,"started":9057.5,"elapsed":0.8999999761581421,"renderer":0.6000000238418579,"paints":1,"frameGap":14.600000023841858},{"sample":216,"started":9171.100000023842,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":113.60000002384186},{"sample":217,"started":9195.200000047684,"elapsed":1,"renderer":0.7000000476837158,"paints":1,"frameGap":24.100000023841858},{"sample":218,"started":9218.600000023842,"elapsed":0.8999999761581421,"renderer":0.5,"paints":1,"frameGap":23.399999976158142},{"sample":219,"started":9265.299999952316,"elapsed":1.100000023841858,"renderer":0.6000000238418579,"paints":1,"frameGap":46.699999928474426},{"sample":220,"started":9326.100000023842,"elapsed":1.100000023841858,"renderer":0.7000000476837158,"paints":1,"frameGap":60.800000071525574}]
+  ✓    1 e2e/acceptance-performance.spec.ts:35:1 › 300-point drag repaints synchronously within eight milliseconds (20.4s)
+  ✓    2 e2e/acceptance-workflows.spec.ts:28:3 › P1 browser acceptance workflows › opens DejaVu, pointer-edits A/B/C, exports and reopens (5.0s)
+[WebServer] 6:18:00 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+[WebServer] 6:18:05 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓    3 e2e/acceptance-workflows.spec.ts:105:3 › P1 browser acceptance workflows › creates A-C, pen-draws and widths them, exports and reopens (5.0s)
+[WebServer] 6:18:07 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓    4 e2e/app.spec.ts:4:1 › shows the workspace shell (948ms)
+[WebServer] 6:18:09 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓    5 e2e/app.spec.ts:29:3 › shell windows and tabs › pins the Overview and reaches every tab by its ordinal (2.3s)
+[WebServer] 6:18:12 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓    6 e2e/app.spec.ts:72:3 › shell windows and tabs › tears the Inspector into its own window and takes it back (2.5s)
+[WebServer] 6:18:16 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓    7 e2e/app.spec.ts:101:3 › a detached panel of an Edit tab › shows live glyph content and follows the glyph (3.7s)
+[WebServer] 6:18:19 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓    8 e2e/app.spec.ts:149:3 › command palette › searches commands, filters and glyph names in scoped sections (2.5s)
+  ✓    9 e2e/app.spec.ts:178:3 › document history › lists one entry per gesture with its scope and moves back through it (3.5s)
+[WebServer] 6:18:27 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   10 e2e/app.spec.ts:216:3 › preview strip › resizes with its divider and collapses from the keyboard (3.3s)
+[WebServer] 6:18:31 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   11 e2e/app.spec.ts:254:3 › reopening a saved file › gives each document exactly one pinned Overview (3.5s)
+  ✓   12 e2e/app.spec.ts:309:3 › a second document › opens with its own Overview selected, beside the first document (2.3s)
+  ✓   13 e2e/bitmap.spec.ts:82:1 › BDF pixels survive drawing, undo, redo, save, export and reopen (2.8s)
+[WebServer] 6:18:39 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   14 e2e/bitmap.spec.ts:119:1 › failed pixel writes retain the draft and block tab navigation until retry (2.1s)
+[WebServer] 6:18:42 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   15 e2e/bitmap.spec.ts:152:1 › cancels interrupted bitmap strokes without writing them on the next save (2.5s)
+[WebServer] 6:18:44 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   16 e2e/bitmap.spec.ts:197:1 › pans a large bitmap with middle drag and held Space without changing pixels (2.1s)
+  ✓   17 e2e/bitmap.spec.ts:270:1 › trace, regenerate, strike properties, tools and strike removal are undoable (2.8s)
+[WebServer] 6:18:50 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   18 e2e/bitmap.spec.ts:347:1 › focused metrics are saved, and ellipse, crop, invert and scaling retain pixels (2.7s)
+[WebServer] 6:18:54 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   19 e2e/bitmap.spec.ts:402:1 › pixel tools, the marquee copy and the persisted overlays (3.3s)
+[WebServer] 6:18:56 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   20 e2e/bitmap.spec.ts:473:1 › an exact grid preset sets the strike metrics and a custom size is corrected (2.1s)
+  ✓   21 e2e/bitmap.spec.ts:509:1 › properties are renamed and a sprite sheet round trips through its own layout (2.7s)
+[WebServer] 6:19:02 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   22 e2e/bitmap.spec.ts:574:1 › cross-strike copies, batch tracing and the single-glyph waterfall (2.5s)
+[WebServer] 6:19:04 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   23 e2e/bitmap.spec.ts:669:1 › positions upright bitmap proof pixels using vertical origins and advances (2.3s)
+[WebServer] 6:19:07 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   24 e2e/bitmap.spec.ts:753:1 › every pixel tool has a working single-key shortcut (2.2s)
+[WebServer] 6:19:11 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   25 e2e/cjk.spec.ts:45:3 › CJK font view › opens Source Han Sans and renders cells at the end of the grid (3.8s)
+[WebServer] 6:19:15 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   26 e2e/cjk.spec.ts:136:3 › vertical metrics, the canvas handles and the radical library › edits TSB and BSB, then drags the origin only in vertical mode (4.0s)
+[WebServer] 6:19:18 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   27 e2e/cjk.spec.ts:207:3 › vertical metrics, the canvas handles and the radical library › lists the pinned radicals even in a font with no ideographs (2.2s)
+[WebServer] 6:19:20 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   28 e2e/dialogs.spec.ts:51:3 › dialogs › creates a font with the Basic Latin starter set (1.7s)
+[WebServer] 6:19:23 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   29 e2e/dialogs.spec.ts:69:3 › dialogs › previews a recipe and adds exactly what it previewed (2.7s)
+[WebServer] 6:19:26 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   30 e2e/dialogs.spec.ts:105:3 › dialogs › round trips preferences through the kernel (3.3s)
+[WebServer] 6:19:28 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   31 e2e/dialogs.spec.ts:118:3 › dialogs › shows no recovery dialog on a clean launch (1.3s)
+[WebServer] 6:19:30 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   32 e2e/draw.spec.ts:44:3 › drawing › pen-draws a closed triangle into a new font (2.4s)
+[WebServer] 6:19:34 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   33 e2e/draw.spec.ts:155:3 › open corner › opens a reflex corner and reconnects it from the Path menu (3.0s)
+[WebServer] 6:19:36 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   34 e2e/export.spec.ts:57:3 › export › edits a glyph and exports a TTF the CLI can read back (2.4s)
+[WebServer] 6:19:40 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   35 e2e/export.spec.ts:139:3 › export profiles › saves a profile into the document and applies it after a reload (3.7s)
+[WebServer] 6:19:47 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   36 e2e/fontinfo-export-reflow.spec.ts:17:5 › reflows font information and exports a usable font: en/light (6.0s)
+[WebServer] 6:19:53 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   37 e2e/fontinfo-export-reflow.spec.ts:17:5 › reflows font information and exports a usable font: en/dark (6.3s)
+  ✓   38 e2e/fontinfo-export-reflow.spec.ts:17:5 › reflows font information and exports a usable font: zh-CN/light (6.4s)
+[WebServer] 6:20:06 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   39 e2e/fontinfo-export-reflow.spec.ts:17:5 › reflows font information and exports a usable font: zh-CN/dark (6.1s)
+  ✓   40 e2e/fontview.spec.ts:16:3 › font view › renders the glyph grid for the pre-opened font (1.5s)
+[WebServer] 6:20:10 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   41 e2e/fontview.spec.ts:32:3 › font view › searches by Unicode scalar (2.1s)
+  ✓   42 e2e/fontview.spec.ts:48:3 › font view › filters by a sidebar category and reports the count (2.4s)
+[WebServer] 6:20:15 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   43 e2e/fontview.spec.ts:72:3 › font view › reports the selection in the status bar (2.0s)
+  ✓   44 e2e/fontview.spec.ts:90:3 › font view list mode › sorts by every column, chooses columns and keeps the choice (4.7s)
+[WebServer] 6:20:24 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   45 e2e/fontview.spec.ts:158:3 › font view search and filters › reports an invalid regular expression under the field (3.0s)
+[WebServer] 6:20:26 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   46 e2e/fontview.spec.ts:197:3 › font view search and filters › badges a Unicode block with its coverage and filters by a badge (2.4s)
+[WebServer] 6:20:31 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   47 e2e/fontview.spec.ts:221:3 › font view editing workflows › labels a whole selection in one undo step (4.1s)
+[WebServer] 6:20:35 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   48 e2e/fontview.spec.ts:247:3 › font view editing workflows › generates a composite from the glyph database (3.6s)
+[WebServer] 6:20:38 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   49 e2e/fontview.spec.ts:290:3 › font view editing workflows › renames a selection with a regular expression (3.3s)
+[WebServer] 6:20:41 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   50 e2e/glyphview.spec.ts:11:3 › glyph view › opens a glyph tab from the grid and draws its metrics (2.3s)
+[WebServer] 6:20:44 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   51 e2e/glyphview.spec.ts:38:3 › glyph view › steps to the next glyph in the current order (2.9s)
+[WebServer] 6:20:46 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   52 e2e/glyphview.spec.ts:63:3 › glyph view › shows the font info sections and searches across them (1.7s)
+[WebServer] 6:20:49 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   53 e2e/glyphview.spec.ts:93:3 › editor tools, guides and snapping › hands the Pixel tool over to the strike editor (2.3s)
+[WebServer] 6:20:53 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   54 e2e/glyphview.spec.ts:119:3 › editor tools, guides and snapping › anchors a guide to a sidebearing and stores the rebased offset (3.7s)
+  ✓   55 e2e/glyphview.spec.ts:195:3 › editor tools, guides and snapping › gives one snap target its own reach in the preferences (4.1s)
+  ✓   56 e2e/hints.spec.ts:92:1 › flex hints and dot sections are edited, applied and refused when invalid (11.2s)
+[WebServer] 6:21:17 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   57 e2e/hints.spec.ts:171:1 › the export dialog discloses whether the external TrueType hinter is installed (7.0s)
+  ✓   58 e2e/menu-reflow.spec.ts:25:5 › keeps Help and its popup inside the zoomed menu bar: en/light (5.4s)
+  ✓   59 e2e/menu-reflow.spec.ts:25:5 › keeps Help and its popup inside the zoomed menu bar: en/dark (5.2s)
+[WebServer] 6:21:34 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   60 e2e/menu-reflow.spec.ts:25:5 › keeps Help and its popup inside the zoomed menu bar: zh-CN/light (5.0s)
+[WebServer] 6:21:39 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   61 e2e/menu-reflow.spec.ts:25:5 › keeps Help and its popup inside the zoomed menu bar: zh-CN/dark (5.2s)
+[WebServer] 6:21:47 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   62 e2e/outline-audit.spec.ts:18:1 › Fix All resolves combined defects with one undo and preserves path locks (8.0s)
+  ✘   63 e2e/p2a-kerning.spec.ts:61:1 › authors groups and pair exceptions, coalesces shortcuts, saves and exports matching layout (9.4s)
+(node:845281) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] 6:22:03 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   64 e2e/p2a-kerning.spec.ts:127:1 › creates, assigns, renames and explicitly removes an in-use shared group (4.3s)
+[WebServer] 6:22:06 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   65 e2e/p2a-kerning.spec.ts:216:1 › settles a delayed pair edit before master handover and ignores its late selection response (3.1s)
+[WebServer] 6:22:10 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   66 e2e/p2a-kerning.spec.ts:258:1 › keeps a failed delayed edit out of stored kerning and allows recovery (4.0s)
+[WebServer] 6:22:15 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   67 e2e/p2a-kerning.spec.ts:283:1 › saves a pending edit and keeps document handover isolated (5.3s)
+[WebServer] 6:22:23 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   68 e2e/p2a-kerning.spec.ts:345:1 › keeps imported spacing previewable and explains unavailable authoring (7.0s)
+[WebServer] 6:22:33 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   69 e2e/p2a-kerning.spec.ts:394:1 › edits metrics formulas with inline validation and synchronises every master (9.8s)
+[WebServer] 6:22:38 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   70 e2e/p2a-kerning.spec.ts:442:1 › measures and edits the run through the spacing matrix, beam and cut-off (5.0s)
+[WebServer] 6:22:42 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   71 e2e/p2a-kerning.spec.ts:550:1 › marks kerning exceptions and maintains the table across masters (4.1s)
+[WebServer] 6:22:47 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   72 e2e/p2a-kerning.spec.ts:605:1 › locks every spacing control while kerning with spacing locked (4.7s)
+[WebServer] 6:22:52 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   73 e2e/p2a-kerning.spec.ts:629:1 › edits vertical kerning and vertical metrics in the vertical direction (4.1s)
+[WebServer] 6:22:55 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   74 e2e/p2b-barriers.spec.ts:18:1 › persists pending drafts before master and tab handovers (3.5s)
+[WebServer] 6:22:59 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   75 e2e/p2b-barriers.spec.ts:63:1 › blocks a tab handover on a failed draft write and keeps the text available for retry (3.0s)
+[WebServer] 6:23:01 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   76 e2e/p2b-barriers.spec.ts:97:1 › finishes composition before Ctrl+S persists the complete invalid draft (2.5s)
+[WebServer] 6:23:06 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   77 e2e/p2b-imported.spec.ts:85:1 › renders original rules as glyphs, converts source, exports and restores the native original baseline (4.8s)
+[WebServer] 6:23:11 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   78 e2e/p2b-imported.spec.ts:159:1 › proves a kerning lift before exposing pair controls and preserves zero exceptions through revert undo (5.0s)
+[WebServer] 6:23:14 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   79 e2e/p2b-imported.spec.ts:259:1 › offers editable source while leaving non-equivalent model kerning source-owned (2.6s)
+[WebServer] 6:23:16 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   80 e2e/p2b-imported.spec.ts:285:1 › reports an unsupported competing table without changing the imported document (2.0s)
+[WebServer] 6:23:19 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   81 e2e/p2b-recipes.spec.ts:20:1 › generates every enumerated feature family from the glyph inventory (2.2s)
+[WebServer] 6:23:23 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   82 e2e/p2b-recipes.spec.ts:123:1 › switches one entry between automatic and manual without touching the others (3.7s)
+[WebServer] 6:23:26 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   83 e2e/p2b-recipes.spec.ts:206:1 › keeps a hand-written sibling while switching one figure style to automatic (2.8s)
+[WebServer] 6:23:28 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   84 e2e/p2b-recipes.spec.ts:268:1 › generates glyph classes from metadata and keeps a frozen class editable (2.1s)
+[WebServer] 6:23:30 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   85 e2e/p2b-recipes.spec.ts:305:1 › compiles feature tokens and target conditionals from the editor (2.0s)
+[WebServer] 6:23:32 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   86 e2e/p2b-recipes.spec.ts:341:1 › previews class members from the source editor with Alt-click (2.1s)
+[WebServer] 6:23:35 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   87 e2e/p2b-recipes.spec.ts:372:1 › authors one rule per supported lookup type in the visual editor (2.5s)
+[WebServer] 6:23:40 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   88 e2e/p2b-source.spec.ts:26:1 › retains invalid Unicode drafts through native save and separates validation from activation (5.1s)
+[WebServer] 6:23:43 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   89 e2e/p2b-source.spec.ts:125:1 › generates and freezes an opt-in recipe without changing active layout during draft edits (2.9s)
+[WebServer] 6:23:46 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   90 e2e/p2b-source.spec.ts:172:1 › rejects stale source activation and ignores delayed diagnostics after glyph deletion (2.3s)
+[WebServer] 6:23:50 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   91 e2e/p2cd-drafts.spec.ts:19:1 › all new export formats reject unapplied feature drafts and problem scans preserve active layout (4.2s)
+[WebServer] 6:23:53 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   92 e2e/p2cd-formats.spec.ts:32:3 › OTF (CFF) exports through the UI and reopens with Latin outlines, kerning and ligatures (2.3s)
+  ✓   93 e2e/p2cd-formats.spec.ts:32:3 › Glyphs exports through the UI and reopens with Latin outlines, kerning and ligatures (2.3s)
+[WebServer] 6:23:58 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   94 e2e/p2cd-formats.spec.ts:32:3 › SFD exports through the UI and reopens with Latin outlines, kerning and ligatures (2.3s)
+[WebServer] 6:24:00 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   95 e2e/p2cd-formats.spec.ts:113:3 › Type 1 PFA discloses loss before export and reopens static outlines (2.2s)
+[WebServer] 6:24:02 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   96 e2e/p2cd-formats.spec.ts:113:3 › Type 1 PFB discloses loss before export and reopens static outlines (2.0s)
+[WebServer] 6:24:05 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   97 e2e/p2cd-problems.spec.ts:6:1 › Find problems is read-only, navigates to a glyph, and refreshes an invalidated report (2.5s)
+[WebServer] 6:24:07 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   98 e2e/p2cd-problems.spec.ts:45:1 › a delayed real scan cannot make an old glyph location actionable after deletion (1.8s)
+[WebServer] 6:24:12 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓   99 e2e/panels.spec.ts:60:3 › editor panels › edits metrics, geometry and anchors, then undoes all of it (4.1s)
+[WebServer] 6:24:15 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  100 e2e/panels.spec.ts:118:3 › editor panels › switches glyph from the sidebar and layer from the layer list (3.0s)
+  ✓  101 e2e/panels.spec.ts:154:3 › saved workspaces › saves a named arrangement and restores it on demand (2.8s)
+[WebServer] 6:24:19 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  102 e2e/session-isolation.spec.ts:7:1 › owns dirty documents and preferences even after its page closes (946ms)
+  ✓  103 e2e/session-isolation.spec.ts:44:1 › starts with a pristine font and preferences after the preceding test (11ms)
+[WebServer] 6:24:23 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  104 e2e/settings-reflow.spec.ts:66:5 › keeps preferences and shortcut settings usable at 200% reflow: en/light (3.5s)
+[WebServer] 6:24:28 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  105 e2e/settings-reflow.spec.ts:66:5 › keeps preferences and shortcut settings usable at 200% reflow: en/dark (4.9s)
+[WebServer] 6:24:33 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  106 e2e/settings-reflow.spec.ts:66:5 › keeps preferences and shortcut settings usable at 200% reflow: zh-CN/light (4.0s)
+[WebServer] 6:24:36 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  107 e2e/settings-reflow.spec.ts:66:5 › keeps preferences and shortcut settings usable at 200% reflow: zh-CN/dark (3.6s)
+[WebServer] 6:24:48 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  108 e2e/spacing-shortcuts.spec.ts:7:1 › steps both sidebearings by ×100 or exactly one without consuming glyph navigation (11.1s)
+  ✓  109 e2e/text.spec.ts:130:1 › shapes text and edits the third glyph in local coordinates (5.1s)
+[WebServer] 6:24:57 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  110 e2e/text.spec.ts:324:1 › configures the waterfall as a list and as a range with a step (3.3s)
+[WebServer] 6:25:01 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  111 e2e/text.spec.ts:361:1 › adopts the built-in samples and steps them from the field and the canvas (3.9s)
+[WebServer] 6:25:06 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  112 e2e/text.spec.ts:412:1 › exports a self-contained HTML proof with the compiled font embedded (4.5s)
+  ✓  113 e2e/text.spec.ts:480:1 › exports a vector PDF proof and a vertical outline sheet (7.8s)
+  ✓  114 e2e/text.spec.ts:534:1 › previews a named instance and a second master from the strip (6.8s)
+[WebServer] 6:25:24 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  115 e2e/ux-input.spec.ts:36:1 › keeps the laptop canvas usable and reaches every tool with the keyboard (2.6s)
+[WebServer] 6:25:27 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  116 e2e/ux-input.spec.ts:99:1 › customizes one tool binding and preserves hold release and menu focus (2.9s)
+[WebServer] 6:25:30 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  117 e2e/ux-input.spec.ts:159:1 › rejects right-button edits and cancels interrupted outline drags without history (3.4s)
+[WebServer] 6:25:32 AM [vite] ws proxy error:
+[WebServer] Error: This socket has been ended by the other party
+[WebServer]     at genericNodeError (node:internal/errors:986:15)
+[WebServer]     at wrappedFn (node:internal/errors:540:14)
+[WebServer]     at Socket.writeAfterFIN [as write] (node:net:795:14)
+[WebServer]     at Socket.ondata (node:internal/streams/readable:1021:24)
+[WebServer]     at Socket.emit (node:events:514:28)
+[WebServer]     at addChunk (node:internal/streams/readable:568:12)
+[WebServer]     at readableAddChunkPushByteMode (node:internal/streams/readable:519:3)
+[WebServer]     at Readable.push (node:internal/streams/readable:399:5)
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:189:23)
+  ✓  118 e2e/welcome-reflow.spec.ts:53:5 › keeps welcome and palette readable at 200% reflow: en/light (1.6s)
+[WebServer] 6:25:34 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  119 e2e/welcome-reflow.spec.ts:53:5 › keeps welcome and palette readable at 200% reflow: en/dark (1.6s)
+[WebServer] 6:25:39 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  120 e2e/welcome-reflow.spec.ts:53:5 › keeps welcome and palette readable at 200% reflow: zh-CN/light (4.7s)
+[WebServer] 6:25:43 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  121 e2e/welcome-reflow.spec.ts:53:5 › keeps welcome and palette readable at 200% reflow: zh-CN/dark (4.4s)
+[WebServer] 6:25:54 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  122 e2e/workspace-reflow.spec.ts:18:5 › keeps the workspace and font info reachable at 200%: en/light (10.4s)
+[WebServer] 6:26:04 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  123 e2e/workspace-reflow.spec.ts:18:5 › keeps the workspace and font info reachable at 200%: en/dark (9.7s)
+[WebServer] 6:26:14 AM [vite] ws proxy error:
+[WebServer] Error: read ECONNRESET
+[WebServer]     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+  ✓  124 e2e/workspace-reflow.spec.ts:18:5 › keeps the workspace and font info reachable at 200%: zh-CN/light (9.5s)
+  ✓  125 e2e/workspace-reflow.spec.ts:18:5 › keeps the workspace and font info reachable at 200%: zh-CN/dark (9.4s)
+
+
+  1) e2e/p2a-kerning.spec.ts:61:1 › authors groups and pair exceptions, coalesces shortcuts, saves and exports matching layout 
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByRole('combobox', { name: 'Kerning gap', exact: true })
+    Expected: "0"
+    Received: ""
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" with timeout 5000ms
+      - waiting for getByRole('combobox', { name: 'Kerning gap', exact: true })
+        14 × locator resolved to <select aria-label="Kerning gap">…</select>
+           - unexpected value ""
+
+
+       at p2aSupport.ts:244
+
+      242 |   await expect(
+      243 |     page.getByRole('combobox', { name: 'Kerning gap', exact: true }),
+    > 244 |   ).toHaveValue('0')
+          |     ^
+      245 |   await expect(page.locator('[data-text-mode]')).toHaveAttribute(
+      246 |     'data-text-mode',
+      247 |     'text',
+        at selectFirstGap (/home/chen/githubprojects/fontpixel/fontcarver/app/e2e/p2aSupport.ts:244:5)
+        at /home/chen/githubprojects/fontpixel/fontcarver/app/e2e/p2a-kerning.spec.ts:67:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../.scratch/latest-full-e2e/results/p2a-kerning-authors-groups-de40d-and-exports-matching-layout/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: page-before-cleanup (text/plain) ────────────────────────────────────────────────
+    - text: FontCarver
+    - menubar "Application menu":
+      - menuitem "File"
+      - menuitem "Edit"
+      - menuitem "Glyph"
+      - menuitem "Path"
+      - menuitem "Layer"
+      - menuitem "Font"
+      - menuitem "Features"
+      - menuitem "Bitmap"
+      - menuitem "View"
+      - menuitem "Window"
+      - menuitem "Help"
+    - tablist "Open tabs"...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../.scratch/latest-full-e2e/results/p2a-kerning-authors-groups-de40d-and-exports-matching-layout/error-context.md
+
+  1 failed
+    e2e/p2a-kerning.spec.ts:61:1 › authors groups and pair exceptions, coalesces shortcuts, saves and exports matching layout 
+  124 passed (8.8m)

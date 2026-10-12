@@ -1,0 +1,18 @@
+[WebServer] (node:889477) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `pnpm --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:889491) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 3 tests using 1 worker
+
+(node:889514) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 e2e/draw.spec.ts:155:3 › open corner › opens a reflex corner and reconnects it from the Path menu (9.7s)
+(node:889944) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 e2e/draw.spec.ts:155:3 › open corner › opens a reflex corner and reconnects it from the Path menu (7.3s)
+(node:890344) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  3 e2e/draw.spec.ts:155:3 › open corner › opens a reflex corner and reconnects it from the Path menu (14.1s)
+
+  3 passed (36.6s)

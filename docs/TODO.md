@@ -1,9 +1,9 @@
 # Remaining work
 
-Updated: 2026-10-02. Branch: `p5-color-authoring`; local work only, no push,
+Updated: 2026-10-04. Branch: `p5-color-authoring`; local work only, no push,
 `main` merge, signing or publication.
 
-**All authorized local closing work and the one additional small welcome task
+**All authorized local closing work and the selected UI follow-up tasks
 are complete. Publication and macOS/Windows validation remain outside this batch.**
 
 ## Latest completed follow-up
@@ -38,6 +38,19 @@ are complete. Publication and macOS/Windows validation remain outside this batch
       categories, list scrolling, conflict messages, footer controls and keyboard
       focus. Four new browser regressions pass
       ([acceptance](p5ux-settings-zoom-acceptance.md)).
+- [x] Expand the 200% check to the glyph editor, sidebar/Inspector, Font Info,
+      metadata editing and Export. Preserve canvas width with temporary narrow
+      panels; wrap Font Info navigation; contain status and node-info scrolling;
+      preserve keyboard focus after metadata Apply. English/Chinese × light/dark
+      pass actual 200% checks at two window widths, including editing, undo and
+      real TTF export. All **23 targeted browser cases** and **2,917 frontend
+      tests** pass ([acceptance](p5ux-workspace-zoom-acceptance.md)).
+- [x] Run the [latest complete E2E suite](p5ux-latest-e2e-acceptance.md), including
+      all recent zoom changes: **125/125 pass**, zero failures, skips or retries
+      in the final run. Correct two gesture-test setup/synchronization gaps found
+      in earlier complete runs. The 300-point drag gate passes at **1.4 ms P95 /
+      2.6 ms maximum**, below the unchanged 8 ms limit; the real 65,535-glyph CJK
+      case also runs and passes.
 
 The result of this batch belongs in [integrated acceptance](p5f-w3-integration-acceptance.md).
 The [112-row gate](p5-feature-audit.md) retains **110 Complete / 2 Partial**;
@@ -69,8 +82,9 @@ this verifies graphical-process startup, not interactive desktop workflows.
 ## Remaining delivery gates
 
 The verified `f6f6cf9` Linux candidates remain the previous integrated package
-checkpoint. The subsequent palette, menu and preferences reflow fixes are accepted in source;
-future installer builds must include them and repeat package verification.
+checkpoint. The subsequent palette, menu, preferences and workspace reflow fixes
+are accepted in source; future installer builds must include them and repeat
+package verification.
 
 | Item                    | Remaining work                                                                                                                                                                                                                   |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -116,7 +130,7 @@ Choose and scope each item separately before implementation; the current
 bounded acceptances below remain unchanged.
 The user subsequently authorized and completed the welcome-screen discovery,
 illustrated guide, bounded 200% welcome/palette check, menu repair and
-preferences/shortcut-settings check above. The broader
+preferences/shortcut-settings and workspace/Font Info/Export checks above. The broader
 first-use research and other items remain future work. Stop after the current
 task as requested; no further item has been selected for implementation.
 
@@ -164,5 +178,5 @@ per API/UI port pair, a prebuilt CLI (no implicit Cargo compilation), a 1440×10
 viewport and disabled browser sandbox in this environment. The external Source
 Han Sans font remains outside the repository. Current full-suite outcomes,
 including any timing outlier, are recorded in the integrated and latest
-[E2E acceptance](p5ux-browser-acceptance.md); the earlier 100-test milestone has
+[E2E acceptance](p5ux-latest-e2e-acceptance.md); the earlier 100-test milestone has
 its own [historical report](p5f-w3-e2e-acceptance.md).
