@@ -70,11 +70,14 @@ export async function openFont(page: Page, path: string) {
     .poll(
       async () => {
         const documents = await api<DocSummary[]>(page, 'session.list', {})
-        // A path the shell already has open is focused rather than opened
-        // twice, so an existing document for it counts as the result.
-        opened =
-          documents.find((doc) => !before.has(doc.doc) && doc.path === path) ??
-          documents.find((doc) => doc.path === path)
+        // Opening a path that is already open opens a second document (see
+        // sessionStore.open), so only a document new since the click counts.
+        // Falling back to an existing one for the path raced the open: a poll
+        // that ran first returned the old document while the shell showed the
+        // new one.
+        opened = documents.find(
+          (doc) => !before.has(doc.doc) && doc.path === path,
+        )
         return opened?.doc
       },
       { timeout: 20_000 },

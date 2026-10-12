@@ -1,18 +1,20 @@
 name: CI
 
+# A feature branch is checked through its pull request, and main on every push.
+# Running both for one commit cancelled one of them, and GitHub lists a
+# cancelled run as a failed check on the pull request. A branch without a pull
+# request can still be checked from the Actions tab.
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
-# A branch push and its pull request are the same commit, so one of the two runs
-# is redundant. The key has to be the branch either way: a pull request's
-# `github.ref` is `refs/pull/N/merge`, which would never collide with the push's
-# `refs/heads/<branch>`, so `head_ref` (set only for pull requests) comes first
-# and a push contributes its bare `ref_name`, the same branch name.
-# A run on the default branch is always allowed to finish.
+# A newer commit on the same pull request supersedes the older run; a run on
+# main is always allowed to finish.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}

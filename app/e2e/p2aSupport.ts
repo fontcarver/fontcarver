@@ -209,6 +209,16 @@ export async function expectPreviewAdvance(page: Page, expected: number) {
 /** Hit the visible gap marker through the canvas's actual pointer handler. */
 export async function selectFirstGap(page: Page, unitsPerEm: number) {
   const canvas = page.getByRole('img', { name: /^Glyph / })
+  const picker = page.getByRole('combobox', {
+    name: 'Kerning gap',
+    exact: true,
+  })
+  // Shaping reveals the kerning controls and can shrink the canvas after its
+  // initial fit. Frame the finished layout before aiming at the gap handle,
+  // just as the beam-drag workflow does; never click through the preview strip.
+  await expect(picker).toBeEnabled()
+  await page.getByRole('button', { name: 'Fit Glyph in Window' }).click()
+  await canvas.scrollIntoViewIfNeeded()
   const point = await canvas.evaluate((element, upem) => {
     const globals = globalThis as unknown as {
       __fwTextRun?: {
@@ -231,17 +241,26 @@ export async function selectFirstGap(page: Page, unitsPerEm: number) {
       x: run.glyphs[1].x - run.activeOrigin.x,
       y: -upem * 0.12 - run.activeOrigin.y,
     })
-    const bounds = (
-      element as unknown as {
-        getBoundingClientRect: () => { left: number; top: number }
+    const target = element as unknown as {
+      getBoundingClientRect: () => { left: number; top: number }
+      ownerDocument: {
+        elementFromPoint: (x: number, y: number) => unknown
       }
-    ).getBoundingClientRect()
-    return { x: bounds.left + at.x, y: bounds.top + at.y }
+    }
+    const bounds = target.getBoundingClientRect()
+    const x = bounds.left + at.x
+    const y = bounds.top + at.y
+    return {
+      x,
+      y,
+      hitsCanvas: target.ownerDocument.elementFromPoint(x, y) === element,
+    }
   }, unitsPerEm)
+  expect(point.hitsCanvas, 'the gap handle is reachable on the canvas').toBe(
+    true,
+  )
   await page.mouse.click(point.x, point.y)
-  await expect(
-    page.getByRole('combobox', { name: 'Kerning gap', exact: true }),
-  ).toHaveValue('0')
+  await expect(picker).toHaveValue('0')
   await expect(page.locator('[data-text-mode]')).toHaveAttribute(
     'data-text-mode',
     'text',
