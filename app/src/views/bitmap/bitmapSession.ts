@@ -10,7 +10,10 @@ export interface BitmapDraft {
   resolved: BitmapGlyph | null
   generation: number
   dirty: boolean
+  /** Loading or writing; drives the status line, never input. */
   busy: boolean
+  /** A write is in flight; the only state, besides suspension, that refuses input. */
+  saving: boolean
   suspended: boolean
   error: unknown
 }
@@ -22,6 +25,7 @@ export class BitmapSession {
     generation: 0,
     dirty: false,
     busy: false,
+    saving: false,
     suspended: false,
     error: null,
   }
@@ -99,7 +103,7 @@ export class BitmapSession {
   }
   /** Preserve earlier edits and errors separately from one cancellable drag. */
   beginGesture(accept?: () => void): void {
-    if (!this.state.busy && !this.state.suspended) {
+    if (!this.pending && !this.state.suspended) {
       this.gestureSource = this.state
       this.acceptGesture = accept
     }
@@ -135,7 +139,7 @@ export class BitmapSession {
     accept?.()
     if (!this.state.dirty || !this.state.value) return Promise.resolve()
     const value = this.state.value
-    this.update({ busy: true })
+    this.update({ busy: true, saving: true })
     const pending = call('bitmap.apply', {
       doc: this.target.doc,
       expected_generation: this.state.generation,
@@ -165,7 +169,7 @@ export class BitmapSession {
       })
       .finally(() => {
         this.pending = undefined
-        this.update({ busy: false })
+        this.update({ busy: false, saving: false })
       })
     this.pending = pending
     return pending

@@ -112,7 +112,9 @@ export function BitmapEditor({
     strike.depth === 32
       ? (parseInt(color.slice(1), 16) * 256 + shade) >>> 0
       : Math.round((shade * ((1 << strike.depth) - 1)) / 255)
-  const disabled = state.busy || state.suspended
+  // A refresh follows every write; disabling on it would make the browser drop
+  // a click that lands meanwhile, before any handler could run.
+  const disabled = state.saving || state.suspended
   const whole = value
     ? { x: 0, y: 0, width: value.bitmap.width, height: value.bitmap.height }
     : undefined

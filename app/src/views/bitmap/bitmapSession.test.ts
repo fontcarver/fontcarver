@@ -241,6 +241,50 @@ describe('bitmap document handover', () => {
     await session.flush()
     expect(applied).toHaveLength(1)
   })
+  it('reports saving only while a write is in flight, not during a refresh', async () => {
+    // The editor disables its tools on `saving`. A refresh follows every write;
+    // if it disabled the buttons too, a click landing then would reach a
+    // disabled button and the browser would drop it before any handler ran.
+    let releaseLoad!: () => void
+    let releaseWrite!: () => void
+    const loadHeld = new Promise<void>((resolve) => {
+      releaseLoad = resolve
+    })
+    const writeHeld = new Promise<void>((resolve) => {
+      releaseWrite = resolve
+    })
+    let hold = false
+    setTransport(
+      createMockTransport({
+        'bitmap.glyph': async () => {
+          if (hold) await loadHeld
+          return { generation: 1, value: empty, resolved: empty }
+        },
+        'bitmap.apply': async () => {
+          await writeHeld
+          return noChange()
+        },
+      }),
+    )
+    const session = new BitmapSession(
+      { doc: 214, glyph: 'A', ppem: 16, depth: 1 },
+      empty,
+    )
+    await session.load()
+    hold = true
+    const refresh = session.load()
+    expect(session.snapshot().busy).toBe(true)
+    expect(session.snapshot().saving).toBe(false)
+    releaseLoad()
+    await refresh
+    hold = false
+    session.edit({ ...empty, advance: 99 })
+    const write = session.flush()
+    expect(session.snapshot().saving).toBe(true)
+    releaseWrite()
+    await write
+    expect(session.snapshot().saving).toBe(false)
+  })
   it('joins simultaneous flushes and rejects local input while saving', async () => {
     let release!: () => void
     const held = new Promise<void>((resolve) => {
