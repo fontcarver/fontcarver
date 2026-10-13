@@ -31,7 +31,7 @@ LOADER_CACHE = 'usr/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache'
 KEEP = {'svg'}
 
 _DT_NULL, _DT_NEEDED, _DT_STRTAB = 0, 1, 5
-_PT_DYNAMIC = 2
+_PT_LOAD, _PT_DYNAMIC = 1, 2
 
 
 def needed(path: Path) -> list[str]:
@@ -44,19 +44,28 @@ def needed(path: Path) -> list[str]:
         return []  # 64-bit little-endian only; anything else is not ours to read.
     phoff, = struct.unpack_from('<Q', data, 32)
     phentsize, phnum = struct.unpack_from('<HH', data, 54)
-    dynamic = None
+    dynamic, loads = None, []
     for index in range(phnum):
         base = phoff + index * phentsize
         if base + 56 > len(data):
             return []
         p_type, = struct.unpack_from('<I', data, base)
-        if p_type == _PT_DYNAMIC:
-            p_offset, _p_vaddr, _p_paddr, p_filesz = struct.unpack_from('<QQQQ', data, base + 8)
+        p_offset, p_vaddr, _p_paddr, p_filesz = struct.unpack_from('<QQQQ', data, base + 8)
+        if p_type == _PT_DYNAMIC and dynamic is None:
             dynamic = (p_offset, p_filesz)
-            break
+        elif p_type == _PT_LOAD:
+            loads.append((p_vaddr, p_offset, p_filesz))
     if not dynamic:
         return []
     offset, size = dynamic
+
+    def file_offset(address: int) -> int | None:
+        # DT_STRTAB holds a virtual address. Only the segment that maps it can
+        # say where it sits in the file, and in a real library the two differ.
+        for vaddr, voffset, filesz in loads:
+            if vaddr <= address < vaddr + filesz:
+                return voffset + (address - vaddr)
+        return None
     entries, cursor = [], offset
     while cursor + 16 <= min(offset + size, len(data)):
         tag, value = struct.unpack_from('<qQ', data, cursor)
@@ -64,7 +73,14 @@ def needed(path: Path) -> list[str]:
         if tag == _DT_NULL:
             break
         entries.append((tag, value))
-    strtab = next((value for tag, value in entries if tag == _DT_STRTAB), None)
+    address = next((value for tag, value in entries if tag == _DT_STRTAB), None)
+    if address is None:
+        return []
+    strtab = file_offset(address)
+    if strtab is None:
+        # No PT_LOAD covers it; the only remaining reading is a direct offset,
+        # which is what a fixture built by hand produces.
+        strtab = address if not loads else None
     if strtab is None:
         return []
     names = []

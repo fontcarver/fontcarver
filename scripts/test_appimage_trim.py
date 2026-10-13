@@ -1,6 +1,7 @@
 """Remove image loaders the editor never uses, and only what followed them in."""
 
 from pathlib import Path
+import shutil
 import struct
 import sys
 import tempfile
@@ -37,12 +38,69 @@ def elf(path: Path, needed: list[str]) -> None:
     path.write_bytes(bytes(header) + phdr + entries + strtab)
 
 
+def loaded_elf(path: Path, needed: list[str], bias: int = 0x200000) -> None:
+    """An ELF whose addresses differ from its file offsets, as a real one's do.
+
+    DT_STRTAB holds a virtual address. Reading it as a file offset works only
+    while the two happen to coincide, which is what a hand-built fixture does
+    by accident and a linker does not.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    strtab = b'\0' + b'\0'.join(name.encode() for name in needed) + b'\0'
+    offsets, cursor = [], 1
+    for name in needed:
+        offsets.append(cursor)
+        cursor += len(name) + 1
+    header_size, phentsize, phnum = 64, 56, 2
+    dyn_off = header_size + phentsize * phnum
+    entries = b''.join(struct.pack('<qQ', 1, offset) for offset in offsets)
+    str_off = dyn_off + len(entries) + 32
+    entries += struct.pack('<qQ', 5, str_off + bias)   # DT_STRTAB as an address
+    entries += struct.pack('<qQ', 0, 0)
+    pad = b'\0' * (str_off - dyn_off - len(entries))
+    header = bytearray(b'\x7fELF\x02\x01\x01' + bytes(9))
+    header += struct.pack('<HHIQQQIHHHHHH', 3, 62, 1, 0, header_size, 0, 0,
+                          header_size, phentsize, phnum, 0, 0, 0)
+    body = entries + pad + strtab
+    load = struct.pack('<IIQQQQQQ', 1, 4, 0, bias, bias,
+                       dyn_off + len(body), dyn_off + len(body), 0x1000)
+    dynamic = struct.pack('<IIQQQQQQ', 2, 4, dyn_off, dyn_off + bias, dyn_off + bias,
+                          len(entries), len(entries), 8)
+    path.write_bytes(bytes(header) + load + dynamic + body)
+
+
 class NeededTests(unittest.TestCase):
+    def test_a_string_table_address_is_translated_to_a_file_offset(self):
+        with tempfile.TemporaryDirectory() as work:
+            path = Path(work) / 'real.so'
+            loaded_elf(path, ['libtiff.so.6', 'libjpeg.so.8'])
+            self.assertEqual(trim.needed(path), ['libtiff.so.6', 'libjpeg.so.8'])
+
     def test_dt_needed_names_are_read_without_executing_the_file(self):
         with tempfile.TemporaryDirectory() as work:
             path = Path(work) / 'lib.so'
             elf(path, ['libtiff.so.6', 'libc.so.6'])
             self.assertEqual(trim.needed(path), ['libtiff.so.6', 'libc.so.6'])
+
+    @unittest.skipUnless(shutil.which('objdump'), 'needs binutils')
+    def test_real_system_libraries_agree_with_objdump(self):
+        # The fixtures above are built by hand. This is the check that the
+        # reader works on libraries a linker produced.
+        import subprocess
+        checked = 0
+        for name in ('libtiff.so.6', 'libgtk-3.so.0', 'libcairo.so.2', 'libglib-2.0.so.0'):
+            path = Path('/usr/lib/x86_64-linux-gnu') / name
+            if not path.exists():
+                continue
+            listing = subprocess.run(['objdump', '-p', str(path)],
+                                     capture_output=True, text=True).stdout
+            expected = {line.split()[1] for line in listing.splitlines()
+                        if line.strip().startswith('NEEDED')}
+            with self.subTest(library=name):
+                self.assertEqual(set(trim.needed(path)), expected)
+            checked += 1
+        if not checked:
+            self.skipTest('no reference libraries on this host')
 
     def test_a_file_that_is_not_an_elf_has_no_dependencies(self):
         with tempfile.TemporaryDirectory() as work:
