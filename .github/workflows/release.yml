@@ -451,7 +451,10 @@ jobs:
             --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
       # Created as a draft and published only once every asset is uploaded, so a
-      # failed upload leaves an unfinished release nobody can download.
+      # failed upload leaves an unfinished release nobody can download. Each
+      # step is written to survive a re-run of this job over the draft a
+      # previous attempt left behind: the assets are rebuilt from the same
+      # artifacts, so replacing them changes nothing a reader could have seen.
       - name: Publish the tag's release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -461,10 +464,16 @@ jobs:
           if python3 -c "import json,sys; sys.exit(0 if json.load(open('.scratch/publish/staged.json'))['prerelease'] else 1)"; then
             prerelease="--prerelease"
           fi
-          gh release create "$GITHUB_REF_NAME" --draft --verify-tag $prerelease \
-            --title "FontCarver ${GITHUB_REF_NAME#v}" \
-            --notes-file .scratch/publish/release-notes.md
-          gh release upload "$GITHUB_REF_NAME" .scratch/publish/assets/*
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --draft $prerelease \
+              --title "FontCarver ${GITHUB_REF_NAME#v}" \
+              --notes-file .scratch/publish/release-notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" --draft --verify-tag $prerelease \
+              --title "FontCarver ${GITHUB_REF_NAME#v}" \
+              --notes-file .scratch/publish/release-notes.md
+          fi
+          gh release upload "$GITHUB_REF_NAME" .scratch/publish/assets/* --clobber
           gh release edit "$GITHUB_REF_NAME" --draft=false
           gh release view "$GITHUB_REF_NAME" --json isDraft,isPrerelease,assets \
             --jq '{draft: .isDraft, prerelease: .isPrerelease, assets: [.assets[].name]}'
