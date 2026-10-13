@@ -61,7 +61,7 @@ jobs:
           import os
 
           rows = [
-              {"os": "ubuntu-24.04", "label": "linux-x86_64", "bundles": "deb,rpm"},
+              {"os": "ubuntu-24.04", "label": "linux-x86_64", "bundles": "deb,rpm,appimage"},
               {"os": "macos-14", "label": "macos-arm64", "bundles": "dmg"},
               {"os": "windows-2022", "label": "windows-x86_64", "bundles": "nsis"},
           ]

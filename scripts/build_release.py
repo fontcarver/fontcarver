@@ -68,20 +68,16 @@ def build_portable_zip(executable: Path, licenses: Path, version: str, output_di
 
 def native_bundles(system: str) -> list[str]:
     """Return only the installer formats maintained for a native platform."""
-    bundles = {"Linux": ["deb", "rpm"], "Darwin": ["dmg"], "Windows": ["nsis"]}
+    bundles = {"Linux": ["deb", "rpm", "appimage"], "Darwin": ["dmg"],
+               "Windows": ["nsis"]}
     if system not in bundles:
         raise ValueError(f"unsupported release build platform: {system}")
     return bundles[system]
 
 
 def allowed_bundles(system: str) -> list[str]:
-    """Formats --bundles accepts: the native defaults plus opt-in ones.
-
-    AppImage is opt-in rather than default. Its payload gate blocks every image
-    until notices are written at build time, and one blocked artifact fails the
-    whole run, so a default AppImage would stop deb and rpm from shipping too.
-    """
-    return native_bundles(system) + (["appimage"] if system == "Linux" else [])
+    """Formats --bundles accepts. Every maintained format is now a default."""
+    return native_bundles(system)
 
 
 def validate_versions(cargo: str, frontend: str, tauri: str) -> str:

@@ -206,11 +206,16 @@ their manifest together with the source revision and native acceptance results.
 
 ## Rootless Linux package-manager verification
 
-**AppImage is not built by default.** Its payload gate blocks every image until
-the bundled-library notices are written at build time, and one blocked artifact
-fails the whole Linux run, so building it by default would stop deb and rpm from
-shipping as well. `--bundles appimage` still builds it for work on that gate; see
-[the license census](appimage-bundled-license-census.md) for what remains.
+**AppImage is built with deb and rpm.** Its payload gate passes: the build
+trims the gdk-pixbuf loaders the editor cannot use, writes the bundled-library
+notice into the payload, and every remaining library is either permissively
+licensed or carries a recorded determination. The determinations are in
+[AppImage bundled-library determinations](appimage-license-determinations.md)
+and hold for one build host's package set, so re-run the `AppImage license
+census` workflow and re-read them for each release.
+
+The image has no install verification of its own, because an AppImage is not
+installed: CI runs it headless to prove the bundled runtime is complete.
 
 **The Windows portable zip is checked by CI, except for one case.** The Windows
 job extracts it, starts it from the extracted folder before the NSIS step runs,
