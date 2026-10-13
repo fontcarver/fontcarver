@@ -1,5 +1,13 @@
 # AppImage bundled-library license census — 2026-10-08
 
+> **Superseded for release purposes.** This census was taken on a developer
+> workstation. The same classifier run on a hosted `ubuntu-24.04` runner, which
+> is the host a published image would be built on, is in
+> [AppImage bundled-library determinations](appimage-license-determinations.md):
+> 110 packages, and **no AGPL row at all** — the runner has no libwmf. Keep this
+> document as the record of how the measurement was first made and why the
+> figure moves with the build host.
+
 What the gate in `scripts/appimage_policy.py` actually reports for a stock Tauri
 AppImage payload, and what remains to be decided. This is the measurement the
 spec's §10 called unscopeable; it is larger than the "~30 packages" figure that was
