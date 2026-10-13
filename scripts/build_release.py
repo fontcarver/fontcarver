@@ -228,9 +228,12 @@ def main() -> int:
                 raise ValueError(f"expected one AppImage, found {len(images)}")
             trimmed = appimage_trim.repack(images[0])
             print(f"AppImage trimmed: dropped {len(trimmed['removed_loaders'])} image "
-                  f"loaders and {len(trimmed['removed_libraries'])} libraries")
+                  f"loaders, {len(trimmed['removed_libraries'])} libraries and "
+                  f"{len(trimmed['removed_links'])} links")
             for name in trimmed["removed_libraries"]:
                 print(f"  - {name}")
+            for name, holders in trimmed["retained"].items():
+                print(f"  kept {name}, still needed by: {', '.join(holders)}")
         if "nsis" in bundles:
             build_portable_zip(target / "release/fontcarver-desktop.exe", scratch / "licenses",
                                version, bundle_dir / "portable")

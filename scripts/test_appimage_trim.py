@@ -99,6 +99,33 @@ class TrimTests(unittest.TestCase):
             self.assertFalse(
                 (root / 'usr/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache').exists())
 
+    def test_symlinks_left_pointing_at_a_removed_loader_go_with_it(self):
+        # usr/lib carries a symlink per loader. Removing the loader and leaving
+        # the link behind produced a payload the inspector refused outright:
+        # "unsafe or broken symlink".
+        with tempfile.TemporaryDirectory() as work:
+            root = self.payload(Path(work))
+            link = root / 'usr/lib/libpixbufloader-tiff.so'
+            link.symlink_to('gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader-tiff.so')
+            kept = root / 'usr/lib/libpixbufloader-svg.so'
+            kept.symlink_to('gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader-svg.so')
+            report = trim.trim(root, keep={'svg'})
+            self.assertFalse(link.is_symlink())
+            self.assertTrue(kept.is_symlink())
+            self.assertIn('usr/lib/libpixbufloader-tiff.so', report['removed_links'])
+
+    def test_the_report_names_what_still_holds_a_candidate_library_open(self):
+        # When a library the removed loaders used survives, the report has to
+        # say which surviving file still needs it, or the next question has no
+        # evidence behind it.
+        with tempfile.TemporaryDirectory() as work:
+            root = self.payload(Path(work))
+            elf(root / 'usr/lib/gtk-3.0/3.0.0/immodules/im-x.so', ['libtiff.so.6'])
+            report = trim.trim(root, keep={'svg'})
+            self.assertTrue((root / 'usr/lib/libtiff.so.6').exists())
+            self.assertIn('libtiff.so.6', report['retained'])
+            self.assertIn('im-x.so', ' '.join(report['retained']['libtiff.so.6']))
+
     def test_a_payload_without_a_loader_directory_is_refused(self):
         with tempfile.TemporaryDirectory() as work:
             root = Path(work) / 'squashfs-root'

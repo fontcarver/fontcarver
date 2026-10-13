@@ -125,11 +125,27 @@ def trim(root: Path, keep: set[str] | None = None) -> dict:
                and not (path.parent == flat and '.so' in path.name)]
     # Only what the removed loaders brought in: a library nothing names at all
     # is unreachable both before and after, and stays.
-    lost = _reachable(doomed, libraries) - _reachable(entries, libraries)
+    from_doomed = _reachable(doomed, libraries)
+    kept_reach = _reachable(entries, libraries)
+    lost = from_doomed - kept_reach
+    # A library the removed loaders used that something else still needs. Name
+    # what holds it open, so the next question starts from evidence.
+    retained: dict[str, list[str]] = {}
+    for library in sorted(from_doomed & kept_reach):
+        holders = sorted(str(entry.relative_to(root)) for entry in entries
+                         if library.name in needed(entry))
+        retained[library.name] = holders or ['(reached indirectly)']
     for path in doomed:
         path.unlink()
     for path in sorted(lost):
         path.unlink(missing_ok=True)
+    # usr/lib carries a symlink per loader. One left pointing at a file this
+    # trim removed makes the whole payload unreadable to the inspector.
+    removed_links = []
+    for path in sorted(root.rglob('*')):
+        if path.is_symlink() and not path.exists():
+            removed_links.append(str(path.relative_to(root)))
+            path.unlink()
     cache = root / LOADER_CACHE
     # The cache names the files that were here. gdk-pixbuf rebuilds it, and a
     # stale one would point at loaders this payload no longer carries.
@@ -138,7 +154,8 @@ def trim(root: Path, keep: set[str] | None = None) -> dict:
     return {'kept_loaders': sorted(keep),
             'removed_loaders': sorted(path.name for path in doomed),
             'removed_libraries': sorted(str(path.relative_to(root)) for path in lost),
-            'removed_bytes': 0}
+            'removed_links': removed_links,
+            'retained': retained}
 
 
 def _run(argv: list[str], cwd: Path | None = None) -> bytes:
