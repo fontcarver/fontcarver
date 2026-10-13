@@ -1,16 +1,29 @@
 # Installing FontCarver
 
-FontCarver is in development. Native build artifacts are for evaluation; a
-successful package build alone does not establish desktop workflow acceptance.
-See [release verification](releasing.md) for the build process and the remaining
-platform checks. These instructions do not announce a published release.
+FontCarver is in development. Pre-release packages are published on the
+[releases page](https://github.com/fontcarver/fontcarver/releases); they are for
+evaluation, and a package that installs and starts does not establish desktop
+workflow acceptance. See [release verification](releasing.md) for what each
+release was and was not checked against.
+
+**Nothing published so far is signed.** There is no Developer ID signature, no
+Apple notarization and no Authenticode signature, so macOS and Windows both stop
+these downloads on first launch; each section below says how to proceed if you
+decide to trust the download. Verify it first.
 
 ## Choose a package
 
-Use an artifact built for your operating system and CPU architecture. Keep the
-package verification report with the download and compare its SHA-256 digest
-before installation. A matching digest detects an incomplete or changed download;
-it does not establish the identity of an unsigned publisher.
+Use the package built for your operating system and CPU architecture. Every
+release carries `SHA256SUMS.txt` and a `release-manifest-<platform>.json` beside
+the installers; download the installers you want into one directory with the
+checksum file and run:
+
+```sh
+sha256sum -c SHA256SUMS.txt --ignore-missing
+```
+
+A matching digest detects an incomplete or changed download; it does not
+establish the identity of an unsigned publisher.
 
 | System              | Package     | Installation                                         |
 | ------------------- | ----------- | ---------------------------------------------------- |
@@ -109,15 +122,25 @@ Applications. Eject the disk image and launch the installed app from Application
 Quit the app before replacing an existing copy. To uninstall, quit FontCarver and
 move that application bundle to the Trash; saved fonts and preferences are kept.
 
-The current build workflow does not provide a verified Developer ID signature
-or Apple notarization. macOS may block downloaded evaluation artifacts. Signed
-distribution and installation acceptance are pending; do not treat an unsigned
-CI artifact as an accepted public release.
+The application is not signed with a Developer ID and is not notarized, so
+macOS refuses it on first launch: double-clicking reports that the application
+cannot be opened. Having verified the download's digest, open it once from the
+Finder with Control-click → **Open**, which offers the same dialog with an
+*Open* button, or clear the quarantine flag yourself:
+
+```sh
+xattr -d com.apple.quarantine /Applications/FontCarver.app
+```
+
+Later launches behave normally. Signed distribution and installation acceptance
+are still pending; an unsigned build is not an accepted public release.
 
 ## Windows
 
 Run the `-setup.exe` installer and follow it; it offers English and Simplified
-Chinese. Launch
+Chinese. The installer is not signed, so SmartScreen shows *Windows protected
+your PC*: having verified the download's digest, choose **More info** →
+**Run anyway**. Launch
 FontCarver from its Start menu entry. Microsoft Edge WebView2 is required; the
 installer’s configured bootstrapper may need network access if the runtime is
 missing. See [Tauri's Windows runtime installation options](https://v2.tauri.app/distribute/windows-installer/#webview2-installation-options).
@@ -144,7 +167,7 @@ and where to download it, instead of opening a blank window.
 
 To uninstall, quit FontCarver and use **Settings → Apps → Installed apps →
 FontCarver → Uninstall**. Authenticode signing and native Windows installation
-acceptance are pending; the current CI package is an unsigned evaluation artifact.
+acceptance are pending; the published package is an unsigned evaluation artifact.
 
 ## Your documents and preferences
 

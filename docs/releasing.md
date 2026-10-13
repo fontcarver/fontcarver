@@ -1,11 +1,13 @@
 # Building and verifying native packages
 
 FontCarver packages the Tauri desktop application as Linux deb/rpm/AppImage,
-macOS dmg and a Windows NSIS installer. The native package workflow builds reviewable
-artifacts; it does not create a GitHub Release, publish downloads, sign Windows
-packages, or notarize macOS applications. A green workflow records package
-inspection and scripted installation/removal checks; interactive native editing
-workflows require separate acceptance.
+macOS dmg and a Windows NSIS installer. A dispatch or a pull request builds
+reviewable artifacts and stops there; pushing a `v*` tag builds the same
+artifacts and publishes them as that tag's GitHub Release. Nothing in this
+repository signs Windows packages or notarizes macOS applications: no signing
+credentials exist here, and a published build is unsigned. A green workflow
+records package inspection and scripted installation/removal checks;
+interactive native editing workflows require separate acceptance.
 
 For package installation and removal, see [install.md](install.md).
 
@@ -269,11 +271,11 @@ affecting the package operations; nonzero package-manager exits fail the check.
 pull requests that change its listed packaging inputs. Its current native matrix
 is:
 
-| Runner              | Architecture | Artifacts                                   |
-| ------------------- | ------------ | ------------------------------------------- |
-| Ubuntu 24.04        | x86_64       | deb and rpm                                 |
-| macOS 14            | arm64        | dmg                                         |
-| Windows Server 2022 | x86_64       | one NSIS installer, English and Chinese     |
+| Runner              | Architecture | Artifacts                                       |
+| ------------------- | ------------ | ----------------------------------------------- |
+| Ubuntu 24.04        | x86_64       | deb, rpm and AppImage                           |
+| macOS 14            | arm64        | dmg                                             |
+| Windows Server 2022 | x86_64       | one NSIS installer (English and Chinese) and a portable zip |
 
 A manual dispatch takes an optional `bundles` input: any comma-separated subset
 of `deb`, `rpm`, `appimage`, `dmg` and `nsis`, case-insensitive, empty for every
@@ -284,18 +286,56 @@ Each runner also restores the Cargo registry (sources only — a release `target
 directory is far too large to cache), so a transient crates.io failure does not
 decide a three-platform packaging run.
 
-The workflow builds and inspects packages, then defines installation/removal
-checks on disposable runners: APT install/remove on Linux, a DMG app copy into a
-temporary Applications directory on macOS, and MSI install/uninstall on Windows.
-These steps do not automate native application input. A workflow definition is
-not evidence that it has run; retain the actual run result before claiming any
-platform passed.
+The workflow builds and inspects packages, then runs installation/removal
+checks on disposable runners: APT install/remove and an rpm install inside a
+Fedora container on Linux, a DMG app copy into a temporary Applications
+directory on macOS, and silent NSIS install/uninstall plus a portable run on
+Windows. These steps do not automate native application input. A workflow
+definition is not evidence that it has run; retain the actual run result before
+claiming any platform passed.
 
 Successful runs upload installers and `release-manifest.json` as
 `FontCarver-<platform>-<commit>` artifacts for 14 days. Failure reports/logs use
 separate artifacts retained for seven days. Download evidence before it expires.
-The workflow has read-only repository permissions and no tag or release
-publishing step.
+The workflow is read-only except for the publish job described below, which a
+tag is the only way to reach.
+
+## Publishing a tagged release
+
+Push an annotated `v<version>` tag whose version is the one the working tree
+declares, and the same workflow publishes that tag:
+
+```sh
+git tag -a v0.1.0-alpha.1 -m "FontCarver 0.1.0-alpha.1"
+git push origin v0.1.0-alpha.1
+```
+
+The `plan` job rejects a tag that does not match `Cargo.toml`,
+`app/package.json` and `tauri.conf.json` before any build starts
+(`python3 scripts/publish_release.py --tag v... --check-tag` runs the same check
+locally). Each platform then builds and verifies its own packages exactly as it
+does for a pull request, and `publish` — the only job with write permission, and
+unreachable from a pull request — collects them with
+[`scripts/publish_release.py`](../scripts/publish_release.py).
+
+Staging refuses to publish unless every platform is present, each one reported
+`ok`, each was built from the commit the tag points at, and every installer
+still hashes to the digest its own inspection recorded. It then writes
+`SHA256SUMS.txt`, copies each platform's manifest in unchanged as
+`release-manifest-<platform>.json`, and generates notes that state what was
+verified, what was not, and that the builds are unsigned. The release is created
+as a draft, the assets are uploaded, and only then is the draft published, so a
+failed upload never leaves a half-populated release. A pre-release version
+(`0.1.0-alpha.1`) is marked as a pre-release on GitHub.
+
+The job republishes nothing: deleting and re-pushing a tag to replace published
+assets is not supported, because the digests already quoted to users would
+change. Publish a new version instead.
+
+Before tagging, re-run the `AppImage license census` workflow and re-read
+[the determinations](appimage-license-determinations.md): they hold for one
+build host's package set, and a runner image that gained a library changes what
+the payload contains.
 
 ## Acceptance before distribution
 
@@ -362,9 +402,11 @@ Windows require native execution evidence; Linux checks do not accept them.
 
 ## Signing and publication prerequisites
 
-Signing and publication are separate work from producing review artifacts.
-The current workflow has no release-writing permissions or signing credentials.
-Do not add signing credentials to a pull-request job.
+Publication is automated for a tag, as described above. Signing is not, and is
+separate work: the repository holds no signing credentials, so every published
+build is unsigned and both macOS and Windows warn about it. Do not add signing
+credentials to a pull-request job; the publish job is the only one a credential
+belongs in, and only a tag can reach it.
 
 For macOS distribution, configure a Developer ID Application certificate,
 `APPLE_SIGNING_IDENTITY`, and notarization credentials on a trusted macOS runner.
@@ -378,7 +420,8 @@ executable. Configure these only in the trusted release environment; no publishe
 identity or certificate is supplied by this repository. Tauri exposes the
 certificate and custom signing options in its [Windows configuration](https://v2.tauri.app/reference/config/#windowsconfig).
 
-Before publishing, resolve outstanding platform acceptance, signing and bundled
-dependency/license review, and prepare accurate release notes with known
-limitations. A manual CI build alone does not authorize publication or establish
-that these prerequisites have been met.
+A pre-release may ship before that checklist is complete — that is what a
+pre-release is — but only if its notes say plainly which parts were not done,
+which the generated notes do. A final release may not: resolve outstanding
+platform acceptance, signing and bundled dependency/license review first. A
+green CI build establishes none of those by itself, whatever it publishes.

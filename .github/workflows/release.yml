@@ -1,8 +1,16 @@
 name: Native installer candidates
 
-# Builds remain reviewable artifacts. This workflow neither creates releases nor
-# signs/notarizes public distributions. Native install checks use disposable CI.
+# A dispatch or a pull request builds reviewable artifacts and stops there. A
+# push of a v* tag builds the same artifacts and publishes them as that tag's
+# GitHub Release. Nothing here signs or notarizes anything: no signing
+# credentials exist, and a pull-request job must never be given any.
+# Native install checks use disposable CI.
 on:
+  push:
+    # The publish job refuses a tag that does not name this tree's version, and
+    # the plan job refuses it in seconds rather than after a 90-minute build.
+    tags:
+      - "v[0-9]*"
   workflow_dispatch:
     inputs:
       bundles:
@@ -50,6 +58,17 @@ jobs:
     outputs:
       matrix: ${{ steps.resolve.outputs.matrix }}
     steps:
+      # A tag publishes what it builds, so the tag has to name the version this
+      # tree declares. Checking it here costs seconds; checking it after three
+      # platform builds costs ninety minutes and a tag that has to be deleted.
+      - name: Check out repository
+        if: github.ref_type == 'tag'
+        uses: actions/checkout@v4
+
+      - name: Check the tag against the declared version
+        if: github.ref_type == 'tag'
+        run: python3 scripts/publish_release.py --tag "$GITHUB_REF_NAME" --check-tag
+
       - name: Resolve the requested installer formats
         id: resolve
         shell: bash
@@ -394,3 +413,69 @@ jobs:
       - name: Check final artifact budget
         if: always()
         run: python scripts/check_artifacts.py --min-free-gib 5
+
+  # Only a tag reaches this job, and only after every platform in the matrix
+  # succeeded: `needs` without `always()` means one red platform publishes
+  # nothing. Write permission lives here alone, so a pull-request run cannot
+  # reach it.
+  publish:
+    name: Publish the release
+    needs: native
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download every platform's installers
+        uses: actions/download-artifact@v4
+        with:
+          # One directory per platform: each carries its own release-manifest.json,
+          # which merging them would overwrite.
+          path: .scratch/publish/download
+          pattern: FontCarver-*-${{ github.sha }}
+
+      - name: Stage the release assets
+        run: |
+          python3 scripts/publish_release.py \
+            --tag "$GITHUB_REF_NAME" \
+            --revision "$(git rev-parse HEAD)" \
+            --source .scratch/publish/download \
+            --destination .scratch/publish/assets \
+            --notes .scratch/publish/release-notes.md \
+            --output .scratch/publish/staged.json \
+            --repo-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+      # Created as a draft and published only once every asset is uploaded, so a
+      # failed upload leaves an unfinished release nobody can download.
+      - name: Publish the tag's release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          prerelease=""
+          if python3 -c "import json,sys; sys.exit(0 if json.load(open('.scratch/publish/staged.json'))['prerelease'] else 1)"; then
+            prerelease="--prerelease"
+          fi
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag $prerelease \
+            --title "FontCarver ${GITHUB_REF_NAME#v}" \
+            --notes-file .scratch/publish/release-notes.md
+          gh release upload "$GITHUB_REF_NAME" .scratch/publish/assets/*
+          gh release edit "$GITHUB_REF_NAME" --draft=false
+          gh release view "$GITHUB_REF_NAME" --json isDraft,isPrerelease,assets \
+            --jq '{draft: .isDraft, prerelease: .isPrerelease, assets: [.assets[].name]}'
+
+      - name: Upload the staging report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FontCarver-release-${{ github.ref_name }}
+          path: |
+            .scratch/publish/staged.json
+            .scratch/publish/release-notes.md
+          if-no-files-found: warn
+          retention-days: 90
