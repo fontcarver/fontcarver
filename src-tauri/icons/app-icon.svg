@@ -1,0 +1,43 @@
+<svg width="1024" height="1024" fill="none" aria-labelledby="title" role="img" version="1.1" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+ <title id="g">FontCarver</title>
+ <defs>
+  <linearGradient id="f" x1="224" x2="273" y1="64" y2="386" gradientUnits="userSpaceOnUse">
+   <stop stop-color="#31DFFF" offset="0"/>
+   <stop stop-color="#2088FF" offset=".4"/>
+   <stop stop-color="#2655ED" offset=".72"/>
+   <stop stop-color="#4531CB" offset="1"/>
+  </linearGradient>
+  <linearGradient id="d" x1="318" x2="115" y1="71" y2="393" gradientUnits="userSpaceOnUse">
+   <stop stop-color="#CBFCFF" offset="0"/>
+   <stop stop-color="#5CE7FF" offset=".29"/>
+   <stop stop-color="#2D91FF" offset=".64"/>
+   <stop stop-color="#2148CC" offset="1"/>
+  </linearGradient>
+  <linearGradient id="b" x1="342" x2="162" y1="109" y2="211" gradientUnits="userSpaceOnUse">
+   <stop stop-color="#37D6FC" offset="0"/>
+   <stop stop-color="#237FFA" offset=".65"/>
+   <stop stop-color="#1A59D9" offset="1"/>
+  </linearGradient>
+  <linearGradient id="e" x1="251" x2="251" y1="220" y2="253" gradientUnits="userSpaceOnUse">
+   <stop stop-color="#92F2FF" offset="0"/>
+   <stop stop-color="#41B8FF" offset="1"/>
+  </linearGradient>
+  <linearGradient id="a" x1="155" x2="213" y1="235" y2="375" gradientUnits="userSpaceOnUse">
+   <stop stop-color="#275FEF" offset="0"/>
+   <stop stop-color="#503BD0" offset="1"/>
+  </linearGradient>
+  <linearGradient id="c" x1="171" x2="169" y1="259" y2="367" gradientUnits="userSpaceOnUse">
+   <stop stop-color="#97CBFF" stop-opacity=".85" offset="0"/>
+   <stop stop-color="#6994FF" stop-opacity="0" offset="1"/>
+  </linearGradient>
+ </defs>
+ <g transform="matrix(1.0839 0 0 1.0839 -36.654 -7.3885)">
+  <path d="m118 422v-234c0-73 51-124 126-124h178l-72 72h-97c-34 0-55 21-55 56v28h163l-72 72h-91v50z" fill="url(#f)" style="fill:url(#f)"/>
+  <path d="m118 422v-234c0-73 51-124 126-124h178l-28 28h-150c-59 0-98 39-98 96v206z" fill="url(#d)" style="fill:url(#d)"/>
+  <path d="m146 220v-32c0-57 39-96 98-96h150l-44 44h-97c-34 0-55 21-55 56v28z" fill="url(#b)" style="fill:url(#b)"/>
+  <path d="m146 220 27 27v120l-27 27z" fill="url(#a)" style="fill:url(#a)"/>
+  <path d="m146 220h215l-27 27h-161z" fill="url(#e)" style="fill:url(#e)"/>
+  <path d="m173 247h161l-2 2h-157v116l-2 2z" fill="url(#c)" style="fill:url(#c)"/>
+  <path d="m244 64h178l-2 2h-176c-74 0-124 50-124 122v232l-2 2v-234c0-73 51-124 126-124z" fill="#e0fbff" fill-opacity=".6"/>
+ </g>
+</svg>
