@@ -75,7 +75,7 @@ class ReleaseValidationTests(unittest.TestCase):
         # AppImage is postponed: its payload gate blocks every image until notices
         # are written at build time, and a blocked artifact fails the whole Linux
         # job, so building it by default would stop deb and rpm shipping too.
-        self.assertEqual(native_bundles("Linux"), ["deb", "rpm"])
+        self.assertEqual(native_bundles("Linux"), ["deb", "rpm", "appimage"])
         self.assertEqual(native_bundles("Darwin"), ["dmg"])
         self.assertEqual(native_bundles("Windows"), ["nsis"])
         with self.assertRaises(ValueError):

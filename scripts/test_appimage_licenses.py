@@ -145,5 +145,45 @@ class NoticeTests(unittest.TestCase):
             licenses.source_reference('', '')
 
 
+class RulingTests(unittest.TestCase):
+    def setUp(self):
+        self.saved = dict(licenses.RULINGS)
+        licenses.RULINGS.clear()
+
+    def tearDown(self):
+        licenses.RULINGS.clear()
+        licenses.RULINGS.update(self.saved)
+
+    def test_a_ruling_also_answers_a_package_with_no_license_field(self):
+        # Most pre-DEP-5 copyright files are readable prose. Refusing to let a
+        # ruling cover them left twenty-seven MIT libraries permanently blocked.
+        self.assertEqual(licenses.verdict_for_package('libxau6', [])['verdict'],
+                         'unidentified')
+        licenses.RULINGS['libxau6'] = 'X Consortium MIT grant, read from the copyright file'
+        decided = licenses.verdict_for_package('libxau6', [])
+        self.assertTrue(decided['permitted'])
+        self.assertIn('MIT', decided['reason'])
+
+    def test_a_ruling_cannot_permit_a_forbidden_license(self):
+        licenses.RULINGS['libwmf-0.2-7'] = 'we would like to ship it'
+        decided = licenses.verdict_for_package('libwmf-0.2-7', ['AGPL-3 with Font exception'])
+        self.assertFalse(decided['permitted'])
+        self.assertEqual(decided['verdict'], 'forbidden')
+
+    def test_a_ruling_is_recorded_per_package_not_per_architecture(self):
+        licenses.RULINGS['libgtk-3-0t64'] = 'GPL-3+ covers debian/* only'
+        self.assertTrue(
+            licenses.verdict_for_package('libgtk-3-0t64:amd64', ['GPL-3+'])['permitted'])
+        self.assertTrue(
+            licenses.verdict_for_package('libgtk-3-0t64:arm64', ['GPL-3+'])['permitted'])
+
+    def test_every_recorded_ruling_states_a_reason(self):
+        licenses.RULINGS.clear()
+        licenses.RULINGS.update(self.saved)
+        for package, reason in licenses.RULINGS.items():
+            with self.subTest(package=package):
+                self.assertGreater(len(reason.strip()), 20, 'a ruling needs its reason')
+
+
 if __name__ == '__main__':
     unittest.main()

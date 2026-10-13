@@ -85,6 +85,23 @@ class GateTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'liborphan.so.2'):
                     policy.require_releasable_appimage(root, root)
 
+    def test_a_file_with_no_owning_package_can_be_ruled_on_by_its_path(self):
+        # The AppImage launcher the bundler installs belongs to no Debian
+        # package at all, so no package ruling can ever reach it.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'squashfs-root'
+            root.mkdir()
+            _payload(root, {'liborphan.so.2': ''})
+            _notices(root, 'AppRun.wrapped\n')
+            rows = [{'path': 'AppRun.wrapped', 'package': '', 'version': '',
+                     'source_package': '', 'source_version': '', 'labels': []}]
+            with mock.patch.object(policy, 'resolve_libraries', return_value=rows):
+                with mock.patch.dict(policy.PATH_RULINGS, {}, clear=True):
+                    with self.assertRaisesRegex(ValueError, 'AppRun.wrapped'):
+                        policy.require_releasable_appimage(root, root)
+                report = policy.require_releasable_appimage(root, root)
+            self.assertEqual(report['bundled_shared_libraries'], 1)
+
     def test_notice_missing_a_library_fails(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / 'squashfs-root'

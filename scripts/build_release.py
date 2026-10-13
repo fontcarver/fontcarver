@@ -20,6 +20,9 @@ import sys
 import tempfile
 import tomllib
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import appimage_trim
 from check_release_bundle import SUFFIXES, VerificationError, discover
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -65,20 +68,16 @@ def build_portable_zip(executable: Path, licenses: Path, version: str, output_di
 
 def native_bundles(system: str) -> list[str]:
     """Return only the installer formats maintained for a native platform."""
-    bundles = {"Linux": ["deb", "rpm"], "Darwin": ["dmg"], "Windows": ["nsis"]}
+    bundles = {"Linux": ["deb", "rpm", "appimage"], "Darwin": ["dmg"],
+               "Windows": ["nsis"]}
     if system not in bundles:
         raise ValueError(f"unsupported release build platform: {system}")
     return bundles[system]
 
 
 def allowed_bundles(system: str) -> list[str]:
-    """Formats --bundles accepts: the native defaults plus opt-in ones.
-
-    AppImage is opt-in rather than default. Its payload gate blocks every image
-    until notices are written at build time, and one blocked artifact fails the
-    whole run, so a default AppImage would stop deb and rpm from shipping too.
-    """
-    return native_bundles(system) + (["appimage"] if system == "Linux" else [])
+    """Formats --bundles accepts. Every maintained format is now a default."""
+    return native_bundles(system)
 
 
 def validate_versions(cargo: str, frontend: str, tauri: str) -> str:
@@ -216,6 +215,21 @@ def main() -> int:
         # No Tauri target produces a portable build; it reuses the executable the
         # nsis build just compiled and is inspected alongside it.
         inspected = list(bundles)
+        if "appimage" in bundles:
+            # The bundler copies every gdk-pixbuf loader on the build host.
+            # Dropping the ones the editor cannot use also drops libtiff and
+            # with it GPL-2+ libjbig, the payload's one real copyleft library.
+            images = sorted((bundle_dir / "appimage").glob("*.AppImage"))
+            if len(images) != 1:
+                raise ValueError(f"expected one AppImage, found {len(images)}")
+            trimmed = appimage_trim.repack(images[0])
+            print(f"AppImage trimmed: dropped {len(trimmed['removed_loaders'])} image "
+                  f"loaders, {len(trimmed['removed_libraries'])} libraries and "
+                  f"{len(trimmed['removed_links'])} links")
+            for name in trimmed["removed_libraries"]:
+                print(f"  - {name}")
+            for name, holders in trimmed["retained"].items():
+                print(f"  kept {name}, still needed by: {', '.join(holders)}")
         if "nsis" in bundles:
             build_portable_zip(target / "release/fontcarver-desktop.exe", scratch / "licenses",
                                version, bundle_dir / "portable")

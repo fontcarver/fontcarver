@@ -510,6 +510,41 @@ it('offers the resolved path and relinks a broken link in one import', async () 
   await screen.findByText('Embedded PNG · 20 × 30 pixels')
 })
 
+it('can leave canvas adjustment while a write is still in flight', async () => {
+  // The placement fields disable during a write, and the toggle used to sit
+  // inside the same disabled fieldset: the browser dropped a click that landed
+  // there, so the mode could not be left until the write finished.
+  let release!: () => void
+  const held = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  setup({
+    'image.set': async () => {
+      await held
+      return noChange([42])
+    },
+  })
+  render(
+    <ImagePanel target={target} glyphLocked={false} reload={() => undefined} />,
+  )
+  const toggle = await screen.findByRole('checkbox', {
+    name: 'Adjust on canvas',
+  })
+  try {
+    fireEvent.click(toggle)
+    const session = useImagePlacement.getState().session
+    act(() => session?.commit([2, 0, 0, 2, 5, 6]))
+    await waitFor(() =>
+      expect(useImagePlacement.getState().session?.locked).toBe(true),
+    )
+    expect(toggle).not.toBeDisabled()
+    fireEvent.click(toggle)
+    expect(useImagePlacement.getState().session).toBeNull()
+  } finally {
+    release()
+  }
+})
+
 it('publishes a canvas placement session and writes one gesture per commit', async () => {
   const mock = setup()
   render(

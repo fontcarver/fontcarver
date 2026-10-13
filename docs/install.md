@@ -64,8 +64,7 @@ predate this file do not pass the current package verifier.
 On Ubuntu 24.04 and other releases that completed the 64-bit time transition,
 `libgtk-3-0` is satisfied by `libgtk-3-0t64`, which provides that name.
 
-AppImage builds are not published at the moment; the steps below apply once they
-return. For an AppImage, put it in a directory you own and make that one file
+For an AppImage, put it in a directory you own and make that one file
 executable:
 
 ```sh

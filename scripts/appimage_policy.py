@@ -21,6 +21,14 @@ REQUIRED_TEXTS = ('HOST-LGPL-2.txt', 'HOST-LGPL-2.1.txt')
 # ELF in the payload that is not a bundled third-party file.
 APPLICATION_ELF = 'usr/bin/fontcarver-desktop'
 
+# A file the bundler installs itself belongs to no package, so no package
+# ruling can reach it. Keyed by payload path, with the same burden of proof.
+PATH_RULINGS: dict[str, str] = {
+    'AppRun.wrapped':
+        'the AppImage launcher installed by linuxdeploy; linuxdeploy and '
+        'AppImageKit are both MIT (see docs/appimage-license-determinations.md)',
+}
+
 
 def gated_rows(rows: list[dict]) -> list[dict]:
     """Select the payload entries this gate must classify.
@@ -96,6 +104,10 @@ def require_releasable_appimage(payload: Path | None = None,
     forbidden = []
     for item in libraries:
         verdict = verdict_for_package(item['package'], item['labels'])
+        if not verdict['permitted'] and not item['package']:
+            reason = PATH_RULINGS.get(item['path'])
+            if reason:
+                verdict = dict(verdict, permitted=True, reason=reason)
         if not verdict['permitted']:
             forbidden.append(f'{item["path"]} ({item["package"] or "no owning package"}: '
                              f'{", ".join(item["labels"]) or "unidentified"})')

@@ -40,6 +40,13 @@ export function ImagePanel({
   const [onCanvas, setOnCanvas] = useState(false)
   const blocked = busy || workflow.editing || glyphLocked || !state
   const placementBlocked = blocked || Boolean(image?.locked)
+  // Leaving canvas adjustment stays available while a write is in flight. The
+  // toggle used to sit inside the fieldset that disables for the write, and a
+  // click landing there is dropped by the browser before any handler runs, so
+  // the mode could not be left until the write finished. The canvas still
+  // refuses input meanwhile: the session it publishes carries `locked`.
+  const placementUnavailable =
+    workflow.editing || glyphLocked || !state || Boolean(image?.locked)
   const owner = editorTargetKey(target)
   const openPlacement = useImagePlacement((store) => store.open)
   const closePlacement = useImagePlacement((store) => store.close)
@@ -232,7 +239,7 @@ export function ImagePanel({
             />
             {t('imageWorkflow.lock')}
           </label>
-          <fieldset className={styles.group} disabled={placementBlocked}>
+          <fieldset className={styles.group} disabled={placementUnavailable}>
             <legend>{t('imageWorkflow.placement')}</legend>
             <label className={styles.hint}>
               <input
