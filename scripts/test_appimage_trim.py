@@ -228,12 +228,49 @@ class RepackTests(unittest.TestCase):
                     return SimpleNamespace(returncode=0, stdout=b'', stderr=b'')
                 raise AssertionError(f'unexpected command {argv}')
 
-            with unittest.mock.patch.object(trim.subprocess, 'run', side_effect=fake_run):
+            with unittest.mock.patch.object(trim.subprocess, 'run', side_effect=fake_run), \
+                 unittest.mock.patch.object(trim, 'write_notices', return_value=[]):
                 report = trim.repack(artifact, keep={'svg'})
             self.assertEqual(artifact.read_bytes(), b'RUNTIME' + b'NEW-SQUASHFS')
             self.assertTrue(artifact.stat().st_mode & 0o111)
             self.assertEqual(report['removed_loaders'], ['libpixbufloader-tiff.so'])
             self.assertIn('usr/lib/libtiff.so.6', report['removed_libraries'])
+
+    def test_the_notice_is_written_into_the_payload_before_it_is_packed(self):
+        # The gate requires the bundled-library notice inside the image, and
+        # the extracted payload during a repack is the only place to put it.
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as work:
+            artifact = Path(work) / 'FontCarver.AppImage'
+            artifact.write_bytes(b'RUNTIME' + b'OLD')
+            seen = {}
+
+            def fake_run(argv, **options):
+                if '--appimage-offset' in argv:
+                    return SimpleNamespace(returncode=0, stdout=b'7\n', stderr=b'')
+                if '--appimage-extract' in argv:
+                    payload = Path(options['cwd']) / 'squashfs-root'
+                    loaders = payload / 'usr/lib/gdk-pixbuf-2.0/2.10.0/loaders'
+                    loaders.mkdir(parents=True)
+                    elf(loaders / 'libpixbufloader-svg.so', [])
+                    elf(loaders / 'libpixbufloader-bmp.so', [])
+                    return SimpleNamespace(returncode=0, stdout=b'', stderr=b'')
+                if argv[0] == 'mksquashfs':
+                    # The notice has to exist by the time the payload is packed.
+                    seen['notice_present'] = Path(argv[1]) in seen.get('noticed', [])
+                    Path(argv[2]).write_bytes(b'NEW')
+                    return SimpleNamespace(returncode=0, stdout=b'', stderr=b'')
+                raise AssertionError(argv)
+
+            def fake_notices(payload, repo_root):
+                seen.setdefault('noticed', []).append(payload)
+                return ['usr/lib/FontCarver/licenses/appimage/BUNDLED-LIBRARIES.txt']
+
+            with unittest.mock.patch.object(trim.subprocess, 'run', side_effect=fake_run), \
+                 unittest.mock.patch.object(trim, 'write_notices', fake_notices):
+                report = trim.repack(artifact, keep={'svg'})
+            self.assertTrue(seen['notice_present'], 'notice written after packing')
+            self.assertIn('BUNDLED-LIBRARIES.txt', ' '.join(report['notices']))
 
     def test_an_offset_that_is_not_a_number_is_refused(self):
         from types import SimpleNamespace
@@ -242,7 +279,8 @@ class RepackTests(unittest.TestCase):
             artifact.write_bytes(b'x')
             with unittest.mock.patch.object(
                     trim.subprocess, 'run',
-                    return_value=SimpleNamespace(returncode=0, stdout=b'not a number\n', stderr=b'')):
+                    return_value=SimpleNamespace(returncode=0, stdout=b'not a number\n', stderr=b'')), \
+                 unittest.mock.patch.object(trim, 'write_notices', return_value=[]):
                 with self.assertRaisesRegex(ValueError, 'offset'):
                     trim.repack(artifact, keep={'svg'})
 

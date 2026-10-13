@@ -26,6 +26,9 @@ import struct
 import subprocess
 import tempfile
 
+from appimage_inventory import write_notices
+
+ROOT = Path(__file__).resolve().parents[1]
 LOADER_DIR = 'usr/lib/gdk-pixbuf-2.0/2.10.0/loaders'
 LOADER_CACHE = 'usr/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache'
 KEEP = {'svg'}
@@ -202,6 +205,9 @@ def repack(artifact: Path, keep: set[str] | None = None) -> dict:
         _run([str(artifact), '--appimage-extract'], cwd=scratch)
         payload = scratch / 'squashfs-root'
         report = trim(payload, keep)
+        # The gate looks for the bundled-library notice inside the image, so it
+        # has to be in the payload before the payload becomes one.
+        report['notices'] = write_notices(payload, ROOT)
         image = scratch / 'payload.squashfs'
         _run(['mksquashfs', str(payload), str(image), '-root-owned', '-noappend',
               '-comp', 'gzip', '-b', '131072', '-no-progress', '-quiet'])

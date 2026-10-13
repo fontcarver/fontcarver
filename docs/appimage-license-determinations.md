@@ -10,8 +10,11 @@ the copyright file of each one. Reproduce it from the Actions tab; the artifact
 carries `inventory.json`, `census.json`, `release-manifest.json`, the host's
 package list and all 110 copyright files.
 
-**Nothing here is in force.** `appimage_licenses.RULINGS` is still empty and the
-gate still refuses the image. These are proposals for a human to accept.
+**These determinations are in force.** They are recorded in
+`appimage_licenses.RULINGS`, one per package, each stating why a GPL label or
+an unreadable copyright file does not describe the object this image ships.
+`appimage_policy.PATH_RULINGS` carries the one file that belongs to no package.
+A ruling can never permit a forbidden license; that stays a policy question.
 
 ## What changed against the workstation census
 
