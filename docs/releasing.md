@@ -76,7 +76,11 @@ Cargo sources, prepares dependency license notices, generates the Rust-owned
 TypeScript API and invokes
 `pnpm --dir app exec tauri build` with native bundle targets and the locked Cargo
 dependency graph. Tauri runs the frontend production build before compiling the
-desktop executable. The AppImage is Tauri's own bundler output; the former thin recipe and its C
+desktop executable. The AppImage is Tauri's own bundler output, with one step after it:
+`scripts/appimage_trim.py` keeps the SVG gdk-pixbuf loader, drops the image
+loaders the editor cannot use, and drops the libraries only those loaders
+reached. That is what keeps GPL-2+ libjbig, which arrives through the TIFF
+loader by way of libtiff, out of the payload. The former thin recipe and its C
 toolchain prerequisites are gone. The helper sets the
 application/frontend paths itself; no
 Unix-style environment assignment is required on Windows.

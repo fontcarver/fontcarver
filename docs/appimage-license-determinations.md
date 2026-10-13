@@ -48,11 +48,15 @@ tga, tiff, xbm, xpm — and only the tiff one pulls libtiff, which pulls libjbig
 A font editor needs none of them except svg.
 
 Unlike libwmf, the loaders cannot be removed by uninstalling a package: they ship
-inside `libgdk-pixbuf-2.0-0`, which the application does need. **This one needs a
-decision**: drop the unneeded loaders (and the libraries that follow them) from
-the payload, or rule that an aggregated GPL-2+ library with a source offer is
-acceptable. The first keeps the current policy intact and makes the image
-smaller; the second changes `docs/licensing.md` §5.
+inside `libgdk-pixbuf-2.0-0`, which the application does need.
+
+**Decided: drop them.** `scripts/appimage_trim.py` runs after the bundler, keeps
+the SVG loader and removes the rest, then removes the libraries that only those
+loaders reached — libtiff and libjbig among them. PNG and JPEG decoding is built
+into gdk-pixbuf itself and is unaffected; WebKit decodes page images on its own.
+A library nothing in the payload names is left alone, because a module opened by
+name at run time has no incoming reference to find. The policy in
+`docs/licensing.md` §5 is unchanged, and the image is smaller.
 
 ## 2. No machine-readable license field — 27 packages
 

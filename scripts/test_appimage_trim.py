@@ -1,0 +1,166 @@
+"""Remove image loaders the editor never uses, and only what followed them in."""
+
+from pathlib import Path
+import struct
+import sys
+import tempfile
+import unittest
+import unittest.mock
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import appimage_trim as trim
+
+
+def elf(path: Path, needed: list[str]) -> None:
+    """Write a minimal 64-bit ELF whose PT_DYNAMIC lists these DT_NEEDED names."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    strtab = b'\0' + b'\0'.join(name.encode() for name in needed) + b'\0'
+    offsets, cursor = [], 1
+    for name in needed:
+        offsets.append(cursor)
+        cursor += len(name) + 1
+    entries = b''.join(struct.pack('<qQ', 1, offset) for offset in offsets)
+    entries += struct.pack('<qQ', 5, 0)          # DT_STRTAB, patched below
+    entries += struct.pack('<qQ', 0, 0)          # DT_NULL
+    header_size, phentsize = 64, 56
+    dyn_off = header_size + phentsize
+    str_off = dyn_off + len(entries)
+    entries = entries.replace(struct.pack('<qQ', 5, 0),
+                              struct.pack('<qQ', 5, str_off), 1)
+    header = bytearray(b'\x7fELF\x02\x01\x01' + bytes(9))
+    header += struct.pack('<HHIQQQIHHHHHH', 3, 62, 1, 0, header_size, 0, 0,
+                          header_size, phentsize, 1, 0, 0, 0)
+    # One PT_DYNAMIC segment whose virtual address equals its file offset.
+    phdr = struct.pack('<IIQQQQQQ', 2, 4, dyn_off, dyn_off, dyn_off,
+                       len(entries), len(entries), 8)
+    path.write_bytes(bytes(header) + phdr + entries + strtab)
+
+
+class NeededTests(unittest.TestCase):
+    def test_dt_needed_names_are_read_without_executing_the_file(self):
+        with tempfile.TemporaryDirectory() as work:
+            path = Path(work) / 'lib.so'
+            elf(path, ['libtiff.so.6', 'libc.so.6'])
+            self.assertEqual(trim.needed(path), ['libtiff.so.6', 'libc.so.6'])
+
+    def test_a_file_that_is_not_an_elf_has_no_dependencies(self):
+        with tempfile.TemporaryDirectory() as work:
+            path = Path(work) / 'notes.txt'
+            path.write_text('hello')
+            self.assertEqual(trim.needed(path), [])
+
+
+class TrimTests(unittest.TestCase):
+    def payload(self, work: Path) -> Path:
+        root = work / 'squashfs-root'
+        loaders = root / 'usr/lib/gdk-pixbuf-2.0/2.10.0/loaders'
+        loaders.mkdir(parents=True)
+        (root / 'usr/bin').mkdir(parents=True)
+        elf(root / 'usr/bin/fontcarver-desktop', ['libgdk_pixbuf-2.0.so.0'])
+        elf(root / 'usr/lib/libgdk_pixbuf-2.0.so.0', [])
+        elf(loaders / 'libpixbufloader-svg.so', ['librsvg-2.so.2'])
+        elf(root / 'usr/lib/librsvg-2.so.2', [])
+        elf(loaders / 'libpixbufloader-tiff.so', ['libtiff.so.6'])
+        elf(root / 'usr/lib/libtiff.so.6', ['libjbig.so.0'])
+        elf(root / 'usr/lib/libjbig.so.0', [])
+        elf(loaders / 'libpixbufloader-bmp.so', [])
+        # Nothing names this one: a module the program loads by hand. It must
+        # survive, because reachability cannot see such a reference at all.
+        elf(root / 'usr/lib/gio/modules/libgiognutls.so', [])
+        (root / 'usr/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache').write_text('stale')
+        return root
+
+    def test_only_the_kept_loaders_and_what_they_need_remain(self):
+        with tempfile.TemporaryDirectory() as work:
+            root = self.payload(Path(work))
+            report = trim.trim(root, keep={'svg'})
+            loaders = root / 'usr/lib/gdk-pixbuf-2.0/2.10.0/loaders'
+            self.assertEqual(sorted(p.name for p in loaders.glob('*.so')),
+                             ['libpixbufloader-svg.so'])
+            self.assertTrue((root / 'usr/lib/librsvg-2.so.2').exists())
+            self.assertFalse((root / 'usr/lib/libtiff.so.6').exists())
+            self.assertFalse((root / 'usr/lib/libjbig.so.0').exists())
+            self.assertIn('libjbig.so.0', ' '.join(report['removed_libraries']))
+
+    def test_a_library_nothing_names_is_left_alone(self):
+        # Removing every unreachable file would delete modules the program
+        # opens by name at run time; only what the removed loaders brought in
+        # may go.
+        with tempfile.TemporaryDirectory() as work:
+            root = self.payload(Path(work))
+            trim.trim(root, keep={'svg'})
+            self.assertTrue((root / 'usr/lib/gio/modules/libgiognutls.so').exists())
+
+    def test_the_stale_loader_cache_is_removed_with_the_loaders(self):
+        with tempfile.TemporaryDirectory() as work:
+            root = self.payload(Path(work))
+            trim.trim(root, keep={'svg'})
+            self.assertFalse(
+                (root / 'usr/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache').exists())
+
+    def test_a_payload_without_a_loader_directory_is_refused(self):
+        with tempfile.TemporaryDirectory() as work:
+            root = Path(work) / 'squashfs-root'
+            (root / 'usr/bin').mkdir(parents=True)
+            with self.assertRaisesRegex(ValueError, 'loader directory'):
+                trim.trim(root, keep={'svg'})
+
+    def test_keeping_a_loader_that_is_not_there_is_refused(self):
+        # A typo in the keep list would otherwise silently ship no loader.
+        with tempfile.TemporaryDirectory() as work:
+            root = self.payload(Path(work))
+            with self.assertRaisesRegex(ValueError, 'jpeg'):
+                trim.trim(root, keep={'svg', 'jpeg'})
+
+
+class RepackTests(unittest.TestCase):
+    def test_the_image_keeps_its_own_runtime_and_gains_the_trimmed_payload(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as work:
+            root = Path(work)
+            artifact = root / 'FontCarver.AppImage'
+            artifact.write_bytes(b'RUNTIME' + b'OLD-SQUASHFS')
+            artifact.chmod(0o755)
+            calls = []
+
+            def fake_run(argv, **options):
+                calls.append(argv)
+                if '--appimage-offset' in argv:
+                    return SimpleNamespace(returncode=0, stdout=b'7\n', stderr=b'')
+                if '--appimage-extract' in argv:
+                    payload = Path(options['cwd']) / 'squashfs-root'
+                    loaders = payload / 'usr/lib/gdk-pixbuf-2.0/2.10.0/loaders'
+                    loaders.mkdir(parents=True)
+                    (payload / 'usr/bin').mkdir(parents=True)
+                    elf(payload / 'usr/bin/fontcarver-desktop', [])
+                    elf(loaders / 'libpixbufloader-svg.so', [])
+                    elf(loaders / 'libpixbufloader-tiff.so', ['libtiff.so.6'])
+                    elf(payload / 'usr/lib/libtiff.so.6', [])
+                    return SimpleNamespace(returncode=0, stdout=b'', stderr=b'')
+                if argv[0] == 'mksquashfs':
+                    Path(argv[2]).write_bytes(b'NEW-SQUASHFS')
+                    return SimpleNamespace(returncode=0, stdout=b'', stderr=b'')
+                raise AssertionError(f'unexpected command {argv}')
+
+            with unittest.mock.patch.object(trim.subprocess, 'run', side_effect=fake_run):
+                report = trim.repack(artifact, keep={'svg'})
+            self.assertEqual(artifact.read_bytes(), b'RUNTIME' + b'NEW-SQUASHFS')
+            self.assertTrue(artifact.stat().st_mode & 0o111)
+            self.assertEqual(report['removed_loaders'], ['libpixbufloader-tiff.so'])
+            self.assertIn('usr/lib/libtiff.so.6', report['removed_libraries'])
+
+    def test_an_offset_that_is_not_a_number_is_refused(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as work:
+            artifact = Path(work) / 'x.AppImage'
+            artifact.write_bytes(b'x')
+            with unittest.mock.patch.object(
+                    trim.subprocess, 'run',
+                    return_value=SimpleNamespace(returncode=0, stdout=b'not a number\n', stderr=b'')):
+                with self.assertRaisesRegex(ValueError, 'offset'):
+                    trim.repack(artifact, keep={'svg'})
+
+
+if __name__ == '__main__':
+    unittest.main()

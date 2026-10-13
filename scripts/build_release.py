@@ -20,6 +20,9 @@ import sys
 import tempfile
 import tomllib
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import appimage_trim
 from check_release_bundle import SUFFIXES, VerificationError, discover
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -216,6 +219,18 @@ def main() -> int:
         # No Tauri target produces a portable build; it reuses the executable the
         # nsis build just compiled and is inspected alongside it.
         inspected = list(bundles)
+        if "appimage" in bundles:
+            # The bundler copies every gdk-pixbuf loader on the build host.
+            # Dropping the ones the editor cannot use also drops libtiff and
+            # with it GPL-2+ libjbig, the payload's one real copyleft library.
+            images = sorted((bundle_dir / "appimage").glob("*.AppImage"))
+            if len(images) != 1:
+                raise ValueError(f"expected one AppImage, found {len(images)}")
+            trimmed = appimage_trim.repack(images[0])
+            print(f"AppImage trimmed: dropped {len(trimmed['removed_loaders'])} image "
+                  f"loaders and {len(trimmed['removed_libraries'])} libraries")
+            for name in trimmed["removed_libraries"]:
+                print(f"  - {name}")
         if "nsis" in bundles:
             build_portable_zip(target / "release/fontcarver-desktop.exe", scratch / "licenses",
                                version, bundle_dir / "portable")
