@@ -1,0 +1,26 @@
+---
+/*
+ * A heading that breaks where the sentence breaks.
+ *
+ * Chinese has no spaces, so a browser may break a line between any two
+ * characters, including inside a word. Each clause becomes an inline block,
+ * which the browser will not break into: the line ends after a comma, the way
+ * a person would set it. Text without full-width punctuation is left exactly
+ * as it was, so the English headings are untouched.
+ */
+interface Props {
+  text: string;
+  level?: 1 | 2;
+  class?: string;
+}
+
+const { text, level = 2, class: className } = Astro.props;
+const clauses = text.split(/(?<=[，、。；：！？])/).filter(Boolean);
+const Tag = `h${level}` as 'h1' | 'h2';
+---
+
+<Tag class={className}>
+  {
+    clauses.length > 1 ? clauses.map((clause) => <span class="clause">{clause}</span>) : text
+  }
+</Tag>

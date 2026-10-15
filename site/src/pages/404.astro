@@ -1,0 +1,12 @@
+---
+import Base from '../layouts/Base.astro';
+import { en } from '../data/content.en';
+---
+
+<Base content={en} path="/404.html" nav={false}>
+  <div class="shell lost">
+    <h1>{en.lost.title}</h1>
+    <p>{en.lost.text}</p>
+    <p><a class="button" href="/">{en.lost.back}</a></p>
+  </div>
+</Base>

@@ -1,0 +1,230 @@
+---
+import GlyphDrawing from './GlyphDrawing.svelte';
+import Headline from './Headline.astro';
+import Terminal from './Terminal.astro';
+import { specimens } from '../data/specimens';
+import { release } from '../data/release';
+import { megabytes, type Content } from '../data/content';
+
+interface Props {
+  content: Content;
+}
+
+const { content } = Astro.props;
+const platforms = ['linux', 'macos', 'windows'] as const;
+const filesFor = (platform: string) => release.files.filter((file) => file.platform === platform);
+---
+
+<section class="hero">
+  <div class="shell hero__grid">
+    <div class="hero__text">
+      <Headline text={content.hero.title} level={1} />
+      <p class="hero__lede">{content.hero.lede}</p>
+      <div class="actions">
+        <a class="button" href="#download">
+          {content.hero.download}
+          <span class="mono">{release.version}</span>
+        </a>
+        <a class="button button--quiet" href="https://github.com/fontcarver/fontcarver" rel="noopener">
+          {content.hero.source}
+        </a>
+      </div>
+      <div class="hero__note">
+        <p>
+          <span class="seal">{release.tag}</span>
+          {' '}{content.hero.noteLead}
+          {' '}{content.hero.note}
+        </p>
+        <p>
+          <a href={release.page} rel="noopener">{content.hero.noteLink}</a>
+        </p>
+      </div>
+    </div>
+    <div class="hero__stage">
+      <div id="stage" data-labels={JSON.stringify(content.drawing)}>
+        <GlyphDrawing data={specimens} labels={content.drawing} />
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="capabilities">
+  <div class="shell">
+    <div class="section__head">
+      <Headline text={content.capabilities.title} />
+      <p>{content.capabilities.lede}</p>
+    </div>
+    <div class="ledger">
+      {
+        content.capabilities.rows.map((row) => (
+          <article class="ledger__row">
+            <p class="ledger__key">{row.key}</p>
+            <h3>{row.title}</h3>
+            <p>{row.text}</p>
+          </article>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<section class="section field" id="formats">
+  <div class="shell">
+    <div class="section__head">
+      <Headline text={content.formats.title} />
+      <p>{content.formats.lede}</p>
+    </div>
+    <div class="index">
+      {
+        content.formats.groups.map((group) => (
+          <div>
+            <h3>{group.title}</h3>
+            <ul>
+              {group.items.map((item) => (
+                <li>{item}</li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+    </div>
+    <p class="field__note">
+      {content.formats.note}{' '}
+      <a href="https://github.com/fontcarver/fontcarver/tree/main/docs" rel="noopener">
+        {content.formats.noteLink}
+      </a>
+    </p>
+  </div>
+</section>
+
+<section class="section" id="guide">
+  <div class="shell">
+    <div class="section__head">
+      <Headline text={content.guide.title} />
+      <p>{content.guide.lede}</p>
+    </div>
+    <div class="steps">
+      {
+        content.guide.steps.map((step, index) => (
+          <article class="step">
+            <p class="step__ord mono">{String(index + 1).padStart(2, '0')}</p>
+            <div>
+              <h3>{step.title}</h3>
+              <p>{step.text}</p>
+              <ul class="keys">
+                {step.keys.map((key) => (
+                  <li>
+                    {key.combo.map((cap) => (
+                      <kbd>{cap}</kbd>
+                    ))}
+                    <span>{key.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+    <Terminal lines={content.guide.terminal} />
+  </div>
+</section>
+
+<section class="section" id="download">
+  <div class="shell">
+    <div class="section__head">
+      <Headline text={content.download.title} />
+      <p>{content.download.lede}</p>
+    </div>
+    <div class="release">
+      <div class="release__aside">
+        <p class="release__version">{release.version}</p>
+        <div class="release__meta">
+          <span>{content.download.published} {release.published}</span>
+          {release.prerelease && <span class="seal">{content.download.prerelease}</span>}
+        </div>
+        <p class="release__meta">
+          <a href={release.page} rel="noopener">{content.download.releasePage}</a>
+        </p>
+      </div>
+      <div class="release__list">
+        <div class="warning">
+          <p>
+            <strong>{content.download.warningTitle}</strong>
+            {' '}{content.download.warning}
+          </p>
+        </div>
+        <div id="platforms">
+          {
+            platforms.map((platform) => (
+              <article class="platform" data-platform={platform}>
+                <div class="platform__head">
+                  <h3>{content.download.platforms[platform].name}</h3>
+                  <span class="platform__note">{content.download.platforms[platform].note}</span>
+                  <span class="platform__badge" data-badge hidden>
+                    {content.download.yourSystem}
+                  </span>
+                </div>
+                <ul class="files">
+                  {filesFor(platform).map((file) => (
+                    <li class="file">
+                      <span>
+                        <a href={file.url} rel="noopener">
+                          {file.name}
+                        </a>
+                        <br />
+                        <span class="platform__note">{content.download.kinds[file.kind]}</span>
+                      </span>
+                      <span class="file__size">{megabytes(file.bytes)}</span>
+                      <span class="file__hash" title={file.sha256}>
+                        {file.sha256.slice(0, 16)}…
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ))
+          }
+        </div>
+        <p class="warning">
+          {content.download.verify}{' '}
+          <a href={release.checksums} rel="noopener">{content.download.checksums}</a>
+        </p>
+      </div>
+    </div>
+    <div class="source-build">
+      <div>
+        <h3 id="build-from-source">{content.download.buildTitle}</h3>
+        <p>{content.download.buildText}</p>
+        <Terminal lines={content.download.buildTerminal} />
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="status">
+  <div class="shell">
+    <div class="section__head">
+      <Headline text={content.status.title} />
+      <p>{content.status.lede}</p>
+    </div>
+    <ol class="phases">
+      {
+        content.status.phases.map((phase) => (
+          <li data-state={phase.state}>
+            <b>{phase.id}</b>
+            {phase.text}
+          </li>
+        ))
+      }
+    </ol>
+    <div class="status__after">
+      <p>
+        {content.status.text}{' '}
+        <a href="https://github.com/fontcarver/fontcarver/blob/main/docs/STATUS.md" rel="noopener">
+          {content.status.link}
+        </a>
+      </p>
+    </div>
+  </div>
+</section>

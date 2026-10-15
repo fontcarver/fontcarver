@@ -1,0 +1,20 @@
+---
+import type { TerminalLine } from '../data/content';
+
+interface Props {
+  lines: TerminalLine[];
+}
+
+const { lines } = Astro.props;
+// Built as one string: a template with elements on separate source lines puts
+// the source's own newlines inside the <pre>, which doubles every line. The
+// content is this repository's own, and it is escaped anyway.
+const escape = (text: string) =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const render = (line: TerminalLine) =>
+  `<b>$</b> ${escape(line.command)}` +
+  (line.comment ? `<span>  # ${escape(line.comment)}</span>` : '');
+const html = lines.map(render).join('\n');
+---
+
+<pre class="terminal"><code set:html={html} /></pre>

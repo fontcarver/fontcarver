@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Check the static site in `site/` before it is deployed.
+"""Check the built site before it is deployed.
 
-No dependencies: the site has no build step and this check must not give it
-one. It fails the build on the mistakes a hand-written site actually makes —
-a link to a file that is not there, an image without alternative text, a page
-that lost its description, a stray request to somebody else's CDN, or a page
-that quietly grew past its weight budget.
+No dependencies of its own: the site is built by Astro, and this reads what
+the build produced. It fails on the mistakes a site actually ships with — a
+link to a file that is not there, an image without alternative text, a page
+that lost its description, a stray request to somebody else's CDN, an inline
+script the content security policy would refuse, or a page that quietly grew
+past its weight budget.
 
-    python3 scripts/check_site.py [--root site]
+    cd site && bun run build
+    python3 scripts/check_site.py --root site/dist
 """
 
 from __future__ import annotations
@@ -20,7 +22,7 @@ from html.parser import HTMLParser
 
 # Everything the site loads must come from the site. These are the only hosts
 # a link may point at, and only as a link the reader follows.
-ALLOWED_HOSTS = {"github.com", "fontcarver.com", "www.fontcarver.com"}
+ALLOWED_HOSTS = {"github.com", "fontcarver.com", "www.fontcarver.com", "fontpixel.com"}
 
 # Attributes that carry a URL we care about.
 URL_ATTRIBUTES = {"href", "src", "action", "poster"}
@@ -28,9 +30,15 @@ URL_ATTRIBUTES = {"href", "src", "action", "poster"}
 REQUIRED_META = ("description", "og:title", "og:description", "og:image", "og:url")
 
 # First load: the document, its stylesheets, its scripts and the faces it
-# preloads. The whole directory is checked separately.
+# preloads. This is what a reader waits for, and it is the number that matters.
 FIRST_LOAD_BUDGET = 200 * 1024
-DIRECTORY_BUDGET = 320 * 1024
+# The whole directory, both languages together. It was 320 KiB while the site
+# was two hand-written pages with a Latin face. It is 400 KiB now because the
+# Chinese page is typeset in a Han serif subset to its own 440 characters
+# (78 KiB, and only that page asks for it), and because the drawing is a
+# Svelte component rather than a script that assumes the markup. Both are
+# deliberate; neither is on the English page's first load.
+DIRECTORY_BUDGET = 400 * 1024
 
 
 class Page(HTMLParser):
@@ -46,6 +54,8 @@ class Page(HTMLParser):
         self.alternates: dict[str, str] = {}
         self.assets: list[str] = []
         self.lang = ""
+        # Anything the content security policy in _headers would refuse.
+        self.inline: list[str] = []
 
     def handle_starttag(self, tag: str, attributes) -> None:
         attrs = {name: (value or "") for name, value in attributes}
@@ -67,8 +77,15 @@ class Page(HTMLParser):
                 self.alternates[attrs["hreflang"]] = attrs.get("href", "")
             if rel in ("stylesheet", "icon", "preload"):
                 self.assets.append(attrs.get("href", ""))
-        if tag == "script" and attrs.get("src"):
-            self.assets.append(attrs["src"])
+        if tag == "script":
+            if attrs.get("src"):
+                self.assets.append(attrs["src"])
+            else:
+                self.inline.append("<script> without src")
+        if tag == "style":
+            self.inline.append("<style> element")
+        if "style" in attrs:
+            self.inline.append(f"style= on <{tag}>")
         if tag == "img":
             self.images.append(attrs)
         for attribute in URL_ATTRIBUTES:
@@ -119,6 +136,12 @@ def check_page(root: pathlib.Path, path: pathlib.Path, problems: list[str]) -> P
             continue
         if not page.metas.get(key, "").strip():
             fail(f"no {key} metadata")
+
+    # The policy in _headers has no 'unsafe-inline', so an inline script or
+    # style does not run in production even though it works from a file
+    # server. A build that starts emitting one has to be caught here.
+    for offence in dict.fromkeys(page.inline):
+        fail(f"{offence}: the content security policy allows no inline script or style")
 
     for image in page.images:
         if "alt" not in image:

@@ -1,0 +1,257 @@
+import type { Content } from './content';
+
+export const zh: Content = {
+  lang: 'zh-Hans',
+  dir: '/zh/',
+  other: { href: '/', label: 'English', lang: 'en' },
+  meta: {
+    title: 'FontCarver：画曲线、改点阵的桌面字体编辑器',
+    description:
+      'FontCarver 是一款开源桌面字体编辑器，内核以 Rust 写成。轮廓与点阵字型、拉丁与中日韩字库，以及完整的 OpenType 布局体系，都在同一份文档里，支持 Linux、macOS 和 Windows。',
+    ogTitle: 'FontCarver：画曲线、改点阵的桌面字体编辑器',
+    ogDescription:
+      '轮廓与点阵字型、拉丁与中日韩字库，以及完整的 OpenType 布局体系，都在同一份文档里。开源，Rust 内核，支持 Linux、macOS 和 Windows。',
+  },
+  nav: {
+    sections: '章节',
+    capabilities: '能力',
+    formats: '格式',
+    guide: '使用方法',
+    download: '下载',
+    github: 'GitHub',
+    toDark: '切换到深色主题',
+    toLight: '切换到浅色主题',
+    skip: '跳到正文',
+  },
+  hero: {
+    title: '绘制轮廓，编辑点阵，导出 OpenType。',
+    lede: 'FontCarver 是一款内核以 Rust 写成的桌面字体编辑器。轮廓与点阵字型存在于同一份文档；一套 65,535 字的中日韩字库，用的是与单母版拉丁字体相同的工具；你没有动过的表，会原样从导出器里出来。',
+    download: '下载',
+    source: '在 GitHub 查看源码',
+    noteLead: '是首个公开发布的版本。',
+    note: '所有平台上的安装包都没有签名，发布文档中的原生验收清单也尚未完成。请把它当作 alpha 版本，并为你打开的字体保留备份。',
+    noteLink: '该版本经过哪些检查',
+  },
+  drawing: {
+    specimen: '字样',
+    reset: '重置',
+    point: '节点',
+    points: '节点数',
+    advance: '前进宽度',
+    curves: '曲线',
+    strike: '点阵',
+    off: '关',
+    none: '—',
+    corner: '尖角',
+    smooth: '平滑',
+    handle: '控制柄',
+    implied: '隐含点',
+    cubic: '三次',
+    quadratic: '二次',
+    figure: '带有节点、度量和点阵字型的字形轮廓',
+    hint: '拖动任意节点。或聚焦此图：方向键把选中节点移动一个字体单位，按住 Shift 一次十个，Page Up 与 Page Down 在节点间移动。点阵字型由当前轮廓实时栅格化，所以移动一个节点，像素也会跟着变。',
+  },
+  capabilities: {
+    title: '四件不被当作后补功能来对待的事。',
+    lede: '多数编辑器围绕一种字体形态建成，其余的后来再补。这里的文档模型从一开始就同时包含这四者。',
+    rows: [
+      {
+        key: '轮廓 ⇄ 点阵',
+        title: '曲线与点阵，同一份文档',
+        text: '三次与二次曲线的轮廓编辑，和点阵字型编辑，是同一份文档，而不是两个程序。可以把像素描摹成轮廓，把轮廓栅格化成点阵字型，再逐像素手工修整。',
+      },
+      {
+        key: '65,535 个字形',
+        title: '拉丁与中日韩，同一套工具',
+        text: '字形网格、搜索、批量操作与文件读写，都是按 65,535 字的规模设计的。部件、纵向度量与纵排布局特性属于模型本身，而不是插件。',
+      },
+      {
+        key: 'GSUB GPOS GDEF',
+        title: '读得懂的 OpenType 布局',
+        text: 'GSUB、GPOS、GDEF、BASE、MATH、STAT、COLR 与 CPAL，既可以作为特性文件源码编辑，也可以通过界面编辑，由 fea-rs 与 fontc 编译，诊断信息定位到你自己的源码行上。',
+      },
+      {
+        key: '原样保留的表',
+        title: '没动过的地方，不会被改写',
+        text: '模型未涵盖的表，在打开与导出之间原样保留；你没有编辑过的字形，保留其 hinting。打开一份字体，不是一次有损操作。',
+      },
+    ],
+  },
+  formats: {
+    title: '一间字体工作室硬盘上真正存在的那些格式。',
+    lede: '二进制字体、源文件、点阵字型与布局源码，由同一个内核读写。',
+    groups: [
+      {
+        title: '轮廓二进制',
+        items: ['TTF', 'OTF / CFF', 'CFF2', 'TTC', 'OTC', 'WOFF', 'WOFF2', '可变字体'],
+      },
+      {
+        title: '点阵字体与点阵字型',
+        items: ['BDF', 'PCF', 'PSF', 'FNT', 'FON', 'OTB', 'EBDT / EBLC', 'CBDT / CBLC', 'sbix'],
+      },
+      {
+        title: '源格式',
+        items: [
+          'UFO 2',
+          'UFO 3',
+          'designspace',
+          'Glyphs 2',
+          'Glyphs 3',
+          'SFD',
+          'Type 1',
+          'SVG',
+          '.fcf',
+        ],
+      },
+      {
+        title: '布局与度量',
+        items: [
+          'FEA',
+          'GSUB',
+          'GPOS',
+          'GDEF',
+          'BASE',
+          'MATH',
+          'STAT',
+          'COLR / CPAL',
+          'AFM',
+          'PFM',
+          'TTX',
+        ],
+      },
+    ],
+    note: '以上是产品目标。逐个格式的覆盖情况记录在验收报告中，而且转换保持保守：不受支持或尚未验证的部分会保留原始的表，而不会被重写。',
+    noteLink: '查看验收记录',
+  },
+  guide: {
+    title: '一次完整的上手过程。',
+    lede: '四步，从一份现成的字体，到一份你自己导出的字体。按键以 Windows 与 Linux 标注；在 macOS 上，Ctrl 即 ⌘。',
+    steps: [
+      {
+        title: '打开字体',
+        text: '打开 TTF、OTF、UFO、Glyphs 或 SFD 文件，也可以打开 FontCarver 文档。模型无法表达的部分会原样保留而不是丢弃，所以你可以只为了看一眼而打开一份字体。',
+        keys: [
+          { combo: ['Ctrl', 'O'], label: '打开' },
+          { combo: ['Ctrl', 'Shift', 'P'], label: '命令面板' },
+        ],
+      },
+      {
+        title: '编辑轮廓',
+        text: '用钢笔绘制，用刻刀切割，用方向键微调节点。平滑节点的两条控制柄保持共线，尖角节点则不必，所有编辑都走同一个撤销栈。',
+        keys: [
+          { combo: ['V'], label: '选择' },
+          { combo: ['P'], label: '钢笔' },
+          { combo: ['B'], label: '铅笔' },
+          { combo: ['E'], label: '刻刀' },
+          { combo: ['Ctrl', 'Z'], label: '撤销' },
+        ],
+      },
+      {
+        title: '先调字偶间距，再加特性',
+        text: '在文本标签页里，直接在两个字形之间的空隙上调字偶间距，支持共享分组与逐母版的字偶对。其余的部分写成特性文件源码，编译器的诊断会落在你自己的行上。',
+        keys: [
+          { combo: ['T'], label: '文本工具' },
+          { combo: ['Ctrl', 'I'], label: '字体信息' },
+        ],
+      },
+      {
+        title: '导出',
+        text: '写回 TTF 或 OTF。你没有编辑过的字形保留其 hinting，被保留的表会合并回去。目前编辑轮廓会丢掉该字形的 hinting，状态记录里写明了这一项的进展。',
+        keys: [
+          { combo: ['Ctrl', 'S'], label: '保存' },
+          { combo: ['Ctrl', 'E'], label: '导出' },
+        ],
+      },
+    ],
+    terminal: [
+      { command: 'fontcarver inspect DejaVuSans.ttf', comment: '元数据与被保留的表' },
+      { command: 'fontcarver check Source.fcf', comment: '查找问题，有错误时退出码为 1' },
+      { command: 'fontcarver convert Source.glyphs Source.ufo' },
+      { command: 'fontcarver build Source.fcf Source.otf --autohint' },
+      { command: 'fontcarver shape Source.fcf "Hamburgefonstiv" --features liga,-kern' },
+    ],
+  },
+  download: {
+    title: '三个平台，同一个 Rust 内核。',
+    lede: '下面的每个文件，都在它所面向的系统上构建并检查过，发布时附带的是它自己的检查所记录的摘要值。',
+    published: '发布于',
+    prerelease: '预发布',
+    checksums: 'SHA256SUMS.txt',
+    releasePage: '发布页面与说明',
+    yourSystem: '你的系统',
+    platforms: {
+      linux: { name: 'Linux', note: 'x86_64' },
+      macos: { name: 'macOS', note: 'Apple 芯片，没有 Intel 版本' },
+      windows: { name: 'Windows', note: 'x64' },
+    },
+    kinds: {
+      deb: '适用于 Debian 与 Ubuntu',
+      rpm: '适用于 Fedora 及其他使用 rpm 的发行版',
+      appimage: '适用于 glibc 版本不低于 Ubuntu 24.04 的任意发行版',
+      dmg: '磁盘映像，拖入“应用程序”文件夹',
+      nsis: '安装程序，界面有英文和简体中文',
+      portable: '免安装版，数据保存在可执行文件旁边',
+    },
+    warningTitle: '这里的所有文件都没有签名。',
+    warning:
+      '没有 Developer ID 签名，没有 Apple 公证，也没有 Authenticode 签名，所以 macOS 在首次启动时会拒绝运行这个应用，Windows 会弹出 SmartScreen 警告。请先核对摘要值，然后在 Finder 中按住 Control 点按应用并选择“打开”，或者在 SmartScreen 里依次点“更多信息”和“仍要运行”。',
+    verify: '用该版本自带的校验文件核对下载的文件：',
+    buildTitle: '从源码构建',
+    buildText:
+      '需要 rust-toolchain.toml 中固定的 Rust 版本、Node 24 及以上、pnpm，以及 Tauri 的系统库。在 Debian 与 Ubuntu 上是 libwebkit2gtk-4.1-dev、libgtk-3-dev、libayatana-appindicator3-dev 和 librsvg2-dev。',
+    buildTerminal: [
+      { command: 'git clone https://github.com/fontcarver/fontcarver.git' },
+      { command: 'cd fontcarver' },
+      { command: 'pnpm install' },
+      { command: 'pnpm tauri dev', comment: '运行编辑器' },
+      { command: 'cargo test --workspace', comment: 'Rust 内核的测试' },
+    ],
+  },
+  status: {
+    title: '工作实际进展到哪里。',
+    lede: '“完成”指的是在该阶段验收报告界定的边界内完成，而不是穷尽所有情况。',
+    phases: [
+      { id: 'P0', text: '外壳、无损往返、字形网格', state: 'done' },
+      { id: 'P1', text: '轮廓编辑、工具、导出', state: 'done' },
+      { id: 'P2', text: '字偶间距、可编辑 OpenType 布局、源格式', state: 'done' },
+      { id: 'P3', text: '点阵字型与点阵格式', state: 'done' },
+      { id: 'P4', text: '可变字体、汉字构造、纵排', state: 'done' },
+      { id: 'P5', text: '专业收尾、hinting、打包', state: 'active' },
+    ],
+    text: 'P5 是当前阶段，已发布的 alpha 版是它的第一个打包版本：各平台的安装包通过脚本化的安装和卸载验证过，而交互式的原生编辑、签名和升级行为还没有。所有未完成的事项，都记录在状态记录里。',
+    link: '查看状态记录',
+  },
+  footer: {
+    about: '关于',
+    aboutText:
+      '一个从零实现的字体编辑器，以 Apache-2.0 与 MIT 双许可发布。构建在采用宽松许可的 Rust 字体生态之上：fontations、fontc、kurbo、fea-rs、harfrust、norad 与 tiny-skia。',
+    project: '项目',
+    projectLinks: [
+      { label: '代码仓库', href: 'https://github.com/fontcarver/fontcarver' },
+      { label: '发布版本', href: 'https://github.com/fontcarver/fontcarver/releases' },
+      {
+        label: '状态',
+        href: 'https://github.com/fontcarver/fontcarver/blob/main/docs/STATUS.md',
+      },
+      { label: '文档', href: 'https://github.com/fontcarver/fontcarver/tree/main/docs' },
+    ],
+    licence: '许可证',
+    licenceLinks: [
+      { label: 'Apache-2.0', href: 'https://github.com/fontcarver/fontcarver/blob/main/LICENSE-APACHE' },
+      { label: 'MIT', href: 'https://github.com/fontcarver/fontcarver/blob/main/LICENSE-MIT' },
+      {
+        label: '第三方声明',
+        href: 'https://github.com/fontcarver/fontcarver/blob/main/THIRD_PARTY.md',
+      },
+    ],
+    sister: '姊妹项目',
+    sisterText: 'FontPixel 收录可自由使用的点阵字体，提供逐字形的度量数据，以及可以直接输入文字的预览。',
+    sisterLink: 'fontpixel.com',
+    fine: 'FontCarver 是从零实现的，不是移植。FontForge 仅作为行为与格式参考被研究；FontCarver 从不链接、嵌入或分发 FontForge，也与 FontForge 项目没有隶属、背书或赞助关系。本页中的字样取自 Source Serif 4 与 Noto Serif CJK SC，二者均采用 SIL 开放字体许可证。',
+  },
+  lost: {
+    title: '这个地址不在字体里。',
+    text: '你要找的页面在这里不存在。首页介绍了这款编辑器、它能读写的格式，以及当前的下载。',
+    back: '回到首页',
+  },
+};

@@ -1,7 +1,9 @@
 /*
- * Theme bootstrap. Loaded synchronously in <head> so the page never paints
- * the wrong theme first. The content security policy forbids inline script,
- * which is why this is a file rather than three lines in the document.
+ * Theme bootstrap. A classic script in <head>, loaded before the first paint
+ * so the page never shows the wrong theme and then corrects itself. The
+ * content security policy forbids inline script, which is why this is a file
+ * rather than three lines in the document, and it is deliberately not part of
+ * the bundle: a module script is deferred, and a deferred theme is a flash.
  */
 (function () {
   var stored = null;

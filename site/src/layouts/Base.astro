@@ -1,0 +1,144 @@
+---
+import '../styles/site.css';
+import type { Content } from '../data/content';
+
+interface Props {
+  content: Content;
+  /** This page's path, from the site root, with both slashes. */
+  path: string;
+  nav?: boolean;
+}
+
+const { content, path, nav = true } = Astro.props;
+const origin = 'https://fontcarver.com';
+const canonical = `${origin}${path}`;
+const { meta } = content;
+---
+
+<!doctype html>
+<html lang={content.lang} data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{meta.title}</title>
+    <meta name="description" content={meta.description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang="en" href={`${origin}/`} />
+    <link rel="alternate" hreflang="zh-Hans" href={`${origin}/zh/`} />
+    <link rel="alternate" hreflang="x-default" href={`${origin}/`} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="FontCarver" />
+    <meta property="og:title" content={meta.ogTitle} />
+    <meta property="og:description" content={meta.ogDescription} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={`${origin}/assets/img/og-image.png`} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#e7e8e3" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121319" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="/assets/fonts/source-serif-4-variable.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    {/* Classic, not a module: the theme has to be settled before the first paint. */}
+    <script is:inline src="/assets/js/theme.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">{content.nav.skip}</a>
+    <header class="masthead">
+      <div class="shell masthead__inner">
+        <a class="wordmark" href={content.dir}>
+          <img src="/assets/img/favicon.svg" width="26" height="26" alt="" />
+          FontCarver
+        </a>
+        <nav class="nav" aria-label={content.nav.sections}>
+          {
+            nav && (
+              <>
+                <a href="#capabilities">{content.nav.capabilities}</a>
+                <a href="#formats" data-optional>
+                  {content.nav.formats}
+                </a>
+                <a href="#guide" data-optional>
+                  {content.nav.guide}
+                </a>
+                <a href="#download">{content.nav.download}</a>
+                <span class="nav__rule" role="presentation" />
+              </>
+            )
+          }
+          <a href="https://github.com/fontcarver/fontcarver" rel="noopener">{content.nav.github}</a>
+          <a href={content.other.href} lang={content.other.lang} hreflang={content.other.lang}>
+            {content.other.label}
+          </a>
+          <button class="iconbutton" type="button" id="theme-toggle">
+            <span
+              class="visually-hidden"
+              id="theme-toggle-label"
+              data-to-dark={content.nav.toDark}
+              data-to-light={content.nav.toLight}>{content.nav.toDark}</span
+            >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M16 12.3A7 7 0 0 1 7.7 4a6.5 6.5 0 1 0 8.3 8.3Z" />
+            </svg>
+          </button>
+        </nav>
+      </div>
+    </header>
+    <main id="main">
+      <slot />
+    </main>
+    <footer class="footer">
+      <div class="shell">
+        <div class="footer__grid">
+          <div>
+            <h2>{content.footer.about}</h2>
+            <p>{content.footer.aboutText}</p>
+          </div>
+          <div>
+            <h2>{content.footer.project}</h2>
+            <ul>
+              {
+                content.footer.projectLinks.map((link) => (
+                  <li>
+                    <a href={link.href} rel="noopener">
+                      {link.label}
+                    </a>
+                  </li>
+                ))
+              }
+            </ul>
+          </div>
+          <div>
+            <h2>{content.footer.licence}</h2>
+            <ul>
+              {
+                content.footer.licenceLinks.map((link) => (
+                  <li>
+                    <a href={link.href} rel="noopener">
+                      {link.label}
+                    </a>
+                  </li>
+                ))
+              }
+            </ul>
+          </div>
+          <div class="sister">
+            <h2>{content.footer.sister}</h2>
+            <p>{content.footer.sisterText}</p>
+            <p>
+              <a href="https://fontpixel.com/" rel="noopener">{content.footer.sisterLink}</a>
+            </p>
+          </div>
+        </div>
+        <p class="footer__fine">{content.footer.fine}</p>
+      </div>
+    </footer>
+    <script>
+      import '../lib/enhance';
+    </script>
+  </body>
+</html>

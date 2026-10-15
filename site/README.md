@@ -1,93 +1,121 @@
 # fontcarver.com
 
-The public website. Hand-written static files: no build step, no
-`package.json`, no `node_modules`. What is in this directory is what is
-served.
+The public website: Astro 7 with Svelte 5 islands, built to static files. What
+is deployed is `site/dist`, which is generated; nothing in it is written by
+hand.
 
 The binding design is
-[`docs/superpowers/specs/2026-09-24-website-design.md`](../docs/superpowers/specs/2026-09-24-website-design.md).
+[`docs/superpowers/specs/2026-09-24-website-design.md`](../docs/superpowers/specs/2026-09-24-website-design.md),
+superseded in presentation by the current build but not in its rules: one
+origin, no third-party request, and a weight budget the checker enforces.
 
 ## Layout
 
 ```
-index.html              English page
-zh/index.html           Chinese page
-404.html
-assets/css/tokens.css   design tokens, light and dark
-assets/css/site.css     layout and components
-assets/js/theme.js      theme bootstrap, loaded synchronously in <head>
-assets/js/specimens.js  generated outline data — do not edit
-assets/js/hero.js       the live canvas
-assets/js/site.js       theme toggle, platform promotion
-assets/fonts/*.woff2    self-hosted subset faces
-assets/img/             favicon and the social card
-tools/                  development tools; never deployed
-_headers _redirects     Cloudflare Pages configuration
+astro.config.mjs          build configuration, including the no-inline rules
+src/pages/index.astro     English page
+src/pages/zh/index.astro  Chinese page
+src/pages/404.astro
+src/components/           Home, Headline, Terminal, GlyphDrawing (Svelte)
+src/layouts/Base.astro    head, masthead, footer
+src/data/content.ts       the shape both languages fill
+src/data/content.en.ts    English copy
+src/data/content.zh.ts    Chinese copy, written by a separate translation pass
+src/data/specimens.ts     generated outline data — do not edit
+src/data/release.ts       generated release data — do not edit
+src/lib/glyph.ts          glyph geometry: points, path, rasteriser
+src/lib/enhance.ts        the one bundled module the pages load
+src/styles/site.css       the whole design system
+public/                   copied verbatim into dist
+public/assets/fonts/      self-hosted subset faces
+public/assets/js/theme.js the pre-paint theme bootstrap
+public/_headers           Cloudflare Pages headers, including the policy
+tools/                    development tools; never deployed
 ```
 
 ## Working on it
 
-Serve the directory and open it:
-
 ```sh
-python3 -m http.server 8787 --directory site
+cd site
+bun install
+bun run dev            # http://localhost:4321
+bun run build          # writes dist/
+bun run verify         # build, then run the site checker against dist/
 ```
 
-Before committing:
+Before committing, from the repository root:
 
 ```sh
-python3 scripts/check_site.py
+cd site && bun run build && cd ..
+python3 scripts/check_site.py --root site/dist
 ```
 
 The checker fails on a broken internal link, a missing `alt`, missing page
 metadata, an incomplete `hreflang` pair, a reference to any host other than
-`github.com` or `fontcarver.com`, and a page or directory over its weight
-budget. That last rule is what keeps the promise the site makes: it loads
-nothing from anyone else, which is also why it works from everywhere.
+`github.com`, `fontcarver.com` or `fontpixel.com`, an inline script or style,
+and a page or directory over its weight budget. That last rule is what keeps
+the promise the site makes: it loads nothing from anyone else, which is also
+why it works from everywhere.
 
 ## Rules that are easy to break
 
 - **No third-party requests.** No CDN, no font service, no analytics. The
-  content security policy in `_headers` forbids it and the checker catches it
-  before the policy would.
-- **No inline `<script>` or `style=` in markup.** The policy has no
-  `unsafe-inline`. Dynamic geometry is applied through SVG attributes and the
-  CSSOM.
-- **`assets/css/tokens.css` is a copy** of the application's
-  `app/src/styles/tokens.css` and `docs/design/editor-ui.md` §2. The site
-  ships separately, so the values are restated rather than imported. When the
-  application's tokens change, re-sync this file.
-- **The hero figure is generated.** The markup between the `hero:begin` and
-  `hero:end` markers in both pages, and `assets/js/specimens.js`, come from
-  `tools/extract-outlines.py`. Edit the tool, not the output.
+  content security policy in `public/_headers` forbids it and the checker
+  catches it first.
+- **No inline `<script>` or `style=`.** The policy has no `unsafe-inline`.
+  This is why the Svelte drawing is not an Astro island: a `client:` directive
+  emits an inline hydration loader. Astro renders the component statically and
+  `src/lib/enhance.ts` mounts a live copy over it, which keeps every script in
+  a file with a `src`. Set geometry through SVG attributes, never `style=`.
+- **The theme bootstrap is deliberately not bundled.** A module script is
+  deferred, and a deferred theme is a flash of the wrong one.
+- **Generated data is generated.** `src/data/specimens.ts` comes from
+  `tools/extract-outlines.py`, `src/data/release.ts` from
+  `scripts/release-data.mjs`. Edit the tool, not the output.
+- **The Chinese page is translated separately.** Whoever writes the English
+  copy does not write `content.zh.ts`; see `CONVENTIONS.md`.
 
-## Regenerating the hero figure
+## Regenerating the generated files
 
-The figure draws two real glyphs, read out of OFL-licensed fonts:
+The drawing reads two real glyphs out of OFL-licensed fonts:
 
 ```sh
 python3 site/tools/extract-outlines.py \
-    --latin site/assets/fonts/source-serif-4-variable.woff2 \
+    --latin site/public/assets/fonts/source-serif-4-variable.woff2 \
     --cjk /usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc \
     --cjk-font-number 2 \
-    --inject site/index.html site/zh/index.html
+    --out site/src/data/specimens.ts
 ```
 
-It needs `fontTools` and `brotli`, which are development dependencies and are
-not needed to build or serve the site. Both source fonts are recorded in
-[`THIRD_PARTY.md`](../THIRD_PARTY.md).
+The download section reads the newest published release:
+
+```sh
+cd site && node scripts/release-data.mjs
+```
+
+The Han faces are subset to exactly the characters each page sets. Run this
+after changing Chinese copy, or the page falls back to whatever Song serif the
+reader's system has:
+
+```sh
+python3 site/tools/build-han-subset.py
+```
+
+All three need development dependencies (`fontTools` with Brotli, a network,
+Source Han Serif) that the built site does not.
 
 ## Deployment
 
-`.github/workflows/site.yml` verifies every push and pull request that touches
-`site/`, and deploys only when **all three** of these hold:
+`.github/workflows/site.yml` builds and verifies every push and pull request
+that touches `site/`, and deploys `site/dist` only when **all three** of these
+hold:
 
 1. the event is not a pull request,
 2. the ref is `refs/heads/main`,
 3. the repository variable `CLOUDFLARE_PAGES_PROJECT` is set.
 
-None of them hold today, so nothing is published. Publishing is a deliberate
-act, not an accident of merging.
+None of them hold together today, so nothing is published. Publishing is a
+deliberate act, not an accident of merging.
 
 ### One-time Cloudflare setup
 
@@ -106,14 +134,4 @@ act, not an accident of merging.
 5. In the Pages project, add the custom domains `fontcarver.com` and
    `www.fontcarver.com`, and point the domain's DNS at Cloudflare.
 6. Check that `https://www.fontcarver.com/` redirects to the apex domain —
-   that redirect is in `_redirects`, not in the dashboard.
-
-### Going live with real downloads
-
-The download section ships in a pending state. When the first release exists:
-
-1. replace the `<span>` in each `.artifacts` row with the artefact's size and
-   its SHA-256,
-2. point each row at its release URL,
-3. change `data-state="pending"` on `#downloads`,
-4. delete the `#release-notice` block from both pages.
+   that redirect is in `public/_redirects`, not in the dashboard.

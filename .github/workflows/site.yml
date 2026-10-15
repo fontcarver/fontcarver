@@ -1,8 +1,8 @@
 name: Site
 
-# Separate from `ci.yml` on purpose: the website has no Rust and no npm, so it
-# must not wait behind a 45-minute workspace build, and a change to the kernel
-# must not redeploy the site.
+# Separate from `ci.yml` on purpose: the website has no Rust, so it must not
+# wait behind a 45-minute workspace build, and a change to the kernel must not
+# redeploy the site.
 
 on:
   push:
@@ -23,15 +23,35 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      # No dependencies to install: the site is hand-written static files and
-      # the checker is standard-library Python.
+      - name: Install pinned Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install site dependencies
+        working-directory: site
+        run: bun install --frozen-lockfile
+
+      - name: Build the site
+        working-directory: site
+        run: bun run build
+
+      # The checker reads what the build produced, not the sources: a
+      # generated page is the thing that gets served.
       - name: Check the site
-        run: python3 scripts/check_site.py
+        run: python3 scripts/check_site.py --root site/dist
+
+      - name: Keep the built site
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-${{ github.sha }}
+          path: site/dist
+          retention-days: 7
 
   deploy:
     needs: verify
@@ -53,8 +73,21 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Install pinned Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install site dependencies
+        working-directory: site
+        run: bun install --frozen-lockfile
+
+      - name: Build the site
+        working-directory: site
+        run: bun run build
+
       - name: Check the site again against what is about to be published
-        run: python3 scripts/check_site.py
+        run: python3 scripts/check_site.py --root site/dist
 
       - name: Publish to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
@@ -62,6 +95,6 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: >-
-            pages deploy site
+            pages deploy site/dist
             --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }}
             --branch=main

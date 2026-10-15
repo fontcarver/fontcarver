@@ -150,22 +150,32 @@ machine, and dependent tests skip when they do not:
 ## 2A. Website fonts and specimens — `site/`
 
 The website at `fontcarver.com` self-hosts its type rather than loading it from
-a font service, so these files are redistributed with the site. All three are
+a font service, so these files are redistributed with the site. All five are
 **SIL Open Font License 1.1**; the full OFL text is in
 `fixtures/LICENSE-OFL.txt`.
 
-| File in `site/assets/fonts/`    | Family                                                 | Copyright                          | License evidence                                                               | SHA-256 (first 16) |
-| ------------------------------- | ------------------------------------------------------ | ---------------------------------- | ------------------------------------------------------------------------------ | ------------------ |
-| `source-serif-4-variable.woff2` | Source Serif 4 (variable, `wght` 200–900, `opsz` 8–60) | Adobe, Reserved Font Name `Source` | OFL 1.1 as published by Adobe at <https://github.com/adobe-fonts/source-serif> | `f9d47f68388a6eef` |
-| `ibm-plex-mono-400.woff2`       | IBM Plex Mono Regular                                  | IBM Corp.                          | OFL 1.1 as published at <https://github.com/IBM/plex>                          | `61f330a0921f52d1` |
-| `ibm-plex-mono-500.woff2`       | IBM Plex Mono Medium                                   | IBM Corp.                          | OFL 1.1 as published at <https://github.com/IBM/plex>                          | `b9414e01257b2426` |
+| File in `site/public/assets/fonts/` | Family                                                 | Copyright                          | License evidence                                                                | SHA-256 (first 16) |
+| ----------------------------------- | ------------------------------------------------------ | ---------------------------------- | ------------------------------------------------------------------------------- | ------------------ |
+| `source-serif-4-variable.woff2`     | Source Serif 4 (variable, `wght` 200–900, `opsz` 8–60) | Adobe, Reserved Font Name `Source` | OFL 1.1 as published by Adobe at <https://github.com/adobe-fonts/source-serif>  | `f9d47f68388a6eef` |
+| `ibm-plex-mono-400.woff2`           | IBM Plex Mono Regular                                  | IBM Corp.                          | OFL 1.1 as published at <https://github.com/IBM/plex>                           | `61f330a0921f52d1` |
+| `ibm-plex-mono-500.woff2`           | IBM Plex Mono Medium                                   | IBM Corp.                          | OFL 1.1 as published at <https://github.com/IBM/plex>                           | `b9414e01257b2426` |
+| `han-display.woff2`                 | Source Han Serif SC, `wght` 500 instance, 10 glyphs    | Adobe, Reserved Font Name `Source` | OFL 1.1 as published at <https://github.com/adobe-fonts/source-han-serif>       | `50bc44f5bfd8dfa9` |
+| `han-zh.woff2`                      | Source Han Serif SC, `wght` 500 instance, 440 glyphs   | Adobe, Reserved Font Name `Source` | OFL 1.1 as published at <https://github.com/adobe-fonts/source-han-serif>       | `49afac8ef8bc80d8` |
 
-Each file is a Latin subset produced with `fontTools.subset` from the
-corresponding `@fontsource` release; the OFL permits subsetting and
-redistribution under the same license, and the files keep their original name
-table entries for copyright (name ID 0), license (13) and license URL (14).
+The Latin files are subsets produced with `fontTools.subset` from the
+corresponding `@fontsource` release. The two Han files are produced by
+`site/tools/build-han-subset.py` from Source Han Serif VF: one weight is
+instanced out of the variable face and then subset to exactly the characters
+that page sets. The OFL permits subsetting, instancing and redistribution
+under the same license, and every file keeps its original name table entries
+for copyright (name ID 0), license (13) and license URL (14).
 
-### Glyph outlines in `site/assets/js/specimens.js`
+Both Han files are modified versions, so they carry **no family name at all**:
+Source Han Serif reserves the name `Source`, and a modified version may not be
+distributed under it. The stylesheet names them `FC Han Display` and
+`FC Han Text` locally.
+
+### Glyph outlines in `site/src/data/specimens.ts`
 
 The hero figure draws two real glyphs. Their outline coordinates are extracted
 by `site/tools/extract-outlines.py` and committed as data:
