@@ -19,7 +19,7 @@ import {
 } from './keymapTargets'
 import { formatShortcut } from './shortcuts'
 import { helpHint } from './contextHelp'
-import { useCommandRegistry } from './useCommandRegistry'
+import { useCommandList } from './useCommandRegistry'
 import styles from './ShortcutSettingsDialog.module.css'
 
 /** Rows shown at once; conflicting rows are always among them. */
@@ -28,7 +28,7 @@ const VISIBLE_ROWS = 80
 /** Reviewed draft for explicit shortcut changes. */
 export function ShortcutSettingsForm() {
   const { t } = useTranslation()
-  useCommandRegistry()
+  const registered = useCommandList()
   const [draft, setDraft] = useState<KeymapOverrides>(() => ({
     ...useKeymapStore.getState().overrides,
   }))
@@ -40,7 +40,7 @@ export function ShortcutSettingsForm() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const importVersion = useRef(0)
-  const targets = keymapTargets()
+  const targets = keymapTargets(registered)
   const allTargets = [...targets, ...reservedKeymapTargets()]
   const conflicts = keymapConflicts(allTargets, draft)
   const byTarget = conflictsByTarget(conflicts)

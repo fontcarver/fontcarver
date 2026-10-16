@@ -5,11 +5,11 @@ import { Button } from '../components/Button'
 import { useSessionStore } from '../stores/sessionStore'
 import { useKeymapStore } from '../stores/keymapStore'
 
-import { getCommand, runCommand } from './commands'
+import { runCommand } from './commands'
 import { openHelpArticle } from './contextHelp'
 import { shortcutFor } from './keymap'
 import { formatShortcut } from './shortcuts'
-import { useCommandRegistry } from './useCommandRegistry'
+import { useCommandLookup } from './useCommandRegistry'
 import styles from './EmptyState.module.css'
 
 /** Shown in the content area while no document is open. */
@@ -20,7 +20,9 @@ export function EmptyState() {
   const open = useSessionStore((state) => state.open)
   const overrides = useKeymapStore((state) => state.overrides)
   const discoveryId = useId()
-  useCommandRegistry()
+  // Read through the lookup, not the registry itself: a late registration
+  // must reach the hints below.
+  const commandById = useCommandLookup()
 
   const discoveries = [
     {
@@ -84,7 +86,7 @@ export function EmptyState() {
                 commands.flatMap((id) => {
                   const binding = shortcutFor(
                     id,
-                    getCommand(id)?.shortcut,
+                    commandById(id)?.shortcut,
                     overrides,
                   )
                   const hint = binding ? formatShortcut(binding) : ''

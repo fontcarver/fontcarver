@@ -6,7 +6,6 @@ const emptyNames: readonly string[] = []
 
 /** Completion inventory is bounded independently of the editor source size. */
 export function useFeatureCompletions(doc: DocId, generation: number) {
-  // A new generation must also recreate the editor's dynamic completion source.
   const request = useMemo(() => ({ doc, generation }), [doc, generation])
   const [inventory, setInventory] = useState<{
     request: typeof request
@@ -54,5 +53,10 @@ export function useFeatureCompletions(doc: DocId, generation: number) {
     [request],
   )
   const names = inventory?.request === request ? inventory.names : emptyNames
-  return { names, loadGlyphNames }
+  // The editor's dynamic completion source must be rebuilt for a new document
+  // or generation. The key says so as data: the identity of `loadGlyphNames`
+  // cannot, because memoisation may keep one closure for a request whose
+  // generation changed.
+  const completionKey = `${doc}:${generation}`
+  return { names, loadGlyphNames, completionKey }
 }

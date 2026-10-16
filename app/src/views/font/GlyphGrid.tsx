@@ -137,6 +137,7 @@ export function GlyphGrid({ summary, query }: GlyphGridProps) {
       <GridCells
         doc={doc}
         pager={pager}
+        cacheVersion={version}
         metrics={metrics}
         cellSize={view.cellSize}
         gap={GRID_GAP}

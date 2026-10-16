@@ -70,9 +70,11 @@ export interface Command {
 const registry = new Map<string, Command>()
 const listeners = new Set<() => void>()
 let version = 0
+let snapshot: readonly Command[] = []
 
 function notify(): void {
   version += 1
+  snapshot = [...registry.values()]
   for (const listener of [...listeners]) listener()
 }
 
@@ -89,6 +91,19 @@ export function subscribeCommands(listener: () => void): () => void {
 /** Monotonic registry version, usable as a `useSyncExternalStore` snapshot. */
 export function commandsVersion(): number {
   return version
+}
+
+/**
+ * Every registered command as one immutable array, in registration order.
+ *
+ * A registration replaces the array, so its identity is what says the registry
+ * changed. A component derives its commands from this snapshot instead of
+ * calling {@link listCommands} while rendering, which keeps the dependency
+ * visible to React and to automatic memoisation; a call made during render is
+ * invisible to both and leaves a late registration unnoticed.
+ */
+export function commandsSnapshot(): readonly Command[] {
+  return snapshot
 }
 
 let errorReporter: (error: unknown) => void = () => undefined
@@ -145,8 +160,11 @@ export function listCommands(): Command[] {
 }
 
 /** Commands belonging to one menu, in registration order. */
-export function commandsForMenu(menu: MenuId): Command[] {
-  return listCommands().filter((command) => command.menu === menu)
+export function commandsForMenu(
+  menu: MenuId,
+  commands: readonly Command[] = snapshot,
+): Command[] {
+  return commands.filter((command) => command.menu === menu)
 }
 
 /** Whether the command exists and its `when` predicate currently allows it. */

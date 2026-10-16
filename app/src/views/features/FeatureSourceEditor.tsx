@@ -37,6 +37,7 @@ export function FeatureSourceEditor({
   readOnly,
   glyphNames,
   loadGlyphNames,
+  completionKey,
   diagnostics,
   focusRange,
   session,
@@ -54,6 +55,8 @@ export function FeatureSourceEditor({
   readOnly: boolean
   glyphNames: readonly string[]
   loadGlyphNames: (query: string) => Promise<readonly string[]>
+  /** Reconfigures the editor's completion source; see `useFeatureCompletions`. */
+  completionKey?: string
   diagnostics: readonly FeatureDiagnostic[]
   focusRange: FeatureCodeEditorProps['focusRange']
   session: FeatureDraftSession
@@ -199,6 +202,7 @@ export function FeatureSourceEditor({
           label={t('features.sourceCode')}
           glyphNames={glyphNames}
           loadGlyphNames={loadGlyphNames}
+          completionKey={completionKey}
           classNames={previewSource.classes.map((entry) => entry.name)}
           diagnostics={diagnostics
             .filter((entry) => entry.source_id === item.id && entry.span)

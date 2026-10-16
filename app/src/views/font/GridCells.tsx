@@ -1,3 +1,5 @@
+import { useMemo } from 'react'
+
 import type { DocId, GlyphId } from '../../api'
 import type { EmBox } from '../../canvas/glyphPaint'
 import type { LabelMode } from '../../stores/documentStore'
@@ -5,13 +7,19 @@ import type { LabelMode } from '../../stores/documentStore'
 import type { CellTheme } from './cellRenderer'
 import { GlyphCell } from './GlyphCell'
 import styles from './fontView.module.css'
-import type { GlyphPager } from './glyphPager'
+import { cellWindow, type GlyphPager } from './glyphPager'
 import type { Band } from './useGridPointer'
 import { cellBox, type GridMetrics } from './useVirtualGrid'
 
 export interface GridCellsProps {
   doc: DocId
   pager: GlyphPager
+  /**
+   * The pager's cache version. Its cells are a mutable cache, so the version
+   * is what tells React that they must be read again; without it, memoised
+   * cells survive an invalidation the kernel already reported.
+   */
+  cacheVersion: number
   metrics: GridMetrics
   /** Cell edge length in CSS pixels. */
   cellSize: number
@@ -44,6 +52,7 @@ export interface GridCellsProps {
 export function GridCells({
   doc,
   pager,
+  cacheVersion,
   metrics,
   cellSize,
   gap,
@@ -59,9 +68,16 @@ export function GridCells({
   referenceCharacters,
   band,
 }: GridCellsProps) {
+  // The cells come from the pager's mutable cache, so the window is taken as a
+  // snapshot keyed on the version the pager reported: see the prop's note.
+  const inView = useMemo(
+    () => cellWindow(pager, metrics.first, metrics.last, cacheVersion),
+    [pager, metrics.first, metrics.last, cacheVersion],
+  )
+
   const cells = []
   for (let index = metrics.first; index <= metrics.last; index += 1) {
-    const cell = pager.cell(index)
+    const cell = inView[index - metrics.first]
     const box = cellBox(index, metrics, cellSize, gap)
     cells.push(
       <GlyphCell
