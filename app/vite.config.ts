@@ -13,7 +13,11 @@ import { defineConfig } from 'vite'
 const proxyTarget = process.env.FC_DEV_PROXY
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react({
+      babel: { plugins: [['babel-plugin-react-compiler', {}]] },
+    }),
+  ],
   clearScreen: false,
   server: {
     host: '127.0.0.1',
