@@ -147,37 +147,12 @@ machine, and dependent tests skip when they do not:
 
 ---
 
-## 2A. Website fonts and specimens — `site/`
+## 2A. Website fonts and specimens
 
-The website at `fontcarver.com` self-hosts its type rather than loading it from
-a font service, so these files are redistributed with the site. All three are
-**SIL Open Font License 1.1**; the full OFL text is in
-`fixtures/LICENSE-OFL.txt`.
-
-| File in `site/assets/fonts/`    | Family                                                 | Copyright                          | License evidence                                                               | SHA-256 (first 16) |
-| ------------------------------- | ------------------------------------------------------ | ---------------------------------- | ------------------------------------------------------------------------------ | ------------------ |
-| `source-serif-4-variable.woff2` | Source Serif 4 (variable, `wght` 200–900, `opsz` 8–60) | Adobe, Reserved Font Name `Source` | OFL 1.1 as published by Adobe at <https://github.com/adobe-fonts/source-serif> | `f9d47f68388a6eef` |
-| `ibm-plex-mono-400.woff2`       | IBM Plex Mono Regular                                  | IBM Corp.                          | OFL 1.1 as published at <https://github.com/IBM/plex>                          | `61f330a0921f52d1` |
-| `ibm-plex-mono-500.woff2`       | IBM Plex Mono Medium                                   | IBM Corp.                          | OFL 1.1 as published at <https://github.com/IBM/plex>                          | `b9414e01257b2426` |
-
-Each file is a Latin subset produced with `fontTools.subset` from the
-corresponding `@fontsource` release; the OFL permits subsetting and
-redistribution under the same license, and the files keep their original name
-table entries for copyright (name ID 0), license (13) and license URL (14).
-
-### Glyph outlines in `site/assets/js/specimens.js`
-
-The hero figure draws two real glyphs. Their outline coordinates are extracted
-by `site/tools/extract-outlines.py` and committed as data:
-
-| Glyph         | Source font                                   | License                                          |
-| ------------- | --------------------------------------------- | ------------------------------------------------ |
-| `g` (U+0067)  | Source Serif 4 Regular, from the subset above | SIL OFL 1.1 (Adobe, RFN `Source`)                |
-| `永` (U+6C38) | Noto Serif CJK SC Regular                     | SIL OFL 1.1 (Adobe/Google, RFN `Source`, `Noto`) |
-
-Noto Serif CJK is **not** redistributed: only the coordinates of one glyph are
-committed, and the font itself is read from the developer's machine when the
-tool runs. Both attributions appear in the website's footer.
+The website moved to its own repository,
+[fontcarver/fontcarver.com](https://github.com/fontcarver/fontcarver.com), and
+took its self-hosted fonts and glyph specimens with it. Their notices are in
+that repository's `THIRD_PARTY.md`.
 
 ---
 

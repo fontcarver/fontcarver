@@ -5,8 +5,6 @@
   // CI runs these from the app package (`pnpm --dir app exec …`).
   "ignoreBinaries": ["prettier", "vitest"],
   "workspaces": {
-    // The static website's scripts, loaded by its HTML pages.
-    ".": { "entry": ["site/assets/js/*.js"] },
     // Phase acceptance suites, run with `playwright test --config e2e/<phase>.config.ts`.
     "app": { "entry": ["e2e/*.config.ts", "e2e/*.vite.config.ts"] }
   },

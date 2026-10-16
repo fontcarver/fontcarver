@@ -1,2 +1,0 @@
-# Cloudflare Pages redirects. The apex domain is canonical.
-https://www.fontcarver.com/*  https://fontcarver.com/:splat  301

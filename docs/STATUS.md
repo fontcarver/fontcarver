@@ -238,8 +238,9 @@ static-only TrueType glyph programs, no bundled IDS database — are listed in
 
 Release configuration, license/helper checks and actual Linux candidate
 verification are complete. Native macOS/Windows workflows remain unverified. Native/global
-desktop input automation remains prohibited. The bilingual website is implemented;
-its deployment and first release download links remain pending.
+desktop input automation remains prohibited. The bilingual website is implemented
+and now lives in its own repository, fontcarver/fontcarver.com; its
+deployment and first release download links remain pending.
 
 All local delegated implementations are integrated. Centralized acceptance
 supersedes earlier queued/cancelled-test notes only where the final report

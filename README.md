@@ -3,7 +3,8 @@
 A cross-platform desktop font editor: a Rust kernel behind a React/TypeScript UI,
 packaged with [Tauri 2](https://tauri.app/) for Linux, macOS and Windows.
 
-Official website: <https://fontcarver.com>
+Official website: <https://fontcarver.com> (its source is
+[fontcarver/fontcarver.com](https://github.com/fontcarver/fontcarver.com))
 
 Repository: <https://github.com/fontcarver/fontcarver>
 
