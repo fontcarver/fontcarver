@@ -104,6 +104,7 @@ export function EditGlyphList({ summary, gid, query }: EditGlyphListProps) {
       <GridCells
         doc={doc}
         pager={pager}
+        cacheVersion={version}
         metrics={metrics}
         cellSize={COMPACT_CELL}
         gap={GRID_GAP}

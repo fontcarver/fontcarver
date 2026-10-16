@@ -10,7 +10,7 @@ import {
 } from '../stores/documentStore'
 import { selectActiveDoc, useUiStore } from '../stores/uiStore'
 
-import { listCommands, runCommand } from './commands'
+import { runCommand } from './commands'
 import {
   createPaletteFilters,
   openPaletteFilter,
@@ -19,13 +19,13 @@ import {
   type PaletteScope,
 } from './paletteSearch'
 import { openGlyphTab } from './tabActions'
-import { useCommandRegistry } from './useCommandRegistry'
+import { useCommandList } from './useCommandRegistry'
 import { usePaletteGlyphSearch } from './usePaletteGlyphSearch'
 
 /** Collects live palette sources while keeping each remote query bounded. */
 export function usePaletteEntries(query: string, scope: PaletteScope) {
   const { t } = useTranslation()
-  useCommandRegistry()
+  const registered = useCommandList()
   const doc = useUiStore(selectActiveDoc)
   const view = useDocumentStore(selectDocView(doc))
   const scripts = useAutomationStore((state) => state.scripts)
@@ -73,7 +73,7 @@ export function usePaletteEntries(query: string, scope: PaletteScope) {
     }
   }, [doc])
 
-  const local: PaletteEntry[] = listCommands().map((command) => ({
+  const local: PaletteEntry[] = registered.map((command) => ({
     id: command.id,
     kind: 'commands',
     label: t(command.title),

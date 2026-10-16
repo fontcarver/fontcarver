@@ -31,10 +31,11 @@ export function FeaturesView({ summary }: { summary: DocSummary }) {
   )
   const master = view.master ?? summary.masters[0]?.id ?? null
   const draft = useFeaturesDraft(summary.doc, view.generation, master)
-  const { names: glyphNames, loadGlyphNames } = useFeatureCompletions(
-    summary.doc,
-    view.generation,
-  )
+  const {
+    names: glyphNames,
+    loadGlyphNames,
+    completionKey,
+  } = useFeatureCompletions(summary.doc, view.generation)
   const [selected, setSelected] = useState<string | null>(null)
   const [mode, setMode] = useState<'source' | 'visual' | 'lookups'>('source')
   const [focusRange, setFocusRange] = useState<{
@@ -352,6 +353,7 @@ export function FeaturesView({ summary }: { summary: DocSummary }) {
                   readOnly={readOnly}
                   glyphNames={glyphNames}
                   loadGlyphNames={loadGlyphNames}
+                  completionKey={completionKey}
                   diagnostics={draft.validation?.diagnostics ?? []}
                   focusRange={focusRange}
                   session={session}

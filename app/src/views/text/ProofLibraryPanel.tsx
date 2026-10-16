@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { reportError } from '../../shell/commands'
 import { saveArtifact } from '../../shell/saveArtifact'
@@ -79,20 +86,30 @@ export function ProofLibraryPanel({
     setName(current.name)
     setGroup(current.group)
   }
-  const choose = (entry: ProofEntry) => {
-    setImportRejected(false)
-    onSelect(entry)
-  }
-  const step = (direction: -1 | 1) => {
-    const entry = stepProofLibrary(entries, selected || null, direction)
-    if (entry) choose(entry)
-  }
+  const choose = useCallback(
+    (entry: ProofEntry) => {
+      setImportRejected(false)
+      onSelect(entry)
+    },
+    [onSelect],
+  )
+  // The stepper's inputs are named as dependencies rather than captured by a
+  // closure that is rebuilt on every render: automatic memoisation keeps a
+  // closure whose inputs it cannot see, which would step from a stale
+  // selection.
+  const step = useCallback(
+    (direction: -1 | 1) => {
+      const entry = stepProofLibrary(entries, selected || null, direction)
+      if (entry) choose(entry)
+    },
+    [entries, selected, choose],
+  )
   // The two keyboard paths are installed once and always call the newest
   // stepper, so a filter change takes effect without reinstalling listeners.
   const stepLatest = useRef(step)
   useEffect(() => {
     stepLatest.current = step
-  })
+  }, [step])
   useEffect(() => {
     const input = inputRef.current
     const key = (event: KeyboardEvent) => {

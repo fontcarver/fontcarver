@@ -40,6 +40,11 @@ export interface FeatureCodeEditorProps {
   label: string
   glyphNames: readonly string[]
   loadGlyphNames?: (query: string) => Promise<readonly string[]>
+  /**
+   * Identifies the document and generation the completion source belongs to;
+   * a new value reconfigures it.
+   */
+  completionKey?: string
   classNames: readonly string[]
   diagnostics: readonly FeatureEditorDiagnostic[]
   focusRange: { from: number; to: number; revision: number } | null
@@ -232,7 +237,12 @@ export function FeatureCodeEditor(props: FeatureCodeEditorProps) {
         }),
       ),
     })
-  }, [props.glyphNames, props.classNames, props.loadGlyphNames])
+  }, [
+    props.glyphNames,
+    props.classNames,
+    props.loadGlyphNames,
+    props.completionKey,
+  ])
 
   useLayoutEffect(() => {
     editor.current?.dispatch({

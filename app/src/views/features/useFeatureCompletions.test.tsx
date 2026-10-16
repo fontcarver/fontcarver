@@ -84,7 +84,7 @@ describe('useFeatureCompletions', () => {
     expect(hook.result.current.names).toEqual(['currentGlyph'])
   })
 
-  it('refreshes the dynamic loader for each document generation and bounds queries', async () => {
+  it('keys the completion source to the document and generation and bounds queries', async () => {
     const transport = createMockTransport({
       'glyphs.list': ({ filter }) => inventory(filter.query ?? 'allGlyphs'),
     })
@@ -93,16 +93,17 @@ describe('useFeatureCompletions', () => {
       ({ doc, generation }) => useFeatureCompletions(doc, generation),
       { initialProps: { doc: 1, generation: 1 } },
     )
-    const initialLoader = hook.result.current.loadGlyphNames
+    // The editor reconfigures on the key, not on the loader's identity, which
+    // automatic memoisation is free to keep across a new generation.
+    expect(hook.result.current.completionKey).toBe('1:1')
     hook.rerender({ doc: 1, generation: 1 })
-    expect(hook.result.current.loadGlyphNames).toBe(initialLoader)
+    expect(hook.result.current.completionKey).toBe('1:1')
 
     hook.rerender({ doc: 1, generation: 2 })
-    const refreshedLoader = hook.result.current.loadGlyphNames
-    expect(refreshedLoader).not.toBe(initialLoader)
+    expect(hook.result.current.completionKey).toBe('1:2')
 
     hook.rerender({ doc: 2, generation: 2 })
-    expect(hook.result.current.loadGlyphNames).not.toBe(refreshedLoader)
+    expect(hook.result.current.completionKey).toBe('2:2')
     await act(async () => {
       expect(await hook.result.current.loadGlyphNames('a.alt')).toEqual([
         'a.alt',

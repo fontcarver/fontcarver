@@ -43,9 +43,11 @@ function scopeOf(command: Command): string {
 }
 
 /** Every editable command and tool, using stable action IDs rather than labels. */
-export function keymapTargets(): KeymapTarget[] {
+export function keymapTargets(
+  commands: readonly Command[] = listCommands(),
+): KeymapTarget[] {
   return [
-    ...listCommands()
+    ...commands
       // Tools have palette commands, but their binding belongs to the tap/hold
       // handler. Use the tool table below as their single editable row.
       .filter(

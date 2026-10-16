@@ -284,3 +284,25 @@ export function requiresFullReload(
   if (change.glyphs.length === 0) return false
   return sort !== 'Order' || filtered
 }
+
+/**
+ * The cells of one inclusive index window, holes included.
+ *
+ * The pager's cells are a mutable cache, so a caller that renders them takes
+ * this snapshot together with the `version` the pager last reported: a new
+ * version yields a new array. That is what tells React — and automatic
+ * memoisation, which may otherwise treat a repeated `cell` call with the same
+ * index as unchanged — that the window must be read again.
+ */
+export function cellWindow(
+  pager: GlyphPager,
+  first: number,
+  last: number,
+  version: number,
+): readonly (GlyphCell | undefined)[] {
+  void version
+  const cells: (GlyphCell | undefined)[] = []
+  for (let index = first; index <= last; index += 1)
+    cells.push(pager.cell(index))
+  return cells
+}

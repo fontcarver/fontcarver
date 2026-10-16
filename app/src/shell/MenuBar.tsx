@@ -9,7 +9,7 @@ import {
 } from './commands'
 import styles from './MenuBar.module.css'
 import { MenuItem } from './MenuItem'
-import { useCommandRegistry } from './useCommandRegistry'
+import { useCommandList } from './useCommandRegistry'
 import { useMenuPopupPosition } from './useMenuPopupPosition'
 
 /**
@@ -20,7 +20,7 @@ import { useMenuPopupPosition } from './useMenuPopupPosition'
  */
 export function MenuBar() {
   const { t } = useTranslation()
-  useCommandRegistry()
+  const registered = useCommandList()
   const [open, setOpen] = useState<MenuId | null>(null)
   const pendingItemFocus = useRef<'first' | 'last' | null>(null)
   const returnFocusRef = useRef<HTMLElement | null>(null)
@@ -133,7 +133,7 @@ export function MenuBar() {
   }
 
   const renderItems = (menu: MenuId) => {
-    const commands = commandsForMenu(menu)
+    const commands = commandsForMenu(menu, registered)
     if (commands.length === 0)
       return (
         <button
