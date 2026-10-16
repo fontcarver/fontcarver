@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { readWindowTarget } from '../transport/windows'
 import { MacroConsole } from '../automation/MacroConsole'
+import { installDraftFlushOnWindowBlur } from '../editor/flushOnWindowBlur'
 import { DetachedPanel } from './DetachedPanel'
 import { DetachedWindowBar } from './DetachedWindowBar'
 import { registerWorkspaceTabCommands } from './workspaceTabCommands'
@@ -75,6 +76,9 @@ export function AppShell() {
     const stopSession = useSessionStore.getState().start()
     const stopProgress = useProgressStore.getState().start()
     const stopShortcuts = installShortcuts()
+    // A detached view's drafts must not stay in that window alone: leaving it
+    // is where they reach the kernel, before another window saves or closes.
+    const stopDraftFlush = installDraftFlushOnWindowBlur(reportError)
     // The kernel owns the preferences, so they are read before the first paint
     // of anything that depends on them; a crash-recovery listing follows.
     void usePrefsStore.getState().load()
@@ -86,6 +90,7 @@ export function AppShell() {
       stopSession()
       stopProgress()
       stopShortcuts()
+      stopDraftFlush()
     }
   }, [])
 

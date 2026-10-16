@@ -81,6 +81,11 @@ export function suspendDocumentEditParticipants(doc: DocId): () => void {
   }
 }
 
+/** Documents that currently have a registered editor in this window. */
+export function documentsWithEditParticipants(): readonly DocId[] {
+  return [...participants.keys()]
+}
+
 /** Whether a registered editor has a local draft that document Undo can flush. */
 export function hasPendingDocumentDraft(doc: DocId): boolean {
   return [...(participants.get(doc) ?? [])].some(
