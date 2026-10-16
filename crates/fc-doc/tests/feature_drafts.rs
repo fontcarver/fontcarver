@@ -590,3 +590,33 @@ fn validated_kerning_lift_installs_consistent_groups_and_retains_vertical_pairs(
         assert_eq!(doc.font.kerning_groups, before.kerning_groups);
     });
 }
+
+#[test]
+fn renaming_a_glyph_follows_into_the_saved_draft() {
+    document(|doc| {
+        // `base` is a FEA keyword, which a rename deliberately leaves alone.
+        let text = "@renameTargets = [base composite];";
+        doc.apply(draft(doc, source(text)), "Draft").unwrap();
+        doc.apply(
+            Command::RenameGlyph {
+                from: "composite".into(),
+                to: "composite.renamed".into(),
+            },
+            "Rename glyph",
+        )
+        .unwrap();
+
+        let renamed = doc.font.feature_draft.as_ref().unwrap().source.prefixes[0]
+            .code
+            .clone();
+        assert_eq!(
+            renamed, "@renameTargets = [base composite.renamed];",
+            "a rename must follow into the draft the editor is still holding"
+        );
+        doc.undo().unwrap();
+        assert_eq!(
+            doc.font.feature_draft.as_ref().unwrap().source.prefixes[0].code,
+            text
+        );
+    });
+}

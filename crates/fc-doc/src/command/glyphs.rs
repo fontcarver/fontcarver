@@ -57,18 +57,27 @@ pub(crate) fn follow_rename(font: &mut Font, from: &GlyphName, to: &GlyphName) {
             }
         }
     }
-    for class in &mut font.features.classes {
+    rename_in_features(&mut font.features, from, to);
+    // The editor's saved draft is source the user has not applied yet. Leaving
+    // it behind turns a plain rename into a draft that no longer compiles.
+    if let Some(draft) = font.feature_draft.as_mut() {
+        rename_in_features(&mut draft.source, from, to);
+    }
+    rename_in_glyph_lists(&mut font.info.user_data, from, to);
+}
+
+/// Rewrites every glyph reference of one FEA source tree.
+fn rename_in_features(features: &mut fc_model::Features, from: &str, to: &GlyphName) {
+    for class in &mut features.classes {
         class.code = rename_in_fea(&class.code, from, to);
     }
-    for block in font
-        .features
+    for block in features
         .prefixes
         .iter_mut()
-        .chain(font.features.features.iter_mut())
+        .chain(features.features.iter_mut())
     {
         block.code = rename_in_fea(&block.code, from, to);
     }
-    rename_in_glyph_lists(&mut font.info.user_data, from, to);
 }
 
 fn rename_metrics_keys(keys: &mut fc_model::MetricsKeys, from: &str, to: &GlyphName) {
