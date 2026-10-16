@@ -162,17 +162,10 @@ pub(crate) fn write(font: &Font, dir: &Path) -> Result<PathBuf, Error> {
     let (expanded, rules, rule_lib) = super::conditional::prepare(font)?;
     let font = &expanded;
     let mut sources = Vec::new();
-    let mut file_name_counts = HashMap::<String, usize>::new();
+    let mut used_file_names = HashSet::<String>::new();
     for (index, master) in font.masters.iter().enumerate() {
         let master_name = filename_fragment(&master.name, &format!("Master{}", index + 1));
-        let base_name = format!("{family}-{master_name}");
-        let count = file_name_counts.entry(base_name.clone()).or_default();
-        *count += 1;
-        let file_name = if *count == 1 {
-            format!("{base_name}.ufo")
-        } else {
-            format!("{base_name}-{count}.ufo")
-        };
+        let file_name = unique_ufo_name(&format!("{family}-{master_name}"), &mut used_file_names);
         let ufo_path = dir.join(&file_name);
         super::write_ufo(font, &master.id, &ufo_path, &UfoWriteOptions::default())?;
         sources.push(Source {
@@ -546,6 +539,24 @@ fn resolve_source(base: &Path, filename: &str) -> PathBuf {
 
 fn normalized_filename(filename: &str) -> String {
     filename.replace('\\', "/")
+}
+
+/// A UFO file name no master written so far has taken.
+///
+/// Two master names can reduce to the same fragment, and the suffix that
+/// separates them can collide with a third master's own fragment, so a
+/// candidate is checked against the names already taken instead of being
+/// counted per base name. The comparison ignores case, because a
+/// case-insensitive filesystem would otherwise let one master overwrite
+/// another.
+fn unique_ufo_name(base: &str, used: &mut HashSet<String>) -> String {
+    let mut candidate = format!("{base}.ufo");
+    let mut count = 1_usize;
+    while !used.insert(candidate.to_lowercase()) {
+        count += 1;
+        candidate = format!("{base}-{count}.ufo");
+    }
+    candidate
 }
 
 fn filename_fragment(value: &str, fallback: &str) -> String {

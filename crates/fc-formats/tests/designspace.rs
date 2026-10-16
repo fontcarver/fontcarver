@@ -462,3 +462,80 @@ fn maps_defaults_and_user_values_between_mapping_knots() {
     let roundtrip = read_designspace(&output).unwrap();
     assert_eq!(roundtrip.masters[0].location[&Tag(*b"wght")], 37.5);
 }
+
+#[test]
+fn master_names_that_generate_the_same_file_name_keep_their_own_ufo() {
+    // "Regular A" and "Regular-A" share a file-name fragment, and the
+    // de-duplicating suffix of the second one collides with the third master's
+    // own fragment. Each master must still get its own UFO.
+    let mut font = read_ufo(&fc_fixtures::ufo_path("Minimal.ufo")).unwrap();
+    font.info.family_name = "Collision".to_owned();
+    font.axes.push(Axis {
+        tag: Tag(*b"wght"),
+        name: "Weight".to_owned(),
+        min: 100.0,
+        default: 400.0,
+        max: 900.0,
+        map: vec![(100.0, 0.0), (400.0, 400.0), (900.0, 1_000.0)],
+        ..Axis::default()
+    });
+    let first_id = font.masters[0].id.clone();
+    font.masters[0].name = "Regular A".to_owned();
+    font.masters[0].location.insert(Tag(*b"wght"), 400.0);
+    for glyph in font.glyphs.values_mut() {
+        glyph.master_layer_mut(&first_id).unwrap().width = 400.0;
+    }
+    for (name, location, width) in [("Regular-A", 700.0, 500.0), ("Regular-A-2", 1_000.0, 600.0)] {
+        let mut master = font.masters[0].clone();
+        master.id = MasterId::new();
+        master.name = name.to_owned();
+        master.location.insert(Tag(*b"wght"), location);
+        for glyph in font.glyphs.values_mut() {
+            let mut layer = glyph.master_layer(&first_id).unwrap().clone();
+            layer.kind = LayerKind::Master(master.id.clone());
+            layer.width = width;
+            glyph.layers.push(layer);
+        }
+        font.masters.push(master);
+    }
+    let temp = tempfile::tempdir().unwrap();
+
+    let path = write_designspace(&font, temp.path()).unwrap();
+
+    let document = DesignSpaceDocument::load(&path).unwrap();
+    let files = document
+        .sources
+        .iter()
+        .map(|source| source.filename.clone())
+        .collect::<std::collections::HashSet<_>>();
+    assert_eq!(
+        files.len(),
+        font.masters.len(),
+        "every master needs its own UFO: {files:?}"
+    );
+    let round_trip = read_designspace(&path).unwrap();
+    let mut widths = round_trip
+        .masters
+        .iter()
+        .map(|master| {
+            (
+                master.name.clone(),
+                round_trip
+                    .glyph("A")
+                    .unwrap()
+                    .master_layer(&master.id)
+                    .unwrap()
+                    .width,
+            )
+        })
+        .collect::<Vec<_>>();
+    widths.sort_by(|left, right| left.0.cmp(&right.0));
+    assert_eq!(
+        widths,
+        vec![
+            ("Regular A".to_owned(), 400.0),
+            ("Regular-A".to_owned(), 500.0),
+            ("Regular-A-2".to_owned(), 600.0),
+        ]
+    );
+}
