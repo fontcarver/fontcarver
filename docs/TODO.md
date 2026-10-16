@@ -6,6 +6,20 @@ Updated: 2026-10-04. Branch: `p5-color-authoring`; local work only, no push,
 **All authorized local closing work and the selected UI follow-up tasks
 are complete. Publication and macOS/Windows validation remain outside this batch.**
 
+## With the next push of `main`
+
+Local `main` (2026-10-16) has every branch merged and the website removed: the
+site now lives in its own repository, fontcarver/fontcarver.com. Two remote
+branches are fully merged into local `main` but still exist on GitHub. Delete
+them in the same push, so nothing on GitHub points at work that is not on
+`main`:
+
+```sh
+git push origin main :p5-color-authoring :release-publish
+```
+
+- [ ] Push `main` and delete `origin/p5-color-authoring` and `origin/release-publish`.
+
 ## Latest completed follow-up
 
 - [x] Complete [actual editor experience](p5ux-experience-acceptance.md): laptop
