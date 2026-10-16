@@ -22,11 +22,17 @@ pub(crate) fn get(api: &Api, _params: EmptyParams) -> Result<Prefs, ApiError> {
 
 pub(crate) fn set(api: &Api, params: SetPrefsParams) -> Result<Prefs, ApiError> {
     validate(&params.prefs)?;
-    let _guard = api
-        .config_lock
-        .lock()
-        .map_err(|_| ApiError::internal("API config lock is poisoned"))?;
-    write_json(api, "prefs.json", &params.prefs)?;
+    {
+        let _guard = api
+            .config_lock
+            .lock()
+            .map_err(|_| ApiError::internal("API config lock is poisoned"))?;
+        write_json(api, "prefs.json", &params.prefs)?;
+    }
+    // Autosave timing belongs to these preferences, so it takes effect now
+    // instead of at the next launch. Reconciling needs the configuration lock
+    // itself, so the guard above is released first.
+    api.reconcile_autosave()?;
     Ok(params.prefs)
 }
 

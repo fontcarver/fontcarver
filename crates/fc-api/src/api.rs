@@ -407,7 +407,13 @@ pub struct Api {
     events: broadcast::Sender<Event>,
     event_bridge: Mutex<bool>,
     shutdown: Arc<AtomicBool>,
-    autosave: OnceLock<AutosaveHandle>,
+    autosave: Mutex<Option<AutosaveWorker>>,
+}
+
+/// The running autosave worker and the interval it was started with.
+struct AutosaveWorker {
+    handle: AutosaveHandle,
+    interval: Duration,
 }
 
 impl Drop for Api {
@@ -437,7 +443,7 @@ impl Api {
             events,
             event_bridge: Mutex::new(false),
             shutdown: Arc::new(AtomicBool::new(false)),
-            autosave: OnceLock::new(),
+            autosave: Mutex::new(None),
         }
     }
 
@@ -484,25 +490,51 @@ impl Api {
     /// Starts periodic crash-recovery snapshots for every open document.
     ///
     /// The interval comes from [`crate::Prefs::autosave_seconds`]; a zero
-    /// interval leaves autosave off. Calling this more than once is a no-op.
+    /// interval leaves autosave off. Calling this again is a no-op while the
+    /// preferences are unchanged.
     ///
     /// # Errors
     ///
     /// Returns an error when the recovery directory cannot be determined.
     pub fn start_autosave(&self) -> Result<(), ApiError> {
-        if self.autosave.get().is_some() {
-            return Ok(());
-        }
+        self.reconcile_autosave()
+    }
+
+    /// Brings the autosave worker in line with the stored preferences.
+    ///
+    /// Autosave timing is a preference, so changing it has to reach the
+    /// running worker: a worker that kept its start-up interval would ignore a
+    /// new one, and turning autosave on would do nothing until the next
+    /// launch. Must not be called while the configuration lock is held,
+    /// because stopping the worker waits for its thread.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the preferences or the recovery directory cannot
+    /// be read.
+    pub fn reconcile_autosave(&self) -> Result<(), ApiError> {
         let seconds = handlers::prefs::get(self, crate::EmptyParams {})?.autosave_seconds;
-        if seconds == 0 {
-            return Ok(());
+        let wanted = (seconds > 0).then(|| Duration::from_secs(u64::from(seconds)));
+        let dir = self.autosave_dir()?;
+        let mut worker = self
+            .autosave
+            .lock()
+            .map_err(|_| ApiError::internal("autosave worker lock is poisoned"))?;
+        match (worker.as_ref(), wanted) {
+            (Some(running), Some(interval)) if running.interval == interval => return Ok(()),
+            (None, None) => return Ok(()),
+            _ => (),
         }
-        let config = AutosaveConfig {
-            interval: Duration::from_secs(u64::from(seconds)),
-            dir: self.autosave_dir()?,
-        };
-        let handle = spawn_autosave(Arc::clone(&self.session), config);
-        let _ = self.autosave.set(handle);
+        if let Some(running) = worker.take() {
+            running.handle.stop();
+        }
+        if let Some(interval) = wanted {
+            let config = AutosaveConfig { interval, dir };
+            *worker = Some(AutosaveWorker {
+                handle: spawn_autosave(Arc::clone(&self.session), config),
+                interval,
+            });
+        }
         Ok(())
     }
 
