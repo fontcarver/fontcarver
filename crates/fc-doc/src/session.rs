@@ -4,10 +4,13 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::{
-        atomic::{AtomicU32, Ordering},
+        atomic::{AtomicU32, AtomicU64, Ordering},
         Arc, RwLock,
     },
+    time::{SystemTime, UNIX_EPOCH},
 };
+
+use sha1::{Digest, Sha1};
 
 #[cfg(debug_assertions)]
 use std::cell::Cell;
@@ -20,6 +23,21 @@ use ts_rs::TS;
 use crate::{fcf, Document, DocumentEvent, Error};
 
 const EVENT_CAPACITY: usize = 1024;
+
+/// Separates sessions created in the same process within the same nanosecond.
+static NEXT_INSTANCE: AtomicU64 = AtomicU64::new(0);
+
+/// A short identity for one session: process, start time and a counter.
+fn new_instance_id() -> String {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |since| since.as_nanos());
+    let mut digest = Sha1::new();
+    digest.update(std::process::id().to_le_bytes());
+    digest.update(nanos.to_le_bytes());
+    digest.update(NEXT_INSTANCE.fetch_add(1, Ordering::Relaxed).to_le_bytes());
+    format!("{:x}", digest.finalize())[..16].to_owned()
+}
 
 /// Stable session identifier for one open document.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
@@ -104,6 +122,7 @@ pub struct Session {
     events: broadcast::Sender<DocumentEvent>,
     next_doc_id: AtomicU32,
     opener: Arc<dyn FontOpener>,
+    instance_id: String,
 }
 
 impl Default for Session {
@@ -126,7 +145,18 @@ impl Session {
             events,
             next_doc_id: AtomicU32::new(1),
             opener,
+            instance_id: new_instance_id(),
         }
+    }
+
+    /// Identity of this session, unique to the process run that created it.
+    ///
+    /// Document ids restart at 1 in every process, so they cannot name
+    /// crash-recovery snapshots on their own: the snapshots of an earlier run,
+    /// which nobody has recovered yet, would be overwritten. Combining this
+    /// identity with the document id keeps every run's snapshots separate.
+    pub fn instance_id(&self) -> &str {
+        &self.instance_id
     }
 
     /// Opens a native file/directory project or imports a supported binary font.

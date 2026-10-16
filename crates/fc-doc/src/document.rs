@@ -89,8 +89,13 @@ pub struct Document {
     active_edit: Option<ActiveEdit>,
     read_only: bool,
     next_edit_token: u64,
+    /// Snapshot file a recovered document keeps writing to, so the snapshot it
+    /// was restored from cannot outlive it.
+    autosave_file: Option<PathBuf>,
     current_state: u64,
-    saved_state: u64,
+    /// State matching the document on disk; `None` once the content exists
+    /// nowhere but memory, which is how a recovered snapshot starts.
+    saved_state: Option<u64>,
     next_state: u64,
     cache: Mutex<DocumentCache>,
     component_generation: u64,
@@ -128,8 +133,9 @@ impl Document {
             active_edit: None,
             read_only: false,
             next_edit_token: 1,
+            autosave_file: None,
             current_state: 0,
-            saved_state: 0,
+            saved_state: Some(0),
             next_state: 1,
             cache: Mutex::new(DocumentCache::default()),
             component_generation: 0,
@@ -472,6 +478,30 @@ impl Document {
         Ok(path)
     }
 
+    /// The snapshot file this document owns, when it is not the one derived
+    /// from the session identity and the document id.
+    pub fn autosave_file(&self) -> Option<&Path> {
+        self.autosave_file.as_deref()
+    }
+
+    /// Takes ownership of an existing snapshot file, which later snapshots
+    /// replace and closing or saving the document deletes.
+    pub fn adopt_autosave_file(&mut self, path: PathBuf) {
+        self.autosave_file = Some(path);
+    }
+
+    /// Marks this document as restored from a crash-recovery snapshot.
+    ///
+    /// The recovered content exists on no disk, so no state of the undo
+    /// history matches a saved file: undoing the edits made after recovery
+    /// must leave the document dirty, and only an explicit save makes it
+    /// clean. Setting `dirty` alone would not survive the next undo, which
+    /// recomputes it from the saved baseline.
+    pub fn mark_recovered(&mut self) {
+        self.saved_state = None;
+        self.dirty = true;
+    }
+
     /// Saves the document as a `.fcf` or `.fcf.gz` file and marks it clean.
     pub fn save(&mut self, path: &Path) -> Result<(), Error> {
         self.check_writable()?;
@@ -496,7 +526,7 @@ impl Document {
             self.generation = self.generation.saturating_add(1);
         }
         self.path = Some(path.to_path_buf());
-        self.saved_state = self.current_state;
+        self.saved_state = Some(self.current_state);
         self.dirty = false;
         self.emit(Change::default());
         Ok(())
@@ -638,7 +668,7 @@ impl Document {
         let after_state = self.next_state;
         self.next_state = self.next_state.saturating_add(1);
         self.current_state = after_state;
-        self.dirty = self.current_state != self.saved_state;
+        self.dirty = self.saved_state != Some(self.current_state);
         let entry = UndoEntry::new(
             label,
             inverse,
@@ -695,7 +725,7 @@ impl Document {
         if entry.component_graph_changed {
             self.bump_component_generation();
         }
-        self.dirty = self.current_state != self.saved_state;
+        self.dirty = self.saved_state != Some(self.current_state);
         self.bump_glyphs(&entry.change.glyphs)?;
         self.generation = self.generation.saturating_add(1);
         self.emit(entry.change.clone());

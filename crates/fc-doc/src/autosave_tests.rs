@@ -35,7 +35,7 @@ fn invalid_snapshot_keeps_last_good_recovery_and_does_not_block_other_documents(
     let bad = session.open_font(initial.clone(), None);
     session.with_doc_mut(bad, |doc| doc.dirty = true).unwrap();
     autosave_pass(&session, &dir.0).unwrap();
-    let saved = autosave_path(&dir.0, bad, None);
+    let saved = snapshot_path(&dir.0, session.instance_id(), bad);
     let original_bytes = std::fs::read(&saved).unwrap();
 
     // Invalid source data must never replace a snapshot that can be reopened.
@@ -55,7 +55,7 @@ fn invalid_snapshot_keeps_last_good_recovery_and_does_not_block_other_documents(
     assert_eq!(std::fs::read(&saved).unwrap(), original_bytes);
     assert_eq!(fcf::read(&saved).unwrap(), initial);
     assert_eq!(
-        fcf::read(&autosave_path(&dir.0, good, None)).unwrap(),
+        fcf::read(&snapshot_path(&dir.0, session.instance_id(), good)).unwrap(),
         good_font
     );
 
@@ -80,7 +80,7 @@ fn clean_documents_are_skipped_and_saved_provenance_survives_recovery() {
     let dirty = session.open_font(expected.clone(), Some(original.clone()));
     session.with_doc_mut(dirty, |doc| doc.dirty = true).unwrap();
     autosave_pass(&session, &dir.0).unwrap();
-    assert!(!autosave_path(&dir.0, clean, None).exists());
+    assert!(!snapshot_path(&dir.0, session.instance_id(), clean).exists());
     let entries = list_recoverable(&dir.0);
     assert_eq!(entries.len(), 1);
     assert_eq!(entries[0].doc_path, Some(original));
@@ -160,4 +160,70 @@ fn an_interrupted_project_session_is_offered_for_recovery_and_restores_its_work(
 
     // Once the project is newer than the snapshot, it is no longer offered.
     assert!(list_recoverable(&recovery).is_empty());
+}
+
+/// Family names of every snapshot in a recovery directory, sorted.
+fn recoverable_families(dir: &Path) -> Vec<String> {
+    let mut families = list_recoverable(dir)
+        .iter()
+        .map(|entry| fcf::read(&entry.autosave_path).unwrap().info.family_name)
+        .collect::<Vec<_>>();
+    families.sort();
+    families
+}
+
+#[test]
+fn two_documents_of_one_path_keep_their_own_snapshots() {
+    let dir = TestDirectory::new();
+    let original = dir.0.join("shared.fcf");
+    let session = Session::new();
+    let first = session.open_font(Font::new_empty("First", 1_000), Some(original.clone()));
+    let second = session.open_font(Font::new_empty("Second", 1_000), Some(original));
+    for (doc, family) in [(first, "First edit"), (second, "Second edit")] {
+        session
+            .with_doc_mut(doc, |document| {
+                document.font.info.family_name = family.into();
+                document.dirty = true;
+            })
+            .unwrap();
+    }
+
+    autosave_pass(&session, &dir.0).unwrap();
+
+    assert_eq!(
+        recoverable_families(&dir.0),
+        vec!["First edit".to_owned(), "Second edit".to_owned()],
+        "one snapshot per open document, even when they share a file"
+    );
+}
+
+#[test]
+fn a_later_session_does_not_overwrite_unrecovered_snapshots() {
+    let dir = TestDirectory::new();
+    let session = Session::new();
+    let doc = session.open_font(Font::new_empty("Interrupted", 1_000), None);
+    session
+        .with_doc_mut(doc, |document| {
+            document.font.info.family_name = "Interrupted edit".into();
+            document.dirty = true;
+        })
+        .unwrap();
+    autosave_pass(&session, &dir.0).unwrap();
+
+    // Document ids restart at 1 in the next run of the program.
+    let next = Session::new();
+    let fresh = next.open_font(Font::new_empty("Next run", 1_000), None);
+    assert_eq!(fresh, doc, "the new session reuses the first document id");
+    next.with_doc_mut(fresh, |document| {
+        document.font.info.family_name = "Next run edit".into();
+        document.dirty = true;
+    })
+    .unwrap();
+    autosave_pass(&next, &dir.0).unwrap();
+
+    assert_eq!(
+        recoverable_families(&dir.0),
+        vec!["Interrupted edit".to_owned(), "Next run edit".to_owned()],
+        "work waiting to be recovered must survive the next session"
+    );
 }

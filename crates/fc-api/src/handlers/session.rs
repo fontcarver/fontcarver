@@ -73,6 +73,8 @@ pub(crate) fn new_document(api: &Api, params: NewParams) -> Result<DocSummary, A
 }
 
 pub(crate) fn close(api: &Api, params: CloseParams) -> Result<(), ApiError> {
+    // While the document is still open, so its adopted snapshot is readable.
+    forget_snapshot(api, params.doc);
     api.session.close(params.doc)?;
     api.shaper.forget(params.doc.0);
     api.layout_cache
@@ -139,7 +141,36 @@ pub(crate) fn save(api: &Api, params: SaveParams) -> Result<DocSummary, ApiError
         .map_err(|_| ApiError::internal("API recovery marker lock is poisoned"))?
         .remove(&params.doc);
     prefs::record_recent(api, path)?;
+    forget_snapshot(api, params.doc);
     summary_for(api, params.doc)
+}
+
+/// Deletes the crash-recovery snapshot of a document whose work is safe again.
+///
+/// A snapshot exists to survive a crash. Once the document has been saved, or
+/// the user has closed it and let its changes go, keeping the snapshot would
+/// offer that work back after an ordinary exit and leave an old version behind
+/// for good.
+fn forget_snapshot(api: &Api, doc: DocId) {
+    let Ok(dir) = api.autosave_dir() else {
+        return;
+    };
+    let adopted = api
+        .session
+        .with_doc(doc, |document| {
+            document.autosave_file().map(Path::to_path_buf)
+        })
+        .ok()
+        .flatten();
+    let path =
+        adopted.unwrap_or_else(|| autosave::snapshot_path(&dir, api.session.instance_id(), doc));
+    match fs::remove_file(&path) {
+        Ok(()) => (),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+        Err(error) => {
+            tracing::warn!(%error, path = %path.display(), "could not delete recovery snapshot");
+        }
+    }
 }
 
 pub(crate) fn recent(api: &Api, _params: EmptyParams) -> Result<Vec<String>, ApiError> {
@@ -171,9 +202,14 @@ pub(crate) fn recover(api: &Api, params: RecoveryParams) -> Result<DocSummary, A
         .as_ref()
         .map(|path| path.to_string_lossy().into_owned());
     let doc = api.session.open_font(font, entry.doc_path);
-    // The snapshot is by definition newer than the document on disk.
-    api.session
-        .with_doc_mut(doc, |document| document.dirty = true)?;
+    // The snapshot is by definition newer than the document on disk, and no
+    // state of its history matches a saved file until the user saves one. The
+    // recovered document also takes over the snapshot it came from, so later
+    // snapshots replace it and saving or closing deletes it.
+    api.session.with_doc_mut(doc, |document| {
+        document.mark_recovered();
+        document.adopt_autosave_file(autosave_path.clone());
+    })?;
     api.warnings
         .lock()
         .map_err(|_| ApiError::internal("API warning cache lock is poisoned"))?

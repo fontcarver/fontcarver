@@ -7,8 +7,6 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use sha1::{Digest, Sha1};
-
 use crate::{fcf, DocId, Error, Session};
 
 #[cfg(test)]
@@ -171,11 +169,15 @@ fn autosave_pass(session: &Session, dir: &Path) -> Result<(), Error> {
             if !document.dirty {
                 return None;
             }
-            Some((document.font.clone(), document.path.clone()))
+            Some((
+                document.font.clone(),
+                document.path.clone(),
+                document.autosave_file().map(Path::to_path_buf),
+            ))
         });
         let result = match snapshot {
-            Ok(Some((font, document_path))) => {
-                let path = autosave_path(dir, id, document_path.as_deref());
+            Ok(Some((font, document_path, adopted))) => {
+                let path = adopted.unwrap_or_else(|| snapshot_path(dir, session.instance_id(), id));
                 fcf::write_autosave(&path, &font, document_path.as_deref())
             }
             Ok(None) => Ok(()),
@@ -188,15 +190,15 @@ fn autosave_pass(session: &Session, dir: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-fn autosave_path(dir: &Path, id: DocId, path: Option<&Path>) -> PathBuf {
-    let stem = path.map_or_else(
-        || id.0.to_string(),
-        |path| {
-            let digest = Sha1::digest(path.to_string_lossy().as_bytes());
-            format!("{digest:x}")
-        },
-    );
-    dir.join(format!("{stem}.autosave.fcf"))
+/// Snapshot file of one document of one session.
+///
+/// The name carries the session's identity as well as the document id. Naming
+/// a snapshot after the document path alone made two views of the same file
+/// share one snapshot, and naming an unsaved document after its id alone made
+/// the next process run overwrite a snapshot nobody had recovered yet, because
+/// document ids restart at 1.
+pub fn snapshot_path(dir: &Path, instance: &str, doc: DocId) -> PathBuf {
+    dir.join(format!("{instance}-{}.autosave.fcf", doc.0))
 }
 
 fn is_autosave_path(path: &Path) -> bool {

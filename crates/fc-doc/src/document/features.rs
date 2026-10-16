@@ -158,7 +158,7 @@ impl Document {
         let after_state = self.next_state;
         self.next_state = self.next_state.saturating_add(1);
         self.current_state = after_state;
-        self.dirty = self.current_state != self.saved_state;
+        self.dirty = self.saved_state != Some(self.current_state);
         self.undo.push(UndoEntry::new(
             label.into(),
             inverse,
