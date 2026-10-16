@@ -4,7 +4,19 @@ The single entry point for "where is the project". Update this file at every
 pause and every milestone commit. It links to the detailed records; it does
 not repeat them.
 
-Last updated: 2026-10-04. Branch: `p5-color-authoring`. Waves 1 and 2 and
+Last updated: 2026-10-15.
+
+**0.1.0-alpha.1 is published.** The first packaged release is on the
+[releases page](https://github.com/fontcarver/fontcarver/releases/tag/v0.1.0-alpha.1):
+Linux deb, rpm and AppImage, a macOS disk image for Apple silicon, and a
+Windows installer and portable build, each built and verified on the system it
+targets by [`release.yml`](../.github/workflows/release.yml) and published with
+the digest its own inspection recorded. Nothing is signed or notarized, and the
+native acceptance checklist in [releasing.md](releasing.md) is not completed;
+that is what makes it an alpha. Everything below this line predates the
+release and is unchanged.
+
+Previously: 2026-10-04. Branch: `p5-color-authoring`. Waves 1 and 2 and
 this repair pass are local work; no push, `main` merge, signing or publication.
 
 **The authorized local closing work and added UI/UX tasks are complete.**
